@@ -199,7 +199,26 @@ test('Production waits for same-SHA CircleCI trunk success before deploy', () =>
   assert.match(production, /timeout-minutes: 75/u);
 });
 
-test('deployment jobs serialize without coalescing decision runs', () => {
+test('deployment jobs keep orchestration and privileges scoped', () => {
+  const topLevel = workflow.split('\njobs:\n')[0];
+  const staging = workflow
+    .split('\n  staging:\n')[1]
+    ?.split('\n  production-candidate:\n')[0];
+  const production = workflow.split('\n  production-candidate:\n')[1];
+
+  assert.ok(topLevel);
+  assert.ok(staging);
+  assert.ok(production);
+  assert.equal(workflow.match(/persist-credentials: false/gu)?.length, 4);
+  assert.doesNotMatch(topLevel, /actions: read|checks: read/u);
+  for (const deployment of [staging, production]) {
+    const jobHeader = deployment.split('\n    steps:\n')[0];
+
+    assert.match(deployment, /actions: read/u);
+    assert.match(deployment, /checks: read/u);
+    assert.match(deployment, /contents: read/u);
+    assert.doesNotMatch(jobHeader, /secrets\.VERCEL_/u);
+  }
   assert.doesNotMatch(workflow, /^concurrency:/mu);
   assert.match(workflow, /group: vercel-preview-/u);
   assert.match(workflow, /group: vercel-staging-develop/u);

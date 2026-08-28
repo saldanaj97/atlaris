@@ -58,15 +58,18 @@ describe('Supabase migration workflows', () => {
   );
 
   it.each(migrationWorkflows)(
-    '$fileName uses the protected GitHub environment before Supabase secrets',
+    '$fileName scopes Supabase secrets behind the protected GitHub environment',
     ({ environment, fileName }) => {
       const workflow = readWorkflow(fileName);
       const environmentIndex = workflow.indexOf(`environment: ${environment}`);
-      const secretsIndex = workflow.indexOf('\n    env:\n');
+      const stepsIndex = workflow.indexOf('\n    steps:\n');
+      const secretsIndex = workflow.indexOf('secrets.SUPABASE_ACCESS_TOKEN');
 
       expect(environmentIndex).toBeGreaterThan(-1);
+      expect(stepsIndex).toBeGreaterThan(-1);
       expect(secretsIndex).toBeGreaterThan(-1);
       expect(environmentIndex).toBeLessThan(secretsIndex);
+      expect(workflow.slice(0, stepsIndex)).not.toContain('secrets.');
     },
   );
 
@@ -77,6 +80,7 @@ describe('Supabase migration workflows', () => {
 
       expect(workflow).toContain('uses: actions/checkout@');
       expect(workflow).toContain(`with:\n          ref: ${checkoutRef}`);
+      expect(workflow).toContain('persist-credentials: false');
     },
   );
 

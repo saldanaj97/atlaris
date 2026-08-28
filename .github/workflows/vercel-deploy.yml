@@ -27,8 +27,6 @@ on:
 
 permissions:
   contents: read
-  checks: read
-  actions: read
 
 jobs:
   deployment-decision:
@@ -52,6 +50,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Report deployment decision
         id: decision
@@ -312,6 +311,7 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
@@ -388,6 +388,10 @@ jobs:
           needs.deployment-decision.outputs.candidate_sha == github.sha &&
           inputs.lane == 'staging')
       )
+    permissions:
+      actions: read
+      checks: read
+      contents: read
     runs-on: ubuntu-latest
     environment: staging
     concurrency:
@@ -401,9 +405,6 @@ jobs:
       deployment_target: ${{ steps.inspect.outputs.target }}
       candidate_sha: ${{ steps.inspect.outputs.sha }}
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_GIT_PROVIDER: github
       VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
       VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
@@ -413,6 +414,7 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify successful same-SHA Staging expand
         if: github.event_name == 'workflow_dispatch'
@@ -500,6 +502,10 @@ jobs:
         run: npm install --global vercel@53.2.0 >/dev/null
 
       - name: Link Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
           vercel link --yes \
@@ -508,6 +514,10 @@ jobs:
             >/dev/null
 
       - name: Pull develop Preview environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
           vercel pull --yes \
@@ -517,6 +527,9 @@ jobs:
 
       - name: Build develop Preview artifact
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: develop
         run: |
@@ -526,6 +539,9 @@ jobs:
       - name: Deploy develop Preview artifact
         id: deploy
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: develop
         run: |
@@ -537,6 +553,9 @@ jobs:
       - name: Inspect develop Preview deployment
         id: inspect
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
@@ -578,6 +597,10 @@ jobs:
       vars.VERCEL_DEPLOYMENT_CHECKS_READY == 'true' &&
       needs.deployment-decision.outputs.deploy == 'true' &&
       needs.deployment-decision.outputs.secret_deploy_eligible == 'true'
+    permissions:
+      actions: read
+      checks: read
+      contents: read
     runs-on: ubuntu-latest
     concurrency:
       group: vercel-production-main
@@ -591,9 +614,6 @@ jobs:
       candidate_sha: ${{ steps.inspect.outputs.sha }}
       aliases: ${{ steps.inspect.outputs.aliases }}
     env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_GIT_PROVIDER: github
       VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
       VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
@@ -603,6 +623,7 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Verify a successful Production expand covers the candidate
         env:
@@ -703,6 +724,10 @@ jobs:
         run: npm install --global vercel@53.2.0 >/dev/null
 
       - name: Link Vercel project
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           set -euo pipefail
           vercel link --yes \
@@ -713,6 +738,9 @@ jobs:
       - name: Deploy gated Production candidate
         id: deploy
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: main
         run: |
@@ -724,6 +752,9 @@ jobs:
       - name: Inspect Production candidate
         id: inspect
         env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
