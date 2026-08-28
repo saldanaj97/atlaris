@@ -78,7 +78,7 @@ We use two protected branches that serve as anchors for all development:
 - **Preview**: same-repository deploy-impacting PRs use the custom-CI Preview lane; docs-only PRs create no deployment and forks receive no secrets.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases; the Hobby-plan app lane uses Vercel Preview configuration scoped to `develop`.
-- **Staged Production**: a deploy-impacting `main` push creates an unaliased Production-targeted candidate. JCS-52 gates automatic aliasing on approval and exact-candidate smoke; routine `vercel promote` is not used. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Staged Production**: after native Git cutover, a deploy-impacting `main` push creates an unaliased Production-targeted candidate. The job remains skipped until `VERCEL_NATIVE_GIT_DISABLED=true`. JCS-52 gates automatic aliasing on approval and exact-candidate smoke; routine `vercel promote` is not used. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 - **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
 ---

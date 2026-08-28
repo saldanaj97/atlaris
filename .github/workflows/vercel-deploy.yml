@@ -80,6 +80,7 @@ jobs:
           source_sha=''
           candidate_sha=''
           same_repository_pr='not-applicable'
+          manual_ref_trusted='not-applicable'
           fork_guard='not-applicable'
           secret_deploy_eligible=false
           changed_files=''
@@ -172,9 +173,16 @@ jobs:
                 fi
                 ;;
               workflow_dispatch)
+                manual_ref_trusted='false'
                 if [[ -n "${MANUAL_REF:-}" ]] && is_sha "${checkout_sha}"; then
                   source_sha="${checkout_sha}"
                   candidate_sha="${checkout_sha}"
+                  if git fetch --no-tags origin \
+                    '+refs/heads/*:refs/remotes/origin/*' >/dev/null 2>&1 &&
+                    [[ -n "$(git for-each-ref --contains="${checkout_sha}" \
+                      --format='%(refname)' refs/remotes/origin/ | sed -n '1p')" ]]; then
+                    manual_ref_trusted='true'
+                  fi
                   classify || true
                 fi
                 ;;
@@ -195,10 +203,11 @@ jobs:
               ;;
             workflow_dispatch)
               if [[ "${MANUAL_LANE:-}" == 'preview' || "${MANUAL_LANE:-}" == 'staging' ]] &&
+                [[ "${manual_ref_trusted}" == 'true' ]] &&
                 is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
                 secret_deploy_eligible=true
               else
-                fork_guard='manual-lane-ineligible'
+                fork_guard='manual-ref-ineligible'
               fi
               ;;
           esac
@@ -242,6 +251,7 @@ jobs:
             echo "| Deploy | ${deploy} |"
             echo "| Reason | ${reason} |"
             echo "| Same-repository PR | ${same_repository_pr} |"
+            echo "| Trusted manual ref | ${manual_ref_trusted} |"
             echo "| Fork guard | ${fork_guard} |"
             echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
           } >>"${GITHUB_STEP_SUMMARY}"
@@ -338,7 +348,7 @@ jobs:
           EXPECTED_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
         run: |
           set -euo pipefail
-          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
@@ -453,7 +463,7 @@ jobs:
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
           set -euo pipefail
-          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
@@ -488,6 +498,7 @@ jobs:
     if: >-
       github.event_name == 'push' &&
       github.ref == 'refs/heads/main' &&
+      vars.VERCEL_NATIVE_GIT_DISABLED == 'true' &&
       needs.deployment-decision.outputs.deploy == 'true' &&
       needs.deployment-decision.outputs.secret_deploy_eligible == 'true'
     runs-on: ubuntu-latest
@@ -565,7 +576,7 @@ jobs:
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
           set -euo pipefail
-          vercel inspect "${DEPLOYMENT_URL}" --wait --format=json >inspection.json
+          vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"

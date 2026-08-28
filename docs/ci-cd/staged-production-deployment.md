@@ -47,6 +47,8 @@ Until JCS-52 and the custom lanes are proven:
 - this repository change is not proof of cutover; and
 - no public domain movement is authorized.
 
+The workflow's Production job also requires repository variable `VERCEL_NATIVE_GIT_DISABLED=true`. Leave it unset during proof so a `main` push cannot race the native Git Production deployment. Prove the `--skip-domain` candidate flow from an exact trusted `main` checkout without pushing `main`; after proof and explicit approval, disable native Git deployment creation and set the variable.
+
 ## Prerequisites
 
 - `.github/workflows/vercel-deploy.yml` is present on the exact committed `main` SHA and uses pinned Vercel CLI `53.2.0`.

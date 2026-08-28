@@ -71,8 +71,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
 - Same-repository deploy-impacting PRs create Preview deployments; forks never receive Vercel secrets.
 - Deploy-impacting `develop` pushes use the Hobby-plan Staging fallback: Vercel Preview configuration scoped to the `develop` branch.
-- Deploy-impacting `main` pushes create a Production-targeted candidate with `--skip-domain`. This job never promotes, aliases, or rolls back.
-- Native Vercel Git deployment creation remains enabled during the proof phase. Disable it only after the custom lanes and JCS-52 gate are proven and explicitly approved.
+- After cutover, deploy-impacting `main` pushes create a Production-targeted candidate with `--skip-domain`. This job never promotes, aliases, or rolls back.
+- The Production job fails closed unless repository variable `VERCEL_NATIVE_GIT_DISABLED` is exactly `true`. Set it only after native Git deployment creation has been disabled and explicitly approved.
 
 ### 5) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -180,9 +180,13 @@ Vercel custom-CI credentials used by the deployment workflow:
 
 These credentials link custom CI to the Vercel project; Production application variables stay in Vercel and are never copied into GitHub.
 
+### GitHub repository variables
+
+- `VERCEL_NATIVE_GIT_DISABLED`: leave unset during proof. Set to `true` only after the custom lanes are proven, native Git deployment creation is disabled in Vercel, and Juan approves cutover. The Production-candidate job remains skipped otherwise.
+
 ### Vercel settings
 
-Keep the GitHub project connection and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. After all custom lanes and JCS-52 are proven, explicitly approve `git.deploymentEnabled: false`; do not disconnect the repository because Deployment Checks require the integration.
+Keep the GitHub project connection and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. Prove the unaliased Production candidate from an exact trusted `main` checkout without pushing `main`, then explicitly approve `git.deploymentEnabled: false` and set `VERCEL_NATIVE_GIT_DISABLED=true`; do not disconnect the repository because Deployment Checks require the integration.
 
 ---
 
