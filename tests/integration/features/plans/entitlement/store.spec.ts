@@ -136,4 +136,59 @@ describe('free-access plan selection store', () => {
     });
     expect(result.status).toBe('invalid_candidate');
   });
+
+  it('ignores failed ineligible placeholders when auto-selecting', async () => {
+    const authUserId = buildTestAuthUserId('free-access-skip-failed');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    await createPlan(userId, {
+      topic: 'Failed placeholder',
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+      finalizedAt: null,
+    });
+    const eligible = await createPlan(userId, { topic: 'Ready plan' });
+    await db
+      .update(users)
+      .set({ initialPlanGeneratedAt: new Date('2026-02-01T00:00:00.000Z') })
+      .where(eq(users.id, userId));
+
+    const result = await ensureFreeAccessSelection({ userId, dbClient: db });
+
+    expect(result.decision).toBe('auto_select');
+    expect(result.candidates.map((candidate) => candidate.id)).toEqual([
+      eligible.id,
+    ]);
+    expect(result.snapshot.freeAccessPlanId).toBe(eligible.id);
+  });
+
+  it('rejects selecting a failed ineligible plan', async () => {
+    const authUserId = buildTestAuthUserId('free-access-invalid-failed');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const failed = await createPlan(userId, {
+      topic: 'Failed placeholder',
+      generationStatus: 'failed',
+      isQuotaEligible: false,
+      finalizedAt: null,
+    });
+    await createPlan(userId, { topic: 'Ready plan' });
+    await db
+      .update(users)
+      .set({ initialPlanGeneratedAt: new Date('2026-02-01T00:00:00.000Z') })
+      .where(eq(users.id, userId));
+
+    const result = await selectFreeAccessPlan({
+      userId,
+      planId: failed.id,
+      dbClient: db,
+    });
+    expect(result.status).toBe('invalid_candidate');
+  });
 });

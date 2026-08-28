@@ -7,9 +7,9 @@ import type { DbClient } from '@/lib/db/types';
 
 import { resolveFreeAccessSelection } from '@/features/plans/policy/entitlement';
 import { getDb } from '@supabase/runtime';
-import { learningPlans, users } from '@supabase/schema';
+import { generationAttempts, learningPlans, users } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, isNull, sql } from 'drizzle-orm';
 
 export type EnsureFreeAccessSelectionResult = {
   readonly snapshot: PlanEntitlementSnapshot;
@@ -69,6 +69,20 @@ export async function loadPlanEntitlementSnapshot(
   return row;
 }
 
+const RETAINED_ELIGIBLE_PLAN = sql`(
+  ${learningPlans.finalizedAt} is not null
+  or ${learningPlans.isQuotaEligible} = true
+  or exists (
+    select 1 from ${generationAttempts}
+    where ${generationAttempts.planId} = ${learningPlans.id}
+      and ${generationAttempts.status} = 'success'
+  )
+)
+and not (
+  ${learningPlans.generationStatus} = 'failed'
+  and ${learningPlans.isQuotaEligible} = false
+)`;
+
 export async function listFreeAccessCandidates(
   userId: string,
   dbClient: DbClient = getDb(),
@@ -81,7 +95,7 @@ export async function listFreeAccessCandidates(
       generationStatus: learningPlans.generationStatus,
     })
     .from(learningPlans)
-    .where(eq(learningPlans.userId, userId))
+    .where(and(eq(learningPlans.userId, userId), RETAINED_ELIGIBLE_PLAN))
     .orderBy(asc(learningPlans.createdAt));
 
   return rows.map(toCandidate);
@@ -99,6 +113,7 @@ async function candidateOwnedByUser(params: {
       and(
         eq(learningPlans.id, params.planId),
         eq(learningPlans.userId, params.userId),
+        RETAINED_ELIGIBLE_PLAN,
       ),
     )
     .limit(1);

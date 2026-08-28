@@ -240,6 +240,50 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
       .where(eq(usageMetrics.userId, user.id));
     expect(afterRetry?.lessonModulesGenerated).toBe(2);
   });
+
+  it('does not settle provider work whose providerStartedAt is still inside the threshold', async () => {
+    const user = await createTestUser();
+    const plan = await createTestPlan({
+      userId: user.id,
+      topic: 'Recent provider start',
+    });
+    const mod = await createTestModule({ planId: plan.id });
+    await createTestTask({ moduleId: mod.id });
+    const staleClaimAt = new Date(
+      Date.now() - ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS - 60_000,
+    );
+    const recentProviderAt = new Date(Date.now() - 60_000);
+
+    await db
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'generating',
+        lessonGenerationStartedAt: staleClaimAt,
+        lessonGenerationCompletedAt: null,
+        lessonGenerationFailedAt: null,
+        lessonGenerationError: null,
+        lessonGenerationMetadata: {
+          version: 1,
+          providerStartedAt: recentProviderAt.toISOString(),
+        },
+      })
+      .where(eq(modules.id, mod.id));
+
+    const cleanupResult = await cleanupAbandonedModuleLessonGenerations(db);
+    expect(cleanupResult.cleaned).toBe(0);
+
+    const [row] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        error: modules.lessonGenerationError,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(row).toMatchObject({
+      status: 'generating',
+      error: null,
+    });
+  });
 });
 
 describe('cleanupOrphanedAttempts (integration)', () => {

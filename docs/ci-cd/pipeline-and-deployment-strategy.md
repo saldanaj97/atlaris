@@ -40,7 +40,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ### 1) CircleCI dynamic setup (`.circleci/config.yml`)
 
-- The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch or configured base ref.
+- The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch, `pipeline.git.base_revision` for `main`/`develop` pushes, or the configured base ref for other non-PR pushes.
 - Every changed-file pipeline includes `.circleci/shared-config.yml`. Docs-only changes add `.circleci/docs-config.yml`; code, mixed, root, and CI/config changes add `.circleci/code-config.yml`. The orb merges the selected fragments into the single continuation config.
 - `.circleci/no-updates.yml` is the fallback when the comparison contains no changed files.
 - Docs-only pipelines publish zero-credit no-op jobs under the seven required check names. They do not provision code CI executors or run lint, build, audit, or test commands.

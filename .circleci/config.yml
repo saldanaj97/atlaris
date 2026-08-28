@@ -43,7 +43,23 @@ workflows:
       - path-filtering/filter:
           name: select-config
           tag: "3.12"
-          base-revision: main
+          # Push HEAD vs branch name is empty; compare to the previous SHA.
+          base-revision: << pipeline.git.base_revision >>
+          config-path: .circleci/no-updates.yml
+          mapping: *config-mapping
+
+  setup-develop:
+    when:
+      and:
+        - not:
+            equal: [pull_request, << pipeline.event.name >>]
+        - equal: [develop, << pipeline.git.branch >>]
+    jobs:
+      - path-filtering/filter:
+          name: select-config
+          tag: "3.12"
+          # Push HEAD vs develop is empty; compare to the previous SHA.
+          base-revision: << pipeline.git.base_revision >>
           config-path: .circleci/no-updates.yml
           mapping: *config-mapping
 
@@ -54,6 +70,8 @@ workflows:
             equal: [pull_request, << pipeline.event.name >>]
         - not:
             equal: [main, << pipeline.git.branch >>]
+        - not:
+            equal: [develop, << pipeline.git.branch >>]
     jobs:
       - path-filtering/filter:
           name: select-config

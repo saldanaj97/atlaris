@@ -396,8 +396,8 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBe(processingError);
 
-    expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(db.execute).toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.execute).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
@@ -421,7 +421,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBeInstanceOf(ClerkBillingRefreshTimeoutError);
 
-    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.transaction).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
@@ -444,13 +444,13 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.update).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes webhook writes from the current Clerk subscription after locking', async () => {
+  it('refreshes Clerk outside the transaction, then applies under the payer lock', async () => {
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockImplementation(
       async () => {
-        expect(db.isTransactionOpen()).toBe(true);
-        expect(db.execute).toHaveBeenCalled();
+        expect(db.isTransactionOpen()).toBe(false);
+        expect(db.execute).not.toHaveBeenCalled();
         return makeSubscription();
       },
     );
@@ -467,6 +467,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
       'user_missing',
     );
     expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalled();
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',
@@ -616,15 +617,15 @@ describe('applyVerifiedClerkBillingEvent', () => {
 });
 
 describe('reconcileClerkBillingEntitlements', () => {
-  it('locks the payer before refreshing and applying Clerk state', async () => {
+  it('refreshes Clerk outside the transaction, then applies under the payer lock', async () => {
     const db = makeDb({
       selectResults: [[{ authUserId: 'user_missing' }], [makeLocalUser()]],
     });
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockImplementation(
       async () => {
-        expect(db.isTransactionOpen()).toBe(true);
-        expect(db.execute).toHaveBeenCalled();
+        expect(db.isTransactionOpen()).toBe(false);
+        expect(db.execute).not.toHaveBeenCalled();
         return makeSubscription();
       },
     );
@@ -645,6 +646,7 @@ describe('reconcileClerkBillingEntitlements', () => {
     });
 
     expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalled();
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',
@@ -678,6 +680,7 @@ describe('reconcileClerkBillingEntitlements', () => {
       nextCursor: null,
     });
 
+    expect(db.transaction).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
   });
 });

@@ -225,11 +225,10 @@ export async function cleanupAbandonedModuleLessonGenerations(
   const cutoff = new Date(Date.now() - thresholdMs);
   const batchSize =
     deps.batchSize ?? ORPHANED_MODULE_LESSON_GENERATION_CLEANUP_BATCH_SIZE;
-  const providerStarted = sql`${modules.lessonGenerationMetadata}->>'providerStartedAt' IS NOT NULL`;
   const staleProviderStarted = and(
     eq(modules.lessonGenerationStatus, 'generating'),
-    lt(modules.lessonGenerationStartedAt, cutoff),
-    providerStarted,
+    sql`${modules.lessonGenerationMetadata}->>'providerStartedAt' IS NOT NULL`,
+    sql`(${modules.lessonGenerationMetadata}->>'providerStartedAt')::timestamptz < ${cutoff.toISOString()}::timestamptz`,
   );
 
   return dbClient.transaction(async (tx) => {

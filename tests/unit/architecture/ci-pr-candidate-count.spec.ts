@@ -111,6 +111,16 @@ describe('CircleCI PR merge gate', () => {
     );
   });
 
+  it('diffs main and develop pushes against pipeline.git.base_revision', () => {
+    expect(SETUP_CONFIG).toMatch(
+      /setup-main:[\s\S]*base-revision: << pipeline\.git\.base_revision >>/,
+    );
+    expect(SETUP_CONFIG).toMatch(
+      /setup-develop:[\s\S]*base-revision: << pipeline\.git\.base_revision >>/,
+    );
+    expect(SETUP_CONFIG).not.toMatch(/setup-main:[\s\S]*base-revision: main/);
+  });
+
   it('keeps ci-trunk off pull_request events', () => {
     expect(CODE_CONFIG).toContain(
       'equal: [pull_request, << pipeline.event.name >>]',

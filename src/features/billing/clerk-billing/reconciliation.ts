@@ -27,7 +27,6 @@ import { randomUUID } from 'node:crypto';
 
 type ServiceRoleDb = typeof serviceRoleDb;
 type ReconciliationDb = Pick<DbTransaction, 'select' | 'update'>;
-type PayerLockDb = Pick<DbTransaction, 'select' | 'update' | 'execute'>;
 
 type ReconciliationDeps = {
   db?: ReconciliationDb;
@@ -170,18 +169,6 @@ async function acquireClerkBillingPayerLock(
   }
 }
 
-async function lockAndRefreshClerkBillingSource(
-  source: ClerkBillingProjectionSource,
-  deps: ReconciliationDeps & { db: PayerLockDb },
-): Promise<ClerkBillingProjectionSource> {
-  if (source.payerUserId === null) {
-    return source;
-  }
-
-  await acquireClerkBillingPayerLock(deps.db, source.payerUserId, deps);
-  return refreshClerkBillingSource(source, deps);
-}
-
 async function claimClerkWebhookEvent(
   eventId: string,
   deps: ApplyVerifiedClerkBillingEventDeps,
@@ -300,17 +287,18 @@ async function finalizeClerkWebhookEvent(
 ): Promise<ApplyVerifiedClerkBillingEventResult> {
   const db = deps.db ?? serviceRoleDb;
 
-  return db.transaction(async (tx) => {
-    let billingSource =
-      args.projectionSource?.kind === 'billing'
-        ? args.projectionSource.source
-        : null;
+  let billingSource =
+    args.projectionSource?.kind === 'billing'
+      ? args.projectionSource.source
+      : null;
 
+  if (billingSource !== null && billingSource.payerUserId !== null) {
+    billingSource = await refreshClerkBillingSource(billingSource, deps);
+  }
+
+  return db.transaction(async (tx) => {
     if (billingSource !== null && billingSource.payerUserId !== null) {
-      billingSource = await lockAndRefreshClerkBillingSource(billingSource, {
-        ...deps,
-        db: tx,
-      });
+      await acquireClerkBillingPayerLock(tx, billingSource.payerUserId, deps);
     }
 
     const [ownedClaim] = await tx
@@ -642,23 +630,26 @@ export async function reconcileClerkBillingEntitlements({
     totals.checked += 1;
 
     try {
+      const source = await refreshClerkBillingSource(
+        {
+          type: 'reconciliation',
+          payerUserId: localUser.authUserId,
+          subscriptionStatus: null,
+          paymentAttemptStatus: null,
+          items: [],
+        },
+        {
+          clerkClient: client,
+          logger,
+          payerLockTimeoutMs,
+          payerNetworkTimeoutMs,
+        },
+      );
       const result = await db.transaction(async (tx) => {
-        const source = await lockAndRefreshClerkBillingSource(
-          {
-            type: 'reconciliation',
-            payerUserId: localUser.authUserId,
-            subscriptionStatus: null,
-            paymentAttemptStatus: null,
-            items: [],
-          },
-          {
-            clerkClient: client,
-            db: tx,
-            logger,
-            payerLockTimeoutMs,
-            payerNetworkTimeoutMs,
-          },
-        );
+        await acquireClerkBillingPayerLock(tx, localUser.authUserId, {
+          logger,
+          payerLockTimeoutMs,
+        });
         return applyClerkBillingSource(source, { db: tx, logger });
       });
 
