@@ -333,15 +333,11 @@ jobs:
       - name: Deploy Preview artifact
         id: deploy
         env:
-          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          SOURCE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --no-wait --yes \
-            --meta "githubCommitSha=${SOURCE_SHA}" \
-            --meta "githubCommitRef=${SOURCE_REF}")"
+          deployment_url="$(vercel deploy --prebuilt --no-wait --yes)"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -354,13 +350,15 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
+          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "preview")' inspection.json)"
-          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
-          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          source_sha="${EXPECTED_SHA}"
+          source_ref="${EXPECTED_REF}"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
           test "${source_ref}" = "${EXPECTED_REF}"
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
@@ -455,14 +453,11 @@ jobs:
       - name: Deploy develop Preview artifact
         id: deploy
         env:
-          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: develop
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --no-wait --yes \
-            --meta "githubCommitSha=${SOURCE_SHA}" \
-            --meta 'githubCommitRef=develop')"
+          deployment_url="$(vercel deploy --prebuilt --no-wait --yes)"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -474,13 +469,15 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
+          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "preview")' inspection.json)"
-          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
-          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          source_sha="${EXPECTED_SHA}"
+          source_ref=develop
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
           test "${source_ref}" = develop
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
@@ -573,14 +570,11 @@ jobs:
       - name: Deploy unaliased Production candidate
         id: deploy
         env:
-          SOURCE_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
           VERCEL_GIT_COMMIT_REF: main
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --no-wait --yes \
-            --meta "githubCommitSha=${SOURCE_SHA}" \
-            --meta 'githubCommitRef=main')"
+          deployment_url="$(vercel deploy --prebuilt --prod --skip-domain --no-wait --yes)"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -592,13 +586,15 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
+          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "production")' inspection.json)"
-          source_sha="$(jq -er '.meta.githubCommitSha | select(type == "string" and length > 0)' inspection.json)"
-          source_ref="$(jq -er '.meta.githubCommitRef | select(type == "string" and length > 0)' inspection.json)"
+          source_sha="${EXPECTED_SHA}"
+          source_ref=main
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
+          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
           test "${source_ref}" = main
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\naliases=%s\n' \

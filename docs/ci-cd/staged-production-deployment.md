@@ -116,7 +116,7 @@ Record:
 
 Creating the staged deployment must **not** move any Production domain. If domains moved, treat the run as failed, leave evidence, and do not continue smoke as if this were a sandbox.
 
-The workflow records the generated URL, deployment ID, `READY` state, Production target, exact SHA/ref metadata, and aliases. Correlate those fields before smoke.
+The workflow records the generated URL, deployment ID, `READY` state, Production target, exact SHA/ref from the verified checkout and lane input, and aliases. Correlate those fields before smoke.
 
 ## 3. Verify the staged artifact
 
