@@ -615,6 +615,11 @@ jobs:
               --test-reporter=junit \
               --test-reporter-destination=test-results/workflow/node.xml \
               .github/scripts/dependency-remediation.test.mjs
+            sed \
+              -e 's|<testsuites>|<testsuites><testsuite name="dependency-remediation">|' \
+              -e 's|</testsuites>|</testsuite></testsuites>|' \
+              test-results/workflow/node.xml > test-results/workflow/node.xml.tmp
+            mv test-results/workflow/node.xml.tmp test-results/workflow/node.xml
       - run:
           name: Wait for PostgreSQL
           command: |
