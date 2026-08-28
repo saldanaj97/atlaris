@@ -1,10 +1,9 @@
+import { classifyDeploymentPaths } from './deployment-classifier.mjs';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
-
-import { classifyDeploymentPaths } from './deployment-classifier.mjs';
 
 const classifierPath = fileURLToPath(
   new URL('./deployment-classifier.mjs', import.meta.url),
@@ -23,11 +22,7 @@ test('skips only docs, root Markdown, and issue-template paths', () => {
     ['docs/ci-cd/deploy.md'],
     ['README.md'],
     ['.github/ISSUE_TEMPLATE/bug.yml'],
-    [
-      'docs/ci-cd/deploy.md',
-      'README.md',
-      '.github/ISSUE_TEMPLATE/bug.yml',
-    ],
+    ['docs/ci-cd/deploy.md', 'README.md', '.github/ISSUE_TEMPLATE/bug.yml'],
   ]) {
     assert.deepEqual(classifyDeploymentPaths(changedFiles), {
       deploy: false,
@@ -89,10 +84,7 @@ test('fails open when the diff is missing, empty, ambiguous, or malformed', () =
 });
 
 test('a forced deploy overrides docs-only and unknown diffs', () => {
-  for (const changedFiles of [
-    ['docs/ci-cd/deploy.md'],
-    undefined,
-  ]) {
+  for (const changedFiles of [['docs/ci-cd/deploy.md'], undefined]) {
     assert.deepEqual(
       classifyDeploymentPaths(changedFiles, { forceDeploy: true }),
       {
@@ -126,6 +118,25 @@ test('the workflow keeps unavailable secrets out of automated previews', () => {
   assert.match(workflow, /PR_AUTHOR:.*pull_request\.user\.login/u);
   assert.match(workflow, /dependabot-secrets-unavailable/u);
   assert.ok(workflow.includes(`[[ "\${fork_guard}" == 'eligible' ]]`));
+});
+
+test('Preview remote-builds with step-scoped credentials and a full wait budget', () => {
+  const preview = workflow
+    .split('\n  preview:\n')[1]
+    ?.split('\n  staging:\n')[0];
+
+  assert.ok(preview);
+  assert.match(preview, /timeout-minutes: 40/u);
+  assert.doesNotMatch(preview, /^    env:/mu);
+  assert.doesNotMatch(preview, /vercel link/u);
+  assert.doesNotMatch(preview, /vercel pull/u);
+  assert.doesNotMatch(preview, /vercel build/u);
+  assert.doesNotMatch(preview, /--prebuilt/u);
+  assert.match(preview, /vercel deploy --no-wait --yes/u);
+  assert.match(
+    preview,
+    /Inspect Preview deployment[\s\S]*VERCEL_TOKEN:.*secrets\.VERCEL_TOKEN/u,
+  );
 });
 
 test('the workflow preserves the Staging migration gate across develop pushes', () => {
@@ -180,10 +191,7 @@ test('manual Staging requires a successful same-SHA expand run', () => {
     /actions\/workflows\/staging-db-migrations\.yaml\/runs/u,
   );
   assert.ok(workflow.includes(`-f head_sha="\${EXPECTED_SHA}"`));
-  assert.match(
-    workflow,
-    /Staging migrations \(expand\) @ \$\{EXPECTED_SHA\}/u,
-  );
+  assert.match(workflow, /Staging migrations \(expand\) @ \$\{EXPECTED_SHA\}/u);
   assert.match(workflow, /\.head_sha == \$expected_sha/u);
 });
 
