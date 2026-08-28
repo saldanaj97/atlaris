@@ -174,7 +174,6 @@ export function ClerkPricingTable({
   useEffect(() => {
     if (!loaded) return;
     if (!billing) {
-      setLoadFailed(true);
       return;
     }
 

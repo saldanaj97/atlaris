@@ -14,6 +14,7 @@ import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { formatDateToYmd } from '@/lib/date/format-local-ymd';
 import { cn } from '@/lib/utils';
 import { Calendar, Clock } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function PreferenceControls({
   baseId,
@@ -26,6 +27,9 @@ export function PreferenceControls({
   dispatch: Dispatch<PlanInputAction>;
   subscriptionTier: SubscriptionTier;
 }) {
+  const [minimumDeadline, setMinimumDeadline] = useState<string>();
+  useEffect(() => setMinimumDeadline(formatDateToYmd(new Date())), []);
+
   const deadlineOptions = buildDeadlineOptionsForTier(subscriptionTier);
   const showCustomDeadline =
     subscriptionTier === 'pro' && state.deadlineWeeks === CUSTOM_DEADLINE_VALUE;
@@ -86,7 +90,7 @@ export function PreferenceControls({
           id={`${baseId}-deadline-date`}
           type='date'
           aria-label='Custom deadline date'
-          min={formatDateToYmd(new Date())}
+          min={minimumDeadline}
           value={state.deadlineDate ?? ''}
           onChange={(event) =>
             dispatch({ type: 'set-deadline-date', value: event.target.value })

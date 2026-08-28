@@ -58,25 +58,28 @@ export function FreeAccessPlanSelector({
     }
     setSaving(true);
     setError(null);
-    const response = await requestJson({
-      url: '/api/v1/user/free-access-plan',
-      init: {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ planId }),
-      },
-      schema: selectResponseSchema,
-      fallbackMessage: 'Could not save your Free plan selection.',
-    });
-    setSaving(false);
-    if (response.kind !== 'success') {
-      if (response.kind === 'error') {
-        setError(response.message);
+    try {
+      const response = await requestJson({
+        url: '/api/v1/user/free-access-plan',
+        init: {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId }),
+        },
+        schema: selectResponseSchema,
+        fallbackMessage: 'Could not save your Free plan selection.',
+      });
+      if (response.kind !== 'success') {
+        if (response.kind === 'error') {
+          setError(response.message);
+        }
+        return;
       }
-      return;
+      router.push(`${ROUTES.PLANS.ROOT}/${response.data.planId}`);
+      router.refresh();
+    } finally {
+      setSaving(false);
     }
-    router.push(`${ROUTES.PLANS.ROOT}/${response.data.planId}`);
-    router.refresh();
   }
 
   return (
@@ -115,7 +118,9 @@ export function FreeAccessPlanSelector({
                   </span>
                   <span className='mt-1 block text-xs text-muted-foreground'>
                     {generationStatusLabel(candidate.generationStatus)} ·{' '}
-                    {new Date(candidate.createdAt).toLocaleDateString()}
+                    {new Date(candidate.createdAt).toLocaleDateString('en-US', {
+                      timeZone: 'UTC',
+                    })}
                   </span>
                 </span>
               </label>
