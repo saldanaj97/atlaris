@@ -2,20 +2,24 @@ import {
   getDashboardPlanData,
   listDashboardPlanSummaries,
 } from '@/features/plans/read-projection/service';
-import { taskProgress } from '@supabase/schema';
+import { taskProgress, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
-async function createUser(scenario: string): Promise<string> {
+async function createUser(
+  scenario: string,
+  subscriptionTier: 'free' | 'pro' = 'pro',
+): Promise<string> {
   const authUserId = buildTestAuthUserId(`dashboard-plans-${scenario}`);
   return ensureUser({
     authUserId,
     email: buildTestEmail(authUserId),
-    subscriptionTier: 'pro',
+    subscriptionTier,
   });
 }
 
@@ -116,5 +120,45 @@ describe('dashboard plan summaries', () => {
       completedPlans.map((plan) => plan.id),
     );
     expect(resumePlan?.plan.id).toBe(resumablePlan.id);
+  });
+
+  it('resumes the selected Free plan when a locked plan ranks first', async () => {
+    const userId = await createUser('resume-selected-free', 'free');
+    const selectedPlan = await createTestPlan({
+      userId,
+      topic: 'Selected plan',
+      createdAt: new Date('2026-08-20T00:00:00.000Z'),
+      updatedAt: new Date('2026-08-20T00:00:00.000Z'),
+    });
+    const selectedModule = await createTestModule({ planId: selectedPlan.id });
+    await createTestTask({ moduleId: selectedModule.id });
+
+    const lockedPlan = await createTestPlan({
+      userId,
+      topic: 'Locked newer plan',
+      createdAt: new Date('2026-08-21T00:00:00.000Z'),
+      updatedAt: new Date('2026-08-21T00:00:00.000Z'),
+    });
+    const lockedModule = await createTestModule({ planId: lockedPlan.id });
+    const lockedTask = await createTestTask({ moduleId: lockedModule.id });
+    await db.insert(taskProgress).values({
+      taskId: lockedTask.id,
+      userId,
+      status: 'in_progress',
+    });
+
+    const selectedAt = new Date('2026-08-22T00:00:00.000Z');
+    await db
+      .update(users)
+      .set({
+        initialPlanGeneratedAt: selectedAt,
+        freeAccessPlanId: selectedPlan.id,
+        freeAccessPlanSelectedAt: selectedAt,
+      })
+      .where(eq(users.id, userId));
+
+    const { resumePlan } = await getDashboardPlanData({ userId });
+
+    expect(resumePlan?.plan.id).toBe(selectedPlan.id);
   });
 });

@@ -164,6 +164,16 @@ export async function getDashboardPlanData(params: {
   userId: string;
   dbClient?: DbClient;
 }): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
+  const { snapshot } = await ensureFreeAccessSelection({
+    userId: params.userId,
+    dbClient: params.dbClient,
+  });
+  const selectedFreePlanId =
+    snapshot.subscriptionTier === 'free' &&
+    snapshot.freeAccessPlanSelectedAt != null
+      ? snapshot.freeAccessPlanId
+      : null;
+
   const [summaries, candidatePage] = await Promise.all([
     listDashboardPlanSummaries(params),
     getPlanListPageRowsForUser({
@@ -177,6 +187,7 @@ export async function getDashboardPlanData(params: {
       },
       referenceTimestamp: new Date().toISOString(),
       pageSize: 1,
+      planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
     }),
   ]);
   const candidate = candidatePage.items[0];
@@ -203,10 +214,6 @@ export async function getDashboardPlanData(params: {
         })
       )[0];
 
-  const { snapshot } = await ensureFreeAccessSelection({
-    userId: params.userId,
-    dbClient: params.dbClient,
-  });
   const access = resolvePlanContentAccess({
     tier: snapshot.subscriptionTier,
     planId: candidate.id,
