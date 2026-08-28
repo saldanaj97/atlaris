@@ -109,6 +109,7 @@ export async function startModuleLessonGeneration(
           userId: params.userId,
           planId: params.planId,
           moduleId: params.moduleId,
+          workflowRunId: run.runId,
           batchRequestId: params.correlationId,
         });
       } catch (revertError) {

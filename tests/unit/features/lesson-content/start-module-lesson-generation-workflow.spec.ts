@@ -88,7 +88,7 @@ describe('startModuleLessonGeneration', () => {
     );
   });
 
-  it('reverts an unadopted claim when the workflow later rejects', async () => {
+  it('reverts an adopted claim when the workflow later rejects', async () => {
     mocks.loadContext.mockResolvedValue({
       module: { lessonGenerationStatus: 'not_generated' },
       isUnlocked: true,
@@ -115,6 +115,7 @@ describe('startModuleLessonGeneration', () => {
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
+        workflowRunId: 'wrun_lesson',
         batchRequestId: params.correlationId,
       });
     });

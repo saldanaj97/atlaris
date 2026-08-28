@@ -20,7 +20,15 @@ import {
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
-import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  or,
+  sql,
+  type InferSelectModel,
+} from 'drizzle-orm';
 
 type GenerationDb = Pick<
   DbClient,
@@ -177,13 +185,15 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     readonly batchRequestId?: string;
   },
 ): Promise<void> {
-  const matchingClaim =
-    args.batchRequestId !== undefined
+  const matchingClaim = or(
+    args.workflowRunId
+      ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
+      : undefined,
+    args.batchRequestId
       ? sql`${modules.lessonGenerationMetadata}->>'batchRequestId' = ${args.batchRequestId}
         AND ${modules.lessonGenerationMetadata}->'workflow' IS NULL`
-      : args.workflowRunId
-        ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
-        : undefined;
+      : undefined,
+  );
 
   await dbClient
     .update(modules)
