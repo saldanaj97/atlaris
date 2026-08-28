@@ -141,6 +141,19 @@ test('Preview remote-builds with step-scoped credentials and a full wait budget'
   );
 });
 
+test('deployment inspection reports the checkout SHA without fake ref checks', () => {
+  const deploymentLanes = workflow.split('\n  preview:\n')[1];
+
+  assert.ok(deploymentLanes);
+  assert.equal(
+    deploymentLanes.match(/source_sha="\$\(git rev-parse HEAD\)"/gu)?.length,
+    3,
+  );
+  assert.doesNotMatch(deploymentLanes, /source_ref=/u);
+  assert.doesNotMatch(deploymentLanes, /test "\$\{source_ref\}"/u);
+  assert.doesNotMatch(deploymentLanes, /\| Exact ref \|/u);
+});
+
 test('the workflow preserves the Staging migration gate across develop pushes', () => {
   assert.match(workflow, /refs\/remotes\/origin\/main/u);
   assert.match(workflow, /staging_base="\$\(git merge-base/u);

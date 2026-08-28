@@ -347,17 +347,13 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
-          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "preview")' inspection.json)"
-          source_sha="${EXPECTED_SHA}"
-          source_ref="${EXPECTED_REF}"
+          source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
-          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
-          test "${source_ref}" = "${EXPECTED_REF}"
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
           {
@@ -370,7 +366,7 @@ jobs:
             echo "| Status | ${ready_state} |"
             echo "| Target | ${target} |"
             echo "| Exact SHA | ${source_sha} |"
-            echo "| Exact ref | ${source_ref} |"
+            echo "| Requested ref | ${EXPECTED_REF} |"
             echo "| Aliases | ${aliases} |"
             echo
             echo 'This is a custom-CI proof deployment. Native Git remains enabled during the transition and may create a duplicate Preview deployment.'
@@ -545,17 +541,13 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
-          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "preview")' inspection.json)"
-          source_sha="${EXPECTED_SHA}"
-          source_ref=develop
+          source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
-          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
-          test "${source_ref}" = develop
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
           {
@@ -568,7 +560,7 @@ jobs:
             echo "| Status | ${ready_state} |"
             echo "| Target | ${target} |"
             echo "| Exact SHA | ${source_sha} |"
-            echo "| Exact ref | ${source_ref} |"
+            echo '| Lane ref | develop |'
             echo "| Aliases | ${aliases} |"
             echo
             echo 'Hobby fallback: this lane uses the default Vercel Preview environment scoped to develop, never Production or a Production domain.'
@@ -736,17 +728,13 @@ jobs:
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
-          checkout_sha="$(git rev-parse HEAD)"
           deployment_id="$(jq -er '.id | select(type == "string" and length > 0)' inspection.json)"
           deployment_url="$(jq -er '.url | select(type == "string" and length > 0)' inspection.json)"
           ready_state="$(jq -er '.readyState | select(. == "READY")' inspection.json)"
           target="$(jq -er '.target | select(. == "production")' inspection.json)"
-          source_sha="${EXPECTED_SHA}"
-          source_ref=main
+          source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
-          test "${checkout_sha}" = "${EXPECTED_SHA}"
           test "${source_sha}" = "${EXPECTED_SHA}"
-          test "${source_ref}" = main
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\naliases=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" "${aliases}" >>"${GITHUB_OUTPUT}"
           {
@@ -759,7 +747,7 @@ jobs:
             echo "| Status | ${ready_state} |"
             echo "| Target | ${target} |"
             echo "| Exact SHA | ${source_sha} |"
-            echo "| Exact ref | ${source_ref} |"
+            echo '| Lane ref | main |'
             echo "| Candidate aliases | ${aliases} |"
             echo '| Domain movement | blocked until required Vercel Deployment Checks pass |'
             echo
