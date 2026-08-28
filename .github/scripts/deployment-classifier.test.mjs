@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { classifyDeploymentPaths } from './deployment-classifier.mjs';
+
+const classifierPath = fileURLToPath(
+  new URL('./deployment-classifier.mjs', import.meta.url),
+);
 
 test('skips only docs, root Markdown, and issue-template paths', () => {
   for (const changedFiles of [
@@ -39,7 +45,7 @@ test('deploys for application, mixed, config, and workflow paths', () => {
   ]) {
     assert.deepEqual(classifyDeploymentPaths(changedFiles), {
       deploy: true,
-      reason: 'deploy-impacting-path',
+      reason: 'deploy-impacting path',
     });
   }
 });
@@ -53,10 +59,19 @@ test('fails open when the diff is missing, empty, ambiguous, or malformed', () =
     ['docs/ci-cd/deploy.md', ''],
     ['docs/ci-cd/deploy.md', null],
     ['docs/ci-cd/deploy.md', 'broken\npath'],
+    ['docs/../package.json'],
+    ['docs/./page.tsx'],
+    ['docs//page.tsx'],
+    ['./README.md'],
+    ['/README.md'],
+    ['C:/README.md'],
+    ['docs\\guide.md'],
+    ['.'],
+    ['..'],
   ]) {
     assert.deepEqual(classifyDeploymentPaths(changedFiles), {
       deploy: true,
-      reason: 'unknown-diff',
+      reason: 'unknown diff',
     });
   }
 });
@@ -74,4 +89,16 @@ test('a forced deploy overrides docs-only and unknown diffs', () => {
       },
     );
   }
+});
+
+test('the CLI keeps force deploy independent from the changed-files value', () => {
+  const result = spawnSync(
+    process.execPath,
+    [classifierPath, '--changed-files', '--force-deploy'],
+    { encoding: 'utf8' },
+  );
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout, 'deploy=true\nreason=forced\n');
+  assert.equal(result.stderr, '');
 });

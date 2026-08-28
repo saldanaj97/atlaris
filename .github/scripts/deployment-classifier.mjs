@@ -6,7 +6,13 @@ const isValidDiffPath = (file) =>
   typeof file === 'string' &&
   file.length > 0 &&
   !file.endsWith('/') &&
-  !/[\u0000-\u001f\u007f]/u.test(file);
+  !/[\u0000-\u001f\u007f]/u.test(file) &&
+  !file.startsWith('/') &&
+  !file.includes('\\') &&
+  !/^[A-Za-z]:\//u.test(file) &&
+  file
+    .split('/')
+    .every((component) => component !== '' && component !== '.' && component !== '..');
 
 const isSkippablePath = (file) =>
   file.startsWith('docs/') ||
@@ -20,19 +26,23 @@ export function classifyDeploymentPaths(changedFiles, options = {}) {
     changedFiles.length === 0 ||
     changedFiles.some((file) => !isValidDiffPath(file))
   ) {
-    return { deploy: true, reason: 'unknown-diff' };
+    return { deploy: true, reason: 'unknown diff' };
   }
   if (changedFiles.every(isSkippablePath)) {
     return { deploy: false, reason: 'docs-only' };
   }
-  return { deploy: true, reason: 'deploy-impacting-path' };
+  return { deploy: true, reason: 'deploy-impacting path' };
 }
 
 const parseArgs = (argv) => {
   const args = {};
   for (let index = 0; index < argv.length; index += 1) {
     if (argv[index] === '--changed-files') {
-      args.changedFiles = argv[++index];
+      const value = argv[index + 1];
+      if (value && !value.startsWith('--')) {
+        args.changedFiles = value;
+        index += 1;
+      }
     } else if (argv[index] === '--force-deploy') {
       args.forceDeploy = true;
     }
