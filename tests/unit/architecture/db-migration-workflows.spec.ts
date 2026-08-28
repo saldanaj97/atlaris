@@ -366,8 +366,8 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 59,
-      tag: '20260826184123_expand_user_preferences_model_text_slots',
+      idx: 60,
+      tag: '20260828002855_add_clerk_billing_projection_watermark',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',
@@ -392,6 +392,9 @@ describe('Supabase migration workflows', () => {
     );
     expect(expandMigrations).toContain(
       '20260826184123_expand_user_preferences_model_text_slots.sql',
+    );
+    expect(expandMigrations).toContain(
+      '20260828002855_add_clerk_billing_projection_watermark.sql',
     );
     expect(expandMigrations).not.toContain(
       '20260811100400_revoke_users_authenticated_insert.sql',
