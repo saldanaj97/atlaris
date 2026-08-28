@@ -44,6 +44,7 @@ jobs:
       fork_guard: ${{ steps.decision.outputs.fork_guard }}
       secret_deploy_eligible: ${{ steps.decision.outputs.secret_deploy_eligible }}
       staging_auto_eligible: ${{ steps.decision.outputs.staging_auto_eligible }}
+      production_expand_required: ${{ steps.decision.outputs.production_expand_required }}
     steps:
       - name: Check out candidate source
         id: checkout
@@ -84,8 +85,13 @@ jobs:
           fork_guard='not-applicable'
           secret_deploy_eligible=false
           staging_auto_eligible=false
+          production_expand_required=false
           changed_files=''
           zero_sha='0000000000000000000000000000000000000000'
+
+          if [[ "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/main' ]]; then
+            production_expand_required=true
+          fi
 
           is_sha() {
             [[ "${1:-}" =~ ^[0-9a-f]{40}$ && "${1}" != "${zero_sha}" ]]
@@ -172,6 +178,10 @@ jobs:
                   source_sha="${PUSH_AFTER}"
                   candidate_sha="${PUSH_AFTER}"
                   classify || true
+                  if [[ "${GITHUB_REF:-}" == 'refs/heads/main' ]] &&
+                    ! grep -q '^supabase/migrations/' "${changed_files}"; then
+                    production_expand_required=false
+                  fi
                 elif is_sha "${PUSH_AFTER:-}" && [[ "${checkout_sha}" == "${PUSH_AFTER}" ]]; then
                   source_sha="${PUSH_AFTER}"
                   candidate_sha="${PUSH_AFTER}"
@@ -260,6 +270,7 @@ jobs:
             printf 'fork_guard=%s\n' "${fork_guard}"
             printf 'secret_deploy_eligible=%s\n' "${secret_deploy_eligible}"
             printf 'staging_auto_eligible=%s\n' "${staging_auto_eligible}"
+            printf 'production_expand_required=%s\n' "${production_expand_required}"
           } >>"${GITHUB_OUTPUT}"
 
           {
@@ -281,6 +292,7 @@ jobs:
             echo "| Fork guard | ${fork_guard} |"
             echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
             echo "| Automatic Staging eligible | ${staging_auto_eligible} |"
+            echo "| Production expand required | ${production_expand_required} |"
           } >>"${GITHUB_STEP_SUMMARY}"
 
   preview:
@@ -643,6 +655,53 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+
+      - name: Verify successful same-SHA Production expand
+        env:
+          EXPAND_REQUIRED: ${{ needs.deployment-decision.outputs.production_expand_required }}
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+
+          case "${EXPAND_REQUIRED}" in
+            false)
+              echo "No Production migration changes detected for ${EXPECTED_SHA}."
+              exit 0
+              ;;
+            true) ;;
+            *)
+              echo "Production migration state is unknown for ${EXPECTED_SHA}." >&2
+              exit 1
+              ;;
+          esac
+
+          expected_title="Production migrations (expand) @ ${EXPECTED_SHA}"
+          workflow_runs="$(
+            gh api --method GET \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/production-db-migrations.yaml/runs" \
+              -f branch='main' \
+              -f event='workflow_dispatch' \
+              -f status='success' \
+              -f head_sha="${EXPECTED_SHA}" \
+              -F per_page=100
+          )"
+
+          if ! jq -e \
+            --arg expected_sha "${EXPECTED_SHA}" \
+            --arg expected_title "${expected_title}" \
+            '[.workflow_runs[] | select(
+              .event == "workflow_dispatch" and
+              .status == "completed" and
+              .conclusion == "success" and
+              .head_branch == "main" and
+              .head_sha == $expected_sha and
+              .display_title == $expected_title
+            )] | length > 0' \
+            <<<"${workflow_runs}" >/dev/null; then
+            echo "No successful Production expand run matches ${EXPECTED_SHA}." >&2
+            exit 1
+          fi
 
       - name: Wait for same-SHA CircleCI trunk success
         env:

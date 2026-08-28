@@ -18,6 +18,10 @@ const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
   'db',
   'attest-effective-privileges.sh',
 );
+const VERCEL_DEPLOY_WORKFLOW = readFileSync(
+  join(WORKFLOWS_DIR, 'vercel-deploy.yml'),
+  'utf8',
+);
 
 const migrationWorkflows = [
   {
@@ -27,7 +31,7 @@ const migrationWorkflows = [
     protectedBranch: 'develop',
   },
   {
-    checkoutRef: 'main',
+    checkoutRef: '${{ github.sha }}',
     environment: 'Production – atlaris',
     fileName: 'production-db-migrations.yaml',
     protectedBranch: 'main',
@@ -81,6 +85,36 @@ describe('Supabase migration workflows', () => {
 
     expect(workflow).toContain(
       'run-name: Staging migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
+    );
+  });
+
+  it('requires exact-SHA Production expand proof for migration-bearing candidates', () => {
+    const workflow = readWorkflow('production-db-migrations.yaml');
+
+    expect(workflow).toContain(
+      'run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      'production_expand_required: ${{ steps.decision.outputs.production_expand_required }}',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toMatch(
+      /EVENT_NAME:-}" == 'push'[\s\S]*?refs\/heads\/main'[\s\S]*?production_expand_required=true/,
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      'grep -q \'^supabase/migrations/\' "${changed_files}"',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      '- name: Verify successful same-SHA Production expand',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      'EXPAND_REQUIRED: ${{ needs.deployment-decision.outputs.production_expand_required }}',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain('case "${EXPAND_REQUIRED}" in');
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      'Production migrations (expand) @ ${EXPECTED_SHA}',
+    );
+    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
+      'actions/workflows/production-db-migrations.yaml/runs',
     );
   });
 
