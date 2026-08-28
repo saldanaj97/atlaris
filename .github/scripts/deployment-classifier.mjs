@@ -24,7 +24,7 @@ export function classifyDeploymentPaths(changedFiles, options = {}) {
   if (
     !Array.isArray(changedFiles) ||
     changedFiles.length === 0 ||
-    changedFiles.some((file) => !isValidDiffPath(file))
+    Array.from(changedFiles).some((file) => !isValidDiffPath(file))
   ) {
     return { deploy: true, reason: 'unknown diff' };
   }
