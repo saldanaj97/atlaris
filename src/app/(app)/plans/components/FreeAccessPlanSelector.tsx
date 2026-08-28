@@ -58,28 +58,24 @@ export function FreeAccessPlanSelector({
     }
     setSaving(true);
     setError(null);
-    try {
-      const response = await requestJson({
-        url: '/api/v1/user/free-access-plan',
-        init: {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planId }),
-        },
-        schema: selectResponseSchema,
-        fallbackMessage: 'Could not save your Free plan selection.',
-      });
-      if (response.kind !== 'success') {
-        if (response.kind === 'error') {
-          setError(response.message);
-        }
-        return;
+    const response = await requestJson({
+      url: '/api/v1/user/free-access-plan',
+      init: {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      },
+      schema: selectResponseSchema,
+      fallbackMessage: 'Could not save your Free plan selection.',
+    }).finally(() => setSaving(false));
+    if (response.kind !== 'success') {
+      if (response.kind === 'error') {
+        setError(response.message);
       }
-      router.push(`${ROUTES.PLANS.ROOT}/${response.data.planId}`);
-      router.refresh();
-    } finally {
-      setSaving(false);
+      return;
     }
+    router.push(`${ROUTES.PLANS.ROOT}/${response.data.planId}`);
+    router.refresh();
   }
 
   return (
