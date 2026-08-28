@@ -143,11 +143,34 @@ test('the workflow preserves the Staging migration gate across develop pushes', 
 });
 
 test('the workflow waits for same-SHA CircleCI trunk success before Staging', () => {
+  const staging = workflow
+    .split('\n  staging:\n')[1]
+    ?.split('\n  production-candidate:\n')[0];
+
+  assert.ok(staging);
   assert.match(workflow, /checks: read/u);
-  assert.match(workflow, /commits\/\$\{EXPECTED_SHA\}\/check-runs/u);
-  assert.match(workflow, /circleci-checks/u);
-  assert.match(workflow, /startswith\("ci-trunk - "\)/u);
-  assert.match(workflow, /conclusion.*success/u);
+  assert.match(staging, /commits\/\$\{EXPECTED_SHA\}\/check-runs/u);
+  assert.match(staging, /circleci-checks/u);
+  assert.match(staging, /startswith\("ci-trunk - "\)/u);
+  assert.match(staging, /conclusion.*success/u);
+});
+
+test('Production waits for same-SHA CircleCI trunk success before deploy', () => {
+  const production = workflow.split('\n  production-candidate:\n')[1];
+
+  assert.ok(production);
+  assert.match(production, /Wait for same-SHA CircleCI trunk success/u);
+  assert.ok(
+    production.indexOf('Wait for same-SHA CircleCI trunk success') <
+      production.indexOf('Deploy gated Production candidate'),
+  );
+});
+
+test('deployment jobs serialize without coalescing decision runs', () => {
+  assert.doesNotMatch(workflow, /^concurrency:/mu);
+  assert.match(workflow, /group: vercel-preview-/u);
+  assert.match(workflow, /group: vercel-staging-develop/u);
+  assert.match(workflow, /group: vercel-production-main/u);
 });
 
 test('manual Staging requires a successful same-SHA expand run', () => {

@@ -78,7 +78,7 @@ We use two protected branches that serve as anchors for all development:
 - **Preview**: same-repository deploy-impacting PRs use the custom-CI Preview lane; docs-only PRs create no deployment and forks receive no secrets.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Staging**: a known deploy-impacting push waits for same-SHA CircleCI `ci-trunk` success and deploys automatically only while the full unreleased `main...develop` range contains no migration files. Otherwise, run `expand` and manually dispatch Staging for current `develop`; the deployment fails closed unless that exact SHA has a successful expand run.
-- **Staged Production**: before cutover, operators prove an exact `main` candidate with `--skip-domain` and do not promote it. After cutover, the automated job requires both readiness variables and uses ordinary `--prod`; JCS-52 checks gate automatic aliasing. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Staged Production**: before cutover, operators prove an exact `main` candidate with `--skip-domain` and do not promote it. After cutover, the automated job requires same-SHA CircleCI `ci-trunk` success plus both readiness variables and uses ordinary `--prod`; JCS-52 checks gate automatic aliasing. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 - **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
 ---

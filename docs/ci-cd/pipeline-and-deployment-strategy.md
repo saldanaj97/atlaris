@@ -69,9 +69,10 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Runs broadly for PRs and pushes to `develop`/`main`, plus manual Preview/Staging proof dispatches. It has no workflow-level path filter.
 - `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
+- Decision jobs run independently; only the Preview, Staging, and Production deployment jobs serialize within their own lanes. A later docs-only run therefore cannot replace a pending deploy-impacting job.
 - Same-repository deploy-impacting PRs create Preview deployments; forks and Dependabot PRs never receive Vercel secrets.
 - A known deploy-impacting `develop` push uses the Hobby-plan Staging fallback only after the exact SHA's CircleCI `ci-trunk` succeeds and the full unreleased `main...develop` range contains no migration files. While that range contains a migration, or when the diff is unknown, run `expand` for current `develop`; the manual Staging dispatch verifies that exact SHA's successful expand run before deployment.
-- After cutover, deploy-impacting `main` pushes create a Production deployment. Required JCS-52 Deployment Checks block domain assignment until approval and exact-candidate smoke pass; the job never promotes, aliases, or rolls back.
+- After cutover, deploy-impacting `main` pushes create a Production deployment only after the exact SHA's CircleCI `ci-trunk` workflow succeeds. Required JCS-52 Deployment Checks then block domain assignment until approval and exact-candidate smoke pass; the job never promotes, aliases, or rolls back.
 - The Production job fails closed unless both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are exactly `true`.
 
 ### 5) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`

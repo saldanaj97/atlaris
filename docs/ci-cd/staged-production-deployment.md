@@ -54,7 +54,7 @@ The workflow's Production job requires both `VERCEL_NATIVE_GIT_DISABLED=true` an
 - Vercel CLI `53.2.0` is available for the manual proof; the candidate is the exact committed `main` SHA.
 - Operator access to inspect deployments, aliases, and Deployment Protection in the Vercel dashboard.
 - Hosted Staging acceptance already complete for the same release candidate SHA.
-- CircleCI `ci-trunk` for that SHA has finished (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes).
+- CircleCI `ci-trunk` for that SHA has succeeded (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes). The automated Production candidate job verifies this exact-SHA workflow result before calling Vercel.
 - If the release needs new schema, Production migration workflow `expand` already applied and verified before exercising the staged binary. See [deploy.md](../development/deploy.md) and `.github/workflows/production-db-migrations.yaml`.
 
 ## 1. Preflight and migration ordering
@@ -78,7 +78,7 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
 Also confirm manually before continuing:
 
 1. Intended release candidate equals that SHA (no local-only commits).
-2. CircleCI `ci-trunk` for the SHA has finished (integration/security jobs skip when there were no integration-path changes).
+2. CircleCI `ci-trunk` for the SHA has succeeded (integration/security jobs skip when there were no integration-path changes); the automated lane verifies this result before deployment.
 3. Hosted Staging acceptance for the same SHA is done.
 4. Required Production `expand` migrations (if any) are done.
 5. Current Production domain / alias target is recorded so later alias movement can be detected:

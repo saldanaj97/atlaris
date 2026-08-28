@@ -30,10 +30,6 @@ permissions:
   checks: read
   actions: read
 
-concurrency:
-  group: vercel-deploy-${{ github.event.pull_request.number || github.ref || inputs.ref || github.run_id }}
-  cancel-in-progress: false
-
 jobs:
   deployment-decision:
     name: deployment-decision
@@ -299,6 +295,9 @@ jobs:
         (github.event_name == 'workflow_dispatch' && inputs.lane == 'preview')
       )
     runs-on: ubuntu-latest
+    concurrency:
+      group: vercel-preview-${{ github.event.pull_request.number || inputs.ref || github.run_id }}
+      cancel-in-progress: false
     timeout-minutes: 30
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
@@ -427,6 +426,9 @@ jobs:
       )
     runs-on: ubuntu-latest
     environment: staging
+    concurrency:
+      group: vercel-staging-develop
+      cancel-in-progress: false
     timeout-minutes: 50
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
@@ -617,7 +619,10 @@ jobs:
       needs.deployment-decision.outputs.deploy == 'true' &&
       needs.deployment-decision.outputs.secret_deploy_eligible == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    concurrency:
+      group: vercel-production-main
+      cancel-in-progress: false
+    timeout-minutes: 50
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
       deployment_url: ${{ steps.inspect.outputs.url }}
@@ -638,6 +643,43 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+
+      - name: Wait for same-SHA CircleCI trunk success
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 80); do
+            check_run="$(
+              gh api \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?per_page=100" \
+                --jq '[.check_runs[] | select(
+                  .app.slug == "circleci-checks" and
+                  (.name | startswith("ci-trunk - "))
+                )] | sort_by(.started_at) | last // {}' \
+                2>/dev/null || true
+            )"
+            [[ -n "${check_run}" ]] || check_run='{}'
+            status="$(jq -r '.status // "missing"' <<<"${check_run}")"
+            conclusion="$(jq -r '.conclusion // "pending"' <<<"${check_run}")"
+
+            if [[ "${status}" == 'completed' ]]; then
+              if [[ "${conclusion}" == 'success' ]]; then
+                echo "CircleCI ci-trunk passed for ${EXPECTED_SHA}."
+                exit 0
+              fi
+              echo "CircleCI ci-trunk completed with ${conclusion} for ${EXPECTED_SHA}." >&2
+              exit 1
+            fi
+
+            if [[ "${attempt}" -eq 80 ]]; then
+              echo "Timed out waiting for CircleCI ci-trunk on ${EXPECTED_SHA}." >&2
+              exit 1
+            fi
+            sleep 15
+          done
 
       - name: Install pnpm 11.9.0
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v4.0.0
