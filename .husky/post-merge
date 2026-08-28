@@ -1,0 +1,11 @@
+#!/bin/sh
+
+[ "$(git branch --show-current)" = "develop" ] || exit 0
+
+git fetch --prune origin || exit 0
+
+git for-each-ref --merged=develop --format='%(refname:short) %(upstream:track)' refs/heads |
+  awk '$2 == "[gone]" { print $1 }' |
+  while IFS= read -r branch; do
+    git branch -d "$branch" || true
+  done
