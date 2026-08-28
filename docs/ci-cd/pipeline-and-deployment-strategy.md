@@ -40,14 +40,14 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ### 1) CircleCI dynamic setup (`.circleci/config.yml`)
 
-- The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch, `pipeline.git.base_revision` for `main`/`develop` pushes, or the configured base ref for other non-PR pushes.
+- The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch or `pipeline.git.base_revision` for `main`/`develop` pushes. Standalone feature-branch pushes do not launch a setup workflow; PR events own validation.
 - Every changed-file pipeline includes `.circleci/shared-config.yml`. Docs-only changes add `.circleci/docs-config.yml`; code, mixed, root, and CI/config changes add `.circleci/code-config.yml`. The orb merges the selected fragments into the single continuation config.
 - `.circleci/no-updates.yml` is the fallback when the comparison contains no changed files.
 - Docs-only pipelines publish zero-credit no-op jobs under the seven required check names. They do not provision code CI executors or run lint, build, audit, or test commands.
 
 ### 2) CircleCI `ci-pr` (`.circleci/code-config.yml`)
 
-- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs. Feature-branch PR events must run `ci-pr` because auto-cancel of the in-flight push pipeline would otherwise leave an empty run.
+- Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
 - Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
 - `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
@@ -77,7 +77,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
 - `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
 - A validated run updates one bot-owned branch/PR targeting `develop`; a clean audit is a no-op, and registry failures, residual findings, unexpected files, or ambiguous versions fail closed without mutating a PR.
-- The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot-branch `push` (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
+- The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot PR's `opened` or `synchronize` event (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
 - The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
 
 ### 6) `.github/workflows/staging-db-migrations.yaml`
@@ -201,7 +201,7 @@ Prefer the staged Production CLI path (`--skip-domain` then explicit promote) ov
 - Confirm the scheduled/manual workflow run is present on `main`; schedules on other branches are not authoritative.
 - Check whether `develop` moved between planning and publication; the workflow intentionally stops and re-plans on the next run.
 - For a residual high/critical or manifest-required advisory, follow the dedicated manual remediation-PR lane in [`docs/security/supply-chain-policy.md`](../security/supply-chain-policy.md).
-- For a bot PR with missing checks, confirm CircleCI `ci-pr` ran on the bot branch push and that the development ruleset required jobs are present on that SHA.
+- For a bot PR with missing checks, confirm CircleCI `ci-pr` ran on the bot PR's `opened` or `synchronize` event and that the development ruleset required jobs are present on that SHA.
 
 ---
 
