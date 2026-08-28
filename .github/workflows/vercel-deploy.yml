@@ -1,0 +1,222 @@
+name: Vercel deployment decision (report-only)
+
+on:
+  pull_request:
+    branches: [develop, main]
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA or ref to evaluate
+        required: true
+        type: string
+      force_deploy:
+        description: Force the report-only classification reason
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+
+jobs:
+  deployment-decision:
+    name: deployment-decision
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      deploy: ${{ steps.decision.outputs.deploy }}
+      reason: ${{ steps.decision.outputs.reason }}
+      source_sha: ${{ steps.decision.outputs.source_sha }}
+      candidate_sha: ${{ steps.decision.outputs.candidate_sha }}
+      same_repository_pr: ${{ steps.decision.outputs.same_repository_pr }}
+      fork_guard: ${{ steps.decision.outputs.fork_guard }}
+      secret_deploy_eligible: ${{ steps.decision.outputs.secret_deploy_eligible }}
+    steps:
+      - name: Check out candidate source
+        id: checkout
+        continue-on-error: true
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          fetch-depth: 0
+
+      - name: Report deployment decision
+        id: decision
+        if: always()
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+          MANUAL_REF: ${{ inputs.ref }}
+          FORCE_DEPLOY: ${{ inputs.force_deploy }}
+          CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
+        run: |
+          set -uo pipefail
+
+          deploy=true
+          reason='unknown diff'
+          source_sha=''
+          candidate_sha=''
+          same_repository_pr='not-applicable'
+          fork_guard='not-applicable'
+          secret_deploy_eligible=false
+          changed_files=''
+          zero_sha='0000000000000000000000000000000000000000'
+
+          is_sha() {
+            [[ "${1:-}" =~ ^[0-9a-f]{40}$ && "${1}" != "${zero_sha}" ]]
+          }
+
+          if [[ "${EVENT_NAME:-}" == 'pull_request' ]]; then
+            same_repository_pr='false'
+            fork_guard='ineligible'
+            if [[ -n "${HEAD_REPOSITORY:-}" && "${HEAD_REPOSITORY}" == "${GITHUB_REPOSITORY}" ]]; then
+              same_repository_pr='true'
+              fork_guard='eligible'
+            fi
+          fi
+
+          if changed_files="$(mktemp)"; then
+            cleanup() {
+              [[ -z "${changed_files}" ]] || rm -f -- "${changed_files}"
+            }
+            trap cleanup EXIT
+          else
+            changed_files=''
+          fi
+
+          classify() {
+            local result deploy_value reason_value
+
+            [[ -n "${changed_files}" && -f "${changed_files}" ]] || return 1
+            [[ -f .github/scripts/deployment-classifier.mjs ]] || return 1
+            result="$(node .github/scripts/deployment-classifier.mjs \
+              --changed-files "${changed_files}" "${force_args[@]}" 2>/dev/null)" || return 1
+            deploy_value="$(sed -n 's/^deploy=//p' <<<"${result}")"
+            reason_value="$(sed -n 's/^reason=//p' <<<"${result}")"
+
+            case "${deploy_value}" in
+              true|false) ;;
+              *) return 1 ;;
+            esac
+            case "${reason_value}" in
+              'docs-only'|'deploy-impacting path'|'unknown diff'|'forced') ;;
+              *) return 1 ;;
+            esac
+
+            deploy="${deploy_value}"
+            reason="${reason_value}"
+          }
+
+          force_args=()
+          if [[ "${FORCE_DEPLOY:-false}" == 'true' ]]; then
+            force_args=(--force-deploy)
+          fi
+
+          if [[ "${CHECKOUT_OUTCOME:-}" == 'success' ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+            checkout_sha="$(git rev-parse HEAD 2>/dev/null || true)"
+
+            case "${EVENT_NAME:-}" in
+              pull_request)
+                if is_sha "${HEAD_SHA:-}" && [[ "${checkout_sha}" == "${HEAD_SHA}" ]] &&
+                  is_sha "${BASE_SHA:-}" &&
+                  [[ "${BASE_REF:-}" == 'develop' || "${BASE_REF:-}" == 'main' ]] &&
+                  git fetch --no-tags origin \
+                    "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" >/dev/null 2>&1 &&
+                  git cat-file -e "${BASE_SHA}^{commit}" >/dev/null 2>&1 &&
+                  merge_base="$(git merge-base "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null)" &&
+                  is_sha "${merge_base}" &&
+                  git diff --name-only "${merge_base}...${HEAD_SHA}" >"${changed_files}"; then
+                  source_sha="${HEAD_SHA}"
+                  candidate_sha="${HEAD_SHA}"
+                  classify || true
+                elif is_sha "${HEAD_SHA:-}" && [[ "${checkout_sha}" == "${HEAD_SHA}" ]]; then
+                  source_sha="${HEAD_SHA}"
+                  candidate_sha="${HEAD_SHA}"
+                fi
+                ;;
+              push)
+                if is_sha "${PUSH_BEFORE:-}" && is_sha "${PUSH_AFTER:-}" &&
+                  [[ "${checkout_sha}" == "${PUSH_AFTER}" ]] &&
+                  git cat-file -e "${PUSH_BEFORE}^{commit}" >/dev/null 2>&1 &&
+                  git cat-file -e "${PUSH_AFTER}^{commit}" >/dev/null 2>&1 &&
+                  git diff --name-only "${PUSH_BEFORE}..${PUSH_AFTER}" >"${changed_files}"; then
+                  source_sha="${PUSH_AFTER}"
+                  candidate_sha="${PUSH_AFTER}"
+                  classify || true
+                elif is_sha "${PUSH_AFTER:-}" && [[ "${checkout_sha}" == "${PUSH_AFTER}" ]]; then
+                  source_sha="${PUSH_AFTER}"
+                  candidate_sha="${PUSH_AFTER}"
+                fi
+                ;;
+              workflow_dispatch)
+                if [[ -n "${MANUAL_REF:-}" ]] && is_sha "${checkout_sha}"; then
+                  source_sha="${checkout_sha}"
+                  candidate_sha="${checkout_sha}"
+                  classify || true
+                fi
+                ;;
+            esac
+          fi
+
+          case "${EVENT_NAME:-}" in
+            pull_request)
+              if [[ "${same_repository_pr}" == 'true' ]] &&
+                is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                secret_deploy_eligible=true
+              fi
+              ;;
+            push|workflow_dispatch)
+              if is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                secret_deploy_eligible=true
+              fi
+              ;;
+          esac
+
+          summary_ref="${GITHUB_REF:-unknown}"
+          if [[ "${EVENT_NAME:-}" == 'pull_request' ]]; then
+            summary_ref="${BASE_REF:-unknown} <- ${HEAD_REF:-unknown}"
+          elif [[ "${EVENT_NAME:-}" == 'workflow_dispatch' ]]; then
+            summary_ref="${MANUAL_REF:-unknown}"
+          fi
+          summary_ref="${summary_ref//$'\r'/ }"
+          summary_ref="${summary_ref//$'\n'/ }"
+          summary_ref="${summary_ref//|/\\|}"
+
+          {
+            printf 'deploy=%s\n' "${deploy}"
+            printf 'reason=%s\n' "${reason}"
+            printf 'source_sha=%s\n' "${source_sha}"
+            printf 'candidate_sha=%s\n' "${candidate_sha}"
+            printf 'same_repository_pr=%s\n' "${same_repository_pr}"
+            printf 'fork_guard=%s\n' "${fork_guard}"
+            printf 'secret_deploy_eligible=%s\n' "${secret_deploy_eligible}"
+          } >>"${GITHUB_OUTPUT}"
+
+          {
+            echo '## Vercel deployment decision (report-only)'
+            echo
+            echo 'This phase only classifies deployment impact. It makes no Vercel calls or deployment mutations.'
+            echo
+            echo '| Field | Value |'
+            echo '| --- | --- |'
+            echo "| Event | ${EVENT_NAME:-unknown} |"
+            echo "| Ref | ${summary_ref} |"
+            echo "| Source SHA | ${source_sha:-unknown} |"
+            echo "| Candidate SHA | ${candidate_sha:-unknown} |"
+            echo "| Deploy | ${deploy} |"
+            echo "| Reason | ${reason} |"
+            echo "| Same-repository PR | ${same_repository_pr} |"
+            echo "| Fork guard | ${fork_guard} |"
+            echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
+          } >>"${GITHUB_STEP_SUMMARY}"
