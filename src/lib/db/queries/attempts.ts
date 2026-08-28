@@ -1,5 +1,7 @@
 import type {
+  AttemptReservation,
   AttemptMetadata,
+  AttemptsDbClient,
   FinalizeFailureParams,
   FinalizeSuccessParams,
   GenerationAttemptRecord,
@@ -7,8 +9,14 @@ import type {
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { getAttemptCap } from '@/lib/config/env';
+import {
+  attemptMetadataWithAdmittedTier,
+  readAdmittedTierFromAttemptMetadata,
+} from '@/lib/db/queries/helpers/attempt-admitted-tier';
 import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
   buildMetadata,
@@ -26,9 +34,11 @@ import {
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import {
+  countInProgressInitialAttemptsForUser,
   countPlansContributingToCap,
   lockUserPlanAdmission,
   planOwnsActiveCapSlot,
+  selectUserEntitlementForAdmission,
   setLearningPlanGenerating,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import {
@@ -46,9 +56,112 @@ import {
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { generationAttempts, users } from '@supabase/schema';
-import { count, eq, sql } from 'drizzle-orm';
+import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
+import {
+  describeGenerationPurpose,
+  parseGenerationPurpose,
+} from '@/shared/types/generation-purpose';
+import { generationAttempts } from '@supabase/schema';
+import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
+
+function readWorkflowIdempotencyKey(metadata: unknown): string | null {
+  if (metadata == null || typeof metadata !== 'object') {
+    return null;
+  }
+
+  const workflow = (metadata as Record<string, unknown>).workflow;
+  if (workflow == null || typeof workflow !== 'object') {
+    return null;
+  }
+
+  const key = (workflow as Record<string, unknown>).idempotencyKey;
+  return typeof key === 'string' && key.length > 0 ? key : null;
+}
+
+function buildAttemptPreparation(
+  planId: string,
+  userId: string,
+  input: GenerationInput,
+): Pick<AttemptReservation, 'sanitized' | 'promptHash'> {
+  const sanitized = sanitizeInput(input);
+  const promptHash = createHash('sha256')
+    .update(
+      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
+    )
+    .digest('hex');
+
+  return { sanitized, promptHash };
+}
+
+type RecoveredAttemptReservation = AttemptReservation &
+  Pick<GenerationAttemptRecord, 'status'>;
+
+/**
+ * Reads the durable tier admitted for a workflow reservation, when a reserve
+ * step is replayed before it can persist its step result.
+ */
+export async function findAttemptWithWorkflowIdempotencyKey(params: {
+  planId: string;
+  userId: string;
+  input: GenerationInput;
+  generationPurpose: GenerationPurpose;
+  workflowIdempotencyKey: string;
+  dbClient: AttemptsDbClient;
+}): Promise<RecoveredAttemptReservation | null> {
+  const { sanitized, promptHash } = buildAttemptPreparation(
+    params.planId,
+    params.userId,
+    params.input,
+  );
+  const attempts = await params.dbClient
+    .select({
+      id: generationAttempts.id,
+      status: generationAttempts.status,
+      generationPurpose: generationAttempts.generationPurpose,
+      promptHash: generationAttempts.promptHash,
+      metadata: generationAttempts.metadata,
+      createdAt: generationAttempts.createdAt,
+    })
+    .from(generationAttempts)
+    .where(eq(generationAttempts.planId, params.planId))
+    .orderBy(asc(generationAttempts.createdAt));
+
+  const matchingAttemptIndex = attempts.findIndex(
+    (attempt) =>
+      readWorkflowIdempotencyKey(attempt.metadata) ===
+      params.workflowIdempotencyKey,
+  );
+  const matchingAttempt =
+    matchingAttemptIndex >= 0 ? attempts[matchingAttemptIndex] : undefined;
+  if (!matchingAttempt) {
+    return null;
+  }
+
+  if (
+    matchingAttempt.generationPurpose !== params.generationPurpose ||
+    matchingAttempt.promptHash !== promptHash
+  ) {
+    throw new Error(
+      `Generation reservation idempotency key ${params.workflowIdempotencyKey} was already used with different generation input.`,
+    );
+  }
+
+  const admittedTier = readAdmittedTierFromAttemptMetadata(
+    matchingAttempt.metadata,
+  );
+  return {
+    reserved: true,
+    attemptId: matchingAttempt.id,
+    attemptNumber: matchingAttemptIndex + 1,
+    startedAt: matchingAttempt.createdAt,
+    ...(admittedTier ? { admittedTier } : {}),
+    generationPurpose: matchingAttempt.generationPurpose,
+    sanitized,
+    promptHash: matchingAttempt.promptHash,
+    status: matchingAttempt.status,
+  };
+}
 
 /**
  * Server-owned generation persistence: requires explicit dbClient (AttemptsDbClient)
@@ -86,14 +199,14 @@ export async function reserveAttemptSlot(
     allowedGenerationStatuses,
     requiredGenerationStatus,
   } = params;
+  const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const nowFn = params.now ?? (() => new Date());
 
-  const sanitized = sanitizeInput(input);
-  const promptHash = createHash('sha256')
-    .update(
-      JSON.stringify(toPromptHashPayload(planId, userId, input, sanitized)),
-    )
-    .digest('hex');
+  const { sanitized, promptHash } = buildAttemptPreparation(
+    planId,
+    userId,
+    input,
+  );
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
@@ -136,19 +249,93 @@ export async function reserveAttemptSlot(
       } as const;
     }
 
+    const [attemptState] = await tx
+      .select({
+        existingAttempts: count(generationAttempts.id),
+        inProgressAttempts:
+          sql`count(*) filter (where ${generationAttempts.status} = 'in_progress')`.mapWith(
+            Number,
+          ),
+      })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
+
+    const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
+    const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
+
+    const idempotencyKey = params.workflowMetadata?.idempotencyKey;
+    if (idempotencyKey) {
+      const attempts = await tx
+        .select({
+          id: generationAttempts.id,
+          status: generationAttempts.status,
+          generationPurpose: generationAttempts.generationPurpose,
+          promptHash: generationAttempts.promptHash,
+          metadata: generationAttempts.metadata,
+          createdAt: generationAttempts.createdAt,
+        })
+        .from(generationAttempts)
+        .where(eq(generationAttempts.planId, planId))
+        .orderBy(generationAttempts.createdAt);
+      const matchingAttemptIndex = attempts.findIndex(
+        (attempt) =>
+          readWorkflowIdempotencyKey(attempt.metadata) === idempotencyKey,
+      );
+      const matchingAttempt =
+        matchingAttemptIndex >= 0 ? attempts[matchingAttemptIndex] : undefined;
+
+      if (matchingAttempt) {
+        if (
+          matchingAttempt.generationPurpose !== generationPurpose ||
+          matchingAttempt.promptHash !== promptHash
+        ) {
+          throw new Error(
+            `Generation reservation idempotency key ${idempotencyKey} was already used with different generation input.`,
+          );
+        }
+
+        const admittedTier = readAdmittedTierFromAttemptMetadata(
+          matchingAttempt.metadata,
+        );
+
+        return {
+          reserved: true,
+          attemptId: matchingAttempt.id,
+          attemptNumber: matchingAttemptIndex + 1,
+          startedAt: matchingAttempt.createdAt,
+          ...(admittedTier ? { admittedTier } : {}),
+          generationPurpose: matchingAttempt.generationPurpose,
+          sanitized,
+          promptHash: matchingAttempt.promptHash,
+        } as const;
+      }
+    }
+
     if (await hasActiveChildModuleGeneration(tx, planId)) {
       return { reserved: false, reason: 'active_child_generation' } as const;
     }
 
+    const user = await selectUserEntitlementForAdmission(tx, userId);
+    const freeAdmission = evaluateFreeInitialAdmission({
+      tier: user.subscriptionTier,
+      generationPurpose,
+      initialPlanGeneratedAt: user.initialPlanGeneratedAt,
+      inProgressInitialCount:
+        user.subscriptionTier === 'free' && generationPurpose === 'initial'
+          ? await countInProgressInitialAttemptsForUser(tx, {
+              userId,
+              excludePlanId: planId,
+            })
+          : 0,
+    });
+    if (freeAdmission === 'free_allowance_used') {
+      return { reserved: false, reason: 'free_allowance_used' } as const;
+    }
+    if (freeAdmission === 'free_initial_in_progress') {
+      return { reserved: false, reason: 'free_initial_in_progress' } as const;
+    }
+
     if (!planOwnsActiveCapSlot(plan)) {
-      const [user] = await tx
-        .select({ subscriptionTier: users.subscriptionTier })
-        .from(users)
-        .where(eq(users.id, userId))
-        .limit(1);
-      if (!user) {
-        throw new Error('Learning plan not found or inaccessible for user');
-      }
       const tierConfig = TIER_LIMITS[user.subscriptionTier];
       if (!tierConfig) {
         throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
@@ -184,20 +371,6 @@ export async function reserveAttemptSlot(
       } as const;
     }
 
-    const [attemptState] = await tx
-      .select({
-        existingAttempts: count(generationAttempts.id),
-        inProgressAttempts:
-          sql`count(*) filter (where ${generationAttempts.status} = 'in_progress')`.mapWith(
-            Number,
-          ),
-      })
-      .from(generationAttempts)
-      .where(eq(generationAttempts.planId, planId));
-
-    const existingAttempts = Number(attemptState?.existingAttempts ?? 0);
-    const inProgressAttempts = Number(attemptState?.inProgressAttempts ?? 0);
-
     if (existingAttempts >= getAttemptCap()) {
       return { reserved: false, reason: 'capped' } as const;
     }
@@ -211,6 +384,7 @@ export async function reserveAttemptSlot(
       .values({
         planId,
         status: 'in_progress',
+        generationPurpose,
         classification: null,
         durationMs: 0,
         modulesCount: 0,
@@ -219,7 +393,12 @@ export async function reserveAttemptSlot(
         truncatedNotes: sanitized.notes.truncated ?? false,
         normalizedEffort: false,
         promptHash,
-        metadata: null,
+        metadata: {
+          ...attemptMetadataWithAdmittedTier(user.subscriptionTier),
+          ...(params.workflowMetadata
+            ? { workflow: params.workflowMetadata }
+            : {}),
+        },
       })
       .returning();
 
@@ -234,6 +413,8 @@ export async function reserveAttemptSlot(
       attemptId: attempt.id,
       attemptNumber: existingAttempts + 1,
       startedAt,
+      ...(idempotencyKey ? { admittedTier: user.subscriptionTier } : {}),
+      generationPurpose: attempt.generationPurpose,
       sanitized,
       promptHash,
     } as const;
@@ -297,6 +478,7 @@ export async function finalizeAttemptSuccess({
   logAttemptEvent('success', {
     planId,
     attemptId: updatedAttempt.id,
+    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
     durationMs: updatedAttempt.durationMs,
     modulesCount,
     tasksCount,
@@ -391,6 +573,7 @@ export async function finalizeAttemptFailure({
   logAttemptEvent('failure', {
     planId,
     attemptId: attempt.id,
+    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
     classification,
     durationMs: attempt.durationMs,
     timedOut,

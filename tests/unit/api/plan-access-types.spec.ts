@@ -11,10 +11,16 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
 import {
   accessError,
+  accessErrorFromAppError,
   accessSuccess,
   type AccessErrorCode,
 } from '@/app/(app)/plans/access-result';
 import { toClientPlanDetail } from '@/features/plans/read-projection/detail-dto';
+import { AppError } from '@/lib/api/errors';
+import {
+  API_ERROR_CODES,
+  API_ERROR_HTTP_STATUS,
+} from '@/shared/constants/api-error-codes';
 import { buildPlanDetail } from '@tests/fixtures/plan-detail';
 import { describe, expect, it } from 'vitest';
 
@@ -51,6 +57,14 @@ describe('Plan Access Types', () => {
       { code: 'NOT_FOUND', message: 'Plan does not exist.' },
       { code: 'FORBIDDEN', message: 'You do not have access.' },
       { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' },
+      {
+        code: 'PLAN_ENTITLEMENT_REQUIRED',
+        message: 'Upgrade to access this plan.',
+      },
+      {
+        code: 'FREE_PLAN_SELECTION_REQUIRED',
+        message: 'Select which plan to keep.',
+      },
     ])('should create error result for $code', ({ code, message }) => {
       const result = accessError(code, message);
 
@@ -109,6 +123,14 @@ describe('Plan Access Types', () => {
       { code: 'NOT_FOUND', message: 'Plan does not exist.' },
       { code: 'FORBIDDEN', message: 'You do not have access.' },
       { code: 'INTERNAL_ERROR', message: 'An unexpected error occurred.' },
+      {
+        code: 'PLAN_ENTITLEMENT_REQUIRED',
+        message: 'Upgrade to access this plan.',
+      },
+      {
+        code: 'FREE_PLAN_SELECTION_REQUIRED',
+        message: 'Select which plan to keep.',
+      },
     ])('should create error result for $code', ({ code, message }) => {
       const result = planError(code, message);
 
@@ -127,6 +149,39 @@ describe('Plan Access Types', () => {
       if (!result.success) {
         expect(result.error.message).toBe(customMessage);
       }
+    });
+
+    it('maps entitlement AppErrors including selection candidates', () => {
+      const entitlement = accessErrorFromAppError(
+        new AppError('Upgrade to access this plan.', {
+          status: API_ERROR_HTTP_STATUS.PLAN_ENTITLEMENT_REQUIRED,
+          code: API_ERROR_CODES.PLAN_ENTITLEMENT_REQUIRED,
+        }),
+      );
+      expect(entitlement).toEqual({
+        code: 'PLAN_ENTITLEMENT_REQUIRED',
+        message: 'Upgrade to access this plan.',
+      });
+
+      const selection = accessErrorFromAppError(
+        new AppError('Select which plan to keep on the Free plan.', {
+          status: API_ERROR_HTTP_STATUS.FREE_PLAN_SELECTION_REQUIRED,
+          code: API_ERROR_CODES.FREE_PLAN_SELECTION_REQUIRED,
+          details: {
+            candidates: [
+              {
+                id: '11111111-1111-4111-8111-111111111111',
+                topic: 'Keep me',
+                createdAt: '2026-01-01T00:00:00.000Z',
+                generationStatus: 'ready',
+              },
+            ],
+          },
+        }),
+      );
+      expect(selection?.code).toBe('FREE_PLAN_SELECTION_REQUIRED');
+      expect(selection?.candidates).toHaveLength(1);
+      expect(accessErrorFromAppError(new Error('nope'))).toBeNull();
     });
 
     it('should allow type narrowing via success discriminant', () => {
@@ -149,6 +204,8 @@ describe('Plan Access Types', () => {
     NOT_FOUND: 404,
     FORBIDDEN: 403,
     INTERNAL_ERROR: 500,
+    PLAN_ENTITLEMENT_REQUIRED: 403,
+    FREE_PLAN_SELECTION_REQUIRED: 409,
   };
 
   describe('Result Type Exhaustiveness', () => {
@@ -158,6 +215,8 @@ describe('Plan Access Types', () => {
         'NOT_FOUND',
         'FORBIDDEN',
         'INTERNAL_ERROR',
+        'PLAN_ENTITLEMENT_REQUIRED',
+        'FREE_PLAN_SELECTION_REQUIRED',
       ];
 
       for (const code of errorCodes) {
@@ -177,6 +236,12 @@ describe('Plan Access Types', () => {
               break;
             case 'INTERNAL_ERROR':
               httpStatus = 500;
+              break;
+            case 'PLAN_ENTITLEMENT_REQUIRED':
+              httpStatus = 403;
+              break;
+            case 'FREE_PLAN_SELECTION_REQUIRED':
+              httpStatus = 409;
               break;
             default: {
               const _exhaustiveCheck: never = result.error.code;

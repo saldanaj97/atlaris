@@ -46,6 +46,7 @@ describe('MobileNavigation', () => {
           isMarketing={false}
           pathname='/dashboard'
           navItems={navItems}
+          canCreatePlan
           isAuthenticated
         />
       </TooltipProvider>,
@@ -66,6 +67,32 @@ describe('MobileNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Create New Plan' }),
     ).toHaveAttribute('href', '/plans/new');
+  });
+
+  it('routes authenticated create action to pricing after lifetime access is used', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TooltipProvider>
+        <MobileNavigation
+          isMarketing={false}
+          pathname='/dashboard'
+          navItems={navItems}
+          canCreatePlan={false}
+          isAuthenticated
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
   });
 
   it('uses Dashboard CTA on marketing sheets when signed in', async () => {

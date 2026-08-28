@@ -123,12 +123,48 @@ describe('ClerkPricingTable', () => {
     vi.unstubAllGlobals();
   });
 
-  it('falls back to Clerk pricing when Clerk Billing is unavailable', async () => {
+  it('shows a retryable error when Clerk Billing is unavailable and recovers without export copy', async () => {
     mocks.useClerk.mockReturnValue({ loaded: true });
+    const user = userEvent.setup();
 
     await renderPricingTable();
 
-    expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
+    expect(
+      screen.queryByTestId('native-pricing-table'),
+    ).not.toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Try Again' })).toBeVisible();
+    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
+
+    mocks.useClerk.mockReturnValue({
+      billing: {
+        getPlans: mocks.getPlans,
+        getSubscription: mocks.getSubscription,
+      },
+      loaded: true,
+    });
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: '10 active learning plans' },
+            { name: '50 exports per month' },
+            { name: 'Priority queue access' },
+          ],
+        },
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+
+    expect(await screen.findByText('10 active learning plans')).toBeVisible();
+    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(
+      screen.queryByTestId('native-pricing-table'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
 
   it('tracks pointer position and resets card parallax', async () => {
@@ -196,6 +232,27 @@ describe('ClerkPricingTable', () => {
     const card = await screen.findByRole('article', { name: 'Free' });
     fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
     expect(requestAnimationFrame).not.toHaveBeenCalled();
+  });
+
+  it('omits stale Clerk export features while keeping other provider copy', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: '10 active learning plans' },
+            { name: '50 exports per month' },
+            { name: 'Priority queue access' },
+          ],
+        },
+      ],
+    });
+
+    await renderPricingTable();
+
+    expect(await screen.findByText('10 active learning plans')).toBeVisible();
+    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(screen.queryByText(/exports per month/i)).not.toBeInTheDocument();
   });
 
   it('fills empty Clerk feature lists and sends the selected period to Clerk checkout', async () => {
@@ -469,18 +526,46 @@ describe('ClerkPricingTable', () => {
     ).toBeDisabled();
   });
 
-  it('falls back to Clerk pricing when custom plan loading fails', async () => {
+  it('shows a retryable error when plan loading fails and recovers without export copy', async () => {
     window.history.replaceState(
       {},
       '',
       '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
     );
-    mocks.getPlans.mockRejectedValue(new Error('network unavailable'));
+    mocks.getPlans.mockRejectedValueOnce(new Error('network unavailable'));
+    const user = userEvent.setup();
 
     await renderPricingTable();
 
-    expect(await screen.findByTestId('native-pricing-table')).toBeVisible();
+    expect(await screen.findByRole('alert')).toBeVisible();
+    expect(
+      screen.queryByTestId('native-pricing-table'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(window.location.search).toBe('');
+
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: '10 active learning plans' },
+            { name: '50 exports per month' },
+            { name: 'Priority queue access' },
+          ],
+        },
+      ],
+    });
+
+    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+
+    expect(await screen.findByText('10 active learning plans')).toBeVisible();
+    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(
+      screen.queryByTestId('native-pricing-table'),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
+    expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {

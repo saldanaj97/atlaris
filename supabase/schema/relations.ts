@@ -32,6 +32,11 @@ export const usersRelations = relations(users, ({ one, many }) => ({
   }),
   userEmailNotificationPreferences: many(userEmailNotificationPreferences),
   learningPlans: many(learningPlans),
+  freeAccessPlan: one(learningPlans, {
+    fields: [users.freeAccessPlanId],
+    references: [learningPlans.id],
+    relationName: 'freeAccessPlan',
+  }),
   usageMetrics: many(usageMetrics),
   aiUsageEvents: many(aiUsageEvents),
   jobQueue: many(jobQueue),
@@ -45,6 +50,9 @@ export const learningPlansRelations = relations(
     user: one(users, {
       fields: [learningPlans.userId],
       references: [users.id],
+    }),
+    freeAccessUsers: many(users, {
+      relationName: 'freeAccessPlan',
     }),
     modules: many(modules),
     planSchedules: one(planSchedules),

@@ -1,16 +1,28 @@
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
+import type { SavedModelPreferenceSlots } from '@/features/ai/model-preferences';
+import type { UserModelPreferencePatch } from '@/lib/db/queries/user-preferences';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
-import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import {
+  getPersistableModelsForTier,
+  isRuntimeOnlyModelId,
+  resolveEffectivePreference,
+  savedModelIdForOperation,
+} from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { AppError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { upsertUserPreferredAiModel } from '@/lib/db/queries/user-preferences';
+import { upsertUserModelPreferences } from '@/lib/db/queries/user-preferences';
 import {
   attachRequestIdHeader,
   createLoggingRequestContext,
 } from '@/lib/logging/request-context';
+
+type PreferenceSlot = keyof SavedModelPreferenceSlots;
 
 function createPreferencesUpdateFailedError(userId: string | number): AppError {
   return new AppError('Failed to persist preferences.', {
@@ -20,10 +32,158 @@ function createPreferencesUpdateFailedError(userId: string | number): AppError {
   });
 }
 
+function createModelNotAllowedError(
+  preferredAiModel: string,
+  tier: SubscriptionTier,
+): AppError {
+  return new AppError('Model is not allowed for your subscription tier.', {
+    status: 403,
+    code: 'MODEL_NOT_ALLOWED_FOR_TIER',
+    details: {
+      preferredAiModel,
+      tier,
+    },
+  });
+}
+
+function operationForSlot(slot: PreferenceSlot): ModelOperation {
+  switch (slot) {
+    case 'preferredAiModel':
+      return 'initial_outline';
+    case 'preferredRegenerationAiModel':
+      return 'regeneration';
+    case 'preferredLessonAiModel':
+      return 'lesson';
+    default: {
+      const _never: never = slot;
+      throw new Error(`Unhandled preference slot: ${String(_never)}`);
+    }
+  }
+}
+
+function throwForInvalidModel(
+  reason: 'invalid_model' | 'tier_denied',
+  modelId: string,
+  tier: SubscriptionTier,
+): never {
+  switch (reason) {
+    case 'invalid_model':
+      throw new AppError('Model is not recognized.', {
+        status: 400,
+        code: 'MODEL_INVALID',
+        details: {
+          preferredAiModel: modelId,
+        },
+      });
+    case 'tier_denied':
+      throw createModelNotAllowedError(modelId, tier);
+    default: {
+      const _exhaustiveCheck: never = reason;
+      throw new AppError('Model validation failed for an unexpected reason.', {
+        status: 500,
+        code: 'UNKNOWN_MODEL_VALIDATION_REASON',
+        details: {
+          reason: String(_exhaustiveCheck),
+          preferredAiModel: modelId,
+        },
+        logMeta: {
+          reason: String(_exhaustiveCheck),
+          preferredAiModel: modelId,
+        },
+      });
+    }
+  }
+}
+
+function assertCanPersistSlot(
+  tier: SubscriptionTier,
+  slot: PreferenceSlot,
+  modelId: string | null | undefined,
+): void {
+  if (modelId === undefined || modelId === null) {
+    return;
+  }
+
+  switch (tier) {
+    case 'free':
+      throw createModelNotAllowedError(modelId, tier);
+    case 'starter':
+    case 'pro':
+      break;
+    default: {
+      const _never: never = tier;
+      throw new Error(`Unhandled subscription tier: ${String(_never)}`);
+    }
+  }
+
+  const operation = operationForSlot(slot);
+  const modelValidation = validateModelForTier(tier, modelId, operation);
+  if (!modelValidation.valid) {
+    throwForInvalidModel(modelValidation.reason, modelId, tier);
+  }
+
+  if (tier === 'starter' && slot !== 'preferredAiModel') {
+    throw createModelNotAllowedError(modelId, tier);
+  }
+
+  if (isRuntimeOnlyModelId(modelId)) {
+    throw createModelNotAllowedError(modelId, tier);
+  }
+}
+
+function savedSlotsFromActor(actor: {
+  preferredAiModel: string | null;
+  preferredRegenerationAiModel: string | null;
+  preferredLessonAiModel: string | null;
+}): SavedModelPreferenceSlots {
+  return {
+    preferredAiModel: actor.preferredAiModel,
+    preferredRegenerationAiModel: actor.preferredRegenerationAiModel,
+    preferredLessonAiModel: actor.preferredLessonAiModel,
+  };
+}
+
+function toPreferencesGetResponse(
+  tier: SubscriptionTier,
+  saved: SavedModelPreferenceSlots,
+) {
+  return {
+    preferredAiModel: saved.preferredAiModel,
+    preferredRegenerationAiModel: saved.preferredRegenerationAiModel,
+    preferredLessonAiModel: saved.preferredLessonAiModel,
+    effectivePreferredAiModel: resolveEffectivePreference(
+      tier,
+      savedModelIdForOperation(tier, saved, 'initial_outline'),
+      'initial_outline',
+    ),
+    effectivePreferredRegenerationAiModel: resolveEffectivePreference(
+      tier,
+      savedModelIdForOperation(tier, saved, 'regeneration'),
+      'regeneration',
+    ),
+    effectivePreferredLessonAiModel: resolveEffectivePreference(
+      tier,
+      savedModelIdForOperation(tier, saved, 'lesson'),
+      'lesson',
+    ),
+    availableModels: getPersistableModelsForTier(tier, 'initial_outline'),
+  };
+}
+
+function toPreferencesPatchResponse(saved: SavedModelPreferenceSlots) {
+  return {
+    message: 'Preferences updated' as const,
+    preferredAiModel: saved.preferredAiModel,
+    preferredRegenerationAiModel: saved.preferredRegenerationAiModel,
+    preferredLessonAiModel: saved.preferredLessonAiModel,
+  };
+}
+
 /**
  * GET /api/v1/user/preferences
  *
- * Retrieves the authenticated user's AI model preferences and available models.
+ * Returns raw saved model slots (nullable, including out-of-tier IDs) plus
+ * effective resolved IDs for the current tier. Never writes.
  */
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
@@ -34,20 +194,16 @@ export const GET = requestBoundary.route(
     });
 
     const userTier = actor.subscriptionTier;
-    const availableModels = getPersistableModelsForTier(userTier);
-
-    const fallbackModel = getDefaultModelForTier(userTier);
-    let preferredAiModel = fallbackModel;
+    const saved = savedSlotsFromActor(actor);
+    const fallbackModel = getDefaultModelForTier(userTier, 'initial_outline');
 
     if (actor.preferredAiModel) {
       const modelValidation = validateModelForTier(
         userTier,
         actor.preferredAiModel,
+        'initial_outline',
       );
-
-      if (modelValidation.valid) {
-        preferredAiModel = actor.preferredAiModel;
-      } else {
+      if (!modelValidation.valid) {
         logger.warn(
           {
             storedPreferredAiModel: actor.preferredAiModel,
@@ -55,16 +211,12 @@ export const GET = requestBoundary.route(
             reason: modelValidation.reason,
             fallbackModel,
           },
-          'Stored preferred AI model is not allowed for current tier; using fallback',
+          'Stored preferred AI model is not allowed for current tier; using fallback as effective only',
         );
       }
     }
 
-    const response = json({
-      preferredAiModel,
-      availableModels,
-    });
-
+    const response = json(toPreferencesGetResponse(userTier, saved));
     return attachRequestIdHeader(response, requestId);
   },
 );
@@ -72,8 +224,9 @@ export const GET = requestBoundary.route(
 /**
  * PATCH /api/v1/user/preferences
  *
- * Updates the authenticated user's AI model preference.
- * Validates the model ID and enforces tier-gating.
+ * Updates saved model preference slots. Validates each provided ID against the
+ * current tier × operation policy. Does not rewrite out-of-tier saved values
+ * on GET; those are rejected here if the client tries to persist them.
  */
 export const PATCH = requestBoundary.route(
   { rateLimit: 'mutation' },
@@ -99,86 +252,23 @@ export const PATCH = requestBoundary.route(
     }
 
     const userTier = actor.subscriptionTier;
+    const patch: UserModelPreferencePatch = parsed.data;
 
-    if (parsed.data.preferredAiModel === null) {
-      const updatedPreferences = await upsertUserPreferredAiModel(
-        actor.id,
-        null,
-        db,
-      );
-
-      if (!updatedPreferences) {
-        throw createPreferencesUpdateFailedError(actor.id);
-      }
-
-      logger.info(
-        { preferredAiModel: updatedPreferences.preferredAiModel },
-        'User preferences cleared (tier default applies)',
-      );
-
-      const response = json({
-        message: 'Preferences updated',
-        preferredAiModel: updatedPreferences.preferredAiModel,
-      });
-
-      return attachRequestIdHeader(response, requestId);
-    }
-
-    const modelValidation = validateModelForTier(
+    assertCanPersistSlot(userTier, 'preferredAiModel', patch.preferredAiModel);
+    assertCanPersistSlot(
       userTier,
-      parsed.data.preferredAiModel,
+      'preferredRegenerationAiModel',
+      patch.preferredRegenerationAiModel,
+    );
+    assertCanPersistSlot(
+      userTier,
+      'preferredLessonAiModel',
+      patch.preferredLessonAiModel,
     );
 
-    // Enumerate every known reason from validateModelForTier (see ModelValidationResult in
-    // @/features/ai/model-resolver). When adding a new reason there, add a case here and keep
-    // the default branch for unexpected values. AppError: @/lib/api/errors.
-    if (!modelValidation.valid) {
-      const reason = modelValidation.reason;
-      switch (reason) {
-        case 'invalid_model':
-          throw new AppError('Model is not recognized.', {
-            status: 400,
-            code: 'MODEL_INVALID',
-            details: {
-              preferredAiModel: parsed.data.preferredAiModel,
-            },
-          });
-        case 'tier_denied':
-          throw new AppError(
-            'Model is not allowed for your subscription tier.',
-            {
-              status: 403,
-              code: 'MODEL_NOT_ALLOWED_FOR_TIER',
-              details: {
-                preferredAiModel: parsed.data.preferredAiModel,
-                tier: userTier,
-              },
-            },
-          );
-        default: {
-          const _exhaustiveCheck: never = reason;
-          throw new AppError(
-            'Model validation failed for an unexpected reason.',
-            {
-              status: 500,
-              code: 'UNKNOWN_MODEL_VALIDATION_REASON',
-              details: {
-                reason: String(_exhaustiveCheck),
-                preferredAiModel: parsed.data.preferredAiModel,
-              },
-              logMeta: {
-                reason: String(_exhaustiveCheck),
-                preferredAiModel: parsed.data.preferredAiModel,
-              },
-            },
-          );
-        }
-      }
-    }
-
-    const updatedPreferences = await upsertUserPreferredAiModel(
+    const updatedPreferences = await upsertUserModelPreferences(
       actor.id,
-      parsed.data.preferredAiModel,
+      patch,
       db,
     );
 
@@ -186,7 +276,10 @@ export const PATCH = requestBoundary.route(
       throw createPreferencesUpdateFailedError(actor.id);
     }
 
-    if (updatedPreferences.preferredAiModel === null) {
+    if (
+      patch.preferredAiModel != null &&
+      updatedPreferences.preferredAiModel === null
+    ) {
       throw new AppError('Failed to persist preference value.', {
         status: 500,
         code: 'PREFERENCES_PERSISTED_NULL',
@@ -195,15 +288,16 @@ export const PATCH = requestBoundary.route(
     }
 
     logger.info(
-      { preferredAiModel: updatedPreferences.preferredAiModel },
+      {
+        preferredAiModel: updatedPreferences.preferredAiModel,
+        preferredRegenerationAiModel:
+          updatedPreferences.preferredRegenerationAiModel,
+        preferredLessonAiModel: updatedPreferences.preferredLessonAiModel,
+      },
       'User preferences updated successfully',
     );
 
-    const response = json({
-      message: 'Preferences updated',
-      preferredAiModel: updatedPreferences.preferredAiModel,
-    });
-
+    const response = json(toPreferencesPatchResponse(updatedPreferences));
     return attachRequestIdHeader(response, requestId);
   },
 );

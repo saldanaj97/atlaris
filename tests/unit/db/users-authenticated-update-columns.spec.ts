@@ -32,6 +32,17 @@ function extractUsersUpdateGrantColumns(fileContents: string): string[][] {
 
 describe('authenticated users UPDATE allowlist sync', () => {
   const expectedColumns = [...USERS_AUTHENTICATED_UPDATE_COLUMNS].sort();
+  const serverOwnedEntitlementColumns = [
+    'initial_plan_generated_at',
+    'free_access_plan_id',
+    'free_access_plan_selected_at',
+  ] as const;
+
+  it('excludes server-owned lifetime entitlement columns from the allowlist', () => {
+    for (const column of serverOwnedEntitlementColumns) {
+      expect(USERS_AUTHENTICATED_UPDATE_COLUMNS).not.toContain(column);
+    }
+  });
 
   it('keeps the final migration grant in sync with the canonical allowlist', () => {
     const migrationsDir = resolve(TEST_DIR, '../../../supabase/migrations');

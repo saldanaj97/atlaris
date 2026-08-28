@@ -38,29 +38,41 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ## Workflow map (what each workflow does)
 
-### 1) CircleCI `ci-pr` (`.circleci/config.yml`)
+### 1) CircleCI dynamic setup (`.circleci/config.yml`)
 
-- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events when the head branch is `develop` (`develop` → `main`)
+- The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch, `pipeline.git.base_revision` for `main`/`develop` pushes, or the configured base ref for other non-PR pushes.
+- Every changed-file pipeline includes `.circleci/shared-config.yml`. Docs-only changes add `.circleci/docs-config.yml`; code, mixed, root, and CI/config changes add `.circleci/code-config.yml`. The orb merges the selected fragments into the single continuation config.
+- `.circleci/no-updates.yml` is the fallback when the comparison contains no changed files.
+- Docs-only pipelines publish zero-credit no-op jobs under the seven required check names. They do not provision code CI executors or run lint, build, audit, or test commands.
+
+### 2) CircleCI `ci-pr` (`.circleci/code-config.yml`)
+
+- Trigger: pushes to feature/`fix`/`ci`/… branches, plus GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs. Feature-branch PR events must run `ci-pr` because auto-cancel of the in-flight push pipeline would otherwise leave an empty run.
 - Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
-- Path filtering skips expensive jobs when no code changed. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
+- `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
+- `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
-### 2) `.github/workflows/ci-trunk.yml`
+### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
 
-- Trigger: push to `develop` or `main` (plus merge queue)
-- Runs: full integration and RLS security checks on trunk branches
-- Workflow-level `paths-ignore` skips the entire workflow for documentation-only pushes (`docs/**`, `**/*.md`, and related text paths), so `All Checks Passed (trunk)` is not emitted for every trunk SHA
+- Trigger: **All pushes** that are not `pull_request` events, with jobs filtered to `develop` and `main`. Keep the CircleCI GitHub App **All pushes** trigger so this workflow still starts on trunk.
+- Runs: full integration tests (`integration-tests`) and RLS security tests (`security-tests`) after merge
+- There is no CircleCI `merge_group` trigger. Do not treat merge-queue SHAs as gated here.
+- Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
+- Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
+- `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
+- On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
-- Because trunk checks are not always emitted, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
+- Because there is no uniquely named post-merge check wired into Vercel, v1 staged Production promotion is **manual-only** and does not require a Vercel Deployment Check yet (see [staged-production-deployment.md](./staged-production-deployment.md))
 
-### 3) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
+### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
 - The configuration is read from the default branch, so it must be present on `main` before Dependabot or its weekly cadence is expected to run.
 - Native version updates use the npm root, target `develop`, run weekly, and apply a seven-day cooldown. Patch and minor updates are grouped separately; major updates are not opened automatically.
 - Native Dependabot security-update PRs are intentionally disabled. GitHub sends those PRs to default `main` regardless of `target-branch`; security remediation instead uses the custom workflow below so every automated dependency PR follows the `develop` integration path.
 - Patch auto-merge only queues a squash merge for an exact Dependabot patch update to `develop` whose file list is `pnpm-lock.yaml` alone or exactly `package.json` plus `pnpm-lock.yaml`, with no policy changes. GitHub cannot complete the queued merge until all required checks are green; the workflow does not approve or bypass CI. Minor, major, security-remediation, and policy PRs require human review.
 
-### 4) `.github/workflows/dependency-security-remediation.yml`
+### 5) `.github/workflows/dependency-security-remediation.yml`
 
 - The daily schedule and workflow definition must be on `main` because GitHub reads scheduled workflows from the default branch.
 - `workflow_dispatch` is available for urgent advisories and validation. Each run checks out the exact current `develop` SHA, runs `pnpm audit --prod --audit-level=high`, and uses `pnpm audit --prod --audit-level=high --fix=update` when findings exist.
@@ -68,7 +80,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The workflow does not dispatch GitHub Actions PR CI. CircleCI `ci-pr` runs from the bot-branch `push` (GitHub App). The job polls until required status checks are registered, then waits for them on the final bot SHA (`gh pr checks --required --watch`).
 - The remediation lane may update `pnpm-lock.yaml` and exact release-age exclusions only; manifest, override, trust-policy, and build-policy changes use the manual remediation lane in the supply-chain policy.
 
-### 5) `.github/workflows/staging-db-migrations.yaml`
+### 6) `.github/workflows/staging-db-migrations.yaml`
 
 - Trigger: manual dispatch from `develop`
 - Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
@@ -80,7 +92,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
   - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
   - After each successful phase, `scripts/db/run-phased-migrations.sh` runs read-only privilege attestation for that phase (`bash scripts/db/attest-effective-privileges.sh <expand|contract>`). Failures block the workflow. Details: [client-usage.md](../database/client-usage.md#privilege-model-and-attestation) and [deploy.md](../development/deploy.md).
 
-### 6) `.github/workflows/production-db-migrations.yaml`
+### 7) `.github/workflows/production-db-migrations.yaml`
 
 - Trigger: manual dispatch from `main`
 - Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
@@ -107,13 +119,13 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 ### Merge to `develop`
 
-- Runs `ci-trunk.yml`
+- Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
 - Requires an operator to run `staging-db-migrations.yaml` phase `expand` before deployment and phase `contract` after health verification
 - Vercel deploys staging
 
 ### Merge to `main`
 
-- Runs `ci-trunk.yml` when the push is not documentation-only
+- Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`; those jobs skip when `detect-changes` finds no integration-path files)
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Production app release uses the staged Production lane:
   1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
@@ -211,6 +223,10 @@ Prefer the staged Production CLI path (`--skip-domain` then explicit promote) ov
 - `docs/ci/branching-strategy.md`
 - `docs/development/deploy.md`
 - `.circleci/config.yml`
-- `.github/workflows/ci-trunk.yml`
+- `.circleci/code-config.yml`
+- `.circleci/shared-config.yml`
+- `.circleci/docs-config.yml`
+- `.circleci/no-updates.yml`
+- `.circleci/test-suites.yml`
 - `.github/workflows/staging-db-migrations.yaml`
 - `.github/workflows/production-db-migrations.yaml`

@@ -159,7 +159,10 @@ function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
     }
 
     // Module time should roughly match sum of tasks, add some buffer
-    const moduleMinutes = Math.max(totalTaskMinutes, randomInt(120, 240));
+    const moduleMinutes = Math.min(
+      Math.max(totalTaskMinutes, randomInt(120, 240)),
+      totalTaskMinutes * 2,
+    );
 
     modules.push({
       title: generateModuleTitle(input.topic, input.skillLevel, i),

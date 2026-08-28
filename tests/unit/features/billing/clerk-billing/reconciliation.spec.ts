@@ -77,8 +77,8 @@ function makeFailedPaymentAttemptEvent(): WebhookEvent {
         {
           id: 'item_pro',
           status: 'active',
-          plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-          plan: null,
+          plan_id: 'cplan_pro_fixture',
+          plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
           amount: { amount: 2_000 },
           period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
           is_free_trial: false,
@@ -125,7 +125,10 @@ function makeDb(opts: {
   ];
   const deleteReturning = opts.deleteReturning ?? [{ eventId: 'evt_fixture' }];
   const selectResults = [...(opts.selectResults ?? [])];
-  const updateWhere = vi.fn().mockResolvedValue(undefined);
+  const updateReturning = vi
+    .fn()
+    .mockResolvedValue([{ id: 'user_row_fixture' }]);
+  const updateWhere = vi.fn().mockReturnValue({ returning: updateReturning });
   const updateSet = vi.fn().mockReturnValue({ where: updateWhere });
   const execute = vi.fn().mockResolvedValue(undefined);
   const deleteWhere = vi.fn().mockReturnValue({
@@ -138,6 +141,7 @@ function makeDb(opts: {
     execute: typeof execute;
     isTransactionOpen: () => boolean;
     updateSet: typeof updateSet;
+    updateReturning: typeof updateReturning;
     updateWhere: typeof updateWhere;
   };
 
@@ -195,6 +199,7 @@ function makeDb(opts: {
       execute,
       isTransactionOpen: () => transactionOpen,
       updateSet,
+      updateReturning,
       updateWhere,
     },
   );
@@ -206,6 +211,7 @@ function makeLocalUser(overrides: Record<string, unknown> = {}) {
   return {
     id: 'user_row_fixture',
     authUserId: 'user_missing',
+    clerkBillingUpdatedAt: null,
     subscriptionTier: 'starter',
     subscriptionStatus: 'active',
     subscriptionPeriodEnd: new Date('2026-08-01T00:00:00.000Z'),
@@ -220,12 +226,13 @@ function makeSubscription(
   return {
     payerId: 'user_missing',
     status: 'active',
+    updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
     subscriptionItems: [
       {
         id: 'item_pro',
         status: 'active',
-        planId: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        planId: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: { amount: 2_000 },
         periodEnd: new Date('2026-09-01T00:00:00.000Z').getTime(),
         isFreeTrial: false,
@@ -396,8 +403,8 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBe(processingError);
 
-    expect(db.transaction).toHaveBeenCalledTimes(1);
-    expect(db.execute).toHaveBeenCalled();
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.execute).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
@@ -421,7 +428,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBeInstanceOf(ClerkBillingRefreshTimeoutError);
 
-    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.transaction).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
@@ -429,7 +436,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
   it('keeps the completed ledger insert atomic with the projection', async () => {
     const projectionError = new Error('projection failed');
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
-    db.updateWhere.mockRejectedValueOnce(projectionError);
+    db.updateReturning.mockRejectedValueOnce(projectionError);
 
     await expect(
       applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_projection', {
@@ -444,13 +451,13 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.update).toHaveBeenCalledTimes(1);
   });
 
-  it('refreshes webhook writes from the current Clerk subscription after locking', async () => {
+  it('refreshes Clerk outside the transaction, then applies under the payer lock', async () => {
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockImplementation(
       async () => {
-        expect(db.isTransactionOpen()).toBe(true);
-        expect(db.execute).toHaveBeenCalled();
+        expect(db.isTransactionOpen()).toBe(false);
+        expect(db.execute).not.toHaveBeenCalled();
         return makeSubscription();
       },
     );
@@ -467,10 +474,116 @@ describe('applyVerifiedClerkBillingEvent', () => {
       'user_missing',
     );
     expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalled();
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',
         subscriptionTier: 'pro',
+      }),
+    );
+  });
+
+  it('keeps a newer webhook snapshot when the Clerk refresh lags', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const webhookUpdatedAt = new Date('2026-08-01T00:01:00.000Z');
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
+        subscriptionItems: [
+          {
+            ...makeSubscription().subscriptionItems[0]!,
+            id: 'item_stale_starter',
+            planId: 'cplan_starter_fixture',
+            plan: {
+              id: 'cplan_starter_fixture',
+              slug: 'starter_plan',
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        {
+          ...makeBillingEvent(),
+          data: {
+            ...makeBillingEvent().data,
+            updated_at: webhookUpdatedAt.getTime(),
+            items: [
+              {
+                id: 'item_webhook_pro',
+                status: 'active',
+                plan_id: 'cplan_pro_fixture',
+                plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
+                amount: { amount: 2_000 },
+                period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
+              },
+            ],
+          },
+        } as unknown as WebhookEvent,
+        'evt_newer_webhook',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
+      }),
+    );
+  });
+
+  it('overlays a newer item webhook onto the refreshed multi-item snapshot', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const webhookUpdatedAt = new Date('2026-08-01T00:01:00.000Z');
+    const proItem = makeSubscription().subscriptionItems[0]!;
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
+        subscriptionItems: [
+          proItem,
+          {
+            ...proItem,
+            id: 'item_stale_starter',
+            status: 'active',
+            planId: 'cplan_starter_fixture',
+            plan: {
+              id: 'cplan_starter_fixture',
+              slug: 'starter_plan',
+            },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        {
+          type: 'subscriptionItem.canceled',
+          data: {
+            id: proItem.id,
+            status: 'canceled',
+            updated_at: webhookUpdatedAt.getTime(),
+            payer: { user_id: 'user_missing' },
+            plan_id: 'cplan_pro_fixture',
+            plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
+            amount: { amount: 2_000 },
+            period_end: new Date('2026-09-01T00:00:00.000Z').getTime(),
+            canceled_at: webhookUpdatedAt.getTime(),
+          },
+        } as unknown as WebhookEvent,
+        'evt_newer_item_webhook',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+
+    expect(db.updateSet).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clerkBillingUpdatedAt: webhookUpdatedAt,
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
       }),
     );
   });
@@ -547,18 +660,88 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     );
   });
+
+  it('preserves stored tier when Clerk returns an unknown plan slug', async () => {
+    const logger = makeLogger();
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        subscriptionItems: [
+          {
+            ...makeSubscription().subscriptionItems[0]!,
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_unknown_plan', {
+        clerkClient,
+        db,
+        logger,
+      }),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    expect(db.updateSet).toHaveBeenCalledWith({
+      clerkBillingUpdatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    });
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        planSlugs: ['enterprise_plan'],
+        storedTier: 'starter',
+      }),
+      'Clerk Billing plan could not be mapped; preserving stored tier',
+    );
+  });
+
+  it('preserves stored tier when an unknown item is mixed with active Free', async () => {
+    const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
+    const baseItem = makeSubscription().subscriptionItems[0]!;
+    const clerkClient = makeClerkClient(
+      makeSubscription({
+        subscriptionItems: [
+          {
+            ...baseItem,
+            id: 'item_unknown_active',
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+          {
+            ...baseItem,
+            id: 'item_free_active',
+            planId: 'cplan_free',
+            plan: { id: 'cplan_free', slug: 'free_user' },
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        makeBillingEvent(),
+        'evt_unknown_free_plan',
+        { clerkClient, db, logger: makeLogger() },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    expect(db.updateSet).toHaveBeenCalledWith({
+      clerkBillingUpdatedAt: new Date('2026-08-01T00:00:00.000Z'),
+    });
+  });
 });
 
 describe('reconcileClerkBillingEntitlements', () => {
-  it('locks the payer before refreshing and applying Clerk state', async () => {
+  it('refreshes Clerk outside the transaction, then applies under the payer lock', async () => {
     const db = makeDb({
       selectResults: [[{ authUserId: 'user_missing' }], [makeLocalUser()]],
     });
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockImplementation(
       async () => {
-        expect(db.isTransactionOpen()).toBe(true);
-        expect(db.execute).toHaveBeenCalled();
+        expect(db.isTransactionOpen()).toBe(false);
+        expect(db.execute).not.toHaveBeenCalled();
         return makeSubscription();
       },
     );
@@ -579,6 +762,7 @@ describe('reconcileClerkBillingEntitlements', () => {
     });
 
     expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).toHaveBeenCalled();
     expect(db.updateSet).toHaveBeenCalledWith(
       expect.objectContaining({
         subscriptionStatus: 'active',
@@ -612,6 +796,7 @@ describe('reconcileClerkBillingEntitlements', () => {
       nextCursor: null,
     });
 
+    expect(db.transaction).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
   });
 });

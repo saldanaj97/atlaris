@@ -1,4 +1,4 @@
-import { emailNotificationCategory, preferredAiModel } from '../../enums';
+import { type PreferredAiModel, emailNotificationCategory } from '../../enums';
 import { timestampFields } from '../helpers';
 import { recordOwnedByCurrentUser } from '../policy-helpers';
 import { users } from './users';
@@ -19,7 +19,9 @@ export const userPreferences = pgTable(
       .primaryKey()
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    preferredAiModel: preferredAiModel('preferred_ai_model'),
+    preferredAiModel: text('preferred_ai_model').$type<PreferredAiModel>(),
+    preferredRegenerationAiModel: text('preferred_regeneration_ai_model'),
+    preferredLessonAiModel: text('preferred_lesson_ai_model'),
     analyticsTimezone: text('analytics_timezone').notNull().default('UTC'),
     ...timestampFields,
   },

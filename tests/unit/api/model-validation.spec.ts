@@ -8,17 +8,25 @@ import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { describe, expect, it, vi } from 'vitest';
 
-const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
-const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;
-const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
+const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
+  'starter',
+  'initial_outline',
+);
+const STARTER_PERSISTABLE_MODEL = STARTER_PERSISTABLE_MODELS[0]?.id;
+const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
+  'pro',
+  'initial_outline',
+).find(
+  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
   ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
 )?.id;
+const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
+const STARTER_OUTLINE_DEFAULT = 'google/gemini-2.5-flash-lite';
 
 if (
-  !FREE_PERSISTABLE_MODEL ||
+  !STARTER_PERSISTABLE_MODEL ||
   !PRO_PERSISTABLE_MODEL ||
   !FREE_QUERY_OVERRIDE_MODEL
 ) {
@@ -70,10 +78,10 @@ describe('Model validation helpers (preferences + tier gating)', () => {
 
     it('handles model param with other query params', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(FREE_PERSISTABLE_MODEL)}&hours=10`,
+        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(STARTER_PERSISTABLE_MODEL)}&hours=10`,
       );
       const modelOverride = url.searchParams.get('model');
-      expect(modelOverride).toBe(FREE_PERSISTABLE_MODEL);
+      expect(modelOverride).toBe(STARTER_PERSISTABLE_MODEL);
     });
   });
 
@@ -116,95 +124,106 @@ describe('Model validation helpers (preferences + tier gating)', () => {
   });
 
   describe('Tier-gated model override validation (production logic)', () => {
-    it('allows free-tier model for free user', () => {
+    it('allows the free router for a Free user', () => {
       const resolution = resolveModelForTier(
         'free',
-        FREE_QUERY_OVERRIDE_MODEL,
+        AI_DEFAULT_MODEL,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
-      expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
+      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('allows free-tier model for pro user', () => {
+    it('allows a Free-labelled catalog model for a Pro user', () => {
       const resolution = resolveModelForTier(
         'pro',
         FREE_QUERY_OVERRIDE_MODEL,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
       expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
-    it('allows pro-tier model for pro user', () => {
+    it('allows a Pro catalog model for a Pro user', () => {
       const resolution = resolveModelForTier(
         'pro',
         PRO_PERSISTABLE_MODEL,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
       expect(resolution.modelId).toBe(PRO_PERSISTABLE_MODEL);
     });
 
-    it('BLOCKS pro-tier model for free user - falls back to default', () => {
+    it('BLOCKS a paid model for a Free user and falls back to the free router', () => {
       const resolution = resolveModelForTier(
         'free',
         PRO_PERSISTABLE_MODEL,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
+      expect(resolution.fallbackReason).toBe('tier_denied');
     });
 
-    it('BLOCKS pro-tier model for starter user - falls back to default', () => {
+    it('BLOCKS an out-of-allowlist model for Starter outline and falls back to Flash Lite', () => {
       const resolution = resolveModelForTier(
         'starter',
-        PRO_PERSISTABLE_MODEL,
+        PRO_OUTLINE_DEFAULT,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
-      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
+      expect(resolution.modelId).toBe(STARTER_OUTLINE_DEFAULT);
+      expect(resolution.fallbackReason).toBe('tier_denied');
     });
 
-    it('falls back to default when invalid model ID is provided', () => {
+    it('falls back to the Pro operation default when an invalid model ID is provided', () => {
       const resolution = resolveModelForTier(
         'pro',
         'invalid/model-id',
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
-      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
+      expect(resolution.modelId).toBe(PRO_OUTLINE_DEFAULT);
+      expect(resolution.fallbackReason).toBe('invalid_model');
     });
 
-    it('falls back to default when null is provided', () => {
+    it('falls back to the Free operation default when null is provided', () => {
       const resolution = resolveModelForTier(
         'free',
         null,
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('falls back to default when empty string is provided', () => {
+    it('falls back to the Pro operation default when empty string is provided', () => {
       const resolution = resolveModelForTier(
         'pro',
         '',
+        'initial_outline',
         stubProviderGetter,
         stubLogger,
       );
-      expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
+      expect(resolution.modelId).toBe(PRO_OUTLINE_DEFAULT);
     });
   });
 
   describe('Preferences schema validation', () => {
     it('validates valid model ID', () => {
       const result = updatePreferencesSchema.safeParse({
-        preferredAiModel: FREE_PERSISTABLE_MODEL,
+        preferredAiModel: STARTER_PERSISTABLE_MODEL,
       });
       expect(result.success).toBe(true);
       if (result.success) {
-        expect(result.data.preferredAiModel).toBe(FREE_PERSISTABLE_MODEL);
+        expect(result.data.preferredAiModel).toBe(STARTER_PERSISTABLE_MODEL);
       }
     });
 
@@ -215,15 +234,13 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects invalid model ID', () => {
+    it('accepts unknown model IDs as text; the route enforces policy', () => {
       const result = updatePreferencesSchema.safeParse({
         preferredAiModel: 'not-a-real-model',
       });
-      expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID']),
-        );
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBe('not-a-real-model');
       }
     });
 
@@ -244,11 +261,6 @@ describe('Model validation helpers (preferences + tier gating)', () => {
         preferredAiModel: undefined,
       });
       expect(result.success).toBe(false);
-      if (!result.success) {
-        expect(result.error.flatten().fieldErrors.preferredAiModel).toEqual(
-          expect.arrayContaining(['Invalid model ID']),
-        );
-      }
     });
 
     it('rejects non-string preferredAiModel', () => {
@@ -268,9 +280,24 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       }
     });
 
+    it('accepts independent Pro regeneration and lesson slots', () => {
+      const result = updatePreferencesSchema.safeParse({
+        preferredRegenerationAiModel: PRO_PERSISTABLE_MODEL,
+        preferredLessonAiModel: null,
+      });
+      expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.preferredAiModel).toBeUndefined();
+        expect(result.data.preferredRegenerationAiModel).toBe(
+          PRO_PERSISTABLE_MODEL,
+        );
+        expect(result.data.preferredLessonAiModel).toBeNull();
+      }
+    });
+
     it('rejects unknown keys (strict schema)', () => {
       const result = updatePreferencesSchema.safeParse({
-        preferredAiModel: FREE_PERSISTABLE_MODEL,
+        preferredAiModel: STARTER_PERSISTABLE_MODEL,
         extraField: 'rejected',
       });
       expect(result.success).toBe(false);

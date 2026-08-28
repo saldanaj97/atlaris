@@ -1,18 +1,23 @@
 /**
- * Rules for which models can be persisted as `user_preferences.preferred_ai_model` vs
+ * Rules for which models can be persisted as user preference slots vs
  * runtime-only defaults (e.g. `openrouter/free`).
+ *
+ * Persistability comes from the current operation policy catalogs, not the
+ * legacy PostgreSQL `preferred_ai_model` enum.
  */
 
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { preferredAiModel } from '../../../supabase/enums';
-import { getModelsForTier } from '@/features/ai/ai-models';
+import {
+  getDefaultModelForTier,
+  getModelsForTier,
+  isValidModelId,
+} from '@/features/ai/ai-models';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-
-const PERSISTABLE_MODEL_IDS = new Set<string>(preferredAiModel.enumValues);
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
 
@@ -22,53 +27,138 @@ export function isRuntimeOnlyModelId(modelId: string): boolean {
 }
 
 /**
- * Model IDs that may be stored in `preferred_ai_model` (DB enum) and shown as
- * explicit save targets in settings. Excludes runtime router fallbacks.
+ * Model IDs that may be stored as a saved preference and shown as explicit
+ * save targets in settings. Membership is the current catalog minus runtime
+ * router fallbacks such as `openrouter/free`.
  */
 export function isPersistableModelId(modelId: string): boolean {
-  return (
-    PERSISTABLE_MODEL_IDS.has(modelId) && !RUNTIME_ONLY_MODEL_IDS.has(modelId)
-  );
+  return isValidModelId(modelId) && !isRuntimeOnlyModelId(modelId);
 }
 
 /**
- * Models the user may pick in AI settings: tier-filtered catalog intersected
- * with persistable enum values. `openrouter/free` is never listed here.
+ * Models the user may pick in AI settings: the current tier × operation
+ * policy catalog excluding runtime-only routers.
  */
 export function getPersistableModelsForTier(
   tier: SubscriptionTier,
+  operation: ModelOperation,
 ): AvailableModel[] {
-  return getModelsForTier(tier).filter((m) => isPersistableModelId(m.id));
+  return getModelsForTier(tier, operation).filter(
+    (m) => !isRuntimeOnlyModelId(m.id),
+  );
+}
+
+export type SavedModelPreferenceSlots = {
+  preferredAiModel: string | null;
+  preferredRegenerationAiModel: string | null;
+  preferredLessonAiModel: string | null;
+};
+
+/**
+ * Which saved column feeds an operation. Starter/Free regeneration reuse the
+ * single outline slot; Pro regeneration and lesson slots are independent.
+ */
+export function savedModelIdForOperation(
+  tier: SubscriptionTier,
+  saved: SavedModelPreferenceSlots,
+  operation: ModelOperation,
+): string | null {
+  switch (operation) {
+    case 'initial_outline':
+      return saved.preferredAiModel;
+    case 'regeneration':
+      switch (tier) {
+        case 'pro':
+          return saved.preferredRegenerationAiModel;
+        case 'starter':
+        case 'free':
+          return saved.preferredAiModel;
+        default: {
+          const _never: never = tier;
+          throw new Error(`Unhandled subscription tier: ${String(_never)}`);
+        }
+      }
+    case 'lesson':
+      return saved.preferredLessonAiModel;
+    default: {
+      const _never: never = operation;
+      throw new Error(`Unhandled model operation: ${String(_never)}`);
+    }
+  }
+}
+
+/**
+ * Prefer an explicit override when present; otherwise the saved slot for this
+ * tier × operation. Does not validate catalog membership — callers pass the
+ * result to `resolveModelForTier` / `processGenerationAttempt`.
+ */
+export function resolveOverrideOrSavedModelId(
+  override: string | null | undefined,
+  tier: SubscriptionTier,
+  saved: SavedModelPreferenceSlots,
+  operation: ModelOperation,
+): string | undefined {
+  if (override != null && override !== '') {
+    return override;
+  }
+  return savedModelIdForOperation(tier, saved, operation) ?? undefined;
+}
+
+/**
+ * Runtime model for the current tier × operation. Never writes. Out-of-tier or
+ * empty saved values fall back to the operation default.
+ */
+export function resolveEffectivePreference(
+  tier: SubscriptionTier,
+  savedPreferredAiModel: string | null | undefined,
+  operation: ModelOperation,
+): string {
+  if (savedPreferredAiModel != null && savedPreferredAiModel !== '') {
+    const validation = validateModelForTier(
+      tier,
+      savedPreferredAiModel,
+      operation,
+    );
+    if (validation.valid) {
+      return savedPreferredAiModel;
+    }
+  }
+  return getDefaultModelForTier(tier, operation);
 }
 
 /**
  * Resolves a stored preference for settings UI only.
  *
- * @returns The saved model id when it is persistable and allowed for the tier;
- *          `null` means no saved preference (not "use tier default" as a saved row).
+ * @returns The saved model id when it is persistable and allowed for the current
+ *          tier × operation; `null` means no saved preference to show in the picker.
  */
 export function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
+  operation: ModelOperation,
 ): string | null {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
     logger.debug(
-      { tier, savedPreferredAiModel },
+      { tier, operation, savedPreferredAiModel },
       'No saved preferred AI model available for settings resolution',
     );
     return null;
   }
   if (!isPersistableModelId(savedPreferredAiModel)) {
     logger.debug(
-      { tier, savedPreferredAiModel },
+      { tier, operation, savedPreferredAiModel },
       'Saved preferred AI model is not persistable for settings resolution',
     );
     return null;
   }
-  const validation = validateModelForTier(tier, savedPreferredAiModel);
+  const validation = validateModelForTier(
+    tier,
+    savedPreferredAiModel,
+    operation,
+  );
   if (!validation.valid) {
     logger.debug(
-      { tier, savedPreferredAiModel, reason: validation.reason },
+      { tier, operation, savedPreferredAiModel, reason: validation.reason },
       'Saved preferred AI model is not allowed for current tier in settings resolution',
     );
     return null;

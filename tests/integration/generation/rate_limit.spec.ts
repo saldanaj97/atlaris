@@ -35,6 +35,7 @@ describe('generation integration - rate limit classification', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'High Demand Topic',
           notes: 'Expecting rate limit classification',

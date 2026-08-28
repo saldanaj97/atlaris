@@ -1,7 +1,4 @@
-import {
-  NOTES_MAX_LENGTH,
-  TOPIC_MAX_LENGTH,
-} from '@/shared/constants/learning-plans';
+import { toPlanCalendarDate } from '@/features/plans/calendar-date';
 import {
   createLearningPlanNotesSchema,
   topicSchema,
@@ -13,51 +10,42 @@ import {
 } from '@/shared/schemas/plan-validation.schemas';
 import { z } from 'zod';
 
-const planNotesOverrideSchema = z
-  .string()
-  .trim()
-  .max(
-    NOTES_MAX_LENGTH,
-    `notes must be ${NOTES_MAX_LENGTH} characters or fewer.`,
-  )
-  .transform((value) => (value.length > 0 ? value : null));
+const planCalendarDateOverrideSchema = (field: 'Start' | 'Deadline') =>
+  z
+    .string()
+    .trim()
+    .refine(
+      (value) => toPlanCalendarDate(value) === value,
+      `${field} date must be a valid YYYY-MM-DD calendar date.`,
+    )
+    .transform((value) => (value ? value : null));
 
-const planTopicOverrideSchema = z
-  .string()
-  .trim()
-  .min(3, 'topic must be at least 3 characters long.')
-  .max(
-    TOPIC_MAX_LENGTH,
-    `topic must be ${TOPIC_MAX_LENGTH} characters or fewer.`,
-  );
-
-const planStartDateOverrideSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) => !Number.isNaN(Date.parse(value)),
-    'Start date must be a valid ISO date string.',
-  )
-  .transform((value) => (value ? value : null));
-
-const planDeadlineDateOverrideSchema = z
-  .string()
-  .trim()
-  .refine(
-    (value) => !Number.isNaN(Date.parse(value)),
-    'Deadline date must be a valid ISO date string.',
-  )
-  .transform((value) => (value ? value : null));
-
-export const planRegenerationOverridesSchema = z.strictObject({
-  topic: planTopicOverrideSchema.optional(),
-  notes: planNotesOverrideSchema.optional().nullable(),
-  skillLevel: SKILL_LEVEL_ENUM.optional(),
-  weeklyHours: weeklyHoursSchema.optional(),
-  learningStyle: LEARNING_STYLE_ENUM.optional(),
-  startDate: planStartDateOverrideSchema.optional().nullable(),
-  deadlineDate: planDeadlineDateOverrideSchema.optional().nullable(),
-});
+export const planRegenerationOverridesSchema = z
+  .strictObject({
+    skillLevel: SKILL_LEVEL_ENUM.optional(),
+    weeklyHours: weeklyHoursSchema.optional(),
+    learningStyle: LEARNING_STYLE_ENUM.optional(),
+    startDate: planCalendarDateOverrideSchema('Start').optional().nullable(),
+    deadlineDate: planCalendarDateOverrideSchema('Deadline')
+      .optional()
+      .nullable(),
+    model: z.string().trim().min(1).optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (
+      data.startDate !== null &&
+      data.startDate !== undefined &&
+      data.deadlineDate !== null &&
+      data.deadlineDate !== undefined &&
+      data.startDate > data.deadlineDate
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['startDate'],
+        message: 'Start date must be on or before the deadline date.',
+      });
+    }
+  });
 
 export const onboardingFormObject = z.object({
   topic: topicSchema,

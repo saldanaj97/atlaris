@@ -52,8 +52,6 @@ describe('BillingCards', () => {
         tier: 'pro',
         activePlans: { current: 2, limit: 5 },
         regenerations: { used: 3, limit: 10 },
-        exports: { used: 1, limit: 8 },
-        lessonGenerations: { used: 4, limit: 20 },
       },
     });
   });
@@ -68,20 +66,21 @@ describe('BillingCards', () => {
     expect(screen.getByText('PRO')).toBeVisible();
     expect(screen.getByText('Active plans')).toBeVisible();
     expect(screen.getByText('Regenerations (monthly)')).toBeVisible();
-    expect(screen.getByText('Exports (monthly)')).toBeVisible();
-    expect(screen.getByText('Lesson generations (monthly)')).toBeVisible();
+    expect(screen.queryByText('Exports (monthly)')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Lesson generations (monthly)'),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('2/5')).toBeVisible();
     expect(screen.getByText('3/10')).toBeVisible();
-    expect(screen.getByText('1/8')).toBeVisible();
-    expect(screen.getByText('4/20')).toBeVisible();
+    expect(screen.queryByText('4/20')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Active plans: 2 of 5')).toBeVisible();
     expect(
       screen.getByLabelText('Monthly regenerations: 3 of 10'),
     ).toBeVisible();
-    expect(screen.getByLabelText('Monthly exports: 1 of 8')).toBeVisible();
+    expect(screen.queryByLabelText(/Monthly exports/i)).not.toBeInTheDocument();
     expect(
-      screen.getByLabelText('Monthly lesson generations: 4 of 20'),
-    ).toBeVisible();
+      screen.queryByLabelText(/Monthly lesson generations/i),
+    ).not.toBeInTheDocument();
   });
 
   it('redirects signed-out users back to settings', async () => {

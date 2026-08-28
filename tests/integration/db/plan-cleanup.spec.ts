@@ -10,6 +10,7 @@ import {
 } from '@/features/plans/cleanup';
 import {
   generationAttempts,
+  jobQueue,
   learningPlans,
   modules,
   usageMetrics,
@@ -148,6 +149,41 @@ describe('cleanupStuckPlans (integration)', () => {
 
     expect(row?.generationStatus).toBe('generating');
   });
+
+  it('keeps a stale plan owned by a processing regeneration workflow', async () => {
+    const user = await createTestUser();
+    const plan = await createTestPlan({
+      userId: user.id,
+      generationStatus: 'generating',
+    });
+    const runId = 'wrun-active-stuck-plan';
+
+    await db
+      .update(learningPlans)
+      .set({
+        updatedAt: new Date(Date.now() - STUCK_PLAN_THRESHOLD_MS - 60_000),
+      })
+      .where(eq(learningPlans.id, plan.id));
+    await db.insert(jobQueue).values({
+      planId: plan.id,
+      userId: user.id,
+      jobType: 'plan_regeneration',
+      status: 'processing',
+      payload: {
+        planId: plan.id,
+        workflow: { provider: 'workflow-sdk', runId },
+      },
+    });
+
+    const result = await cleanupStuckPlans(db);
+
+    expect(result.cleaned).toBe(0);
+    const [row] = await db
+      .select({ generationStatus: learningPlans.generationStatus })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, plan.id));
+    expect(row?.generationStatus).toBe('generating');
+  });
 });
 
 describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
@@ -240,6 +276,50 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
       .where(eq(usageMetrics.userId, user.id));
     expect(afterRetry?.lessonModulesGenerated).toBe(2);
   });
+
+  it('does not settle provider work whose providerStartedAt is still inside the threshold', async () => {
+    const user = await createTestUser();
+    const plan = await createTestPlan({
+      userId: user.id,
+      topic: 'Recent provider start',
+    });
+    const mod = await createTestModule({ planId: plan.id });
+    await createTestTask({ moduleId: mod.id });
+    const staleClaimAt = new Date(
+      Date.now() - ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS - 60_000,
+    );
+    const recentProviderAt = new Date(Date.now() - 60_000);
+
+    await db
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'generating',
+        lessonGenerationStartedAt: staleClaimAt,
+        lessonGenerationCompletedAt: null,
+        lessonGenerationFailedAt: null,
+        lessonGenerationError: null,
+        lessonGenerationMetadata: {
+          version: 1,
+          providerStartedAt: recentProviderAt.toISOString(),
+        },
+      })
+      .where(eq(modules.id, mod.id));
+
+    const cleanupResult = await cleanupAbandonedModuleLessonGenerations(db);
+    expect(cleanupResult.cleaned).toBe(0);
+
+    const [row] = await db
+      .select({
+        status: modules.lessonGenerationStatus,
+        error: modules.lessonGenerationError,
+      })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(row).toMatchObject({
+      status: 'generating',
+      error: null,
+    });
+  });
 });
 
 describe('cleanupOrphanedAttempts (integration)', () => {
@@ -314,6 +394,82 @@ describe('cleanupOrphanedAttempts (integration)', () => {
     expect(byId.get(recentAttempt.id)).toMatchObject({
       status: 'in_progress',
       classification: null,
+    });
+  });
+
+  it('keeps a stale attempt owned by a processing regeneration workflow', async () => {
+    const user = await createTestUser();
+    const activePlan = await createTestPlan({ userId: user.id });
+    const orphanedPlan = await createTestPlan({ userId: user.id });
+    const runId = 'wrun-active-attempt';
+    const staleCutoff = new Date(
+      Date.now() - ORPHANED_ATTEMPT_THRESHOLD_MS - 60_000,
+    );
+
+    const [activeAttempt, orphanedAttempt] = await db
+      .insert(generationAttempts)
+      .values([
+        {
+          planId: activePlan.id,
+          status: 'in_progress',
+          generationPurpose: 'regeneration',
+          classification: null,
+          durationMs: 0,
+          modulesCount: 0,
+          tasksCount: 0,
+          metadata: {
+            workflow: { provider: 'workflow-sdk', runId },
+          },
+        },
+        {
+          planId: orphanedPlan.id,
+          status: 'in_progress',
+          generationPurpose: 'regeneration',
+          classification: null,
+          durationMs: 0,
+          modulesCount: 0,
+          tasksCount: 0,
+        },
+      ])
+      .returning();
+    await db
+      .update(generationAttempts)
+      .set({ createdAt: staleCutoff })
+      .where(
+        inArray(generationAttempts.id, [activeAttempt.id, orphanedAttempt.id]),
+      );
+    await db.insert(jobQueue).values({
+      planId: activePlan.id,
+      userId: user.id,
+      jobType: 'plan_regeneration',
+      status: 'processing',
+      payload: {
+        planId: activePlan.id,
+        workflow: { provider: 'workflow-sdk', runId },
+      },
+    });
+
+    const result = await cleanupOrphanedAttempts(db);
+
+    expect(result.cleaned).toBe(1);
+    const rows = await db
+      .select({
+        id: generationAttempts.id,
+        status: generationAttempts.status,
+        classification: generationAttempts.classification,
+      })
+      .from(generationAttempts)
+      .where(
+        inArray(generationAttempts.id, [activeAttempt.id, orphanedAttempt.id]),
+      );
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    expect(byId.get(activeAttempt.id)).toMatchObject({
+      status: 'in_progress',
+      classification: null,
+    });
+    expect(byId.get(orphanedAttempt.id)).toMatchObject({
+      status: 'failure',
+      classification: 'timeout',
     });
   });
 

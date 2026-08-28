@@ -299,6 +299,7 @@ export async function failJobRecord(
   error: string,
   retryable?: boolean,
   dbClient?: JobsDbClient,
+  retryAfterSeconds?: number,
 ): Promise<Job | null> {
   const client = dbClient ?? getDb();
 
@@ -309,6 +310,7 @@ export async function failJobRecord(
       attemptNumber: nextAttempts,
       maxAttempts: current.maxAttempts,
       retryable,
+      retryAfterSeconds,
     });
 
     const payloadWithHistory = appendErrorHistoryEntry(current.payload, {
@@ -318,6 +320,11 @@ export async function failJobRecord(
     });
     const payloadForRetry = { ...payloadWithHistory };
     delete payloadForRetry.workflow;
+    if (current.jobType === JOB_TYPES.PLAN_REGENERATION) {
+      // The provider-start marker settles the current attempt. A retry gets a
+      // fresh attempt and must be allowed to settle exactly once for itself.
+      delete payloadForRetry.quota;
+    }
 
     const updatePayload = decision.shouldRetry
       ? {

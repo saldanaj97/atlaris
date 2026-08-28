@@ -32,8 +32,6 @@ export function TimelineModuleCard({
   onModuleToggle,
   onTaskStatusChange,
 }: TimelineModuleCardProps) {
-  const isLocked = module.status === 'locked';
-
   return (
     <div
       id={`module-${module.id}`}
@@ -45,7 +43,6 @@ export function TimelineModuleCard({
 
       <AccordionItem
         value={module.id}
-        disabled={isLocked}
         className={cn(
           'group/accordion flex flex-1 flex-col rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
           getTimelineCardClassName(module.status),
@@ -54,14 +51,10 @@ export function TimelineModuleCard({
         <Button
           type='button'
           variant='ghost'
-          disabled={isLocked}
           onClick={() => onModuleToggle(module.id)}
           aria-expanded={isOpen}
           aria-controls={`module-content-${module.id}`}
-          className={cn(
-            'h-auto w-full justify-start gap-4 rounded-[inherit] p-4 text-left whitespace-normal',
-            isLocked ? 'cursor-not-allowed' : 'cursor-pointer',
-          )}
+          className='h-auto w-full cursor-pointer justify-start gap-4 rounded-[inherit] p-4 text-left whitespace-normal'
         >
           <div className='min-w-0 flex-1'>
             <p className='mb-2 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
@@ -99,15 +92,13 @@ export function TimelineModuleCard({
               </div>
             )}
           </div>
-          {!isLocked && (
-            <ChevronRight
-              size={20}
-              className={cn(
-                'mt-0.5 shrink-0 text-muted-foreground transition-transform duration-300',
-                isOpen ? '-rotate-90' : 'rotate-90',
-              )}
-            />
-          )}
+          <ChevronRight
+            size={20}
+            className={cn(
+              'mt-0.5 shrink-0 text-muted-foreground transition-transform duration-300',
+              isOpen ? '-rotate-90' : 'rotate-90',
+            )}
+          />
         </Button>
 
         <AccordionContent

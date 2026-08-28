@@ -33,6 +33,11 @@ import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
 import { logger } from '@/lib/logging/logger';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
+import {
+  describeGenerationPurpose,
+  parseGenerationPurpose,
+  type GenerationPurpose,
+} from '@/shared/types/generation-purpose';
 
 export interface PlanLifecyclePersistence {
   atomicInsertPlan(
@@ -84,11 +89,12 @@ export type GenerationRunParams = {
   userId: string;
   tier: SubscriptionTier;
   input: Readonly<GenerationInput>;
+  generationPurpose: GenerationPurpose;
   modelOverride?: string;
   signal?: AbortSignal;
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
-  onAttemptReserved?: (reservation: AttemptReservation) => void;
+  onAttemptReserved?: (reservation: AttemptReservation) => void | Promise<void>;
   /**
    * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
    * worker recovery) does not double-reserve. Implementations must validate the
@@ -123,6 +129,9 @@ type GenerationRunFailure = {
 type GenerationRunAlreadyFinalized = {
   status: 'already_finalized';
   planId: string;
+  outcome?: 'success' | 'failure';
+  classification?: FailureClassification | 'unknown';
+  error?: Error;
 };
 
 export type GenerationRunResult =
@@ -266,9 +275,15 @@ export class PlanLifecycleService {
     existingReservation?: AttemptReservation,
   ): Promise<GenerationAttemptResult> {
     const { planId, userId, tier } = input;
+    const generationPurpose = parseGenerationPurpose(input.generationPurpose);
 
     logger.info(
-      { planId, userId, tier },
+      {
+        planId,
+        userId,
+        tier,
+        generationPurpose: describeGenerationPurpose(generationPurpose),
+      },
       'plan.lifecycle.generation: attempt started',
     );
 
@@ -277,6 +292,7 @@ export class PlanLifecycleService {
       userId: input.userId,
       tier: input.tier,
       input: input.input,
+      generationPurpose,
       signal: input.signal,
       allowedGenerationStatuses: input.allowedGenerationStatuses,
       requiredGenerationStatus: input.requiredGenerationStatus,
@@ -288,6 +304,30 @@ export class PlanLifecycleService {
     });
 
     if (generationResult.status === 'already_finalized') {
+      if (generationResult.outcome === 'failure') {
+        const classification = generationResult.classification ?? 'unknown';
+        const error =
+          generationResult.error ??
+          new Error(
+            `Generation attempt for plan ${generationResult.planId} was already finalized as a failure (${classification}).`,
+          );
+        const retryable = isRetryableClassification(classification);
+
+        logger.info(
+          {
+            planId,
+            userId,
+            classification,
+            retryable,
+          },
+          'plan.lifecycle.generation: recovered finalized failure — skipping provider work',
+        );
+
+        return retryable
+          ? { status: 'retryable_failure', classification, error }
+          : { status: 'permanent_failure', classification, error };
+      }
+
       logger.info(
         { planId, userId },
         'plan.lifecycle.generation: already finalized — skipping provider work',
@@ -330,12 +370,21 @@ export class PlanLifecycleService {
             }
           : {}),
         usageKind: 'plan',
+        generationPurpose,
       });
 
-      logger.info({ planId, durationMs }, 'plan.lifecycle.generation: success');
+      logger.info(
+        {
+          planId,
+          durationMs,
+          generationPurpose: describeGenerationPurpose(generationPurpose),
+        },
+        'plan.lifecycle.generation: success',
+      );
       countMetric('atlaris.plan.generation.success', 1, {
         attributes: {
           tier,
+          generation_purpose: describeGenerationPurpose(generationPurpose),
           extended_timeout: extendedTimeout,
         },
       });
@@ -344,6 +393,7 @@ export class PlanLifecycleService {
         attributes: {
           status: 'success',
           tier,
+          generation_purpose: describeGenerationPurpose(generationPurpose),
           extended_timeout: extendedTimeout,
         },
       });
@@ -369,6 +419,7 @@ export class PlanLifecycleService {
         durationMs: generationResult.durationMs,
         usage: generationResult.usage,
         usageKind: 'plan' as const,
+        generationPurpose,
         retryable,
       };
 
@@ -423,6 +474,7 @@ export class PlanLifecycleService {
           classification,
           retryable: true,
           tier,
+          generation_purpose: describeGenerationPurpose(generationPurpose),
         },
       });
       distributionMetric(
@@ -435,6 +487,7 @@ export class PlanLifecycleService {
             classification,
             retryable: true,
             tier,
+            generation_purpose: describeGenerationPurpose(generationPurpose),
           },
         },
       );
@@ -454,6 +507,7 @@ export class PlanLifecycleService {
         classification,
         retryable: false,
         tier,
+        generation_purpose: describeGenerationPurpose(generationPurpose),
       },
     });
     distributionMetric(
@@ -466,6 +520,7 @@ export class PlanLifecycleService {
           classification,
           retryable: false,
           tier,
+          generation_purpose: describeGenerationPurpose(generationPurpose),
         },
       },
     );

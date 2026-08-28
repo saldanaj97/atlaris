@@ -1,16 +1,40 @@
-import type { PlanRegenerationWorkflowInput } from './plan-regeneration.types';
-import type { PlanRegenerationWorkflowClaimResult } from './plan-regeneration.types';
-import type { PlanRegenerationWorkflowTerminalResult } from './plan-regeneration.types';
+import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
+import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+} from '@/lib/db/queries/types/attempts.types';
+import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import {
+  fromSerializableReservation,
+  toSerializableReservation,
+} from './plan-generation.types';
+import {
+  resolvePlanRegenerationWorkflowPurpose,
+  type PlanRegenerationAttemptPreparation,
+  type PlanRegenerationWorkflowClaimResult,
+  type PlanRegenerationWorkflowInput,
+  type PlanRegenerationReservationStepResult,
+  type PlanRegenerationWorkflowTerminalResult,
+} from './plan-regeneration.types';
+import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
+import { validateModelForTier } from '@/features/ai/model-resolver';
+import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   claimRegenerationJob,
+  failJob,
   loadJobById,
   updateJobPayload,
   updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { commitPlanGenerationFailure } from '@/features/plans/lifecycle/generation-finalization/store';
+import { resolveRegenerationPolicyDenial } from '@/features/plans/regeneration-orchestration/admission';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import {
   applyRegenerationGenerationResult,
@@ -20,6 +44,11 @@ import {
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
+import {
+  findAttemptWithWorkflowIdempotencyKey,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
+import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { FatalError, getWorkflowMetadata } from 'workflow';
 
@@ -115,11 +144,42 @@ export async function claimPlanRegenerationJobStep(
   return { kind: 'claimed', runId };
 }
 
-export async function processPlanRegenerationStep(
-  input: PlanRegenerationWorkflowInput,
-): Promise<GenerationAttemptResult> {
-  'use step';
+type PreparedRegeneration = {
+  readonly job: Job;
+  readonly plan: RegenerationPlanRow;
+  readonly tier: SubscriptionTier;
+  readonly generationInput: GenerationInput;
+  readonly modelOverride?: string;
+};
 
+type LoadedRegeneration = Pick<
+  PreparedRegeneration,
+  'job' | 'plan' | 'generationInput'
+> & {
+  readonly payload: PlanRegenerationJobPayload;
+};
+
+type ReservationForCompensation = AttemptReservation & {
+  readonly status?: 'in_progress' | 'success' | 'failure';
+};
+
+class RegenerationAdmissionDeniedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'RegenerationAdmissionDeniedError';
+  }
+}
+
+function regenerationReservationIdempotencyKey(
+  jobId: string,
+  queueAttempt: number,
+): string {
+  return `plan-regeneration:${jobId}:${queueAttempt}`;
+}
+
+async function loadRegenerationContext(
+  input: PlanRegenerationWorkflowInput,
+): Promise<LoadedRegeneration> {
   const job = await loadJobById(input.jobId);
   if (!job) {
     throw new FatalError('Regeneration job not found during processing');
@@ -141,19 +201,317 @@ export async function processPlanRegenerationStep(
     throw new FatalError('Plan not found for regeneration workflow');
   }
 
-  const tier = await resolveUserTier(plan.userId, serviceRoleDb);
   const generationInput = buildRegenerationGenerationInput(
     validation.payload,
     plan,
   );
+
+  return { job, plan, generationInput, payload: validation.payload };
+}
+
+async function prepareRegeneration(
+  input: PlanRegenerationWorkflowInput,
+  loaded?: LoadedRegeneration,
+  admittedTier?: SubscriptionTier,
+): Promise<PreparedRegeneration> {
+  const context = loaded ?? (await loadRegenerationContext(input));
+  const { plan, generationInput, payload } = context;
+  const tier =
+    admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
+  const policyDenial = resolveRegenerationPolicyDenial({
+    tier,
+    weeklyHours: generationInput.weeklyHours,
+    startDate: generationInput.startDate,
+    deadlineDate: generationInput.deadlineDate,
+  });
+  if (policyDenial) {
+    const message =
+      policyDenial.kind === 'not-included'
+        ? 'Plan regeneration is not included on the Free plan.'
+        : policyDenial.reason;
+    throw new RegenerationAdmissionDeniedError(message);
+  }
+
+  const explicitModel = payload.overrides?.model;
+  if (explicitModel !== undefined) {
+    const modelValidation = validateModelForTier(
+      tier,
+      explicitModel,
+      'regeneration',
+    );
+    if (!modelValidation.valid) {
+      const message = 'Model is not allowed for regeneration on this tier.';
+      throw new RegenerationAdmissionDeniedError(message);
+    }
+  }
+
+  const saved = await getUserPreferences(plan.userId, serviceRoleDb);
+  const modelOverride = resolveOverrideOrSavedModelId(
+    payload.overrides?.model,
+    tier,
+    saved,
+    'regeneration',
+  );
+
+  return {
+    ...context,
+    tier,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
+  };
+}
+
+async function failPreReservationAdmission(
+  jobId: string,
+  error: RegenerationAdmissionDeniedError,
+): Promise<never> {
+  await failJob(jobId, error.message, { retryable: false });
+  throw new FatalError(error.message);
+}
+
+async function compensatePostReservationAdmission(
+  input: PlanRegenerationWorkflowInput,
+  reservation: ReservationForCompensation,
+  workflowMetadata: {
+    readonly provider: 'workflow-sdk';
+    readonly runId: string;
+    readonly idempotencyKey: string;
+  },
+  error: RegenerationAdmissionDeniedError,
+): Promise<never> {
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  if (
+    reservation.status === undefined ||
+    reservation.status === 'in_progress'
+  ) {
+    await commitPlanGenerationFailure(serviceRoleDb, {
+      variant: 'reserved_attempt',
+      planId: input.planId,
+      userId: input.userId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      classification: 'validation',
+      error,
+      durationMs: 0,
+      timedOut: false,
+      extendedTimeout: false,
+      workflowMetadata: {
+        ...workflowMetadata,
+        startedAt: reservation.startedAt.toISOString(),
+      },
+      generationPurpose,
+      usageKind: 'plan',
+      retryable: false,
+    });
+  }
+
+  await failJob(input.jobId, error.message, { retryable: false });
+  throw new FatalError(error.message);
+}
+
+function isRetryableReservationRejection(
+  reason: AttemptRejection['reason'],
+): boolean {
+  switch (reason) {
+    case 'active_child_generation':
+    case 'free_initial_in_progress':
+    case 'in_progress':
+    case 'rate_limited':
+      return true;
+    case 'capped':
+    case 'free_allowance_used':
+    case 'invalid_status':
+    case 'plan_limit':
+      return false;
+    default: {
+      const _never: never = reason;
+      return _never;
+    }
+  }
+}
+
+async function terminalizeReservationRejection(
+  input: PlanRegenerationWorkflowInput,
+  reservation: AttemptRejection,
+): Promise<PlanRegenerationWorkflowTerminalResult> {
+  const message = `Unable to reserve regeneration attempt: ${reservation.reason}.`;
+  const retryable = isRetryableReservationRejection(reservation.reason);
+  const failedJob = await failJob(input.jobId, message, {
+    retryable,
+    ...(reservation.retryAfter !== undefined
+      ? { retryAfter: reservation.retryAfter }
+      : {}),
+  });
+
+  return retryable
+    ? {
+        kind: 'retryable-failure',
+        jobId: input.jobId,
+        planId: input.planId,
+        willRetry: failedJob?.status === 'pending',
+      }
+    : {
+        kind: 'permanent-failure',
+        jobId: input.jobId,
+        planId: input.planId,
+      };
+}
+
+export async function reservePlanRegenerationAttemptStep(
+  input: PlanRegenerationWorkflowInput,
+): Promise<PlanRegenerationReservationStepResult> {
+  'use step';
+
+  const loaded = await loadRegenerationContext(input);
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  const idempotencyKey = regenerationReservationIdempotencyKey(
+    loaded.job.id,
+    loaded.job.attempts,
+  );
+  const { workflowRunId: runId } = getWorkflowMetadata();
+  const workflowMetadata = {
+    provider: 'workflow-sdk' as const,
+    runId,
+    idempotencyKey,
+  };
+  const existingReservation = await findAttemptWithWorkflowIdempotencyKey({
+    planId: loaded.plan.id,
+    userId: loaded.plan.userId,
+    input: loaded.generationInput,
+    generationPurpose,
+    workflowIdempotencyKey: idempotencyKey,
+    dbClient: serviceRoleDb,
+  });
+
+  let preflight: PreparedRegeneration;
+  try {
+    preflight = await prepareRegeneration(
+      input,
+      loaded,
+      existingReservation?.admittedTier,
+    );
+  } catch (error: unknown) {
+    if (error instanceof RegenerationAdmissionDeniedError) {
+      if (existingReservation) {
+        return compensatePostReservationAdmission(
+          input,
+          existingReservation,
+          workflowMetadata,
+          error,
+        );
+      }
+      return failPreReservationAdmission(loaded.job.id, error);
+    }
+    throw error;
+  }
+
+  const reservation = await reserveAttemptSlot({
+    planId: loaded.plan.id,
+    userId: loaded.plan.userId,
+    input: loaded.generationInput,
+    generationPurpose,
+    dbClient: serviceRoleDb,
+    workflowMetadata,
+  });
+
+  if (!reservation.reserved) {
+    return terminalizeReservationRejection(input, reservation);
+  }
+
+  let prepared = preflight;
+  if (
+    existingReservation === null &&
+    reservation.admittedTier !== undefined &&
+    reservation.admittedTier !== preflight.tier
+  ) {
+    try {
+      prepared = await prepareRegeneration(
+        input,
+        loaded,
+        reservation.admittedTier,
+      );
+    } catch (error: unknown) {
+      if (error instanceof RegenerationAdmissionDeniedError) {
+        return compensatePostReservationAdmission(
+          input,
+          reservation,
+          workflowMetadata,
+          error,
+        );
+      }
+      throw error;
+    }
+  }
+
+  return {
+    reservation: toSerializableReservation(reservation),
+    tier: prepared.tier,
+    generationInput: prepared.generationInput,
+    ...(prepared.modelOverride !== undefined
+      ? { modelOverride: prepared.modelOverride }
+      : {}),
+  };
+}
+
+export async function processPlanRegenerationStep(
+  input: PlanRegenerationWorkflowInput,
+  preparation: PlanRegenerationAttemptPreparation,
+): Promise<GenerationAttemptResult> {
+  'use step';
+
+  const job = await loadJobById(input.jobId);
+  if (!job) {
+    throw new FatalError('Regeneration job not found during processing');
+  }
+
+  const { reservation, tier, generationInput, modelOverride } = preparation;
+  const generationPurpose = resolvePlanRegenerationWorkflowPurpose(input);
+  const { workflowRunId: runId } = getWorkflowMetadata();
   const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
 
-  return lifecycle.processGenerationAttempt({
-    planId: plan.id,
-    userId: plan.userId,
-    tier,
-    input: generationInput,
-  });
+  let quotaDenied = false;
+  const generationResult =
+    await lifecycle.processGenerationAttemptWithReservation(
+      {
+        planId: input.planId,
+        userId: input.userId,
+        tier,
+        generationPurpose,
+        input: generationInput,
+        ...(modelOverride !== undefined ? { modelOverride } : {}),
+        workflowMetadata: {
+          provider: 'workflow-sdk',
+          runId,
+          startedAt: reservation.startedAt,
+          idempotencyKey: regenerationReservationIdempotencyKey(
+            job.id,
+            job.attempts,
+          ),
+        },
+        onAttemptReserved: async () => {
+          const quotaResult = await reserveRegenerationQuotaAtProviderStart({
+            userId: input.userId,
+            planId: input.planId,
+            jobId: job.id,
+            dbClient: serviceRoleDb,
+          });
+          if (!quotaResult.ok) {
+            quotaDenied = true;
+            throw new Error(
+              'Regeneration quota exceeded for your subscription tier.',
+            );
+          }
+        },
+      },
+      fromSerializableReservation(reservation, generationPurpose),
+    );
+
+  if (quotaDenied) {
+    const message = 'Regeneration quota exceeded for your subscription tier.';
+    await failJob(job.id, message, { retryable: false });
+    throw new FatalError(message);
+  }
+
+  return generationResult;
 }
 
 export async function finalizePlanRegenerationJobStep(

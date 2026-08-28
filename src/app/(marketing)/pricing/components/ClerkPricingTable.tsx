@@ -8,10 +8,11 @@ import {
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
 import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/pricing/pricing-plan-features';
+import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { ROUTES } from '@/features/navigation/routes';
 import { clientLogger } from '@/lib/logging/client';
-import { PricingTable, SignInButton, useAuth, useClerk } from '@clerk/nextjs';
+import { SignInButton, useAuth, useClerk } from '@clerk/nextjs';
 import {
   CheckoutButton,
   SubscriptionDetailsButton,
@@ -39,8 +40,12 @@ type ClerkSubscriptionSnapshot = {
   }>;
 };
 
+type ClerkBillingAppearance = NonNullable<
+  ComponentProps<typeof CheckoutButton>['checkoutProps']
+>['appearance'];
+
 type ClerkPricingTableProps = {
-  appearance: ComponentProps<typeof PricingTable>['appearance'];
+  appearance: ClerkBillingAppearance;
   newSubscriptionRedirectUrl: string;
 };
 
@@ -117,20 +122,29 @@ function currentPaidPlanSlug(
   );
 }
 
-function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
-  const clerkFeatures = plan.features.flatMap((feature) =>
-    feature.name?.trim() ? [feature.name.trim()] : [],
-  );
+function isExportFeatureName(name: string): boolean {
+  return /\bexports?\b/i.test(name);
+}
 
+function publicPlanFeatures(plan: ClerkPlanSnapshot): readonly string[] {
+  const clerkFeatures = plan.features.flatMap((feature) => {
+    const name = feature.name?.trim();
+    if (!name || isExportFeatureName(name)) return [];
+    return [name];
+  });
+
+  return clerkFeatures.length > 0
+    ? clerkFeatures
+    : (PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? []);
+}
+
+function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
   return {
     id: plan.id,
     slug: plan.slug,
     name: plan.name?.trim() || PLAN_NAME_BY_SLUG[plan.slug] || plan.slug,
     description: plan.description?.trim() || '',
-    features:
-      clerkFeatures.length > 0
-        ? clerkFeatures
-        : (PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? []),
+    features: publicPlanFeatures(plan),
     fee: plan.fee ?? null,
     annualFee: plan.annualFee ?? null,
     annualMonthlyFee: plan.annualMonthlyFee ?? null,
@@ -149,6 +163,7 @@ export function ClerkPricingTable({
     null,
   );
   const [loadFailed, setLoadFailed] = useState(false);
+  const [reloadNonce, setReloadNonce] = useState(0);
   const [subscriptionUserId, setSubscriptionUserId] = useState<string | null>(
     null,
   );
@@ -157,7 +172,10 @@ export function ClerkPricingTable({
   const resumedCheckout = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!loaded || !billing) return;
+    if (!loaded) return;
+    if (!billing) {
+      return;
+    }
 
     let cancelled = false;
 
@@ -190,7 +208,7 @@ export function ClerkPricingTable({
     return () => {
       cancelled = true;
     };
-  }, [billing, isLoaded, loaded, userId]);
+  }, [billing, isLoaded, loaded, reloadNonce, userId]);
 
   useEffect(() => {
     if (plans.length === 0) return;
@@ -243,9 +261,10 @@ export function ClerkPricingTable({
 
   if (loadFailed || (loaded && !billing)) {
     return (
-      <PricingTable
-        appearance={appearance}
-        newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+      <RouteErrorState
+        title='Error Loading Pricing'
+        message="We couldn't load subscription plans. This could be a temporary issue."
+        onRetry={() => setReloadNonce((nonce) => nonce + 1)}
       />
     );
   }

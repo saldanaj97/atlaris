@@ -144,11 +144,21 @@ function planListRowsSql(params: {
   userId: string;
   search: string;
   referenceTimestamp: string;
+  planIds?: string[];
 }): SQL {
   const attemptCap = getAttemptCap();
   const searchFilter = params.search
     ? sql`and position(lower(${params.search}) in lower(up.topic)) > 0`
     : sql``;
+  const planIdFilter =
+    params.planIds === undefined
+      ? sql``
+      : params.planIds.length === 0
+        ? sql`and false`
+        : sql`and p.id in (${sql.join(
+            params.planIds.map((planId) => sql`${planId}::uuid`),
+            sql`, `,
+          )})`;
 
   return sql`
     with user_plans as (
@@ -160,6 +170,7 @@ function planListRowsSql(params: {
         p.generation_status
       from learning_plans p
       where p.user_id = ${params.userId}::uuid
+        ${planIdFilter}
     ),
     filtered_user_plans as (
       select up.*
@@ -241,6 +252,7 @@ export async function getPlanListPageRowsForUser(params: {
   query: PlanListPageQuery;
   referenceTimestamp: string;
   pageSize: number;
+  planIds?: string[];
   dbClient?: DbClient;
 }): Promise<PlanListQueryPageRows> {
   const client = params.dbClient ?? getDb();
@@ -249,6 +261,7 @@ export async function getPlanListPageRowsForUser(params: {
     userId: params.userId,
     search: params.query.search,
     referenceTimestamp: params.referenceTimestamp,
+    planIds: params.planIds,
   });
   const countRows = (await client.execute(sql`
     ${rowsSql}
@@ -288,19 +301,15 @@ export async function getPlanListPageRowsForUser(params: {
   `)) as PlanListItemRow[];
 
   return {
-    items: itemRows.map(
-      (row): PlanListQueryItemRow => ({
-        id: row.id,
-        topic: row.topic,
-        createdAt: new Date(row.created_at).toISOString(),
-        updatedAt: row.updated_at
-          ? new Date(row.updated_at).toISOString()
-          : null,
-        status: row.status,
-        completedTasks: row.completed_tasks,
-        totalTasks: row.total_tasks,
-      }),
-    ),
+    items: itemRows.map((row): PlanListQueryItemRow => ({
+      id: row.id,
+      topic: row.topic,
+      createdAt: new Date(row.created_at).toISOString(),
+      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : null,
+      status: row.status,
+      completedTasks: row.completed_tasks,
+      totalTasks: row.total_tasks,
+    })),
     page,
     pageSize,
     totalItems,

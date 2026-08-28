@@ -1,3 +1,4 @@
+import type { FreeAccessPlanCandidate } from '@/features/plans/policy/entitlement';
 import type { ProgressStatus, ResourceType } from '@/shared/types/db.types';
 import type { LessonContent } from '@/shared/types/lesson-content.types';
 
@@ -52,6 +53,7 @@ export type PlanListItem = {
   completion: number;
   completedTasks: number;
   totalTasks: number;
+  access?: 'full' | 'locked';
 };
 
 export type PlanListStatusCounts = Record<PlanReadStatus, number>;
@@ -65,6 +67,9 @@ export type PlanListPage = {
   totalSearchResults: number;
   statusCounts: PlanListStatusCounts;
   referenceTimestamp: string;
+  canCreatePlan?: boolean;
+  selectionRequired?: boolean;
+  selectionCandidates?: FreeAccessPlanCandidate[];
 };
 
 /** Flat resource on module-detail task (type/title/url map to UI). */

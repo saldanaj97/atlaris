@@ -79,6 +79,30 @@ describe('ModelSelector', () => {
     vi.resetModules();
   });
 
+  it('shows empty upgrade copy without a picker when no models are available', () => {
+    render(
+      <ModelSelector
+        currentModel={null}
+        userTier='free'
+        availableModels={[]}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('combobox', { name: /preferred ai model/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /save preferences/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /use tier default/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: /view pricing plans/i }),
+    ).toBeInTheDocument();
+  });
+
   it('displays upgrade prompt for non-pro users', () => {
     render(
       <ModelSelector

@@ -5,7 +5,9 @@ import type {
   GenerationInput,
   ProviderMetadata,
 } from '@/shared/types/ai-provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@supabase/schema');
@@ -27,6 +29,9 @@ export interface AttemptReservation {
   attemptId: string;
   attemptNumber: number;
   startedAt: Date;
+  /** Tier admitted when a durable workflow reservation was created. */
+  admittedTier?: SubscriptionTier;
+  generationPurpose: GenerationPurpose;
   sanitized: {
     topic: {
       value: string;
@@ -50,7 +55,9 @@ export interface AttemptRejection {
     | 'invalid_status'
     | 'rate_limited'
     | 'plan_limit'
-    | 'active_child_generation';
+    | 'active_child_generation'
+    | 'free_allowance_used'
+    | 'free_initial_in_progress';
   currentStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
@@ -105,12 +112,15 @@ interface AttemptMetadataFailure {
 export interface AttemptWorkflowMetadata {
   provider: 'workflow-sdk';
   runId: string;
+  /** Stable logical operation key used to recover a workflow reservation replay. */
+  idempotencyKey?: string;
   startedAt?: string;
   completedAt?: string;
 }
 
 export interface AttemptMetadata {
   workflow?: AttemptWorkflowMetadata;
+  admitted_tier?: SubscriptionTier;
   input: {
     topic: {
       truncated: boolean;
@@ -145,6 +155,7 @@ export interface MetadataParams {
   finishedAt: Date;
   extendedTimeout: boolean;
   failure?: AttemptMetadataFailure;
+  admittedTier?: SubscriptionTier;
 }
 
 // ----- Params for exported functions -----
@@ -153,6 +164,7 @@ export interface ReserveAttemptSlotParams {
   planId: string;
   userId: string;
   input: GenerationInput;
+  generationPurpose: GenerationPurpose;
   dbClient: AttemptsDbClient;
   /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
   allowedGenerationStatuses?: ReadonlyArray<
@@ -162,6 +174,8 @@ export interface ReserveAttemptSlotParams {
   requiredGenerationStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
+  /** Durable workflow identity for idempotently recovering a committed reservation. */
+  workflowMetadata?: AttemptWorkflowMetadata;
   now?: () => Date;
 }
 

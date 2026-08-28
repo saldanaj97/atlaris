@@ -12,11 +12,7 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, eq, sql } from 'drizzle-orm';
 
 // Usage type for incrementing counters
-export type UsageType =
-  | 'plan'
-  | 'regeneration'
-  | 'export'
-  | 'lesson_generation';
+export type UsageType = 'plan' | 'regeneration';
 
 export type UsageSummary = {
   tier: SubscriptionTier;
@@ -25,14 +21,6 @@ export type UsageSummary = {
     limit: number;
   };
   regenerations: {
-    used: number;
-    limit: number;
-  };
-  exports: {
-    used: number;
-    limit: number;
-  };
-  lessonGenerations: {
     used: number;
     limit: number;
   };
@@ -45,12 +33,6 @@ function getUsageCounterUpdate(type: UsageType) {
     case 'regeneration':
       return {
         regenerationsUsed: sql`${usageMetrics.regenerationsUsed} + 1`,
-      };
-    case 'export':
-      return { exportsUsed: sql`${usageMetrics.exportsUsed} + 1` };
-    case 'lesson_generation':
-      return {
-        lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
       };
     default: {
       const _exhaustive: never = type;
@@ -192,14 +174,6 @@ export async function getUsageSummaryForTier(args: {
       used: metrics?.regenerationsUsed ?? 0,
       limit: limits.monthlyRegenerations,
     },
-    exports: {
-      used: metrics?.exportsUsed ?? 0,
-      limit: limits.monthlyExports,
-    },
-    lessonGenerations: {
-      used: metrics?.lessonModulesGenerated ?? 0,
-      limit: limits.monthlyLessonGenerations,
-    },
   };
 }
 
@@ -256,6 +230,31 @@ export async function incrementExistingUsageInTx(
     .update(usageMetrics)
     .set({
       ...updateObj,
+      updatedAt: new Date(),
+    })
+    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))
+    .returning({ id: usageMetrics.id });
+
+  if (updated.length === 0) {
+    throw new UsageMetricsLoadError(userId, month);
+  }
+}
+
+/**
+ * Records a provider-started module lesson attempt for operational telemetry.
+ * This counter is observational only and is not a product entitlement.
+ */
+export async function incrementLessonModulesGeneratedInTx(
+  tx: Parameters<Parameters<DbClient['transaction']>[0]>[0],
+  userId: string,
+  month: string,
+): Promise<void> {
+  await ensureUsageMetricsExist(tx, userId, month);
+
+  const updated = await tx
+    .update(usageMetrics)
+    .set({
+      lessonModulesGenerated: sql`${usageMetrics.lessonModulesGenerated} + 1`,
       updatedAt: new Date(),
     })
     .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)))

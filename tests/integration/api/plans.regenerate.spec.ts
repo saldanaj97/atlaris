@@ -69,7 +69,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
@@ -86,7 +86,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       expect.objectContaining({
         userId,
         planId,
-        overrides: { topic: 'interview prep' },
+        overrides: { skillLevel: 'advanced' },
       }),
     );
   });
@@ -96,7 +96,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     mockRequestPlanRegeneration.mockResolvedValue({ kind: 'plan-not-found' });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
@@ -111,7 +111,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     mockRequestPlanRegeneration.mockResolvedValue({ kind: 'queue-disabled' });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
@@ -132,7 +132,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const response = await POST(request, context);
@@ -153,7 +153,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
@@ -172,7 +172,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
@@ -192,17 +192,54 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     });
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'interview prep' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const res = await POST(request, context);
     expect(res.status).toBe(429);
 
     const body = await res.json();
-    // Matches RateLimitError message in route for `quota-denied` (requestPlanRegeneration).
+    expect(body.code).toBe('REGENERATION_QUOTA_EXCEEDED');
     expect(body.error).toBe(
       'Regeneration quota exceeded for your subscription tier.',
     );
+  });
+
+  it('maps not-included to 403 PLAN_REGENERATION_NOT_INCLUDED', async () => {
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({ kind: 'not-included' });
+
+    const { request, context } = await createRequest(planId, {});
+    const res = await POST(request, context);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe('PLAN_REGENERATION_NOT_INCLUDED');
+  });
+
+  it('maps duration-exceeded to 403 PLAN_DURATION_LIMIT_EXCEEDED', async () => {
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({
+      kind: 'duration-exceeded',
+      reason: 'starter tier limited to 8-week plans.',
+      upgradeUrl: '/pricing',
+    });
+
+    const { request, context } = await createRequest(planId, {});
+    const res = await POST(request, context);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe('PLAN_DURATION_LIMIT_EXCEEDED');
+  });
+
+  it('maps content-locked to 403 PLAN_ENTITLEMENT_REQUIRED', async () => {
+    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+    mockRequestPlanRegeneration.mockResolvedValue({ kind: 'content-locked' });
+
+    const { request, context } = await createRequest(planId, {});
+    const res = await POST(request, context);
+    expect(res.status).toBe(403);
+    const body = await res.json();
+    expect(body.code).toBe('PLAN_ENTITLEMENT_REQUIRED');
   });
 
   it('propagates RateLimitError from boundary as 429', async () => {
@@ -220,7 +257,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     );
 
     const { request, context } = await createRequest(planId, {
-      overrides: { topic: 'blocked by durable limit' },
+      overrides: { skillLevel: 'advanced' },
     });
 
     const response = await POST(request, context);
@@ -256,11 +293,11 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
   });
 
   describe('invalid overrides schema', () => {
-    it('rejects topic that is too short', async () => {
+    it('rejects forged topic overrides', async () => {
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
-        overrides: { topic: 'ab' },
+        overrides: { topic: 'forged topic' },
       });
 
       const res = await POST(request, context);
@@ -303,7 +340,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
-        overrides: { topic: 'new topic', extraField: 'not allowed' },
+        overrides: { skillLevel: 'advanced', extraField: 'not allowed' },
       });
 
       const res = await POST(request, context);
@@ -311,6 +348,76 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
 
       const body = await res.json();
       expect(body.error).toBe('Invalid overrides.');
+    });
+
+    it('forwards a valid regeneration model override on the job request', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+      mockRequestPlanRegeneration.mockResolvedValue({
+        kind: 'enqueued',
+        jobId: 'job-model',
+        planId,
+        status: 'pending',
+        planGenerationRateLimit: {
+          remaining: 9,
+          limit: 10,
+          reset: 1_700_000_000,
+        },
+      });
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'google/gemini-3-pro-preview' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(202);
+      expect(mockRequestPlanRegeneration).toHaveBeenCalledWith(
+        expect.objectContaining({
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        }),
+      );
+    });
+
+    it('rejects an unknown regeneration model with MODEL_INVALID', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'pro',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'invalid/model-id' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(400);
+      const body = await res.json();
+      expect(body.code).toBe('MODEL_INVALID');
+      expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
+    });
+
+    it('rejects a tier-denied regeneration model with MODEL_NOT_ALLOWED_FOR_TIER', async () => {
+      await ensureUser({
+        authUserId,
+        email: authEmail,
+        subscriptionTier: 'starter',
+      });
+      const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
+
+      const { request, context } = await createRequest(planId, {
+        overrides: { model: 'google/gemini-3-pro-preview' },
+      });
+
+      const res = await POST(request, context);
+      expect(res.status).toBe(403);
+      const body = await res.json();
+      expect(body.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+      expect(mockRequestPlanRegeneration).not.toHaveBeenCalled();
     });
   });
 });

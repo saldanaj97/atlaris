@@ -22,7 +22,6 @@ export type {
 /**
  * Ownership-scoped module lesson batch: CAS → model/provider → parse → single transaction persist (tasks + module + usage).
  * On provider/parser failure after claim, persists `failed` without partial task writes.
- * Monthly lesson quota reserved only after successful claim; reverted on failure paths.
  */
 export async function generateModuleLessons(
   params: GenerateModuleLessonsParams,

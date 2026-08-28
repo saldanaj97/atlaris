@@ -107,11 +107,6 @@ export const ModuleLessonGenerationApiResponseSchema = z.discriminatedUnion(
       message: z.string().min(1),
     }),
     ModuleLessonGenerationApiBaseSchema.extend({
-      state: z.literal('quota_denied'),
-      currentCount: z.number().int().nonnegative(),
-      limit: z.number().int().nonnegative(),
-    }),
-    ModuleLessonGenerationApiBaseSchema.extend({
       state: z.literal('not_found'),
     }),
     ModuleLessonGenerationApiBaseSchema.extend({

@@ -36,6 +36,7 @@ describe('Concurrency - provider stall timeout classification', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Stall Plan',
           notes: 'Expect timeout classification',

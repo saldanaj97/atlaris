@@ -1,5 +1,3 @@
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-
 import {
   AI_DEFAULT_MODEL,
   AVAILABLE_MODELS,
@@ -9,6 +7,7 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/features/ai/ai-models';
+import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-operation-policy';
 import { describe, expect, it } from 'vitest';
 
 describe('AI Models Configuration', () => {
@@ -58,6 +57,13 @@ describe('AI Models Configuration', () => {
         expect(model.inputCostPerMillion).toBeGreaterThanOrEqual(0);
         expect(model.outputCostPerMillion).toBeGreaterThanOrEqual(0);
       });
+    });
+
+    it('labels Claude Haiku as pro because it is paid', () => {
+      const model = getModelById('anthropic/claude-haiku-4.5');
+      expect(model?.tier).toBe('pro');
+      expect(model?.inputCostPerMillion).toBeGreaterThan(0);
+      expect(model?.outputCostPerMillion).toBeGreaterThan(0);
     });
 
     it('contains both free and pro tier models', () => {
@@ -141,53 +147,50 @@ describe('AI Models Configuration', () => {
   });
 
   describe('getModelsForTier', () => {
-    it('returns only free models for free tier', () => {
-      const models = getModelsForTier('free');
-      expect(models.length).toBeGreaterThan(0);
-      models.forEach((model) => {
-        expect(model.tier).toBe('free');
-      });
+    it('returns only the free router for Free outline and lesson', () => {
+      expect(
+        getModelsForTier('free', 'initial_outline').map((m) => m.id),
+      ).toEqual([AI_DEFAULT_MODEL]);
+      expect(getModelsForTier('free', 'lesson').map((m) => m.id)).toEqual([
+        AI_DEFAULT_MODEL,
+      ]);
     });
 
-    it('returns only free models for starter tier', () => {
-      const models = getModelsForTier('starter');
-      expect(models.length).toBeGreaterThan(0);
-      models.forEach((model) => {
-        expect(model.tier).toBe('free');
-      });
+    it('returns an empty catalog for Free regeneration', () => {
+      expect(getModelsForTier('free', 'regeneration')).toEqual([]);
     });
 
-    it('returns all models for pro tier', () => {
-      const models = getModelsForTier('pro');
-      expect(models).toEqual(AVAILABLE_MODELS);
+    it('returns the Starter outline/regen allowlist, not the Free catalog', () => {
+      expect(
+        getModelsForTier('starter', 'initial_outline').map((m) => m.id),
+      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
+      expect(
+        getModelsForTier('starter', 'regeneration').map((m) => m.id),
+      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
     });
 
-    it('pro tier includes both free and pro models', () => {
-      const models = getModelsForTier('pro');
-      const freeModels = models.filter((m) => m.tier === 'free');
-      const proModels = models.filter((m) => m.tier === 'pro');
-
-      expect(freeModels.length).toBeGreaterThan(0);
-      expect(proModels.length).toBeGreaterThan(0);
+    it('returns only the free router for Starter lesson', () => {
+      expect(getModelsForTier('starter', 'lesson').map((m) => m.id)).toEqual([
+        AI_DEFAULT_MODEL,
+      ]);
     });
 
-    it('free and starter tiers return same models', () => {
-      const freeModels = getModelsForTier('free');
-      const starterModels = getModelsForTier('starter');
-      expect(freeModels).toEqual(starterModels);
+    it('returns all models for Pro operations', () => {
+      expect(getModelsForTier('pro', 'initial_outline')).toEqual(
+        AVAILABLE_MODELS,
+      );
+      expect(getModelsForTier('pro', 'regeneration')).toEqual(AVAILABLE_MODELS);
+      expect(getModelsForTier('pro', 'lesson')).toEqual(AVAILABLE_MODELS);
     });
 
-    it.each<{ tier: SubscriptionTier; expectedMinCount: number }>([
-      { tier: 'free', expectedMinCount: 1 },
-      { tier: 'starter', expectedMinCount: 1 },
-      { tier: 'pro', expectedMinCount: 2 },
-    ])(
-      '$tier tier returns at least $expectedMinCount models',
-      ({ tier, expectedMinCount }) => {
-        const models = getModelsForTier(tier);
-        expect(models.length).toBeGreaterThanOrEqual(expectedMinCount);
-      },
-    );
+    it('does not include Claude Haiku in Free or Starter catalogs', () => {
+      expect(
+        getModelsForTier('free', 'initial_outline').map((m) => m.id),
+      ).not.toContain('anthropic/claude-haiku-4.5');
+      expect(
+        getModelsForTier('starter', 'initial_outline').map((m) => m.id),
+      ).not.toContain('anthropic/claude-haiku-4.5');
+    });
   });
 
   describe('isValidModelId', () => {
@@ -227,73 +230,90 @@ describe('AI Models Configuration', () => {
   });
 
   describe('getDefaultModelForTier', () => {
-    it('returns a valid model ID for free tier', () => {
-      const modelId = getDefaultModelForTier('free');
-      expect(isValidModelId(modelId)).toBe(true);
+    it('returns the free router for Free outline and lesson', () => {
+      expect(getDefaultModelForTier('free', 'initial_outline')).toBe(
+        AI_DEFAULT_MODEL,
+      );
+      expect(getDefaultModelForTier('free', 'lesson')).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('returns a valid model ID for starter tier', () => {
-      const modelId = getDefaultModelForTier('starter');
-      expect(isValidModelId(modelId)).toBe(true);
+    it('returns Gemini 2.5 Flash Lite for Starter outline and regen', () => {
+      expect(getDefaultModelForTier('starter', 'initial_outline')).toBe(
+        'google/gemini-2.5-flash-lite',
+      );
+      expect(getDefaultModelForTier('starter', 'regeneration')).toBe(
+        'google/gemini-2.5-flash-lite',
+      );
     });
 
-    it('returns a valid model ID for pro tier', () => {
-      const modelId = getDefaultModelForTier('pro');
-      expect(isValidModelId(modelId)).toBe(true);
+    it('returns the free router for Starter lesson', () => {
+      expect(getDefaultModelForTier('starter', 'lesson')).toBe(
+        AI_DEFAULT_MODEL,
+      );
     });
 
-    it('returns a free-tier accessible model for free users', () => {
-      const modelId = getDefaultModelForTier('free');
-      const model = getModelById(modelId);
-      expect(model?.tier).toBe('free');
-    });
-
-    it('returns a free-tier accessible model for starter users', () => {
-      const modelId = getDefaultModelForTier('starter');
-      const model = getModelById(modelId);
-      expect(model?.tier).toBe('free');
-    });
-
-    it('returns first available model for tier', () => {
-      const freeModels = getModelsForTier('free');
-      const defaultModel = getDefaultModelForTier('free');
-      const freeModelIds = freeModels.map((model) => model.id);
-      expect(freeModelIds).toContain(defaultModel);
+    it('returns operation-specific Pro defaults, not the first catalog row', () => {
+      expect(AVAILABLE_MODELS[0]?.id).toBe(AI_DEFAULT_MODEL);
+      expect(getDefaultModelForTier('pro', 'initial_outline')).toBe(
+        'openai/gpt-5.2',
+      );
+      expect(getDefaultModelForTier('pro', 'regeneration')).toBe(
+        'google/gemini-3-pro-preview',
+      );
+      expect(getDefaultModelForTier('pro', 'lesson')).toBe(
+        'google/gemini-3-flash-preview',
+      );
     });
   });
 
   describe('getFallbackModelsForTier', () => {
-    it('uses openrouter/free as the fallback route for free-tier models', () => {
+    it('never adds a paid fallback for Free outline', () => {
       expect(
-        getFallbackModelsForTier('free', 'anthropic/claude-haiku-4.5'),
-      ).toEqual([AI_DEFAULT_MODEL]);
-    });
-
-    it('uses openrouter/free as the fallback route for starter-tier models', () => {
-      expect(
-        getFallbackModelsForTier('starter', 'google/gemini-2.0-flash-exp:free'),
-      ).toEqual([AI_DEFAULT_MODEL]);
-    });
-
-    it('uses openrouter/free as the fallback route for unknown free-tier primary models', () => {
-      expect(getFallbackModelsForTier('free', 'some/unknown-model')).toEqual([
-        AI_DEFAULT_MODEL,
-      ]);
-    });
-
-    it('does not add free-router fallback for known paid primary models on free tier', () => {
-      expect(
-        getFallbackModelsForTier('free', 'google/gemini-2.5-flash-lite'),
+        getFallbackModelsForTier(
+          'free',
+          'anthropic/claude-haiku-4.5',
+          'initial_outline',
+        ),
       ).toEqual([]);
     });
 
-    it('does not duplicate openrouter/free when it is already the primary route', () => {
-      expect(getFallbackModelsForTier('free', AI_DEFAULT_MODEL)).toEqual([]);
+    it('never falls back to openrouter/free for Starter outline/regen', () => {
+      expect(
+        getFallbackModelsForTier(
+          'starter',
+          'google/gemini-2.5-flash-lite',
+          'initial_outline',
+        ),
+      ).toEqual([]);
+      expect(
+        getFallbackModelsForTier(
+          'starter',
+          'openai/gpt-4o-mini-2024-07-18',
+          'regeneration',
+        ),
+      ).toEqual([]);
     });
 
-    it('does not add free-router fallback for pro tier', () => {
+    it('uses openrouter/free as the only Starter/Free lesson fallback', () => {
       expect(
-        getFallbackModelsForTier('pro', 'anthropic/claude-sonnet-4.5'),
+        getFallbackModelsForTier(
+          'starter',
+          'google/gemini-2.5-flash-lite',
+          'lesson',
+        ),
+      ).toEqual([AI_DEFAULT_MODEL]);
+      expect(
+        getFallbackModelsForTier('free', AI_DEFAULT_MODEL, 'lesson'),
+      ).toEqual([]);
+    });
+
+    it('does not add provider fallbacks for Pro', () => {
+      expect(
+        getFallbackModelsForTier(
+          'pro',
+          'anthropic/claude-sonnet-4.5',
+          'initial_outline',
+        ),
       ).toEqual([]);
     });
   });

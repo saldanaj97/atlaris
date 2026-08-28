@@ -33,6 +33,7 @@ export function buildGenerationAttempt(
     promptHash: null,
     metadata: null,
     createdAt: new Date('2024-01-01T00:00:05.000Z'),
+    generationPurpose: 'initial',
     ...overrides,
   } satisfies GenerationAttempt;
 }
@@ -59,6 +60,7 @@ export function buildSuccessAttempt(
       },
     },
     createdAt: BASE_DATE,
+    generationPurpose: 'initial',
     ...overrides,
   } satisfies GenerationAttempt;
 }

@@ -61,6 +61,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-01-01T09:00:00.000Z'),
     });
@@ -73,6 +74,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-01-01T09:00:05.000Z'),
     });
@@ -97,6 +99,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => startedAt,
     });
@@ -166,6 +169,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => new Date('2026-01-03T08:00:00.000Z'),
     });
@@ -271,6 +275,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
       now: () => startedAt,
     });
@@ -313,6 +318,7 @@ describe('Atomic attempt observability', () => {
       planId,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!reservation.reserved) {

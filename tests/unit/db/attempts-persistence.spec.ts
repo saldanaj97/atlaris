@@ -29,6 +29,7 @@ const mockAttemptRecord = {
   metadata: {},
   createdAt: new Date(),
   updatedAt: new Date(),
+  generationPurpose: 'initial' as const,
 };
 
 function createBaseParams(

@@ -1,10 +1,16 @@
 import type { RegenerationOwnedPlan } from './types';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
+import type { PlanContentAccess } from '@/features/plans/policy/entitlement';
 import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
+import {
+  getUsageSummaryForTier,
+  type UsageSummary,
+} from '@/features/billing/usage-metrics';
 import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
@@ -13,6 +19,7 @@ import {
   getNextJob,
   updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
+import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
 import { regenerationQueueEnv } from '@/lib/config/env';
@@ -38,6 +45,15 @@ export interface RegenerationOrchestrationDeps {
     updateRegenerationJobPayload: typeof updateJobPayloadIfRunIdMissing;
   };
   quota: {
+    /**
+     * Non-settling monthly usage read for HTTP fail-fast. Settlement happens at
+     * provider start via {@link runRegenerationQuotaReserved}.
+     */
+    peekUsage: (
+      userId: string,
+      tier: SubscriptionTier,
+      dbClient: DbClient,
+    ) => Promise<UsageSummary>;
     runReserved: typeof runRegenerationQuotaReserved;
   };
   plans: {
@@ -51,6 +67,11 @@ export interface RegenerationOrchestrationDeps {
       userId: string,
       dbClient: DbClient,
     ) => Promise<RegenerationOwnedPlan | null>;
+    readContentAccess: (
+      planId: string,
+      userId: string,
+      dbClient: DbClient,
+    ) => Promise<PlanContentAccess>;
   };
   tier: {
     resolveUserTier: typeof resolveUserTier;
@@ -63,7 +84,7 @@ export interface RegenerationOrchestrationDeps {
     service: PlanLifecycleService;
   };
   /**
-   * Invoked after active-job dedupe passes and before quota reserve + enqueue.
+   * Invoked after active-job dedupe passes and before enqueue.
    * Must match {@link checkPlanGenerationRateLimit} semantics (throws RateLimitError when exceeded).
    */
   rateLimit: {
@@ -89,6 +110,8 @@ export function createDefaultRegenerationOrchestrationDeps(
       updateRegenerationJobPayload: updateJobPayloadIfRunIdMissing,
     },
     quota: {
+      peekUsage: (userId, tier, client) =>
+        getUsageSummaryForTier({ userId, tier, dbClient: client }),
       runReserved: runRegenerationQuotaReserved,
     },
     plans: {
@@ -101,6 +124,8 @@ export function createDefaultRegenerationOrchestrationDeps(
         });
         return row;
       },
+      readContentAccess: (planId, userId, client) =>
+        readPlanContentAccess({ userId, planId, dbClient: client }),
     },
     tier: { resolveUserTier },
     priority: { computeJobPriority, isPriorityTopic },

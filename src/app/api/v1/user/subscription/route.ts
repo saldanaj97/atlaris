@@ -3,6 +3,10 @@ import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 
+function toJsonUsageLimit(limit: number): number | null {
+  return Number.isFinite(limit) ? limit : null;
+}
+
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ actor, db }) => {
@@ -23,10 +27,14 @@ export const GET = requestBoundary.route(
         periodEnd: snapshot.subscriptionPeriodEnd?.toISOString() ?? null,
         cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
         usage: {
-          activePlans: snapshot.usage.activePlans,
-          regenerations: snapshot.usage.regenerations,
-          exports: snapshot.usage.exports,
-          lessonGenerations: snapshot.usage.lessonGenerations,
+          activePlans: {
+            current: snapshot.usage.activePlans.current,
+            limit: toJsonUsageLimit(snapshot.usage.activePlans.limit),
+          },
+          regenerations: {
+            used: snapshot.usage.regenerations.used,
+            limit: toJsonUsageLimit(snapshot.usage.regenerations.limit),
+          },
         },
       });
     } catch (error) {

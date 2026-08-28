@@ -1,7 +1,9 @@
 'use client';
 
 import type { PlanFormData } from './types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { isSelectedDeadlineAllowedForTier } from './deadline-tier';
 import {
   createInitialPlanInputState,
   planInputReducer,
@@ -10,6 +12,7 @@ import { PreferenceControls } from './PreferenceControls';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Textarea } from '@/components/ui/textarea';
+import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { isDevelopment } from '@/lib/config/client-env';
 import { clientLogger } from '@/lib/logging/client';
 import { ArrowRight, Loader2 } from 'lucide-react';
@@ -21,6 +24,7 @@ interface UnifiedPlanInputProps {
   disabled?: boolean;
   initialTopic?: string;
   topicResetVersion?: number;
+  subscriptionTier: SubscriptionTier;
 }
 
 /**
@@ -34,6 +38,7 @@ export function UnifiedPlanInput({
   disabled = false,
   initialTopic = '',
   topicResetVersion = 0,
+  subscriptionTier,
 }: UnifiedPlanInputProps) {
   const baseId = useId();
   const [state, dispatch] = useReducer(
@@ -67,6 +72,15 @@ export function UnifiedPlanInput({
     });
   }, [initialTopic, topicResetVersion]);
 
+  useEffect(() => {
+    if (
+      isSelectedDeadlineAllowedForTier(subscriptionTier, state.deadlineWeeks)
+    ) {
+      return;
+    }
+    dispatch({ type: 'clear-deadline' });
+  }, [subscriptionTier, state.deadlineWeeks]);
+
   const topic = state.topic;
 
   const topicInputId = `${baseId}-topic`;
@@ -75,7 +89,9 @@ export function UnifiedPlanInput({
     state.skillLevel !== null &&
     state.weeklyHours !== null &&
     state.learningStyle !== null &&
-    state.deadlineWeeks !== null;
+    state.deadlineWeeks !== null &&
+    (state.deadlineWeeks !== CUSTOM_DEADLINE_VALUE ||
+      Boolean(state.deadlineDate));
   const isFormValid = topic.trim().length > 0 && hasSelectedPreferences;
   const isDisabled = isSubmitting || disabled || !isFormValid;
 
@@ -89,7 +105,13 @@ export function UnifiedPlanInput({
       return;
     }
 
-    const { skillLevel, weeklyHours, learningStyle, deadlineWeeks } = state;
+    const {
+      skillLevel,
+      weeklyHours,
+      learningStyle,
+      deadlineWeeks,
+      deadlineDate,
+    } = state;
 
     if (!skillLevel || !weeklyHours || !learningStyle || !deadlineWeeks) {
       return;
@@ -101,6 +123,7 @@ export function UnifiedPlanInput({
       weeklyHours,
       learningStyle,
       deadlineWeeks,
+      ...(deadlineDate ? { deadlineDate } : {}),
     });
   };
 
@@ -141,6 +164,7 @@ export function UnifiedPlanInput({
             baseId={baseId}
             state={state}
             dispatch={dispatch}
+            subscriptionTier={subscriptionTier}
           />
           <Button
             type='button'

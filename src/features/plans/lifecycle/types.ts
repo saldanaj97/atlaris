@@ -18,6 +18,7 @@ import type {
 } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 /** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {
@@ -40,7 +41,9 @@ export type AtomicInsertResult =
       readonly status: 'limit_reached';
       readonly currentCount: number;
       readonly limit: number;
-    };
+    }
+  | { readonly status: 'free_allowance_used' }
+  | { readonly status: 'free_generation_in_progress' };
 
 /** Result of a duration cap check. */
 export type DurationCapResult = {
@@ -88,6 +91,24 @@ export type QuotaRejection = {
   readonly upgradeUrl?: string;
 };
 
+/** Requested plan duration exceeds the actor's tier cap. */
+export type DurationExceeded = {
+  readonly status: 'duration_exceeded';
+  readonly reason: string;
+  readonly upgradeUrl?: string;
+};
+
+export type FreeAllowanceUsed = {
+  readonly status: 'free_allowance_used';
+  readonly reason: string;
+  readonly upgradeUrl: string;
+};
+
+export type FreeGenerationInProgress = {
+  readonly status: 'free_generation_in_progress';
+  readonly reason: string;
+};
+
 /** User has an existing plan that exhausted generation attempts (attempt cap). */
 export type AttemptCapExceeded = {
   readonly status: 'attempt_cap_exceeded';
@@ -110,6 +131,9 @@ export type CreatePlanResult =
   | RetryableFailure
   | PermanentFailure
   | QuotaRejection
+  | DurationExceeded
+  | FreeAllowanceUsed
+  | FreeGenerationInProgress
   | AttemptCapExceeded
   | DuplicateDetected;
 
@@ -138,13 +162,16 @@ export type ProcessGenerationInput = {
   readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: Readonly<GenerationInput>;
+  readonly generationPurpose: GenerationPurpose;
   readonly modelOverride?: string;
   readonly signal?: AbortSignal;
   /** When set, passed to `reserveAttemptSlot` for transactional status checks. */
   readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   readonly requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   /** Invoked once after DB reservation succeeds, before provider generation. */
-  readonly onAttemptReserved?: (reservation: AttemptReservation) => void;
+  readonly onAttemptReserved?: (
+    reservation: AttemptReservation,
+  ) => void | Promise<void>;
   readonly workflowMetadata?: AttemptWorkflowMetadata;
 };
 

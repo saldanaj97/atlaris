@@ -2,9 +2,10 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { GET } from '@/app/api/v1/plans/[planId]/route';
-import { learningPlans, modules, tasks } from '@supabase/schema';
+import { learningPlans, modules, tasks, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 function buildRequest(planId: string) {
@@ -151,5 +152,76 @@ describe('GET /api/v1/plans/:planId', () => {
     expect(error).toMatchObject({
       error: expect.stringContaining('not found'),
     });
+  });
+
+  it('returns 403 for an owned locked Free plan and 404 for a non-owned plan', async () => {
+    const ownerAuth = buildTestAuthUserId('plan-detail-locked-owner');
+    setTestUser(ownerAuth);
+    const ownerId = await ensureUser({
+      authUserId: ownerAuth,
+      email: buildTestEmail(ownerAuth),
+      subscriptionTier: 'free',
+    });
+    const selectedAt = new Date('2026-04-01T00:00:00.000Z');
+    const [keepPlan] = await db
+      .insert(learningPlans)
+      .values({
+        userId: ownerId,
+        topic: 'Keep this plan',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'reading',
+        visibility: 'private',
+        origin: 'ai',
+      })
+      .returning();
+    const [lockedPlan] = await db
+      .insert(learningPlans)
+      .values({
+        userId: ownerId,
+        topic: 'Locked plan internals',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'reading',
+        visibility: 'private',
+        origin: 'ai',
+      })
+      .returning();
+    await db
+      .update(users)
+      .set({
+        initialPlanGeneratedAt: selectedAt,
+        freeAccessPlanId: keepPlan.id,
+        freeAccessPlanSelectedAt: selectedAt,
+      })
+      .where(eq(users.id, ownerId));
+
+    const lockedResponse = await GET(
+      buildRequest(lockedPlan.id).request,
+      buildRequest(lockedPlan.id).context,
+    );
+    expect(lockedResponse.status).toBe(403);
+    await expect(lockedResponse.json()).resolves.toMatchObject({
+      error: 'Upgrade to access this plan.',
+      code: 'PLAN_ENTITLEMENT_REQUIRED',
+    });
+
+    const selectedResponse = await GET(
+      buildRequest(keepPlan.id).request,
+      buildRequest(keepPlan.id).context,
+    );
+    expect(selectedResponse.status).toBe(200);
+
+    const strangerAuth = buildTestAuthUserId('plan-detail-locked-stranger');
+    setTestUser(strangerAuth);
+    await ensureUser({
+      authUserId: strangerAuth,
+      email: buildTestEmail(strangerAuth),
+    });
+    const strangerResponse = await GET(
+      buildRequest(lockedPlan.id).request,
+      buildRequest(lockedPlan.id).context,
+    );
+    expect(strangerResponse.status).toBe(404);
   });
 });

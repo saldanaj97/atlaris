@@ -4,23 +4,23 @@ Atlaris rate limiting is five layers, not a single wrapper. Edge, IP, user, dura
 
 ## Five-layer model
 
-| Layer | Where | Scope | Consistency |
-| ----- | ----- | ----- | ----------- |
-| Vercel edge rate limit | Dashboard-managed Firewall Rate Limit on `/ingest` | Unauthenticated PostHog ingest-proxy traffic | Edge-wide (Vercel) |
-| Application IP limiter | `src/lib/api/ip-rate-limit.ts` | Unauthenticated or machine routes keyed by client IP | Per process (in-memory LRU) |
-| Authenticated user limiter | `src/lib/api/user-rate-limit.ts` | Authenticated API routes and Server Actions keyed by user ID | Per process (in-memory LRU) |
-| Durable DB plan-generation limiter | `src/lib/api/rate-limit.ts` | Generation, retry, and regeneration attempts (`generation_attempts`) | Database-shared, fail-closed preflight (not atomic) |
-| Product quotas / kill switches | Billing quota boundaries and Vercel Flags | Plan count, duration, metered generation, operational disable | Shared product/ops policy |
+| Layer                              | Where                                              | Scope                                                                | Consistency                                         |
+| ---------------------------------- | -------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------- |
+| Vercel edge rate limit             | Dashboard-managed Firewall Rate Limit on `/ingest` | Unauthenticated PostHog ingest-proxy traffic                         | Edge-wide (Vercel)                                  |
+| Application IP limiter             | `src/lib/api/ip-rate-limit.ts`                     | Unauthenticated or machine routes keyed by client IP                 | Per process (in-memory LRU)                         |
+| Authenticated user limiter         | `src/lib/api/user-rate-limit.ts`                   | Authenticated API routes and Server Actions keyed by user ID         | Per process (in-memory LRU)                         |
+| Durable DB plan-generation limiter | `src/lib/api/rate-limit.ts`                        | Generation, retry, and regeneration attempts (`generation_attempts`) | Database-shared, fail-closed preflight (not atomic) |
+| Product quotas / kill switches     | Billing quota boundaries and Vercel Flags          | Plan count, duration, metered generation, operational disable        | Shared product/ops policy                           |
 
 ## Vercel Firewall allocation
 
 Hobby/Pro projects have **1 Rate Limit slot** and **3 custom WAF slots**. The intended JCS-53 allocation is:
 
-| Capability | Allocation |
-| ---------- | ---------- |
-| Rate Limit | **1 / 1** — keep the dashboard-managed `/ingest` rule; it is the sole Rate Limit slot |
-| Custom WAF Rules | **1 / 3** — `/ingest` unsupported-method deny; leave the remaining two unused |
-| Optional `/ingest` method rule | Dashboard-managed method allowlist (GET, HEAD, POST, OPTIONS) as defense in depth |
+| Capability                     | Allocation                                                                            |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| Rate Limit                     | **1 / 1** — keep the dashboard-managed `/ingest` rule; it is the sole Rate Limit slot |
+| Custom WAF Rules               | **1 / 3** — `/ingest` unsupported-method deny; leave the remaining two unused         |
+| Optional `/ingest` method rule | Dashboard-managed method allowlist (GET, HEAD, POST, OPTIONS) as defense in depth     |
 
 This dashboard rule is **not** represented in `vercel.json`. That file remains repository configuration for cron schedules only. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
 
@@ -36,30 +36,30 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category           | Limit        | Window   | Use Case                                         |
-| ------------------ | ------------ | -------- | ------------------------------------------------ |
-| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                 |
-| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate meter)  |
-| `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints        |
+| Category           | Limit        | Window   | Use Case                                                      |
+| ------------------ | ------------ | -------- | ------------------------------------------------------------- |
+| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                              |
+| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate request limiter)     |
+| `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints                     |
 | `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences, Server Actions |
-| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences        |
-| `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation             |
+| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences                     |
+| `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation                          |
 
 ### IP Rate Limits (Unauthenticated / Machine Endpoints)
 
-| Category    | Limit        | Window   | Use Case                                              |
-| ----------- | ------------ | -------- | ----------------------------------------------------- |
-| `health`    | 60 requests  | 1 minute | Worker health                                         |
-| `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                 |
-| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                     |
-| `auth`      | 10 requests  | 1 minute | Defined; no current route uses it                     |
-| `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)        |
+| Category    | Limit        | Window   | Use Case                                               |
+| ----------- | ------------ | -------- | ------------------------------------------------------ |
+| `health`    | 60 requests  | 1 minute | Worker health                                          |
+| `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                  |
+| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                      |
+| `auth`      | 10 requests  | 1 minute | Defined; no current route uses it                      |
+| `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)         |
 | `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs, notification cron |
 
 ### Plan Generation Rate Limit
 
-| Limit                                           | Window                                              | Scope                          |
-| ----------------------------------------------- | --------------------------------------------------- | ------------------------------ |
+| Limit                                           | Window                                              | Scope                                                                 |
+| ----------------------------------------------- | --------------------------------------------------- | --------------------------------------------------------------------- |
 | `PLAN_GENERATION_LIMIT` (currently 10 attempts) | `PLAN_GENERATION_WINDOW_MINUTES` (currently 60 min) | Per user: generation, retry, and regeneration (`generation_attempts`) |
 
 Source of truth for durable generation limits is `src/shared/constants/generation.ts` (enforced in `src/lib/api/rate-limit.ts`). Avoid hardcoding numeric values in docs/tests.
@@ -106,7 +106,7 @@ Located in `src/lib/api/rate-limit.ts`.
 These are not request-frequency limiters. They cap product usage or disable a feature:
 
 - Plan-count and duration gates on plan creation
-- Metered billing quotas (lesson generation, regeneration)
+- Metered billing quotas (regeneration). Lesson generation uses the authenticated request-rate limiter only; it is not a product quota.
 - Vercel Flags kill switches (`moduleLessonGeneration`, `emailNotificationDelivery`)
 
 ### Per-process limits and Redis
@@ -162,14 +162,14 @@ Server Actions share framework POST paths, so they cannot be targeted reliably w
 
 ### Category Selection Guide
 
-| Endpoint Type                                   | Category           |
-| ----------------------------------------------- | ------------------ |
-| Plan generation, regeneration                   | `aiGeneration`     |
-| Module lesson batch generation                  | `lessonGeneration` |
-| Future third-party integration writes           | `integration`      |
-| Plan delete/bulk-delete, profile, preferences, Server Actions | `mutation` |
-| GET endpoints for data retrieval / status polls | `read`             |
-| Future OAuth initiation (not callbacks)         | `oauth`            |
+| Endpoint Type                                                 | Category           |
+| ------------------------------------------------------------- | ------------------ |
+| Plan generation, regeneration                                 | `aiGeneration`     |
+| Module lesson batch generation                                | `lessonGeneration` |
+| Future third-party integration writes                         | `integration`      |
+| Plan delete/bulk-delete, profile, preferences, Server Actions | `mutation`         |
+| GET endpoints for data retrieval / status polls               | `read`             |
+| Future OAuth initiation (not callbacks)                       | `oauth`            |
 
 ### IP limiter (`checkIpRateLimit`)
 
@@ -253,7 +253,7 @@ Separate from `aiGeneration` so plan-create flows are not starved by module less
 
 - `POST /api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate`
 
-Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-limit.ts` (5 requests / rolling hour per user, in-memory). Monthly billing meter `lessonGeneration` is separate — see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline).
+Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-limit.ts` (5 requests / rolling hour per user, in-memory). Lesson generation has no product quota; see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline).
 
 ### Mutation (`mutation`)
 

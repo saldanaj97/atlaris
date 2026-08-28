@@ -659,6 +659,75 @@ describe('RLS Policy Verification', () => {
       expect(updatedName[0]?.name).toBe('Updated Name');
     });
 
+    it('authenticated users cannot write server-owned lifetime entitlement columns', async () => {
+      const [user] = await db
+        .insert(users)
+        .values({
+          authUserId: 'user_entitlement_guard',
+          email: 'entitlement-guard@test.com',
+          name: 'Entitlement Guard User',
+        })
+        .returning({
+          id: users.id,
+          initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+          freeAccessPlanId: users.freeAccessPlanId,
+          freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+        });
+
+      const userDb = await createRlsDbForUser('user_entitlement_guard');
+      const selectedAt = new Date('2026-08-25T12:00:00.000Z');
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ initialPlanGeneratedAt: selectedAt })
+          .where(eq(users.id, user.id)),
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ freeAccessPlanSelectedAt: selectedAt })
+          .where(eq(users.id, user.id)),
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({ freeAccessPlanId: user.id })
+          .where(eq(users.id, user.id)),
+      );
+
+      await expectRlsViolation(() =>
+        userDb
+          .update(users)
+          .set({
+            name: 'Forged Entitlement',
+            initialPlanGeneratedAt: selectedAt,
+            freeAccessPlanId: user.id,
+            freeAccessPlanSelectedAt: selectedAt,
+          })
+          .where(eq(users.id, user.id)),
+      );
+
+      const [afterViolations] = await userDb
+        .select({
+          name: users.name,
+          initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+          freeAccessPlanId: users.freeAccessPlanId,
+          freeAccessPlanSelectedAt: users.freeAccessPlanSelectedAt,
+        })
+        .from(users)
+        .where(eq(users.id, user.id));
+
+      expect(afterViolations).toEqual({
+        name: 'Entitlement Guard User',
+        initialPlanGeneratedAt: user.initialPlanGeneratedAt,
+        freeAccessPlanId: user.freeAccessPlanId,
+        freeAccessPlanSelectedAt: user.freeAccessPlanSelectedAt,
+      });
+    });
+
     it('authenticated users cannot directly mutate their own usage metrics', async () => {
       const [user] = await db
         .insert(users)

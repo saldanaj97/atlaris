@@ -34,6 +34,7 @@ const STREAM_INPUT: ProcessGenerationInput = {
   planId: 'plan-stream-001',
   userId: 'user-001',
   tier: 'free',
+  generationPurpose: 'initial',
   input: {
     topic: 'Learn TypeScript',
     skillLevel: 'beginner',
@@ -51,6 +52,7 @@ const RETRY_INPUT: ProcessGenerationInput = {
   planId: 'plan-retry-002',
   userId: 'user-001',
   tier: 'free',
+  generationPurpose: 'initial',
   input: {
     topic: 'Learn TypeScript',
     skillLevel: 'beginner',
@@ -66,6 +68,7 @@ const REGENERATION_INPUT: ProcessGenerationInput = {
   planId: 'plan-regen-003',
   userId: 'user-001',
   tier: 'pro',
+  generationPurpose: 'regeneration',
   input: {
     topic: 'Advanced TypeScript',
     skillLevel: 'intermediate',
@@ -113,6 +116,25 @@ describe('Lifecycle Consolidation', () => {
     });
   });
 
+  describe('generation purpose classification', () => {
+    it('classifies stream and retry as initial and regeneration as regeneration', async () => {
+      await service.processGenerationAttempt(STREAM_INPUT);
+      await service.processGenerationAttempt(RETRY_INPUT);
+      await service.processGenerationAttempt(REGENERATION_INPUT);
+
+      const runGeneration = vi.mocked(ports.generation.runGeneration);
+      expect(runGeneration.mock.calls[0]?.[0]).toEqual(
+        expect.objectContaining({ generationPurpose: 'initial' }),
+      );
+      expect(runGeneration.mock.calls[1]?.[0]).toEqual(
+        expect.objectContaining({ generationPurpose: 'initial' }),
+      );
+      expect(runGeneration.mock.calls[2]?.[0]).toEqual(
+        expect.objectContaining({ generationPurpose: 'regeneration' }),
+      );
+    });
+  });
+
   // ─── One lifecycle record per attempt ───────────────────────
 
   describe('one lifecycle record per generation attempt', () => {
@@ -152,6 +174,7 @@ describe('Lifecycle Consolidation', () => {
         {
           attributes: {
             tier: STREAM_INPUT.tier,
+            generation_purpose: 'initial',
             extended_timeout: false,
           },
         },
@@ -164,6 +187,7 @@ describe('Lifecycle Consolidation', () => {
           attributes: {
             status: 'success',
             tier: STREAM_INPUT.tier,
+            generation_purpose: 'initial',
             extended_timeout: false,
           },
         },
@@ -222,6 +246,7 @@ describe('Lifecycle Consolidation', () => {
             classification: 'timeout',
             retryable: true,
             tier: RETRY_INPUT.tier,
+            generation_purpose: 'initial',
           },
         },
       );
@@ -235,6 +260,7 @@ describe('Lifecycle Consolidation', () => {
             classification: 'timeout',
             retryable: true,
             tier: RETRY_INPUT.tier,
+            generation_purpose: 'initial',
           },
         },
       );

@@ -2,6 +2,7 @@ import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
+import { markModuleLessonProviderStarted } from '@/lib/db/queries/module-lesson-generation';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
@@ -547,7 +548,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('not_found');
   });
 
-  it('returns locked for an owned module behind incomplete prior modules without provider or quota side effects', async () => {
+  it('generates for an owned later module while earlier modules are incomplete', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-locked');
     const userId = await ensureUser({
       authUserId,
@@ -567,40 +568,33 @@ describe('module lesson generation boundary (integration)', () => {
       order: 1,
       title: 'Incomplete first module',
     });
-    const lockedModule = await createTestModule({
+    const laterModule = await createTestModule({
       planId: plan.id,
       order: 2,
-      title: 'Locked second module',
+      title: 'Later second module',
     });
     await createTestTask({ moduleId: firstModule.id, order: 1 });
-    await createTestTask({ moduleId: lockedModule.id, order: 1 });
+    await createTestTask({ moduleId: laterModule.id, order: 1 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const provider = {
-      generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('provider should not run for locked modules');
-      }),
-    };
-
     const result = await generateModuleLessons(
       {
         dbClient: rlsDb,
         userId,
         planId: plan.id,
-        moduleId: lockedModule.id,
+        moduleId: laterModule.id,
         userTier: 'free',
       },
-      { provider },
+      {
+        provider: new MockGenerationProvider({
+          delayMs: 0,
+          deterministicSeed: 19,
+        }),
+      },
     );
 
-    expect(result.kind).toBe('locked');
-    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
-
-    const [modRow] = await db
-      .select()
-      .from(modules)
-      .where(eq(modules.id, lockedModule.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(result.kind).not.toBe('locked');
+    expect(result.kind).toBe('success');
 
     const [metrics] = await db
       .select({ n: usageMetrics.lessonModulesGenerated })
@@ -608,7 +602,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
-    expect(metrics?.n).toBe(0);
+    expect(metrics?.n).toBe(1);
   });
 
   it('returns disabled when module-lesson-generation flag is false', async () => {
@@ -643,7 +637,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('disabled');
   });
 
-  it('quota_denied before provider; row not left generating', async () => {
+  it('records attempts without enforcing a lesson product quota', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota');
     const userId = await ensureUser({
       authUserId,
@@ -678,20 +672,25 @@ describe('module lesson generation boundary (integration)', () => {
       },
     );
 
-    expect(result).toEqual({
-      kind: 'quota_denied',
-      currentCount: 3,
-      limit: 3,
-    });
+    expect(result.kind).toBe('success');
+    expect(result).not.toMatchObject({ kind: 'quota_denied' });
 
     const [modRow] = await db
       .select()
       .from(modules)
       .where(eq(modules.id, mod.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(modRow?.lessonGenerationStatus).toBe('ready');
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(4);
   });
 
-  it('quota reservation error does not leave module generating', async () => {
+  it('provider failure after claim persists failed and records the attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota-error');
     const userId = await ensureUser({
       authUserId,
@@ -701,11 +700,12 @@ describe('module lesson generation boundary (integration)', () => {
     const plan = await createTestPlan({ userId });
     const mod = await createTestModule({ planId: plan.id });
     await createTestTask({ moduleId: mod.id });
+    const month = getCurrentMonth();
 
     const rlsDb = await createRlsDbForUser(authUserId);
     const provider = {
       generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('provider should not run');
+        throw new Error('provider failed');
       }),
     };
     const result = await generateModuleLessons(
@@ -716,25 +716,28 @@ describe('module lesson generation boundary (integration)', () => {
         moduleId: mod.id,
         userTier: 'free',
       },
-      {
-        provider,
-        runLessonQuotaReserved: vi.fn(async () => {
-          throw new Error('quota store unavailable');
-        }),
-      },
+      { provider },
     );
 
     expect(result).toEqual({ kind: 'failed' });
-    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalled();
 
     const [modRow] = await db
       .select()
       .from(modules)
       .where(eq(modules.id, mod.id));
-    expect(modRow?.lessonGenerationStatus).toBe('not_generated');
+    expect(modRow?.lessonGenerationStatus).toBe('failed');
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(1);
   });
 
-  it('success increments lesson_modules_generated for current month', async () => {
+  it('success records the provider-started lesson attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-ok');
     const userId = await ensureUser({
       authUserId,
@@ -780,7 +783,60 @@ describe('module lesson generation boundary (integration)', () => {
     expect(metrics?.n).toBe(1);
   });
 
-  it('cold-start success creates usage_metrics row with lesson_modules_generated = 1', async () => {
+  it('replaying provider start preserves the marker and meters once', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-provider-replay');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const providerStartedAt = '2026-08-20T18:00:00.000Z';
+    const month = getCurrentMonth(new Date(providerStartedAt));
+    await db.insert(usageMetrics).values({
+      userId,
+      month,
+      lessonModulesGenerated: 0,
+    });
+
+    const plan = await createTestPlan({ userId, topic: 'Provider replay' });
+    const mod = await createTestModule({ planId: plan.id });
+    await db
+      .update(modules)
+      .set({
+        lessonGenerationStatus: 'generating',
+        lessonGenerationMetadata: { version: 1 },
+      })
+      .where(eq(modules.id, mod.id));
+
+    await markModuleLessonProviderStarted(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      providerStartedAt,
+    });
+    await markModuleLessonProviderStarted(db, {
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      providerStartedAt: '2026-08-20T18:01:00.000Z',
+    });
+
+    const [modRow] = await db
+      .select({ metadata: modules.lessonGenerationMetadata })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(modRow?.metadata?.providerStartedAt).toBe(providerStartedAt);
+
+    const [metrics] = await db
+      .select({ n: usageMetrics.lessonModulesGenerated })
+      .from(usageMetrics)
+      .where(
+        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
+      );
+    expect(metrics?.n).toBe(1);
+  });
+
+  it('cold-start success creates an observational lesson usage row', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-cold-start');
     const userId = await ensureUser({
       authUserId,
@@ -829,7 +885,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(metrics?.n).toBe(1);
   });
 
-  it('parser failure after provider start keeps the lesson_modules_generated reservation', async () => {
+  it('parser failure after provider start records the attempt', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-usage-fail');
     const userId = await ensureUser({
       authUserId,

@@ -7,8 +7,7 @@
  * drift across midnight or month boundaries between the two phases).
  *
  * Public callers should not import this module directly. Use
- * `regeneration-quota-boundary.ts`, `lesson-generation-quota-boundary.ts`,
- * or another dedicated boundary; do not import this file from routes.
+ * `regeneration-quota-boundary.ts`; do not import this file from routes.
  */
 
 import type { DbClient } from './tier';
@@ -25,7 +24,7 @@ import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { usageMetrics, users } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
-type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
+export type MeterKind = 'regeneration';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -33,12 +32,9 @@ type MeterKind = 'regeneration' | 'export' | 'lessonGeneration';
  * `selectUserSubscriptionTierForUpdate` and `lockUsageMetricsForMonth` can
  * accept it without leaking Drizzle internals into every signature.
  */
-type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
+export type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
-type MeterColumn =
-  | 'regenerationsUsed'
-  | 'exportsUsed'
-  | 'lessonModulesGenerated';
+type MeterColumn = 'regenerationsUsed';
 
 type MeterConfig = {
   column: MeterColumn;
@@ -60,23 +56,6 @@ const METER_CONFIG: Record<MeterKind, MeterConfig> = {
       incrementExistingUsageInTx(tx, userId, month, 'regeneration'),
     readColumn: (metrics) => metrics.regenerationsUsed,
     decrementSql: () => sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
-  },
-  export: {
-    column: 'exportsUsed',
-    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyExports,
-    incrementInTx: (tx, userId, month) =>
-      incrementExistingUsageInTx(tx, userId, month, 'export'),
-    readColumn: (metrics) => metrics.exportsUsed,
-    decrementSql: () => sql`GREATEST(0, ${usageMetrics.exportsUsed} - 1)`,
-  },
-  lessonGeneration: {
-    column: 'lessonModulesGenerated',
-    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyLessonGenerations,
-    incrementInTx: (tx, userId, month) =>
-      incrementExistingUsageInTx(tx, userId, month, 'lesson_generation'),
-    readColumn: (metrics) => metrics.lessonModulesGenerated,
-    decrementSql: () =>
-      sql`GREATEST(0, ${usageMetrics.lessonModulesGenerated} - 1)`,
   },
 };
 
@@ -168,52 +147,60 @@ type ReserveLogEvent =
       limit: number;
     };
 
-export async function reserveMeteredUsage(
+export async function reserveMeteredUsageInTx(
+  tx: BillingTx,
   params: { userId: string; meter: MeterKind },
-  dbClient: DbClient,
   options: ReserveMeteredUsageOptions = {},
 ): Promise<ReserveMeteredResult> {
   const { userId, meter } = params;
   const config = METER_CONFIG[meter];
 
-  return dbClient.transaction(async (tx) => {
-    const user = await selectUserSubscriptionTierForUpdate(tx, userId);
-    const limit = config.resolveLimit(user.subscriptionTier);
-    const month = getCurrentMonth(options.now?.());
+  const user = await selectUserSubscriptionTierForUpdate(tx, userId);
+  const limit = config.resolveLimit(user.subscriptionTier);
+  const month = getCurrentMonth(options.now?.());
 
-    const metrics = await lockUsageMetricsForMonth(tx, userId, month);
-    const currentCount = config.readColumn(metrics);
+  const metrics = await lockUsageMetricsForMonth(tx, userId, month);
+  const currentCount = config.readColumn(metrics);
 
-    if (limit !== Infinity && currentCount >= limit) {
-      options.onResult?.({
-        kind: 'denied',
-        userId,
-        month,
-        meter,
-        currentCount,
-        limit,
-      });
-      return { ok: false, currentCount, limit };
-    }
-
-    await config.incrementInTx(tx, userId, month);
-    const newCount = currentCount + 1;
-
+  if (limit !== Infinity && currentCount >= limit) {
     options.onResult?.({
-      kind: 'allowed',
+      kind: 'denied',
       userId,
       month,
       meter,
-      newCount,
+      currentCount,
       limit,
-      unlimited: limit === Infinity,
     });
+    return { ok: false, currentCount, limit };
+  }
 
-    return {
-      ok: true,
-      token: { userId, month, meter, limit, newCount },
-    };
+  await config.incrementInTx(tx, userId, month);
+  const newCount = currentCount + 1;
+
+  options.onResult?.({
+    kind: 'allowed',
+    userId,
+    month,
+    meter,
+    newCount,
+    limit,
+    unlimited: limit === Infinity,
   });
+
+  return {
+    ok: true,
+    token: { userId, month, meter, limit, newCount },
+  };
+}
+
+export async function reserveMeteredUsage(
+  params: { userId: string; meter: MeterKind },
+  dbClient: DbClient,
+  options: ReserveMeteredUsageOptions = {},
+): Promise<ReserveMeteredResult> {
+  return dbClient.transaction((tx) =>
+    reserveMeteredUsageInTx(tx, params, options),
+  );
 }
 
 /**

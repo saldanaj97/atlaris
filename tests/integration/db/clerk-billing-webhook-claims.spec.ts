@@ -6,7 +6,6 @@ import {
   CLERK_BILLING_PAYER_LOCK_NAMESPACE,
   CLERK_BILLING_WEBHOOK_LEASE_MS,
   ClerkBillingRefreshTimeoutError,
-  ClerkWebhookLeaseLostError,
   reconcileClerkBillingEntitlements,
 } from '@/features/billing/clerk-billing/reconciliation';
 import {
@@ -80,12 +79,13 @@ function subscription(
   return {
     payerId: 'billing_claim_user',
     status: 'active',
+    updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
     subscriptionItems: [
       {
         id: 'item_claim_pro',
         status: 'active',
-        planId: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        planId: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: { amount: 2_000 },
         periodEnd: new Date('2026-09-01T00:00:00.000Z').getTime(),
         isFreeTrial: false,
@@ -102,31 +102,6 @@ function logger() {
     info: vi.fn(),
     warn: vi.fn(),
   } as never;
-}
-
-async function waitForPayerLockWaiter(payerUserId: string): Promise<void> {
-  const deadline = Date.now() + 5_000;
-  while (Date.now() < deadline) {
-    const rows = await db.execute(sql`
-      SELECT granted
-      FROM pg_locks
-      WHERE locktype = 'advisory'
-        AND classid = ${sql.raw(String(CLERK_BILLING_PAYER_LOCK_NAMESPACE))}
-        AND objid = hashtext(${payerUserId})
-    `);
-    const list = Array.isArray(rows) ? rows : [];
-    const granted = list.some(
-      (row) => (row as { granted?: unknown }).granted === true,
-    );
-    const waiting = list.some(
-      (row) => (row as { granted?: unknown }).granted === false,
-    );
-    if (granted && waiting) {
-      return;
-    }
-    await new Promise((resolve) => setTimeout(resolve, 25));
-  }
-  throw new Error(`Timed out waiting for payer lock waiter (${payerUserId})`);
 }
 
 async function currentTier(authUserId: string): Promise<string | undefined> {
@@ -191,6 +166,46 @@ describe('Clerk billing webhook claims', () => {
         .from(clerkWebhookEventClaims)
         .where(eq(clerkWebhookEventClaims.eventId, 'evt_claim_completed')),
     ).resolves.toEqual([]);
+  });
+
+  it('preserves the local tier for an unknown item mixed with terminal billing', async () => {
+    await seedBillingUser();
+    const baseItem = subscription().subscriptionItems[0]!;
+    const getSubscription = vi.fn().mockResolvedValue(
+      subscription({
+        status: 'ended',
+        subscriptionItems: [
+          {
+            ...baseItem,
+            id: 'item_unknown_active',
+            planId: 'cplan_unknown',
+            plan: { id: 'cplan_unknown', slug: 'enterprise_plan' },
+          },
+          {
+            ...baseItem,
+            id: 'item_pro_ended',
+            status: 'ended',
+            periodEnd: new Date('2026-06-01T00:00:00.000Z').getTime(),
+          },
+        ],
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        billingEvent(),
+        'evt_unknown_terminal_plan',
+        {
+          clerkClient: {
+            billing: { getUserBillingSubscription: getSubscription },
+          },
+          db,
+          logger: logger(),
+        },
+      ),
+    ).resolves.toEqual({ status: 'inserted', result: 'ignored' });
+
+    await expect(currentTier('billing_claim_user')).resolves.toBe('starter');
   });
 
   it('projects a signed user event once without refreshing Clerk Billing', async () => {
@@ -578,15 +593,16 @@ describe('Clerk billing webhook claims', () => {
       logger: logger(),
       createClaimToken: () => '00000000-0000-4000-8000-000000000042',
     });
-    await waitForPayerLockWaiter('billing_claim_user');
-    expect(secondGet).not.toHaveBeenCalled();
-
-    releaseRefresh();
-    await expect(first).rejects.toBeInstanceOf(ClerkWebhookLeaseLostError);
+    await vi.waitFor(() => {
+      expect(secondGet).toHaveBeenCalled();
+    });
     await expect(second).resolves.toEqual({
       status: 'inserted',
       result: 'updated',
     });
+
+    releaseRefresh();
+    await expect(first).resolves.toEqual({ status: 'duplicate' });
     expect(firstGet).toHaveBeenCalledTimes(1);
     expect(secondGet).toHaveBeenCalledTimes(1);
     expect(
@@ -702,24 +718,16 @@ describe('Clerk billing webhook claims', () => {
     ).toEqual([]);
   });
 
-  it('serializes distinct billing events for one payer so the latest Clerk snapshot wins', async () => {
+  it('rejects a stale same-payer snapshot that finishes after a newer one', async () => {
     const payerUserId = buildTestAuthUserId('clerk-payer-serialize');
     await ensureUser({
       authUserId: payerUserId,
       email: buildTestEmail(payerUserId),
       subscriptionTier: 'starter',
     });
-    const firstRefresh = createDeferredPromise<void>();
-    const firstRelease = createDeferredPromise<BackendBillingSubscription>();
-    const firstGet = vi.fn(async () => {
-      firstRefresh.resolve();
-      return firstRelease.promise;
-    });
-    const secondGet = vi
-      .fn()
-      .mockResolvedValue(subscription({ payerId: payerUserId }));
     const staleSubscription = subscription({
       payerId: payerUserId,
+      updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
       status: 'past_due',
       subscriptionItems: [
         {
@@ -729,39 +737,57 @@ describe('Clerk billing webhook claims', () => {
       ],
     });
 
-    const first = applyVerifiedClerkBillingEvent(
+    const staleRefreshStarted = createDeferredPromise<void>();
+    const releaseStaleRefresh =
+      createDeferredPromise<BackendBillingSubscription>();
+    const stale = applyVerifiedClerkBillingEvent(
       billingEvent(payerUserId),
       `evt_stale_${payerUserId}`,
       {
-        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+        clerkClient: {
+          billing: {
+            getUserBillingSubscription: vi.fn(async () => {
+              staleRefreshStarted.resolve();
+              return releaseStaleRefresh.promise;
+            }),
+          },
+        },
         db,
         logger: logger(),
       },
     );
-    await firstRefresh.promise;
+    await staleRefreshStarted.promise;
 
-    const second = applyVerifiedClerkBillingEvent(
-      billingEvent(payerUserId),
-      `evt_latest_${payerUserId}`,
-      {
-        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
-        db,
-        logger: logger(),
-      },
-    );
-    await waitForPayerLockWaiter(payerUserId);
-    expect(secondGet).not.toHaveBeenCalled();
-
-    firstRelease.resolve(staleSubscription);
-    await expect(first).resolves.toEqual({
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        billingEvent(payerUserId),
+        `evt_latest_${payerUserId}`,
+        {
+          clerkClient: {
+            billing: {
+              getUserBillingSubscription: vi.fn().mockResolvedValue(
+                subscription({
+                  payerId: payerUserId,
+                  updatedAt: new Date('2026-08-01T00:01:00.000Z').getTime(),
+                }),
+              ),
+            },
+          },
+          db,
+          logger: logger(),
+        },
+      ),
+    ).resolves.toEqual({
       status: 'inserted',
       result: 'updated',
     });
-    await expect(second).resolves.toEqual({
+    await expect(currentTier(payerUserId)).resolves.toBe('pro');
+
+    releaseStaleRefresh.resolve(staleSubscription);
+    await expect(stale).resolves.toEqual({
       status: 'inserted',
-      result: 'updated',
+      result: 'ignored',
     });
-    expect(secondGet).toHaveBeenCalledTimes(1);
     await expect(currentTier(payerUserId)).resolves.toBe('pro');
   });
 
@@ -821,65 +847,66 @@ describe('Clerk billing webhook claims', () => {
     await expect(currentTier(secondPayer)).resolves.toBe('pro');
   });
 
-  it('serializes reconciliation behind the same payer lock as webhooks', async () => {
+  it('applies reconciliation after a committed webhook for the same payer', async () => {
     const payerUserId = buildTestAuthUserId('clerk-payer-reconcile');
     await ensureUser({
       authUserId: payerUserId,
       email: buildTestEmail(payerUserId),
       subscriptionTier: 'starter',
     });
-    const webhookRefresh = createDeferredPromise<void>();
-    const webhookRelease = createDeferredPromise<BackendBillingSubscription>();
-    const webhookGet = vi.fn(async () => {
-      webhookRefresh.resolve();
-      return webhookRelease.promise;
-    });
-    const reconcileGet = vi
-      .fn()
-      .mockResolvedValue(subscription({ payerId: payerUserId }));
 
-    const webhook = applyVerifiedClerkBillingEvent(
-      billingEvent(payerUserId),
-      `evt_webhook_${payerUserId}`,
-      {
-        clerkClient: { billing: { getUserBillingSubscription: webhookGet } },
-        db,
-        logger: logger(),
-      },
-    );
-    await webhookRefresh.promise;
-
-    const reconcile = reconcileClerkBillingEntitlements({
-      clerkClient: { billing: { getUserBillingSubscription: reconcileGet } },
-      db,
-      logger: logger(),
-      limit: 1,
-    });
-    await waitForPayerLockWaiter(payerUserId);
-    expect(reconcileGet).not.toHaveBeenCalled();
-
-    webhookRelease.resolve(
-      subscription({
-        payerId: payerUserId,
-        status: 'past_due',
-        subscriptionItems: [
-          {
-            ...subscription().subscriptionItems[0]!,
-            status: 'past_due',
+    await expect(
+      applyVerifiedClerkBillingEvent(
+        billingEvent(payerUserId),
+        `evt_webhook_${payerUserId}`,
+        {
+          clerkClient: {
+            billing: {
+              getUserBillingSubscription: vi.fn().mockResolvedValue(
+                subscription({
+                  payerId: payerUserId,
+                  status: 'past_due',
+                  subscriptionItems: [
+                    {
+                      ...subscription().subscriptionItems[0]!,
+                      status: 'past_due',
+                    },
+                  ],
+                }),
+              ),
+            },
           },
-        ],
-      }),
-    );
-    await expect(webhook).resolves.toEqual({
+          db,
+          logger: logger(),
+        },
+      ),
+    ).resolves.toEqual({
       status: 'inserted',
       result: 'updated',
     });
-    await expect(reconcile).resolves.toMatchObject({
+    await expect(currentTier(payerUserId)).resolves.toBe('starter');
+
+    await expect(
+      reconcileClerkBillingEntitlements({
+        clerkClient: {
+          billing: {
+            getUserBillingSubscription: vi.fn().mockResolvedValue(
+              subscription({
+                payerId: payerUserId,
+                updatedAt: new Date('2026-08-01T00:01:00.000Z').getTime(),
+              }),
+            ),
+          },
+        },
+        db,
+        logger: logger(),
+        limit: 1,
+      }),
+    ).resolves.toMatchObject({
       checked: 1,
       updated: 1,
       failed: 0,
     });
-    expect(reconcileGet).toHaveBeenCalledTimes(1);
     await expect(currentTier(payerUserId)).resolves.toBe('pro');
   });
 
@@ -890,42 +917,41 @@ describe('Clerk billing webhook claims', () => {
       email: buildTestEmail(payerUserId),
       subscriptionTier: 'starter',
     });
-    const firstRefresh = createDeferredPromise<void>();
-    const firstRelease = createDeferredPromise<BackendBillingSubscription>();
-    const firstGet = vi.fn(async () => {
-      firstRefresh.resolve();
-      return firstRelease.promise;
-    });
     const secondGet = vi
       .fn()
       .mockResolvedValue(subscription({ payerId: payerUserId }));
-
-    const first = applyVerifiedClerkBillingEvent(
-      billingEvent(payerUserId),
-      `evt_hold_${payerUserId}`,
-      {
-        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
-        db,
-        logger: logger(),
-      },
-    );
-    await firstRefresh.promise;
-
     const secondEventId = `evt_timeout_${payerUserId}`;
-    const second = applyVerifiedClerkBillingEvent(
-      billingEvent(payerUserId),
-      secondEventId,
-      {
-        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
-        db,
-        logger: logger(),
-        payerLockTimeoutMs: 250,
-      },
-    );
+    const lockHeld = createDeferredPromise<void>();
+    const releaseHold = createDeferredPromise<void>();
+    const holding = db.transaction(async (tx) => {
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(
+          ${sql.raw(String(CLERK_BILLING_PAYER_LOCK_NAMESPACE))},
+          hashtext(${payerUserId})
+        )`,
+      );
+      lockHeld.resolve();
+      await releaseHold.promise;
+    });
+    await lockHeld.promise;
 
     try {
-      await expect(second).rejects.toSatisfy(isLockTimeoutError);
-      expect(secondGet).not.toHaveBeenCalled();
+      await expect(
+        applyVerifiedClerkBillingEvent(
+          billingEvent(payerUserId),
+          secondEventId,
+          {
+            clerkClient: {
+              billing: { getUserBillingSubscription: secondGet },
+            },
+            db,
+            logger: logger(),
+            payerLockTimeoutMs: 250,
+          },
+        ),
+      ).rejects.toSatisfy(isLockTimeoutError);
+
+      expect(secondGet).toHaveBeenCalledTimes(1);
       await expect(currentTier(payerUserId)).resolves.toBe('starter');
       await expect(
         db
@@ -934,12 +960,12 @@ describe('Clerk billing webhook claims', () => {
           .where(eq(clerkWebhookEvents.eventId, secondEventId)),
       ).resolves.toEqual([]);
     } finally {
-      firstRelease.resolve(subscription({ payerId: payerUserId }));
-      await first;
+      releaseHold.resolve();
+      await holding;
     }
   });
 
-  it('times out a hung Clerk refresh and releases the payer lock for retry', async () => {
+  it('times out a hung Clerk refresh without holding the payer lock', async () => {
     const payerUserId = buildTestAuthUserId('clerk-payer-network-timeout');
     await ensureUser({
       authUserId: payerUserId,

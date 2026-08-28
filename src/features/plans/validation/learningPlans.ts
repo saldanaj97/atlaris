@@ -24,12 +24,6 @@ function startOfToday(): Date {
   return startOfDay(new Date());
 }
 
-function addYears(date: Date, years: number): Date {
-  const next = new Date(date);
-  next.setFullYear(next.getFullYear() + years);
-  return next;
-}
-
 function isBefore(date: Date, dateToCompare: Date): boolean {
   return date.getTime() < dateToCompare.getTime();
 }
@@ -94,16 +88,6 @@ function validateOnboardingDateFields(
         code: z.ZodIssueCode.custom,
         path: ['deadlineDate'],
         message: 'Deadline date must not be in the past.',
-      });
-    }
-
-    // Cap: deadline within 1 year of today
-    const oneYearFromToday = addYears(todayLocal, 1);
-    if (deadline.getTime() > oneYearFromToday.getTime()) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['deadlineDate'],
-        message: 'Deadline date must be within 1 year of today.',
       });
     }
   }

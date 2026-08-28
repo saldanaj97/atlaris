@@ -7,6 +7,7 @@ import {
   getUserPreferences,
   saveEmailNotificationPreferences,
   upsertUserAnalyticsTimezone,
+  upsertUserModelPreferences,
   upsertUserPreferredAiModel,
 } from '@/lib/db/queries/user-preferences';
 import { PgDialect } from 'drizzle-orm/pg-core';
@@ -24,6 +25,8 @@ describe('user preference queries', () => {
 
     await expect(getUserPreferences('user-1', dbClient)).resolves.toEqual({
       preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: null,
       analyticsTimezone: 'UTC',
     });
   });
@@ -179,6 +182,55 @@ describe('user preference queries', () => {
     expect(query.sql).toContain('"preferred_ai_model"');
     expect(query.sql).toContain('ON CONFLICT');
     expect(query.sql).not.toContain('"created_at"');
+    expect(query.sql).toContain(
+      '"preferred_ai_model" = EXCLUDED."preferred_ai_model"',
+    );
+    expect(query.sql).not.toContain(
+      '"preferred_regeneration_ai_model" = EXCLUDED."preferred_regeneration_ai_model"',
+    );
+    expect(query.sql).not.toContain(
+      '"preferred_lesson_ai_model" = EXCLUDED."preferred_lesson_ai_model"',
+    );
+  });
+
+  it('upserts regeneration and lesson slots independently', async () => {
+    const execute = vi.fn().mockResolvedValue([
+      {
+        preferred_ai_model: 'openai/gpt-5.2',
+        preferred_regeneration_ai_model: 'google/gemini-3-pro-preview',
+        preferred_lesson_ai_model: null,
+        analytics_timezone: 'UTC',
+      },
+    ]);
+
+    const dbClient = makeDbClient({
+      execute: execute as unknown as DbClient['execute'],
+    });
+
+    const result = await upsertUserModelPreferences(
+      'user-1',
+      {
+        preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+        preferredLessonAiModel: null,
+      },
+      dbClient,
+    );
+
+    expect(result?.preferredRegenerationAiModel).toBe(
+      'google/gemini-3-pro-preview',
+    );
+    expect(result?.preferredLessonAiModel).toBeNull();
+
+    const query = new PgDialect().sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
+    expect(query.sql).toContain(
+      '"preferred_regeneration_ai_model" = EXCLUDED."preferred_regeneration_ai_model"',
+    );
+    expect(query.sql).toContain(
+      '"preferred_lesson_ai_model" = EXCLUDED."preferred_lesson_ai_model"',
+    );
+    expect(query.sql).not.toContain(
+      '"preferred_ai_model" = EXCLUDED."preferred_ai_model"',
+    );
   });
 
   it('upserts analytics timezone on the user preference row', async () => {
@@ -206,5 +258,9 @@ describe('user preference queries', () => {
     expect(query.sql).toContain('"analytics_timezone"');
     expect(query.sql).toContain('ON CONFLICT');
     expect(query.sql).not.toContain('"created_at"');
+    expect(query.sql).not.toContain(
+      '"preferred_regeneration_ai_model" = EXCLUDED',
+    );
+    expect(query.sql).not.toContain('"preferred_lesson_ai_model" = EXCLUDED');
   });
 });

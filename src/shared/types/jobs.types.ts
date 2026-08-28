@@ -19,14 +19,16 @@ export interface PlanRegenerationJobData {
   planId: string;
   workflow?: WorkflowSdkMetadata;
   overrides?: Partial<{
-    topic: string;
-    notes: string | null;
     skillLevel: SkillLevel;
     weeklyHours: number;
     learningStyle: LearningStyle;
     startDate: string | null;
     deadlineDate: string | null;
+    model: string;
   }>;
+  quota?: {
+    providerStartedAt: string;
+  };
 }
 
 interface PlanRegenerationJobResult {

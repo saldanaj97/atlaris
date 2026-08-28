@@ -1,4 +1,5 @@
 import {
+  clerkBillingSourceFromBackendSubscription,
   clerkBillingSourceFromWebhook,
   projectClerkBillingSource,
   type ClerkBillingProjectionItem,
@@ -44,6 +45,7 @@ function item(
     planSlug: 'pro_plan',
     amountInCents: 2_000,
     periodEnd: futurePeriodEnd,
+    canceledAt: null,
     isFreeTrial: false,
     ...overrides,
   };
@@ -55,6 +57,7 @@ function source(
   return {
     type: 'subscription.updated',
     payerUserId: 'user_fixture',
+    clerkBillingUpdatedAt: null,
     subscriptionStatus: 'active',
     paymentAttemptStatus: null,
     items: [item({})],
@@ -71,6 +74,69 @@ describe('projectClerkBillingSource', () => {
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: futurePeriodEnd,
       cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('keeps an active entitlement after a canceled item in a subscription.updated refresh', () => {
+    const source = {
+      ...clerkBillingSourceFromBackendSubscription({
+        payerId: 'user_fixture',
+        status: 'active',
+        updatedAt: new Date('2026-08-01T00:00:00.000Z').getTime(),
+        subscriptionItems: [
+          {
+            id: 'item_free_upcoming',
+            status: 'upcoming',
+            planId: 'cplan_free',
+            plan: { id: 'cplan_free', slug: 'free_user' },
+            amount: { amount: 0 },
+            periodEnd: null,
+            canceledAt: null,
+            isFreeTrial: false,
+          },
+          {
+            id: 'item_pro_canceling',
+            status: 'canceled',
+            planId: 'cplan_pro',
+            plan: { id: 'cplan_pro', slug: 'pro_plan' },
+            amount: { amount: 10_000 },
+            periodEnd: futurePeriodEnd.getTime(),
+            canceledAt: now.getTime(),
+            isFreeTrial: false,
+          },
+        ],
+      }),
+      type: 'subscription.updated',
+    };
+
+    expect(projectClerkBillingSource(source, currentPaidState, now)).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
+    });
+  });
+
+  it('keeps trialing status after a free-trial item is canceled during its period', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              status: 'canceled',
+              canceledAt: now,
+              isFreeTrial: true,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'trialing',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
     });
   });
 
@@ -159,6 +225,111 @@ describe('projectClerkBillingSource', () => {
         now,
       ),
     ).toBeNull();
+  });
+
+  it.each([
+    { label: 'Starter', tier: 'starter' as const, planSlug: 'starter_plan' },
+    { label: 'Pro', tier: 'pro' as const, planSlug: 'pro_plan' },
+  ])(
+    'preserves the prior tier when an unresolved item is mixed with active $label',
+    ({ tier, planSlug }) => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({
+                id: 'item_unknown_active',
+                tier: null,
+                planId: 'cplan_unknown',
+                planSlug: 'enterprise_plan',
+              }),
+              item({
+                id: `item_${tier}_active`,
+                tier,
+                planId: `cplan_${tier}`,
+                planSlug,
+              }),
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toBeNull();
+    },
+  );
+
+  it('preserves the prior tier when an unresolved item is mixed with active Free', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              id: 'item_unknown_active',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+            }),
+            item({
+              id: 'item_free_active',
+              tier: 'free',
+              planId: 'cplan_free',
+              planSlug: 'free_user',
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('preserves the prior tier when an unresolved item is mixed with terminal billing', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: 'ended',
+          items: [
+            item({
+              id: 'item_unknown_active',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+            }),
+            item({
+              id: 'item_pro_ended',
+              status: 'ended',
+              tier: 'pro',
+              periodEnd: pastPeriodEnd,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('projects recognized active Free when no unresolved items are present', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              tier: 'free',
+              planId: 'cplan_free',
+              planSlug: 'free_user',
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: false,
+    });
   });
 
   it('marks failed payment attempts past due without changing paid tier', () => {
@@ -288,6 +459,29 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  it('records cancellation from the matching past-due item', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          type: 'reconciliation.subscription',
+          items: [
+            item({
+              status: 'past_due',
+              canceledAt: now,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'pro',
+      subscriptionStatus: 'past_due',
+      subscriptionPeriodEnd: futurePeriodEnd,
+      cancelAtPeriodEnd: true,
+    });
+  });
+
   it('projects an active paid item while ignoring a separate past-due upgrade', () => {
     expect(
       projectClerkBillingSource(
@@ -347,15 +541,80 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
-  it('maps Clerk webhook item timestamps and trial state from the payload', () => {
+  it('preserves prior entitlement when Clerk plan slug is unknown', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          items: [
+            item({
+              status: 'active',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('does not clobber stored tier when a terminal event has unmapped plans', () => {
+    expect(
+      projectClerkBillingSource(
+        source({
+          subscriptionStatus: 'ended',
+          items: [
+            item({
+              status: 'ended',
+              tier: null,
+              planId: 'cplan_unknown',
+              planSlug: 'enterprise_plan',
+              periodEnd: pastPeriodEnd,
+            }),
+          ],
+        }),
+        currentPaidState,
+        now,
+      ),
+    ).toBeNull();
+  });
+
+  it('does not infer a paid tier from amount when slug and id are unknown', () => {
+    const sourceFromWebhook = clerkBillingSourceFromWebhook({
+      type: 'subscriptionItem.active',
+      data: {
+        id: 'item_priced',
+        status: 'active',
+        payer: { user_id: 'user_priced' },
+        plan_id: 'cplan_unknown',
+        plan: null,
+        amount: { amount: 2_000 },
+        period_end: futurePeriodEnd.getTime(),
+      },
+    } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
+
+    expect(sourceFromWebhook?.items[0]).toEqual(
+      expect.objectContaining({
+        amountInCents: 2_000,
+        tier: null,
+      }),
+    );
+    expect(
+      projectClerkBillingSource(sourceFromWebhook!, currentPaidState, now),
+    ).toBeNull();
+  });
+
+  it('maps Clerk webhook item timestamps, cancellation, and trial state', () => {
     const sourceFromWebhook = clerkBillingSourceFromWebhook({
       type: 'subscriptionItem.active',
       data: {
         id: 'item_trial',
         status: 'active',
         payer: { user_id: 'user_trial' },
-        plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        plan_id: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: {
           amount: 2_000,
           amount_formatted: '20.00',
@@ -363,6 +622,7 @@ describe('projectClerkBillingSource', () => {
           currency_symbol: '$',
         },
         period_end: futurePeriodEnd.getTime(),
+        canceled_at: now.getTime(),
         is_free_trial: true,
       },
     } as unknown as Parameters<typeof clerkBillingSourceFromWebhook>[0]);
@@ -371,7 +631,9 @@ describe('projectClerkBillingSource', () => {
       expect.objectContaining({
         amountInCents: 2_000,
         isFreeTrial: true,
+        canceledAt: now,
         periodEnd: futurePeriodEnd,
+        planSlug: 'pro_plan',
         tier: 'pro',
       }),
     );
@@ -385,8 +647,8 @@ describe('projectClerkBillingSource', () => {
         status: 'active',
         payer: {},
         payer_id: 'user_fallback',
-        plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-        plan: null,
+        plan_id: 'cplan_pro_fixture',
+        plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
         amount: { amount: 2_000 },
         period_end: futurePeriodEnd.getTime(),
       },
@@ -403,8 +665,8 @@ describe('projectClerkBillingSource', () => {
           {
             id: 'item_fallback',
             status: 'active',
-            plan_id: 'cplan_3G8pCUUMkJeYVKqZuAanPo0c1Lb',
-            plan: null,
+            plan_id: 'cplan_pro_fixture',
+            plan: { id: 'cplan_pro_fixture', slug: 'pro_plan' },
             amount: { amount: 2_000 },
             period_end: futurePeriodEnd.getTime(),
           },

@@ -44,12 +44,14 @@ export type ClerkBillingProjectionItem = {
   planSlug: string | null;
   amountInCents: number | null;
   periodEnd: Date | null;
+  canceledAt: Date | null;
   isFreeTrial: boolean;
 };
 
 export type ClerkBillingProjectionSource = {
   type: string;
   payerUserId: string | null;
+  clerkBillingUpdatedAt: Date | null;
   subscriptionStatus: ClerkSubscriptionStatus | null;
   paymentAttemptStatus: 'pending' | 'paid' | 'failed' | null;
   items: ClerkBillingProjectionItem[];
@@ -62,12 +64,14 @@ type BackendBillingSubscriptionItem = {
   plan: { id: string; slug: string } | null;
   amount?: { amount: number } | null;
   periodEnd: number | null;
+  canceledAt?: number | null;
   isFreeTrial?: boolean;
 };
 
 export type BackendBillingSubscription = {
   status: ClerkSubscriptionStatus;
   payerId: string;
+  updatedAt: number;
   subscriptionItems: BackendBillingSubscriptionItem[];
 };
 
@@ -86,6 +90,12 @@ const TERMINAL_STATUSES = new Set<ClerkSubscriptionStatus>([
 
 function millisecondsToDate(value: number | null | undefined): Date | null {
   return typeof value === 'number' ? new Date(value) : null;
+}
+
+function clerkResourceUpdatedAt(data: object): Date | null {
+  return 'updated_at' in data && typeof data.updated_at === 'number'
+    ? new Date(data.updated_at)
+    : null;
 }
 
 function userIdFromPayer(
@@ -127,11 +137,12 @@ function toProjectionItemFromWebhook(
   return {
     id: item.id,
     status: item.status,
-    tier: tierFromClerkPlan({ id: planId, slug: planSlug, amountInCents }),
+    tier: tierFromClerkPlan({ id: planId, slug: planSlug }),
     planId,
     planSlug,
     amountInCents,
     periodEnd: millisecondsToDate(item.period_end),
+    canceledAt: millisecondsToDate(item.canceled_at),
     isFreeTrial: isFreeTrialFromWebhookItem(item),
   };
 }
@@ -147,12 +158,12 @@ function toProjectionItemFromBackend(
     tier: tierFromClerkPlan({
       id: item.planId ?? item.plan?.id ?? null,
       slug: item.plan?.slug ?? null,
-      amountInCents,
     }),
     planId: item.planId ?? item.plan?.id ?? null,
     planSlug: item.plan?.slug ?? null,
     amountInCents,
     periodEnd: millisecondsToDate(item.periodEnd),
+    canceledAt: millisecondsToDate(item.canceledAt),
     isFreeTrial: item.isFreeTrial === true,
   };
 }
@@ -185,6 +196,7 @@ export function clerkBillingSourceFromWebhook(
         event.data.payer,
         payerIdFromEventData(event.data),
       ),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: null,
       paymentAttemptStatus: null,
       items: [toProjectionItemFromWebhook(event.data)],
@@ -195,6 +207,7 @@ export function clerkBillingSourceFromWebhook(
     return {
       type: event.type,
       payerUserId: userIdFromPayer(event.data.payer, event.data.payer_id),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: event.data.status,
       paymentAttemptStatus: null,
       items: event.data.items.map(toProjectionItemFromWebhook),
@@ -208,6 +221,7 @@ export function clerkBillingSourceFromWebhook(
         event.data.payer,
         payerIdFromEventData(event.data),
       ),
+      clerkBillingUpdatedAt: clerkResourceUpdatedAt(event.data),
       subscriptionStatus: null,
       paymentAttemptStatus: event.data.status,
       items: event.data.subscription_items.map(toProjectionItemFromWebhook),
@@ -223,6 +237,7 @@ export function clerkBillingSourceFromBackendSubscription(
   return {
     type: 'reconciliation.subscription',
     payerUserId: userIdFromPayer(undefined, subscription.payerId),
+    clerkBillingUpdatedAt: millisecondsToDate(subscription.updatedAt),
     subscriptionStatus: subscription.status,
     paymentAttemptStatus: null,
     items: subscription.subscriptionItems.map(toProjectionItemFromBackend),
@@ -241,6 +256,17 @@ function isRetainedCanceledItem(
 ): boolean {
   return (
     item.status === 'canceled' &&
+    item.periodEnd !== null &&
+    item.periodEnd.getTime() > now.getTime()
+  );
+}
+
+function isCanceledAtPeriodEnd(
+  item: ClerkBillingProjectionItem,
+  now: Date,
+): boolean {
+  return (
+    item.canceledAt !== null &&
     item.periodEnd !== null &&
     item.periodEnd.getTime() > now.getTime()
   );
@@ -292,6 +318,10 @@ export function projectClerkBillingSource(
     return null;
   }
 
+  if (source.items.some((item) => item.tier === null)) {
+    return null;
+  }
+
   const paidItems = source.items.filter((item) => isPaidTier(item.tier));
 
   if (source.paymentAttemptStatus === 'failed') {
@@ -317,7 +347,7 @@ export function projectClerkBillingSource(
       subscriptionTier: activePaidItem.tier,
       subscriptionStatus: activePaidItem.isFreeTrial ? 'trialing' : 'active',
       subscriptionPeriodEnd: activePaidItem.periodEnd,
-      cancelAtPeriodEnd: false,
+      cancelAtPeriodEnd: isCanceledAtPeriodEnd(activePaidItem, now),
     };
   }
 
@@ -329,16 +359,21 @@ export function projectClerkBillingSource(
       return null;
     }
 
+    const currentTierPastDueItems = pastDuePaidItems.filter(
+      (item) => item.tier === current.subscriptionTier,
+    );
+
     return {
       subscriptionTier: current.subscriptionTier,
       subscriptionStatus: 'past_due',
       subscriptionPeriodEnd:
-        latestPeriodEnd(
-          pastDuePaidItems.filter(
-            (item) => item.tier === current.subscriptionTier,
-          ),
-        ) ?? current.subscriptionPeriodEnd,
-      cancelAtPeriodEnd: current.cancelAtPeriodEnd,
+        latestPeriodEnd(currentTierPastDueItems) ??
+        current.subscriptionPeriodEnd,
+      cancelAtPeriodEnd:
+        current.cancelAtPeriodEnd ||
+        currentTierPastDueItems.some((item) =>
+          isCanceledAtPeriodEnd(item, now),
+        ),
     };
   }
 
@@ -349,7 +384,12 @@ export function projectClerkBillingSource(
   if (retainedPaidItem?.tier) {
     return {
       subscriptionTier: retainedPaidItem.tier,
-      subscriptionStatus: 'canceled',
+      subscriptionStatus:
+        source.subscriptionStatus === 'active'
+          ? retainedPaidItem.isFreeTrial
+            ? 'trialing'
+            : 'active'
+          : 'canceled',
       subscriptionPeriodEnd: retainedPaidItem.periodEnd,
       cancelAtPeriodEnd: true,
     };
@@ -378,6 +418,13 @@ export function projectClerkBillingSource(
       subscriptionPeriodEnd: activeFreeItem.periodEnd,
       cancelAtPeriodEnd: false,
     };
+  }
+
+  if (
+    source.items.length > 0 &&
+    source.items.every((item) => item.tier === null)
+  ) {
+    return null;
   }
 
   if (

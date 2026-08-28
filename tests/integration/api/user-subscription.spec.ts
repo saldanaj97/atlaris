@@ -1,6 +1,7 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { GET } from '@/app/api/v1/user/subscription/route';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { learningPlans, usageMetrics, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
@@ -60,13 +61,11 @@ describe('GET /api/v1/user/subscription', () => {
     expect(body).toHaveProperty('periodEnd');
     expect(body).toHaveProperty('cancelAtPeriodEnd', false);
     expect(body).toHaveProperty('usage');
-    expect(body.usage).toHaveProperty('activePlans');
-    expect(body.usage).toHaveProperty('regenerations');
-    expect(body.usage).toHaveProperty('exports');
-    expect(body.usage).toHaveProperty('lessonGenerations');
-    expect(body.usage.regenerations.used).toBe(0);
-    expect(body.usage.exports.used).toBe(0);
-    expect(body.usage.lessonGenerations.used).toBe(0);
+    expect(body.usage).toEqual({
+      activePlans: { current: 0, limit: TIER_LIMITS.free.maxActivePlans },
+      regenerations: { used: 0, limit: TIER_LIMITS.free.monthlyRegenerations },
+    });
+    expect(body.usage).not.toHaveProperty('exports');
 
     const after = await db
       .select()
@@ -154,6 +153,13 @@ describe('GET /api/v1/user/subscription', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.tier).toBe('pro');
+    expect(body.usage).not.toHaveProperty('exports');
+    expect(body.usage.activePlans).toEqual({ current: 0, limit: null });
+    expect(body.usage.regenerations).toEqual({
+      used: 0,
+      limit: TIER_LIMITS.pro.monthlyRegenerations,
+    });
+    expect(body.usage).not.toHaveProperty('lessonGenerations');
   });
 
   it('should handle starter tier subscriptions', async () => {

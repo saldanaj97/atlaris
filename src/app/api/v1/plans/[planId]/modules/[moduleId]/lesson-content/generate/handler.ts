@@ -5,7 +5,7 @@ import {
   type StartModuleLessonGenerationResult,
 } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import {
-  requireOwnedPlanById,
+  requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -29,7 +29,7 @@ export function createModuleLessonContentGenerateHandler(
       const planId = requireUuidRouteParam(params, 'planId');
       const moduleId = requireUuidRouteParam(params, 'moduleId');
 
-      await requireOwnedPlanById({
+      await requirePlanContentAccess({
         planId,
         ownerUserId: actor.id,
         dbClient: db,
@@ -116,17 +116,6 @@ function mapModuleLessonGenerationResult(
           message: LESSON_GENERATION_FAILURE_MESSAGE,
         }),
         { status: 502 },
-      );
-    case 'quota_denied':
-      return json(
-        ModuleLessonGenerationApiResponseSchema.parse({
-          state: 'quota_denied',
-          planId,
-          moduleId,
-          currentCount: result.currentCount,
-          limit: result.limit,
-        }),
-        { status: 429 },
       );
     case 'disabled':
       return json(

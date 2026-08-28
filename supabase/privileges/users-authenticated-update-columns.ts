@@ -4,6 +4,9 @@
  * Must stay aligned with the latest effective migration grant for `public.users`.
  * Consumed by Testcontainers (`tests/setup/testcontainers.ts`) and
  * `tests/helpers/db/rls-bootstrap.ts` when mirroring production grants in ephemeral DBs.
+ *
+ * Lifetime entitlement columns (`initial_plan_generated_at`, `free_access_plan_id`,
+ * `free_access_plan_selected_at`) are intentionally absent: they are service-role writes.
  */
 export const USERS_AUTHENTICATED_UPDATE_COLUMNS = [
   'name',

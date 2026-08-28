@@ -1,21 +1,60 @@
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { validateModelForTier } from '@/features/ai/model-resolver';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
+import { throwPlanEntitlementRequired } from '@/features/plans/entitlement/errors';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
-import {
-  AppError,
-  NotFoundError,
-  RateLimitError,
-  ValidationError,
-} from '@/lib/api/errors';
+import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { captureAfterResponse } from '@/lib/posthog-server';
+import {
+  API_ERROR_CODES,
+  API_ERROR_HTTP_STATUS,
+} from '@/shared/constants/api-error-codes';
 import { ZodError } from 'zod';
+
+function assertRegenerationModelAllowed(
+  tier: SubscriptionTier,
+  model: string | undefined,
+): void {
+  if (model === undefined) {
+    return;
+  }
+
+  const validation = validateModelForTier(tier, model, 'regeneration');
+  if (validation.valid) {
+    return;
+  }
+
+  switch (validation.reason) {
+    case 'invalid_model':
+      throw new AppError('Model is not recognized.', {
+        status: 400,
+        code: 'MODEL_INVALID',
+        details: { model },
+      });
+    case 'tier_denied':
+      throw new AppError('Model is not allowed for your subscription tier.', {
+        status: 403,
+        code: 'MODEL_NOT_ALLOWED_FOR_TIER',
+        details: { model, tier },
+      });
+    default: {
+      const _never: never = validation.reason;
+      throw new AppError('Model validation failed for an unexpected reason.', {
+        status: 500,
+        code: 'UNKNOWN_MODEL_VALIDATION_REASON',
+        details: { reason: String(_never), model },
+      });
+    }
+  }
+}
 
 /**
  * POST /api/v1/plans/:planId/regenerate
@@ -50,6 +89,8 @@ export const POST: PlainHandler = requestBoundary.route(
         cause: serializableCause,
       });
     }
+
+    assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
 
     const result = await requestPlanRegeneration({
       userId: actor.id,
@@ -88,13 +129,35 @@ export const POST: PlainHandler = requestBoundary.route(
         );
       }
       case 'quota-denied':
-        throw new RateLimitError(
+        throw new AppError(
           'Regeneration quota exceeded for your subscription tier.',
           {
-            remaining: Math.max(0, result.limit - result.currentCount),
-            limit: result.limit,
+            status: API_ERROR_HTTP_STATUS.REGENERATION_QUOTA_EXCEEDED,
+            code: API_ERROR_CODES.REGENERATION_QUOTA_EXCEEDED,
+            classification: 'rate_limit',
+            details: {
+              remaining: Math.max(0, result.limit - result.currentCount),
+              limit: result.limit,
+            },
           },
         );
+      case 'not-included':
+        throw new AppError(
+          'Plan regeneration is not included on the Free plan.',
+          {
+            status: API_ERROR_HTTP_STATUS.PLAN_REGENERATION_NOT_INCLUDED,
+            code: API_ERROR_CODES.PLAN_REGENERATION_NOT_INCLUDED,
+            details: { upgradeUrl: '/pricing' },
+          },
+        );
+      case 'duration-exceeded':
+        throw new AppError(result.reason, {
+          status: API_ERROR_HTTP_STATUS.PLAN_DURATION_LIMIT_EXCEEDED,
+          code: API_ERROR_CODES.PLAN_DURATION_LIMIT_EXCEEDED,
+          details: { upgradeUrl: result.upgradeUrl ?? '/pricing' },
+        });
+      case 'content-locked':
+        throwPlanEntitlementRequired();
       case 'workflow-start-failed':
         throw new AppError('Failed to start plan regeneration workflow.', {
           status: 503,

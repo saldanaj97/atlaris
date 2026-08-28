@@ -59,8 +59,6 @@ function buildPlanRegenerationPayload(
   return {
     planId: plan.id,
     overrides: {
-      topic: data.overrides?.topic ?? plan.topic,
-      notes: data.overrides?.notes ?? null,
       skillLevel: data.overrides?.skillLevel ?? plan.skillLevel,
       weeklyHours: data.overrides?.weeklyHours ?? plan.weeklyHours,
       learningStyle: data.overrides?.learningStyle ?? plan.learningStyle,
@@ -107,11 +105,7 @@ async function createPlanForUser(
 describe('Job queue service', () => {
   it('enqueues a job with expected defaults', async () => {
     const { plan, userId } = await createPlanFixture('defaults');
-    const payload = buildPlanRegenerationPayload(plan, {
-      overrides: {
-        notes: 'Ensure defaults',
-      },
-    });
+    const payload = buildPlanRegenerationPayload(plan);
 
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, payload);
 
@@ -141,17 +135,13 @@ describe('Job queue service', () => {
         JOB_TYPE,
         firstPlan.id,
         firstUserId,
-        buildPlanRegenerationPayload(firstPlan, {
-          overrides: { topic: 'job-1' },
-        }),
+        buildPlanRegenerationPayload(firstPlan),
       ),
       enqueueJob(
         JOB_TYPE,
         secondPlan.id,
         secondUserId,
-        buildPlanRegenerationPayload(secondPlan, {
-          overrides: { topic: 'job-2' },
-        }),
+        buildPlanRegenerationPayload(secondPlan),
       ),
     ]);
 
@@ -197,36 +187,28 @@ describe('Job queue service', () => {
       JOB_TYPE,
       lowPlan.id,
       lowUserId,
-      buildPlanRegenerationPayload(lowPlan, {
-        overrides: { topic: 'low-order' },
-      }),
+      buildPlanRegenerationPayload(lowPlan),
       0,
     );
     const midA = await enqueueJob(
       JOB_TYPE,
       midAPlan.id,
       midAUserId,
-      buildPlanRegenerationPayload(midAPlan, {
-        overrides: { topic: 'mid-a-order' },
-      }),
+      buildPlanRegenerationPayload(midAPlan),
       5,
     );
     const midB = await enqueueJob(
       JOB_TYPE,
       midBPlan.id,
       midBUserId,
-      buildPlanRegenerationPayload(midBPlan, {
-        overrides: { topic: 'mid-b-order' },
-      }),
+      buildPlanRegenerationPayload(midBPlan),
       5,
     );
     const high = await enqueueJob(
       JOB_TYPE,
       highPlan.id,
       highUserId,
-      buildPlanRegenerationPayload(highPlan, {
-        overrides: { topic: 'high-order' },
-      }),
+      buildPlanRegenerationPayload(highPlan),
       10,
     );
 
@@ -320,8 +302,6 @@ describe('Job queue service', () => {
       freeUser.userId,
       buildPlanRegenerationPayload(freePlan[0], {
         overrides: {
-          topic: freeTopic,
-          notes: null,
           skillLevel: 'beginner',
           weeklyHours: 5,
           learningStyle: 'mixed',
@@ -338,8 +318,6 @@ describe('Job queue service', () => {
       paidUser.userId,
       buildPlanRegenerationPayload(paidPlan[0], {
         overrides: {
-          topic: paidTopic,
-          notes: null,
           skillLevel: 'intermediate',
           weeklyHours: 5,
           learningStyle: 'mixed',
@@ -369,9 +347,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, {
-        overrides: { topic: 'retry-topic' },
-      }),
+      buildPlanRegenerationPayload(plan),
     );
 
     await getNextJob([JOB_TYPE]);
@@ -417,6 +393,35 @@ describe('Job queue service', () => {
     expect(terminal?.completedAt).toBeInstanceOf(Date);
   });
 
+  it('honors retry-after when scheduling a rate-limited retry', async () => {
+    const { plan, userId } = await createPlanFixture('retry-after');
+    const jobId = await enqueueJob(
+      JOB_TYPE,
+      plan.id,
+      userId,
+      buildPlanRegenerationPayload(plan),
+    );
+
+    await getNextJob([JOB_TYPE]);
+    const retryAfterSeconds = 3_600;
+    const retried = await failJob(jobId, 'rate limited', {
+      retryable: true,
+      retryAfter: retryAfterSeconds,
+    });
+
+    expect(retried?.status).toBe('pending');
+    const retryRow = await db.query.jobQueue.findFirst({
+      where: (fields, operators) => operators.eq(fields.id, jobId),
+    });
+    expect(retryRow).toBeDefined();
+    if (!retryRow) {
+      throw new Error('Expected rate-limited retry row');
+    }
+    expect(
+      retryRow.scheduledFor.getTime() - retryRow.updatedAt.getTime(),
+    ).toBeGreaterThanOrEqual(retryAfterSeconds * 1000);
+  });
+
   it('preserves error history and clears workflow metadata for a scheduled retry', async () => {
     const { plan, userId } = await createPlanFixture('retry-workflow');
     const jobId = await enqueueJob(JOB_TYPE, plan.id, userId, {
@@ -455,9 +460,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, {
-        overrides: { topic: 'no-retry-topic' },
-      }),
+      buildPlanRegenerationPayload(plan),
     );
 
     await getNextJob([JOB_TYPE]);
@@ -476,9 +479,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, {
-        overrides: { topic: 'max-two-topic' },
-      }),
+      buildPlanRegenerationPayload(plan),
     );
 
     await db
@@ -504,9 +505,7 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, {
-        overrides: { topic: 'complete-topic' },
-      }),
+      buildPlanRegenerationPayload(plan),
     );
 
     await getNextJob([JOB_TYPE]);
@@ -542,23 +541,19 @@ describe('Job queue service', () => {
       JOB_TYPE,
       plan.id,
       userId,
-      buildPlanRegenerationPayload(plan, { overrides: { topic: 'window-1' } }),
+      buildPlanRegenerationPayload(plan),
     );
     const jobOlder = await enqueueJob(
       JOB_TYPE,
       olderPlan.id,
       userId,
-      buildPlanRegenerationPayload(olderPlan, {
-        overrides: { topic: 'window-2' },
-      }),
+      buildPlanRegenerationPayload(olderPlan),
     );
     const jobOldest = await enqueueJob(
       JOB_TYPE,
       oldestPlan.id,
       userId,
-      buildPlanRegenerationPayload(oldestPlan, {
-        overrides: { topic: 'window-3' },
-      }),
+      buildPlanRegenerationPayload(oldestPlan),
     );
 
     const now = new Date();

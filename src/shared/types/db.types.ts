@@ -18,6 +18,7 @@ export type ProgressStatus =
   DbEnumsModule['progressStatus']['enumValues'][number];
 export type GenerationStatus =
   DbEnumsModule['generationStatus']['enumValues'][number];
+export type { GenerationPurpose } from '@/shared/types/generation-purpose';
 export type EmailNotificationCategory =
   DbEnumsModule['emailNotificationCategory']['enumValues'][number];
 

@@ -6,6 +6,7 @@ import {
   isModuleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
 import { loadModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/module-page-data';
+import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
 import { redirect } from 'next/navigation';
@@ -46,7 +47,6 @@ export async function ModuleDetailContent({
       }
 
       case 'NOT_FOUND':
-        // Module doesn't exist or user doesn't have access
         return (
           <ModuleDetailPageError
             message='This module does not exist or you do not have access to it.'
@@ -55,21 +55,46 @@ export async function ModuleDetailContent({
         );
 
       case 'FORBIDDEN':
-        // User is authenticated but explicitly not allowed
         return (
           <ModuleDetailPageError
             message='You do not have permission to view this module.'
             planId={planId}
           />
         );
-      default:
-        // Unexpected error - show generic message
+
+      case 'PLAN_ENTITLEMENT_REQUIRED':
+        return (
+          <ModuleDetailPageError
+            message='Upgrade to access this plan.'
+            planId={planId}
+            upgradeHref={ROUTES.PRICING}
+          />
+        );
+
+      case 'FREE_PLAN_SELECTION_REQUIRED':
+        return (
+          <div className='mx-auto max-w-2xl py-10'>
+            <FreeAccessPlanSelector candidates={error.candidates ?? []} />
+          </div>
+        );
+
+      case 'INTERNAL_ERROR':
         return (
           <ModuleDetailPageError
             message='Something went wrong. Please try again later.'
             planId={planId}
           />
         );
+
+      default: {
+        const _exhaustive: never = code;
+        return (
+          <ModuleDetailPageError
+            message='Something went wrong. Please try again later.'
+            planId={planId}
+          />
+        );
+      }
     }
   }
 

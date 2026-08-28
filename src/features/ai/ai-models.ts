@@ -1,15 +1,17 @@
 import type { AvailableModel } from './types/model.types';
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /**
  * OpenRouter AI Model Configuration
  *
  * This module defines all available OpenRouter models with metadata for UI display
- * and tier-gating. Models are categorized by subscription tier (free/pro) and include
- * technical specifications for context windows and token limits.
+ * and tier-gating. Operation catalogs and defaults live in
+ * `model-operation-policy.ts`; catalog `tier` labels are not proof of zero cost.
  *
  * @module lib/ai/ai-models
  */
+import { getModelOperationPolicy } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
 
 export { AI_DEFAULT_MODEL, isValidModelId };
@@ -64,20 +66,20 @@ export const AVAILABLE_MODELS = [
     inputCostPerMillion: 0,
     outputCostPerMillion: 0,
   },
+
+  // Pro-labelled catalog models. Catalog `tier` is not proof of zero cost.
   {
     id: 'anthropic/claude-haiku-4.5',
     name: 'Claude Haiku 4.5',
     provider: 'Anthropic',
     description:
       'Fast and efficient model from Anthropic with strong reasoning capabilities.',
-    tier: 'free',
+    tier: 'pro',
     contextWindow: 200_000,
     maxOutputTokens: 100_000,
     inputCostPerMillion: 1,
     outputCostPerMillion: 5,
   },
-
-  // Pro tier models - require paid subscription
   {
     id: 'google/gemini-2.5-flash-lite',
     name: 'Gemini 2.5 Flash Lite',
@@ -196,55 +198,62 @@ export function getModelById(id: string): AvailableModel | undefined {
 }
 
 /**
- * Get all models available for a given subscription tier.
- * Free and starter users get free models only.
- * Pro users get all models.
- *
- * @param tier - The user's subscription tier
- * @returns Array of models available to this tier
+ * Get models allowed for a subscription tier and generation operation.
  */
-export function getModelsForTier(tier: SubscriptionTier): AvailableModel[] {
-  if (tier === 'pro') {
+export function getModelsForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): AvailableModel[] {
+  const policy = getModelOperationPolicy(tier, operation);
+  if (policy.modelIds === 'full') {
     return AVAILABLE_MODELS;
   }
-  // Free and starter tiers only get free models
-  return AVAILABLE_MODELS.filter((model) => model.tier === 'free');
+
+  return policy.modelIds.map((id) => {
+    const model = getModelById(id);
+    if (!model) {
+      throw new Error(`Operation policy references unknown model "${id}"`);
+    }
+    return model;
+  });
 }
 
 /**
- * Get the default model for a user's subscription tier.
- * Falls back to DEFAULT_MODEL if no tier-appropriate model is found.
- *
- * @param tier - The user's subscription tier
- * @returns The recommended default model ID for this tier
+ * Get the default model for a subscription tier and generation operation.
  */
-export function getDefaultModelForTier(tier: SubscriptionTier): string {
-  const availableModels = getModelsForTier(tier);
-  return availableModels.length > 0 ? availableModels[0].id : AI_DEFAULT_MODEL;
+export function getDefaultModelForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): string {
+  return getModelOperationPolicy(tier, operation).defaultModelId;
 }
 
 /**
- * Returns the ordered fallback route for a primary model.
+ * Returns the ordered provider fallback route for a resolved primary model.
  *
- * Free and starter users fall back to OpenRouter's Free Models Router
- * (`openrouter/free`) when the primary request is not already that router.
- * Pro users keep the current single-model route.
- *
- * Unknown model IDs get the free router as a defensive fallback; known paid
- * catalog models do not get a free-tier fallback.
+ * Free never falls back to a paid model. Starter outline/regen never falls
+ * back to `openrouter/free`. Starter/Free lesson uses the free router with
+ * no paid fallback. Pro keeps an empty provider fallback list.
  */
 export function getFallbackModelsForTier(
   tier: SubscriptionTier,
   primaryModelId: string,
+  operation: ModelOperation,
 ): string[] {
-  if (tier === 'pro') {
+  const policy = getModelOperationPolicy(tier, operation);
+  if (!policy.allowed || tier === 'pro') {
     return [];
   }
 
-  const primaryModel = getModelById(primaryModelId);
-  if (primaryModel?.tier === 'pro') {
-    return [];
+  switch (operation) {
+    case 'lesson':
+      return primaryModelId === AI_DEFAULT_MODEL ? [] : [AI_DEFAULT_MODEL];
+    case 'initial_outline':
+    case 'regeneration':
+      return [];
+    default: {
+      const _never: never = operation;
+      throw new Error(`Unhandled model operation: ${String(_never)}`);
+    }
   }
-
-  return primaryModelId === AI_DEFAULT_MODEL ? [] : [AI_DEFAULT_MODEL];
 }

@@ -1,5 +1,6 @@
 import {
   buildCreatePlanPayloadFromForm,
+  CUSTOM_DEADLINE_VALUE,
   type PlanFormData,
   planFormPayloadErrorMessage,
 } from '@/features/plans/plan-form-payload';
@@ -42,6 +43,28 @@ describe('buildCreatePlanPayloadFromForm', () => {
       if (!result.ok) expect(result.error.message).not.toBe('');
     },
   );
+
+  it('submits a Pro custom deadlineDate instead of converting custom weeks', () => {
+    const result = buildCreatePlanPayloadFromForm({
+      ...baseFormData,
+      deadlineWeeks: CUSTOM_DEADLINE_VALUE,
+      deadlineDate: '2027-06-15',
+    });
+
+    expect(result).toMatchObject({
+      ok: true,
+      payload: { deadlineDate: '2027-06-15' },
+    });
+  });
+
+  it('returns an error when custom deadline is selected without a date', () => {
+    const result = buildCreatePlanPayloadFromForm({
+      ...baseFormData,
+      deadlineWeeks: CUSTOM_DEADLINE_VALUE,
+    });
+
+    expect(result.ok).toBe(false);
+  });
 });
 
 describe('planFormPayloadErrorMessage', () => {

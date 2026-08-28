@@ -122,6 +122,7 @@ describe('PlansList', () => {
         totalItems: 0,
         totalPages: 0,
         totalSearchResults: 0,
+        canCreatePlan: true,
         statusCounts: {
           not_started: 0,
           active: 0,
@@ -137,6 +138,38 @@ describe('PlansList', () => {
     expect(
       screen.getByText(/Create a plan and pick up when the night is quiet/i),
     ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
+  });
+
+  it('routes the empty-state CTA to pricing after lifetime access is used', () => {
+    renderPlansList({
+      page: {
+        items: [],
+        totalItems: 0,
+        totalPages: 0,
+        totalSearchResults: 0,
+        canCreatePlan: false,
+        statusCounts: {
+          not_started: 0,
+          active: 0,
+          paused: 0,
+          completed: 0,
+          generating: 0,
+          failed: 0,
+        },
+      },
+    });
+
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'New plan' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders correct link for each plan', () => {

@@ -23,6 +23,7 @@ interface MobileHeaderProps {
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
+  canCreatePlan?: boolean;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
   userName?: string;
@@ -40,6 +41,7 @@ export default function MobileHeader({
   pathname,
   navItems,
   tier,
+  canCreatePlan,
   isAuthenticated,
   showClerkUserButton,
   userName,
@@ -49,6 +51,23 @@ export default function MobileHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
+  const appCtaHref = !isAuthenticated
+    ? ROUTES.AUTH.SIGN_IN
+    : canCreatePlan === true
+      ? ROUTES.PLANS.NEW
+      : canCreatePlan === false
+        ? ROUTES.PRICING
+        : undefined;
+  const appCtaAriaLabel = !isAuthenticated
+    ? 'Sign in'
+    : canCreatePlan === false
+      ? 'Upgrade'
+      : 'Create new plan';
+  const appCtaTooltip = !isAuthenticated
+    ? 'Sign in'
+    : canCreatePlan === false
+      ? 'Upgrade'
+      : 'New plan';
 
   return (
     <div className='relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden'>
@@ -57,6 +76,7 @@ export default function MobileHeader({
           isMarketing={isMarketing}
           pathname={pathname}
           navItems={navItems}
+          canCreatePlan={canCreatePlan}
           isAuthenticated={isAuthenticated}
         />
       </div>
@@ -88,28 +108,23 @@ export default function MobileHeader({
           </>
         ) : (
           <>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  asChild
-                  variant='ghost'
-                  size='icon-sm'
-                  className='shrink-0 text-muted-foreground hover:text-foreground'
-                >
-                  <Link
-                    href={
-                      isAuthenticated ? ROUTES.PLANS.NEW : ROUTES.AUTH.SIGN_IN
-                    }
-                    aria-label={isAuthenticated ? 'Create new plan' : 'Sign in'}
+            {appCtaHref ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    asChild
+                    variant='ghost'
+                    size='icon-sm'
+                    className='shrink-0 text-muted-foreground hover:text-foreground'
                   >
-                    <Plus className='size-4' />
-                  </Link>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side='bottom'>
-                {isAuthenticated ? 'New plan' : 'Sign in'}
-              </TooltipContent>
-            </Tooltip>
+                    <Link href={appCtaHref} aria-label={appCtaAriaLabel}>
+                      <Plus className='size-4' />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side='bottom'>{appCtaTooltip}</TooltipContent>
+              </Tooltip>
+            ) : null}
             <div className='shrink-0'>
               <ThemeToggle size='icon-sm' withTooltip />
             </div>

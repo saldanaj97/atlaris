@@ -8,6 +8,10 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
 import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
 import { AppError, AttemptCapExceededError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
+import {
+  API_ERROR_CODES,
+  API_ERROR_HTTP_STATUS,
+} from '@/shared/constants/api-error-codes';
 
 export function throwCreatePlanResultError(
   createResult: Exclude<CreatePlanResult, { status: 'success' }>,
@@ -28,6 +32,30 @@ export function throwCreatePlanResultError(
       status: 403,
       code: 'QUOTA_EXCEEDED',
       details: { upgradeUrl: createResult.upgradeUrl },
+    });
+  }
+
+  if (createResult.status === 'duration_exceeded') {
+    throw new AppError(createResult.reason, {
+      status: API_ERROR_HTTP_STATUS.PLAN_DURATION_LIMIT_EXCEEDED,
+      code: API_ERROR_CODES.PLAN_DURATION_LIMIT_EXCEEDED,
+      details: { upgradeUrl: createResult.upgradeUrl ?? '/pricing' },
+    });
+  }
+
+  if (createResult.status === 'free_allowance_used') {
+    throw new AppError(createResult.reason, {
+      status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
+      code: API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
+      details: { upgradeUrl: createResult.upgradeUrl },
+    });
+  }
+
+  if (createResult.status === 'free_generation_in_progress') {
+    throw new AppError(createResult.reason, {
+      status: API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
+      code: API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
+      classification: 'conflict',
     });
   }
 

@@ -39,6 +39,7 @@ describe('generation integration - timeout classification', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Long Running Topic',
           notes: 'Expecting streaming without completion',

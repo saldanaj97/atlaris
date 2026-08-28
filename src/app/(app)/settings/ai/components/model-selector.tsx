@@ -29,6 +29,8 @@ type ModelSelectorProps = {
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
   onSave: (modelId: string | null) => Promise<void>;
+  label?: string;
+  showUpgradeCta?: boolean;
 };
 
 const ModelDropdown = ({
@@ -36,6 +38,8 @@ const ModelDropdown = ({
   userTier,
   currentModel,
   onSave,
+  label = 'Preferred AI Model',
+  showUpgradeCta = true,
 }: ModelSelectorProps) => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
@@ -69,7 +73,7 @@ const ModelDropdown = ({
   return (
     <div className='space-y-4'>
       <div className='space-y-2'>
-        <Label htmlFor={triggerId}>Preferred AI Model</Label>
+        <Label htmlFor={triggerId}>{label}</Label>
         <Select
           value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
           onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
@@ -195,7 +199,7 @@ const ModelDropdown = ({
         {isSaving ? 'Saving…' : 'Save Preferences'}
       </Button>
 
-      {userTier !== 'pro' && (
+      {showUpgradeCta && userTier !== 'pro' && (
         <div className='rounded-lg border-2 border-border bg-muted p-4'>
           <h4 className='mb-2 font-semibold'>Unlock Premium Models</h4>
           <p className='mb-3 text-sm text-muted-foreground'>
@@ -217,6 +221,8 @@ export function ModelSelector({
   currentModel = null,
   availableModels,
   onSave,
+  label,
+  showUpgradeCta,
 }: ModelSelectorProps) {
   if (availableModels.length === 0) {
     return (
@@ -239,6 +245,8 @@ export function ModelSelector({
       userTier={userTier}
       currentModel={currentModel}
       onSave={onSave}
+      label={label}
+      showUpgradeCta={showUpgradeCta}
     />
   );
 }

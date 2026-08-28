@@ -11,10 +11,12 @@ import {
 } from './plan-timeline-state';
 import { TimelinePlanFooter } from './TimelinePlanFooter';
 import { TimelineModuleCard } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
-import { getStatusesFromModules } from '@/app/(app)/plans/[id]/helpers';
 import { Accordion } from '@/components/ui/accordion';
 import { Card, CardContent } from '@/components/ui/card';
-import { deriveActiveModuleId } from '@/features/plans/task-progress/client';
+import {
+  buildTaskStatusMap as getStatusesFromModules,
+  deriveActiveModuleId,
+} from '@/features/plans/task-progress/client';
 import { useState } from 'react';
 
 interface ModuleTimelineProps {

@@ -170,6 +170,27 @@ describe('processPlanRegenerationJob', () => {
     },
   );
 
+  it('returns the non-enumerating terminal outcome when plan content is locked', async () => {
+    const failJob = vi.fn(async () => null);
+    const deps = buildProcessDeps({
+      queue: { failJob },
+      plans: { readContentAccess: vi.fn(async () => 'locked' as const) },
+    });
+    const job = makeJob();
+
+    await expect(processPlanRegenerationJob(job, deps)).resolves.toEqual({
+      kind: 'plan-not-found-or-unauthorized',
+      jobId: job.id,
+      planId: planRow.id,
+    });
+    expect(failJob).toHaveBeenCalledWith(
+      job.id,
+      'Plan not found for queued regeneration.',
+      { retryable: false },
+    );
+    expect(workflowStartMock).not.toHaveBeenCalled();
+  });
+
   it('starts and persists a workflow without a workflow selector', async () => {
     workflowStartMock.mockResolvedValue({
       runId: 'wrun_drain',

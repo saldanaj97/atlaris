@@ -58,8 +58,8 @@ export function calculateTotalWeeks({
 }
 
 export function normalizePlanDurationForTier({
-  tier,
-  weeklyHours,
+  tier: _tier,
+  weeklyHours: _weeklyHours,
   startDate,
   deadlineDate,
   today = new Date(),
@@ -76,7 +76,6 @@ export function normalizePlanDurationForTier({
 } {
   const { normalizedToday, start } = utcPlanDayAnchors(today, startDate);
 
-  const limits = TIER_LIMITS[tier];
   let deadline =
     deadlineDate !== null && deadlineDate !== undefined
       ? new Date(deadlineDate)
@@ -84,28 +83,6 @@ export function normalizePlanDurationForTier({
 
   if (deadline) {
     deadline.setUTCHours(0, 0, 0, 0);
-
-    if (limits.maxWeeks !== null) {
-      const maxDeadline = new Date(
-        start.getTime() + limits.maxWeeks * MILLISECONDS_PER_WEEK,
-      );
-      if (deadline > maxDeadline) {
-        deadline = maxDeadline;
-      }
-    }
-
-    if (limits.maxHours !== null) {
-      const weeksByHours = Math.max(
-        1,
-        Math.floor(limits.maxHours / Math.max(weeklyHours, 1)),
-      );
-      const maxHoursDeadline = new Date(
-        start.getTime() + weeksByHours * MILLISECONDS_PER_WEEK,
-      );
-      if (deadline > maxHoursDeadline) {
-        deadline = maxHoursDeadline;
-      }
-    }
   }
 
   const normalizedStartString = start.toISOString().slice(0, 10);
@@ -138,16 +115,6 @@ export function checkPlanDurationCap(params: {
     return {
       allowed: false,
       reason: `${params.tier} tier limited to ${caps.maxWeeks}-week plans. Upgrade to ${recommended} for longer plans.`,
-      upgradeUrl: '/pricing',
-    };
-  }
-  if (
-    caps.maxHours !== null &&
-    params.weeklyHours * params.totalWeeks > caps.maxHours
-  ) {
-    return {
-      allowed: false,
-      reason: `${params.tier} tier limited to ${caps.maxHours} total hours. Upgrade for more time.`,
       upgradeUrl: '/pricing',
     };
   }

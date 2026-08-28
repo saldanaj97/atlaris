@@ -13,6 +13,7 @@ import type {
   FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { classifyFailure } from '@/features/ai/classification';
 import {
@@ -68,13 +69,22 @@ export function createSyntheticFailureAttempt(params: {
   classification: FailureClassification;
   durationMs: number;
   promptHash: string | null;
+  generationPurpose: GenerationPurpose;
   now: () => Date;
 }): GenerationAttemptRecordForResponse {
-  const { planId, classification, durationMs, promptHash, now } = params;
+  const {
+    planId,
+    classification,
+    durationMs,
+    promptHash,
+    generationPurpose,
+    now,
+  } = params;
 
   return {
     ...SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS,
     planId,
+    generationPurpose,
     classification,
     durationMs,
     promptHash,
@@ -105,6 +115,7 @@ async function safelyFinalizeFailure(
       classification: finalizeParams.classification,
       durationMs: finalizeParams.durationMs,
       promptHash: fallbackPromptHash,
+      generationPurpose: finalizeParams.preparation.generationPurpose,
       now: finalizeParams.now ?? (() => new Date()),
     });
   }

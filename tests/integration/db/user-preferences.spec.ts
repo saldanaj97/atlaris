@@ -24,6 +24,8 @@ describe('user preference persistence', () => {
 
     await expect(getUserPreferences(userId, db)).resolves.toEqual({
       preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: null,
       analyticsTimezone: 'UTC',
     });
   });

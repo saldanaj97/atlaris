@@ -104,6 +104,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: plan.id,
       userId,
       tier: 'free',
+      generationPurpose: 'regeneration',
       input: {
         topic: plan.topic,
         skillLevel: plan.skillLevel,
@@ -151,6 +152,7 @@ describe('last-good plan vs active-plan cap', () => {
       error: new Error('rate limited'),
       durationMs: 1,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 
@@ -180,6 +182,7 @@ describe('last-good plan vs active-plan cap', () => {
       tier: 'free',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
+      generationPurpose: 'initial',
     });
 
     expect(result.status).toBe('permanent_failure');
@@ -234,6 +237,7 @@ describe('last-good plan vs active-plan cap', () => {
       tier: 'free',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
+      generationPurpose: 'initial',
     });
 
     await sawReservation.promise;
@@ -266,9 +270,12 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
-    await fillEligibleReadyPlans(userId, TIER_LIMITS.free.maxActivePlans - 1);
+    await fillEligibleReadyPlans(
+      userId,
+      TIER_LIMITS.starter.maxActivePlans - 1,
+    );
     const failedA = await createFailedIneligiblePlan(userId, 'Race A');
     const failedB = await createFailedIneligiblePlan(userId, 'Race B');
     const generateSpy = vi.spyOn(MockGenerationProvider.prototype, 'generate');
@@ -278,16 +285,18 @@ describe('last-good plan vs active-plan cap', () => {
       lifecycle.processGenerationAttempt({
         planId: failedA.id,
         userId,
-        tier: 'free',
+        tier: 'starter',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
+        generationPurpose: 'initial',
       }),
       lifecycle.processGenerationAttempt({
         planId: failedB.id,
         userId,
-        tier: 'free',
+        tier: 'starter',
         allowedGenerationStatuses: ['failed', 'pending_retry'],
         input: TEST_INPUT,
+        generationPurpose: 'initial',
       }),
     ]);
 
@@ -299,7 +308,7 @@ describe('last-good plan vs active-plan cap', () => {
     ).toHaveLength(1);
     expect(generateSpy).toHaveBeenCalledTimes(1);
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
   });
 
@@ -321,6 +330,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: target.id,
       userId,
       tier: 'free',
+      generationPurpose: 'regeneration',
       input: {
         topic: target.topic,
         skillLevel: target.skillLevel,
@@ -354,7 +364,7 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const [eligible] = await fillEligibleReadyPlans(userId, 2);
     await createTestModule({ planId: eligible.id, title: 'Keep last-good' });
@@ -364,6 +374,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: eligible.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!eligibleReservation.reserved) {
@@ -384,6 +395,7 @@ describe('last-good plan vs active-plan cap', () => {
       timedOut: true,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 
@@ -403,6 +415,7 @@ describe('last-good plan vs active-plan cap', () => {
       planId: failed.id,
       userId,
       input: TEST_INPUT,
+      generationPurpose: 'initial',
       dbClient: db,
     });
     if (!ineligibleReservation.reserved) {
@@ -424,6 +437,7 @@ describe('last-good plan vs active-plan cap', () => {
       timedOut: true,
       extendedTimeout: false,
       usageKind: 'plan',
+      generationPurpose: 'initial',
       retryable: true,
     });
 

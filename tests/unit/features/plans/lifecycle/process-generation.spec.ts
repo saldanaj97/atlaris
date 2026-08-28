@@ -24,6 +24,7 @@ function mockSuccessAttemptReturn(planId: string) {
     promptHash: defaultReservation.promptHash,
     metadata: null,
     createdAt: new Date(),
+    generationPurpose: 'initial',
   };
 }
 
@@ -79,6 +80,7 @@ const validGenerationInput: ProcessGenerationInput = {
   planId: 'plan-gen-001',
   userId: 'user-abc',
   tier: 'free',
+  generationPurpose: 'initial',
   input: {
     topic: 'Learn TypeScript',
     skillLevel: 'beginner',
@@ -127,6 +129,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
           provider: 'openai',
           model: 'gpt-4o',
         }),
+        generationPurpose: 'initial',
         preparation: defaultReservation,
         extendedTimeout: false,
       }),
@@ -431,6 +434,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
       planId: 'plan-gen-001',
       userId: 'user-abc',
       tier: 'pro',
+      generationPurpose: 'initial',
       input: validGenerationInput.input,
       signal,
     });
@@ -605,6 +609,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(vi.mocked(ports.generation.runGeneration)).toHaveBeenCalledWith(
       expect.objectContaining({
         reservation,
+        generationPurpose: 'initial',
       }),
     );
   });
@@ -632,6 +637,62 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(
       vi.mocked(ports.generationFinalization.finalizeSuccess),
     ).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('recovers a finalized retryable failure without finalizing or invoking the provider', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+          outcome: 'failure',
+          classification: 'timeout',
+          error: new Error('stored timeout'),
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toMatchObject({
+      status: 'retryable_failure',
+      classification: 'timeout',
+      error: new Error('stored timeout'),
+    });
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('recovers a finalized permanent failure as a terminal result', async () => {
+    ports = createMockPorts({
+      generation: {
+        runGeneration: vi.fn().mockResolvedValue({
+          status: 'already_finalized',
+          planId: 'plan-gen-001',
+          outcome: 'failure',
+          classification: 'validation',
+        }),
+      },
+    });
+    service = new PlanLifecycleService(ports);
+
+    const result = await service.processGenerationAttemptWithReservation(
+      validGenerationInput,
+      makeAttemptReservation(),
+    );
+
+    expect(result).toMatchObject({
+      status: 'permanent_failure',
+      classification: 'validation',
+    });
     expect(
       vi.mocked(ports.generationFinalization.finalizeFailure),
     ).not.toHaveBeenCalled();

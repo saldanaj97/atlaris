@@ -77,7 +77,13 @@ describe('markModuleLessonProviderStarted', () => {
   const pgDialect = new PgDialect();
   const providerStartedAt = '2026-08-20T18:00:00.000Z';
 
-  function mockUpdate(returningRows: Array<{ id: string }>) {
+  function mockUpdate(
+    returningRows: Array<{ id: string }>,
+    replayState?: {
+      status: 'generating';
+      metadata: { version: 1; providerStartedAt: string };
+    },
+  ) {
     let capturedSet: { lessonGenerationMetadata?: SQL } | undefined;
     let capturedWhere: SQL | undefined;
     const returning = vi.fn().mockResolvedValue(returningRows);
@@ -89,8 +95,29 @@ describe('markModuleLessonProviderStarted', () => {
       capturedSet = values;
       return { where };
     });
-    const update = vi.fn().mockReturnValue({ set });
-    const dbClient = { update } as unknown as DbClient;
+    const usageReturning = vi.fn().mockResolvedValue([{ id: 'usage-1' }]);
+    const usageWhere = vi.fn().mockReturnValue({ returning: usageReturning });
+    const usageSet = vi.fn().mockReturnValue({ where: usageWhere });
+    const update = vi
+      .fn()
+      .mockReturnValueOnce({ set })
+      .mockReturnValue({ set: usageSet });
+    const insert = vi.fn().mockReturnValue({
+      values: vi.fn().mockReturnValue({
+        onConflictDoNothing: vi.fn().mockResolvedValue(undefined),
+      }),
+    });
+    const limit = vi.fn().mockResolvedValue(replayState ? [replayState] : []);
+    const selectWhere = vi.fn().mockReturnValue({ limit });
+    const innerJoin = vi.fn().mockReturnValue({ where: selectWhere });
+    const from = vi.fn().mockReturnValue({ innerJoin });
+    const select = vi.fn().mockReturnValue({ from });
+    const tx = { insert, select, update };
+    const dbClient = {
+      transaction: vi.fn(async (callback: (innerTx: typeof tx) => unknown) =>
+        callback(tx),
+      ),
+    } as unknown as DbClient;
     return { dbClient, captured: () => ({ capturedSet, capturedWhere }) };
   }
 
@@ -116,6 +143,24 @@ describe('markModuleLessonProviderStarted', () => {
     expect(whereQuery.params).toEqual(
       expect.arrayContaining(['module-1', 'plan-1', 'generating', 'user-1']),
     );
+    expect(whereQuery.sql).toContain('providerStartedAt');
+    expect(whereQuery.sql).toContain('IS NULL');
+  });
+
+  it('treats an existing provider-start marker as an idempotent replay', async () => {
+    const { dbClient } = mockUpdate([], {
+      status: 'generating',
+      metadata: { version: 1, providerStartedAt },
+    });
+
+    await expect(
+      markModuleLessonProviderStarted(dbClient, {
+        userId: 'user-1',
+        planId: 'plan-1',
+        moduleId: 'module-1',
+        providerStartedAt: '2026-08-20T18:01:00.000Z',
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('throws unless exactly one generating row matches', async () => {

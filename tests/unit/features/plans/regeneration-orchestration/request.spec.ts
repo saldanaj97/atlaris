@@ -1,8 +1,6 @@
-import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
 import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
 
-import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { RateLimitError } from '@/lib/api/errors';
@@ -70,14 +68,6 @@ const ownedPlan: RegenerationOwnedPlan = {
   deadlineDate: null,
 };
 
-const baseToken: MeteredReservationToken = {
-  userId: 'user-1',
-  month: '2026-04',
-  meter: 'regeneration',
-  limit: 5,
-  newCount: 3,
-};
-
 function buildDeps(
   overrides: RegenerationOrchestrationDepsOverrides = {},
 ): RegenerationOrchestrationDeps {
@@ -85,25 +75,7 @@ function buildDeps(
     ...overrides,
     dbClient: overrides.dbClient ?? fakeDb,
     queue: { ...overrides.queue },
-    quota: {
-      runReserved: vi.fn(async (args) => {
-        const workResult = await args.work();
-        if (workResult.disposition === 'consumed') {
-          return {
-            ok: true as const,
-            consumed: true as const,
-            value: workResult.value,
-          };
-        }
-        return {
-          ok: true as const,
-          consumed: false as const,
-          value: workResult.value,
-          reconciliationRequired: false as const,
-        };
-      }) as RegenerationOrchestrationDeps['quota']['runReserved'],
-      ...overrides.quota,
-    },
+    quota: { ...overrides.quota },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),
       findOwnedPlan: vi.fn(async () => ownedPlan),
@@ -136,7 +108,6 @@ describe('requestPlanRegeneration', () => {
         getActiveRegenerationJob: vi.fn(async () => ({ id: 'existing' })),
       },
     });
-    const runReserved = deps.quota.runReserved as ReturnType<typeof vi.fn>;
     const result = await requestPlanRegeneration(
       {
         userId: 'user-1',
@@ -148,32 +119,18 @@ describe('requestPlanRegeneration', () => {
       kind: 'active-job-conflict',
       existingJobId: 'existing',
     });
-    expect(runReserved).not.toHaveBeenCalled();
+    expect(deps.quota.peekUsage).not.toHaveBeenCalled();
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
     expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
   });
 
-  it('maps queue dedupe to queue-dedupe-conflict and calls compensate once', async () => {
-    const compensate = vi.fn().mockResolvedValue(undefined);
-    const reportReconciliation = vi.fn();
+  it('maps queue dedupe to queue-dedupe-conflict without settling quota', async () => {
     const deps = buildDeps({
       queue: {
         enqueueWithResult: vi.fn(async () => ({
           id: 'dup-job',
           deduplicated: true,
         })),
-      },
-      quota: {
-        runReserved: ((
-          args: Parameters<typeof runRegenerationQuotaReserved>[0],
-        ) =>
-          runRegenerationQuotaReserved(args, {
-            reserve: vi.fn().mockResolvedValue({
-              ok: true,
-              token: baseToken,
-            }),
-            compensate,
-            reportReconciliation,
-          })) as RegenerationOrchestrationDeps['quota']['runReserved'],
       },
     });
 
@@ -189,30 +146,14 @@ describe('requestPlanRegeneration', () => {
       kind: 'queue-dedupe-conflict',
       existingJobId: 'dup-job',
     });
-    expect(compensate).toHaveBeenCalledTimes(1);
-    expect(reportReconciliation).not.toHaveBeenCalled();
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
-  it('compensates once when enqueue throws after quota reserve, without reconciliation report', async () => {
+  it('does not settle quota when enqueue throws', async () => {
     const enqueueError = new Error('enqueue failed');
-    const compensate = vi.fn().mockResolvedValue(undefined);
-    const reportReconciliation = vi.fn();
     const deps = buildDeps({
       queue: {
         enqueueWithResult: vi.fn().mockRejectedValue(enqueueError),
-      },
-      quota: {
-        runReserved: ((
-          args: Parameters<typeof runRegenerationQuotaReserved>[0],
-        ) =>
-          runRegenerationQuotaReserved(args, {
-            reserve: vi.fn().mockResolvedValue({
-              ok: true,
-              token: baseToken,
-            }),
-            compensate,
-            reportReconciliation,
-          })) as RegenerationOrchestrationDeps['quota']['runReserved'],
       },
     });
 
@@ -226,19 +167,17 @@ describe('requestPlanRegeneration', () => {
       ),
     ).rejects.toBe(enqueueError);
 
-    expect(compensate).toHaveBeenCalledTimes(1);
-    expect(compensate).toHaveBeenCalledWith(baseToken, fakeDb);
-    expect(reportReconciliation).not.toHaveBeenCalled();
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
-  it('returns quota-denied when reservation fails', async () => {
+  it('returns quota-denied from a non-settling usage peek', async () => {
     const deps = buildDeps({
       quota: {
-        runReserved: vi.fn().mockResolvedValue({
-          ok: false as const,
-          currentCount: 5,
-          limit: 5,
-        }),
+        peekUsage: vi.fn(async () => ({
+          tier: 'starter' as const,
+          activePlans: { current: 1, limit: 10 },
+          regenerations: { used: 5, limit: 5 },
+        })),
       },
     });
     const result = await requestPlanRegeneration(
@@ -254,6 +193,115 @@ describe('requestPlanRegeneration', () => {
       limit: 5,
       reason: 'Regeneration quota exceeded for your subscription tier.',
     });
+    expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
+  });
+
+  it('returns not-included for Free before duration or quota', async () => {
+    const deps = buildDeps({
+      tier: { resolveUserTier: vi.fn(async () => 'free' as const) },
+      quota: {
+        peekUsage: vi.fn(async () => ({
+          tier: 'free' as const,
+          activePlans: { current: 1, limit: 1 },
+          regenerations: { used: 0, limit: 0 },
+        })),
+      },
+    });
+    const result = await requestPlanRegeneration(
+      {
+        userId: 'user-1',
+        planId: ownedPlan.id,
+        overrides: { deadlineDate: '2026-12-01' },
+      },
+      deps,
+    );
+    expect(result).toEqual({ kind: 'not-included' });
+    expect(deps.quota.peekUsage).not.toHaveBeenCalled();
+    expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
+  });
+
+  it('returns duration-exceeded for Starter merged dates over 8 weeks', async () => {
+    const longPlan: RegenerationOwnedPlan = {
+      ...ownedPlan,
+      startDate: '2026-01-01',
+      deadlineDate: '2026-04-01',
+    };
+    const base = buildDeps();
+    const deps = buildDeps({
+      tier: { resolveUserTier: vi.fn(async () => 'starter' as const) },
+      plans: {
+        ...base.plans,
+        findOwnedPlan: vi.fn(async () => longPlan),
+      },
+    });
+    const result = await requestPlanRegeneration(
+      {
+        userId: 'user-1',
+        planId: ownedPlan.id,
+      },
+      deps,
+    );
+    expect(result.kind).toBe('duration-exceeded');
+    expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
+  });
+
+  it('enqueues a Starter long plan when date overrides bring duration within cap', async () => {
+    startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
+    const longPlan: RegenerationOwnedPlan = {
+      ...ownedPlan,
+      startDate: '2026-01-01',
+      deadlineDate: '2026-04-01',
+    };
+    const base = buildDeps();
+    const deps = buildDeps({
+      tier: { resolveUserTier: vi.fn(async () => 'starter' as const) },
+      plans: {
+        ...base.plans,
+        findOwnedPlan: vi.fn(async () => longPlan),
+      },
+    });
+    const result = await requestPlanRegeneration(
+      {
+        userId: 'user-1',
+        planId: ownedPlan.id,
+        overrides: { deadlineDate: '2026-02-12' },
+      },
+      deps,
+    );
+    expect(result.kind).not.toBe('duration-exceeded');
+    expect(result.kind).not.toBe('not-included');
+    expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+      'plan_regeneration',
+      ownedPlan.id,
+      'user-1',
+      {
+        planId: ownedPlan.id,
+        overrides: { deadlineDate: '2026-02-12' },
+      },
+      7,
+    );
+    expect(deps.quota.runReserved).not.toHaveBeenCalled();
+  });
+
+  it('returns content-locked when the owned plan is not fully accessible', async () => {
+    const base = buildDeps();
+    const deps = buildDeps({
+      plans: {
+        ...base.plans,
+        readContentAccess: vi.fn(async () => 'locked' as const),
+      },
+    });
+    const result = await requestPlanRegeneration(
+      {
+        userId: 'user-1',
+        planId: ownedPlan.id,
+      },
+      deps,
+    );
+    expect(result).toEqual({ kind: 'content-locked' });
+    expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
   });
 
   it('returns plan-not-found when findOwnedPlan returns null', async () => {
@@ -362,28 +410,35 @@ describe('requestPlanRegeneration', () => {
       );
     });
 
-    it('marks workflow start failure retryable without compensating quota', async () => {
+    it('persists an optional model override on the queued job payload', async () => {
+      const deps = buildDeps();
+
+      await requestPlanRegeneration(
+        {
+          userId: 'user-1',
+          planId: ownedPlan.id,
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        },
+        deps,
+      );
+
+      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+        'plan_regeneration',
+        ownedPlan.id,
+        'user-1',
+        {
+          planId: ownedPlan.id,
+          overrides: { model: 'google/gemini-3-pro-preview' },
+        },
+        7,
+      );
+    });
+
+    it('marks workflow start failure retryable without settling quota', async () => {
       startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
       const failJob = vi.fn(async () => null);
-      const runReserved = vi.fn(async (args) => {
-        const workResult = await args.work();
-        if (workResult.disposition === 'consumed') {
-          return {
-            ok: true as const,
-            consumed: true as const,
-            value: workResult.value,
-          };
-        }
-        return {
-          ok: true as const,
-          consumed: false as const,
-          value: workResult.value,
-          reconciliationRequired: false as const,
-        };
-      });
       const deps = buildDeps({
         queue: { failJob },
-        quota: { runReserved },
       });
 
       const result = await requestPlanRegeneration(
@@ -405,50 +460,7 @@ describe('requestPlanRegeneration', () => {
         'Failed to start plan regeneration workflow.',
         { retryable: true },
       );
-      expect(runReserved).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not compensate quota when workflow start fails at enqueue time', async () => {
-      startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
-      const failJob = vi.fn(async () => null);
-      const reserve = vi.fn().mockResolvedValue({
-        ok: true,
-        token: baseToken,
-      });
-      const compensate = vi.fn(async () => undefined);
-      const deps = buildDeps({
-        queue: { failJob },
-        quota: {
-          runReserved: ((
-            args: Parameters<typeof runRegenerationQuotaReserved>[0],
-          ) =>
-            runRegenerationQuotaReserved(args, {
-              reserve,
-              compensate,
-              reportReconciliation: vi.fn(),
-            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
-        },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        retryable: true,
-      });
-      expect(reserve).toHaveBeenCalledTimes(1);
-      expect(compensate).not.toHaveBeenCalled();
-      expect(failJob).toHaveBeenCalledWith(
-        'job-1',
-        'Failed to start plan regeneration workflow.',
-        { retryable: true },
-      );
+      expect(deps.quota.runReserved).not.toHaveBeenCalled();
     });
 
     it('marks persist failure non-retryable and emits ops telemetry when cancel fails', async () => {
@@ -496,29 +508,14 @@ describe('requestPlanRegeneration', () => {
       );
     });
 
-    it('compensates quota when a started workflow is canceled after run id persistence fails', async () => {
+    it('does not settle quota when a started workflow is canceled after run id persistence fails', async () => {
       const persistError = new Error('runId persist failed');
       const updateRegenerationJobPayload = vi.fn(async () => {
         throw persistError;
       });
       const failJob = vi.fn(async () => null);
-      const reserve = vi.fn().mockResolvedValue({
-        ok: true,
-        token: baseToken,
-      });
-      const compensate = vi.fn(async () => undefined);
       const deps = buildDeps({
         queue: { failJob, updateRegenerationJobPayload },
-        quota: {
-          runReserved: ((
-            args: Parameters<typeof runRegenerationQuotaReserved>[0],
-          ) =>
-            runRegenerationQuotaReserved(args, {
-              reserve,
-              compensate,
-              reportReconciliation: vi.fn(),
-            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
-        },
       });
 
       const result = await requestPlanRegeneration(
@@ -540,55 +537,10 @@ describe('requestPlanRegeneration', () => {
         'Failed to persist plan regeneration workflow run id.',
         { retryable: false },
       );
-      expect(compensate).toHaveBeenCalledTimes(1);
-      expect(compensate).toHaveBeenCalledWith(baseToken, fakeDb);
+      expect(deps.quota.runReserved).not.toHaveBeenCalled();
       expect(
         recordRegenerationWorkflowAttachUncertainMock,
       ).not.toHaveBeenCalled();
-    });
-
-    it('logs when quota reconciliation remains required after workflow attachment is canceled', async () => {
-      const persistError = new Error('runId persist failed');
-      const updateRegenerationJobPayload = vi.fn(async () => {
-        throw persistError;
-      });
-      const failJob = vi.fn(async () => null);
-      const runReserved = vi.fn(async (args) => {
-        const workResult = await args.work();
-        return {
-          ok: true as const,
-          consumed: false as const,
-          value: workResult.value,
-          reconciliationRequired: true as const,
-        };
-      });
-      const deps = buildDeps({
-        queue: { failJob, updateRegenerationJobPayload },
-        quota: { runReserved },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        jobId: 'job-1',
-        planId: ownedPlan.id,
-        retryable: false,
-      });
-      expect(deps.logger.error).toHaveBeenCalledWith(
-        {
-          jobId: 'job-1',
-          planId: ownedPlan.id,
-          reconciliationRequired: true,
-        },
-        'Regeneration quota revert requires reconciliation after workflow attach cancellation',
-      );
     });
 
     it('returns a structured persist failure when job terminalization fails', async () => {
@@ -620,26 +572,12 @@ describe('requestPlanRegeneration', () => {
       expect(failJob).toHaveBeenCalledTimes(1);
     });
 
-    it('does not compensate when workflow attach throws unexpectedly', async () => {
+    it('does not settle quota when workflow attach throws unexpectedly', async () => {
       const workflowError = new Error('unexpected attach failure');
       startPlanRegenerationWorkflowMock.mockRejectedValue(workflowError);
       const failJob = vi.fn(async () => null);
-      const compensate = vi.fn(async () => undefined);
       const deps = buildDeps({
         queue: { failJob },
-        quota: {
-          runReserved: ((
-            args: Parameters<typeof runRegenerationQuotaReserved>[0],
-          ) =>
-            runRegenerationQuotaReserved(args, {
-              reserve: vi.fn().mockResolvedValue({
-                ok: true,
-                token: baseToken,
-              }),
-              compensate,
-              reportReconciliation: vi.fn(),
-            })) as RegenerationOrchestrationDeps['quota']['runReserved'],
-        },
       });
 
       await expect(
@@ -657,7 +595,7 @@ describe('requestPlanRegeneration', () => {
         'Failed to attach plan regeneration workflow.',
         { retryable: false },
       );
-      expect(compensate).not.toHaveBeenCalled();
+      expect(deps.quota.runReserved).not.toHaveBeenCalled();
       expect(
         recordRegenerationWorkflowAttachUncertainMock,
       ).toHaveBeenCalledWith(

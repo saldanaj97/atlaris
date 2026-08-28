@@ -171,27 +171,24 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
     });
   });
 
-  it('maps quota denial to quota_denied state', async () => {
+  it('does not map a lesson product-quota denial', async () => {
     const userId = await authenticateTestUser('quota', 'free');
     await seedOwnedPlanForLessonContentApi(userId);
     mockStartModuleLessonGeneration.mockResolvedValue({
-      kind: 'quota_denied',
-      currentCount: 3,
-      limit: 3,
+      kind: 'already_ready',
     });
 
     const { request, context } = createRequest();
     const response = await POST(request, context);
     const body = await response.json();
 
-    expect(response.status).toBe(429);
+    expect(response.status).toBe(200);
     expect(body).toEqual({
-      state: 'quota_denied',
+      state: 'ready',
       planId: VALID_PLAN_ID,
       moduleId: VALID_MODULE_ID,
-      currentCount: 3,
-      limit: 3,
     });
+    expect(body).not.toHaveProperty('state', 'quota_denied');
   });
 
   it('maps failed generation to a generic provider failure response', async () => {

@@ -4,17 +4,23 @@ import { resolveStreamModelResolution } from '@/features/plans/session/model-res
 import { logger } from '@/lib/logging/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const FREE_PERSISTABLE_MODELS = getPersistableModelsForTier('free');
-const FREE_PERSISTABLE_MODEL = FREE_PERSISTABLE_MODELS[0]?.id;
-const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier('pro').find(
-  ({ id }) => !FREE_PERSISTABLE_MODELS.some((model) => model.id === id),
+const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
+  'starter',
+  'initial_outline',
+);
+const STARTER_PERSISTABLE_MODEL = STARTER_PERSISTABLE_MODELS[0]?.id;
+const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
+  'pro',
+  'initial_outline',
+).find(
+  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
 const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
   ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
 )?.id;
 
 if (
-  !FREE_PERSISTABLE_MODEL ||
+  !STARTER_PERSISTABLE_MODEL ||
   !PRO_PERSISTABLE_MODEL ||
   !FREE_QUERY_OVERRIDE_MODEL
 ) {
@@ -30,7 +36,7 @@ describe('resolveStreamModelResolution', () => {
     const resolution = resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: FREE_QUERY_OVERRIDE_MODEL }),
       tier: 'pro',
-      savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
     });
 
     expect(resolution).toEqual({
@@ -45,12 +51,12 @@ describe('resolveStreamModelResolution', () => {
 
     const resolution = resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
-      tier: 'free',
-      savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
+      tier: 'starter',
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
     });
 
     expect(resolution).toEqual({
-      modelOverride: FREE_PERSISTABLE_MODEL,
+      modelOverride: STARTER_PERSISTABLE_MODEL,
       resolutionSource: 'saved_preference',
       suppliedModel: 'invalid/model-id',
       validationError: {
@@ -60,7 +66,7 @@ describe('resolveStreamModelResolution', () => {
 
     expect(warnSpy).toHaveBeenCalledWith(
       expect.objectContaining({
-        tier: 'free',
+        tier: 'starter',
         suppliedModel: 'invalid/model-id',
         reason: expect.stringMatching(/invalid_model|tier_denied/),
       }),
@@ -107,16 +113,42 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
-  it('uses saved preference when no query override is supplied', () => {
+  it('uses a Starter/Pro allowlist query override over the saved outline preference', () => {
     const resolution = resolveStreamModelResolution({
-      searchParams: new URLSearchParams(),
-      tier: 'free',
-      savedPreferredAiModel: FREE_PERSISTABLE_MODEL,
+      searchParams: new URLSearchParams({ model: STARTER_PERSISTABLE_MODEL }),
+      tier: 'starter',
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODELS[1]?.id ?? null,
     });
 
     expect(resolution).toEqual({
-      modelOverride: FREE_PERSISTABLE_MODEL,
+      modelOverride: STARTER_PERSISTABLE_MODEL,
+      resolutionSource: 'query_override',
+      suppliedModel: STARTER_PERSISTABLE_MODEL,
+    });
+  });
+
+  it('uses saved preference when no query override is supplied', () => {
+    const resolution = resolveStreamModelResolution({
+      searchParams: new URLSearchParams(),
+      tier: 'starter',
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
+    });
+
+    expect(resolution).toEqual({
+      modelOverride: STARTER_PERSISTABLE_MODEL,
       resolutionSource: 'saved_preference',
+    });
+  });
+
+  it('does not persist or apply a Free saved preference', () => {
+    const resolution = resolveStreamModelResolution({
+      searchParams: new URLSearchParams(),
+      tier: 'free',
+      savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
+    });
+
+    expect(resolution).toEqual({
+      resolutionSource: 'tier_default',
     });
   });
 });

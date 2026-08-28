@@ -53,6 +53,7 @@ describe('RLS attempt insertion', () => {
           planId: plan.id,
           // attacker userId (does not own plan)
           userId: attackerId,
+          generationPurpose: 'initial',
           input: {
             topic: 'Insert Protection Plan',
             notes: 'Should not succeed',
@@ -118,6 +119,7 @@ describe('RLS attempt insertion', () => {
       {
         planId: plan.id,
         userId: ownerId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Owner Insert Plan',
           notes: 'Should succeed',

@@ -29,6 +29,7 @@ describe('generation integration - success path', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Deep Learning Foundations',
           notes: 'Focus on practical intuitions and projects',

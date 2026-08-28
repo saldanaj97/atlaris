@@ -50,6 +50,7 @@ export async function claimModuleLessonGenerationStep(
     input.moduleId,
     input.userId,
     {
+      batchRequestId: input.correlationId,
       workflow: {
         runId,
         startedAt,
@@ -89,6 +90,7 @@ export async function runModuleLessonGenerationStep(
 
   const generationMetadata = {
     version: 1 as const,
+    batchRequestId: input.correlationId,
     workflow: {
       provider: 'workflow-sdk' as const,
       runId,

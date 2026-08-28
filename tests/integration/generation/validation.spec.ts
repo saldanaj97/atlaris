@@ -39,6 +39,7 @@ describe('generation integration - validation failure', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Constraint Testing Topic',
           notes: 'Expecting validation failure due to zero modules',

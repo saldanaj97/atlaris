@@ -113,7 +113,7 @@ describe('onboardingFormSchema date validations', () => {
     expectFieldError(result, 'deadlineDate', 'YYYY-MM-DD');
   });
 
-  it('caps deadlines to within 1 year', () => {
+  it('allows Pro custom deadlines beyond 1 year', () => {
     const farFuture = new Date();
     farFuture.setFullYear(farFuture.getFullYear() + 2);
     const input = {
@@ -121,7 +121,7 @@ describe('onboardingFormSchema date validations', () => {
       deadlineDate: yyyyMmDd(farFuture),
     };
     const result = onboardingFormSchema.safeParse(input);
-    expectFieldError(result, 'deadlineDate', '1 year');
+    expect(result.success).toBe(true);
   });
 
   it('preserves legacy rollover behavior for impossible calendar dates', () => {

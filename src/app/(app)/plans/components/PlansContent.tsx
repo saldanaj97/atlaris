@@ -2,9 +2,13 @@ import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
 import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
+import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
 import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
+import { Plus } from 'lucide-react';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 /**
@@ -46,7 +50,6 @@ export async function PlanHeaderSummaryContent({
           tier: usage.tier,
           activePlans: usage.activePlans,
           regenerations: usage.regenerations,
-          exports: usage.exports,
         }}
       />
     </div>
@@ -57,6 +60,31 @@ export async function PlanHeaderSummaryContent({
  * Async component that fetches user plans and renders content.
  * Wrapped in Suspense boundary by the parent page.
  */
+export async function PlansHeaderCreateAction({
+  dataPromise,
+}: {
+  dataPromise: Promise<PlansPageData | null>;
+}) {
+  const result = await dataPromise;
+  if (!result) return null;
+
+  if (result.plansPage.canCreatePlan === false) {
+    return (
+      <Button asChild>
+        <Link href={ROUTES.PRICING}>Upgrade</Link>
+      </Button>
+    );
+  }
+
+  return (
+    <Button asChild>
+      <Link href={ROUTES.PLANS.NEW}>
+        <Plus />
+        New Plan
+      </Link>
+    </Button>
+  );
+}
 export async function PlansContent({
   dataPromise,
   query,
@@ -73,6 +101,16 @@ export async function PlansContent({
 
   const { plansPage } = result;
 
+  if (plansPage.selectionRequired) {
+    return (
+      <section aria-label='Choose a Free plan'>
+        <FreeAccessPlanSelector
+          candidates={plansPage.selectionCandidates ?? []}
+        />
+      </section>
+    );
+  }
+
   if (
     plansPage.totalSearchResults === 0 &&
     query.search === '' &&
@@ -80,7 +118,12 @@ export async function PlansContent({
   ) {
     return (
       <section aria-label='No plans found'>
-        <EmptyPlansList filterStatus='all' isFirstRun searchQuery='' />
+        <EmptyPlansList
+          canCreatePlan={plansPage.canCreatePlan}
+          filterStatus='all'
+          isFirstRun
+          searchQuery=''
+        />
       </section>
     );
   }

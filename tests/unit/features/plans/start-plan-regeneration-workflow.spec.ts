@@ -56,6 +56,7 @@ describe('startPlanRegenerationWorkflow', () => {
         planId: input.planId,
         userId: input.userId,
         correlationId: input.correlationId,
+        generationPurpose: 'regeneration',
       },
     ]);
     expect(mocks.log.info).toHaveBeenCalledWith(
@@ -80,7 +81,10 @@ describe('startPlanRegenerationWorkflow', () => {
     ).resolves.toEqual({ started: false });
 
     expect(mocks.workflowStart).toHaveBeenCalledWith(planRegenerationWorkflow, [
-      input,
+      {
+        ...input,
+        generationPurpose: 'regeneration',
+      },
     ]);
     expect(mocks.log.error).toHaveBeenCalledWith(
       expect.objectContaining({

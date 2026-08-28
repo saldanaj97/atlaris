@@ -330,6 +330,7 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
     expect(captured).toHaveLength(1);
     // Invalid query param + null saved preference → tier_default → no override.
     expect(captured[0]?.modelOverride).toBeUndefined();
+    expect(captured[0]?.generationPurpose).toBe('initial');
   });
 
   it('forwards a valid model query param into processGenerationAttempt', async () => {
@@ -385,6 +386,38 @@ describe('PlanGenerationSessionBoundary.respondCreateStream', () => {
         req,
         authUserId,
         savedPreferredAiModel: VALID_PRO_MODEL,
+      }),
+    );
+
+    await readStreamingResponse(response);
+
+    expect(captured).toHaveLength(1);
+    expect(captured[0]?.modelOverride).toBe(VALID_PRO_MODEL);
+  });
+
+  it('prefers a valid query override over savedPreferredAiModel', async () => {
+    const captured: ProcessGenerationInput[] = [];
+    const fake = buildMockCreateLifecycle({
+      createResult: SUCCESS_CREATE_RESULT,
+      process: async (input) => {
+        captured.push(input);
+        return SUCCESS_CREATE_ATTEMPT_RESULT;
+      },
+    });
+    const boundary = createPlanGenerationSessionBoundary({
+      createLifecycleService: () => fake.service,
+    });
+
+    const authUserId = buildTestAuthUserId('boundary-create-query-beats-saved');
+    const req = buildCreateStreamRequest({
+      url: `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(VALID_PRO_MODEL)}`,
+    });
+
+    const response = await boundary.respondCreateStream(
+      buildCreateStreamArgs({
+        req,
+        authUserId,
+        savedPreferredAiModel: 'google/gemini-2.5-flash-lite',
       }),
     );
 

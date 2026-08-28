@@ -397,8 +397,8 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
-      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
-      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_settings', 'UPDATE', ARRAY['unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_preferences', 'INSERT', ARRAY['user_id', 'category', 'enabled', 'unsubscribed_at', 'updated_at']),
@@ -429,8 +429,8 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
-      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'analytics_timezone', 'updated_at']),
-      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_settings', 'UPDATE', ARRAY['unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_preferences', 'INSERT', ARRAY['user_id', 'category', 'enabled', 'unsubscribed_at', 'updated_at']),

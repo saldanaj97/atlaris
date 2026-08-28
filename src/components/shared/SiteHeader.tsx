@@ -5,6 +5,7 @@ import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
+import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import {
   getShellAuthUserId,
@@ -22,7 +23,7 @@ import { currentUser } from '@clerk/nextjs/server';
  * **Responsibilities:**
  * - Resolve whether a user is signed in (server-side)
  * - Select appropriate nav items based on auth state
- * - Fetch user's subscription tier for display
+ * - Fetch user's subscription tier and create-plan eligibility
  * - Render MobileHeader (viewports below `md`) and DesktopHeader (`md` and up)
  *
  *
@@ -60,14 +61,17 @@ export default async function SiteHeader() {
 
   // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
+  let canCreatePlan: boolean | undefined;
   let userName: string | undefined;
   let userImageUrl: string | undefined;
   if (authUserId) {
     try {
-      const result = await requestBoundary.component(
-        ({ actor }) => actor.subscriptionTier,
-      );
-      tier = result ?? undefined;
+      const result = await requestBoundary.component(({ actor }) => ({
+        tier: actor.subscriptionTier,
+        canCreatePlan: canCreatePlanOnCurrentTier(actor),
+      }));
+      tier = result?.tier;
+      canCreatePlan = result?.canCreatePlan;
     } catch (err) {
       // Non-critical for shell render: tier badge omitted; log for ops visibility.
       logger.warn(
@@ -114,6 +118,7 @@ export default async function SiteHeader() {
       <SiteHeaderChrome
         navItems={navItems}
         tier={tier}
+        canCreatePlan={canCreatePlan}
         isAuthenticated={Boolean(authUserId)}
         showClerkUserButton={showClerkUserButton}
         userName={userName}

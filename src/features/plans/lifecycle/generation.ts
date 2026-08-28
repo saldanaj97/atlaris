@@ -4,27 +4,50 @@ import type {
   PlanLifecycleGeneration,
 } from './service';
 import type { GeneratedModule } from './types';
+import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { GenerationInput } from '@/features/ai/types/provider.types';
 import type { DbClient } from '@/lib/db/types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { safeNormalizeUsage } from '@/features/ai/usage';
+import { isKnownFailureClassification } from '@/shared/types/failure-classification';
+import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
+
+function modelOperationForGenerationPurpose(
+  purpose: GenerationPurpose,
+): ModelOperation {
+  switch (purpose) {
+    case 'initial':
+      return 'initial_outline';
+    case 'regeneration':
+      return 'regeneration';
+    default: {
+      const _never: never = purpose;
+      throw new Error(`Unhandled generation purpose: ${String(_never)}`);
+    }
+  }
+}
 
 async function validateReservation(
   dbClient: DbClient,
   params: GenerationRunParams,
-): Promise<void> {
+): Promise<
+  Extract<GenerationRunResult, { status: 'already_finalized' }> | undefined
+> {
   if (!params.reservation) {
-    return;
+    return undefined;
   }
 
   const [row] = await dbClient
     .select({
       attemptId: generationAttempts.id,
       attemptStatus: generationAttempts.status,
+      generationPurpose: generationAttempts.generationPurpose,
+      classification: generationAttempts.classification,
       planStatus: learningPlans.generationStatus,
     })
     .from(generationAttempts)
@@ -44,6 +67,36 @@ async function validateReservation(
     );
   }
 
+  if (row.generationPurpose !== params.generationPurpose) {
+    throw new Error(
+      `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: purpose ${row.generationPurpose} does not match ${params.generationPurpose}.`,
+    );
+  }
+
+  if (row.attemptStatus === 'success') {
+    return {
+      status: 'already_finalized',
+      planId: params.planId,
+      outcome: 'success',
+    };
+  }
+
+  if (row.attemptStatus === 'failure') {
+    const classification =
+      row.classification && isKnownFailureClassification(row.classification)
+        ? row.classification
+        : 'unknown';
+    return {
+      status: 'already_finalized',
+      planId: params.planId,
+      outcome: 'failure',
+      classification,
+      error: new Error(
+        `Generation attempt ${params.reservation.attemptId} was already finalized as a ${classification} failure.`,
+      ),
+    };
+  }
+
   if (row.attemptStatus !== 'in_progress') {
     throw new Error(
       `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: attempt status is ${row.attemptStatus}.`,
@@ -55,17 +108,24 @@ async function validateReservation(
       `Stale generation reservation ${params.reservation.attemptId} for plan ${params.planId}: plan status is ${row.planStatus}.`,
     );
   }
+
+  return undefined;
 }
 
 async function runGeneration(
   dbClient: DbClient,
   params: GenerationRunParams,
 ): Promise<GenerationRunResult> {
-  await validateReservation(dbClient, params);
+  const finalizedReservation = await validateReservation(dbClient, params);
+  if (finalizedReservation) {
+    return finalizedReservation;
+  }
 
+  const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const { provider } = resolveModelForTier(
     params.tier,
     params.modelOverride ?? undefined,
+    modelOperationForGenerationPurpose(generationPurpose),
   );
 
   const generationInput: GenerationInput = {
@@ -83,6 +143,7 @@ async function runGeneration(
       planId: params.planId,
       userId: params.userId,
       input: generationInput,
+      generationPurpose,
     },
     {
       provider,

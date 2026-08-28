@@ -115,7 +115,7 @@ SKIP_TESTCONTAINERS=true POSTGRES_URL="..." pnpm vitest run --project integratio
 
 Integration Vitest workers default to **4** (`vitest.config.ts`); override with `INTEGRATION_MAX_WORKERS` (e.g. `2` for a slower, lighter run). External PostgreSQL (`SKIP_TESTCONTAINERS=true`) still clones one `atlaris_test_wN` database per worker.
 
-CI honors the same env var. CircleCI `ci-pr` / `ci-trunk` set `INTEGRATION_MAX_WORKERS` from the pipeline parameter `integration_workers` (default `'4'`). GitHub Actions `ci-trunk.yml :: integration-tests` resolves it as: `workflow_dispatch` input `integration_workers` ⟶ repo variable `INTEGRATION_MAX_WORKERS` ⟶ default `'4'`. To globally drop GitHub Actions trunk to a 2-worker fallback without code edits, set the **repo variable** `INTEGRATION_MAX_WORKERS=2` (Settings → Variables → Actions). For a one-off CircleCI rerun, trigger the pipeline with `integration_workers=2`. The CircleCI / GitHub Actions `test_db_debug=true` flag enables `[Test DB] worker N -> atlaris_test_wN` logging via `shouldLogTestDbDebug()` for that run.
+CI honors the same env var. CircleCI `ci-pr` / `ci-trunk` set `INTEGRATION_MAX_WORKERS` from the pipeline parameter `integration_workers` (default `'4'`). For a one-off rerun, trigger the pipeline with `integration_workers=2`. The CircleCI `test_db_debug=true` flag enables `[Test DB] worker N -> atlaris_test_wN` logging via `shouldLogTestDbDebug()` for that run.
 
 ## Do's and Don'ts
 

@@ -89,6 +89,7 @@ describe('generation integration - capped attempts', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Capped Topic',
           notes: 'Should not invoke provider because cap reached',

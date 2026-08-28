@@ -8,7 +8,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { randomUUID } from 'node:crypto';
@@ -105,8 +104,7 @@ describe('ModuleLessonsClient', () => {
     vi.unstubAllGlobals();
   });
 
-  it('calls module generation API and refreshes after ready response', async () => {
-    const user = userEvent.setup();
+  it('auto-starts generation on open and refreshes after ready response', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       mockJsonFetchResponse({
         state: 'ready',
@@ -118,7 +116,10 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
+    expect(
+      screen.queryByRole('button', { name: 'Generate lessons' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Generating lessons…')).toBeInTheDocument();
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenCalledWith(GENERATE_URL, { method: 'POST' });
@@ -126,43 +127,90 @@ describe('ModuleLessonsClient', () => {
     });
   });
 
-  it('renders quota-denied state without refreshing', async () => {
-    const user = userEvent.setup();
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        mockJsonFetchResponse(
-          {
-            state: 'quota_denied',
-            planId: PLAN_ID,
-            moduleId: MODULE_ID,
-            currentCount: 3,
-            limit: 3,
-          },
-          { ok: false, status: 429 },
-        ),
-      ),
-    );
+  it('recovers from an automatic start failure without auto-posting again', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('network down'))
+      .mockResolvedValueOnce(
+        mockJsonFetchResponse({
+          state: 'ready',
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(
+        'Unable to start lesson generation.',
+      );
+      expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
+      expect(
+        screen.getByRole('button', { name: 'Retry lesson generation' }),
+      ).toBeInTheDocument();
+    });
 
-    expect(
-      await screen.findByText('Lesson generation quota reached (3/3).'),
-    ).toBeInTheDocument();
-    expect(refreshMock).not.toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Retry lesson generation' }),
+      );
+    });
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenNthCalledWith(2, GENERATE_URL, {
+        method: 'POST',
+      });
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it('does not render generation button for locked module', () => {
-    renderClient({ previousModulesComplete: false });
+  it('does not auto-loop failed modules and keeps Retry', () => {
+    renderClient({
+      lessonGeneration: {
+        status: 'failed',
+        startedAt: null,
+        completedAt: null,
+        failedAt: new Date('2025-06-01T00:00:00.000Z'),
+        error: null,
+      },
+    });
 
     expect(
-      screen.getByText('Lesson generation unlocks with this module'),
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Generate lessons' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('auto-starts even when previous modules are incomplete', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonFetchResponse(
+        {
+          state: 'generating',
+          planId: PLAN_ID,
+          moduleId: MODULE_ID,
+        },
+        { status: 202 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient({ previousModulesComplete: false });
+
+    expect(
+      screen.queryByText('Lesson generation unlocks with this module'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Generate lessons' }),
+    ).not.toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledWith(GENERATE_URL, { method: 'POST' });
+    });
   });
 
   it('shows generating state and polls status without refreshing', async () => {
@@ -230,11 +278,10 @@ describe('ModuleLessonsClient', () => {
     renderClient();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Generate lessons' }));
+      await Promise.resolve();
     });
-
     expect(fetchMock).toHaveBeenCalledWith(GENERATE_URL, { method: 'POST' });
-    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
+    expect(screen.getByText('Generating lessons…')).toBeInTheDocument();
 
     await act(async () => {
       await vi.advanceTimersByTimeAsync(2500);
@@ -285,7 +332,7 @@ describe('ModuleLessonsClient', () => {
     renderClient();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Generate lessons' }));
+      await Promise.resolve();
     });
 
     await act(async () => {
@@ -299,7 +346,7 @@ describe('ModuleLessonsClient', () => {
         signal: expect.any(AbortSignal),
       }),
     );
-    expect(screen.getByRole('button', { name: 'Generating…' })).toBeDisabled();
+    expect(screen.getByText('Generating lessons…')).toBeInTheDocument();
     expect(refreshMock).toHaveBeenCalledTimes(1);
 
     await act(async () => {
@@ -338,7 +385,7 @@ describe('ModuleLessonsClient', () => {
     renderClient();
 
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Generate lessons' }));
+      await Promise.resolve();
     });
 
     await act(async () => {
@@ -346,9 +393,13 @@ describe('ModuleLessonsClient', () => {
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
     expect(refreshMock).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Generate lessons' }),
-    ).not.toBeDisabled();
+      screen.getByRole('button', { name: 'Retry lesson generation' }),
+    ).toBeInTheDocument();
+    expect(fetchMock).toHaveBeenNthCalledWith(1, GENERATE_URL, {
+      method: 'POST',
+    });
 
     const callsAfterTerminal = fetchMock.mock.calls.length;
     await act(async () => {
@@ -812,7 +863,6 @@ describe('ModuleLessonsClient', () => {
   });
 
   it('toasts provider failure and refreshes', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -830,18 +880,15 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
-
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
         'Lesson generation failed. Please try again.',
       );
-      expect(refreshMock).toHaveBeenCalled();
     });
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it('toasts locked response and refreshes stale module state', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -855,18 +902,15 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
-
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
-        'Complete previous modules before generating lessons.',
+        'Lesson generation is not available for this module.',
       );
-      expect(refreshMock).toHaveBeenCalled();
     });
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it('toasts disabled response and refreshes', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -883,18 +927,15 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
-
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
         'Lesson generation is temporarily unavailable.',
       );
-      expect(refreshMock).toHaveBeenCalled();
     });
+    expect(refreshMock).not.toHaveBeenCalled();
   });
 
   it('toasts unexpected body on OK response without refreshing', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -908,8 +949,6 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
-
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
         'Lesson generation returned unexpected data.',
@@ -919,7 +958,6 @@ describe('ModuleLessonsClient', () => {
   });
 
   it('toasts when JSON parsing fails without refreshing', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
@@ -931,8 +969,6 @@ describe('ModuleLessonsClient', () => {
 
     renderClient();
 
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
-
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(
         'Lesson generation returned an invalid response.',
@@ -942,15 +978,12 @@ describe('ModuleLessonsClient', () => {
   });
 
   it('toasts when fetch throws and does not refresh', async () => {
-    const user = userEvent.setup();
     vi.stubGlobal(
       'fetch',
       vi.fn().mockRejectedValue(new Error('network down')),
     );
 
     renderClient();
-
-    await user.click(screen.getByRole('button', { name: 'Generate lessons' }));
 
     await waitFor(() => {
       expect(toastErrorMock).toHaveBeenCalledWith(

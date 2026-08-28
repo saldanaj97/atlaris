@@ -1,5 +1,6 @@
 import {
   type GenerationAttemptStatus,
+  generationPurpose,
   generationStatus,
   learningStyle,
   planOrigin,
@@ -125,6 +126,9 @@ export const generationAttempts = pgTable(
       .notNull()
       .references(() => learningPlans.id, { onDelete: 'cascade' }),
     status: text('status').$type<GenerationAttemptStatus>().notNull(),
+    generationPurpose: generationPurpose('generation_purpose')
+      .notNull()
+      .default('initial'),
     classification: text('classification'), // nullable on success; failure-only classification
     durationMs: integer('duration_ms').notNull(),
     modulesCount: integer('modules_count').notNull(),

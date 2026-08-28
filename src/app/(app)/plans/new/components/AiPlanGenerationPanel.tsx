@@ -1,5 +1,6 @@
 'use client';
 
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type React from 'react';
 
 import { UnifiedPlanInput } from '@/app/(app)/plans/new/components/plan-form/UnifiedPlanInput';
@@ -9,8 +10,18 @@ import { useStartAiPlanGeneration } from '@/app/(app)/plans/new/hooks/useStartAi
  * AiPlanGenerationPanel collects the learning goal form, streams AI plan
  * generation progress, and routes to the created plan on success.
  */
-export function AiPlanGenerationPanel(): React.ReactElement {
+export function AiPlanGenerationPanel({
+  subscriptionTier,
+}: {
+  subscriptionTier: SubscriptionTier;
+}): React.ReactElement {
   const { isSubmitting, submit } = useStartAiPlanGeneration();
 
-  return <UnifiedPlanInput onSubmit={submit} isSubmitting={isSubmitting} />;
+  return (
+    <UnifiedPlanInput
+      onSubmit={submit}
+      isSubmitting={isSubmitting}
+      subscriptionTier={subscriptionTier}
+    />
+  );
 }

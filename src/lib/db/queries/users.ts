@@ -1,4 +1,3 @@
-import type { PreferredAiModel } from '../../../../supabase/enums';
 import type {
   ActorUser,
   CreateUserData,
@@ -11,7 +10,6 @@ import {
   DEFAULT_USER_PREFERENCES,
   type UserPreferenceValues,
 } from '@/lib/db/queries/user-preferences';
-import { isValidModelId } from '@/shared/constants/ai-models';
 import { getDb } from '@supabase/runtime';
 import { userPreferences, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
@@ -34,12 +32,6 @@ function isOptionalString(value: unknown): value is string | null {
 
 function isOptionalDate(value: unknown): value is Date | null {
   return value === null || value instanceof Date;
-}
-
-function isOptionalPreferredAiModel(
-  value: unknown,
-): value is PreferredAiModel | null {
-  return value === null || (typeof value === 'string' && isValidModelId(value));
 }
 
 function hasCoreIdentityFields(maybeUser: Partial<ActorUser>): boolean {
@@ -82,7 +74,12 @@ function isActorUser(user: unknown): user is ActorUser {
     isOptionalString(maybeUser.name) &&
     hasValidSubscriptionStatus(maybeUser) &&
     isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
-    isOptionalPreferredAiModel(maybeUser.preferredAiModel)
+    isOptionalDate(maybeUser.initialPlanGeneratedAt) &&
+    isOptionalString(maybeUser.freeAccessPlanId) &&
+    isOptionalDate(maybeUser.freeAccessPlanSelectedAt) &&
+    isOptionalString(maybeUser.preferredAiModel) &&
+    isOptionalString(maybeUser.preferredRegenerationAiModel) &&
+    isOptionalString(maybeUser.preferredLessonAiModel)
   );
 }
 
@@ -110,6 +107,12 @@ function toActorUser(
     preferredAiModel:
       preferences?.preferredAiModel ??
       DEFAULT_USER_PREFERENCES.preferredAiModel,
+    preferredRegenerationAiModel:
+      preferences?.preferredRegenerationAiModel ??
+      DEFAULT_USER_PREFERENCES.preferredRegenerationAiModel,
+    preferredLessonAiModel:
+      preferences?.preferredLessonAiModel ??
+      DEFAULT_USER_PREFERENCES.preferredLessonAiModel,
     analyticsTimezone:
       preferences?.analyticsTimezone ??
       DEFAULT_USER_PREFERENCES.analyticsTimezone,
@@ -162,6 +165,9 @@ export async function getUserByAuthId(
       user: users,
       preferences: {
         preferredAiModel: userPreferences.preferredAiModel,
+        preferredRegenerationAiModel:
+          userPreferences.preferredRegenerationAiModel,
+        preferredLessonAiModel: userPreferences.preferredLessonAiModel,
         analyticsTimezone: userPreferences.analyticsTimezone,
       },
     })

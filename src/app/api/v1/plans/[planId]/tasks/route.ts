@@ -1,5 +1,5 @@
 import {
-  requireOwnedPlanById,
+  requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import { requestBoundary } from '@/lib/api/request-boundary';
@@ -10,7 +10,7 @@ export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ params, actor, db }) => {
     const planId = requireUuidRouteParam(params, 'planId');
-    await requireOwnedPlanById({
+    await requirePlanContentAccess({
       planId,
       ownerUserId: actor.id,
       dbClient: db,

@@ -22,12 +22,11 @@ import {
   users,
 } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { and, asc, eq, gt, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, gt, isNull, lt, lte, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 type ServiceRoleDb = typeof serviceRoleDb;
 type ReconciliationDb = Pick<DbTransaction, 'select' | 'update'>;
-type PayerLockDb = Pick<DbTransaction, 'select' | 'update' | 'execute'>;
 
 type ReconciliationDeps = {
   db?: ReconciliationDb;
@@ -170,18 +169,6 @@ async function acquireClerkBillingPayerLock(
   }
 }
 
-async function lockAndRefreshClerkBillingSource(
-  source: ClerkBillingProjectionSource,
-  deps: ReconciliationDeps & { db: PayerLockDb },
-): Promise<ClerkBillingProjectionSource> {
-  if (source.payerUserId === null) {
-    return source;
-  }
-
-  await acquireClerkBillingPayerLock(deps.db, source.payerUserId, deps);
-  return refreshClerkBillingSource(source, deps);
-}
-
 async function claimClerkWebhookEvent(
   eventId: string,
   deps: ApplyVerifiedClerkBillingEventDeps,
@@ -300,17 +287,18 @@ async function finalizeClerkWebhookEvent(
 ): Promise<ApplyVerifiedClerkBillingEventResult> {
   const db = deps.db ?? serviceRoleDb;
 
-  return db.transaction(async (tx) => {
-    let billingSource =
-      args.projectionSource?.kind === 'billing'
-        ? args.projectionSource.source
-        : null;
+  let billingSource =
+    args.projectionSource?.kind === 'billing'
+      ? args.projectionSource.source
+      : null;
 
+  if (billingSource !== null && billingSource.payerUserId !== null) {
+    billingSource = await refreshClerkBillingSource(billingSource, deps);
+  }
+
+  return db.transaction(async (tx) => {
     if (billingSource !== null && billingSource.payerUserId !== null) {
-      billingSource = await lockAndRefreshClerkBillingSource(billingSource, {
-        ...deps,
-        db: tx,
-      });
+      await acquireClerkBillingPayerLock(tx, billingSource.payerUserId, deps);
     }
 
     const [ownedClaim] = await tx
@@ -427,13 +415,34 @@ async function refreshClerkBillingSource(
   }
   const refreshedSource =
     clerkBillingSourceFromBackendSubscription(subscription);
+  const sourceUpdatedAt = source.clerkBillingUpdatedAt;
+  const refreshedUpdatedAt = refreshedSource.clerkBillingUpdatedAt;
+  const sourceIsNewer =
+    sourceUpdatedAt !== null &&
+    (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt);
+  const sourceItem = source.items[0];
+  const effectiveSource = sourceIsNewer
+    ? source.type.startsWith('subscriptionItem.')
+      ? {
+          ...refreshedSource,
+          clerkBillingUpdatedAt: sourceUpdatedAt,
+          items: sourceItem
+            ? refreshedSource.items.some((item) => item.id === sourceItem.id)
+              ? refreshedSource.items.map((item) =>
+                  item.id === sourceItem.id ? sourceItem : item,
+                )
+              : [...refreshedSource.items, sourceItem]
+            : refreshedSource.items,
+        }
+      : source
+    : refreshedSource;
 
   return {
-    ...refreshedSource,
+    ...effectiveSource,
     type: source.type,
     payerUserId: source.payerUserId,
     paymentAttemptStatus:
-      source.paymentAttemptStatus ?? refreshedSource.paymentAttemptStatus,
+      source.paymentAttemptStatus ?? effectiveSource.paymentAttemptStatus,
   };
 }
 
@@ -459,6 +468,7 @@ export async function applyClerkBillingSource(
     .select({
       id: users.id,
       authUserId: users.authUserId,
+      clerkBillingUpdatedAt: users.clerkBillingUpdatedAt,
       subscriptionTier: users.subscriptionTier,
       subscriptionStatus: users.subscriptionStatus,
       subscriptionPeriodEnd: users.subscriptionPeriodEnd,
@@ -476,23 +486,65 @@ export async function applyClerkBillingSource(
     return 'skipped_no_user';
   }
 
-  const projection = projectClerkBillingSource(source, user);
-
-  if (projection === null) {
-    deps.logger.info(
-      { authUserId: user.authUserId, type: source.type },
-      'Clerk Billing event did not require a local projection update',
-    );
+  if (
+    source.clerkBillingUpdatedAt !== null &&
+    user.clerkBillingUpdatedAt !== null &&
+    source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt
+  ) {
     return 'ignored';
   }
 
-  await db
+  const projection = projectClerkBillingSource(source, user);
+
+  if (projection === null) {
+    const unmappedItems = source.items.filter((item) => item.tier === null);
+    if (unmappedItems.length > 0) {
+      deps.logger.warn(
+        {
+          authUserId: user.authUserId,
+          planIds: unmappedItems.map((item) => item.planId),
+          planSlugs: unmappedItems.map((item) => item.planSlug),
+          storedTier: user.subscriptionTier,
+          type: source.type,
+        },
+        'Clerk Billing plan could not be mapped; preserving stored tier',
+      );
+    } else {
+      deps.logger.info(
+        { authUserId: user.authUserId, type: source.type },
+        'Clerk Billing event did not require a local projection update',
+      );
+    }
+    if (source.clerkBillingUpdatedAt === null) {
+      return 'ignored';
+    }
+  }
+
+  const [updated] = await db
     .update(users)
     .set({
-      ...projection,
-      updatedAt: new Date(),
+      ...(projection ?? {}),
+      ...(source.clerkBillingUpdatedAt !== null
+        ? { clerkBillingUpdatedAt: source.clerkBillingUpdatedAt }
+        : {}),
+      ...(projection !== null ? { updatedAt: new Date() } : {}),
     })
-    .where(eq(users.id, user.id));
+    .where(
+      source.clerkBillingUpdatedAt === null
+        ? eq(users.id, user.id)
+        : and(
+            eq(users.id, user.id),
+            or(
+              isNull(users.clerkBillingUpdatedAt),
+              lt(users.clerkBillingUpdatedAt, source.clerkBillingUpdatedAt),
+            ),
+          ),
+    )
+    .returning({ id: users.id });
+
+  if (!updated || projection === null) {
+    return 'ignored';
+  }
 
   deps.logger.info(
     {
@@ -628,23 +680,27 @@ export async function reconcileClerkBillingEntitlements({
     totals.checked += 1;
 
     try {
+      const source = await refreshClerkBillingSource(
+        {
+          type: 'reconciliation',
+          payerUserId: localUser.authUserId,
+          clerkBillingUpdatedAt: null,
+          subscriptionStatus: null,
+          paymentAttemptStatus: null,
+          items: [],
+        },
+        {
+          clerkClient: client,
+          logger,
+          payerLockTimeoutMs,
+          payerNetworkTimeoutMs,
+        },
+      );
       const result = await db.transaction(async (tx) => {
-        const source = await lockAndRefreshClerkBillingSource(
-          {
-            type: 'reconciliation',
-            payerUserId: localUser.authUserId,
-            subscriptionStatus: null,
-            paymentAttemptStatus: null,
-            items: [],
-          },
-          {
-            clerkClient: client,
-            db: tx,
-            logger,
-            payerLockTimeoutMs,
-            payerNetworkTimeoutMs,
-          },
-        );
+        await acquireClerkBillingPayerLock(tx, localUser.authUserId, {
+          logger,
+          payerLockTimeoutMs,
+        });
         return applyClerkBillingSource(source, { db: tx, logger });
       });
 

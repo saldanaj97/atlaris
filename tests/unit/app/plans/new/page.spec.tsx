@@ -103,7 +103,7 @@ describe('AiPlanGenerationPanel', () => {
 
   describe('form validity', () => {
     it('keeps submit disabled until the topic and all preferences are selected', async () => {
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       expect(
         screen.getByRole('button', { name: /chart this course/i }),
@@ -133,7 +133,7 @@ describe('AiPlanGenerationPanel', () => {
           result: 'plan-keyboard',
         });
 
-        render(<AiPlanGenerationPanel />);
+        render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
         const topicInput = screen.getByLabelText(/what do you want to learn/i);
         await user.type(topicInput, 'Keyboard topic');
@@ -154,7 +154,7 @@ describe('AiPlanGenerationPanel', () => {
 
   describe('defaults', () => {
     it('shows preference placeholders before selection', async () => {
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       const deadline = screen.getByRole('combobox', { name: /^deadline$/i });
       expect(deadline).toHaveTextContent('Finish by');
@@ -178,7 +178,7 @@ describe('AiPlanGenerationPanel', () => {
         return { status: 'completed', planId, result: planId };
       });
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Test Topic');
       await chooseDefaultPreferences();
@@ -221,7 +221,7 @@ describe('AiPlanGenerationPanel', () => {
         result: 'plan-456',
       });
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('  Learn Rust  ');
       await chooseOption('Experience', 'Advanced');
@@ -257,7 +257,7 @@ describe('AiPlanGenerationPanel', () => {
         new DOMException('Aborted', 'AbortError'),
       );
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Cancelled topic');
       await chooseDefaultPreferences();
@@ -279,7 +279,7 @@ describe('AiPlanGenerationPanel', () => {
     it('shows the cancellation toast when generation resolves as cancelled', async () => {
       mockStartGeneration.mockResolvedValue({ status: 'cancelled' });
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Cancelled result topic');
       await chooseDefaultPreferences();
@@ -307,7 +307,7 @@ describe('AiPlanGenerationPanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithPlanId);
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Recovery topic');
       await chooseDefaultPreferences();
@@ -344,7 +344,7 @@ describe('AiPlanGenerationPanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithData);
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Recovery from error data');
       await chooseDefaultPreferences();
@@ -369,7 +369,7 @@ describe('AiPlanGenerationPanel', () => {
 
       mockStartGeneration.mockRejectedValue(errorWithoutPlanId);
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Recovery from state');
       await chooseDefaultPreferences();
@@ -386,7 +386,7 @@ describe('AiPlanGenerationPanel', () => {
       const genericError = new Error('Network error');
       mockStartGeneration.mockRejectedValue(genericError);
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Generic error topic');
       await chooseDefaultPreferences();
@@ -412,7 +412,7 @@ describe('AiPlanGenerationPanel', () => {
         message: 'Gateway unavailable',
       });
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Object error topic');
       await chooseDefaultPreferences();
@@ -426,7 +426,7 @@ describe('AiPlanGenerationPanel', () => {
     it('falls back when the normalized message exceeds the safe limit', async () => {
       mockStartGeneration.mockRejectedValue(new Error('x'.repeat(201)));
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Long error topic');
       await chooseDefaultPreferences();
@@ -442,7 +442,7 @@ describe('AiPlanGenerationPanel', () => {
     it('falls back to the generic error toast when the thrown value has no message', async () => {
       mockStartGeneration.mockRejectedValue({ message: '' });
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Fallback error topic');
       await chooseDefaultPreferences();
@@ -461,7 +461,7 @@ describe('AiPlanGenerationPanel', () => {
       const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
 
-      render(<AiPlanGenerationPanel />);
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('Long running topic');
       await chooseDefaultPreferences();

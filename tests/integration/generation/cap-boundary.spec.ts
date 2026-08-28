@@ -40,6 +40,7 @@ describe('generation integration - attempt cap boundary', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Cap Boundary Topic',
           notes: 'Third attempt should still invoke provider',
@@ -81,6 +82,7 @@ describe('generation integration - attempt cap boundary', () => {
       {
         planId: plan.id,
         userId,
+        generationPurpose: 'initial',
         input: {
           topic: 'Cap Boundary Topic',
           notes: 'Fourth attempt should be capped',

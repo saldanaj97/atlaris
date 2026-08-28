@@ -84,12 +84,12 @@ export async function checkCreationGate(
   if (!requestedCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (requested duration cap)`,
+      `${logBase}: duration exceeded (requested duration cap)`,
     );
     return {
       blocked: true,
       result: {
-        status: 'quota_rejected',
+        status: 'duration_exceeded',
         reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
         upgradeUrl: requestedCap.upgradeUrl,
       },
@@ -112,12 +112,12 @@ export async function checkCreationGate(
   if (!durationCap.allowed) {
     logger.info(
       { userId, tier },
-      `${logBase}: quota rejected (normalized duration cap)`,
+      `${logBase}: duration exceeded (normalized duration cap)`,
     );
     return {
       blocked: true,
       result: {
-        status: 'quota_rejected',
+        status: 'duration_exceeded',
         reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
         upgradeUrl: durationCap.upgradeUrl,
       },
@@ -165,6 +165,31 @@ export async function insertCreatedPlan(params: {
     return {
       status: 'quota_rejected',
       reason: 'Plan limit reached for current subscription tier',
+    };
+  }
+
+  if (insertResult.status === 'free_allowance_used') {
+    logger.info(
+      { userId },
+      `${getCreateLogBase(lifecycleLabel)}: free plan allowance used`,
+    );
+    return {
+      status: 'free_allowance_used',
+      reason:
+        'Your free plan allowance has already been used. Upgrade to create another plan.',
+      upgradeUrl: '/pricing',
+    };
+  }
+
+  if (insertResult.status === 'free_generation_in_progress') {
+    logger.info(
+      { userId },
+      `${getCreateLogBase(lifecycleLabel)}: free initial generation in progress`,
+    );
+    return {
+      status: 'free_generation_in_progress',
+      reason:
+        'A free plan is already being generated. Wait for it to finish or fail before starting another.',
     };
   }
 

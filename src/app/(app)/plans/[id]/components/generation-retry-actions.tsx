@@ -1,6 +1,5 @@
 import { Button } from '@/components/ui/button';
 import { Loader2, RefreshCw } from 'lucide-react';
-import Link from 'next/link';
 
 export function RetryAction({
   attempts,
@@ -36,14 +35,7 @@ export function ExhaustedRetriesMessage() {
   return (
     <div className='rounded-lg bg-muted p-4 text-center'>
       <p className='text-sm text-muted-foreground'>
-        Maximum retry attempts reached. Please{' '}
-        <Link
-          href='/plans/new'
-          className='rounded-sm text-primary underline focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
-        >
-          create a new plan
-        </Link>{' '}
-        to try again.
+        Maximum retry attempts reached. Return to your plans to try again.
       </p>
     </div>
   );

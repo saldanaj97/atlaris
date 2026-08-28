@@ -6,7 +6,7 @@ import {
   ModuleLessonGenerationStatusResponseSchema,
 } from '@/shared/schemas/lesson-content.schemas';
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 const MODULE_LESSON_GENERATION_POLL_MS = 2500;
@@ -23,34 +23,29 @@ type LongGenerationKey = {
 function applyModuleLessonGenerationResponse(
   body: ModuleLessonGenerationApiResponse,
   params: {
+    markFailed: () => void;
     markGenerating: (workflowRunId?: string) => void;
-    setQuotaMessage: (value: string | null) => void;
     refresh: () => void;
   },
 ): void {
-  const { markGenerating, setQuotaMessage, refresh } = params;
+  const { markFailed, markGenerating, refresh } = params;
 
   switch (body.state) {
-    case 'quota_denied':
-      setQuotaMessage(
-        `Lesson generation quota reached (${body.currentCount}/${body.limit}).`,
-      );
-      return;
     case 'provider_failure':
+      markFailed();
       toast.error('Lesson generation failed. Please try again.');
-      refresh();
       return;
     case 'locked':
-      toast.error('Complete previous modules before generating lessons.');
-      refresh();
+      markFailed();
+      toast.error('Lesson generation is not available for this module.');
       return;
     case 'disabled':
+      markFailed();
       toast.error('Lesson generation is temporarily unavailable.');
-      refresh();
       return;
     case 'not_found':
+      markFailed();
       toast.error('Plan or module was not found.');
-      refresh();
       return;
     case 'generating':
       markGenerating(body.workflowRunId);
@@ -70,16 +65,15 @@ export function useModuleLessonGeneration({
   planId,
   moduleId,
   status,
-  previousModulesComplete,
 }: {
   planId: string;
   moduleId: string;
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
-  previousModulesComplete: boolean;
 }) {
   const { refresh } = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [quotaMessage, setQuotaMessage] = useState<string | null>(null);
+  const generationKey = `${planId}:${moduleId}`;
+  const [localFailureKey, setLocalFailureKey] = useState<string | null>(null);
   const [requestedGenerationKey, setRequestedGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const [longGenerationKey, setLongGenerationKey] =
@@ -87,13 +81,15 @@ export function useModuleLessonGeneration({
   const generationPollCountRef = useRef(0);
   // Distinguishes pre-claim queue latency from post-claim terminal rollbacks.
   const hasObservedGeneratingRef = useRef(false);
+  const autoStartedKeyRef = useRef<string | null>(null);
   const generationRequested =
     requestedGenerationKey?.planId === planId &&
     requestedGenerationKey.moduleId === moduleId;
   const requestedWorkflowRunId = requestedGenerationKey?.workflowRunId;
   const generationTakingLong =
-    (status === 'generating' || generationRequested) &&
-    previousModulesComplete &&
+    (status === 'generating' ||
+      status === 'not_generated' ||
+      generationRequested) &&
     longGenerationKey?.planId === planId &&
     longGenerationKey.moduleId === moduleId;
 
@@ -103,11 +99,6 @@ export function useModuleLessonGeneration({
     }
 
     if (status !== 'generating' && !generationRequested) {
-      generationPollCountRef.current = 0;
-      return;
-    }
-
-    if (!previousModulesComplete) {
       generationPollCountRef.current = 0;
       return;
     }
@@ -193,6 +184,9 @@ export function useModuleLessonGeneration({
             requestedWorkflowRunId !== undefined &&
             requestedWorkflowRunId === parsed.data.workflowRunId
           ) {
+            if (parsed.data.status === 'not_generated') {
+              setLocalFailureKey(`${planId}:${moduleId}`);
+            }
             return 'terminal';
           }
 
@@ -278,18 +272,12 @@ export function useModuleLessonGeneration({
     generationRequested,
     moduleId,
     planId,
-    previousModulesComplete,
     refresh,
     requestedWorkflowRunId,
     status,
   ]);
 
-  const generateLessons = (): void => {
-    if (!previousModulesComplete) {
-      return;
-    }
-
-    setQuotaMessage(null);
+  const generateLessons = useCallback((): void => {
     setRequestedGenerationKey(null);
     setLongGenerationKey(null);
     hasObservedGeneratingRef.current = false;
@@ -315,6 +303,7 @@ export function useModuleLessonGeneration({
             },
           );
           toast.error('Lesson generation returned an invalid response.');
+          setLocalFailureKey(generationKey);
           return;
         }
 
@@ -336,13 +325,14 @@ export function useModuleLessonGeneration({
               ? 'Lesson generation returned unexpected data.'
               : 'Lesson generation request failed.',
           );
+          setLocalFailureKey(generationKey);
           return;
         }
 
         applyModuleLessonGenerationResponse(parsed.data, {
+          markFailed: () => setLocalFailureKey(generationKey),
           markGenerating: (workflowRunId) =>
             setRequestedGenerationKey({ planId, moduleId, workflowRunId }),
-          setQuotaMessage,
           refresh,
         });
       } catch (error) {
@@ -352,14 +342,29 @@ export function useModuleLessonGeneration({
           planId,
         });
         toast.error('Unable to start lesson generation.');
+        setLocalFailureKey(generationKey);
       }
     });
-  };
+  }, [generationKey, moduleId, planId, refresh]);
+
+  useEffect(() => {
+    if (status !== 'not_generated') {
+      return;
+    }
+    const key = `${planId}:${moduleId}`;
+    if (autoStartedKeyRef.current === key) {
+      return;
+    }
+    autoStartedKeyRef.current = key;
+    generateLessons();
+  }, [generateLessons, moduleId, planId, status]);
 
   return {
     generateLessons,
     generationTakingLong,
-    isPending: isPending || generationRequested,
-    quotaMessage,
+    isPending:
+      isPending ||
+      generationRequested ||
+      (status === 'not_generated' && localFailureKey !== generationKey),
   };
 }

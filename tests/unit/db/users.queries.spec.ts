@@ -14,6 +14,26 @@ describe('users queries optimization', () => {
     vi.clearAllMocks();
   });
 
+  it('returns user from request context when saved model id is not in the catalog', async () => {
+    const fixtureUser = buildUserFixture({
+      preferredAiModel: 'retired/paid-model',
+    });
+
+    mockedGetRequestContext.mockReturnValue({
+      correlationId: 'cid-stale-model',
+      user: fixtureUser,
+    });
+
+    const user = await getUserByAuthId(fixtureUser.authUserId, undefined, {
+      getRequestContext: mockedGetRequestContext,
+      getDb: mockedGetDb,
+      cleanupDbClient: mockedCleanupDbClient,
+    });
+
+    expect(user?.preferredAiModel).toBe('retired/paid-model');
+    expect(mockedGetDb).not.toHaveBeenCalled();
+  });
+
   it('returns user from request context when auth id matches', async () => {
     const fixtureUser = buildUserFixture();
 

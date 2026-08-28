@@ -425,6 +425,7 @@ export function PlansList({ page, query }: PlansListProps) {
 
       {page.items.length === 0 ? (
         <EmptyPlansList
+          canCreatePlan={page.canCreatePlan}
           searchQuery={query.search}
           filterStatus={query.status}
         />

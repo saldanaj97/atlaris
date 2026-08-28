@@ -81,7 +81,7 @@ type RunMeteredQuotaReservedArgs<
 };
 
 export function createServiceRoleMeteredBoundaryDeps<
-  TMeter extends 'lessonGeneration' | 'regeneration',
+  TMeter extends 'regeneration',
 >(meter: TMeter): MeteredQuotaBoundaryDeps {
   return {
     reserve: (userId, _dbClient) =>

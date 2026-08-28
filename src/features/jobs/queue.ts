@@ -33,6 +33,8 @@ import { db } from '@supabase/service-role';
 
 type FailJobOptions = {
   retryable?: boolean;
+  /** Minimum seconds before a scheduled retry, such as a durable rate-limit reset. */
+  retryAfter?: number;
 };
 
 export async function enqueueJob(
@@ -100,7 +102,7 @@ export async function failJob(
   error: string,
   options: FailJobOptions = {},
 ): Promise<Job | null> {
-  return failJobRecord(jobId, error, options.retryable, db);
+  return failJobRecord(jobId, error, options.retryable, db, options.retryAfter);
 }
 
 export async function getUserJobCount(

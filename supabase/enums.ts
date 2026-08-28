@@ -1,4 +1,5 @@
 import { JOB_TYPE_VALUES } from '@/shared/constants/jobs';
+import { GENERATION_PURPOSES } from '@/shared/types/generation-purpose';
 import { pgEnum } from 'drizzle-orm/pg-core';
 
 export const skillLevel = pgEnum('skill_level', [
@@ -29,6 +30,12 @@ export const lessonGenerationStatus = pgEnum('lesson_generation_status', [
 ]);
 
 export type GenerationAttemptStatus = 'in_progress' | 'success' | 'failure';
+
+export const generationPurpose = pgEnum(
+  'generation_purpose',
+  GENERATION_PURPOSES,
+);
+export type GenerationPurpose = (typeof generationPurpose.enumValues)[number];
 
 export const resourceType = pgEnum('resource_type', [
   'video',

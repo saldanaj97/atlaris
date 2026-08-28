@@ -1,7 +1,7 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
 import {
-  requireOwnedPlanById,
+  requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
 import {
@@ -53,7 +53,7 @@ function createRetryHandler(deps?: {
       const generationRateLimitHeaders =
         getPlanGenerationRateLimitHeaders(rateLimit);
 
-      const plan = await requireOwnedPlanById({
+      const plan = await requirePlanContentAccess({
         planId,
         ownerUserId: internalUserId,
         dbClient: db,
@@ -85,6 +85,7 @@ function createRetryHandler(deps?: {
           deadlineDate: plan.deadlineDate,
           origin: plan.origin,
         },
+        savedPreferredAiModel: actor.preferredAiModel ?? null,
         tierDb: db,
         responseHeaders: generationRateLimitHeaders,
         requestId: correlationId,

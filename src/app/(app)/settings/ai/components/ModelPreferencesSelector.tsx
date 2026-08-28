@@ -8,10 +8,18 @@ import { parseApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
 
+type PreferenceField =
+  | 'preferredAiModel'
+  | 'preferredRegenerationAiModel'
+  | 'preferredLessonAiModel';
+
 type ModelPreferencesSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
+  preferenceField?: PreferenceField;
+  label?: string;
+  showUpgradeCta?: boolean;
 };
 
 /**
@@ -21,6 +29,9 @@ export function ModelPreferencesSelector({
   currentModel,
   userTier,
   availableModels,
+  preferenceField = 'preferredAiModel',
+  label,
+  showUpgradeCta,
 }: ModelPreferencesSelectorProps) {
   const router = useRouter();
 
@@ -30,12 +41,13 @@ export function ModelPreferencesSelector({
       res = await fetch('/api/v1/user/preferences', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ preferredAiModel: modelId }),
+        body: JSON.stringify({ [preferenceField]: modelId }),
       });
     } catch (error) {
       clientLogger.error('Network error saving user preferences', {
         operation: 'savePreferences',
         modelId,
+        preferenceField,
         error: error instanceof Error ? error.message : String(error),
       });
       throw error;
@@ -54,6 +66,7 @@ export function ModelPreferencesSelector({
         clientLogger.error('Failed to parse preference update API error', {
           operation: 'savePreferences',
           modelId,
+          preferenceField,
           status: res.status,
           statusText: res.statusText,
           error: error instanceof Error ? error.message : String(error),
@@ -63,6 +76,7 @@ export function ModelPreferencesSelector({
       clientLogger.error('API rejected preference update', {
         operation: 'savePreferences',
         modelId,
+        preferenceField,
         status: res.status,
         statusText: res.statusText,
         code: errorCode,
@@ -80,6 +94,8 @@ export function ModelPreferencesSelector({
       userTier={userTier}
       availableModels={availableModels}
       onSave={handleSave}
+      label={label}
+      showUpgradeCta={showUpgradeCta}
     />
   );
 }

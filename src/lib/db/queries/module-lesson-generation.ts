@@ -9,15 +9,26 @@ import {
   canonicalUsageToRecordParams,
   recordUsageInTx,
 } from '../../../../supabase/usage';
+import {
+  getCurrentMonth,
+  incrementLessonModulesGeneratedInTx,
+} from '@/features/billing/usage-metrics';
 import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
 } from '@/lib/db/queries/helpers/rls-jwt-claims';
-import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
-import { and, asc, eq, inArray, sql, type InferSelectModel } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  eq,
+  inArray,
+  or,
+  sql,
+  type InferSelectModel,
+} from 'drizzle-orm';
 
 type GenerationDb = Pick<
   DbClient,
@@ -63,30 +74,6 @@ function moduleOwnedByUser(userId: string) {
   )`;
 }
 
-function isModuleUnlockedForLessonGeneration(
-  metrics: readonly {
-    readonly moduleId: string;
-    readonly totalTasks: number;
-    readonly completedTasks: number;
-  }[],
-  moduleId: string,
-): boolean {
-  for (const metric of metrics) {
-    if (metric.moduleId === moduleId) {
-      return true;
-    }
-
-    if (
-      Number(metric.totalTasks) > 0 &&
-      Number(metric.completedTasks) < Number(metric.totalTasks)
-    ) {
-      return false;
-    }
-  }
-
-  return false;
-}
-
 /**
  * Loads plan (prompt fields), module, and tasks in module order. Null if module/plan not found for user.
  */
@@ -119,27 +106,20 @@ export async function loadModuleLessonGenerationContext(
     return null;
   }
 
-  const [moduleMetricsRows, taskRows] = await Promise.all([
-    fetchModuleTaskMetricsRows({
-      planIds: [planId],
-      userId,
-      dbClient,
-    }),
-    dbClient
-      .select({
-        id: tasks.id,
-        moduleId: tasks.moduleId,
-        order: tasks.order,
-        title: tasks.title,
-        description: tasks.description,
-        estimatedMinutes: tasks.estimatedMinutes,
-        hasMicroExplanation: tasks.hasMicroExplanation,
-        lessonContent: tasks.lessonContent,
-      })
-      .from(tasks)
-      .where(eq(tasks.moduleId, moduleId))
-      .orderBy(asc(tasks.order)),
-  ]);
+  const taskRows = await dbClient
+    .select({
+      id: tasks.id,
+      moduleId: tasks.moduleId,
+      order: tasks.order,
+      title: tasks.title,
+      description: tasks.description,
+      estimatedMinutes: tasks.estimatedMinutes,
+      hasMicroExplanation: tasks.hasMicroExplanation,
+      lessonContent: tasks.lessonContent,
+    })
+    .from(tasks)
+    .where(eq(tasks.moduleId, moduleId))
+    .orderBy(asc(tasks.order));
 
   return {
     plan: {
@@ -150,10 +130,7 @@ export async function loadModuleLessonGenerationContext(
     },
     module: scoped.module,
     tasks: taskRows,
-    isUnlocked: isModuleUnlockedForLessonGeneration(
-      moduleMetricsRows,
-      moduleId,
-    ),
+    isUnlocked: true,
   };
 }
 
@@ -205,11 +182,18 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     readonly planId: string;
     readonly moduleId: string;
     readonly workflowRunId?: string;
+    readonly batchRequestId?: string;
   },
 ): Promise<void> {
-  const matchingWorkflowRun = args.workflowRunId
-    ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
-    : undefined;
+  const matchingClaim = or(
+    args.workflowRunId
+      ? sql`${modules.lessonGenerationMetadata}->'workflow'->>'runId' = ${args.workflowRunId}`
+      : undefined,
+    args.batchRequestId
+      ? sql`${modules.lessonGenerationMetadata}->>'batchRequestId' = ${args.batchRequestId}
+        AND ${modules.lessonGenerationMetadata}->'workflow' IS NULL`
+      : undefined,
+  );
 
   await dbClient
     .update(modules)
@@ -227,7 +211,7 @@ export async function revertModuleLessonGeneratingToNotGenerated(
         eq(modules.planId, args.planId),
         eq(modules.lessonGenerationStatus, 'generating'),
         moduleOwnedByUser(args.userId),
-        matchingWorkflowRun,
+        matchingClaim,
       ),
     );
 }
@@ -245,30 +229,51 @@ export async function markModuleLessonProviderStarted(
     readonly providerStartedAt: string;
   },
 ): Promise<void> {
-  const updated = await dbClient
-    .update(modules)
-    .set({
-      lessonGenerationMetadata: sql`jsonb_set(
-        coalesce(${modules.lessonGenerationMetadata}, '{"version":1}'::jsonb),
-        '{providerStartedAt}',
-        to_jsonb(${args.providerStartedAt}::text)
-      )`,
-    })
-    .where(
-      and(
-        eq(modules.id, args.moduleId),
-        eq(modules.planId, args.planId),
-        eq(modules.lessonGenerationStatus, 'generating'),
-        moduleOwnedByUser(args.userId),
-      ),
-    )
-    .returning({ id: modules.id });
+  await dbClient.transaction(async (tx) => {
+    const updated = await tx
+      .update(modules)
+      .set({
+        lessonGenerationMetadata: sql`jsonb_set(
+          coalesce(${modules.lessonGenerationMetadata}, '{"version":1}'::jsonb),
+          '{providerStartedAt}',
+          to_jsonb(${args.providerStartedAt}::text)
+        )`,
+      })
+      .where(
+        and(
+          eq(modules.id, args.moduleId),
+          eq(modules.planId, args.planId),
+          eq(modules.lessonGenerationStatus, 'generating'),
+          moduleOwnedByUser(args.userId),
+          sql`${modules.lessonGenerationMetadata}->>'providerStartedAt' IS NULL`,
+        ),
+      )
+      .returning({ id: modules.id });
 
-  if (updated.length !== 1) {
-    throw new Error(
-      'Module lesson generation provider-start marker did not match exactly one row',
+    if (updated.length === 0) {
+      const state = await readScopedModuleState(
+        tx,
+        args.planId,
+        args.moduleId,
+        args.userId,
+      );
+      if (state?.status === 'generating' && state.metadata?.providerStartedAt) {
+        return;
+      }
+    }
+
+    if (updated.length !== 1) {
+      throw new Error(
+        'Module lesson generation provider-start marker did not match exactly one row',
+      );
+    }
+
+    await incrementLessonModulesGeneratedInTx(
+      tx,
+      args.userId,
+      getCurrentMonth(new Date(args.providerStartedAt)),
     );
-  }
+  });
 }
 
 async function readScopedModuleState(
@@ -302,6 +307,7 @@ async function readScopedModuleState(
 function classifyModuleLessonGenerationClaimState(
   state: Awaited<ReturnType<typeof readScopedModuleState>>,
   workflow: ModuleLessonWorkflowClaimMetadata | undefined,
+  batchRequestId: string | undefined,
 ): LessonGenerationClaimResult | null {
   if (state == null) {
     return { kind: 'not_found' };
@@ -312,7 +318,12 @@ function classifyModuleLessonGenerationClaimState(
   if (state.status !== 'generating') {
     return null;
   }
-  if (workflow && state.metadata?.workflow?.runId === workflow.runId) {
+  if (
+    workflow &&
+    state.metadata?.workflow?.runId === workflow.runId &&
+    (batchRequestId === undefined ||
+      state.metadata.batchRequestId === batchRequestId)
+  ) {
     return {
       kind: 'claimed',
       workflowStartedAt: state.metadata.workflow.startedAt ?? null,
@@ -333,20 +344,26 @@ export async function claimModuleLessonGenerationOrDescribe(
   userId: string,
   options?: {
     readonly now?: () => Date;
+    readonly batchRequestId?: string;
     readonly workflow?: ModuleLessonWorkflowClaimMetadata;
   },
 ): Promise<LessonGenerationClaimResult> {
   const now = options?.now ?? (() => new Date());
-  const workflowMetadata = options?.workflow
-    ? ModuleLessonGenerationMetadataSchema.parse({
-        version: 1,
-        workflow: {
-          provider: 'workflow-sdk',
-          runId: options.workflow.runId,
-          startedAt: options.workflow.startedAt,
-        },
-      })
-    : undefined;
+  const claimMetadata = ModuleLessonGenerationMetadataSchema.parse({
+    version: 1,
+    ...(options?.batchRequestId !== undefined
+      ? { batchRequestId: options.batchRequestId }
+      : {}),
+    ...(options?.workflow
+      ? {
+          workflow: {
+            provider: 'workflow-sdk',
+            runId: options.workflow.runId,
+            startedAt: options.workflow.startedAt,
+          },
+        }
+      : {}),
+  });
   const claimStartedAt = options?.workflow
     ? new Date(options.workflow.startedAt)
     : now();
@@ -381,9 +398,7 @@ export async function claimModuleLessonGenerationOrDescribe(
           lessonGenerationCompletedAt: null,
           lessonGenerationFailedAt: null,
           lessonGenerationError: null,
-          ...(workflowMetadata
-            ? { lessonGenerationMetadata: workflowMetadata }
-            : {}),
+          lessonGenerationMetadata: claimMetadata,
         })
         .where(
           and(
@@ -398,8 +413,40 @@ export async function claimModuleLessonGenerationOrDescribe(
       return touched.length === 1;
     };
 
+    const adoptClaim = async (): Promise<boolean> => {
+      if (!options?.workflow || options.batchRequestId === undefined) {
+        return false;
+      }
+
+      const adopted = await tx
+        .update(modules)
+        .set({
+          lessonGenerationMetadata: claimMetadata,
+        })
+        .where(
+          and(
+            eq(modules.id, moduleId),
+            eq(modules.planId, planId),
+            eq(modules.lessonGenerationStatus, 'generating'),
+            moduleOwnedByUser(userId),
+            sql`${modules.lessonGenerationMetadata}->>'batchRequestId' = ${options.batchRequestId}`,
+            sql`${modules.lessonGenerationMetadata}->'workflow' IS NULL`,
+          ),
+        )
+        .returning({ id: modules.id });
+
+      return adopted.length === 1;
+    };
+
     for (let attempt = 0; attempt < 2; attempt++) {
       if (await attemptClaim()) {
+        return {
+          kind: 'claimed',
+          workflowStartedAt: options?.workflow?.startedAt ?? null,
+        };
+      }
+
+      if (await adoptClaim()) {
         return {
           kind: 'claimed',
           workflowStartedAt: options?.workflow?.startedAt ?? null,
@@ -410,6 +457,7 @@ export async function claimModuleLessonGenerationOrDescribe(
       const result = classifyModuleLessonGenerationClaimState(
         state,
         options?.workflow,
+        options?.batchRequestId,
       );
       if (result) {
         return result;
@@ -420,6 +468,7 @@ export async function claimModuleLessonGenerationOrDescribe(
     const result = classifyModuleLessonGenerationClaimState(
       state,
       options?.workflow,
+      options?.batchRequestId,
     );
     if (result) {
       return result;

@@ -22,10 +22,12 @@ export function buildMetadata(params: MetadataParams): AttemptMetadata {
     finishedAt,
     extendedTimeout,
     failure,
+    admittedTier,
   } = params;
 
   return {
     ...(workflowMetadata ? { workflow: workflowMetadata } : {}),
+    ...(admittedTier ? { admitted_tier: admittedTier } : {}),
     input: {
       topic: {
         truncated: sanitized.topic.truncated,

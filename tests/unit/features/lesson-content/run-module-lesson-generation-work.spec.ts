@@ -1,9 +1,9 @@
-import type { MeteredReservationToken } from '@/features/billing/metered-reservation';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
 
-import { runLessonGenerationQuotaReserved } from '@/features/billing/lesson-generation-quota-boundary';
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
+import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -17,8 +17,9 @@ const mocks = vi.hoisted(() => ({
   parseBatch: vi.fn(),
   resolveModelForTier: vi.fn(),
   setupAbortAndTimeout: vi.fn(),
-  reserve: vi.fn(),
-  compensate: vi.fn(),
+  resolveUserTier: vi.fn(),
+  getUserPreferences: vi.fn(),
+  readPlanContentAccess: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
@@ -40,6 +41,18 @@ vi.mock('@/features/ai/model-resolver', () => ({
   resolveModelForTier: mocks.resolveModelForTier,
 }));
 
+vi.mock('@/features/billing/tier', () => ({
+  resolveUserTier: mocks.resolveUserTier,
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', () => ({
+  getUserPreferences: mocks.getUserPreferences,
+}));
+
+vi.mock('@/features/plans/entitlement/access', () => ({
+  readPlanContentAccess: mocks.readPlanContentAccess,
+}));
+
 vi.mock(
   '@/features/ai/orchestrator/timeout-lifecycle',
   async (importOriginal) => {
@@ -55,22 +68,6 @@ vi.mock(
 );
 
 const fakeDb = makeDbClient();
-const baseToken: MeteredReservationToken = {
-  userId: 'user-quota',
-  month: '2026-08',
-  meter: 'lessonGeneration',
-  limit: 3,
-  newCount: 1,
-};
-
-const runLessonQuotaReserved: typeof runLessonGenerationQuotaReserved = (
-  args,
-) =>
-  runLessonGenerationQuotaReserved(args, {
-    reserve: mocks.reserve,
-    compensate: mocks.compensate,
-    reportReconciliation: vi.fn(),
-  });
 
 function fakeLifecycle() {
   const controller = new AbortController();
@@ -108,6 +105,15 @@ function providerOk() {
   };
 }
 
+function workLoad(taskId = createId('task')) {
+  return {
+    plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
+    module: { title: 'm', description: null, order: 1 },
+    tasks: [{ id: taskId, title: 'Task', order: 1 }],
+    isUnlocked: true,
+  } as never as ModuleLessonGenerationContext;
+}
+
 describe('runModuleLessonGenerationWork', () => {
   beforeEach(() => {
     mocks.revertClaim.mockReset();
@@ -123,10 +129,17 @@ describe('runModuleLessonGenerationWork', () => {
     mocks.resolveModelForTier.mockReset();
     mocks.setupAbortAndTimeout.mockReset();
     mocks.setupAbortAndTimeout.mockImplementation(fakeLifecycle);
-    mocks.reserve.mockReset();
-    mocks.reserve.mockResolvedValue({ ok: true, token: baseToken });
-    mocks.compensate.mockReset();
-    mocks.compensate.mockResolvedValue(undefined);
+    mocks.resolveUserTier.mockReset();
+    mocks.resolveUserTier.mockResolvedValue('free');
+    mocks.getUserPreferences.mockReset();
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: null,
+      analyticsTimezone: 'UTC',
+    });
+    mocks.readPlanContentAccess.mockReset();
+    mocks.readPlanContentAccess.mockResolvedValue('full');
   });
 
   it('releases an already-claimed module when generation is disabled', async () => {
@@ -166,7 +179,48 @@ describe('runModuleLessonGenerationWork', () => {
       moduleId,
       workflowRunId,
     });
-    expect(mocks.reserve).not.toHaveBeenCalled();
+    expect(mocks.invokeProvider).not.toHaveBeenCalled();
+  });
+
+  it('reverts a claimed module when the plan is no longer fully accessible', async () => {
+    const userId = createId('user');
+    const planId = createId('plan');
+    const moduleId = createId('module');
+    const serverDbClient = {} as DbClient;
+    const workflowRunId = 'wrun_locked';
+    mocks.readPlanContentAccess.mockResolvedValue('locked');
+
+    await expect(
+      runModuleLessonGenerationWork(
+        {
+          load: {} as ModuleLessonGenerationContext,
+          userId,
+          planId,
+          moduleId,
+          userTier: 'free',
+          generationMetadata: {
+            version: 1,
+            workflow: {
+              provider: 'workflow-sdk',
+              runId: workflowRunId,
+            },
+          },
+        },
+        {
+          serverDbClient,
+          resolveGenerationEnabled: async () => true,
+        },
+      ),
+    ).resolves.toEqual({ kind: 'failed' });
+
+    expect(mocks.revertClaim).toHaveBeenCalledOnce();
+    expect(mocks.revertClaim).toHaveBeenCalledWith(serverDbClient, {
+      userId,
+      planId,
+      moduleId,
+      workflowRunId,
+    });
+    expect(mocks.invokeProvider).not.toHaveBeenCalled();
   });
 
   it('persists the provider-start marker before invoking the fake provider', async () => {
@@ -188,12 +242,7 @@ describe('runModuleLessonGenerationWork', () => {
 
     await runModuleLessonGenerationWork(
       {
-        load: {
-          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
-          module: { title: 'm', description: null, order: 1 },
-          tasks: [{ id: taskId, title: 'Task', order: 1 }],
-          isUnlocked: true,
-        } as never,
+        load: workLoad(taskId),
         userId,
         planId,
         moduleId,
@@ -203,7 +252,6 @@ describe('runModuleLessonGenerationWork', () => {
       {
         serverDbClient,
         resolveGenerationEnabled: async () => true,
-        runLessonQuotaReserved,
         provider: { generateModuleLessonBatch: vi.fn() },
       },
     );
@@ -240,35 +288,22 @@ describe('runModuleLessonGenerationWork', () => {
       },
     },
   ])(
-    '$name failure after marker returns failed, keeps reservation consumed, and never compensates',
+    '$name failure after marker returns failed and does not revert the claim',
     async ({ arrange }) => {
-      const userId = createId('user');
-      const planId = createId('plan');
-      const moduleId = createId('module');
       const taskId = createId('task');
       arrange(taskId);
 
       const result = await runModuleLessonGenerationWork(
         {
-          load: {
-            plan: {
-              topic: 't',
-              skillLevel: 'beginner',
-              learningStyle: 'mixed',
-            },
-            module: { title: 'm', description: null, order: 1 },
-            tasks: [{ id: taskId, title: 'Task', order: 1 }],
-            isUnlocked: true,
-          } as never,
-          userId,
-          planId,
-          moduleId,
+          load: workLoad(taskId),
+          userId: createId('user'),
+          planId: createId('plan'),
+          moduleId: createId('module'),
           userTier: 'free',
         },
         {
           serverDbClient: fakeDb,
           resolveGenerationEnabled: async () => true,
-          runLessonQuotaReserved,
           provider: { generateModuleLessonBatch: vi.fn() },
         },
       );
@@ -276,24 +311,17 @@ describe('runModuleLessonGenerationWork', () => {
       expect(result).toEqual({ kind: 'failed' });
       expect(mocks.markProviderStarted).toHaveBeenCalledOnce();
       expect(mocks.invokeProvider).toHaveBeenCalledOnce();
-      expect(mocks.reserve).toHaveBeenCalledOnce();
-      expect(mocks.compensate).not.toHaveBeenCalled();
       expect(mocks.revertClaim).not.toHaveBeenCalled();
     },
   );
 
-  it('treats failure-state persistence failure after marker as consumed', async () => {
+  it('treats failure-state persistence failure after marker as failed without revert', async () => {
     mocks.invokeProvider.mockRejectedValue(new Error('provider'));
     mocks.commitFailure.mockRejectedValue(new Error('failure persist'));
 
     const result = await runModuleLessonGenerationWork(
       {
-        load: {
-          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
-          module: { title: 'm', description: null, order: 1 },
-          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
-          isUnlocked: true,
-        } as never,
+        load: workLoad(),
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
@@ -302,13 +330,11 @@ describe('runModuleLessonGenerationWork', () => {
       {
         serverDbClient: fakeDb,
         resolveGenerationEnabled: async () => true,
-        runLessonQuotaReserved,
         provider: { generateModuleLessonBatch: vi.fn() },
       },
     );
 
     expect(result).toEqual({ kind: 'failed' });
-    expect(mocks.compensate).not.toHaveBeenCalled();
     expect(mocks.revertClaim).not.toHaveBeenCalled();
   });
 
@@ -339,22 +365,13 @@ describe('runModuleLessonGenerationWork', () => {
       },
     },
   ])(
-    '$name failure before provider invocation compensates',
+    '$name failure before provider invocation returns failed',
     async ({ omitProvider, arrange }) => {
       arrange();
 
       const result = await runModuleLessonGenerationWork(
         {
-          load: {
-            plan: {
-              topic: 't',
-              skillLevel: 'beginner',
-              learningStyle: 'mixed',
-            },
-            module: { title: 'm', description: null, order: 1 },
-            tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
-            isUnlocked: true,
-          } as never,
+          load: workLoad(),
           userId: createId('user'),
           planId: createId('plan'),
           moduleId: createId('module'),
@@ -363,7 +380,6 @@ describe('runModuleLessonGenerationWork', () => {
         {
           serverDbClient: fakeDb,
           resolveGenerationEnabled: async () => true,
-          runLessonQuotaReserved,
           ...(omitProvider
             ? {}
             : { provider: { generateModuleLessonBatch: vi.fn() } }),
@@ -372,23 +388,23 @@ describe('runModuleLessonGenerationWork', () => {
 
       expect(result).toEqual({ kind: 'failed' });
       expect(mocks.invokeProvider).not.toHaveBeenCalled();
-      expect(mocks.compensate).toHaveBeenCalledOnce();
-      expect(mocks.compensate).toHaveBeenCalledWith(baseToken, fakeDb);
+      if (omitProvider) {
+        expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+          'free',
+          undefined,
+          'lesson',
+        );
+      }
     },
   );
 
-  it('compensates and reverts when pre-provider failure persistence also fails', async () => {
+  it('reverts when pre-provider failure persistence also fails', async () => {
     mocks.markProviderStarted.mockRejectedValue(new Error('marker'));
     mocks.commitFailure.mockRejectedValue(new Error('failure persist'));
 
     const result = await runModuleLessonGenerationWork(
       {
-        load: {
-          plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
-          module: { title: 'm', description: null, order: 1 },
-          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
-          isUnlocked: true,
-        } as never,
+        load: workLoad(),
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
@@ -397,46 +413,164 @@ describe('runModuleLessonGenerationWork', () => {
       {
         serverDbClient: fakeDb,
         resolveGenerationEnabled: async () => true,
-        runLessonQuotaReserved,
         provider: { generateModuleLessonBatch: vi.fn() },
       },
     );
 
     expect(result).toEqual({ kind: 'failed' });
     expect(mocks.invokeProvider).not.toHaveBeenCalled();
-    expect(mocks.compensate).toHaveBeenCalledWith(baseToken, fakeDb);
     expect(mocks.revertClaim).toHaveBeenCalledOnce();
   });
 
-  it('reserves again on a second retry after a consumed provider-started failure', async () => {
-    mocks.invokeProvider.mockRejectedValue(new Error('provider'));
-    const params = {
-      load: {
-        plan: { topic: 't', skillLevel: 'beginner', learningStyle: 'mixed' },
-        module: { title: 'm', description: null, order: 1 },
-        tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
-        isUnlocked: true,
-      } as never,
-      userId: createId('user'),
-      planId: createId('plan'),
-      moduleId: createId('module'),
-      userTier: 'free' as const,
-    };
-    const deps = {
-      serverDbClient: fakeDb,
-      resolveGenerationEnabled: async () => true,
-      runLessonQuotaReserved,
+  it('uses the Pro saved lesson slot when modelOverride is omitted', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: 'openai/gpt-5.2',
+      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
       provider: { generateModuleLessonBatch: vi.fn() },
-    };
-
-    await expect(runModuleLessonGenerationWork(params, deps)).resolves.toEqual({
-      kind: 'failed',
+      modelId: 'google/gemini-3-flash-preview',
     });
-    await expect(runModuleLessonGenerationWork(params, deps)).resolves.toEqual({
-      kind: 'failed',
-    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
 
-    expect(mocks.reserve).toHaveBeenCalledTimes(2);
-    expect(mocks.compensate).not.toHaveBeenCalled();
+    const userId = createId('user');
+    await runModuleLessonGenerationWork(
+      {
+        load: workLoad(),
+        userId,
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'pro',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+      },
+    );
+
+    expect(mocks.resolveUserTier).toHaveBeenCalledWith(userId, fakeDb);
+    expect(mocks.getUserPreferences).toHaveBeenCalledWith(userId, fakeDb);
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'google/gemini-3-flash-preview',
+      'lesson',
+    );
+  });
+
+  it.each(['free', 'starter'] as const)(
+    '%s lesson work without modelOverride resolves openrouter/free',
+    async (tier) => {
+      mocks.resolveUserTier.mockResolvedValue(tier);
+      mocks.resolveModelForTier.mockReturnValue({
+        provider: { generateModuleLessonBatch: vi.fn() },
+        modelId: AI_DEFAULT_MODEL,
+      });
+      mocks.invokeProvider.mockResolvedValue(providerOk());
+      mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+      await runModuleLessonGenerationWork(
+        {
+          load: workLoad(),
+          userId: createId('user'),
+          planId: createId('plan'),
+          moduleId: createId('module'),
+          userTier: tier,
+        },
+        {
+          serverDbClient: fakeDb,
+          resolveGenerationEnabled: async () => true,
+        },
+      );
+
+      expect(getDefaultModelForTier(tier, 'lesson')).toBe(AI_DEFAULT_MODEL);
+      expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+        tier,
+        undefined,
+        'lesson',
+      );
+    },
+  );
+
+  it('replaces a stale workflow userTier with the current DB tier', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
+      provider: { generateModuleLessonBatch: vi.fn() },
+      modelId: 'google/gemini-3-flash-preview',
+    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: workLoad(),
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'free',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+      },
+    );
+
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'google/gemini-3-flash-preview',
+      'lesson',
+    );
+    expect(mocks.resolveModelForTier).not.toHaveBeenCalledWith(
+      'free',
+      expect.anything(),
+      expect.anything(),
+    );
+  });
+
+  it('keeps an explicit modelOverride instead of the saved lesson slot', async () => {
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.getUserPreferences.mockResolvedValue({
+      preferredAiModel: null,
+      preferredRegenerationAiModel: null,
+      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      analyticsTimezone: 'UTC',
+    });
+    mocks.resolveModelForTier.mockReturnValue({
+      provider: { generateModuleLessonBatch: vi.fn() },
+      modelId: 'openai/gpt-5.2',
+    });
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: workLoad(),
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+        userTier: 'pro',
+        modelOverride: 'openai/gpt-5.2',
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+      },
+    );
+
+    expect(mocks.getUserPreferences).not.toHaveBeenCalled();
+    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
+      'pro',
+      'openai/gpt-5.2',
+      'lesson',
+    );
   });
 });
