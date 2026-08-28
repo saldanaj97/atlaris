@@ -414,7 +414,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(gh pr view "$PR_NUMBER" --repo "$EXPECTED_REPOSITORY" --json headRefOid --jq .headRefOid)" = "$FINAL_SHA"
-          # CircleCI statuses arrive after the bot-branch push. `gh pr checks --required`
+          # CircleCI statuses arrive after the bot PR opens or synchronizes. `gh pr checks --required`
           # exits immediately when none are registered yet.
           required='[]'
           for _ in $(seq 1 36); do

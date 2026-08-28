@@ -89,7 +89,7 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
-**Triggers:** Pushes to non-`main`/non-`develop` branches, and GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR)
+**Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR)
 
 **What it runs:**
 
