@@ -4,6 +4,7 @@ import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestr
 import type {
   PlanRegenerationAttemptPreparation,
   PlanRegenerationWorkflowInput,
+  PlanRegenerationReservationStepResult,
 } from '@/features/plans/workflows/plan-regeneration.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
@@ -139,6 +140,17 @@ function job(status: Job['status'], runId?: string): Job {
     createdAt: now,
     updatedAt: now,
   };
+}
+
+function expectPreparation(
+  result: PlanRegenerationReservationStepResult,
+): PlanRegenerationAttemptPreparation {
+  if ('kind' in result) {
+    throw new Error(
+      `Expected reservation preparation, received ${result.kind}`,
+    );
+  }
+  return result;
 }
 
 describe('claimPlanRegenerationJobStep', () => {
@@ -335,6 +347,50 @@ describe('processPlanRegenerationStep model resolution', () => {
     );
   });
 
+  it('requeues a claimed job when reservation is temporarily blocked', async () => {
+    mocks.reserveAttemptSlot.mockResolvedValue({
+      reserved: false,
+      reason: 'active_child_generation',
+    });
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.failJob.mockResolvedValue(job('pending'));
+
+    await expect(reservePlanRegenerationAttemptStep(input)).resolves.toEqual({
+      kind: 'retryable-failure',
+      jobId: input.jobId,
+      planId: input.planId,
+      willRetry: true,
+    });
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Unable to reserve regeneration attempt: active_child_generation.',
+      { retryable: true },
+    );
+  });
+
+  it('fails a claimed job when reservation is permanently rejected', async () => {
+    mocks.reserveAttemptSlot.mockResolvedValue({
+      reserved: false,
+      reason: 'invalid_status',
+      currentStatus: 'completed',
+    });
+    mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
+    mocks.resolveUserTier.mockResolvedValue('pro');
+    mocks.failJob.mockResolvedValue(job('failed'));
+
+    await expect(reservePlanRegenerationAttemptStep(input)).resolves.toEqual({
+      kind: 'permanent-failure',
+      jobId: input.jobId,
+      planId: input.planId,
+    });
+    expect(mocks.failJob).toHaveBeenCalledWith(
+      input.jobId,
+      'Unable to reserve regeneration attempt: invalid_status.',
+      { retryable: false },
+    );
+  });
+
   it('reuses the admitted tier when a reserve replay sees a changed current tier', async () => {
     const reservation = makeAttemptReservation({
       generationPurpose: 'regeneration',
@@ -349,7 +405,9 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('free');
 
-    const replay = await reservePlanRegenerationAttemptStep(input);
+    const replay = expectPreparation(
+      await reservePlanRegenerationAttemptStep(input),
+    );
 
     expect(replay.tier).toBe('pro');
     expect(mocks.resolveUserTier).not.toHaveBeenCalled();
@@ -429,7 +487,9 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(queued);
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    const reserved = await reservePlanRegenerationAttemptStep(input);
+    const reserved = expectPreparation(
+      await reservePlanRegenerationAttemptStep(input),
+    );
 
     await processPlanRegenerationStep(input, reserved);
 
@@ -447,7 +507,9 @@ describe('processPlanRegenerationStep model resolution', () => {
   it('uses the Pro regeneration saved slot when the payload has no model', async () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
-    const reserved = await reservePlanRegenerationAttemptStep(input);
+    const reserved = expectPreparation(
+      await reservePlanRegenerationAttemptStep(input),
+    );
 
     await processPlanRegenerationStep(input, reserved);
 
@@ -465,7 +527,9 @@ describe('processPlanRegenerationStep model resolution', () => {
   it('uses the Starter outline slot when the payload has no model', async () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('starter');
-    const reserved = await reservePlanRegenerationAttemptStep(input);
+    const reserved = expectPreparation(
+      await reservePlanRegenerationAttemptStep(input),
+    );
 
     await processPlanRegenerationStep(input, reserved);
 
@@ -484,7 +548,9 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.loadJob.mockResolvedValue(job('processing', 'wrun_same'));
     mocks.resolveUserTier.mockResolvedValue('pro');
 
-    const reserved = await reservePlanRegenerationAttemptStep(input);
+    const reserved = expectPreparation(
+      await reservePlanRegenerationAttemptStep(input),
+    );
     mocks.resolveUserTier.mockResolvedValue('free');
 
     await processPlanRegenerationStep(input, reserved);

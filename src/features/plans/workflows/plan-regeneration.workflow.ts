@@ -25,6 +25,9 @@ export async function planRegenerationWorkflow(
   }
 
   const reservation = await reservePlanRegenerationAttemptStep(input);
+  if ('kind' in reservation) {
+    return reservation;
+  }
   const generationResult = await processPlanRegenerationStep(
     input,
     reservation,

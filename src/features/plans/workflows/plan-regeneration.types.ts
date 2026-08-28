@@ -23,6 +23,10 @@ export type PlanRegenerationAttemptPreparation = {
   readonly modelOverride?: string;
 };
 
+export type PlanRegenerationReservationStepResult =
+  | PlanRegenerationAttemptPreparation
+  | PlanRegenerationWorkflowTerminalResult;
+
 export function resolvePlanRegenerationWorkflowPurpose(
   input: Pick<PlanRegenerationWorkflowInput, 'generationPurpose'>,
 ): GenerationPurpose {

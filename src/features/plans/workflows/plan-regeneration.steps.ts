@@ -2,7 +2,10 @@ import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptRejection,
+  AttemptReservation,
+} from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -15,6 +18,7 @@ import {
   type PlanRegenerationAttemptPreparation,
   type PlanRegenerationWorkflowClaimResult,
   type PlanRegenerationWorkflowInput,
+  type PlanRegenerationReservationStepResult,
   type PlanRegenerationWorkflowTerminalResult,
 } from './plan-regeneration.types';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
@@ -304,9 +308,52 @@ async function compensatePostReservationAdmission(
   throw new FatalError(error.message);
 }
 
+function isRetryableReservationRejection(
+  reason: AttemptRejection['reason'],
+): boolean {
+  switch (reason) {
+    case 'active_child_generation':
+    case 'free_initial_in_progress':
+    case 'in_progress':
+    case 'rate_limited':
+      return true;
+    case 'capped':
+    case 'free_allowance_used':
+    case 'invalid_status':
+    case 'plan_limit':
+      return false;
+    default: {
+      const _never: never = reason;
+      return _never;
+    }
+  }
+}
+
+async function terminalizeReservationRejection(
+  input: PlanRegenerationWorkflowInput,
+  reservation: AttemptRejection,
+): Promise<PlanRegenerationWorkflowTerminalResult> {
+  const message = `Unable to reserve regeneration attempt: ${reservation.reason}.`;
+  const retryable = isRetryableReservationRejection(reservation.reason);
+  const failedJob = await failJob(input.jobId, message, { retryable });
+
+  return retryable
+    ? {
+        kind: 'retryable-failure',
+        jobId: input.jobId,
+        planId: input.planId,
+        willRetry: failedJob?.status === 'pending',
+      }
+    : {
+        kind: 'permanent-failure',
+        jobId: input.jobId,
+        planId: input.planId,
+      };
+}
+
 export async function reservePlanRegenerationAttemptStep(
   input: PlanRegenerationWorkflowInput,
-): Promise<PlanRegenerationAttemptPreparation> {
+): Promise<PlanRegenerationReservationStepResult> {
   'use step';
 
   const loaded = await loadRegenerationContext(input);
@@ -362,9 +409,7 @@ export async function reservePlanRegenerationAttemptStep(
   });
 
   if (!reservation.reserved) {
-    throw new FatalError(
-      `Unable to reserve regeneration attempt: ${reservation.reason}.`,
-    );
+    return terminalizeReservationRejection(input, reservation);
   }
 
   let prepared = preflight;

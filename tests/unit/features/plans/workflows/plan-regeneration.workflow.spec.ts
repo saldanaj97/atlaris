@@ -103,4 +103,26 @@ describe('planRegenerationWorkflow', () => {
       planId: input.planId,
     });
   });
+
+  it('returns a reservation failure without processing', async () => {
+    workflowMocks.claim.mockResolvedValue({
+      kind: 'claimed',
+      runId: 'wrun_regen',
+    });
+    workflowMocks.reserve.mockResolvedValue({
+      kind: 'retryable-failure',
+      jobId: input.jobId,
+      planId: input.planId,
+      willRetry: true,
+    });
+
+    await expect(planRegenerationWorkflow(input)).resolves.toEqual({
+      kind: 'retryable-failure',
+      jobId: input.jobId,
+      planId: input.planId,
+      willRetry: true,
+    });
+    expect(workflowMocks.process).not.toHaveBeenCalled();
+    expect(workflowMocks.finalize).not.toHaveBeenCalled();
+  });
 });
