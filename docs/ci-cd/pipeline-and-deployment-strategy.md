@@ -70,7 +70,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Runs broadly for PRs and pushes to `develop`/`main`, plus manual Preview/Staging proof dispatches. It has no workflow-level path filter.
 - `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
 - Same-repository deploy-impacting PRs create Preview deployments; forks and Dependabot PRs never receive Vercel secrets.
-- A known deploy-impacting `develop` push uses the Hobby-plan Staging fallback only after the exact SHA's CircleCI `ci-trunk` succeeds and the full unreleased `main...develop` range contains no migration files. While that range contains a migration, or when the diff is unknown, Staging requires `expand` followed by a manual dispatch for current `develop`.
+- A known deploy-impacting `develop` push uses the Hobby-plan Staging fallback only after the exact SHA's CircleCI `ci-trunk` succeeds and the full unreleased `main...develop` range contains no migration files. While that range contains a migration, or when the diff is unknown, run `expand` for current `develop`; the manual Staging dispatch verifies that exact SHA's successful expand run before deployment.
 - After cutover, deploy-impacting `main` pushes create a Production deployment. Required JCS-52 Deployment Checks block domain assignment until approval and exact-candidate smoke pass; the job never promotes, aliases, or rolls back.
 - The Production job fails closed unless both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are exactly `true`.
 
@@ -130,7 +130,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
 - After the exact SHA's CircleCI `ci-trunk` succeeds, known deploy-impacting changes create the `develop` Preview fallback only when the full unreleased range from `main` contains no migration files
-- While the unreleased range contains a migration, or when the diff is unknown, an operator runs `staging-db-migrations.yaml` phase `expand` and then manually dispatches Staging for current `develop`; phase `contract` follows health verification
+- While the unreleased range contains a migration, or when the diff is unknown, an operator runs `staging-db-migrations.yaml` phase `expand` and then manually dispatches Staging for current `develop`; the lane verifies the same-SHA expand run, and phase `contract` follows health verification
 
 ### Merge to `main`
 

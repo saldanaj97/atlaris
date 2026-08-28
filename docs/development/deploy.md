@@ -82,7 +82,7 @@ The phased migration runner refuses to continue when the drop version is already
 
 After deploying a release that includes new Supabase migrations:
 
-1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
+1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). Manual Staging deployment verifies a successful expand run for the exact current `develop` SHA.
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
 3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 

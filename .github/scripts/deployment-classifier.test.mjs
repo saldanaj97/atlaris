@@ -150,6 +150,20 @@ test('the workflow waits for same-SHA CircleCI trunk success before Staging', ()
   assert.match(workflow, /conclusion.*success/u);
 });
 
+test('manual Staging requires a successful same-SHA expand run', () => {
+  assert.match(workflow, /actions: read/u);
+  assert.match(
+    workflow,
+    /actions\/workflows\/staging-db-migrations\.yaml\/runs/u,
+  );
+  assert.ok(workflow.includes(`-f head_sha="\${EXPECTED_SHA}"`));
+  assert.match(
+    workflow,
+    /Staging migrations \(expand\) @ \$\{EXPECTED_SHA\}/u,
+  );
+  assert.match(workflow, /\.head_sha == \$expected_sha/u);
+});
+
 test('the classifier and workflow assertions run in CircleCI', () => {
   assert.match(
     circleCiConfig,

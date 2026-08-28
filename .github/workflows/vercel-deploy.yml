@@ -28,6 +28,7 @@ on:
 permissions:
   contents: read
   checks: read
+  actions: read
 
 concurrency:
   group: vercel-deploy-${{ github.event.pull_request.number || github.ref || inputs.ref || github.run_id }}
@@ -446,6 +447,41 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+
+      - name: Verify successful same-SHA Staging expand
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+
+          expected_title="Staging migrations (expand) @ ${EXPECTED_SHA}"
+          workflow_runs="$(
+            gh api --method GET \
+              "repos/${GITHUB_REPOSITORY}/actions/workflows/staging-db-migrations.yaml/runs" \
+              -f branch='develop' \
+              -f event='workflow_dispatch' \
+              -f status='success' \
+              -f head_sha="${EXPECTED_SHA}" \
+              -F per_page=100
+          )"
+
+          if ! jq -e \
+            --arg expected_sha "${EXPECTED_SHA}" \
+            --arg expected_title "${expected_title}" \
+            '[.workflow_runs[] | select(
+              .event == "workflow_dispatch" and
+              .status == "completed" and
+              .conclusion == "success" and
+              .head_branch == "develop" and
+              .head_sha == $expected_sha and
+              .display_title == $expected_title
+            )] | length > 0' \
+            <<<"${workflow_runs}" >/dev/null; then
+            echo "No successful Staging expand run matches ${EXPECTED_SHA}." >&2
+            exit 1
+          fi
 
       - name: Wait for same-SHA CircleCI trunk success
         env:

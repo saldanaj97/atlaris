@@ -21,11 +21,13 @@ const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
 
 const migrationWorkflows = [
   {
+    checkoutRef: '${{ github.sha }}',
     environment: 'staging',
     fileName: 'staging-db-migrations.yaml',
     protectedBranch: 'develop',
   },
   {
+    checkoutRef: 'main',
     environment: 'Production – atlaris',
     fileName: 'production-db-migrations.yaml',
     protectedBranch: 'main',
@@ -65,14 +67,22 @@ describe('Supabase migration workflows', () => {
   );
 
   it.each(migrationWorkflows)(
-    '$fileName checks out the protected branch explicitly',
-    ({ fileName, protectedBranch }) => {
+    '$fileName checks out its trusted candidate explicitly',
+    ({ checkoutRef, fileName }) => {
       const workflow = readWorkflow(fileName);
 
       expect(workflow).toContain('uses: actions/checkout@');
-      expect(workflow).toContain(`with:\n          ref: ${protectedBranch}`);
+      expect(workflow).toContain(`with:\n          ref: ${checkoutRef}`);
     },
   );
+
+  it('records the Staging migration phase and exact dispatch SHA', () => {
+    const workflow = readWorkflow('staging-db-migrations.yaml');
+
+    expect(workflow).toContain(
+      'run-name: Staging migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
+    );
+  });
 
   it.each(migrationWorkflows)(
     '$fileName separates expand migrations from confirmed contract migrations',
