@@ -27,6 +27,7 @@ on:
 
 permissions:
   contents: read
+  checks: read
 
 concurrency:
   group: vercel-deploy-${{ github.event.pull_request.number || github.ref || inputs.ref || github.run_id }}
@@ -198,6 +199,12 @@ jobs:
 
           if [[ "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/develop' &&
             "${reason}" != 'unknown diff' && -n "${changed_files}" && -f "${changed_files}" ]] &&
+            git fetch --no-tags origin \
+              '+refs/heads/main:refs/remotes/origin/main' >/dev/null 2>&1 &&
+            staging_base="$(git merge-base refs/remotes/origin/main "${PUSH_AFTER}" 2>/dev/null)" &&
+            is_sha "${staging_base}" &&
+            git diff --no-renames --name-only \
+              "${staging_base}...${PUSH_AFTER}" >"${changed_files}" &&
             ! grep -q '^supabase/migrations/' "${changed_files}"; then
             staging_auto_eligible=true
           fi
@@ -419,7 +426,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     environment: staging
-    timeout-minutes: 30
+    timeout-minutes: 50
     outputs:
       deployment_id: ${{ steps.inspect.outputs.id }}
       deployment_url: ${{ steps.inspect.outputs.url }}
@@ -439,6 +446,43 @@ jobs:
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
           fetch-depth: 0
+
+      - name: Wait for same-SHA CircleCI trunk success
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+        run: |
+          set -euo pipefail
+
+          for attempt in $(seq 1 80); do
+            check_run="$(
+              gh api \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?per_page=100" \
+                --jq '[.check_runs[] | select(
+                  .app.slug == "circleci-checks" and
+                  (.name | startswith("ci-trunk - "))
+                )] | sort_by(.started_at) | last // {}' \
+                2>/dev/null || true
+            )"
+            [[ -n "${check_run}" ]] || check_run='{}'
+            status="$(jq -r '.status // "missing"' <<<"${check_run}")"
+            conclusion="$(jq -r '.conclusion // "pending"' <<<"${check_run}")"
+
+            if [[ "${status}" == 'completed' ]]; then
+              if [[ "${conclusion}" == 'success' ]]; then
+                echo "CircleCI ci-trunk passed for ${EXPECTED_SHA}."
+                exit 0
+              fi
+              echo "CircleCI ci-trunk completed with ${conclusion} for ${EXPECTED_SHA}." >&2
+              exit 1
+            fi
+
+            if [[ "${attempt}" -eq 80 ]]; then
+              echo "Timed out waiting for CircleCI ci-trunk on ${EXPECTED_SHA}." >&2
+              exit 1
+            fi
+            sleep 15
+          done
 
       - name: Install pnpm 11.9.0
         uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v4.0.0
@@ -580,21 +624,6 @@ jobs:
             --project "${VERCEL_PROJECT_ID}" \
             >/dev/null
 
-      - name: Pull Production environment
-        run: |
-          set -euo pipefail
-          vercel pull --yes \
-            --environment=production \
-            >/dev/null
-
-      - name: Build Production candidate artifact
-        env:
-          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          VERCEL_GIT_COMMIT_REF: main
-        run: |
-          set -euo pipefail
-          vercel build --prod --yes >/dev/null
-
       - name: Deploy gated Production candidate
         id: deploy
         env:
@@ -602,7 +631,7 @@ jobs:
           VERCEL_GIT_COMMIT_REF: main
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --prod --no-wait --yes)"
+          deployment_url="$(vercel deploy --prod --no-wait --yes)"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 

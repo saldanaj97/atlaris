@@ -13,6 +13,10 @@ const workflow = readFileSync(
   new URL('../workflows/vercel-deploy.yml', import.meta.url),
   'utf8',
 );
+const circleCiConfig = readFileSync(
+  new URL('../../.circleci/code-config.yml', import.meta.url),
+  'utf8',
+);
 
 test('skips only docs, root Markdown, and issue-template paths', () => {
   for (const changedFiles of [
@@ -114,7 +118,7 @@ test('the CLI keeps force deploy independent from the changed-files value', () =
 test('the workflow classifies both sides of renames', () => {
   assert.equal(
     workflow.match(/git diff --no-renames --name-only/gu)?.length,
-    2,
+    3,
   );
 });
 
@@ -124,7 +128,9 @@ test('the workflow keeps unavailable secrets out of automated previews', () => {
   assert.ok(workflow.includes(`[[ "\${fork_guard}" == 'eligible' ]]`));
 });
 
-test('the workflow gates Staging migrations and Production release readiness', () => {
+test('the workflow preserves the Staging migration gate across develop pushes', () => {
+  assert.match(workflow, /refs\/remotes\/origin\/main/u);
+  assert.match(workflow, /staging_base="\$\(git merge-base/u);
   assert.ok(
     workflow.includes(`! grep -q '^supabase/migrations/' "\${changed_files}"`),
   );
@@ -134,13 +140,30 @@ test('the workflow gates Staging migrations and Production release readiness', (
     ),
   );
   assert.match(workflow, /candidate_sha == github\.sha/u);
+});
+
+test('the workflow waits for same-SHA CircleCI trunk success before Staging', () => {
+  assert.match(workflow, /checks: read/u);
+  assert.match(workflow, /commits\/\$\{EXPECTED_SHA\}\/check-runs/u);
+  assert.match(workflow, /circleci-checks/u);
+  assert.match(workflow, /startswith\("ci-trunk - "\)/u);
+  assert.match(workflow, /conclusion.*success/u);
+});
+
+test('the classifier and workflow assertions run in CircleCI', () => {
+  assert.match(
+    circleCiConfig,
+    /node --test[\s\S]*dependency-remediation\.test\.mjs[\s\S]*deployment-classifier\.test\.mjs/u,
+  );
+});
+
+test('Production uses a remote build behind both readiness gates', () => {
   assert.ok(
     workflow.includes(`vars.VERCEL_NATIVE_GIT_DISABLED == 'true'`) &&
       workflow.includes(`vars.VERCEL_DEPLOYMENT_CHECKS_READY == 'true'`),
   );
-  assert.match(workflow, /vercel deploy --prebuilt --prod --no-wait --yes/u);
-  assert.doesNotMatch(
-    workflow,
-    /vercel deploy --prebuilt --prod --skip-domain/u,
-  );
+  assert.match(workflow, /vercel deploy --prod --no-wait --yes/u);
+  assert.doesNotMatch(workflow, /vercel pull --yes --environment=production/u);
+  assert.doesNotMatch(workflow, /vercel build --prod --yes/u);
+  assert.doesNotMatch(workflow, /vercel deploy --prebuilt --prod/u);
 });

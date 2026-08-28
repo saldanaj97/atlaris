@@ -77,7 +77,7 @@ We use two protected branches that serve as anchors for all development:
 
 - **Preview**: same-repository deploy-impacting PRs use the custom-CI Preview lane; docs-only PRs create no deployment and forks receive no secrets.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: known diffs without migration files deploy automatically with Vercel Preview configuration scoped to `develop`. Migration or unknown diffs require `expand`, then a manual Staging dispatch for current `develop`.
+- **Staging**: a known deploy-impacting push waits for same-SHA CircleCI `ci-trunk` success and deploys automatically only while the full unreleased `main...develop` range contains no migration files. Otherwise, run `expand` and manually dispatch Staging for current `develop`.
 - **Staged Production**: before cutover, operators prove an exact `main` candidate with `--skip-domain` and do not promote it. After cutover, the automated job requires both readiness variables and uses ordinary `--prod`; JCS-52 checks gate automatic aliasing. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 - **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
@@ -178,9 +178,9 @@ git commit -m "feat: ..."
 
 ### Step 5: Merge to `develop`
 
-1. Full CI runs (CircleCI `ci-trunk`)
-2. A known deploy-impacting diff without migration files creates the `develop` Preview fallback automatically
-3. For migration or unknown diffs, an operator dispatches `staging-db-migrations.yaml` phase `expand`, then manually dispatches Staging for current `develop`
+1. Full CI runs (CircleCI `ci-trunk`), and the Staging lane verifies its success for the exact SHA
+2. A known deploy-impacting diff creates the `develop` Preview fallback automatically only when the full unreleased range from `main` contains no migration files
+3. While that range contains a migration, or for an unknown diff, an operator dispatches `staging-db-migrations.yaml` phase `expand`, then manually dispatches Staging for current `develop`
 4. After health verification, the operator dispatches phase `contract` when needed
 
 ### Step 6: Release to production (`develop` -> `main`)

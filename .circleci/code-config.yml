@@ -606,7 +606,7 @@ jobs:
       - init-env
       - install-pnpm-deps
       - run:
-          name: Dependency remediation tests
+          name: GitHub workflow script tests
           command: |
             mkdir -p test-results/workflow
             node --test \
@@ -614,9 +614,10 @@ jobs:
               --test-reporter-destination=stdout \
               --test-reporter=junit \
               --test-reporter-destination=test-results/workflow/node.xml \
-              .github/scripts/dependency-remediation.test.mjs
+              .github/scripts/dependency-remediation.test.mjs \
+              .github/scripts/deployment-classifier.test.mjs
             sed \
-              -e 's|<testsuites>|<testsuites><testsuite name="dependency-remediation">|' \
+              -e 's|<testsuites>|<testsuites><testsuite name="github-workflow-scripts">|' \
               -e 's|</testsuites>|</testsuite></testsuites>|' \
               test-results/workflow/node.xml > test-results/workflow/node.xml.tmp
             mv test-results/workflow/node.xml.tmp test-results/workflow/node.xml

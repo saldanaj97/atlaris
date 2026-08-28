@@ -98,12 +98,10 @@ Stop if any preflight item fails. Do not deploy.
 Before cutover, an operator runs this proof from the exact trusted `main` checkout without pushing `main`:
 
 ```bash
-vercel pull --yes --environment=production
-vercel build --prod --yes
-vercel deploy --prebuilt --prod --skip-domain --no-wait --yes
+vercel deploy --prod --skip-domain --no-wait --yes
 ```
 
-`--skip-domain` intentionally prevents automatic aliasing. Do not promote this proof candidate. After JCS-52 checks are proven and both readiness variables are set, `.github/workflows/vercel-deploy.yml` deploys the exact `main` artifact with ordinary `--prod`; Vercel then withholds domains until the required checks pass.
+This remote build keeps Production environment variables in Vercel. `--skip-domain` intentionally prevents automatic aliasing. Do not promote this proof candidate. After JCS-52 checks are proven and both readiness variables are set, `.github/workflows/vercel-deploy.yml` deploys the exact `main` artifact with ordinary `--prod`; Vercel then withholds domains until the required checks pass.
 
 Record:
 

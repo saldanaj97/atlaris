@@ -5,11 +5,11 @@
 Before cutover, prove the Production **application** binary without moving public domains:
 
 1. Preflight an exact clean `main` SHA.
-2. Build and deploy that SHA manually with `--prod --skip-domain` without pushing `main`.
+2. Let Vercel remotely build and deploy that SHA with `--prod --skip-domain` without pushing `main`; do not pull Production variables into the checkout.
 3. Run narrow exact-candidate smoke on the protected generated URL.
 4. Do not promote the proof candidate.
 
-After JCS-52 checks are proven, `.github/workflows/vercel-deploy.yml` uses ordinary `--prod`; required checks withhold domains until approval and exact-candidate smoke pass, then Vercel aliases the same artifact automatically.
+After JCS-52 checks are proven, `.github/workflows/vercel-deploy.yml` uses the same remote `--prod` build; required checks withhold domains until approval and exact-candidate smoke pass, then Vercel aliases the same artifact automatically.
 
 Full safety model, proof/cutover boundary, abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 

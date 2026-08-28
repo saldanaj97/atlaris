@@ -48,7 +48,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ### 2) CircleCI `ci-pr` (`.circleci/code-config.yml`)
 
 - Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
-- Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
+- Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, production workflow tests, and GitHub workflow-script tests
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
 - `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
@@ -70,7 +70,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Runs broadly for PRs and pushes to `develop`/`main`, plus manual Preview/Staging proof dispatches. It has no workflow-level path filter.
 - `deployment-decision` always reports `docs-only`, `deploy-impacting path`, `unknown diff`, or `forced`. Unknown or malformed comparisons fail open to deployment.
 - Same-repository deploy-impacting PRs create Preview deployments; forks and Dependabot PRs never receive Vercel secrets.
-- Known deploy-impacting `develop` pushes without migration files use the Hobby-plan Staging fallback: Vercel Preview configuration scoped to `develop`. Migration or unknown diffs require a manual Staging dispatch after `expand`; the selected ref must resolve to current `develop`.
+- A known deploy-impacting `develop` push uses the Hobby-plan Staging fallback only after the exact SHA's CircleCI `ci-trunk` succeeds and the full unreleased `main...develop` range contains no migration files. While that range contains a migration, or when the diff is unknown, Staging requires `expand` followed by a manual dispatch for current `develop`.
 - After cutover, deploy-impacting `main` pushes create a Production deployment. Required JCS-52 Deployment Checks block domain assignment until approval and exact-candidate smoke pass; the job never promotes, aliases, or rolls back.
 - The Production job fails closed unless both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are exactly `true`.
 
@@ -129,8 +129,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ### Merge to `develop`
 
 - Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`)
-- Known deploy-impacting changes without migration files create the `develop` Preview fallback using branch-scoped non-Production configuration
-- Migration or unknown diffs wait for an operator to run `staging-db-migrations.yaml` phase `expand`, then manually dispatch the Staging lane for current `develop`; phase `contract` follows health verification
+- After the exact SHA's CircleCI `ci-trunk` succeeds, known deploy-impacting changes create the `develop` Preview fallback only when the full unreleased range from `main` contains no migration files
+- While the unreleased range contains a migration, or when the diff is unknown, an operator runs `staging-db-migrations.yaml` phase `expand` and then manually dispatches Staging for current `develop`; phase `contract` follows health verification
 
 ### Merge to `main`
 
@@ -138,7 +138,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Production app release uses the staged Production lane:
   1. Preflight on the exact clean `main` SHA ([staged-production-deployment.md](./staged-production-deployment.md))
-  2. The deployment workflow builds and deploys the exact committed `main` SHA only after native Git is disabled and JCS-52 Deployment Checks are ready
+  2. Vercel remotely builds and deploys the exact committed `main` SHA only after native Git is disabled and JCS-52 Deployment Checks are ready; Production variables remain in Vercel
   3. Required checks hold back Production domains while JCS-52 obtains human approval and runs narrow exact-candidate smoke on the generated URL
   4. Passing checks let Vercel alias that same artifact automatically
   5. Alias verification, observation, drain, then `contract` migrations if needed
