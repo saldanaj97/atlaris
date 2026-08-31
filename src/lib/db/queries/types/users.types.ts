@@ -1,4 +1,4 @@
-import type { getDb } from '@supabase/runtime';
+import type { DbClient } from '@/lib/db/types';
 import type { users } from '@supabase/schema';
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
@@ -24,5 +24,5 @@ export type CreateUserData = Pick<
   'authUserId' | 'email' | 'name' | 'clerkUserUpdatedAt'
 >;
 
-/** RLS-enforced database client for user queries. */
-export type UsersDbClient = ReturnType<typeof getDb>;
+/** Database client for user queries. */
+export type UsersDbClient = DbClient;

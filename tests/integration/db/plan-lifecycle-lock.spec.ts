@@ -268,7 +268,7 @@ describe('plan lifecycle lock (integration)', () => {
     const mod = await createTestModule({ planId: plan.id });
     await markModuleGenerating(mod.id);
 
-    const result = await deletePlan(plan.id, userId);
+    const result = await deletePlan(plan.id, userId, db);
     expect(result).toEqual({
       success: false,
       reason: 'active_child_generation',

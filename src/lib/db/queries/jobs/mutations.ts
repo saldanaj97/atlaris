@@ -19,7 +19,6 @@ import {
   type JobResult,
   type JobType,
 } from '@/shared/types/jobs.types';
-import { getDb } from '@supabase/runtime';
 import { jobQueue } from '@supabase/schema';
 import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 
@@ -29,7 +28,7 @@ import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
  * Uses a transaction with row locks to avoid race conditions.
  *
  * @param params - Job payload: type, planId (nullable), userId, data, priority
- * @param dbClient - Database client (default: getDb())
+ * @param dbClient - Required service-role or request client
  * @returns Enqueue result with job id and whether it was deduplicated
  * @throws Error if plan not found when deduplicating regeneration, or if insert fails
  */
@@ -47,9 +46,9 @@ export async function insertJobRecord(
     data: JobPayload;
     priority: number;
   },
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<JobEnqueueResult> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return client.transaction(async (tx) => {
     const shouldDeduplicateRegeneration =
@@ -106,9 +105,9 @@ export async function insertJobRecord(
  */
 export async function claimNextPendingJob(
   types: JobType[],
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   if (types.length === 0) {
     return null;
@@ -157,9 +156,9 @@ export async function claimRegenerationJobById(
   jobId: string,
   expected: { planId: string; userId: string },
   payload: JobPayload,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
   const startTime = new Date();
 
   return client.transaction(async (tx) => {
@@ -200,9 +199,9 @@ export async function claimRegenerationJobById(
 export async function updateRegenerationJobPayload(
   jobId: string,
   payload: JobPayload,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return runJobMutationIfEditable(client, jobId, async (tx) => {
     const updatedAt = new Date();
@@ -232,9 +231,9 @@ export async function updateRegenerationJobPayload(
 export async function updateRegenerationJobPayloadIfRunIdMissing(
   jobId: string,
   payload: JobPayload,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return runJobMutationIfEditable(client, jobId, async (tx, row) => {
     const existingRunId = (row.payload as JobPayload).workflow?.runId;
@@ -268,9 +267,9 @@ export async function updateRegenerationJobPayloadIfRunIdMissing(
 export async function completeJobRecord(
   jobId: string,
   result: JobResult,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return runJobMutationIfEditable(client, jobId, async (tx) => {
     const completedAt = new Date();
@@ -297,11 +296,11 @@ export async function completeJobRecord(
 export async function failJobRecord(
   jobId: string,
   error: string,
-  retryable?: boolean,
-  dbClient?: JobsDbClient,
+  retryable: boolean | undefined,
+  dbClient: JobsDbClient,
   retryAfterSeconds?: number,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return runJobMutationIfEditable(client, jobId, async (tx, current) => {
     const nextAttempts = current.attempts + 1;

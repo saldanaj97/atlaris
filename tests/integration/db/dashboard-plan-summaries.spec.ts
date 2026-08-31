@@ -50,7 +50,10 @@ describe('dashboard plan summaries', () => {
       }),
     );
 
-    const summaries = await listDashboardPlanSummaries({ userId });
+    const summaries = await listDashboardPlanSummaries({
+      userId,
+      dbClient: db,
+    });
 
     expect(summaries).toHaveLength(20);
     expect(summaries.map((summary) => summary.plan.topic)).toEqual(
@@ -113,7 +116,10 @@ describe('dashboard plan summaries', () => {
       status: 'completed',
     });
 
-    const { summaries, resumePlan } = await getDashboardPlanData({ userId });
+    const { summaries, resumePlan } = await getDashboardPlanData({
+      userId,
+      dbClient: db,
+    });
 
     expect(summaries).toHaveLength(20);
     expect(summaries.map((summary) => summary.plan.id)).toEqual(
@@ -157,7 +163,10 @@ describe('dashboard plan summaries', () => {
       })
       .where(eq(users.id, userId));
 
-    const { resumePlan } = await getDashboardPlanData({ userId });
+    const { resumePlan } = await getDashboardPlanData({
+      userId,
+      dbClient: db,
+    });
 
     expect(resumePlan?.plan.id).toBe(selectedPlan.id);
   });

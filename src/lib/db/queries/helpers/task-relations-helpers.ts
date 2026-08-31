@@ -1,6 +1,6 @@
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
+import type { DbClient } from '@/lib/db/types';
 
-import { getDb } from '@supabase/runtime';
 import {
   modules,
   resources,
@@ -10,7 +10,7 @@ import {
 } from '@supabase/schema';
 import { and, asc, countDistinct, eq, inArray, sql } from 'drizzle-orm';
 
-type TaskRelationsClient = Pick<ReturnType<typeof getDb>, 'select'>;
+type TaskRelationsClient = Pick<DbClient, 'select'>;
 
 type ModuleTaskMetricsRow = {
   planId: string;
@@ -31,7 +31,7 @@ interface TaskIdsParams {
 interface TaskProgressParams {
   taskIds: readonly string[];
   userId?: string;
-  dbClient?: TaskRelationsClient;
+  dbClient: TaskRelationsClient;
 }
 
 interface ModuleTaskMetricsParams {
@@ -47,12 +47,11 @@ function deduplicateIds(ids: readonly string[]): string[] {
 /**
  * Loads task progress rows for the given task ids.
  * If userId is provided, rows are filtered by user in SQL.
- * dbClient defaults to getDb() so callers can omit it or inject a client for DI/testing.
  */
 export async function fetchTaskProgressRows({
   taskIds,
   userId,
-  dbClient = getDb(),
+  dbClient,
 }: TaskProgressParams): Promise<(typeof taskProgress.$inferSelect)[]> {
   const ids = deduplicateIds(taskIds);
   if (ids.length === 0) {
@@ -73,7 +72,7 @@ export async function fetchTaskProgressRows({
 export async function fetchTaskRelationRows({
   taskIds,
   userId,
-  dbClient = getDb(),
+  dbClient,
 }: TaskProgressParams): Promise<{
   progressRows: (typeof taskProgress.$inferSelect)[];
   resourceRows: TaskResourceWithResource[];

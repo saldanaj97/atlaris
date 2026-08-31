@@ -74,7 +74,7 @@ async function requireUser(): Promise<string> {
 
 async function ensureUserRecord(
   authUserId: string,
-  dbClient?: UsersDbClient,
+  dbClient: UsersDbClient,
 ): Promise<ActorUser> {
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
@@ -128,7 +128,7 @@ async function ensureUserRecord(
 
 export async function requireCurrentUserRecord(): Promise<ActorUser> {
   const userId = await requireUser();
-  return ensureUserRecord(userId);
+  return ensureUserRecord(userId, getDb());
 }
 
 /**

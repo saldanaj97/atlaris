@@ -56,7 +56,7 @@ import { logger } from '@/lib/logging/logger';
 async function requireOwnedPlanReadable(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<boolean> {
   const owned = await selectOwnedPlanById({
     planId: params.planId,
@@ -75,7 +75,7 @@ async function requireOwnedPlanReadable(params: {
 }
 
 async function loadIfOwnedPlanReadable<T>(
-  params: { planId: string; userId: string; dbClient?: DbClient },
+  params: { planId: string; userId: string; dbClient: DbClient },
   load: () => Promise<T | null>,
 ): Promise<T | null> {
   if (!(await requireOwnedPlanReadable(params))) {
@@ -131,7 +131,7 @@ function projectSummariesForAccess<T extends { plan: { id: string } }>(
 
 async function listPlanSummaries(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   options?: PaginationOptions & {
     orderBy?: 'createdAt' | 'updatedAt';
     planIds?: string[];
@@ -158,7 +158,7 @@ const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
 
 export async function listDashboardPlanSummaries(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanSummary[]> {
   return listPlanSummaries({
     userId: params.userId,
@@ -172,7 +172,7 @@ export async function listDashboardPlanSummaries(params: {
 
 export async function getDashboardPlanData(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
   const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
@@ -240,7 +240,7 @@ export async function getDashboardPlanData(params: {
 
 export async function getPlansPageForRead(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   query: PlanListQuery;
   referenceTimestamp?: string;
 }): Promise<PlanListPage> {
@@ -298,7 +298,7 @@ export async function getPlansPageForRead(params: {
 
 export async function listLightweightPlansForApi(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   options?: PaginationOptions;
 }): Promise<LightweightPlanSummary[]> {
   const [{ snapshot }, rows] = await Promise.all([
@@ -329,7 +329,7 @@ export async function listLightweightPlansForApi(params: {
 
 export async function getPlanListTotalCount(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<number> {
   return getPlanSummaryCount(params.userId, params.dbClient);
 }
@@ -337,7 +337,7 @@ export async function getPlanListTotalCount(params: {
 export async function getPlanDetailForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ClientPlanDetail | null> {
   return loadIfOwnedPlanReadable(params, async () => {
     const rows = await getLearningPlanDetailRows(
@@ -372,7 +372,7 @@ export async function getPlanDetailForRead(params: {
 export async function getPlanGenerationStatusSnapshot(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanDetailStatusSnapshot | null> {
   return loadIfOwnedPlanReadable(params, async () => {
     const rows = await getPlanStatusRowsForUser(
@@ -393,7 +393,7 @@ export async function getModuleLessonGenerationStatusForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<{
   planId: string;
   moduleId: string;
@@ -423,7 +423,7 @@ export async function getModuleLessonGenerationStatusForRead(params: {
 export async function getPlanGenerationAttemptsForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ClientGenerationAttempt[] | null> {
   return loadIfOwnedPlanReadable(params, async () => {
     const attempts = await getPlanAttemptsForUser(
@@ -444,7 +444,7 @@ export async function getModuleDetailForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ModuleDetailReadModel | null> {
   return loadIfOwnedPlanReadable(params, async () => {
     const rows = await getModuleDetailRows(

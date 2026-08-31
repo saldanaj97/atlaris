@@ -1,10 +1,11 @@
-import { getDb } from '@supabase/runtime';
+import type { DbClient } from '@/lib/db/types';
+
 import { learningPlans } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 
 export type OwnedPlanRecord = typeof learningPlans.$inferSelect;
 
-type PlanQueryClient = Pick<ReturnType<typeof getDb>, 'select'>;
+type PlanQueryClient = Pick<DbClient, 'select'>;
 
 interface LockedOwnedPlanRecord {
   id: string;
@@ -16,7 +17,7 @@ interface LockedOwnedPlanRecord {
 interface OwnedPlanQueryParams {
   planId: string;
   ownerUserId: string;
-  dbClient?: PlanQueryClient;
+  dbClient: PlanQueryClient;
 }
 
 /**
@@ -48,8 +49,7 @@ export async function selectOwnedPlanById({
   ownerUserId,
   dbClient,
 }: OwnedPlanQueryParams): Promise<OwnedPlanRecord | null> {
-  const db = dbClient ?? getDb();
-  const [plan] = await db
+  const [plan] = await dbClient
     .select()
     .from(learningPlans)
     .where(ownedPlanWhere(planId, ownerUserId))
