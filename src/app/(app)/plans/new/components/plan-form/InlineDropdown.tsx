@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
-import { useCallback, useId, useState } from 'react';
+import { useId, useState } from 'react';
 
 type DropdownVariant = 'primary';
 
@@ -65,20 +65,17 @@ export function InlineDropdown<TValue extends string>({
   const displayLabel = selectedOption?.label ?? placeholder ?? '';
   const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
 
-  const measureTrigger = useCallback(
-    (label: HTMLSpanElement | null) => {
-      if (!label) return;
+  const measureTrigger = (label: HTMLSpanElement | null) => {
+    if (!label) return;
 
-      label.dataset.label = displayLabel;
-      const nextWidth = label.parentElement?.offsetWidth;
-      if (!nextWidth) return;
+    label.dataset.label = displayLabel;
+    const nextWidth = label.parentElement?.offsetWidth;
+    if (!nextWidth) return;
 
-      setTriggerWidth((currentWidth) =>
-        currentWidth === nextWidth ? currentWidth : nextWidth,
-      );
-    },
-    [displayLabel],
-  );
+    setTriggerWidth((currentWidth) =>
+      currentWidth === nextWidth ? currentWidth : nextWidth,
+    );
+  };
 
   return (
     <div
