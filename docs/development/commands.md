@@ -34,16 +34,16 @@ pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro
 
 Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
-### Staged Production (operator release lane)
+### Post-push Production rehearsal
 
-Do not use `pnpm deploy:preview` for Production. For a Production-targeted release candidate without moving public domains, follow [staged-production-deployment.md](../ci-cd/staged-production-deployment.md):
+Do not use `pnpm deploy:preview` for Production. To run a post-push, unaliased rehearsal from a clean `main` checkout after the exact SHA exists on `origin/main`, follow [staged-production-deployment.md](../ci-cd/staged-production-deployment.md):
 
 ```bash
-# After documented preflight on an exact clean main SHA:
+# After the exact SHA exists on origin/main and documented preflight on a clean main checkout:
 vercel --prod --skip-domain
-# After verification + explicit human approval:
-vercel promote <deployment-id-or-url>
 ```
+
+Do not promote the rehearsal or treat it as a traffic gate. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment.
 
 ## Build & Production
 
