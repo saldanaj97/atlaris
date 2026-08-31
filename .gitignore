@@ -66,6 +66,8 @@ next-env.d.ts
 !.cursor/skills/**
 .cursor/skills/**/artifacts/
 .cursor/skills/**/.run.json
+!.cursor/rules/
+!.cursor/rules/**
 .opencode/*
 
 # extras
