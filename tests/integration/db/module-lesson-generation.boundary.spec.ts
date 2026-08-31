@@ -1,17 +1,13 @@
-import type { GenerateModuleLessonsDeps } from '@/features/lesson-content/generate-module-lessons.types';
 import type { StartModuleLessonGenerationResult } from '@/features/lesson-content/start-module-lesson-generation-workflow';
+import type { ModuleLessonWorkflowResult } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
-import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
-import {
-  loadModuleLessonGenerationContext,
-  markModuleLessonProviderStarted,
-} from '@/lib/db/queries/module-lesson-generation';
+import { markModuleLessonProviderStarted } from '@/lib/db/queries/module-lesson-generation';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
@@ -25,7 +21,23 @@ import {
 } from '@tests/helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const getWorkflowMetadata = vi.hoisted(() => vi.fn());
+
+vi.mock('workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('workflow')>();
+  return {
+    ...actual,
+    getWorkflowMetadata,
+  };
+});
+
+const workflowRunIds = new AsyncLocalStorage<string>();
+getWorkflowMetadata.mockImplementation(() => ({
+  workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
+}));
 
 type StartThenRunParams = {
   readonly dbClient: DbClient;
@@ -35,14 +47,16 @@ type StartThenRunParams = {
   readonly userTier: SubscriptionTier;
 };
 
+type StartThenRunDeps = {
+  readonly serverDbClient?: DbClient;
+  readonly resolveGenerationEnabled?: () => Promise<boolean>;
+};
+
 async function startThenRunModuleLessonGeneration(
   params: StartThenRunParams,
-  deps: GenerateModuleLessonsDeps = {},
-): Promise<StartModuleLessonGenerationResult> {
-  let capturedLoad: Awaited<
-    ReturnType<typeof loadModuleLessonGenerationContext>
-  > = null;
-  let workResult: StartModuleLessonGenerationResult | undefined;
+  deps: StartThenRunDeps = {},
+): Promise<StartModuleLessonGenerationResult | ModuleLessonWorkflowResult> {
+  let workflowResult: ModuleLessonWorkflowResult | undefined;
 
   const startResult = await startModuleLessonGeneration(
     {
@@ -52,33 +66,14 @@ async function startThenRunModuleLessonGeneration(
     {
       dbClient: deps.serverDbClient,
       isGenerationEnabled: deps.resolveGenerationEnabled,
-      loadContext: async (dbClient, planId, moduleId, userId) => {
-        capturedLoad = await loadModuleLessonGenerationContext(
-          dbClient,
-          planId,
-          moduleId,
-          userId,
+      workflowStart: async (workflowFn, args) => {
+        const runId = createId('wrun');
+        workflowResult = await workflowRunIds.run(runId, () =>
+          workflowFn(args[0]),
         );
-        return capturedLoad;
-      },
-      workflowStart: async () => {
-        if (!capturedLoad) {
-          workResult = { kind: 'failed' };
-        } else {
-          workResult = await runModuleLessonGenerationWork(
-            {
-              load: capturedLoad,
-              userId: params.userId,
-              planId: params.planId,
-              moduleId: params.moduleId,
-              userTier: params.userTier,
-            },
-            deps,
-          );
-        }
         return {
-          runId: 'inline-test-run',
-          returnValue: Promise.resolve(workResult),
+          runId,
+          returnValue: Promise.resolve(workflowResult),
         };
       },
     },
@@ -88,17 +83,23 @@ async function startThenRunModuleLessonGeneration(
     return startResult;
   }
 
-  return workResult ?? { kind: 'failed' };
+  return workflowResult ?? { kind: 'failed' };
 }
 
 describe('module lesson generation boundary (integration)', () => {
   afterEach(async () => {
     await cleanupTrackedRlsClients();
     setModuleLessonGenerationEnabledForTests(undefined);
+    vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   beforeEach(() => {
     setModuleLessonGenerationEnabledForTests(true);
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+    getWorkflowMetadata.mockImplementation(() => ({
+      workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
+    }));
   });
 
   it('CAS + success persists task lessons, module ready, and usage row', async () => {
@@ -124,21 +125,13 @@ describe('module lesson generation boundary (integration)', () => {
       .from(aiUsageEvents)
       .where(eq(aiUsageEvents.userId, userId));
 
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 7,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -191,21 +184,13 @@ describe('module lesson generation boundary (integration)', () => {
     );
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 23,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -252,21 +237,13 @@ describe('module lesson generation boundary (integration)', () => {
     );
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 19,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -320,21 +297,13 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 11,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -368,21 +337,13 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 7,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('in_flight');
   });
@@ -406,21 +367,13 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 13,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('already_ready');
   });
@@ -445,20 +398,15 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(tasks.id, task.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const badBatch = new MockGenerationProvider({
-      scenario: 'invalid_response',
-    });
+    vi.stubEnv('MOCK_AI_SCENARIO', 'invalid_response');
 
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      { provider: badBatch },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('failed');
 
@@ -494,59 +442,57 @@ describe('module lesson generation boundary (integration)', () => {
     const task = await createTestTask({ moduleId: mod.id, order: 1 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const driftingProvider = {
-      generateModuleLessonBatch: vi.fn(async () => {
-        await createTestTask({
-          moduleId: mod.id,
-          order: 2,
-          title: 'Late task',
-        });
-
-        return {
-          stream: new ReadableStream<string>({
-            start(controller) {
-              controller.enqueue(
-                JSON.stringify({
-                  version: 1,
-                  tasks: [
-                    {
-                      taskId: task.id,
-                      content: {
-                        version: 1,
-                        blocks: [{ type: 'heading', text: 'Original only' }],
-                      },
-                    },
-                  ],
-                }),
-              );
-              controller.close();
-            },
-          }),
-          metadata: {
-            provider: 'mock',
-            model: 'mock-module-lesson-batch-v1',
-            usage: {
-              promptTokens: 1,
-              completionTokens: 1,
-              totalTokens: 2,
-            },
-          },
-        };
-      }),
-    };
-
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
+    vi.spyOn(
+      MockGenerationProvider.prototype,
+      'generateModuleLessonBatch',
+    ).mockImplementation(async () => {
+      await createTestTask({
         moduleId: mod.id,
-        userTier: 'free',
-      },
-      { provider: driftingProvider },
-    );
+        order: 2,
+        title: 'Late task',
+      });
 
-    expect(result).toEqual({ kind: 'failed' });
+      return {
+        stream: new ReadableStream<string>({
+          start(controller) {
+            controller.enqueue(
+              JSON.stringify({
+                version: 1,
+                tasks: [
+                  {
+                    taskId: task.id,
+                    content: {
+                      version: 1,
+                      blocks: [{ type: 'heading', text: 'Original only' }],
+                    },
+                  },
+                ],
+              }),
+            );
+            controller.close();
+          },
+        }),
+        metadata: {
+          provider: 'mock',
+          model: 'mock-module-lesson-batch-v1',
+          usage: {
+            promptTokens: 1,
+            completionTokens: 1,
+            totalTokens: 2,
+          },
+        },
+      };
+    });
+
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
+
+    expect(result.kind).toBe('failed');
 
     const [modRow] = await db
       .select()
@@ -651,21 +597,13 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: laterModule.id, order: 1 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: laterModule.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 19,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: laterModule.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).not.toBe('locked');
     expect(result.kind).toBe('success');
@@ -692,21 +630,13 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 13,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('disabled');
   });
@@ -730,21 +660,13 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 17,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
     expect(result).not.toMatchObject({ kind: 'quota_denied' });
@@ -777,24 +699,16 @@ describe('module lesson generation boundary (integration)', () => {
     const month = getCurrentMonth();
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const provider = {
-      generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('provider failed');
-      }),
-    };
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      { provider },
-    );
+    vi.stubEnv('MOCK_AI_SCENARIO', 'provider_error');
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
-    expect(result).toEqual({ kind: 'failed' });
-    expect(provider.generateModuleLessonBatch).toHaveBeenCalled();
+    expect(result.kind).toBe('failed');
 
     const [modRow] = await db
       .select()
@@ -830,21 +744,13 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 13,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -932,21 +838,13 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      {
-        provider: new MockGenerationProvider({
-          delayMs: 0,
-          deterministicSeed: 17,
-        }),
-      },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('success');
 
@@ -978,20 +876,15 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const badBatch = new MockGenerationProvider({
-      scenario: 'invalid_response',
-    });
+    vi.stubEnv('MOCK_AI_SCENARIO', 'invalid_response');
 
-    const result = await startThenRunModuleLessonGeneration(
-      {
-        dbClient: rlsDb,
-        userId,
-        planId: plan.id,
-        moduleId: mod.id,
-        userTier: 'free',
-      },
-      { provider: badBatch },
-    );
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+      userTier: 'free',
+    });
 
     expect(result.kind).toBe('failed');
 
