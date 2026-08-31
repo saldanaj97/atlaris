@@ -28,10 +28,6 @@ const EFFECTIVE_PRIVILEGES_ATTESTATION_SCRIPT = join(
   'db',
   'attest-effective-privileges.sh',
 );
-const VERCEL_DEPLOY_WORKFLOW = readFileSync(
-  join(WORKFLOWS_DIR, 'vercel-deploy.yml'),
-  'utf8',
-);
 
 const migrationWorkflows = [
   {
@@ -125,40 +121,12 @@ describe('Supabase migration workflows', () => {
     );
   });
 
-  it('retains Production expand proof across later candidates', () => {
+  it('records the Production migration phase and exact dispatch SHA', () => {
     const workflow = readWorkflow('production-db-migrations.yaml');
-    const production = VERCEL_DEPLOY_WORKFLOW.split(
-      '\n  production-candidate:\n',
-    )[1];
 
     expect(workflow).toContain(
       'run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
     );
-    expect(production).toBeDefined();
-    expect(production).toContain(
-      '- name: Verify a successful Production expand covers the candidate',
-    );
-    expect(production).toContain('gh api --paginate --slurp');
-    expect(production).toContain(
-      'actions/workflows/production-db-migrations.yaml/runs',
-    );
-    expect(production).toContain(
-      '.display_title == ("Production migrations (expand) @ " + .head_sha)',
-    );
-    expect(production).toContain(
-      'git merge-base --is-ancestor "${expand_sha}" "${EXPECTED_SHA}"',
-    );
-    expect(production).toContain(
-      'candidate_changes="$(git diff --no-renames --name-only "${expand_sha}..${EXPECTED_SHA}")"',
-    );
-    expect(production).toContain(
-      'grep -q \'^supabase/migrations/\' <<<"${candidate_changes}"',
-    );
-    expect(production).not.toMatch(/git diff[^\n]*\|\s*\n\s*grep -q/u);
-    expect(production).toContain(
-      'No successful Production expand run covers ${EXPECTED_SHA}.',
-    );
-    expect(VERCEL_DEPLOY_WORKFLOW).not.toContain('production_expand_required');
   });
 
   it.each(migrationWorkflows)(

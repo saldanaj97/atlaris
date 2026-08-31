@@ -7,7 +7,7 @@
 
 Local Preview and hosted Preview/Staging cannot fully prove Production target selection, the exact Production build artifact, Production Deployment Protection, Production Vercel Queue/runtime behavior, or final alias assignment.
 
-Before cutover, this lane proves one Production-targeted Vercel deployment **without** assigning public Production domains. After JCS-52's blocking checks and custom CI are enabled, the automated Production deployment relies on those checks to withhold domains until approval and exact-candidate smoke pass.
+Before JCS-52 is available, this lane offers a post-push, unaliased rehearsal of a Production-targeted Vercel deployment. It does not govern native `main` alias/domain assignment; only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment.
 
 **Unreleased does not mean isolated.** A staged Production deployment uses Production-scoped configuration and may reach real Production Supabase, Clerk, Workflow, email, billing, AI, flags, and other services. Treat every request against the generated URL as a real Production operation.
 
@@ -17,7 +17,7 @@ Before cutover, this lane proves one Production-targeted Vercel deployment **wit
 | ---- | ------- | ------------------ |
 | Local Preview | Fast local iteration with non-Production services (1Password-backed lane in JCS-50; local product testing / `pnpm dev` until that lands) | Untouched |
 | Hosted Preview / Staging | Hosted platform behavior with isolated non-Production services | Untouched |
-| **Staged Production proof** | Exact Vercel Production build + Production-scoped config, generated URL only | **Must stay on the prior live deployment** |
+| **Staged Production proof** | Exact Vercel Production build + Production-scoped config, generated URL only | Unaffected by this unaliased rehearsal |
 | Live Production | JCS-52-approved exact candidate | Move automatically only after the required Deployment Check passes |
 
 This lane complements Local Preview and Staging. It does not replace them.
@@ -36,27 +36,24 @@ This lane complements Local Preview and Staging. It does not replace them.
 
 ## Deployment gate and transition
 
-JCS-52 owns one stable, deployment-specific Vercel check. It must operate on the generated URL and exact candidate SHA, require approval through `Production – atlaris`, reject stale candidates, and let Vercel alias only a passing candidate. Automatic Production-domain assignment must remain enabled for this check-controlled release path.
+JCS-52 will configure one stable, deployment-specific Vercel check enforced by Vercel Deployment Protection. It must operate on the generated URL and exact candidate SHA, reject stale candidates, and let native Vercel Git alias only a passing candidate. The GitHub `Production – atlaris` environment remains for migration and worker workflows only; it is not the live release gate.
 
 Do not use CircleCI PR/trunk jobs as the Deployment Check: they validate code, not the generated deployment URL. Do not run `vercel promote` as the normal release path.
 
 Until JCS-52 is operational:
 
-- custom GitHub Actions owns Preview and Staging;
-- native Git is disabled for every non-main branch (`"**": false`) and remains enabled only for `main`;
-- Production candidates must remain unaliased;
-- this repository change is not proof of cutover; and
-- no public domain movement is authorized.
-
-The workflow's Production job requires both `VERCEL_NATIVE_GIT_DISABLED=true` and `VERCEL_DEPLOYMENT_CHECKS_READY=true`. Leave `VERCEL_NATIVE_GIT_DISABLED` unset or `false` while native `main` is active so the custom Production lane stays blocked. Prove the `--skip-domain` candidate flow from an exact trusted `main` checkout without pushing `main`; after JCS-52 is operational, change `git.deploymentEnabled` to `false` globally, then set both variables.
+- native Vercel Git handles branch Preview and `main` Production deployments;
+- the trusted local `--skip-domain` proof remains unaliased;
+- this repository change is not proof of JCS-52 readiness; and
+- this local rehearsal does not gate or alter native `main` alias/domain assignment; only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment.
 
 ## Prerequisites
 
 - Vercel CLI `53.2.0` is available for the manual proof; the candidate is the exact committed `main` SHA.
 - Operator access to inspect deployments, aliases, and Deployment Protection in the Vercel dashboard.
 - Hosted Staging acceptance already complete for the same release candidate SHA.
-- CircleCI `ci-trunk` for that SHA has succeeded (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes). The automated Production candidate job verifies this exact-SHA workflow result before calling Vercel.
-- Production migration workflow `expand` has established a baseline before the first automated candidate. After cutover, every candidate must descend from a successful `expand` run with no later `supabase/migrations/` changes, so a migration-bearing candidate is blocked until it has a new exact-SHA `expand`. See [deploy.md](../development/deploy.md) and `.github/workflows/production-db-migrations.yaml`.
+- CircleCI `ci-trunk` for that SHA has succeeded (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes).
+- If the release needs new schema, Production migration workflow `expand` is already applied and verified before exercising the staged binary. See [deploy.md](../development/deploy.md) and `.github/workflows/production-db-migrations.yaml`.
 
 ## 1. Preflight and migration ordering
 
@@ -79,9 +76,9 @@ test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
 Also confirm manually before continuing:
 
 1. Intended release candidate equals that SHA (no local-only commits).
-2. CircleCI `ci-trunk` for the SHA has succeeded (integration/security jobs skip when there were no integration-path changes); the automated lane verifies this result before deployment.
+2. CircleCI `ci-trunk` for the SHA has succeeded (integration/security jobs skip when there were no integration-path changes).
 3. Hosted Staging acceptance for the same SHA is done.
-4. Production `expand` has a successful covering run; the automated lane accepts an ancestor run only when no migration files changed afterward, and otherwise requires a new exact-SHA run.
+4. Required Production `expand` migrations (if any) are done.
 5. Current Production domain / alias target is recorded so later alias movement can be detected:
 
 ```bash
@@ -96,13 +93,13 @@ Stop if any preflight item fails. Do not deploy.
 
 ## 2. Prove the staged Production candidate
 
-Before cutover, an operator runs this proof from the exact trusted `main` checkout without pushing `main`:
+After the exact `main` SHA exists on `origin/main`, an operator may run this trusted post-push, unaliased rehearsal from the clean `main` checkout. It does not gate or precede native Production alias/domain assignment:
 
 ```bash
-vercel deploy --prod --skip-domain --no-wait --yes
+vercel deploy --prod --skip-domain --yes
 ```
 
-This remote build keeps Production environment variables in Vercel. `--skip-domain` intentionally prevents automatic aliasing. Do not promote this proof candidate. After JCS-52 checks are proven and both readiness variables are set, `.github/workflows/vercel-deploy.yml` deploys the exact `main` artifact with ordinary `--prod`; Vercel then withholds domains until the required checks pass.
+This rehearsal keeps Production environment variables in Vercel and its own deployment unaliased. It does not govern native `main` alias/domain assignment. Do not promote it; only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment.
 
 Record:
 
@@ -113,9 +110,9 @@ Record:
 | Target environment | Production |
 | Exact commit SHA | |
 | State (`READY` / `ERROR`) | |
-| Production domains still on previous deployment? | yes / no |
+| Native `main` alias/domain state (observed separately) | |
 
-Creating the staged deployment must **not** move any Production domain. If domains moved, treat the run as failed, leave evidence, and do not continue smoke as if this were a sandbox.
+The `--skip-domain` rehearsal deployment has no alias of its own. Native `main` alias/domain state is independent; do not infer traffic control from this rehearsal.
 
 Record the generated URL, deployment ID, `READY` state, Production target, exact SHA/ref from the verified checkout, and aliases. Correlate those fields before smoke.
 
@@ -129,7 +126,7 @@ Minimum checks:
 2. Basic read-only surface succeeds (for example the public marketing home page returns a healthy response through protection).
 3. Approved controlled test identity can load the expected authenticated surface.
 4. Vercel target / environment markers identify the deployment as Production.
-5. Production domains still point to the previous live deployment.
+5. Record native `main` alias/domain state separately; this rehearsal does not assert or control live routing.
 6. Vercel and Sentry evidence can be correlated to the staged deployment ID / URL / SHA.
 7. No unexpected workflow, database, billing, email, cron, or maintenance side effects appear.
 
@@ -141,17 +138,17 @@ Separate smoke evidence categories when recording results:
 | Provider ingress | Request reached the generated URL through protection |
 | Vercel / runtime behavior | Production target and runtime path for that deployment |
 | Persisted application state | Only if an explicitly approved write test was run |
-| Live-domain assignment | Whether public aliases still point at the prior deployment |
+| Native live-domain assignment | Current alias target observed outside this rehearsal |
 
 Do **not** exercise destructive or scheduled operational paths. Any write-capable Workflow SDK acceptance is a separate, explicitly approved test with a controlled Production test identity, verified terminal state, and clear cleanup ownership.
 
-On failure: leave Production domains on the prior deployment, do not force-promote, preserve deployment/log evidence, and fix forward through a new committed SHA with a new staged candidate.
+On failure: do not promote the rehearsal or alter native `main` aliases, preserve deployment/log evidence, and fix forward through a new committed SHA with a new rehearsal.
 
 ## 4. Release or abandon
 
 ### Release after JCS-52 passes
 
-The approved exact-candidate smoke reports the stable Deployment Check. Vercel then aliases the already-built candidate automatically; no CLI promote or rebuild occurs.
+The approved exact-candidate smoke reports the stable native Vercel Deployment Check. Vercel then aliases the already-built candidate automatically; no CLI promote or rebuild occurs.
 
 After automatic alias assignment:
 
@@ -165,10 +162,9 @@ After automatic alias assignment:
 
 If verification fails or release approval is declined:
 
-1. Leave Production domains on the prior deployment.
-2. Do not Force Promote.
-3. Preserve deployment ID, URL, SHA, logs, and smoke notes.
-4. Fix forward on a new committed `main` SHA and create a new staged candidate.
+1. Do not promote the rehearsal or alter native `main` aliases.
+2. Preserve deployment ID, URL, SHA, logs, and smoke notes.
+3. Fix forward on a new committed `main` SHA and create a new rehearsal.
 
 ### Rollback after a mistaken release (no destructive DB reversal)
 

@@ -38,13 +38,13 @@ We use two protected branches that serve as anchors for all development:
                          WHAT RUNS WHEN
     ┌─────────────────────────────────────────────────────────────┐
     │                                                             │
-    │   Open PR ───────> CI PR checks + classified Preview deploy   │
+    │   Open PR ───────> CI PR checks + Vercel Preview deploy       │
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
     │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
-    │        ──> gated Production deployment                     │
-    │        ──> approval + exact-candidate smoke ──> auto-alias  │
+    │        ──> native Production deployment                     │
+    │        ──> JCS-52 Deployment Checks ──> alias gate          │
     │        ──> DB migrations (contract)                          │
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
@@ -68,17 +68,17 @@ We use two protected branches that serve as anchors for all development:
 | Environment | Branch Source | URL | Purpose |
 | ----------- | ------------- | --- | ------- |
 | **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
-| **Preview** | PR branch | Vercel preview | PR-level testing |
+| **Preview** | Branch pushes and PRs | Vercel preview | Branch-level testing; docs-only commits are skipped by the Ignored Build Step |
 | **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
-| **Staged Production proof** | Exact `main` SHA | Protected generated Vercel URL | Pre-cutover Production build + configuration **without** moving public domains |
-| **Live Production** | Approved exact candidate | Production URL | Live users after JCS-52 passes and Vercel aliases automatically |
+| **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains |
+| **Live Production** | `main` | Production URL | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating |
 
 ### Deployment Mechanism
 
-- **Preview**: same-repository deploy-impacting PRs use the custom-CI Preview lane; docs-only PRs create no deployment and forks receive no secrets.
+- **Preview**: Vercel's Git integration creates a Preview deployment for branch pushes and PRs; the dashboard Ignored Build Step skips docs-only commits.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: a known deploy-impacting push waits for same-SHA CircleCI `ci-trunk` success and deploys automatically only while the full unreleased `main...develop` range contains no migration files. Otherwise, run `expand` and manually dispatch Staging for current `develop`; the deployment fails closed unless that exact SHA has a successful expand run.
-- **Staged Production**: before cutover, operators prove an exact `main` candidate with `--skip-domain` and do not promote it. After cutover, the automated job requires same-SHA CircleCI `ci-trunk` success plus both readiness variables and uses ordinary `--prod`; JCS-52 checks gate automatic aliasing. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Staging**: the `develop` branch's Vercel Preview deployment is the hosted staging surface; use non-Production services and dispatch migration phases when needed.
+- **Staged Production**: before JCS-52, operators run a post-push unaliased rehearsal from a clean checkout after the exact `main` SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 - **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
 ---
@@ -89,7 +89,7 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
-**Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR)
+**Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR); draft PRs wait until marked ready for review
 
 **What it runs:**
 
@@ -173,22 +173,21 @@ git commit -m "feat: ..."
 ### Step 4: PR review process
 
 1. CI runs automatically (CircleCI `ci-pr`)
-2. The deployment classifier runs; a same-repository deploy-impacting PR creates a custom-CI Preview deployment
+2. Vercel creates a Preview deployment; docs-only commits are skipped by the Ignored Build Step
 3. Address feedback and merge
 
 ### Step 5: Merge to `develop`
 
-1. Full CI runs (CircleCI `ci-trunk`), and the Staging lane verifies its success for the exact SHA
-2. A known deploy-impacting diff creates the `develop` Preview fallback automatically only when the full unreleased range from `main` contains no migration files
-3. While that range contains a migration, or for an unknown diff, an operator dispatches `staging-db-migrations.yaml` phase `expand`, then manually dispatches Staging for current `develop`; the deployment verifies the successful same-SHA expand run
-4. After health verification, the operator dispatches phase `contract` when needed
+1. Full CI runs (CircleCI `ci-trunk`)
+2. Vercel creates the `develop` Preview as the hosted staging surface
+3. An operator dispatches `staging-db-migrations.yaml` phases as needed, with `contract` only after health verification
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
 2. Full CI runs (CircleCI `ci-trunk`; `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path files)
 3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
-4. After both readiness variables are enabled, the **Staged Production** lane creates a Production deployment; JCS-52 approval and exact-candidate smoke gate Vercel's automatic alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+4. Vercel's Git integration creates the Production deployment for the `main` push. Before JCS-52 is available, use the post-push unaliased rehearsal from a clean checkout after that SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 5. After alias assignment + health/archive checks, the operator dispatches phase `contract`
 
 ---
@@ -198,8 +197,8 @@ git commit -m "feat: ..."
 | Stage          | What happens                                                           |
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | Migration changes: operator dispatches `expand`, manually deploys current `develop`, verifies health, then dispatches confirmed `contract` |
-| **Production** | Operator dispatches `expand`, waits for JCS-52-gated automatic aliasing, verifies health, then dispatches confirmed `contract` on `main` |
+| **Staging**    | Migration changes: operator dispatches `expand`, verifies the native `develop` Preview, then dispatches confirmed `contract` |
+| **Production** | Operator dispatches `expand`, verifies the native `main` release is healthy, then dispatches confirmed `contract` on `main`; after JCS-52 is operational, its native Deployment Checks gate automatic aliasing, while native `main` traffic is independent before then |
 
 Migration-related changes include:
 
@@ -231,5 +230,4 @@ Use the Vercel preview deployment URL; ensure preview environment variables poin
 - `.circleci/config.yml` - PR validation (`ci-pr`) and trunk (`ci-trunk`)
 - `.github/workflows/staging-db-migrations.yaml` - Staging migration workflow
 - `.github/workflows/production-db-migrations.yaml` - Production migration workflow
-- `.github/workflows/vercel-deploy.yml` - deployment decision and custom Vercel lanes
 - `docs/ci-cd/pipeline-and-deployment-strategy.md` - Deployment pipeline details

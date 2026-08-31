@@ -2,14 +2,14 @@
 
 ## Staged Production release lane
 
-Before cutover, prove the Production **application** binary without moving public domains:
+After the exact `main` SHA exists on `origin/main`, run a post-push, unaliased rehearsal of the Production **application** binary from a clean checkout. This rehearsal does not govern native Production alias/domain assignment:
 
 1. Preflight an exact clean `main` SHA.
-2. Let Vercel remotely build and deploy that SHA with `--prod --skip-domain` without pushing `main`; do not pull Production variables into the checkout.
+2. Run the trusted local `--prod --skip-domain` proof; do not pull Production variables into the checkout or promote the rehearsal.
 3. Run narrow exact-candidate smoke on the protected generated URL.
 4. Do not promote the proof candidate.
 
-After JCS-52 checks are proven, `.github/workflows/vercel-deploy.yml` uses the same remote `--prod` build; required checks withhold domains until approval and exact-candidate smoke pass, then Vercel aliases the same artifact automatically.
+Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. The GitHub `Production – atlaris` environment remains for migration and worker workflows only.
 
 Full safety model, proof/cutover boundary, abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 
@@ -17,7 +17,7 @@ Full safety model, proof/cutover boundary, abandon/rollback, and observation req
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
 
-On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Custom GitHub Actions owns Preview and Staging, while native Git is disabled for non-`main` branches and remains enabled for `main`. The workflow's Production job remains skipped until JCS-52 is operational, native Git is disabled globally, and both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are `true`.
+On the Hobby plan, the `develop` branch's Vercel Preview deployment serves as the hosted staging surface with non-Production configuration. Native Vercel Git handles Preview and Production deployments; configure the dashboard Ignored Build Step to skip docs-only commits. No Vercel credentials are stored in GitHub.
 
 ## PDF Removal Cutover
 
@@ -82,7 +82,7 @@ The phased migration runner refuses to continue when the drop version is already
 
 After deploying a release that includes new Supabase migrations:
 
-1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). Manual Staging deployment verifies a successful expand run for the exact current `develop` SHA.
+1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). For staging, verify the native `develop` Preview is healthy; migration phases remain operator-dispatched.
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not apply hosted migrations with a broad root `supabase db push --include-all`. `scripts/db/run-phased-migrations.sh` classifies every local `supabase/migrations/*.sql` into exhaustive `EXPAND_MIGRATIONS` or `CONTRACT_MIGRATIONS` arrays; contract applies only pending contract files in a temporary workspace via `supabase migration up --linked --include-all --yes` and fails if any expand migration is still pending.
 3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 

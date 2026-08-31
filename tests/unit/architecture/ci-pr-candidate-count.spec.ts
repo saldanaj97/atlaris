@@ -27,13 +27,8 @@ const VERCEL_CONFIG = JSON.parse(
   readFileSync(join(REPO_ROOT, 'vercel.json'), 'utf8'),
 ) as {
   $schema: string;
-  git: { deploymentEnabled: Record<string, boolean> };
   crons: Array<{ path: string; schedule: string }>;
 };
-const VERCEL_DEPLOY_WORKFLOW = readFileSync(
-  join(REPO_ROOT, '.github', 'workflows', 'vercel-deploy.yml'),
-  'utf8',
-);
 
 type ContinuationSelection = {
   parameters: Record<string, boolean>;
@@ -108,7 +103,7 @@ describe('CircleCI test result collection', () => {
     );
     expect(TEST_SUITES).toContain('junit: test-results/unit/junit.xml');
     expect(CODE_CONFIG).toContain(
-      '<testsuites><testsuite name="github-workflow-scripts">',
+      '<testsuites><testsuite name="dependency-remediation">',
     );
     expect(CODE_CONFIG).toContain('</testsuite></testsuites>');
 
@@ -276,13 +271,10 @@ describe('CircleCI cheap-path continuation mapping', () => {
   });
 });
 
-describe('Vercel native Git partial cutover', () => {
-  it('disables native Git for every branch except main', () => {
+describe('Vercel native Git configuration', () => {
+  it('keeps the native schema and email crons without deployment settings', () => {
     expect(VERCEL_CONFIG.$schema).toBe('https://openapi.vercel.sh/vercel.json');
-    expect(VERCEL_CONFIG.git.deploymentEnabled).toEqual({
-      '**': false,
-      main: true,
-    });
+    expect(VERCEL_CONFIG).not.toHaveProperty('git');
     expect(VERCEL_CONFIG.crons).toEqual([
       {
         path: '/api/cron/notifications/email?runKind=daily',
@@ -293,11 +285,5 @@ describe('Vercel native Git partial cutover', () => {
         schedule: '30 14 * * 1',
       },
     ]);
-  });
-
-  it('leaves the Production workflow gated on VERCEL_NATIVE_GIT_DISABLED', () => {
-    expect(VERCEL_DEPLOY_WORKFLOW).toContain(
-      "vars.VERCEL_NATIVE_GIT_DISABLED == 'true'",
-    );
   });
 });
