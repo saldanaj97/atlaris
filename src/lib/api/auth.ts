@@ -226,34 +226,10 @@ export async function runServerComponentContext<T>(
 }
 
 /**
- * @deprecated Use `requestBoundary.component()` instead. See docs/CHANGELOG.md.
- * Will be removed in v2.0.
- *
- * Establishes an RLS-enforced DB context for Server Components.
- * This is the Server Component equivalent of `withAuth` for API routes.
- *
- * Returns null if the user is not authenticated.
- */
-let didWarnWithServerComponentContextDeprecation = false;
-
-export async function withServerComponentContext<T>(
-  fn: (user: ActorUser) => MaybePromise<T>,
-): Promise<T | null> {
-  if (!didWarnWithServerComponentContextDeprecation) {
-    didWarnWithServerComponentContextDeprecation = true;
-    console.warn(
-      'withServerComponentContext() is deprecated; use requestBoundary.component() instead. Removal planned for v2.0.',
-    );
-  }
-
-  return runServerComponentContext(fn);
-}
-
-/**
  * @internal Compatibility shim. Prefer `requestBoundary.action()` for new code.
  *
  * Wrapper for Server Actions that sets up authenticated RLS context.
- * Equivalent to withServerComponentContext but designed for 'use server' functions.
+ * Equivalent to runServerComponentContext but designed for 'use server' functions.
  * Handles auth, RLS client creation, user lookup, and cleanup.
  *
  * Also passes the RLS db client to the callback since server actions

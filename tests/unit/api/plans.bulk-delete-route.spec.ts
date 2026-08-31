@@ -19,7 +19,6 @@ vi.mock('@/lib/api/request-boundary', async () => {
           req: Request;
           actor: { id: string };
           db: unknown;
-          owned: { userId: string; dbClient: unknown };
           correlationId: string;
         }) => Promise<Response>,
       ) =>
@@ -28,7 +27,6 @@ vi.mock('@/lib/api/request-boundary', async () => {
             req,
             actor: { id: 'user-1' },
             db: {},
-            owned: { userId: 'user-1', dbClient: {} },
             correlationId: 'test-correlation-id',
           }),
         ),

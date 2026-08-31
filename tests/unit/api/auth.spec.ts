@@ -2,8 +2,8 @@ import { buildUserFixture } from '../../fixtures/users';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import {
   requireCurrentUserRecord,
+  runServerComponentContext,
   withServerActionContext,
-  withServerComponentContext,
 } from '@/lib/api/auth';
 import { getRequestContext } from '@/lib/api/context';
 import { AuthError } from '@/lib/api/errors';
@@ -158,7 +158,7 @@ describe('auth helpers', () => {
     expect(mockProvisionUser).not.toHaveBeenCalled();
   });
 
-  it('withServerComponentContext installs request context in test mode', async () => {
+  it('runServerComponentContext installs request context in test mode', async () => {
     const user = buildUserFixture({
       id: 'user_1',
       authUserId: 'auth_1',
@@ -170,7 +170,7 @@ describe('auth helpers', () => {
     mockGetUserByAuthId.mockResolvedValue(user);
 
     await expect(
-      withServerComponentContext(async (currentUser) => {
+      runServerComponentContext(async (currentUser) => {
         const requestContext = getRequestContext();
 
         expect(currentUser).toEqual(user);
