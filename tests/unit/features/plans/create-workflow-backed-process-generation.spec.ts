@@ -13,6 +13,8 @@ const mocks = {
   reserveAttemptSlot: vi.fn(),
   workflowStart: vi.fn(),
   processGenerationAttempt: vi.fn(),
+  settleReservationRejection: vi.fn(),
+  settleReservedAttemptFailure: vi.fn(),
   finalizeFailure: vi.fn(),
 };
 
@@ -32,6 +34,8 @@ const input: ProcessGenerationInput = {
 describe('createWorkflowBackedProcessGeneration', () => {
   const lifecycleService = {
     processGenerationAttempt: mocks.processGenerationAttempt,
+    settleReservationRejection: mocks.settleReservationRejection,
+    settleReservedAttemptFailure: mocks.settleReservedAttemptFailure,
   } as unknown as PlanLifecycleService;
   const dbClient = {} as AttemptsDbClient;
 
@@ -39,15 +43,18 @@ describe('createWorkflowBackedProcessGeneration', () => {
     mocks.reserveAttemptSlot.mockReset();
     mocks.workflowStart.mockReset();
     mocks.processGenerationAttempt.mockReset();
+    mocks.settleReservationRejection.mockReset();
+    mocks.settleReservedAttemptFailure.mockReset();
     mocks.finalizeFailure.mockReset();
   });
 
-  it('falls back to lifecycle processing when reservation is rejected', async () => {
-    mocks.reserveAttemptSlot.mockResolvedValue({
-      reserved: false,
-      reason: 'capped',
-    });
-    mocks.processGenerationAttempt.mockResolvedValue({
+  it('settles a reservation rejection without reserving again', async () => {
+    const rejection = {
+      reserved: false as const,
+      reason: 'capped' as const,
+    };
+    mocks.reserveAttemptSlot.mockResolvedValue(rejection);
+    mocks.settleReservationRejection.mockResolvedValue({
       status: 'permanent_failure',
       classification: 'capped',
       error: new Error('capped'),
@@ -65,7 +72,11 @@ describe('createWorkflowBackedProcessGeneration', () => {
     );
     const result = await run(input);
 
-    expect(mocks.processGenerationAttempt).toHaveBeenCalledWith(input);
+    expect(mocks.settleReservationRejection).toHaveBeenCalledWith(
+      input,
+      rejection,
+    );
+    expect(mocks.processGenerationAttempt).not.toHaveBeenCalled();
     expect(mocks.workflowStart).not.toHaveBeenCalled();
     expect(result.status).toBe('permanent_failure');
   });

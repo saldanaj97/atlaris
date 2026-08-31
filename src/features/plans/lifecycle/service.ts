@@ -16,6 +16,7 @@ import type {
 import type {
   AttemptRejection,
   AttemptReservation,
+  AttemptWorkflowMetadata,
   GenerationAttemptRecord,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
@@ -27,6 +28,7 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
+import { createReservationRejectionResult } from '@/features/ai/orchestrator/reservation';
 import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
@@ -405,6 +407,91 @@ export class PlanLifecycleService {
     return this.processGenerationAttemptInternal(input, reservation);
   }
 
+  /**
+   * Settles a reservation rejection without reserving again.
+   * Stream/workflow wrappers that already called `reserveAttemptSlot` must use
+   * this instead of {@link processGenerationAttempt}.
+   */
+  async settleReservationRejection(
+    input: ProcessGenerationInput,
+    rejection: AttemptRejection,
+  ): Promise<GenerationAttemptResult> {
+    const generationPurpose = parseGenerationPurpose(input.generationPurpose);
+    const clock = () => Date.now();
+    const nowFn = () => new Date();
+    const result = createReservationRejectionResult(
+      {
+        planId: input.planId,
+        userId: input.userId,
+        input: input.input,
+        generationPurpose,
+      },
+      rejection,
+      clock(),
+      clock,
+      nowFn,
+    );
+
+    return this.settleGenerationFailure(input, {
+      status: 'failure',
+      classification: result.classification,
+      error: result.error,
+      durationMs: result.durationMs,
+      timedOut: result.timedOut,
+      extendedTimeout: result.extendedTimeout,
+      ...(result.reservationRejectionReason !== undefined
+        ? { reservationRejectionReason: result.reservationRejectionReason }
+        : {}),
+    });
+  }
+
+  /**
+   * Settles a reserved attempt that failed before provider work (workflow-start
+   * failure, regeneration admission-deny). Production callers must use this
+   * instead of `commitPlanGenerationFailure`.
+   */
+  async settleReservedAttemptFailure(input: {
+    readonly reservation: AttemptReservation;
+    readonly planId: string;
+    readonly userId: string;
+    readonly error: Error;
+    readonly classification: FailureClassification;
+    readonly generationPurpose: GenerationPurpose;
+    readonly retryable: boolean;
+    readonly durationMs?: number;
+    readonly timedOut?: boolean;
+    readonly extendedTimeout?: boolean;
+    readonly workflowMetadata?: AttemptWorkflowMetadata;
+  }): Promise<void> {
+    const durationMs = input.durationMs ?? 0;
+    await this.ports.generationFinalization.finalizeFailure({
+      variant: 'reserved_attempt',
+      planId: input.planId,
+      userId: input.userId,
+      attemptId: input.reservation.attemptId,
+      preparation: input.reservation,
+      classification: input.classification,
+      error: input.error,
+      durationMs,
+      timedOut: input.timedOut ?? false,
+      extendedTimeout: input.extendedTimeout ?? false,
+      usageKind: 'plan',
+      generationPurpose: parseGenerationPurpose(input.generationPurpose),
+      retryable: input.retryable,
+      ...(input.workflowMetadata
+        ? {
+            workflowMetadata: {
+              ...input.workflowMetadata,
+              completedAt: deterministicCompletedAt(
+                input.reservation.startedAt,
+                durationMs,
+              ),
+            },
+          }
+        : {}),
+    });
+  }
+
   private async processGenerationAttemptInternal(
     input: ProcessGenerationInput,
     existingReservation?: AttemptReservation,
@@ -542,6 +629,15 @@ export class PlanLifecycleService {
       };
     }
 
+    return this.settleGenerationFailure(input, generationResult);
+  }
+
+  private async settleGenerationFailure(
+    input: ProcessGenerationInput,
+    generationResult: Extract<GenerationRunResult, { status: 'failure' }>,
+  ): Promise<GenerationAttemptResult> {
+    const { planId, userId, tier } = input;
+    const generationPurpose = parseGenerationPurpose(input.generationPurpose);
     const { classification, error } = generationResult;
     const retryable = isRetryableClassification(classification);
 

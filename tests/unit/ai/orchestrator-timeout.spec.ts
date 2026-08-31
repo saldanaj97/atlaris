@@ -3,24 +3,17 @@ import type {
   GenerationInput,
   GenerationOptions,
 } from '@/features/ai/types/provider.types';
-import type {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+import type { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
+import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOperationsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
-  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
-  finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
-
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
 
 const ORIGINAL_TIMEOUT_ENV = {
   baseMs: process.env.AI_TIMEOUT_BASE_MS,
@@ -52,44 +45,18 @@ function restoreTimeoutEnvVar(key: (typeof TIMEOUT_ENV_KEYS)[number]): void {
   process.env[key] = originalValue;
 }
 
-type SuccessAttemptRecord = {
-  id: string;
-  planId: string;
-  status: string;
-  classification: string | null;
-  durationMs: number;
-  modulesCount: number;
-  tasksCount: number;
-  truncatedTopic: boolean;
-  truncatedNotes: boolean;
-  normalizedEffort: boolean;
-  promptHash: string;
-  metadata: Record<string, unknown> | null;
-  createdAt: Date;
-};
-
-type FailureAttemptRecord = SuccessAttemptRecord & {
-  status: 'failure';
-  classification: 'timeout' | 'validation' | 'provider_error';
-  modulesCount: 0;
-  tasksCount: 0;
-};
-
 type TimeoutTestContextOverrides = {
   attemptId?: string;
   planId?: string;
   userId?: string;
   promptHash?: string;
   startedAt?: Date;
-  createdAt?: Date;
-  status?: string;
 };
 
 function createTimeoutTestContext(
   overrides: TimeoutTestContextOverrides = {},
 ): {
   reservedAttempt: AttemptReservation;
-  successAttemptRecord: SuccessAttemptRecord;
   ids: {
     attemptId: string;
     planId: string;
@@ -102,8 +69,6 @@ function createTimeoutTestContext(
   const userId = overrides.userId ?? createId('user');
   const promptHash = overrides.promptHash ?? createId('hash');
   const startedAt = overrides.startedAt ?? new Date('2026-02-12T00:00:00.000Z');
-  const createdAt = overrides.createdAt ?? new Date('2026-02-12T00:00:01.000Z');
-  const status = overrides.status ?? 'success';
 
   const reservedAttempt: AttemptReservation = {
     reserved: true,
@@ -118,25 +83,8 @@ function createTimeoutTestContext(
     generationPurpose: 'initial',
   };
 
-  const successAttemptRecord: SuccessAttemptRecord = {
-    id: attemptId,
-    planId,
-    status,
-    classification: null,
-    durationMs: 100,
-    modulesCount: 1,
-    tasksCount: 1,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash,
-    metadata: null,
-    createdAt,
-  };
-
   return {
     reservedAttempt,
-    successAttemptRecord,
     ids: { attemptId, planId, userId, promptHash },
   };
 }
@@ -178,21 +126,12 @@ function createProvider(
   };
 }
 
-describe('runGenerationAttempt timeout wiring', () => {
+describe('runGenerationExecution timeout wiring', () => {
   let ctx: ReturnType<typeof createTimeoutTestContext>;
   let mockDbClient: ReturnType<typeof makeAttemptsDbClient>;
-  let failureAttemptRecord: FailureAttemptRecord;
 
   beforeEach(() => {
     ctx = createTimeoutTestContext();
-    failureAttemptRecord = {
-      ...ctx.successAttemptRecord,
-      status: 'failure',
-      classification: 'timeout',
-      modulesCount: 0,
-      tasksCount: 0,
-    };
-    // Real attempt ops are mocked; db client is only passed through / unused on this path.
     mockDbClient = makeAttemptsDbClient();
   });
 
@@ -215,19 +154,9 @@ describe('runGenerationAttempt timeout wiring', () => {
       reserveAttemptSlot: vi
         .fn()
         .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue(
-          ctx.successAttemptRecord,
-        ) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi
-        .fn()
-        .mockResolvedValue(
-          failureAttemptRecord,
-        ) as typeof finalizeAttemptFailure,
     };
 
-    const result = await runGenerationAttempt(
+    const result = await runGenerationExecution(
       {
         planId: ctx.ids.planId,
         userId: ctx.ids.userId,
@@ -246,7 +175,7 @@ describe('runGenerationAttempt timeout wiring', () => {
       },
     );
 
-    expect(result.status).toBe('success');
+    expect(result.kind).toBe('success');
     expect(observedTimeoutMs).toBe(4321);
   });
 
@@ -261,19 +190,9 @@ describe('runGenerationAttempt timeout wiring', () => {
       reserveAttemptSlot: vi
         .fn()
         .mockResolvedValue(ctx.reservedAttempt) as typeof reserveAttemptSlot,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue(
-          ctx.successAttemptRecord,
-        ) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi
-        .fn()
-        .mockResolvedValue(
-          failureAttemptRecord,
-        ) as typeof finalizeAttemptFailure,
     };
 
-    const result = await runGenerationAttempt(
+    const result = await runGenerationExecution(
       {
         planId: ctx.ids.planId,
         userId: ctx.ids.userId,
@@ -297,7 +216,7 @@ describe('runGenerationAttempt timeout wiring', () => {
       },
     );
 
-    expect(result.status).toBe('success');
+    expect(result.kind).toBe('success');
     expect(observedTimeoutMs).toBe(2500);
   });
 });

@@ -59,7 +59,7 @@ To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow 
 
 - **Do not** call `reserveAttemptSlot` or `claimModuleLessonGenerationOrDescribe` twice on replay; workflow paths extract post-claim work or pass an existing reservation.
 - Plan regeneration workflow claims the job once in `claimPlanRegenerationJobStep`; generation uses normal lifecycle finalization.
-- `already_finalized` from `GenerationAdapter` short-circuits provider work when a plan is already `ready` with `finalizedAt` set.
+- `already_finalized` from `PlanLifecycleService` / the generation port short-circuits provider work when the **attempt** is already `success` or `failure`. Replay is attempt-status based, not plan `ready` + `finalizedAt`.
 
 ## Preview testing
 

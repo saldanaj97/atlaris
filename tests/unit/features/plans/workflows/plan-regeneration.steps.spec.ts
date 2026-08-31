@@ -25,7 +25,7 @@ const mocks = vi.hoisted(() => ({
   failJob: vi.fn(),
   getWorkflowMetadata: vi.fn(),
   createPlanLifecycleService: vi.fn(),
-  commitPlanGenerationFailure: vi.fn(),
+  settleReservedAttemptFailure: vi.fn(),
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
   loadAuthorizedRegenerationPlan: vi.fn(),
@@ -49,10 +49,6 @@ vi.mock('@/features/billing/regeneration-quota-boundary', () => ({
 
 vi.mock('@/features/plans/lifecycle/factory', () => ({
   createPlanLifecycleService: mocks.createPlanLifecycleService,
-}));
-
-vi.mock('@/features/plans/lifecycle/generation-finalization/store', () => ({
-  commitPlanGenerationFailure: mocks.commitPlanGenerationFailure,
 }));
 
 vi.mock('@/lib/db/queries/attempts', () => ({
@@ -281,11 +277,12 @@ describe('processPlanRegenerationStep model resolution', () => {
     mocks.getUserPreferences.mockReset();
     mocks.loadAuthorizedRegenerationPlan.mockReset();
     mocks.createPlanLifecycleService.mockReset();
+    mocks.settleReservedAttemptFailure.mockReset();
+    mocks.settleReservedAttemptFailure.mockResolvedValue(undefined);
     mocks.createPlanLifecycleService.mockReturnValue({
       processGenerationAttemptWithReservation,
+      settleReservedAttemptFailure: mocks.settleReservedAttemptFailure,
     } as unknown as PlanLifecycleService);
-    mocks.commitPlanGenerationFailure.mockReset();
-    mocks.commitPlanGenerationFailure.mockResolvedValue(undefined);
     mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
     mocks.getUserPreferences.mockResolvedValue(savedSlots);
     mocks.failJob.mockReset();
@@ -458,10 +455,11 @@ describe('processPlanRegenerationStep model resolution', () => {
     );
 
     expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
-    expect(mocks.commitPlanGenerationFailure).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mocks.settleReservedAttemptFailure).toHaveBeenCalledWith(
       expect.objectContaining({
-        attemptId: reservation.attemptId,
+        reservation: expect.objectContaining({
+          attemptId: reservation.attemptId,
+        }),
         classification: 'validation',
         retryable: false,
       }),
@@ -486,10 +484,11 @@ describe('processPlanRegenerationStep model resolution', () => {
       'Plan regeneration is not included on the Free plan.',
     );
 
-    expect(mocks.commitPlanGenerationFailure).toHaveBeenCalledWith(
-      expect.anything(),
+    expect(mocks.settleReservedAttemptFailure).toHaveBeenCalledWith(
       expect.objectContaining({
-        attemptId: reservation.attemptId,
+        reservation: expect.objectContaining({
+          attemptId: reservation.attemptId,
+        }),
         classification: 'validation',
         retryable: false,
       }),

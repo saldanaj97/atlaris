@@ -107,9 +107,9 @@ The stream route must not couple the plan’s lifecycle to a fragile client conn
 
 ### 2) Run generation execution
 
-Production path: `GenerationAdapter` calls `runGenerationExecution(...)` in `src/features/ai/orchestrator.ts`:
+Production path: `PlanLifecycleService.processGenerationAttempt` (or `processGenerationAttemptWithReservation`) calls `runGenerationExecution(...)` in `src/features/ai/orchestrator.ts`:
 
-1. reserve an attempt slot
+1. reserve an attempt slot (skipped when a reservation is already held)
 2. determine timeout budget
 3. call the provider with timeout and abort signal
 4. parse and validate streamed output
@@ -117,7 +117,7 @@ Production path: `GenerationAdapter` calls `runGenerationExecution(...)` in `src
 6. pace modules/tasks to fit available hours
 7. return **unfinalized** success or failure (attempt still reserved / in-flight at DB)
 
-`runGenerationAttempt(...)` still composes execution + `finalizeAttemptSuccess` / `finalizeAttemptFailure` for tests and legacy call sites that expect a fully persisted attempt in one call.
+Lifecycle settlement owns the single transactional finalize after this returns. Stream wrappers that already reserved must call `settleReservationRejection` instead of `processGenerationAttempt`. Pre-provider reserved failures use `settleReservedAttemptFailure`.
 
 ### 3) Finalize in lifecycle (one transaction)
 

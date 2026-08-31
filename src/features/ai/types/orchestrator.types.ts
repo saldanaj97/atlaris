@@ -9,8 +9,6 @@ import type {
   AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
-  FinalizeFailureParams,
-  FinalizeSuccessParams,
   GenerationAttemptRecord,
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
@@ -29,18 +27,8 @@ type ReserveAttemptSlotOperation = (
   params: ReserveAttemptSlotParams,
 ) => Promise<ReserveAttemptResult>;
 
-type FinalizeAttemptSuccessOperation = (
-  params: FinalizeSuccessParams,
-) => Promise<GenerationAttemptRecord>;
-
-type FinalizeAttemptFailureOperation = (
-  params: FinalizeFailureParams,
-) => Promise<GenerationAttemptRecord>;
-
 export interface AttemptOperations {
   reserveAttemptSlot: ReserveAttemptSlotOperation;
-  finalizeAttemptSuccess: FinalizeAttemptSuccessOperation;
-  finalizeAttemptFailure: FinalizeAttemptFailureOperation;
 }
 
 export type AttemptOperationsOverrides = Partial<AttemptOperations>;
@@ -57,18 +45,6 @@ export type RunGenerationOptions = {
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   onAttemptReserved?: (reservation: AttemptReservation) => void | Promise<void>;
-};
-
-type GenerationSuccessResult = {
-  status: 'success';
-  classification: null;
-  modules: ParsedModule[];
-  rawText: string;
-  metadata: ProviderMetadata;
-  durationMs: number;
-  extendedTimeout: boolean;
-  timedOut: false;
-  attempt: GenerationAttemptRecord;
 };
 
 export type GenerationAttemptRecordForResponse =
@@ -88,10 +64,6 @@ export type GenerationFailureResult = {
   /** Present when failure came from `reserveAttemptSlot` rejection (no in-progress row). */
   reservationRejectionReason?: AttemptRejection['reason'];
 };
-
-export type GenerationResult =
-  | GenerationSuccessResult
-  | GenerationFailureResult;
 
 /** Unfinalized success after provider + parse + pace (no DB finalize yet). */
 export type GenerationExecutionSuccess = {

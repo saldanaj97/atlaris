@@ -1,27 +1,38 @@
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
 import { createRlsDbForUser } from '../../helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { generationAttempts } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 /**
- * This test uses application path to insert an attempt via orchestrator
- * while authenticated as a user that does NOT own the plan. RLS should block
- * the INSERT into generation_attempts (policy requires ownership).
+ * Non-owner: reserveAttemptSlot through an RLS-scoped client.
+ * Owner: production lifecycle processGenerationAttempt via service-role.
  */
 
 describe('RLS attempt insertion', () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'success');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('blocks attempt insertion for non-owner user', async () => {
     const ownerAuthUserId = buildTestAuthUserId('rls-insert-owner');
     const attackerAuthUserId = buildTestAuthUserId('rls-insert-attacker');
 
-    // Owner user + plan
     setTestUser(ownerAuthUserId);
     const ownerId = await ensureUser({
       authUserId: ownerAuthUserId,
@@ -37,42 +48,32 @@ describe('RLS attempt insertion', () => {
       origin: 'ai',
     });
 
-    // Different user tries to run attempt
     setTestUser(attackerAuthUserId);
     const attackerId = await ensureUser({
       authUserId: attackerAuthUserId,
       email: buildTestEmail(attackerAuthUserId),
     });
 
-    const mock = createMockProvider({ scenario: 'success' });
     const rlsDb = await createRlsDbForUser(attackerAuthUserId);
     let error: unknown = null;
     try {
-      await runGenerationAttempt(
-        {
-          planId: plan.id,
-          // attacker userId (does not own plan)
-          userId: attackerId,
-          generationPurpose: 'initial',
-          input: {
-            topic: 'Insert Protection Plan',
-            notes: 'Should not succeed',
-            skillLevel: 'beginner',
-            weeklyHours: 3,
-            learningStyle: 'reading',
-          },
+      await reserveAttemptSlot({
+        planId: plan.id,
+        userId: attackerId,
+        generationPurpose: 'initial',
+        input: {
+          topic: 'Insert Protection Plan',
+          notes: 'Should not succeed',
+          skillLevel: 'beginner',
+          weeklyHours: 3,
+          learningStyle: 'reading',
         },
-        { provider: mock.provider, dbClient: rlsDb },
-      );
+        dbClient: rlsDb,
+      });
     } catch (e) {
       error = e;
     }
 
-    // Expect an RLS/permission-denied error or plan ownership check error.
-    // We accept both: (1) RLS blocking the INSERT (permission denied / 42501), and
-    // (2) app-level "not found or inaccessible" when the orchestrator rejects
-    // before the DB (e.g. plan ownership mismatch). Both are valid guards
-    // for "non-owner cannot create attempt."
     expect(error).toBeTruthy();
     const err = error as Error & { code?: string; cause?: unknown };
     const msg = err.message ?? '';
@@ -114,25 +115,19 @@ describe('RLS attempt insertion', () => {
       origin: 'ai',
     });
 
-    const mock = createMockProvider({ scenario: 'success' });
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId: ownerId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'Owner Insert Plan',
-          notes: 'Should succeed',
-          skillLevel: 'beginner',
-          weeklyHours: 3,
-          learningStyle: 'reading',
-        },
-      },
-      { provider: mock.provider, dbClient: db },
+        topic: 'Owner Insert Plan',
+        notes: 'Should succeed',
+        skillLevel: 'beginner',
+        weeklyHours: 3,
+        learningStyle: 'reading',
+      }),
     );
 
-    expect(result.status).toBe('success');
-    expect(result.attempt.planId).toBe(plan.id);
+    expect(result.status).toBe('generation_success');
 
     const attempts = await db
       .select()

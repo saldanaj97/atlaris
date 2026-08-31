@@ -68,18 +68,6 @@ async function createTestPlanWithAttempt({
   return plan;
 }
 
-async function withRunGenerationAttemptSpy<T>(
-  fn: (runSpy: ReturnType<typeof vi.spyOn>) => Promise<T>,
-): Promise<T> {
-  const orchestrator = await import('@/features/ai/orchestrator');
-  const runSpy = vi.spyOn(orchestrator, 'runGenerationAttempt');
-  try {
-    return await fn(runSpy);
-  } finally {
-    vi.restoreAllMocks();
-  }
-}
-
 function createRetryInvocation(planId: string) {
   return {
     request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
@@ -241,20 +229,18 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     const plan = await createTestPlanWithAttempt({ userId });
     await seedFailedAttemptsForDurableWindow(plan.id);
 
-    await withRunGenerationAttemptSpy(async (runSpy) => {
-      const { request, context } = createRetryInvocation(plan.id);
-      const response = await POST(request, context);
-      expect(response.status).toBe(429);
-      expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
+    const { request, context } = createRetryInvocation(plan.id);
+    const response = await POST(request, context);
+    expect(response.status).toBe(429);
+    expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
-      const body = (await response.json()) as {
-        code?: string;
-        retryAfter?: number;
-      };
-      expect(body.code).toBe('RATE_LIMITED');
-      expect(typeof body.retryAfter).toBe('number');
-      expect(runSpy).not.toHaveBeenCalled();
-    });
+    const body = (await response.json()) as {
+      code?: string;
+      retryAfter?: number;
+    };
+    expect(body.code).toBe('RATE_LIMITED');
+    expect(typeof body.retryAfter).toBe('number');
+    expect(workflowProcessFactory).not.toHaveBeenCalled();
   });
 
   it('returns 400 when plan is not in failed state', async () => {
@@ -273,14 +259,12 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       },
     });
 
-    await withRunGenerationAttemptSpy(async (runSpy) => {
-      const { request, context } = createRetryInvocation(plan.id);
-      const response = await POST(request, context);
-      expect(response.status).toBe(400);
-      const body = (await response.json()) as { error?: string; code?: string };
-      expect(body.code).toBe('VALIDATION_ERROR');
-      expect(body.error).toContain('not eligible for retry');
-      expect(runSpy).not.toHaveBeenCalled();
-    });
+    const { request, context } = createRetryInvocation(plan.id);
+    const response = await POST(request, context);
+    expect(response.status).toBe(400);
+    const body = (await response.json()) as { error?: string; code?: string };
+    expect(body.code).toBe('VALIDATION_ERROR');
+    expect(body.error).toContain('not eligible for retry');
+    expect(workflowProcessFactory).not.toHaveBeenCalled();
   });
 });

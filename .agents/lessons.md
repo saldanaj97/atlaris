@@ -95,3 +95,11 @@
 **Rule:** Keep tenant-scoped reads under request auth/RLS, but write billing-owned user columns through the existing service-role boundary dependency. Do not add test-only bypasses for system-owned billing mutations.
 
 **Impact:** This preserves the security boundary while allowing checkout and local billing smoke to exercise the real route path.
+
+## 2026-08-31: Mock invalid_response is not validation
+
+**Context:** JCS-59 retargeted generation integration specs off `runGenerationAttempt` onto `processGenerationAttempt`. The old validation helper returned empty modules (`ParserError` kind `validation`). Production `MOCK_AI_SCENARIO=invalid_response` streams invalid JSON (`ParserError` kind `invalid_json`), which `classifyFailure` maps to `provider_error`.
+
+**Rule:** When using the production mock provider, treat `invalid_response` as retryable `provider_error`. Empty-module validation is a different parser path and is not a named `MOCK_AI_SCENARIO` value.
+
+**Impact:** Lifecycle tests that expect `permanent_failure` / `validation` will fail if they only stub `invalid_response`.

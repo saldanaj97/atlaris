@@ -1,7 +1,9 @@
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
 import {
   generationAttempts,
   learningPlans,
@@ -10,13 +12,23 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const authUserId = 'auth_generation_timeout';
 const authEmail = 'generation-timeout@example.com';
 
 describe('generation integration - timeout classification', () => {
-  it('marks attempt as timeout when provider exceeds deadline', async () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'timeout');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('marks attempt as timeout when the mock provider times out', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });
 
@@ -33,27 +45,22 @@ describe('generation integration - timeout classification', () => {
       })
       .returning();
 
-    const mock = createMockProvider({ scenario: 'timeout' });
-
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'Long Running Topic',
-          notes: 'Expecting streaming without completion',
-          skillLevel: 'intermediate',
-          weeklyHours: 4,
-          learningStyle: 'reading',
-        },
-      },
-      { provider: mock.provider, dbClient: db },
+        topic: 'Long Running Topic',
+        notes: 'Expecting timeout classification',
+        skillLevel: 'intermediate',
+        weeklyHours: 4,
+        learningStyle: 'reading',
+      }),
     );
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('timeout');
-    expect(mock.invocationCount).toBe(1);
+    expect(result.status).toBe('retryable_failure');
+    if (result.status === 'retryable_failure') {
+      expect(result.classification).toBe('timeout');
+    }
 
     const modulesCount = await db
       .select({ value: modules.id })

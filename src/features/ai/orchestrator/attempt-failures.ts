@@ -1,6 +1,4 @@
 import type {
-  AttemptOperations,
-  GenerationAttemptContext,
   GenerationAttemptRecordForResponse,
   GenerationExecutionFailureReserved,
   GenerationFailureResult,
@@ -9,8 +7,6 @@ import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 import type {
   AttemptRejection,
   AttemptReservation,
-  AttemptsDbClient,
-  FinalizeFailureParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
@@ -21,7 +17,6 @@ import {
   type TimeoutLifecycle,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ProviderTimeoutError } from '@/features/ai/providers/errors';
-import { logger } from '@/lib/logging/logger';
 
 const SYNTHETIC_FAILURE_ATTEMPT_DEFAULTS = {
   id: null,
@@ -90,35 +85,6 @@ export function createSyntheticFailureAttempt(params: {
     promptHash,
     createdAt: now(),
   };
-}
-
-async function safelyFinalizeFailure(
-  attemptOps: AttemptOperations,
-  finalizeParams: FinalizeFailureParams,
-  fallbackPromptHash: string,
-): Promise<GenerationAttemptRecordForResponse> {
-  try {
-    return await attemptOps.finalizeAttemptFailure(finalizeParams);
-  } catch (finalizeError) {
-    logger.error(
-      {
-        planId: finalizeParams.planId,
-        attemptId: finalizeParams.attemptId,
-        finalizeError,
-        originalError: finalizeParams.error,
-      },
-      'Failed to finalize generation attempt failure',
-    );
-
-    return createSyntheticFailureAttempt({
-      planId: finalizeParams.planId,
-      classification: finalizeParams.classification,
-      durationMs: finalizeParams.durationMs,
-      promptHash: fallbackPromptHash,
-      generationPurpose: finalizeParams.preparation.generationPurpose,
-      now: finalizeParams.now ?? (() => new Date()),
-    });
-  }
 }
 
 export function createFailureResult(params: {
@@ -190,43 +156,4 @@ export function buildUnfinalizedReservedFailure(params: {
     ...(providerMetadata !== undefined && { metadata: providerMetadata }),
     ...(rawText !== undefined && { rawText }),
   };
-}
-
-export async function finalizeReservedExecutionFailure(params: {
-  unfinalized: GenerationExecutionFailureReserved;
-  attemptOps: AttemptOperations;
-  context: GenerationAttemptContext;
-  dbClient: AttemptsDbClient;
-  nowFn: () => Date;
-}): Promise<GenerationFailureResult> {
-  const { unfinalized, attemptOps, context, dbClient, nowFn } = params;
-
-  const attempt = await safelyFinalizeFailure(
-    attemptOps,
-    {
-      attemptId: unfinalized.reservation.attemptId,
-      planId: context.planId,
-      preparation: unfinalized.reservation,
-      classification: unfinalized.classification,
-      durationMs: unfinalized.durationMs,
-      timedOut: unfinalized.timedOut,
-      extendedTimeout: unfinalized.extendedTimeout,
-      providerMetadata: unfinalized.metadata,
-      error: unfinalized.error,
-      dbClient,
-      now: nowFn,
-    },
-    unfinalized.reservation.promptHash,
-  );
-
-  return createFailureResult({
-    classification: unfinalized.classification,
-    error: unfinalized.error,
-    durationMs: unfinalized.durationMs,
-    extendedTimeout: unfinalized.extendedTimeout,
-    timedOut: unfinalized.timedOut,
-    attempt,
-    metadata: unfinalized.metadata,
-    rawText: unfinalized.rawText,
-  });
 }

@@ -120,7 +120,6 @@ describe('requestPlanRegeneration', () => {
       existingJobId: 'existing',
     });
     expect(deps.quota.peekUsage).not.toHaveBeenCalled();
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
     expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
   });
 
@@ -146,7 +145,6 @@ describe('requestPlanRegeneration', () => {
       kind: 'queue-dedupe-conflict',
       existingJobId: 'dup-job',
     });
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
   it('does not settle quota when enqueue throws', async () => {
@@ -166,8 +164,6 @@ describe('requestPlanRegeneration', () => {
         deps,
       ),
     ).rejects.toBe(enqueueError);
-
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
   it('returns quota-denied from a non-settling usage peek', async () => {
@@ -194,7 +190,6 @@ describe('requestPlanRegeneration', () => {
       reason: 'Regeneration quota exceeded for your subscription tier.',
     });
     expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
   it('returns not-included for Free before duration or quota', async () => {
@@ -244,7 +239,6 @@ describe('requestPlanRegeneration', () => {
     );
     expect(result.kind).toBe('duration-exceeded');
     expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
   it('enqueues a Starter long plan when date overrides bring duration within cap', async () => {
@@ -282,7 +276,6 @@ describe('requestPlanRegeneration', () => {
       },
       7,
     );
-    expect(deps.quota.runReserved).not.toHaveBeenCalled();
   });
 
   it('returns content-locked when the owned plan is not fully accessible', async () => {
@@ -460,7 +453,6 @@ describe('requestPlanRegeneration', () => {
         'Failed to start plan regeneration workflow.',
         { retryable: true },
       );
-      expect(deps.quota.runReserved).not.toHaveBeenCalled();
     });
 
     it('marks persist failure non-retryable and emits ops telemetry when cancel fails', async () => {
@@ -537,7 +529,6 @@ describe('requestPlanRegeneration', () => {
         'Failed to persist plan regeneration workflow run id.',
         { retryable: false },
       );
-      expect(deps.quota.runReserved).not.toHaveBeenCalled();
       expect(
         recordRegenerationWorkflowAttachUncertainMock,
       ).not.toHaveBeenCalled();
@@ -595,7 +586,6 @@ describe('requestPlanRegeneration', () => {
         'Failed to attach plan regeneration workflow.',
         { retryable: false },
       );
-      expect(deps.quota.runReserved).not.toHaveBeenCalled();
       expect(
         recordRegenerationWorkflowAttachUncertainMock,
       ).toHaveBeenCalledWith(
