@@ -23,10 +23,16 @@ const AMBIENT_GET_DB_IMPORT_ALLOWLIST = new Set([
   'lib/api/auth.ts',
 ]);
 
+const REQUEST_BOUNDARY_GET_DB_SITES = [
+  'wrapRouteBoundaryWork',
+  'action',
+  'component',
+] as const;
+
 const AMBIENT_GET_DB_CALL_ALLOWLIST: Readonly<
   Record<string, ReadonlySet<string>>
 > = {
-  'lib/api/request-boundary.ts': new Set(['*']),
+  'lib/api/request-boundary.ts': new Set(REQUEST_BOUNDARY_GET_DB_SITES),
   'lib/api/auth.ts': new Set(['runWithTestContext']),
 };
 
@@ -217,7 +223,7 @@ function collectAmbientGetDbViolations(files: string[]): string[] {
         violations.push(`${rel}: getDb() call in ${fn}`);
         continue;
       }
-      if (!allowedFns.has('*') && !allowedFns.has(fn)) {
+      if (!allowedFns.has(fn)) {
         violations.push(
           `${rel}: getDb() call in ${fn} (not an establishment site)`,
         );
@@ -344,6 +350,9 @@ export const db = getDb();
     ).toEqual(['named getDb import']);
     expect(findRuntimeGetDbImports(auth, 'auth.ts')).toEqual([
       'named getDb import',
+    ]);
+    expect(findGetDbCallSites(requestBoundary, 'request-boundary.ts')).toEqual([
+      ...REQUEST_BOUNDARY_GET_DB_SITES,
     ]);
     expect(findGetDbCallSites(auth, 'auth.ts')).toEqual(['runWithTestContext']);
     expect(auth).not.toMatch(/\brequireCurrentUserRecord\b/);
