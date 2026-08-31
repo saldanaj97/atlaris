@@ -16,7 +16,7 @@ export class MissingRequestDbContextError extends Error {
  *
  * Allowed callers:
  * - `src/lib/api/request-boundary.ts` (`RequestScope.db`)
- * - `src/lib/api/auth.ts` (`runWithTestContext`, `requireCurrentUserRecord`)
+ * - `src/lib/api/auth.ts` (`runWithTestContext` only)
  *
  * Query and feature modules below that seam must take an explicit `dbClient`.
  * - In test mode: returns service-role DB (bypasses RLS for integration tests)

@@ -64,7 +64,7 @@ export async function getAuthUserId(): Promise<string | null> {
 
 /**
  * Resolves the current auth user ID or throws AuthError.
- * Used internally by `withAuth` and `requireCurrentUserRecord`.
+ * Used internally by `withAuth`.
  */
 async function requireUser(): Promise<string> {
   const userId = await getEffectiveAuthUserId({ strict: true });
@@ -124,11 +124,6 @@ async function ensureUserRecord(
   }
 
   return actor;
-}
-
-export async function requireCurrentUserRecord(): Promise<ActorUser> {
-  const userId = await requireUser();
-  return ensureUserRecord(userId, getDb());
 }
 
 /**
