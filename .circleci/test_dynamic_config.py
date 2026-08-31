@@ -52,6 +52,18 @@ def main() -> None:
         ),
         "root": (
             ["README.md"],
+            ({"always-continue": True, "docs-changed": True}, {"shared", "docs"}),
+        ),
+        "nested-markdown": (
+            ["nested/README.md"],
+            ({"always-continue": True, "code-changed": True}, {"shared", "code"}),
+        ),
+        "issue-template": (
+            [".github/ISSUE_TEMPLATE/bug.yml"],
+            ({"always-continue": True, "docs-changed": True}, {"shared", "docs"}),
+        ),
+        "issue-template-file": (
+            [".github/ISSUE_TEMPLATE.md"],
             ({"always-continue": True, "code-changed": True}, {"shared", "code"}),
         ),
         "config": (
