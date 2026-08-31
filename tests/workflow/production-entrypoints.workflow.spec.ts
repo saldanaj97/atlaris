@@ -324,7 +324,6 @@ describe('production Workflow SDK entrypoints', () => {
         userId,
         planId: plan.id,
         moduleId: module.id,
-        userTier: 'pro',
         correlationId: `workflow-module-${module.id}`,
       },
     ]);

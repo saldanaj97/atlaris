@@ -1,12 +1,10 @@
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /** Serializable workflow input for module lesson generation. */
 export type ModuleLessonWorkflowInput = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly userTier: SubscriptionTier;
   readonly modelOverride?: string;
   readonly correlationId: string;
 };

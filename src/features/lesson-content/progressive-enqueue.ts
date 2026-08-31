@@ -1,5 +1,4 @@
 import type { DbClient } from '@/lib/db/types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { fetchModuleTaskMetricsRows } from '@/lib/db/queries/helpers/task-relations-helpers';
@@ -56,7 +55,6 @@ export type EnqueueModuleLessonGenerationsParams = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleIds: readonly string[];
-  readonly userTier: SubscriptionTier;
   readonly correlationId: string;
 };
 
@@ -76,7 +74,6 @@ export async function enqueueModuleLessonGenerations(
         userId: params.userId,
         planId: params.planId,
         moduleId,
-        userTier: params.userTier,
         correlationId: params.correlationId,
       });
       switch (result.kind) {
@@ -123,7 +120,6 @@ type ProgressiveEnqueueContext = {
   readonly dbClient: DbClient;
   readonly userId: string;
   readonly planId: string;
-  readonly userTier: SubscriptionTier;
   readonly correlationId: string;
 };
 

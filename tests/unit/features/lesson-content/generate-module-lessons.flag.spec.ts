@@ -30,7 +30,6 @@ describe('module lesson generation flag boundary', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'free',
         correlationId: createId('corr'),
       },
       { isGenerationEnabled, loadContext, claim, workflowStart },
@@ -68,7 +67,6 @@ describe('module lesson generation flag boundary', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'free',
       },
       {
         resolveGenerationEnabled,
@@ -93,7 +91,6 @@ describe('module lesson generation flag boundary', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'free',
         correlationId: createId('corr'),
       },
       { isGenerationEnabled, loadContext, claim, workflowStart },

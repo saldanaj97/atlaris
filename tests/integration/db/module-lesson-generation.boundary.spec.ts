@@ -1,7 +1,6 @@
 import type { StartModuleLessonGenerationResult } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import type { ModuleLessonWorkflowResult } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
@@ -44,7 +43,6 @@ type StartThenRunParams = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly userTier: SubscriptionTier;
 };
 
 type StartThenRunDeps = {
@@ -130,7 +128,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -189,7 +186,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -242,7 +238,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -302,7 +297,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -342,7 +336,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('in_flight');
@@ -372,7 +365,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('already_ready');
@@ -405,7 +397,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('failed');
@@ -489,7 +480,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('failed');
@@ -529,7 +519,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free' as const,
     };
 
     const [a, b] = await Promise.all([
@@ -562,7 +551,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId: userB,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('not_found');
@@ -602,7 +590,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: laterModule.id,
-      userTier: 'free',
     });
 
     expect(result.kind).not.toBe('locked');
@@ -635,7 +622,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('disabled');
@@ -665,7 +651,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -705,7 +690,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('failed');
@@ -749,7 +733,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -843,7 +826,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('success');
@@ -883,7 +865,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('failed');
@@ -929,7 +910,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('already_ready');
@@ -972,7 +952,6 @@ describe('module lesson generation boundary (integration)', () => {
       userId,
       planId: plan.id,
       moduleId: mod.id,
-      userTier: 'free',
     });
 
     expect(result.kind).toBe('in_flight');

@@ -274,7 +274,6 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
         userId: user.id,
         planId: plan.id,
         moduleId: mod.id,
-        userTier: 'free',
         correlationId: 'plan-cleanup-retry',
       },
       {

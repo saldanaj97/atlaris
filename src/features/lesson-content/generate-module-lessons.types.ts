@@ -2,7 +2,6 @@ import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.type
 import type { AdaptiveTimeoutConfig } from '@/features/ai/types/timeout.types';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ModuleLessonGenerationMetadata } from '@/shared/types/lesson-content.types';
 
 export type GenerateModuleLessonsDeps = {
@@ -35,7 +34,6 @@ export type RunModuleLessonGenerationAfterClaimParams = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly userTier: SubscriptionTier;
   readonly modelOverride?: string | null;
   readonly signal?: AbortSignal;
   readonly timeoutConfig?: Partial<AdaptiveTimeoutConfig>;

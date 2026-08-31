@@ -381,7 +381,6 @@ describe('plan lifecycle lock (integration)', () => {
         userId,
         planId: plan.id,
         moduleId: mod.id,
-        userTier: 'free',
       },
       {
         serverDbClient: db,
@@ -460,7 +459,6 @@ describe('plan lifecycle lock (integration)', () => {
         userId,
         planId: plan.id,
         moduleId: mod.id,
-        userTier: 'free',
       },
       {
         serverDbClient: db,
