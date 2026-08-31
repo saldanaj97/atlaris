@@ -27,9 +27,7 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-import { checkCreationGate } from './creation-pipeline';
-import { type CreationGatePorts } from './creation-pipeline';
-import { createAiPlanWithStrategy } from './origin-strategies/create-ai-plan';
+import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
@@ -193,6 +191,8 @@ function deterministicCompletedAt(startedAt: Date, durationMs: number): string {
   ).toISOString();
 }
 
+const CREATE_LOG_BASE = 'plan.lifecycle.create';
+
 export class PlanLifecycleService {
   private readonly ports: PlanLifecycleServicePorts;
 
@@ -200,43 +200,178 @@ export class PlanLifecycleService {
     this.ports = ports;
   }
 
-  private creationGatePorts(): CreationGatePorts {
-    return {
-      findCappedPlanWithoutModules: (userId: string) =>
-        this.ports.planPersistence.findCappedPlanWithoutModules(userId),
-      resolveUserTier: (userId: string) =>
-        this.ports.quota.resolveUserTier(userId),
-      checkDurationCap: (params) => this.ports.quota.checkDurationCap(params),
-      normalizePlanDuration: (params) =>
-        this.ports.quota.normalizePlanDuration(params),
-    };
-  }
-
   /**
    * Create a new AI-origin learning plan.
    *
-   * Flow: validate → resolve tier → check requested duration cap → normalize duration
-   *       → check normalized duration cap → check attempt cap → prepare input → atomic insert
+   * Flow: check attempt cap → resolve tier → check requested duration cap →
+   *       normalize duration → check normalized duration cap → validate topic →
+   *       atomic insert
    *
    * @returns A discriminated union result — never throws for lifecycle outcomes.
    */
   async createPlan(input: CreateAiPlanInput): Promise<CreatePlanResult> {
-    const gate = await checkCreationGate(this.creationGatePorts(), {
-      userId: input.userId,
-      weeklyHours: input.weeklyHours,
-      startDate: input.startDate ?? null,
-      deadlineDate: input.deadlineDate ?? null,
-      lifecycleLabel: 'create',
-    });
-    if (gate.blocked) {
-      return gate.result;
+    const { userId, weeklyHours } = input;
+    const startDate = input.startDate ?? null;
+    const deadlineDate = input.deadlineDate ?? null;
+
+    const cappedPlanId =
+      await this.ports.planPersistence.findCappedPlanWithoutModules(userId);
+    if (cappedPlanId) {
+      logger.info(
+        { userId, cappedPlanId },
+        `${CREATE_LOG_BASE}: attempt cap exceeded (existing capped plan)`,
+      );
+      return {
+        status: 'attempt_cap_exceeded',
+        reason: `Existing plan ${cappedPlanId} has exhausted generation attempts. Please delete it or retry before creating a new plan.`,
+        cappedPlanId,
+      };
     }
 
-    return createAiPlanWithStrategy(this.ports, {
-      input,
-      tier: gate.tier,
-      duration: gate.duration,
+    const tier = await this.ports.quota.resolveUserTier(userId);
+    logger.info({ userId, tier }, `${CREATE_LOG_BASE}: tier resolved`);
+
+    const requestedWeeks = calculateTotalWeeks({
+      startDate,
+      deadlineDate,
     });
+    const requestedCap = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours,
+      totalWeeks: requestedWeeks,
+    });
+    if (!requestedCap.allowed) {
+      logger.info(
+        { userId, tier },
+        `${CREATE_LOG_BASE}: duration exceeded (requested duration cap)`,
+      );
+      return {
+        status: 'duration_exceeded',
+        reason: requestedCap.reason ?? 'Plan duration exceeds tier limits',
+        upgradeUrl: requestedCap.upgradeUrl,
+      };
+    }
+
+    const duration = this.ports.quota.normalizePlanDuration({
+      tier,
+      weeklyHours,
+      startDate,
+      deadlineDate,
+    });
+
+    const durationCap = this.ports.quota.checkDurationCap({
+      tier,
+      weeklyHours,
+      totalWeeks: duration.totalWeeks,
+    });
+    if (!durationCap.allowed) {
+      logger.info(
+        { userId, tier },
+        `${CREATE_LOG_BASE}: duration exceeded (normalized duration cap)`,
+      );
+      return {
+        status: 'duration_exceeded',
+        reason: durationCap.reason ?? 'Plan duration exceeds tier limits',
+        upgradeUrl: durationCap.upgradeUrl,
+      };
+    }
+
+    if (!input.topic || input.topic.trim().length < 3) {
+      logger.warn({ userId }, `${CREATE_LOG_BASE}: validation failed`);
+      return {
+        status: 'permanent_failure',
+        classification: 'validation',
+        error: new Error(
+          'Topic is required and must be at least 3 characters for AI-origin plans.',
+        ),
+      };
+    }
+
+    const normalizedTopic = input.topic.trim();
+    const planData: PlanInsertData = {
+      topic: normalizedTopic,
+      skillLevel: input.skillLevel,
+      weeklyHours: input.weeklyHours,
+      learningStyle: input.learningStyle,
+      visibility: 'private',
+      origin: 'ai',
+      startDate: duration.startDate,
+      deadlineDate: duration.deadlineDate,
+    };
+    const normalizedInput = {
+      topic: normalizedTopic,
+      skillLevel: input.skillLevel,
+      weeklyHours: input.weeklyHours,
+      learningStyle: input.learningStyle,
+      startDate: duration.startDate,
+      deadlineDate: duration.deadlineDate,
+    };
+
+    const insertResult = await this.ports.planPersistence.atomicInsertPlan(
+      userId,
+      planData,
+    );
+
+    if (insertResult.status === 'duplicate') {
+      logger.info(
+        { userId, existingPlanId: insertResult.existingPlanId },
+        `${CREATE_LOG_BASE}: duplicate detected`,
+      );
+      return {
+        status: 'duplicate_detected',
+        existingPlanId: insertResult.existingPlanId,
+      };
+    }
+
+    if (insertResult.status === 'limit_reached') {
+      logger.info(
+        { userId },
+        `${CREATE_LOG_BASE}: quota rejected (plan limit)`,
+      );
+      return {
+        status: 'quota_rejected',
+        reason: 'Plan limit reached for current subscription tier',
+      };
+    }
+
+    if (insertResult.status === 'free_allowance_used') {
+      logger.info({ userId }, `${CREATE_LOG_BASE}: free plan allowance used`);
+      return {
+        status: 'free_allowance_used',
+        reason:
+          'Your free plan allowance has already been used. Upgrade to create another plan.',
+        upgradeUrl: '/pricing',
+      };
+    }
+
+    if (insertResult.status === 'free_generation_in_progress') {
+      logger.info(
+        { userId },
+        `${CREATE_LOG_BASE}: free initial generation in progress`,
+      );
+      return {
+        status: 'free_generation_in_progress',
+        reason:
+          'A free plan is already being generated. Wait for it to finish or fail before starting another.',
+      };
+    }
+
+    logger.info(
+      { userId, planId: insertResult.id, tier, origin: planData.origin },
+      `${CREATE_LOG_BASE}: plan created`,
+    );
+    countMetric('atlaris.plan.created', 1, {
+      attributes: {
+        origin: planData.origin,
+        tier,
+      },
+    });
+    return {
+      status: 'success',
+      planId: insertResult.id,
+      tier,
+      normalizedInput,
+    };
   }
 
   /**
