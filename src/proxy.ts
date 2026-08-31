@@ -13,6 +13,7 @@ import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
+  shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
 import {
   applyProxySecurityHeaders,
@@ -24,7 +25,7 @@ import {
   resolveWorkflowCallbackAccess,
 } from '@/lib/proxy/workflow-callback-auth';
 import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, type NextFetchEvent } from 'next/server';
 
 type ProxyRequestContext = ReturnType<typeof buildProxyRequestContext>;
 
@@ -77,100 +78,135 @@ const withCorrelationId = (
   });
 };
 
-const proxy = clerkMiddleware(
-  async (auth, request: NextRequest) => {
-    const { pathname } = request.nextUrl;
+type ProtectRequest = () => Promise<NextResponse | undefined>;
 
-    if (isWorkflowCallbackPath(pathname)) {
-      const tokenConfig = readWorkflowCallbackTokenConfig();
-      // Fail-fast on misconfigured token (e.g. whitespace-only); all workflow routes 503 until fixed.
-      if (tokenConfig.status === 'invalid') {
-        return new NextResponse(null, { status: 503 });
-      }
+async function handleProxyRequest(
+  request: NextRequest,
+  protectRequest: ProtectRequest,
+): Promise<NextResponse> {
+  const { pathname } = request.nextUrl;
 
-      const callbackAccess = await resolveWorkflowCallbackAccess(
-        {
-          method: request.method,
-          pathname,
-          searchParams: request.nextUrl.searchParams,
-          headers: request.headers,
-        },
-        {
-          isProduction: appEnv.isProduction,
-          isHostedVercelDeploy: isHostedDeployEnv(process.env),
-          callbackToken: tokenConfig.token,
-        },
-      );
-
-      if (callbackAccess.status === 'allow') {
-        return nextWithProxyContext(request, { skipCsp: true });
-      }
-
-      if (callbackAccess.status === 'misconfigured') {
-        return new NextResponse(null, { status: 503 });
-      }
-
-      return new NextResponse(null, { status: 401 });
+  if (isWorkflowCallbackPath(pathname)) {
+    const tokenConfig = readWorkflowCallbackTokenConfig();
+    // Fail-fast on misconfigured token (e.g. whitespace-only); all workflow routes 503 until fixed.
+    if (tokenConfig.status === 'invalid') {
+      return new NextResponse(null, { status: 503 });
     }
 
-    // Payment/auth provider webhooks bypass all checks including maintenance mode.
-    if (isProviderWebhookRoute(pathname)) {
-      return nextWithProxyContext(request);
-    }
-
-    // Maintenance mode
-    const effectiveMaintenanceMode = await resolveEffectiveMaintenanceMode(
-      appEnv.maintenanceMode,
-      { resolveMaintenanceFlag: maintenanceMode },
-    );
-    const maintenanceTarget = resolveMaintenanceRedirectPath(
-      effectiveMaintenanceMode,
-      pathname,
+    const callbackAccess = await resolveWorkflowCallbackAccess(
+      {
+        method: request.method,
+        pathname,
+        searchParams: request.nextUrl.searchParams,
+        headers: request.headers,
+      },
+      {
+        isProduction: appEnv.isProduction,
+        isHostedVercelDeploy: isHostedDeployEnv(process.env),
+        callbackToken: tokenConfig.token,
+      },
     );
 
-    if (maintenanceTarget !== null) {
-      return withCorrelationId(
-        request,
-        NextResponse.redirect(new URL(maintenanceTarget, request.url)),
-      );
+    if (callbackAccess.status === 'allow') {
+      return nextWithProxyContext(request, { skipCsp: true });
     }
 
-    // Auth protection
-    if (isProtectedRoute(pathname)) {
-      // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
-      // API routes. Clerk does not use this override and would redirect even when
-      // the route handler would accept the dev user. Route handlers still run
-      // withAuth and use getEffectiveAuthUserId.
-      // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
-      // shell and server components match the seeded local identity.
-      if (
-        shouldBypassClerkMiddleware({
-          isDevelopment: appEnv.isDevelopment,
-          devAuthUserId: devAuthEnv.userId,
-          localProductTestingEnabled: localProductTestingEnv.enabled,
-          pathname,
-        })
-      ) {
-        const ctx = buildProxyRequestContext(request);
-        console.debug('[dev_auth_bypass]', {
-          event: 'dev_auth_bypass',
-          userId: devAuthEnv.userId,
-          pathname,
-          correlationId: ctx.correlationId,
-        });
-        return nextWithProxyContext(request, { ctx });
-      }
-
-      await auth.protect();
+    if (callbackAccess.status === 'misconfigured') {
+      return new NextResponse(null, { status: 503 });
     }
 
+    return new NextResponse(null, { status: 401 });
+  }
+
+  // Payment/auth provider webhooks bypass all checks including maintenance mode.
+  if (isProviderWebhookRoute(pathname)) {
     return nextWithProxyContext(request);
-  },
+  }
+
+  // Maintenance mode
+  const effectiveMaintenanceMode = await resolveEffectiveMaintenanceMode(
+    appEnv.maintenanceMode,
+    { resolveMaintenanceFlag: maintenanceMode },
+  );
+  const maintenanceTarget = resolveMaintenanceRedirectPath(
+    effectiveMaintenanceMode,
+    pathname,
+  );
+
+  if (maintenanceTarget !== null) {
+    return withCorrelationId(
+      request,
+      NextResponse.redirect(new URL(maintenanceTarget, request.url)),
+    );
+  }
+
+  // Auth protection
+  if (isProtectedRoute(pathname)) {
+    // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
+    // API routes. Clerk does not use this override and would redirect even when
+    // the route handler would accept the dev user. Route handlers still run
+    // withAuth and use getEffectiveAuthUserId.
+    // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
+    // shell and server components match the seeded local identity.
+    if (
+      shouldBypassClerkMiddleware({
+        isDevelopment: appEnv.isDevelopment,
+        devAuthUserId: devAuthEnv.userId,
+        localProductTestingEnabled: localProductTestingEnv.enabled,
+        pathname,
+      })
+    ) {
+      const ctx = buildProxyRequestContext(request);
+      console.debug('[dev_auth_bypass]', {
+        event: 'dev_auth_bypass',
+        userId: devAuthEnv.userId,
+        pathname,
+        correlationId: ctx.correlationId,
+      });
+      return nextWithProxyContext(request, { ctx });
+    }
+
+    const protectionResponse = await protectRequest();
+    if (protectionResponse) {
+      return withCorrelationId(request, protectionResponse);
+    }
+  }
+
+  return nextWithProxyContext(request);
+}
+
+const clerkProxy = clerkMiddleware(
+  async (auth, request: NextRequest) =>
+    handleProxyRequest(request, async () => {
+      await auth.protect();
+      return undefined;
+    }),
   {
     signInUrl: '/auth/sign-in',
     signUpUrl: '/auth/sign-up',
   },
 );
+
+function proxy(request: NextRequest, event: NextFetchEvent) {
+  if (
+    shouldUseClerkMiddleware({
+      isDevelopment: appEnv.isDevelopment,
+      publishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+      secretKey: process.env.CLERK_SECRET_KEY,
+    })
+  ) {
+    return clerkProxy(request, event);
+  }
+
+  return handleProxyRequest(request, async () => {
+    const signInUrl = new URL('/auth/sign-in', request.url);
+    signInUrl.searchParams.set(
+      'redirect_url',
+      `${request.nextUrl.pathname}${request.nextUrl.search}`,
+    );
+    return NextResponse.redirect(signInUrl);
+  });
+}
 
 export default proxy;
 

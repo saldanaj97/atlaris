@@ -190,16 +190,51 @@ export function ClerkPricingTable({
     ])
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
+        const nextPlans = result.data.map(normalizePlan);
         setLoadFailed(false);
-        setPlans(result.data.map(normalizePlan));
+        setPlans(nextPlans);
         setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
         setSubscriptionUserId(userId ?? null);
+
+        const url = new URL(window.location.href);
+        const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
+        const requestedPlanSlug = url.searchParams.get(
+          CHECKOUT_PLAN_SLUG_PARAM,
+        );
+        const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
+        if (!requestedPlanId && !requestedPlanSlug && !requestedPeriod) return;
+
+        const requestedPlan = nextPlans.find(
+          (plan) =>
+            plan.id === requestedPlanId &&
+            (!requestedPlanSlug || plan.slug === requestedPlanSlug) &&
+            (plan.fee?.amount || planHasAnnual(plan)),
+        );
+        const hasValidPeriod =
+          requestedPeriod === 'month' || requestedPeriod === 'annual';
+        if (requestedPlan && hasValidPeriod) {
+          const nextPeriod =
+            requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
+              ? 'annual'
+              : requestedPlan.fee?.amount
+                ? 'month'
+                : 'annual';
+          setPeriod(nextPeriod);
+          if (isLoaded && userId) {
+            setPendingCheckout(`${requestedPlan.slug}:${nextPeriod}`);
+          }
+          return;
+        }
+
+        // Keep params while signed out so reload/sign-in can preserve intent.
+        if (isLoaded && userId) clearCheckoutParams();
       })
       .catch((error: unknown) => {
         if (cancelled) return;
         setLoadFailed(true);
         if (isLoaded && userId) clearCheckoutParams();
         clientLogger.error('Failed to load Clerk billing plans', {
+          attempt: reloadNonce + 1,
           context: 'pricing-plans',
           message: error instanceof Error ? error.message : String(error),
         });
@@ -209,43 +244,6 @@ export function ClerkPricingTable({
       cancelled = true;
     };
   }, [billing, isLoaded, loaded, reloadNonce, userId]);
-
-  useEffect(() => {
-    if (plans.length === 0) return;
-
-    const url = new URL(window.location.href);
-    const requestedPlanId = url.searchParams.get(CHECKOUT_PLAN_PARAM);
-    const requestedPlanSlug = url.searchParams.get(CHECKOUT_PLAN_SLUG_PARAM);
-    const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
-    if (!requestedPlanId && !requestedPlanSlug && !requestedPeriod) return;
-
-    const requestedPlan = plans.find(
-      (plan) =>
-        plan.id === requestedPlanId &&
-        (!requestedPlanSlug || plan.slug === requestedPlanSlug) &&
-        (plan.fee?.amount || planHasAnnual(plan)),
-    );
-    const hasValidPeriod =
-      requestedPeriod === 'month' || requestedPeriod === 'annual';
-    if (requestedPlan && hasValidPeriod) {
-      const nextPeriod =
-        requestedPeriod === 'annual' && planHasAnnual(requestedPlan)
-          ? 'annual'
-          : requestedPlan.fee?.amount
-            ? 'month'
-            : 'annual';
-      setPeriod(nextPeriod);
-      if (isLoaded && userId && subscriptionUserId === userId) {
-        setPendingCheckout(`${requestedPlan.slug}:${nextPeriod}`);
-      }
-    }
-
-    // Keep params while signed out so reload/sign-in can preserve intent.
-    if (!isLoaded || !userId || subscriptionUserId !== userId) return;
-    if (requestedPlan && hasValidPeriod) return;
-
-    clearCheckoutParams();
-  }, [isLoaded, plans, subscriptionUserId, userId]);
 
   useEffect(() => {
     if (!pendingCheckout) return;

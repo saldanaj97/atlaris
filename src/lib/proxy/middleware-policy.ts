@@ -113,3 +113,13 @@ export function shouldBypassClerkMiddleware(input: {
 
   return devBypass || localProductTestingPageBypass;
 }
+
+export function shouldUseClerkMiddleware(input: {
+  isDevelopment: boolean;
+  publishableKey: string | undefined;
+  secretKey: string | undefined;
+}): boolean {
+  if (!input.isDevelopment) return true;
+
+  return Boolean(input.publishableKey?.trim() && input.secretKey?.trim());
+}
