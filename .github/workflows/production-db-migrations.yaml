@@ -24,9 +24,25 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-dispatch:
+    name: Validate dispatch branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          EXPECTED_REF: refs/heads/main
+        run: |
+          if [[ "$DISPATCH_REF" != "$EXPECTED_REF" ]]; then
+            printf 'Production migrations must be dispatched from %s (got %s).\n' \
+              "$EXPECTED_REF" "$DISPATCH_REF" >&2
+            exit 1
+          fi
+
   deploy:
     name: Push Supabase migrations to production
-    if: github.ref == 'refs/heads/main'
+    needs: validate-dispatch
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     environment: Production – atlaris
 

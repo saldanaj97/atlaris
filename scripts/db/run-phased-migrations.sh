@@ -28,8 +28,70 @@ readonly -a EXPAND_MIGRATIONS=(
 )
 
 # Keep the users INSERT revoke contract-only until service-role provisioning is live.
+readonly -a CONTRACT_MIGRATIONS=(
+  supabase/migrations/0000_wonderful_guardian.sql
+  supabase/migrations/0001_tearful_morlocks.sql
+  supabase/migrations/0002_natural_rocket_racer.sql
+  supabase/migrations/0003_graceful_zemo.sql
+  supabase/migrations/0004_fix_security_policies.sql
+  supabase/migrations/0005_clear_doctor_spectrum.sql
+  supabase/migrations/0006_peaceful_the_santerians.sql
+  supabase/migrations/0007_spooky_puppet_master.sql
+  supabase/migrations/0008_furry_exiles.sql
+  supabase/migrations/0009_empty_menace.sql
+  supabase/migrations/0010_past_captain_universe.sql
+  supabase/migrations/0011_extracted_context_pdf_shape_check.sql
+  supabase/migrations/0012_composite_indexes.sql
+  supabase/migrations/0013_generation_attempts_created_at_plan_id.sql
+  supabase/migrations/0014_user_preferred_ai_model.sql
+  supabase/migrations/0015_generation_status_pending_retry.sql
+  supabase/migrations/0016_generation_attempts_rls_fix.sql
+  supabase/migrations/0017_cancel_at_period_end_drop_plan_generations.sql
+  supabase/migrations/0018_harden_users_update_columns.sql
+  supabase/migrations/0019_snapshot_realignment.sql
+  supabase/migrations/0020_burly_jackal.sql
+  supabase/migrations/0021_majestic_puma.sql
+  supabase/migrations/0022_melodic_satana.sql
+  supabase/migrations/0023_phase3_ai_usage_provider_cost.sql
+  supabase/migrations/0024_massive_scalphunter.sql
+  supabase/migrations/0025_daily_bloodscream.sql
+  supabase/migrations/0026_known_aaron_stack.sql
+  supabase/migrations/0027_windy_agent_zero.sql
+  supabase/migrations/0028_harden_job_queue_service_role_writes.sql
+  supabase/migrations/0029_harden_job_queue_anonymous.sql
+  supabase/migrations/0030_ambiguous_mauler.sql
+  supabase/migrations/0031_grant_rls_role_privileges.sql
+  supabase/migrations/0032_acoustic_lila_cheney.sql
+  supabase/migrations/0033_flippant_nuke.sql
+  supabase/migrations/0034_strong_marten_broadcloak.sql
+  supabase/migrations/20260520194501_harden_authenticated_server_owned_writes.sql
+  supabase/migrations/20260522223908_schedule_retention_cleanup.sql
+  supabase/migrations/20260706222017_remove_legacy_stripe_entitlements.sql
+  supabase/migrations/20260801120000_drop_user_preference_columns.sql
+  supabase/migrations/20260810120100_restore_clerk_webhook_claim_retention.sql
+  supabase/migrations/20260811100000_clear_module_lesson_generation_errors.sql
+  supabase/migrations/20260811100300_scrub_resolved_email_delivery_payloads.sql
+  supabase/migrations/20260811100400_revoke_users_authenticated_insert.sql
+  supabase/migrations/20260811100500_revoke_users_authenticated_insert.sql
+)
 
 declare -A APPLIED_VERSIONS=()
+declare -A EXPAND_SET=()
+declare -A CONTRACT_SET=()
+declare -a PENDING_EXPAND=()
+declare -a PENDING_CONTRACT=()
+
+extract_migration_version() {
+  local migration_path="$1"
+  local base="${migration_path##*/}"
+
+  if [[ ! "$base" =~ ^([0-9]+)_[^/]+\.sql$ ]]; then
+    printf 'Unable to extract migration version from %s\n' "$migration_path" >&2
+    exit 1
+  fi
+
+  printf '%s\n' "${BASH_REMATCH[1]}"
+}
 
 load_applied_versions() {
   local query_output
@@ -67,15 +129,96 @@ attest_effective_privileges() {
   bash scripts/db/attest-effective-privileges.sh "$phase"
 }
 
-apply_expand_migrations() {
+validate_phase_manifest() {
+  local migration
+
+  EXPAND_SET=()
+  CONTRACT_SET=()
+
+  for migration in "${EXPAND_MIGRATIONS[@]}"; do
+    if [[ ! -f "$migration" ]]; then
+      printf 'EXPAND_MIGRATIONS references missing file: %s\n' "$migration" >&2
+      exit 1
+    fi
+    if [[ -n "${EXPAND_SET[$migration]:-}" ]]; then
+      printf 'Duplicate EXPAND_MIGRATIONS entry: %s\n' "$migration" >&2
+      exit 1
+    fi
+    EXPAND_SET["$migration"]=1
+  done
+
+  for migration in "${CONTRACT_MIGRATIONS[@]}"; do
+    if [[ ! -f "$migration" ]]; then
+      printf 'CONTRACT_MIGRATIONS references missing file: %s\n' "$migration" >&2
+      exit 1
+    fi
+    if [[ -n "${CONTRACT_SET[$migration]:-}" ]]; then
+      printf 'Duplicate CONTRACT_MIGRATIONS entry: %s\n' "$migration" >&2
+      exit 1
+    fi
+    if [[ -n "${EXPAND_SET[$migration]:-}" ]]; then
+      printf 'Migration is classified as both expand and contract: %s\n' "$migration" >&2
+      exit 1
+    fi
+    CONTRACT_SET["$migration"]=1
+  done
+}
+
+collect_pending_migrations() {
+  local migration
+  local version
+  local in_expand
+  local in_contract
+
+  PENDING_EXPAND=()
+  PENDING_CONTRACT=()
+
+  shopt -s nullglob
+  for migration in supabase/migrations/*.sql; do
+    version="$(extract_migration_version "$migration")"
+    if [[ -n "${APPLIED_VERSIONS[$version]:-}" ]]; then
+      continue
+    fi
+
+    in_expand=0
+    in_contract=0
+    if [[ -n "${EXPAND_SET[$migration]:-}" ]]; then
+      in_expand=1
+    fi
+    if [[ -n "${CONTRACT_SET[$migration]:-}" ]]; then
+      in_contract=1
+    fi
+
+    if (( in_expand + in_contract == 0 )); then
+      printf 'Unclassified pending migration: %s\n' "$migration" >&2
+      exit 1
+    fi
+    if (( in_expand + in_contract != 1 )); then
+      printf 'Migration is classified as both expand and contract: %s\n' "$migration" >&2
+      exit 1
+    fi
+
+    if (( in_expand )); then
+      PENDING_EXPAND+=("$migration")
+    else
+      PENDING_CONTRACT+=("$migration")
+    fi
+  done
+  shopt -u nullglob
+}
+
+apply_phase_workspace() {
   local migration
   local migration_workspace
   local migrations_dir
   local version
   local -a matches
+  local -a pending=("$@")
 
-  load_applied_versions
-  require_archive_recovery_if_drop_already_ran
+  if [[ ! -f supabase/config.toml ]]; then
+    printf 'Missing supabase/config.toml\n' >&2
+    exit 1
+  fi
 
   migration_workspace="$(mktemp -d)"
   trap "rm -rf -- '$migration_workspace'" EXIT
@@ -93,14 +236,22 @@ apply_expand_migrations() {
     fi
     cp "${matches[0]}" "$migrations_dir/"
   done
+  shopt -u nullglob
 
-  # ponytail: keep the predeploy set explicit until migrations carry phase metadata.
-  for migration in "${EXPAND_MIGRATIONS[@]}"; do
+  for migration in "${pending[@]}"; do
     cp "$migration" "$migrations_dir/"
   done
 
   supabase link --project-ref "$SUPABASE_PROJECT_ID" --workdir "$migration_workspace"
   supabase migration up --linked --include-all --yes --workdir "$migration_workspace"
+}
+
+apply_expand_migrations() {
+  load_applied_versions
+  require_archive_recovery_if_drop_already_ran
+  validate_phase_manifest
+  collect_pending_migrations
+  apply_phase_workspace "${PENDING_EXPAND[@]}"
 }
 
 apply_contract_migrations() {
@@ -116,9 +267,16 @@ apply_contract_migrations() {
     exit 1
   fi
 
-  # db push applies the contract-only cleanup repair after any out-of-order legacy
-  # migration that recreates cleanup_retained_db_rows without claim retention.
-  supabase db push --include-all
+  validate_phase_manifest
+  collect_pending_migrations
+
+  if (( ${#PENDING_EXPAND[@]} > 0 )); then
+    printf 'Contract migrations cannot run while expand migrations are still pending:\n' >&2
+    printf '%s\n' "${PENDING_EXPAND[@]}" >&2
+    exit 1
+  fi
+
+  apply_phase_workspace "${PENDING_CONTRACT[@]}"
 }
 
 case "${MIGRATION_PHASE:-}" in

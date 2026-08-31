@@ -93,25 +93,27 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ### 7) `.github/workflows/staging-db-migrations.yaml`
 
 - Trigger: manual dispatch from `develop`
-- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
+- Purpose: apply exhaustive expand/contract manifests from `scripts/db/run-phased-migrations.sh`, with contract only after deploy health confirmation
 - Behavior:
-  - Skips any run whose ref is not `refs/heads/develop`
-  - Checks out `develop`
+  - `validate-dispatch` has no environment and fails (does not skip) when the ref is not `refs/heads/develop`
+  - `deploy` needs that job, owns the `staging` environment, and checks out the dispatch SHA (`${{ github.sha }}`)
   - Links the Supabase CLI to `STAGING_PROJECT_ID`
-  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
-  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
+  - Each phase builds a temporary workspace of applied history plus only that phase's pending files, then runs `supabase migration up --linked --include-all --yes --workdir`
+  - `expand` applies only pending `EXPAND_MIGRATIONS`
+  - `contract` requires `post-deploy-health-verified`, applies only pending `CONTRACT_MIGRATIONS`, and fails if any expand migration is still pending
   - After each successful phase, `scripts/db/run-phased-migrations.sh` runs read-only privilege attestation for that phase (`bash scripts/db/attest-effective-privileges.sh <expand|contract>`). Failures block the workflow. Details: [client-usage.md](../database/client-usage.md#privilege-model-and-attestation) and [deploy.md](../development/deploy.md).
 
 ### 8) `.github/workflows/production-db-migrations.yaml`
 
 - Trigger: manual dispatch from `main`
-- Purpose: apply the explicit safe expand set, then apply remaining contract migrations only after deploy health confirmation
+- Purpose: apply exhaustive expand/contract manifests from `scripts/db/run-phased-migrations.sh`, with contract only after deploy health confirmation
 - Behavior:
-  - Skips any run whose ref is not `refs/heads/main`
-  - Checks out `main`
+  - `validate-dispatch` has no environment and fails (does not skip) when the ref is not `refs/heads/main`
+  - `deploy` needs that job, owns the `Production – atlaris` environment, and checks out the dispatch SHA (`${{ github.sha }}`)
   - Links the Supabase CLI to `PRODUCTION_PROJECT_ID`
-  - `expand` applies and records only the workflow's safe migration list atomically through the Supabase migration runner
-  - `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
+  - Each phase builds a temporary workspace of applied history plus only that phase's pending files, then runs `supabase migration up --linked --include-all --yes --workdir`
+  - `expand` applies only pending `EXPAND_MIGRATIONS`
+  - `contract` requires `post-deploy-health-verified`, applies only pending `CONTRACT_MIGRATIONS`, and fails if any expand migration is still pending
   - Same post-phase privilege attestation as staging (phase-scoped script + fail-closed).
 
 ---
@@ -198,15 +200,15 @@ Keep the GitHub project connection, automatic Production-domain assignment, and 
 
 - Confirm the workflow is using the intended project secret (`STAGING_PROJECT_ID` for `develop`, `PRODUCTION_PROJECT_ID` for `main`).
 - Confirm `SUPABASE_ACCESS_TOKEN` and the matching database password secret are set.
-- Confirm the selected branch is `develop` for staging or `main` for production. Other refs are skipped before checkout.
-- For `contract`, confirm rollout health and the Stripe archive counts before entering `post-deploy-health-verified`.
-- Inspect the Supabase migration runner logs for the failing migration file.
+- Confirm the selected branch is `develop` for staging or `main` for production. Other refs fail `validate-dispatch` before deploy starts.
+- For `contract`, confirm rollout health and the Stripe archive counts before entering `post-deploy-health-verified`. Contract also fails if any expand migration is still pending.
+- Inspect the `supabase migration up` logs for the failing migration file.
 
 ### Production deploy blocked
 
 - Confirm staged Production preflight (clean `main` SHA, Staging acceptance, expand migrations) in [staged-production-deployment.md](./staged-production-deployment.md)
 - Check `production-db-migrations.yaml` if schema expand/contract is part of the release
-- If migrations ran, inspect the `supabase db push` logs
+- If migrations ran, inspect the `supabase migration up` logs
 - For CLI auth issues, verify local `vercel` login / link or optional `VERCEL_TOKEN` / `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`
 
 ### Dependency remediation did not publish a PR

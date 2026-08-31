@@ -3,7 +3,7 @@ name: Vercel deployment lanes (proof phase)
 on:
   pull_request:
     branches: [develop, main]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review, edited]
   push:
     branches: [develop, main]
   workflow_dispatch:
@@ -15,8 +15,12 @@ on:
         options:
           - preview
           - staging
-      ref:
-        description: Commit SHA or ref (Staging must resolve to current develop)
+      commit_sha:
+        description: Exact 40-character commit SHA to deploy
+        required: true
+        type: string
+      git_branch:
+        description: Branch that must contain commit_sha (Preview metadata; Staging must be develop)
         required: true
         type: string
       force_deploy:
@@ -42,13 +46,15 @@ jobs:
       fork_guard: ${{ steps.decision.outputs.fork_guard }}
       secret_deploy_eligible: ${{ steps.decision.outputs.secret_deploy_eligible }}
       staging_auto_eligible: ${{ steps.decision.outputs.staging_auto_eligible }}
+      decision_error: ${{ steps.decision.outputs.decision_error }}
+      decision_error_reason: ${{ steps.decision.outputs.decision_error_reason }}
     steps:
       - name: Check out candidate source
         id: checkout
         continue-on-error: true
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && inputs.ref || github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && format('refs/pull/{0}/head', github.event.pull_request.number) || github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
 
@@ -58,6 +64,7 @@ jobs:
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -65,9 +72,13 @@ jobs:
           HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
           PR_AUTHOR: ${{ github.event.pull_request.user.login }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_DRAFT: ${{ github.event.pull_request.draft }}
+          PR_BASE_REF_FROM: ${{ github.event.changes.base.ref.from }}
+          PR_BASE_SHA_FROM: ${{ github.event.changes.base.sha.from }}
           PUSH_BEFORE: ${{ github.event.before }}
           PUSH_AFTER: ${{ github.event.after }}
-          MANUAL_REF: ${{ inputs.ref }}
+          MANUAL_COMMIT_SHA: ${{ inputs.commit_sha }}
+          MANUAL_GIT_BRANCH: ${{ inputs.git_branch }}
           MANUAL_LANE: ${{ inputs.lane }}
           FORCE_DEPLOY: ${{ inputs.force_deploy }}
           CHECKOUT_OUTCOME: ${{ steps.checkout.outcome }}
@@ -83,12 +94,30 @@ jobs:
           fork_guard='not-applicable'
           secret_deploy_eligible=false
           staging_auto_eligible=false
+          decision_error=false
+          decision_error_reason=''
           changed_files=''
+          checkout_sha=''
           zero_sha='0000000000000000000000000000000000000000'
+          pr_base_changed=false
 
           is_sha() {
             [[ "${1:-}" =~ ^[0-9a-f]{40}$ && "${1}" != "${zero_sha}" ]]
           }
+
+          set_error() {
+            decision_error=true
+            decision_error_reason="${1}"
+            deploy=false
+            reason="${1}"
+            secret_deploy_eligible=false
+            staging_auto_eligible=false
+          }
+
+          if [[ "${EVENT_NAME:-}" == 'pull_request' && "${EVENT_ACTION:-}" == 'edited' &&
+            ( -n "${PR_BASE_REF_FROM:-}" || -n "${PR_BASE_SHA_FROM:-}" ) ]]; then
+            pr_base_changed=true
+          fi
 
           if [[ "${EVENT_NAME:-}" == 'pull_request' ]]; then
             same_repository_pr='false'
@@ -135,65 +164,120 @@ jobs:
             reason="${reason_value}"
           }
 
+          manual_request_trusted() {
+            [[ "${GITHUB_REF:-}" == 'refs/heads/develop' ]] || return 1
+            is_sha "${MANUAL_COMMIT_SHA:-}" || return 1
+            is_sha "${checkout_sha}" || return 1
+            [[ "${checkout_sha}" == "${MANUAL_COMMIT_SHA}" ]] || return 1
+            git check-ref-format --branch -- "${MANUAL_GIT_BRANCH:-}" >/dev/null 2>&1 || return 1
+            git fetch --no-tags origin \
+              "refs/heads/${MANUAL_GIT_BRANCH}:refs/remotes/origin/${MANUAL_GIT_BRANCH}" \
+              >/dev/null 2>&1 || return 1
+            git merge-base --is-ancestor \
+              "${MANUAL_COMMIT_SHA}" \
+              "refs/remotes/origin/${MANUAL_GIT_BRANCH}" || return 1
+            case "${MANUAL_LANE:-}" in
+              preview)
+                return 0
+                ;;
+              staging)
+                [[ "${MANUAL_GIT_BRANCH}" == 'develop' ]] || return 1
+                [[ "${MANUAL_COMMIT_SHA}" == "${GITHUB_SHA:-}" ]] || return 1
+                ;;
+              *)
+                return 1
+                ;;
+            esac
+          }
+
           force_args=()
           if [[ "${FORCE_DEPLOY:-false}" == 'true' ]]; then
             force_args=(--force-deploy)
           fi
 
-          if [[ "${CHECKOUT_OUTCOME:-}" == 'success' ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+          if [[ "${EVENT_NAME:-}" == 'pull_request' && "${EVENT_ACTION:-}" == 'edited' &&
+            "${pr_base_changed}" != 'true' ]]; then
+            deploy=false
+            reason='non-base PR edit'
+            if is_sha "${HEAD_SHA:-}"; then
+              source_sha="${HEAD_SHA}"
+              candidate_sha="${HEAD_SHA}"
+            fi
+          elif [[ "${CHECKOUT_OUTCOME:-}" == 'success' ]] && git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
             checkout_sha="$(git rev-parse HEAD 2>/dev/null || true)"
 
             case "${EVENT_NAME:-}" in
               pull_request)
-                if is_sha "${HEAD_SHA:-}" && [[ "${checkout_sha}" == "${HEAD_SHA}" ]] &&
-                  is_sha "${BASE_SHA:-}" &&
-                  [[ "${BASE_REF:-}" == 'develop' || "${BASE_REF:-}" == 'main' ]] &&
-                  git fetch --no-tags origin \
-                    "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" >/dev/null 2>&1 &&
-                  git cat-file -e "${BASE_SHA}^{commit}" >/dev/null 2>&1 &&
-                  merge_base="$(git merge-base "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null)" &&
-                  is_sha "${merge_base}" &&
-                  git diff --no-renames --name-only "${merge_base}...${HEAD_SHA}" >"${changed_files}"; then
+                if ! is_sha "${checkout_sha}"; then
+                  set_error 'unable to produce valid source/candidate'
+                elif ! is_sha "${HEAD_SHA:-}"; then
+                  set_error 'unable to produce valid source/candidate'
+                elif [[ "${checkout_sha}" != "${HEAD_SHA}" ]]; then
+                  set_error 'event SHA mismatch'
+                elif ! is_sha "${BASE_SHA:-}" ||
+                  [[ "${BASE_REF:-}" != 'develop' && "${BASE_REF:-}" != 'main' ]] ||
+                  ! git fetch --no-tags origin \
+                    "refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}" >/dev/null 2>&1 ||
+                  ! git cat-file -e "${BASE_SHA}^{commit}" >/dev/null 2>&1 ||
+                  ! merge_base="$(git merge-base "${BASE_SHA}" "${HEAD_SHA}" 2>/dev/null)" ||
+                  ! is_sha "${merge_base}" ||
+                  ! git diff --no-renames --name-only "${merge_base}...${HEAD_SHA}" >"${changed_files}"; then
+                  set_error 'trusted base fetch/resolve failure'
+                else
                   source_sha="${HEAD_SHA}"
                   candidate_sha="${HEAD_SHA}"
                   classify || true
-                elif is_sha "${HEAD_SHA:-}" && [[ "${checkout_sha}" == "${HEAD_SHA}" ]]; then
-                  source_sha="${HEAD_SHA}"
-                  candidate_sha="${HEAD_SHA}"
                 fi
                 ;;
               push)
-                if is_sha "${PUSH_BEFORE:-}" && is_sha "${PUSH_AFTER:-}" &&
-                  [[ "${checkout_sha}" == "${PUSH_AFTER}" ]] &&
-                  git cat-file -e "${PUSH_BEFORE}^{commit}" >/dev/null 2>&1 &&
-                  git cat-file -e "${PUSH_AFTER}^{commit}" >/dev/null 2>&1 &&
-                  git diff --no-renames --name-only "${PUSH_BEFORE}..${PUSH_AFTER}" >"${changed_files}"; then
+                if ! is_sha "${checkout_sha}"; then
+                  set_error 'unable to produce valid source/candidate'
+                elif ! is_sha "${PUSH_AFTER:-}"; then
+                  set_error 'unable to produce valid source/candidate'
+                elif [[ "${checkout_sha}" != "${PUSH_AFTER}" ]]; then
+                  set_error 'event SHA mismatch'
+                else
                   source_sha="${PUSH_AFTER}"
                   candidate_sha="${PUSH_AFTER}"
-                  classify || true
-                elif is_sha "${PUSH_AFTER:-}" && [[ "${checkout_sha}" == "${PUSH_AFTER}" ]]; then
-                  source_sha="${PUSH_AFTER}"
-                  candidate_sha="${PUSH_AFTER}"
+                  if is_sha "${PUSH_BEFORE:-}" &&
+                    git cat-file -e "${PUSH_BEFORE}^{commit}" >/dev/null 2>&1 &&
+                    git cat-file -e "${PUSH_AFTER}^{commit}" >/dev/null 2>&1 &&
+                    git diff --no-renames --name-only "${PUSH_BEFORE}..${PUSH_AFTER}" >"${changed_files}"; then
+                    classify || true
+                  else
+                    classify || true
+                  fi
                 fi
                 ;;
               workflow_dispatch)
                 manual_ref_trusted='false'
-                if [[ -n "${MANUAL_REF:-}" ]] && is_sha "${checkout_sha}"; then
-                  source_sha="${checkout_sha}"
-                  candidate_sha="${checkout_sha}"
-                  if git fetch --no-tags origin \
-                    '+refs/heads/*:refs/remotes/origin/*' >/dev/null 2>&1 &&
-                    [[ -n "$(git for-each-ref --contains="${checkout_sha}" \
-                      --format='%(refname)' refs/remotes/origin/ | sed -n '1p')" ]]; then
-                    manual_ref_trusted='true'
-                  fi
+                if manual_request_trusted; then
+                  manual_ref_trusted='true'
+                  source_sha="${MANUAL_COMMIT_SHA}"
+                  candidate_sha="${MANUAL_COMMIT_SHA}"
                   classify || true
+                else
+                  set_error 'stale or invalid manual request'
                 fi
                 ;;
+              *)
+                set_error 'unable to produce valid source/candidate'
+                ;;
             esac
+          else
+            if [[ "${EVENT_NAME:-}" == 'workflow_dispatch' ]]; then
+              set_error 'stale or invalid manual request'
+            else
+              set_error 'automated checkout failure'
+            fi
           fi
 
-          if [[ "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/develop' &&
+          if [[ "${pr_base_changed}" == 'true' ]]; then
+            set_error 'PR base changed'
+          fi
+
+          if [[ "${decision_error}" != 'true' &&
+            "${EVENT_NAME:-}" == 'push' && "${GITHUB_REF:-}" == 'refs/heads/develop' &&
             "${deploy}" == 'true' &&
             "${reason}" != 'unknown diff' && -n "${changed_files}" && -f "${changed_files}" ]] &&
             git fetch --no-tags origin \
@@ -206,42 +290,47 @@ jobs:
             staging_auto_eligible=true
           fi
 
-          case "${EVENT_NAME:-}" in
-            pull_request)
-              if [[ "${fork_guard}" == 'eligible' ]] &&
-                is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
-                secret_deploy_eligible=true
-              fi
-              ;;
-            push)
-              if is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
-                secret_deploy_eligible=true
-              fi
-              ;;
-            workflow_dispatch)
-              manual_lane_eligible=false
-              if [[ "${MANUAL_LANE:-}" == 'preview' ]]; then
-                manual_lane_eligible=true
-              elif [[ "${MANUAL_LANE:-}" == 'staging' &&
-                "${GITHUB_REF:-}" == 'refs/heads/develop' &&
-                "${candidate_sha}" == "${GITHUB_SHA:-}" ]]; then
-                manual_lane_eligible=true
-              fi
-              if [[ "${manual_lane_eligible}" == 'true' ]] &&
-                [[ "${manual_ref_trusted}" == 'true' ]] &&
-                is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
-                secret_deploy_eligible=true
-              else
-                fork_guard='manual-lane-or-ref-ineligible'
-              fi
-              ;;
-          esac
+          if [[ "${decision_error}" != 'true' ]]; then
+            case "${EVENT_NAME:-}" in
+              pull_request)
+                if [[ "${fork_guard}" == 'eligible' ]] &&
+                  [[ "${PR_DRAFT:-false}" != 'true' ]] &&
+                  is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                  secret_deploy_eligible=true
+                fi
+                ;;
+              push)
+                if is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                  secret_deploy_eligible=true
+                fi
+                ;;
+              workflow_dispatch)
+                manual_lane_eligible=false
+                if [[ "${MANUAL_LANE:-}" == 'preview' ]]; then
+                  manual_lane_eligible=true
+                elif [[ "${MANUAL_LANE:-}" == 'staging' &&
+                  "${GITHUB_REF:-}" == 'refs/heads/develop' &&
+                  "${MANUAL_GIT_BRANCH:-}" == 'develop' &&
+                  "${candidate_sha}" == "${GITHUB_SHA:-}" ]]; then
+                  manual_lane_eligible=true
+                fi
+                if [[ "${manual_lane_eligible}" == 'true' ]] &&
+                  [[ "${manual_ref_trusted}" == 'true' ]] &&
+                  is_sha "${source_sha}" && is_sha "${candidate_sha}"; then
+                  secret_deploy_eligible=true
+                else
+                  fork_guard='manual-lane-or-ref-ineligible'
+                  set_error 'stale or invalid manual request'
+                fi
+                ;;
+            esac
+          fi
 
           summary_ref="${GITHUB_REF:-unknown}"
           if [[ "${EVENT_NAME:-}" == 'pull_request' ]]; then
             summary_ref="${BASE_REF:-unknown} <- ${HEAD_REF:-unknown}"
           elif [[ "${EVENT_NAME:-}" == 'workflow_dispatch' ]]; then
-            summary_ref="${MANUAL_REF:-unknown}"
+            summary_ref="${MANUAL_GIT_BRANCH:-unknown}@${MANUAL_COMMIT_SHA:-unknown}"
           fi
           summary_ref="${summary_ref//$'\r'/ }"
           summary_ref="${summary_ref//$'\n'/ }"
@@ -260,6 +349,8 @@ jobs:
             printf 'fork_guard=%s\n' "${fork_guard}"
             printf 'secret_deploy_eligible=%s\n' "${secret_deploy_eligible}"
             printf 'staging_auto_eligible=%s\n' "${staging_auto_eligible}"
+            printf 'decision_error=%s\n' "${decision_error}"
+            printf 'decision_error_reason=%s\n' "${decision_error_reason}"
           } >>"${GITHUB_OUTPUT}"
 
           {
@@ -276,12 +367,23 @@ jobs:
             echo "| Candidate SHA | ${candidate_sha:-unknown} |"
             echo "| Deploy | ${deploy} |"
             echo "| Reason | ${reason} |"
+            echo "| Decision error | ${decision_error} |"
+            echo "| Decision error reason | ${decision_error_reason:-none} |"
             echo "| Same-repository PR | ${same_repository_pr} |"
             echo "| Trusted manual ref | ${manual_ref_trusted} |"
             echo "| Fork guard | ${fork_guard} |"
             echo "| Secret-backed deploy eligible | ${secret_deploy_eligible} |"
             echo "| Automatic Staging eligible | ${staging_auto_eligible} |"
           } >>"${GITHUB_STEP_SUMMARY}"
+
+      - name: Fail on decision error
+        if: always() && steps.decision.outputs.decision_error == 'true'
+        env:
+          DECISION_ERROR_REASON: ${{ steps.decision.outputs.decision_error_reason }}
+        run: |
+          set -euo pipefail
+          echo "::error::${DECISION_ERROR_REASON}"
+          exit 1
 
   preview:
     name: Preview deployment
@@ -296,7 +398,7 @@ jobs:
       )
     runs-on: ubuntu-latest
     concurrency:
-      group: vercel-preview-${{ github.event.pull_request.number || inputs.ref || github.run_id }}
+      group: vercel-preview-${{ github.event.pull_request.number || inputs.commit_sha || github.run_id }}
       cancel-in-progress: false
     timeout-minutes: 40
     outputs:
@@ -310,7 +412,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Set up Node.js
@@ -331,10 +433,20 @@ jobs:
           VERCEL_GIT_REPO_OWNER: ${{ github.repository_owner }}
           VERCEL_GIT_REPO_SLUG: ${{ github.event.repository.name }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          VERCEL_GIT_COMMIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+          GITHUB_COMMIT_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.git_branch }}
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --no-wait --yes)"
+          deployment_url="$(
+            vercel deploy --no-wait --yes \
+              --meta githubDeployment=1 \
+              --meta "githubOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubCommitRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitRef=${GITHUB_COMMIT_REF}" \
+              --meta "githubCommitSha=${EXPECTED_SHA}"
+          )"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -342,9 +454,10 @@ jobs:
         id: inspect
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          EXPECTED_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.ref }}
+          EXPECTED_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || inputs.git_branch }}
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
@@ -355,6 +468,14 @@ jobs:
           source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
           test "${source_sha}" = "${EXPECTED_SHA}"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --header "Accept: application/json" \
+            --output deployment-api.json \
+            "https://api.vercel.com/v13/deployments/${deployment_id}?teamId=${VERCEL_ORG_ID}"
+          jq -e --arg sha "${EXPECTED_SHA}" --arg ref "${EXPECTED_REF}" \
+            '.meta.githubDeployment == "1" and .meta.githubCommitSha == $sha and .meta.githubCommitRef == $ref' \
+            deployment-api.json >/dev/null
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
           {
@@ -370,7 +491,7 @@ jobs:
             echo "| Requested ref | ${EXPECTED_REF} |"
             echo "| Aliases | ${aliases} |"
             echo
-            echo 'This is a custom-CI proof deployment. Native Git remains enabled during the transition and may create a duplicate Preview deployment.'
+            echo 'This is a custom-CI Preview deployment.'
           } >>"${GITHUB_STEP_SUMMARY}"
 
   staging:
@@ -413,7 +534,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
 
       - name: Verify successful same-SHA Staging expand
@@ -459,14 +580,17 @@ jobs:
           set -euo pipefail
 
           for attempt in $(seq 1 80); do
-            check_run="$(
-              gh api \
-                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?per_page=100" \
-                --jq '[.check_runs[] | select(
-                  .app.slug == "circleci-checks" and
-                  (.name | startswith("ci-trunk - "))
-                )] | sort_by(.started_at) | last // {}' \
+            check_run_pages="$(
+              gh api --paginate --slurp \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?filter=all&per_page=100" \
                 2>/dev/null || true
+            )"
+            [[ -n "${check_run_pages}" ]] || check_run_pages='[]'
+            check_run="$(
+              jq -c '[.[].check_runs[] | select(
+                .app.slug == "circleci-checks" and
+                (.name | startswith("ci-trunk - "))
+              )] | max_by(.id) // {}' <<<"${check_run_pages}" 2>/dev/null || true
             )"
             [[ -n "${check_run}" ]] || check_run='{}'
             status="$(jq -r '.status // "missing"' <<<"${check_run}")"
@@ -481,17 +605,16 @@ jobs:
               exit 1
             fi
 
+            if [[ "${status}" == 'queued' || "${status}" == 'in_progress' ]]; then
+              echo "CircleCI ci-trunk is ${status} for ${EXPECTED_SHA}."
+            fi
+
             if [[ "${attempt}" -eq 80 ]]; then
               echo "Timed out waiting for CircleCI ci-trunk on ${EXPECTED_SHA}." >&2
               exit 1
             fi
             sleep 15
           done
-
-      - name: Install pnpm 11.9.0
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v4.0.0
-        with:
-          version: 11.9.0
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
@@ -501,41 +624,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@53.2.0 >/dev/null
 
-      - name: Link Vercel project
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          set -euo pipefail
-          vercel link --yes \
-            --team "${VERCEL_ORG_ID}" \
-            --project "${VERCEL_PROJECT_ID}" \
-            >/dev/null
-
-      - name: Pull develop Preview environment
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          set -euo pipefail
-          vercel pull --yes \
-            --environment=preview \
-            --git-branch=develop \
-            >/dev/null
-
-      - name: Build develop Preview artifact
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-          VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          VERCEL_GIT_COMMIT_REF: develop
-        run: |
-          set -euo pipefail
-          vercel build --target=preview --yes >/dev/null
-
       - name: Deploy develop Preview artifact
         id: deploy
         env:
@@ -543,10 +631,20 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          VERCEL_GIT_COMMIT_REF: develop
+          GITHUB_COMMIT_REF: develop
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prebuilt --no-wait --yes)"
+          deployment_url="$(
+            vercel deploy --no-wait --yes \
+              --meta githubDeployment=1 \
+              --meta "githubOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubCommitRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitRef=${GITHUB_COMMIT_REF}" \
+              --meta "githubCommitSha=${EXPECTED_SHA}"
+          )"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -555,9 +653,9 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          EXPECTED_REF: develop
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
@@ -568,6 +666,14 @@ jobs:
           source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
           test "${source_sha}" = "${EXPECTED_SHA}"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --header "Accept: application/json" \
+            --output deployment-api.json \
+            "https://api.vercel.com/v13/deployments/${deployment_id}?teamId=${VERCEL_ORG_ID}"
+          jq -e --arg sha "${EXPECTED_SHA}" --arg ref "${EXPECTED_REF}" \
+            '.meta.githubDeployment == "1" and .meta.githubCommitSha == $sha and .meta.githubCommitRef == $ref' \
+            deployment-api.json >/dev/null
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" >>"${GITHUB_OUTPUT}"
           {
@@ -584,7 +690,6 @@ jobs:
             echo "| Aliases | ${aliases} |"
             echo
             echo 'Hobby fallback: this lane uses the default Vercel Preview environment scoped to develop, never Production or a Production domain.'
-            echo 'Native Git remains enabled during the transition and may create a duplicate Preview deployment.'
           } >>"${GITHUB_STEP_SUMMARY}"
 
   production-candidate:
@@ -681,14 +786,17 @@ jobs:
           set -euo pipefail
 
           for attempt in $(seq 1 80); do
-            check_run="$(
-              gh api \
-                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?per_page=100" \
-                --jq '[.check_runs[] | select(
-                  .app.slug == "circleci-checks" and
-                  (.name | startswith("ci-trunk - "))
-                )] | sort_by(.started_at) | last // {}' \
+            check_run_pages="$(
+              gh api --paginate --slurp \
+                "repos/${GITHUB_REPOSITORY}/commits/${EXPECTED_SHA}/check-runs?filter=all&per_page=100" \
                 2>/dev/null || true
+            )"
+            [[ -n "${check_run_pages}" ]] || check_run_pages='[]'
+            check_run="$(
+              jq -c '[.[].check_runs[] | select(
+                .app.slug == "circleci-checks" and
+                (.name | startswith("ci-trunk - "))
+              )] | max_by(.id) // {}' <<<"${check_run_pages}" 2>/dev/null || true
             )"
             [[ -n "${check_run}" ]] || check_run='{}'
             status="$(jq -r '.status // "missing"' <<<"${check_run}")"
@@ -703,17 +811,16 @@ jobs:
               exit 1
             fi
 
+            if [[ "${status}" == 'queued' || "${status}" == 'in_progress' ]]; then
+              echo "CircleCI ci-trunk is ${status} for ${EXPECTED_SHA}."
+            fi
+
             if [[ "${attempt}" -eq 80 ]]; then
               echo "Timed out waiting for CircleCI ci-trunk on ${EXPECTED_SHA}." >&2
               exit 1
             fi
             sleep 15
           done
-
-      - name: Install pnpm 11.9.0
-        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v4.0.0
-        with:
-          version: 11.9.0
 
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v6.0.0
@@ -723,18 +830,6 @@ jobs:
       - name: Install Vercel CLI
         run: npm install --global vercel@53.2.0 >/dev/null
 
-      - name: Link Vercel project
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          set -euo pipefail
-          vercel link --yes \
-            --team "${VERCEL_ORG_ID}" \
-            --project "${VERCEL_PROJECT_ID}" \
-            >/dev/null
-
       - name: Deploy gated Production candidate
         id: deploy
         env:
@@ -742,10 +837,20 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           VERCEL_GIT_COMMIT_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
-          VERCEL_GIT_COMMIT_REF: main
+          GITHUB_COMMIT_REF: main
+          EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
         run: |
           set -euo pipefail
-          deployment_url="$(vercel deploy --prod --no-wait --yes)"
+          deployment_url="$(
+            vercel deploy --prod --no-wait --yes \
+              --meta githubDeployment=1 \
+              --meta "githubOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitOrg=${GITHUB_REPOSITORY_OWNER}" \
+              --meta "githubCommitRepo=${GITHUB_REPOSITORY#*/}" \
+              --meta "githubCommitRef=${GITHUB_COMMIT_REF}" \
+              --meta "githubCommitSha=${EXPECTED_SHA}"
+          )"
           test -n "${deployment_url}"
           printf 'url=%s\n' "${deployment_url}" >>"${GITHUB_OUTPUT}"
 
@@ -754,9 +859,9 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
           DEPLOYMENT_URL: ${{ steps.deploy.outputs.url }}
           EXPECTED_SHA: ${{ needs.deployment-decision.outputs.candidate_sha }}
+          EXPECTED_REF: main
         run: |
           set -euo pipefail
           vercel inspect "${DEPLOYMENT_URL}" --wait --timeout 25m --format=json >inspection.json
@@ -767,6 +872,14 @@ jobs:
           source_sha="$(git rev-parse HEAD)"
           aliases="$(jq -cer '(.alias // .aliases // []) | select(type == "array")' inspection.json)"
           test "${source_sha}" = "${EXPECTED_SHA}"
+          curl --fail --silent --show-error \
+            --header "Authorization: Bearer ${VERCEL_TOKEN}" \
+            --header "Accept: application/json" \
+            --output deployment-api.json \
+            "https://api.vercel.com/v13/deployments/${deployment_id}?teamId=${VERCEL_ORG_ID}"
+          jq -e --arg sha "${EXPECTED_SHA}" --arg ref "${EXPECTED_REF}" \
+            '.meta.githubDeployment == "1" and .meta.githubCommitSha == $sha and .meta.githubCommitRef == $ref' \
+            deployment-api.json >/dev/null
           printf 'id=%s\nurl=%s\nstatus=%s\ntarget=%s\nsha=%s\naliases=%s\n' \
             "${deployment_id}" "${deployment_url}" "${ready_state}" "${target}" "${source_sha}" "${aliases}" >>"${GITHUB_OUTPUT}"
           {
