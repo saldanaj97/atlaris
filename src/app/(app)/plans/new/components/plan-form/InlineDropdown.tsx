@@ -6,7 +6,7 @@ import type { CSSProperties } from 'react';
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
-import { useId, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useId, useState } from 'react';
 
 type DropdownVariant = 'primary';
 
@@ -63,20 +63,22 @@ export function InlineDropdown<TValue extends string>({
   const selectedOption = options.find((opt) => opt.value === value);
   const isPlaceholder = !selectedOption;
   const displayLabel = selectedOption?.label ?? placeholder ?? '';
-  const sizerRef = useRef<HTMLDivElement>(null);
   const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
 
-  useLayoutEffect(() => {
-    const nextWidth = sizerRef.current?.offsetWidth;
+  const measureTrigger = useCallback(
+    (label: HTMLSpanElement | null) => {
+      if (!label) return;
 
-    if (!nextWidth) {
-      return;
-    }
+      label.dataset.label = displayLabel;
+      const nextWidth = label.parentElement?.offsetWidth;
+      if (!nextWidth) return;
 
-    setTriggerWidth((currentWidth) =>
-      currentWidth === nextWidth ? currentWidth : nextWidth,
-    );
-  }, [displayLabel]);
+      setTriggerWidth((currentWidth) =>
+        currentWidth === nextWidth ? currentWidth : nextWidth,
+      );
+    },
+    [displayLabel],
+  );
 
   return (
     <div
@@ -90,13 +92,12 @@ export function InlineDropdown<TValue extends string>({
       }
     >
       <div
-        ref={sizerRef}
         aria-hidden='true'
         className='pointer-events-none invisible absolute inline-flex min-h-10 items-center justify-between gap-1.5 rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap'
       >
         {icon}
         <span
-          data-label={displayLabel}
+          ref={measureTrigger}
           className='after:content-[attr(data-label)]'
         />
         <ChevronDown className='size-3.5' />

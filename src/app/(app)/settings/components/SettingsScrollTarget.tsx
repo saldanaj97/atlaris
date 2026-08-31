@@ -26,6 +26,8 @@ export function SettingsScrollTarget(): ReactElement | null {
 
   useEffect(() => {
     const scrollFromHash = (): void => {
+      if (window.location.pathname !== pathname) return;
+
       const sectionId = parseSectionHash(window.location.hash);
       if (sectionId) {
         scrollToSection(sectionId);

@@ -110,6 +110,7 @@ export function useTaskStatusBatcher({
   const flushActionRef = useRef(flushAction);
   const scopedTaskIdsRef = useRef(scopedTaskIds);
   const scopeKey = scopedTaskIdsKey(scopedTaskIds);
+  const previousScopeKeyRef = useRef(scopeKey);
 
   useLayoutEffect(() => {
     flushActionRef.current = flushAction;
@@ -249,6 +250,9 @@ export function useTaskStatusBatcher({
   };
 
   useEffect(() => {
+    if (previousScopeKeyRef.current === scopeKey) return;
+    previousScopeKeyRef.current = scopeKey;
+
     // Scope change (navigation/regen): drop stale pending instead of flushing under new scope.
     dropOutOfScopePending();
   }, [dropOutOfScopePending, scopeKey]);
