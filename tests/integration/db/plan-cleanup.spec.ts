@@ -1,5 +1,8 @@
+import type { ModuleLessonGenerationWorkResult } from '@/features/lesson-content/generate-module-lessons.types';
+
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
+import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import {
   cleanupAbandonedModuleLessonGenerations,
   cleanupOrphanedAttempts,
@@ -8,6 +11,7 @@ import {
   ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS,
   STUCK_PLAN_THRESHOLD_MS,
 } from '@/features/plans/cleanup';
+import { loadModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import {
   generationAttempts,
   jobQueue,
@@ -252,22 +256,59 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
         throw new Error('retry provider failure');
       }),
     };
-    await expect(
-      generateModuleLessons(
-        {
-          dbClient: db,
-          userId: user.id,
-          planId: plan.id,
-          moduleId: mod.id,
-          userTier: 'free',
+    let capturedLoad: Awaited<
+      ReturnType<typeof loadModuleLessonGenerationContext>
+    > = null;
+    let workResult: ModuleLessonGenerationWorkResult | undefined;
+    const startResult = await startModuleLessonGeneration(
+      {
+        dbClient: db,
+        userId: user.id,
+        planId: plan.id,
+        moduleId: mod.id,
+        userTier: 'free',
+        correlationId: 'plan-cleanup-retry',
+      },
+      {
+        dbClient: db,
+        isGenerationEnabled: async () => true,
+        loadContext: async (dbClient, planId, moduleId, userId) => {
+          capturedLoad = await loadModuleLessonGenerationContext(
+            dbClient,
+            planId,
+            moduleId,
+            userId,
+          );
+          return capturedLoad;
         },
-        {
-          provider,
-          serverDbClient: db,
-          resolveGenerationEnabled: async () => true,
+        workflowStart: async () => {
+          if (!capturedLoad) {
+            workResult = { kind: 'failed' };
+          } else {
+            workResult = await runModuleLessonGenerationWork(
+              {
+                load: capturedLoad,
+                userId: user.id,
+                planId: plan.id,
+                moduleId: mod.id,
+                userTier: 'free',
+              },
+              {
+                provider,
+                serverDbClient: db,
+                resolveGenerationEnabled: async () => true,
+              },
+            );
+          }
+          return {
+            runId: 'inline-test-run',
+            returnValue: Promise.resolve(workResult),
+          };
         },
-      ),
-    ).resolves.toEqual({ kind: 'failed' });
+      },
+    );
+    expect(startResult.kind).toBe('workflow_started');
+    expect(workResult).toEqual({ kind: 'failed' });
     expect(provider.generateModuleLessonBatch).toHaveBeenCalledOnce();
 
     const [afterRetry] = await db

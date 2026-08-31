@@ -1,4 +1,5 @@
 import type { GenerateModuleLessonsResult } from '@/features/lesson-content/generate-module-lessons.types';
+import type { ModuleLessonWorkflowInput } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -42,7 +43,13 @@ export type StartModuleLessonGenerationDeps = {
     userId: string,
   ) => Promise<ModuleLessonGenerationContext | null>;
   readonly revert?: typeof revertModuleLessonGeneratingToNotGenerated;
-  readonly workflowStart?: typeof start;
+  readonly workflowStart?: (
+    workflowFn: typeof moduleLessonGenerationWorkflow,
+    args: [ModuleLessonWorkflowInput],
+  ) => Promise<{
+    readonly runId: string;
+    readonly returnValue: Promise<unknown>;
+  }>;
   readonly workflowFn?: typeof moduleLessonGenerationWorkflow;
 };
 

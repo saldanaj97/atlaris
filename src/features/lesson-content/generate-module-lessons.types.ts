@@ -5,19 +5,6 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ModuleLessonGenerationMetadata } from '@/shared/types/lesson-content.types';
 
-export type GenerateModuleLessonsParams = {
-  readonly dbClient: DbClient;
-  readonly userId: string;
-  readonly planId: string;
-  readonly moduleId: string;
-  readonly userTier: SubscriptionTier;
-  readonly modelOverride?: string | null;
-  readonly signal?: AbortSignal;
-  readonly timeoutConfig?: Partial<AdaptiveTimeoutConfig>;
-  readonly now?: () => Date;
-  readonly generationMetadata?: ModuleLessonGenerationMetadata;
-};
-
 export type GenerateModuleLessonsDeps = {
   readonly provider?: Pick<
     AiPlanGenerationProvider,

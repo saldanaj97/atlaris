@@ -1,11 +1,21 @@
+import type { GenerateModuleLessonsDeps } from '@/features/lesson-content/generate-module-lessons.types';
+import type { StartModuleLessonGenerationResult } from '@/features/lesson-content/start-module-lesson-generation-workflow';
+import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
 import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
-import { markModuleLessonProviderStarted } from '@/lib/db/queries/module-lesson-generation';
+import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
+import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
+import {
+  loadModuleLessonGenerationContext,
+  markModuleLessonProviderStarted,
+} from '@/lib/db/queries/module-lesson-generation';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { MAX_MODULE_LESSON_BATCH_TASKS } from '@supabase/schema/constants';
 import { db } from '@supabase/service-role';
+import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -16,6 +26,70 @@ import {
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+type StartThenRunParams = {
+  readonly dbClient: DbClient;
+  readonly userId: string;
+  readonly planId: string;
+  readonly moduleId: string;
+  readonly userTier: SubscriptionTier;
+};
+
+async function startThenRunModuleLessonGeneration(
+  params: StartThenRunParams,
+  deps: GenerateModuleLessonsDeps = {},
+): Promise<StartModuleLessonGenerationResult> {
+  let capturedLoad: Awaited<
+    ReturnType<typeof loadModuleLessonGenerationContext>
+  > = null;
+  let workResult: StartModuleLessonGenerationResult | undefined;
+
+  const startResult = await startModuleLessonGeneration(
+    {
+      ...params,
+      correlationId: createId('corr'),
+    },
+    {
+      dbClient: deps.serverDbClient,
+      isGenerationEnabled: deps.resolveGenerationEnabled,
+      loadContext: async (dbClient, planId, moduleId, userId) => {
+        capturedLoad = await loadModuleLessonGenerationContext(
+          dbClient,
+          planId,
+          moduleId,
+          userId,
+        );
+        return capturedLoad;
+      },
+      workflowStart: async () => {
+        if (!capturedLoad) {
+          workResult = { kind: 'failed' };
+        } else {
+          workResult = await runModuleLessonGenerationWork(
+            {
+              load: capturedLoad,
+              userId: params.userId,
+              planId: params.planId,
+              moduleId: params.moduleId,
+              userTier: params.userTier,
+            },
+            deps,
+          );
+        }
+        return {
+          runId: 'inline-test-run',
+          returnValue: Promise.resolve(workResult),
+        };
+      },
+    },
+  );
+
+  if (startResult.kind !== 'workflow_started') {
+    return startResult;
+  }
+
+  return workResult ?? { kind: 'failed' };
+}
 
 describe('module lesson generation boundary (integration)', () => {
   afterEach(async () => {
@@ -50,7 +124,7 @@ describe('module lesson generation boundary (integration)', () => {
       .from(aiUsageEvents)
       .where(eq(aiUsageEvents.userId, userId));
 
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -117,7 +191,7 @@ describe('module lesson generation boundary (integration)', () => {
     );
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -178,7 +252,7 @@ describe('module lesson generation boundary (integration)', () => {
     );
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -246,7 +320,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -294,7 +368,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -332,7 +406,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -375,7 +449,7 @@ describe('module lesson generation boundary (integration)', () => {
       scenario: 'invalid_response',
     });
 
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -461,7 +535,7 @@ describe('module lesson generation boundary (integration)', () => {
       }),
     };
 
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -513,8 +587,8 @@ describe('module lesson generation boundary (integration)', () => {
     };
 
     const [a, b] = await Promise.all([
-      generateModuleLessons({ dbClient: dbA, ...params }),
-      generateModuleLessons({ dbClient: dbB, ...params }),
+      startThenRunModuleLessonGeneration({ dbClient: dbA, ...params }),
+      startThenRunModuleLessonGeneration({ dbClient: dbB, ...params }),
     ]);
 
     const kinds = [a.kind, b.kind].sort();
@@ -537,7 +611,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDbB = await createRlsDbForUser(authB);
-    const result = await generateModuleLessons({
+    const result = await startThenRunModuleLessonGeneration({
       dbClient: rlsDbB,
       userId: userB,
       planId: plan.id,
@@ -577,7 +651,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: laterModule.id, order: 1 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -618,7 +692,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -656,7 +730,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -708,7 +782,7 @@ describe('module lesson generation boundary (integration)', () => {
         throw new Error('provider failed');
       }),
     };
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -756,7 +830,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -858,7 +932,7 @@ describe('module lesson generation boundary (integration)', () => {
     await createTestTask({ moduleId: mod.id });
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -908,7 +982,7 @@ describe('module lesson generation boundary (integration)', () => {
       scenario: 'invalid_response',
     });
 
-    const result = await generateModuleLessons(
+    const result = await startThenRunModuleLessonGeneration(
       {
         dbClient: rlsDb,
         userId,
@@ -957,7 +1031,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons({
+    const result = await startThenRunModuleLessonGeneration({
       dbClient: rlsDb,
       userId,
       planId: plan.id,
@@ -1000,7 +1074,7 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(modules.id, mod.id));
 
     const rlsDb = await createRlsDbForUser(authUserId);
-    const result = await generateModuleLessons({
+    const result = await startThenRunModuleLessonGeneration({
       dbClient: rlsDb,
       userId,
       planId: plan.id,
