@@ -40,14 +40,15 @@ JCS-52 owns one stable, deployment-specific Vercel check. It must operate on the
 
 Do not use CircleCI PR/trunk jobs as the Deployment Check: they validate code, not the generated deployment URL. Do not run `vercel promote` as the normal release path.
 
-Until JCS-52 and the custom lanes are proven:
+Until JCS-52 is operational:
 
-- native Vercel Git deployments remain enabled;
+- custom GitHub Actions owns Preview and Staging;
+- native Git is disabled for every non-main branch (`"**": false`) and remains enabled only for `main`;
 - Production candidates must remain unaliased;
 - this repository change is not proof of cutover; and
 - no public domain movement is authorized.
 
-The workflow's Production job requires both `VERCEL_NATIVE_GIT_DISABLED=true` and `VERCEL_DEPLOYMENT_CHECKS_READY=true`. Leave them unset during proof so a `main` push cannot race the native Git Production deployment or bypass a missing release gate. Prove the `--skip-domain` candidate flow from an exact trusted `main` checkout without pushing `main`; after proof and explicit approval, disable native Git deployment creation and set both variables.
+The workflow's Production job requires both `VERCEL_NATIVE_GIT_DISABLED=true` and `VERCEL_DEPLOYMENT_CHECKS_READY=true`. Leave `VERCEL_NATIVE_GIT_DISABLED` unset or `false` while native `main` is active so the custom Production lane stays blocked. Prove the `--skip-domain` candidate flow from an exact trusted `main` checkout without pushing `main`; after JCS-52 is operational, change `git.deploymentEnabled` to `false` globally, then set both variables.
 
 ## Prerequisites
 

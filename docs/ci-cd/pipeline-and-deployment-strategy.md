@@ -185,12 +185,12 @@ These credentials link custom CI to the Vercel project; Production application v
 
 ### GitHub repository variables
 
-- `VERCEL_NATIVE_GIT_DISABLED`: leave unset during proof. Set to `true` only after the custom lanes are proven, native Git deployment creation is disabled in Vercel, and Juan approves cutover. The Production-candidate job remains skipped otherwise.
+- `VERCEL_NATIVE_GIT_DISABLED`: leave unset or `false` while native `main` remains enabled and the custom Production lane stays blocked. Set to `true` only after JCS-52 is operational and `git.deploymentEnabled` is `false` globally. The Production-candidate job remains skipped otherwise.
 - `VERCEL_DEPLOYMENT_CHECKS_READY`: leave unset until JCS-52's required Deployment Checks are configured and proven. The Production-candidate job remains skipped otherwise.
 
 ### Vercel settings
 
-Keep the GitHub project connection, automatic Production-domain assignment, and Deployment Protection enabled. During proof, native Git deployment creation remains enabled and may create duplicate Preview deployments. Prove an unaliased candidate from an exact trusted `main` checkout with `--skip-domain` without pushing `main`. After JCS-52 checks are proven, explicitly approve `git.deploymentEnabled: false`, set both readiness variables, and let the custom-CI Production deployment rely on those checks for automatic aliasing. Do not disconnect the repository because Deployment Checks require the integration.
+Keep the GitHub project connection, automatic Production-domain assignment, and Deployment Protection enabled. Custom GitHub Actions now owns Preview and Staging; `vercel.json` disables native Git for every non-main branch (`"**": false`) while native `main` remains `true`. Prove an unaliased candidate from an exact trusted `main` checkout with `--skip-domain` without pushing `main`. After JCS-52 is operational, change `git.deploymentEnabled` to `false` globally, then set both readiness variables so the custom-CI Production deployment relies on those checks for automatic aliasing. Do not disconnect the repository because Deployment Checks require the integration.
 
 ---
 

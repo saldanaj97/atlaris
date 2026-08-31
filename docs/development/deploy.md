@@ -17,7 +17,7 @@ Full safety model, proof/cutover boundary, abandon/rollback, and observation req
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
 
-On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Native Git deployment creation remains enabled until the custom lanes and JCS-52 are proven and Juan explicitly approves cutover. The workflow's Production job remains skipped until both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are `true` after that cutover.
+On the Hobby plan, Staging uses Vercel Preview configuration scoped to `develop`; Custom Environments are not available. Custom GitHub Actions owns Preview and Staging, while native Git is disabled for non-`main` branches and remains enabled for `main`. The workflow's Production job remains skipped until JCS-52 is operational, native Git is disabled globally, and both `VERCEL_NATIVE_GIT_DISABLED` and `VERCEL_DEPLOYMENT_CHECKS_READY` are `true`.
 
 ## PDF Removal Cutover
 
