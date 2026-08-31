@@ -60,7 +60,7 @@ Pipeline and deployment strategy.
 | File | Description |
 |------|-------------|
 | [pipeline-and-deployment-strategy.md](./ci-cd/pipeline-and-deployment-strategy.md) | Preview / staging / staged Production / live Production pipeline |
-| [staged-production-deployment.md](./ci-cd/staged-production-deployment.md) | Guarded staged Production lane (`--skip-domain` → promote) |
+| [staged-production-deployment.md](./ci-cd/staged-production-deployment.md) | Trusted staged Production proof and JCS-52 Deployment Checks |
 
 ## `database/`
 

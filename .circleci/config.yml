@@ -20,18 +20,20 @@ orbs:
 workflows:
   setup-pr:
     when:
-      equal: [pull_request, << pipeline.event.name >>]
+      and:
+        - equal: [pull_request, << pipeline.event.name >>]
+        - equal: [false, << pipeline.event.github.pull_request.draft >>]
     jobs:
       - path-filtering/filter:
           name: select-config
           tag: "3.12"
           base-revision: << pipeline.event.github.pull_request.base.ref >>
           config-path: .circleci/no-updates.yml
-          # Only docs/** is docs-only; root and CI/config changes run code CI.
+          # Docs tree, root Markdown, and issue templates are cheap docs CI.
           mapping: &config-mapping |
             .* always-continue true .circleci/shared-config.yml
-            docs/.* docs-changed true .circleci/docs-config.yml
-            (?!docs/).* code-changed true .circleci/code-config.yml
+            (^docs/.*|^[^/]+\.md$|^\.github/ISSUE_TEMPLATE/.*) docs-changed true .circleci/docs-config.yml
+            (?!(docs/|[^/]+\.md$|\.github/ISSUE_TEMPLATE/)).* code-changed true .circleci/code-config.yml
 
   setup-main:
     when:

@@ -38,13 +38,13 @@ We use two protected branches that serve as anchors for all development:
                          WHAT RUNS WHEN
     ┌─────────────────────────────────────────────────────────────┐
     │                                                             │
-    │   Open PR ───────> CI PR checks + preview deploy              │
+    │   Open PR ───────> CI PR checks + Vercel Preview deploy       │
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
     │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
-    │        ──> Staged Production (`vercel --prod --skip-domain`) │
-    │        ──> verify protected URL ──> `vercel promote` (live)  │
+    │        ──> native Production deployment                     │
+    │        ──> JCS-52 Deployment Checks ──> alias gate          │
     │        ──> DB migrations (contract)                          │
     │                                                             │
     └─────────────────────────────────────────────────────────────┘
@@ -68,18 +68,18 @@ We use two protected branches that serve as anchors for all development:
 | Environment | Branch Source | URL | Purpose |
 | ----------- | ------------- | --- | ------- |
 | **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
-| **Preview** | PR branch | Vercel preview | PR-level testing |
+| **Preview** | Branch pushes and PRs | Vercel preview | Branch-level testing; docs-only commits are skipped by the Ignored Build Step |
 | **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
-| **Staged Production** | Exact `main` SHA | Protected generated Vercel URL | Production build + Production config **without** moving public domains |
-| **Live Production** | Promoted staged deployment | Production URL | Live users after explicit promote |
+| **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains |
+| **Live Production** | `main` | Production URL | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating |
 
 ### Deployment Mechanism
 
-- **Preview**: Vercel native preview deployments on non-`main` branches.
+- **Preview**: Vercel's Git integration creates a Preview deployment for branch pushes and PRs; the dashboard Ignored Build Step skips docs-only commits.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
-- **Staging**: operators dispatch `.github/workflows/staging-db-migrations.yaml` from `develop` in explicit expand and contract phases; Vercel hosts the staging app.
-- **Staged Production**: operators create a Production-targeted deployment with `vercel --prod --skip-domain`, verify the protected generated URL, then promote with `vercel promote`. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
-- **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after promote + health) phases.
+- **Staging**: the `develop` branch's Vercel Preview deployment is the hosted staging surface; use non-Production services and dispatch migration phases when needed.
+- **Staged Production**: before JCS-52, operators run a post-push unaliased rehearsal from a clean checkout after the exact `main` SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+- **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
 
 ---
 
@@ -89,7 +89,7 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
-**Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR)
+**Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR); draft PRs wait until marked ready for review
 
 **What it runs:**
 
@@ -123,11 +123,11 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 
 **What it does:**
 
-- Skips any run whose ref is not `refs/heads/develop`
-- Checks out `develop`
+- `validate-dispatch` fails (does not skip) when the ref is not `refs/heads/develop`
+- Checks out the dispatch SHA (`${{ github.sha }}`)
 - Links the Supabase CLI to the project in `STAGING_PROJECT_ID`
-- `expand` applies and records only the explicit safe migration list
-- `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
+- `expand` applies only pending `EXPAND_MIGRATIONS` in a phase-specific workspace via `supabase migration up --linked --include-all --yes`
+- `contract` requires `post-deploy-health-verified`, applies only pending `CONTRACT_MIGRATIONS` the same way, and fails if any expand migration is still pending
 
 **Purpose:** Preserve expand/deploy/contract ordering for the staging database.
 
@@ -137,11 +137,11 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 
 **What it does:**
 
-- Skips any run whose ref is not `refs/heads/main`
-- Checks out `main`
+- `validate-dispatch` fails (does not skip) when the ref is not `refs/heads/main`
+- Checks out the dispatch SHA (`${{ github.sha }}`)
 - Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
-- `expand` applies and records only the explicit safe migration list
-- `contract` requires `post-deploy-health-verified`, then runs `supabase db push --include-all`
+- `expand` applies only pending `EXPAND_MIGRATIONS` in a phase-specific workspace via `supabase migration up --linked --include-all --yes`
+- `contract` requires `post-deploy-health-verified`, applies only pending `CONTRACT_MIGRATIONS` the same way, and fails if any expand migration is still pending
 
 **Purpose:** Preserve expand/deploy/contract ordering for the production database.
 
@@ -173,22 +173,22 @@ git commit -m "feat: ..."
 ### Step 4: PR review process
 
 1. CI runs automatically (CircleCI `ci-pr`)
-2. Vercel preview deploy runs automatically
+2. Vercel creates a Preview deployment; docs-only commits are skipped by the Ignored Build Step
 3. Address feedback and merge
 
 ### Step 5: Merge to `develop`
 
 1. Full CI runs (CircleCI `ci-trunk`)
-2. An operator dispatches `staging-db-migrations.yaml` phase `expand`
-3. Vercel deploys staging; after health verification, the operator dispatches phase `contract`
+2. Vercel creates the `develop` Preview as the hosted staging surface
+3. An operator dispatches `staging-db-migrations.yaml` phases as needed, with `contract` only after health verification
 
 ### Step 6: Release to production (`develop` -> `main`)
 
 1. Merge release PR
 2. Full CI runs (CircleCI `ci-trunk`; `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path files)
 3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
-4. An operator runs the **Staged Production** lane (`vercel --prod --skip-domain` → verify protected URL → `vercel promote`). See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md). There is no automatic Production app deploy on merge to `main`.
-5. After promote + health/archive checks, the operator dispatches phase `contract`
+4. Vercel's Git integration creates the Production deployment for the `main` push. Before JCS-52 is available, use the post-push unaliased rehearsal from a clean checkout after that SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+5. After alias assignment + health/archive checks, the operator dispatches phase `contract`
 
 ---
 
@@ -197,8 +197,8 @@ git commit -m "feat: ..."
 | Stage          | What happens                                                           |
 | -------------- | ---------------------------------------------------------------------- |
 | **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | Operator dispatches `expand`, deploys, verifies health, then dispatches confirmed `contract` on `develop` |
-| **Production** | Operator dispatches `expand`, runs Staged Production (`--skip-domain` → verify → promote), then dispatches confirmed `contract` on `main` |
+| **Staging**    | Migration changes: operator dispatches `expand`, verifies the native `develop` Preview, then dispatches confirmed `contract` |
+| **Production** | Operator dispatches `expand`, verifies the native `main` release is healthy, then dispatches confirmed `contract` on `main`; after JCS-52 is operational, its native Deployment Checks gate automatic aliasing, while native `main` traffic is independent before then |
 
 Migration-related changes include:
 
@@ -217,7 +217,7 @@ Target `develop` unless it is a true production hotfix.
 
 ### What if a migration workflow fails?
 
-Check the GitHub Actions logs for `supabase db push`, confirm the run used the intended environment and branch (`develop` for staging, `main` for production), and fix the failing migration SQL in a follow-up commit.
+Check the GitHub Actions logs for `supabase migration up`, confirm the run used the intended environment and branch (`develop` for staging, `main` for production; wrong refs fail `validate-dispatch`), and fix the failing migration SQL in a follow-up commit.
 
 ### How do I test against a real DB before merge?
 

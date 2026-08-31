@@ -1,4 +1,5 @@
 name: Deploy Migrations to Production
+run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}
 
 on:
   workflow_dispatch:
@@ -23,22 +24,34 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate-dispatch:
+    name: Validate dispatch branch
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require main
+        env:
+          DISPATCH_REF: ${{ github.ref }}
+          EXPECTED_REF: refs/heads/main
+        run: |
+          if [[ "$DISPATCH_REF" != "$EXPECTED_REF" ]]; then
+            printf 'Production migrations must be dispatched from %s (got %s).\n' \
+              "$EXPECTED_REF" "$DISPATCH_REF" >&2
+            exit 1
+          fi
+
   deploy:
     name: Push Supabase migrations to production
-    if: github.ref == 'refs/heads/main'
+    needs: validate-dispatch
+    timeout-minutes: 45
     runs-on: ubuntu-latest
     environment: Production – atlaris
-
-    env:
-      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-      SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
-      SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
 
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: main
+          ref: ${{ github.sha }}
+          persist-credentials: false
 
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
@@ -49,10 +62,17 @@ jobs:
         run: supabase --version
 
       - name: Link production project
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
 
       - name: Apply selected migration phase
         env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
+          SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
           MIGRATION_PHASE: ${{ inputs.phase }}
           CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}
         shell: bash

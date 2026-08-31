@@ -2,18 +2,22 @@
 
 ## Staged Production release lane
 
-For releasing the Production **application** binary without immediately moving public domains, use the guarded staged Production lane:
+After the exact `main` SHA exists on `origin/main`, run a post-push, unaliased rehearsal of the Production **application** binary from a clean checkout. This rehearsal does not govern native Production alias/domain assignment:
 
 1. Preflight an exact clean `main` SHA.
-2. `vercel --prod --skip-domain`
-3. Narrow smoke on the protected generated URL.
-4. Explicit human `vercel promote <deployment-id-or-url>` after verification.
+2. Run the trusted local `--prod --skip-domain` proof; do not pull Production variables into the checkout or promote the rehearsal.
+3. Run narrow exact-candidate smoke on the protected generated URL.
+4. Do not promote the proof candidate.
 
-Full safety model, Deployment Checks decision (manual-only v1), abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. The GitHub `Production – atlaris` environment remains for migration and worker workflows only.
 
-**Unpromoted does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
+Full safety model, proof/cutover boundary, abandon/rollback, and observation requirements: [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
+
+**Unreleased does not mean isolated from Production data or services.** Staged Production uses Production-scoped configuration.
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
+
+On the Hobby plan, the `develop` branch's Vercel Preview deployment serves as the hosted staging surface with non-Production configuration. Native Vercel Git handles Preview and Production deployments; configure the dashboard Ignored Build Step to skip docs-only commits. No Vercel credentials are stored in GitHub.
 
 ## PDF Removal Cutover
 
@@ -45,7 +49,7 @@ Do not run the contract migration before the new application release is fully ro
 
 ## Authenticated users INSERT revoke cutover
 
-Migration `20260811100400_revoke_users_authenticated_insert` is intentionally contract-only. The expand runner applies the explicit predeploy set; the confirmed contract phase runs `supabase db push --include-all` after the application rollout. Older binaries provision a first user through the authenticated database role and still need table-level `INSERT`; the new release provisions through the service-role boundary.
+Migration `20260811100400_revoke_users_authenticated_insert` is intentionally contract-only (`CONTRACT_MIGRATIONS`). The expand phase applies only pending expand files; the confirmed contract phase applies only pending contract files. Both use a phase-specific temporary workspace (applied history plus that phase's pending files) and `supabase migration up --linked --include-all --yes`. Contract refuses to run while any expand migration is still pending. Older binaries provision a first user through the authenticated database role and still need table-level `INSERT`; the new release provisions through the service-role boundary.
 
 Required order:
 
@@ -78,8 +82,8 @@ The phased migration runner refuses to continue when the drop version is already
 
 After deploying a release that includes new Supabase migrations:
 
-1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`).
-2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not run `supabase db push --include-all` directly; the confirmed contract phase owns out-of-order/destructive application.
+1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). For staging, verify the native `develop` Preview is healthy; migration phases remain operator-dispatched.
+2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not apply hosted migrations with a broad root `supabase db push --include-all`. `scripts/db/run-phased-migrations.sh` classifies every local `supabase/migrations/*.sql` into exhaustive `EXPAND_MIGRATIONS` or `CONTRACT_MIGRATIONS` arrays; contract applies only pending contract files in a temporary workspace via `supabase migration up --linked --include-all --yes` and fails if any expand migration is still pending.
 3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 
 ```bash

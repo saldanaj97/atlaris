@@ -159,7 +159,7 @@ supabase db reset
 
 ## Hosted Supabase migrations
 
-Hosted migrations are applied from GitHub Actions with `supabase link --project-ref ...` followed by `supabase db push --include-all` (see `docs/ci-cd/pipeline-and-deployment-strategy.md`).
+Hosted migrations are applied from GitHub Actions by `scripts/db/run-phased-migrations.sh`: exhaustive `EXPAND_MIGRATIONS` / `CONTRACT_MIGRATIONS` manifests, a phase-specific temporary workspace of applied history plus that phase's pending files, and `supabase migration up --linked --include-all --yes`. Contract refuses to run while expand migrations are still pending (see `docs/ci-cd/pipeline-and-deployment-strategy.md`).
 
 Hosted deployment and migration workflows are separate from the local-dev stack. Do not point local reset/seed commands at hosted databases.
 

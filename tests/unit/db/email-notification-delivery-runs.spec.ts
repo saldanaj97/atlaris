@@ -72,11 +72,17 @@ describe('advanceEmailNotificationDeliveryRun', () => {
   });
 
   it('deploys the generated historical migration with include-all', () => {
-    expect(
-      readFileSync(
-        resolve(TEST_DIR, '../../../scripts/db/run-phased-migrations.sh'),
-        'utf8',
-      ),
-    ).toContain('supabase db push --include-all');
+    const script = readFileSync(
+      resolve(TEST_DIR, '../../../scripts/db/run-phased-migrations.sh'),
+      'utf8',
+    );
+
+    expect(script).toContain(
+      'supabase/migrations/20260710151930_create_email_notification_delivery_runs.sql',
+    );
+    expect(script).toContain(
+      'supabase migration up --linked --include-all --yes --workdir',
+    );
+    expect(script).not.toContain('supabase db push');
   });
 });
