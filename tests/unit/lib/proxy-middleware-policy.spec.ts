@@ -3,6 +3,7 @@ import {
   isProtectedRoute,
   resolveMaintenanceRedirectPath,
   shouldBypassClerkMiddleware,
+  shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
 import { describe, expect, it } from 'vitest';
 
@@ -176,4 +177,42 @@ describe('middleware policy', () => {
       }),
     ).toBe(false);
   });
+
+  it.each([
+    {
+      expected: false,
+      isDevelopment: true,
+      publishableKey: undefined,
+      secretKey: undefined,
+    },
+    {
+      expected: false,
+      isDevelopment: true,
+      publishableKey: 'pk_test_example',
+      secretKey: undefined,
+    },
+    {
+      expected: true,
+      isDevelopment: true,
+      publishableKey: 'pk_test_example',
+      secretKey: 'sk_test_example',
+    },
+    {
+      expected: true,
+      isDevelopment: false,
+      publishableKey: undefined,
+      secretKey: undefined,
+    },
+  ])(
+    'shouldUseClerkMiddleware returns $expected for development=$isDevelopment with the supplied keys',
+    ({ expected, isDevelopment, publishableKey, secretKey }) => {
+      expect(
+        shouldUseClerkMiddleware({
+          isDevelopment,
+          publishableKey,
+          secretKey,
+        }),
+      ).toBe(expected);
+    },
+  );
 });
