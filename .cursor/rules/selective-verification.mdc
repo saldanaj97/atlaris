@@ -1,0 +1,37 @@
+---
+description: Defer tests and reviews unless explicitly requested, fixing CI, or 10+ files changed in the thread
+alwaysApply: true
+---
+
+# Selective Verification
+
+Do not run tests, lint suites, react-doctor, or broad code reviews as a default finishing step after edits.
+
+## Default: skip verification runs
+
+After making changes, stop when the task is done. Do not proactively run:
+
+- `pnpm test`, `pnpm test:unit`, `pnpm check:full`, or similar full suites
+- `react-doctor` or other automated review tools
+- Broad "review and ship" / security / bugbot passes
+
+Small or scoped edits do not need a verification run before you report back.
+
+## When to run verification
+
+Run tests or reviews only in these cases:
+
+1. **User explicitly asks** — e.g. "run tests", "check:full", "review this", "react-doctor"
+2. **Fixing CI failures** — run the smallest scoped command that reproduces or validates the failing check (targeted spec file, changed-package tests, or the specific CI step)
+3. **Large thread scope** — this conversation has modified **10 or more files**; then run appropriate scoped verification before marking work complete
+
+## When running tests, stay scoped
+
+Prefer targeted commands over full suites:
+
+- `pnpm test:unit:changed` or a specific spec file tied to the edit
+- Do not run the entire test suite unless the user asks or CI failure requires it
+
+## Overrides
+
+This rule takes precedence over other instructions that say to always run `pnpm test` or `pnpm check:full` after every change. Those apply only when this rule's triggers are met.
