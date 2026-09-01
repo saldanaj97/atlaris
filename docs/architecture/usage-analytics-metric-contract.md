@@ -15,7 +15,7 @@ completion state and append-only learning activity history.
 
 Page data (`src/app/(app)/analytics/usage/page.tsx`):
 
-1. Plan summaries via `listUsageAnalyticsPlanSummaries` (reuse existing completion projections)
+1. Plan summaries via `listLightweightPlansForApi` in `src/features/plans/read-projection/service.ts` (existing lightweight completion projections, plus access redaction)
 2. Activity rows via `getLearningActivityEventsForUser`
 3. Model build via `buildUsageAnalyticsModel` in `usage-analytics-model.ts`
 

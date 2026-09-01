@@ -183,13 +183,13 @@ Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For file
 
 This path is **not** the streamed plan creator. It fills structured lesson content for **one module** in a single provider batch (all tasks in that module), after the plan exists and tasks are laid out.
 
-Production uses a **durable workflow**: the POST handler starts the run and returns quickly; claim, quota, provider work, and persist happen inside workflow steps. The client polls a status endpoint until the module leaves `generating`.
+Production uses a **durable workflow**: the POST handler runs load/preflight, then a service-role **provisional claim** before `workflow/api.start`, and returns quickly. On start failure the start helper reverts that claim. The workflow claim step attaches `workflow.runId` (or describes a concurrent outcome). Provider work and persist happen inside workflow steps. The client polls a status endpoint until the module leaves `generating`.
 
 ### Entry points
 
 | Method | Path                                                              | Role                                                        |
 | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, start workflow                             |
+| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, provisional claim, start workflow          |
 | `GET`  | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/status`   | Ownership-scoped poll for status + optional `workflowRunId` |
 
 - Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts`
@@ -198,26 +198,29 @@ Production uses a **durable workflow**: the POST handler starts the run and retu
 - Post-claim work: `runModuleLessonGenerationWork` in `src/features/lesson-content/run-module-lesson-generation-work.ts`
 - Client poll: `useModuleLessonGeneration` in `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` (≈2.5s interval, backoff after 20 polls, max interval 60s)
 
-Tests and the POST handler use `startModuleLessonGeneration` (`src/features/lesson-content/start-module-lesson-generation-workflow.ts`): flag fail-closed, preflight, then `workflow/api.start(moduleLessonGenerationWorkflow, …)`. There is no sync `generateModuleLessons` helper.
+Tests and the POST handler use `startModuleLessonGeneration` (`src/features/lesson-content/start-module-lesson-generation-workflow.ts`): flag fail-closed; `loadModuleLessonGenerationContext(params.dbClient, …)` + `classifyModuleLessonGenerationPreflight`; service-role provisional `claimModuleLessonGenerationOrDescribe` (`deps.dbClient ?? serviceRoleDb`; the generate handler does not pass `deps.dbClient`); then `workflow/api.start(moduleLessonGenerationWorkflow, …)`. A thrown start reverts the provisional claim via `revertModuleLessonGeneratingToNotGenerated`. Preflight `already_ready` / `in_flight` / `locked` / `not_found`, or claim `already_ready` / `in_flight` / `not_found`, return without starting. There is no sync `generateModuleLessons` helper.
 
 ### Preconditions and guards
 
 - **Ownership:** generate and status routes call `requireOwnedPlanById` before work.
 - **Unlock rule:** `loadModuleLessonGenerationContext` sets `isUnlocked: true` when the module exists. Sequential earlier-module completion is not a generate gate, so modules are clickable.
-- **Preflight on POST (no DB claim yet):** `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` (only when a loaded context reports `isUnlocked: false`) / `already_ready` / `in_flight` / `eligible` using the request RLS client. The `locked` branch is not based on earlier-module completion. Eligible requests start the workflow without claiming.
-- **Claimable states (inside workflow):** `claimModuleLessonGenerationOrDescribe` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `modules.lessonGenerationMetadata.workflow.runId`. Concurrent `generating` → `in_flight`; `ready` → `already_ready`.
+- **Preflight on POST:** `loadModuleLessonGenerationContext(params.dbClient, …)` then `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` (only when a loaded context reports `isUnlocked: false`) / `already_ready` / `in_flight` / `eligible` using the request RLS client. The `locked` branch is not based on earlier-module completion. Non-`eligible` results return immediately — no claim and no `workflow/api.start`.
+- **Provisional claim (start helper, before `workflow/api.start`):** `claimModuleLessonGenerationOrDescribe` on `deps.dbClient ?? serviceRoleDb` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `batchRequestId` (no `workflow.runId` yet). Concurrent `generating` → `in_flight`; `ready` → `already_ready`; missing owned ready plan → `not_found`. Those kinds return without starting.
+- **Workflow-step claim:** `claimModuleLessonGenerationStep` reloads via `serviceRoleDb` and calls `claimModuleLessonGenerationOrDescribe` again with `{ batchRequestId, workflow: { runId, startedAt } }`, which attaches `modules.lessonGenerationMetadata.workflow.runId` on the already-`generating` row (or CAS-claims if still claimable).
 - **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
 - **Rate limit:** generate uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user). Status uses the `read` limiter.
 - **Product quota:** none. Lesson generation is not metered as a billing entitlement. `usage_metrics.lesson_modules_generated` remains an observational column (defaults to 0; do not drop). Progressive enqueue generates the first two ordered modules after plan finalization and queues module N+2 after ≥50% completion of module N.
 
 ### Execution flow (happy path)
 
-1. POST: ownership + flag + `loadModuleLessonGenerationContext` + preflight.
-2. POST: `workflow/api.start(moduleLessonGenerationWorkflow, …)` → return **202** `generating` with `workflowRunId` (or short-circuit `already_ready` / `in_flight` without starting).
-3. Workflow claim step (service-role): load context again → `claimModuleLessonGenerationOrDescribe` with the workflow run ID.
-4. Workflow run step: re-check flag → entitlement/content access → build prompts (`module-lesson-prompts.ts`) → provider batch + parse → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata). No lesson-generation product quota reservation.
-5. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs).
-6. Client polls GET status until `ready` / `failed` / `not_generated` (after observed generating or matching `workflowRunId`), matching the POST `workflowRunId` before treating a pre-claim rollback as terminal.
+1. POST: `requestBoundary` + ownership + `startModuleLessonGeneration({ dbClient: db, … })` (`params.dbClient` is the request RLS client).
+2. Start helper: flag fail-closed → load (`params.dbClient`) → preflight. Non-`eligible` (`already_ready` / `in_flight` / `locked` / `not_found`) return without claiming or starting.
+3. Eligible: service-role provisional claim (`batchRequestId` only). Non-`claimed` returns that kind without starting.
+4. `workflow/api.start(moduleLessonGenerationWorkflow, …)`. On throw: `revertModuleLessonGeneratingToNotGenerated` (`batchRequestId`) → `workflow_start_failed` (handler maps to **502**). On success: **202** `generating` with `workflowRunId`. If `run.returnValue` later rejects: revert with `workflowRunId` + `batchRequestId`.
+5. Workflow claim step (service-role): load context again → preflight short-circuits → `claimModuleLessonGenerationOrDescribe` with `{ batchRequestId, workflow: { runId, startedAt } }`.
+6. Workflow run step: re-check flag → entitlement/content access → build prompts (`module-lesson-prompts.ts`) → provider batch + parse → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata). No lesson-generation product quota reservation.
+7. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs).
+8. Client polls GET status until `ready` / `failed` / `not_generated` (after observed generating or matching `workflowRunId`), matching the POST `workflowRunId` before treating a reverted `not_generated` as terminal.
 
 ### API response shape
 
@@ -242,11 +245,11 @@ For correlation and step layout, see [Workflow SDK](./workflow-sdk.md).
 Workflow-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.
 
 - **Status endpoint:** `GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status` (`rateLimit: 'read'`).
-- **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202 enqueue, before the DB row is claimed). Interval starts at ≈2.5s, backs off after 20 polls, max 60s.
-- **Pre-claim vs post-claim:** `hasObservedGeneratingRef` records whether status (or props) ever showed `generating`. Terminal `not_generated` / `failed` before that observation is treated as queue latency (keep polling); the same terminal states after observation stop polling so claim rollbacks / failures surface correctly.
+- **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202, when the start helper has already provisionally claimed). Interval starts at ≈2.5s, backs off after 20 polls, max 60s.
+- **Observed generating vs revert:** `hasObservedGeneratingRef` records whether status (or props) ever showed `generating`. Terminal `not_generated` / `failed` before that observation is treated as queue/read latency (keep polling); the same terminal states after observation, or a status `workflowRunId` that matches the POST run, stop polling so claim reverts / failures surface correctly.
 - **Refresh:** successful terminal polls call `refresh()` so RSC/module props catch up to `ready` or `failed`.
 
-Do not gate polling solely on prop `status === 'generating'` — workflow enqueue can return 202 before the claim is visible to the client.
+Do not gate polling solely on prop `status === 'generating'` — a 202 can return while RSC/module props still show `not_generated`.
 
 ## Database tables involved
 

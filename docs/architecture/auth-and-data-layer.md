@@ -156,7 +156,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 | Context                      | What to use                        | Why                                                    |
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
 | Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
-| Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
+| Query / feature helpers below request establishment | Explicit required `dbClient` (JCS-62). Request paths pass the RLS-scoped client from `requestBoundary` (`actor` / `db`). Named worker / workflow owners pass or own a service-role client. | Ambient `getDb()` stays only at true request / test context establishment (`withAuth` / `requestBoundary` / `runWithTestContext`). Helpers must not default to ambient acquisition. |
 | First-user provisioning      | `provisionUserFromVerifiedAuthSession` (service-role) | Authenticated role cannot INSERT `users` after contract cutover |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
 | Workers / background jobs / workflow steps | `db` from `@supabase/service-role` | No user session; server-owned writes after prior auth checks |
