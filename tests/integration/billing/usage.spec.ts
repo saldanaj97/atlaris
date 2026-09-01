@@ -158,7 +158,7 @@ describe('Usage Tracking', () => {
       expect(before).toHaveLength(0);
 
       // Increment
-      await incrementUsage(userId, 'plan');
+      await incrementUsage(userId, 'plan', db);
 
       // Metrics created and incremented
       const after = await db
@@ -195,7 +195,7 @@ describe('Usage Tracking', () => {
           [field]: initial,
         });
 
-        await incrementUsage(userId, type);
+        await incrementUsage(userId, type, db);
 
         const after = await db
           .select()
@@ -223,7 +223,7 @@ describe('Usage Tracking', () => {
       await new Promise((resolve) => setTimeout(resolve, 10));
 
       // Increment
-      await incrementUsage(userId, 'plan');
+      await incrementUsage(userId, 'plan', db);
 
       // Timestamp updated
       const after = await db
@@ -304,7 +304,7 @@ describe('Usage Tracking', () => {
         },
       ]);
 
-      const summary = await getUsageSummary(userId);
+      const summary = await getUsageSummary(userId, db);
 
       // Only the two eligible plans should be counted
       expect(summary.activePlans.current).toBe(2);
@@ -349,7 +349,7 @@ describe('Usage Tracking', () => {
         exportsUsed: 7,
       });
 
-      const summary = await getUsageSummary(userId);
+      const summary = await getUsageSummary(userId, db);
 
       expect(summary).toEqual({
         tier: 'free',
@@ -399,7 +399,7 @@ describe('Usage Tracking', () => {
         exportsUsed: 100,
       });
 
-      const summary = await getUsageSummary(userId);
+      const summary = await getUsageSummary(userId, db);
 
       expect(summary).toEqual({
         tier: 'pro',
@@ -427,7 +427,7 @@ describe('Usage Tracking', () => {
         .where(sql`user_id = ${userId}`);
       expect(before).toHaveLength(0);
 
-      const summary = await getUsageSummary(userId);
+      const summary = await getUsageSummary(userId, db);
 
       expect(summary.regenerations.used).toBe(0);
       expect(summary).not.toHaveProperty('lessonGenerations');

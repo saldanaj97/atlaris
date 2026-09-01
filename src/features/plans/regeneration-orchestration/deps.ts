@@ -5,7 +5,6 @@ import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { runRegenerationQuotaReserved } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   getUsageSummaryForTier,
@@ -47,14 +46,13 @@ export interface RegenerationOrchestrationDeps {
   quota: {
     /**
      * Non-settling monthly usage read for HTTP fail-fast. Settlement happens at
-     * provider start via {@link runRegenerationQuotaReserved}.
+     * provider start via `reserveRegenerationQuotaAtProviderStart`.
      */
     peekUsage: (
       userId: string,
       tier: SubscriptionTier,
       dbClient: DbClient,
     ) => Promise<UsageSummary>;
-    runReserved: typeof runRegenerationQuotaReserved;
   };
   plans: {
     getActiveRegenerationJob: (
@@ -112,7 +110,6 @@ export function createDefaultRegenerationOrchestrationDeps(
     quota: {
       peekUsage: (userId, tier, client) =>
         getUsageSummaryForTier({ userId, tier, dbClient: client }),
-      runReserved: runRegenerationQuotaReserved,
     },
     plans: {
       getActiveRegenerationJob,

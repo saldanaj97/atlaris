@@ -7,14 +7,13 @@ import {
 } from '@/features/plans/entitlement/errors';
 import { ensureFreeAccessSelection } from '@/features/plans/entitlement/store';
 import { resolvePlanContentAccess } from '@/features/plans/policy/entitlement';
-import { getDb } from '@supabase/runtime';
 
 export async function readPlanContentAccess(params: {
   userId: string;
   planId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanContentAccess> {
-  const dbClient = params.dbClient ?? getDb();
+  const dbClient = params.dbClient;
   const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
     dbClient,
@@ -32,9 +31,9 @@ export async function readPlanContentAccess(params: {
 export async function assertPlanContentAccess(params: {
   userId: string;
   planId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<void> {
-  const dbClient = params.dbClient ?? getDb();
+  const dbClient = params.dbClient;
   const { snapshot, decision, candidates } = await ensureFreeAccessSelection({
     userId: params.userId,
     dbClient,

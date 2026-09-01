@@ -1,7 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { resolveUserTier } from '@/features/billing/tier';
 import { enqueueFollowUpLessonsAfterProgress } from '@/features/lesson-content/progressive-enqueue';
 import { requirePlanContentAccess } from '@/features/plans/api/route-context';
 import {
@@ -52,13 +51,11 @@ export async function batchUpdateTaskProgressCore(
       dbClient: input.dbClient,
     });
     try {
-      const currentTier = await resolveUserTier(input.userId, input.dbClient);
       await enqueueFollowUpLessonsAfterProgress({
         dbClient: input.dbClient,
         userId: input.userId,
         planId: input.planId,
         moduleId: input.moduleId,
-        userTier: currentTier,
         correlationId: getCorrelationId() ?? input.planId,
       });
     } catch (error) {

@@ -148,13 +148,13 @@ Tier caps: `src/shared/constants/tier-limits.ts` (`TIER_LIMITS` for `free` / `st
 | Active plans               | `atomicCheckAndInsertPlan` / `countPlansContributingToCap`                                                                         |
 | Lifetime Free initial plan | `initial_plan_generated_at` + namespace-1 admission lock; do not infer from `usage_metrics.plans_generated`                        |
 | Plan duration (`maxWeeks`) | `checkPlanDurationCap` during creation and regeneration (no clamp)                                                                 |
-| Monthly regenerations      | Free is not included (`PLAN_REGENERATION_NOT_INCLUDED`). Paid: `runRegenerationQuotaReserved` → `usage_metrics.regenerations_used` |
+| Monthly regenerations      | Free is not included (`PLAN_REGENERATION_NOT_INCLUDED`). Paid: `reserveRegenerationQuotaAtProviderStart` → `usage_metrics.regenerations_used` |
 | Module lesson generation   | Request-rate limiter only. `usage_metrics.lesson_modules_generated` remains observational (do not drop).                           |
 | AI model allowlist         | `validateModelForTier` / settings AI section                                                                                       |
 
 Exports are not a product entitlement. Do not advertise, meter, or reserve them. `users.monthly_export_count` and `usage_metrics.exports_used` remain in the schema for compatibility only.
 
-Metered reservation core: `src/features/billing/metered-reservation.ts`. Boundaries wrap reserve → work → compensate on failure. Month key is `YYYY-MM` on `usage_metrics`.
+Metered reservation core: `src/features/billing/metered-reservation.ts`. Monthly regeneration settlement is `reserveRegenerationQuotaAtProviderStart` (increment + provider-start marker in one transaction). Month key is `YYYY-MM` on `usage_metrics`.
 
 ## Local / fixture tooling
 

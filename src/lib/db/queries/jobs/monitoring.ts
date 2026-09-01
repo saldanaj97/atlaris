@@ -7,7 +7,6 @@ import {
   clampLimit,
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
-import { getDb } from '@supabase/runtime';
 import { jobQueue } from '@supabase/schema';
 import { MAX_JOB_MONITORING_ROWS } from '@supabase/schema/constants';
 import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
@@ -17,9 +16,9 @@ import { and, desc, eq, gte, isNotNull, lt, or, sql } from 'drizzle-orm';
  */
 export async function getFailedJobs(
   limit: number,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job[]> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const boundedLimit = clampLimit(limit, MAX_JOB_MONITORING_ROWS);
   if (boundedLimit === 0) {
@@ -45,9 +44,9 @@ export async function getFailedJobs(
  */
 export async function getJobStats(
   since: Date,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<JobStats> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [stats] = await client
     .select({
@@ -96,9 +95,9 @@ export async function getJobStats(
  */
 export async function cleanupOldJobs(
   olderThan: Date,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<number> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const result = await client
     .delete(jobQueue)
@@ -118,9 +117,9 @@ export async function cleanupOldJobs(
  */
 export async function getJobById(
   jobId: string,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<Job | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [row] = await client
     .select(jobQueueSelect)
@@ -136,9 +135,9 @@ export async function getJobById(
 export async function getActiveRegenerationJob(
   planId: string,
   userId: string,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<{ id: string } | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [activeJob] = await client
     .select({ id: jobQueue.id })
@@ -157,9 +156,9 @@ export async function countUserJobsSince(
   userId: string,
   type: JobType,
   since: Date,
-  dbClient?: JobsDbClient,
+  dbClient: JobsDbClient,
 ): Promise<number> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [row] = await client
     .select({ value: sql<number>`count(*)::int` })

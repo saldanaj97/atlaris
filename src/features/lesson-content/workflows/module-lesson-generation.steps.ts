@@ -3,7 +3,6 @@ import type {
   ModuleLessonWorkflowInput,
 } from './module-lesson-generation.types';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
@@ -104,7 +103,6 @@ export async function runModuleLessonGenerationStep(
       userId: input.userId,
       planId: input.planId,
       moduleId: input.moduleId,
-      userTier: input.userTier as SubscriptionTier,
       modelOverride: input.modelOverride,
       generationMetadata,
     },

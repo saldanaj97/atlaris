@@ -1,4 +1,4 @@
-import type { getDb } from '@supabase/runtime';
+import type { DbClient } from '@/lib/db/types';
 import type {
   learningActivityEvents,
   taskProgress,
@@ -12,4 +12,4 @@ export type DbLearningActivityEvent = InferSelectModel<
   typeof learningActivityEvents
 >;
 
-export type TasksDbClient = ReturnType<typeof getDb>;
+export type TasksDbClient = DbClient;

@@ -149,6 +149,14 @@ Integration tests prove real parts of your system cooperate correctly.
 - **Service ↔ repository ↔ validation**: orchestration + business rules.
 - **UI ↔ state ↔ adapters**: user interactions and state transitions.
 
+### Plan generation integration entrypoint
+
+Drive generation integration tests through `processTestGenerationAttempt` and `buildTestProcessGenerationInput` in `tests/helpers/process-generation-attempt.ts`. Those helpers call production `PlanLifecycleService.processGenerationAttempt` and are the replacement for the deleted `runGenerationAttempt` test entry.
+
+- Use `buildTestProcessGenerationInput({ planId, userId, topic, ... })` to build a `ProcessGenerationInput`.
+- Call `processTestGenerationAttempt(input)` for the default service-role client, or pass an explicit `dbClient` as the second argument.
+- Do not reintroduce a lower-level generation test wrapper that bypasses lifecycle settlement.
+
 ### Keep integration tests hermetic
 
 - No real calls to:

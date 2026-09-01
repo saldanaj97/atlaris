@@ -1,5 +1,6 @@
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { generateModuleLessons } from '@/features/lesson-content/generate-module-lessons';
+import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
+import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import {
   cleanupAbandonedModuleLessonGenerations,
   cleanupOrphanedAttempts,
@@ -16,11 +17,28 @@ import {
   usageMetrics,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
 import { eq, inArray } from 'drizzle-orm';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
+
+const getWorkflowMetadata = vi.hoisted(() => vi.fn());
+
+vi.mock('workflow', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('workflow')>();
+  return {
+    ...actual,
+    getWorkflowMetadata,
+  };
+});
+
+const workflowRunIds = new AsyncLocalStorage<string>();
+getWorkflowMetadata.mockImplementation(() => ({
+  workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
+}));
 
 describe('cleanupStuckPlans (integration)', () => {
   it('restores last-good stuck plans and fails never-usable stuck plans', async () => {
@@ -247,28 +265,36 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
       .where(eq(usageMetrics.userId, user.id));
     expect(afterCleanup?.lessonModulesGenerated).toBe(1);
 
-    const provider = {
-      generateModuleLessonBatch: vi.fn(async () => {
-        throw new Error('retry provider failure');
-      }),
-    };
-    await expect(
-      generateModuleLessons(
-        {
-          dbClient: db,
-          userId: user.id,
-          planId: plan.id,
-          moduleId: mod.id,
-          userTier: 'free',
+    setModuleLessonGenerationEnabledForTests(true);
+    vi.stubEnv('MOCK_AI_SCENARIO', 'provider_error');
+    let workflowResult: { kind: string } | undefined;
+    const startResult = await startModuleLessonGeneration(
+      {
+        dbClient: db,
+        userId: user.id,
+        planId: plan.id,
+        moduleId: mod.id,
+        correlationId: 'plan-cleanup-retry',
+      },
+      {
+        dbClient: db,
+        isGenerationEnabled: async () => true,
+        workflowStart: async (workflowFn, args) => {
+          const runId = createId('wrun');
+          workflowResult = await workflowRunIds.run(runId, () =>
+            workflowFn(args[0]),
+          );
+          return {
+            runId,
+            returnValue: Promise.resolve(workflowResult),
+          };
         },
-        {
-          provider,
-          serverDbClient: db,
-          resolveGenerationEnabled: async () => true,
-        },
-      ),
-    ).resolves.toEqual({ kind: 'failed' });
-    expect(provider.generateModuleLessonBatch).toHaveBeenCalledOnce();
+      },
+    );
+    expect(startResult.kind).toBe('workflow_started');
+    expect(workflowResult?.kind).toBe('failed');
+    vi.unstubAllEnvs();
+    setModuleLessonGenerationEnabledForTests(undefined);
 
     const [afterRetry] = await db
       .select({ lessonModulesGenerated: usageMetrics.lessonModulesGenerated })

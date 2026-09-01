@@ -3,14 +3,10 @@ import type {
   GenerationInput,
   GenerationOptions,
 } from '@/features/ai/types/provider.types';
-import type {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+import type { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { makeAttemptsDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
@@ -18,8 +14,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOperationsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
-  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
-  finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
 function createProvider(
@@ -74,7 +68,7 @@ function buildReservedAttempt(attemptNumber: number): AttemptReservation {
   };
 }
 
-describe('runGenerationAttempt reservation seam', () => {
+describe('runGenerationExecution reservation seam', () => {
   let mockDbClient: ReturnType<typeof makeAttemptsDbClient>;
   let reserved: AttemptReservation;
 
@@ -108,37 +102,11 @@ describe('runGenerationAttempt reservation seam', () => {
       return reserved;
     }) as typeof reserveAttemptSlot;
 
-    const successRecord = {
-      id: reserved.attemptId,
-      planId,
-      status: 'success',
-      classification: null,
-      durationMs: 100,
-      modulesCount: 1,
-      tasksCount: 1,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: reserved.promptHash,
-      metadata: null,
-      createdAt: new Date(),
-    };
-
     const attemptOperations: AttemptOperationsOverrides = {
       reserveAttemptSlot: reserveSpy,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue(successRecord) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi.fn().mockResolvedValue({
-        ...successRecord,
-        status: 'failure',
-        classification: 'provider_error',
-        modulesCount: 0,
-        tasksCount: 0,
-      }) as typeof finalizeAttemptFailure,
     };
 
-    const generation = runGenerationAttempt(
+    const generation = runGenerationExecution(
       {
         planId,
         userId,
@@ -163,8 +131,9 @@ describe('runGenerationAttempt reservation seam', () => {
     expect(order).toEqual(['reserve', 'reserved_callback']);
     expect(onAttemptReserved).toHaveBeenCalledWith(reserved);
     callbackGate.resolve(undefined);
-    await generation;
+    const result = await generation;
 
+    expect(result.kind).toBe('success');
     expect(order).toEqual([
       'reserve',
       'reserved_callback',
@@ -187,15 +156,9 @@ describe('runGenerationAttempt reservation seam', () => {
         reserved: false,
         reason: 'in_progress',
       }) as typeof reserveAttemptSlot,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue({}) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi
-        .fn()
-        .mockResolvedValue({}) as typeof finalizeAttemptFailure,
     };
 
-    const result = await runGenerationAttempt(
+    const result = await runGenerationExecution(
       {
         planId: createId('plan'),
         userId: createId('user'),
@@ -214,50 +177,29 @@ describe('runGenerationAttempt reservation seam', () => {
       },
     );
 
-    expect(result.status).toBe('failure');
-    if (result.status === 'failure') {
-      expect(result.reservationRejectionReason).toBe('in_progress');
+    expect(result.kind).toBe('failure_rejected');
+    if (result.kind === 'failure_rejected') {
+      expect(result.result.reservationRejectionReason).toBe('in_progress');
     }
     expect(onAttemptReserved).not.toHaveBeenCalled();
   });
 
-  it('finalizes failure when onAttemptReserved throws after reservation', async () => {
+  it('returns unfinalized reserved failure when onAttemptReserved throws after reservation', async () => {
     const planId = createId('plan');
     const userId = createId('user');
     const onAttemptReserved = vi.fn(() => {
       throw new Error('callback boom');
     });
-    const provider = createProvider(() => {});
-
-    const failureRecord = {
-      id: reserved.attemptId,
-      planId,
-      status: 'failure' as const,
-      classification: 'provider_error' as const,
-      durationMs: 1,
-      modulesCount: 0,
-      tasksCount: 0,
-      truncatedTopic: false,
-      truncatedNotes: false,
-      normalizedEffort: false,
-      promptHash: reserved.promptHash,
-      metadata: null,
-      createdAt: new Date(),
-    };
+    const generate = vi.fn();
+    const provider = createProvider(generate);
 
     const attemptOperations: AttemptOperationsOverrides = {
       reserveAttemptSlot: vi
         .fn()
         .mockResolvedValue(reserved) as typeof reserveAttemptSlot,
-      finalizeAttemptSuccess: vi
-        .fn()
-        .mockResolvedValue({}) as typeof finalizeAttemptSuccess,
-      finalizeAttemptFailure: vi
-        .fn()
-        .mockResolvedValue(failureRecord) as typeof finalizeAttemptFailure,
     };
 
-    const result = await runGenerationAttempt(
+    const result = await runGenerationExecution(
       {
         planId,
         userId,
@@ -277,12 +219,12 @@ describe('runGenerationAttempt reservation seam', () => {
       },
     );
 
-    expect(result.status).toBe('failure');
-    expect(
-      vi.mocked(attemptOperations.finalizeAttemptFailure),
-    ).toHaveBeenCalled();
-    expect(
-      vi.mocked(attemptOperations.finalizeAttemptSuccess),
-    ).not.toHaveBeenCalled();
+    expect(result.kind).toBe('failure_reserved');
+    if (result.kind !== 'failure_reserved') {
+      throw new Error('Expected reserved failure');
+    }
+    expect(result.reservation.attemptId).toBe(reserved.attemptId);
+    expect(result.error.message).toBe('callback boom');
+    expect(generate).not.toHaveBeenCalled();
   });
 });

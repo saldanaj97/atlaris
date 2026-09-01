@@ -24,13 +24,13 @@ If any layer fails, access is denied. The system is **fail-closed** — missing 
 | Server components | `requestBoundary.component(...)` | `{ actor, db, ... }`                             | Async server components  |
 | Server actions    | `requestBoundary.action(...)`    | `{ actor, db, ... }`                             | `'use server'` functions |
 
-`requestBoundary.route` is built on `withAuth` + rate-limit options. `requestBoundary.component` and `requestBoundary.action` call `withServerComponentContext` and `withServerActionContext` internally — those two functions are **compatibility shims** for call sites that have not moved to `requestBoundary` yet; new code should use `requestBoundary.component` / `requestBoundary.action` instead.
+`requestBoundary.route` is built on `withAuth` + rate-limit options. `requestBoundary.component` calls internal `runServerComponentContext`; `requestBoundary.action` calls `withServerActionContext`. There is no `withServerComponentContext` export — new and existing server-component call sites use `requestBoundary.component`.
 
 **API routes** still use `withAuth(handler)` directly (or via `requestBoundary.route`); that pattern stays primary for `app/api/`.
 
 ## Lower-level auth helpers (`@/lib/api/auth`)
 
-`withServerComponentContext` and `withServerActionContext` still establish authenticated DB context; they sit below `requestBoundary` and share a single private helper (`runWithAuthenticatedContext`) that:
+`runServerComponentContext` (internal, used by `requestBoundary.component`) and `withServerActionContext` (used by `requestBoundary.action`) establish authenticated DB context. They sit below `requestBoundary` and share a single private helper (`runWithAuthenticatedContext`) that:
 
 1. Creates an RLS client via `createAuthenticatedRlsClient(authUserId)`
 2. Wraps execution in `withRequestContext` so `getDb()` returns the RLS client
@@ -48,9 +48,16 @@ Local product testing that expects a first-login auto-create without a seeded `u
 ### When to use which
 
 ```typescript
-// API route — withAuth, or requestBoundary.route (see request-boundary.ts)
-export const GET = withAuth(async ({ user }) => {
-  const plans = await getPlanSummariesForUser(user.id);
+// API route — requestBoundary.route (see request-boundary.ts)
+import { listLightweightPlansForApi } from '@/features/plans/read-projection/service';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import { json } from '@/lib/api/response';
+
+export const GET = requestBoundary.route(async ({ actor, db }) => {
+  const plans = await listLightweightPlansForApi({
+    userId: actor.id,
+    dbClient: db,
+  });
   return json(plans);
 });
 
@@ -78,7 +85,7 @@ const tier = await requestBoundary.component(
 );
 ```
 
-`withServerActionContext` / `withServerComponentContext` are still valid for existing code; prefer `requestBoundary.action` / `requestBoundary.component` in new or refactored files.
+`withServerActionContext` remains the authenticated action helper used by `requestBoundary.action`. There is no `withServerComponentContext` export; server components use `requestBoundary.component`. Prefer `requestBoundary.action` / `requestBoundary.component`.
 
 `getEffectiveAuthUserId()` is for **redirect-only** identity checks (e.g. “is anyone logged in?”) where you do not need RLS-backed `getDb()`. Anything that runs queries with tenant data must go through a full auth boundary above.
 
@@ -86,7 +93,7 @@ const tier = await requestBoundary.component(
 
 - `withAuth` (and `requestBoundary.route` built on it): Throws `AuthError` if unauthenticated (returns 401 via `withErrorBoundary` when so wrapped)
 - `withServerActionContext` and `requestBoundary.action`: Return `null` if unauthenticated (caller decides how to handle)
-- `withServerComponentContext` and `requestBoundary.component`: Return `null` if unauthenticated (caller decides how to handle)
+- `requestBoundary.component` (via internal `runServerComponentContext`): Return `null` if unauthenticated (caller decides how to handle)
 
 When a server action boundary wraps an action whose successful return type can be `void` / `undefined`, use an explicit `result === null` check for auth failure rather than a generic falsy check.
 
@@ -120,7 +127,7 @@ For security-sensitive flows (OAuth callbacks), use `getAuthUserId()` instead �
 Request arrives
     │
     ▼
-withAuth / requestBoundary (or withServerActionContext / withServerComponentContext)
+withAuth / requestBoundary (component: `runServerComponentContext`; action: `withServerActionContext`)
     │
     ├── getEffectiveAuthUserId() → auth user ID from session cookie
     │
@@ -155,8 +162,8 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 
 | Context                      | What to use                        | Why                                                    |
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
-| Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
-| Query function default param | `getDb()` (optional `dbClient` DI) | Works in all contexts via request context              |
+| Request / test context establishment | Ambient `getDb()` only inside `withAuth` / `requestBoundary` / `runWithTestContext` (those wrappers already hold `rlsDb`). Do not call `getDb()` from route, action, query, or feature-helper bodies. | Establishes the RLS client on request context and passes it as `db` / `dbClient`. |
+| Query / feature helpers below request establishment | Explicit required `dbClient` (JCS-62). Request paths pass the RLS-scoped client from `requestBoundary` (`actor` / `db`). Named worker / workflow owners pass or own a service-role client. | Ambient `getDb()` stays only at true request / test context establishment (`withAuth` / `requestBoundary` / `runWithTestContext`). Helpers must not default to ambient acquisition. |
 | First-user provisioning      | `provisionUserFromVerifiedAuthSession` (service-role) | Authenticated role cannot INSERT `users` after contract cutover |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
 | Workers / background jobs / workflow steps | `db` from `@supabase/service-role` | No user session; server-owned writes after prior auth checks |
@@ -211,7 +218,7 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Call `getDb()` outside an auth wrapper                       | Use `withAuth` or `requestBoundary` (or the legacy shims)                          |
 | Pass user ID from request body to query functions            | Always use `ctx.user` / `actor` from the boundary callback                         |
-| Import `@supabase/service-role` in API routes                | Use `getDb()` which returns the RLS-scoped client                                  |
+| Import `@supabase/service-role` in API routes                | Pass the RLS `db` from `requestBoundary.route` (`actor` / `db`)                    |
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |

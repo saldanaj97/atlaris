@@ -1,4 +1,5 @@
 import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { db } from '@supabase/service-role';
 import { describe, expect, it } from 'vitest';
 
 describe('User Queries', () => {
@@ -10,7 +11,7 @@ describe('User Queries', () => {
         name: 'Test User',
       };
 
-      const user = await createUser(userData);
+      const user = await createUser(userData, db);
 
       expect(user).toBeDefined();
       expect(user?.authUserId).toBe(userData.authUserId);
@@ -26,7 +27,7 @@ describe('User Queries', () => {
         email: 'test2@example.com',
       };
 
-      const user = await createUser(userData);
+      const user = await createUser(userData, db);
 
       expect(user).toBeDefined();
       expect(user?.authUserId).toBe(userData.authUserId);
@@ -35,15 +36,21 @@ describe('User Queries', () => {
     });
 
     it('should generate unique user IDs for different users', async () => {
-      const user1 = await createUser({
-        authUserId: 'auth_user_1',
-        email: 'user1@example.com',
-      });
+      const user1 = await createUser(
+        {
+          authUserId: 'auth_user_1',
+          email: 'user1@example.com',
+        },
+        db,
+      );
 
-      const user2 = await createUser({
-        authUserId: 'auth_user_2',
-        email: 'user2@example.com',
-      });
+      const user2 = await createUser(
+        {
+          authUserId: 'auth_user_2',
+          email: 'user2@example.com',
+        },
+        db,
+      );
 
       expect(user1?.id).toBeDefined();
       expect(user2?.id).toBeDefined();
@@ -55,10 +62,13 @@ describe('User Queries', () => {
       const tolerance = 1000;
       const before = new Date(Date.now() - tolerance);
 
-      const user = await createUser({
-        authUserId: 'auth_timestamp_test',
-        email: 'timestamp@example.com',
-      });
+      const user = await createUser(
+        {
+          authUserId: 'auth_timestamp_test',
+          email: 'timestamp@example.com',
+        },
+        db,
+      );
 
       const after = new Date(Date.now() + tolerance);
 
@@ -75,14 +85,17 @@ describe('User Queries', () => {
   describe('getUserByAuthId', () => {
     it('should retrieve existing user by Auth ID', async () => {
       // Create a user first
-      const createdUser = await createUser({
-        authUserId: 'auth_find_test',
-        email: 'find@example.com',
-        name: 'Find Test User',
-      });
+      const createdUser = await createUser(
+        {
+          authUserId: 'auth_find_test',
+          email: 'find@example.com',
+          name: 'Find Test User',
+        },
+        db,
+      );
 
       // Retrieve the user
-      const foundUser = await getUserByAuthId('auth_find_test');
+      const foundUser = await getUserByAuthId('auth_find_test', db);
 
       expect(foundUser).toBeDefined();
       expect(foundUser?.id).toBe(createdUser?.id);
@@ -92,30 +105,39 @@ describe('User Queries', () => {
     });
 
     it('should return undefined for non-existent Auth ID', async () => {
-      const user = await getUserByAuthId('auth_non_existent');
+      const user = await getUserByAuthId('auth_non_existent', db);
 
       expect(user).toBeUndefined();
     });
 
     it('should return correct user when multiple users exist', async () => {
       // Create multiple users
-      await createUser({
-        authUserId: 'auth_user_a',
-        email: 'usera@example.com',
-      });
+      await createUser(
+        {
+          authUserId: 'auth_user_a',
+          email: 'usera@example.com',
+        },
+        db,
+      );
 
-      const targetUser = await createUser({
-        authUserId: 'auth_user_b',
-        email: 'userb@example.com',
-      });
+      const targetUser = await createUser(
+        {
+          authUserId: 'auth_user_b',
+          email: 'userb@example.com',
+        },
+        db,
+      );
 
-      await createUser({
-        authUserId: 'auth_user_c',
-        email: 'userc@example.com',
-      });
+      await createUser(
+        {
+          authUserId: 'auth_user_c',
+          email: 'userc@example.com',
+        },
+        db,
+      );
 
       // Find specific user
-      const found = await getUserByAuthId('auth_user_b');
+      const found = await getUserByAuthId('auth_user_b', db);
 
       expect(found).toBeDefined();
       expect(found?.id).toBe(targetUser?.id);
@@ -124,19 +146,25 @@ describe('User Queries', () => {
 
     it('should enforce cross-tenant isolation by Auth ID', async () => {
       // Create two users
-      await createUser({
-        authUserId: 'auth_user_tenant_a',
-        email: 'tenanta@example.com',
-      });
+      await createUser(
+        {
+          authUserId: 'auth_user_tenant_a',
+          email: 'tenanta@example.com',
+        },
+        db,
+      );
 
-      await createUser({
-        authUserId: 'auth_user_tenant_b',
-        email: 'tenantb@example.com',
-      });
+      await createUser(
+        {
+          authUserId: 'auth_user_tenant_b',
+          email: 'tenantb@example.com',
+        },
+        db,
+      );
 
       // Each user should only be retrievable by their own Auth ID
-      const userA = await getUserByAuthId('auth_user_tenant_a');
-      const userB = await getUserByAuthId('auth_user_tenant_b');
+      const userA = await getUserByAuthId('auth_user_tenant_a', db);
+      const userB = await getUserByAuthId('auth_user_tenant_b', db);
 
       expect(userA?.email).toBe('tenanta@example.com');
       expect(userB?.email).toBe('tenantb@example.com');
@@ -150,35 +178,47 @@ describe('User Queries', () => {
       const uniqueAuthId = `auth_unique_test_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
       // Create first user
-      await createUser({
-        authUserId: uniqueAuthId,
-        email: 'first@example.com',
-      });
+      await createUser(
+        {
+          authUserId: uniqueAuthId,
+          email: 'first@example.com',
+        },
+        db,
+      );
 
       // Attempt to create duplicate
       await expect(
-        createUser({
-          authUserId: uniqueAuthId,
-          email: 'second@example.com',
-        }),
+        createUser(
+          {
+            authUserId: uniqueAuthId,
+            email: 'second@example.com',
+          },
+          db,
+        ),
       ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
     });
 
     it('should enforce email format constraints', async () => {
-      const user = await createUser({
-        authUserId: 'auth_email_test',
-        email: 'valid@example.com',
-      });
+      const user = await createUser(
+        {
+          authUserId: 'auth_email_test',
+          email: 'valid@example.com',
+        },
+        db,
+      );
 
       expect(user?.email).toBe('valid@example.com');
     });
 
     it('should handle users with null name field', async () => {
-      const user = await createUser({
-        authUserId: 'auth_null_name',
-        email: 'nullname@example.com',
-        name: undefined,
-      });
+      const user = await createUser(
+        {
+          authUserId: 'auth_null_name',
+          email: 'nullname@example.com',
+          name: undefined,
+        },
+        db,
+      );
 
       expect(user?.name).toBeNull();
     });
@@ -188,17 +228,20 @@ describe('User Queries', () => {
     it('should handle retrieving user from table with many users', async () => {
       // Create multiple users
       const userPromises = Array.from({ length: 10 }, (_, i) =>
-        createUser({
-          authUserId: `auth_perf_user_${i}`,
-          email: `perfuser${i}@example.com`,
-        }),
+        createUser(
+          {
+            authUserId: `auth_perf_user_${i}`,
+            email: `perfuser${i}@example.com`,
+          },
+          db,
+        ),
       );
 
       await Promise.all(userPromises);
 
       // Target user should be retrievable quickly
       const startTime = Date.now();
-      const user = await getUserByAuthId('auth_perf_user_5');
+      const user = await getUserByAuthId('auth_perf_user_5', db);
       const endTime = Date.now();
 
       expect(user).toBeDefined();

@@ -3,7 +3,7 @@ import type {
   LearningPlanDetail,
 } from '@/shared/types/db.types';
 
-import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-projection/detail-status';
+import { buildPlanDetailStatusSnapshot } from '@/features/plans/read-projection/read-status';
 import { logger } from '@/lib/logging/logger';
 import {
   ATTEMPT_STATUSES,

@@ -23,12 +23,12 @@ describe('removePlanForWrite', () => {
     mockTransaction.mockClear();
   });
 
-  it('delegates to deletePlan with ownership context only', async () => {
+  it('delegates to deletePlan with ownership context and service-role client', async () => {
     mockDeletePlan.mockResolvedValue({ success: true });
 
     await removePlanForWrite({ planId, userId });
 
-    expect(mockDeletePlan).toHaveBeenCalledWith(planId, userId);
+    expect(mockDeletePlan).toHaveBeenCalledWith(planId, userId, serviceRoleDb);
   });
 
   it('throws NotFoundError when deletePlan returns not_found', async () => {

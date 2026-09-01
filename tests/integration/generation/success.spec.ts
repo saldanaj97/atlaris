@@ -1,17 +1,35 @@
 import { createTestPlan } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { generationAttempts, modules, tasks } from '@supabase/schema';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
+import {
+  generationAttempts,
+  learningPlans,
+  modules,
+  tasks,
+} from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { asc, eq, inArray } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const authUserId = 'auth_generation_success';
 const authEmail = 'generation-success@example.com';
 
 describe('generation integration - success path', () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'success');
+    vi.stubEnv('MOCK_GENERATION_FAILURE_RATE', '0');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   it('persists modules/tasks and logs a successful attempt', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });
@@ -23,26 +41,19 @@ describe('generation integration - success path', () => {
       learningStyle: 'mixed',
     });
 
-    const mock = createMockProvider({ scenario: 'success' });
-
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'Deep Learning Foundations',
-          notes: 'Focus on practical intuitions and projects',
-          skillLevel: 'intermediate',
-          weeklyHours: 6,
-          learningStyle: 'mixed',
-        },
-      },
-      { provider: mock.provider, dbClient: db },
+        topic: 'Deep Learning Foundations',
+        notes: 'Focus on practical intuitions and projects',
+        skillLevel: 'intermediate',
+        weeklyHours: 6,
+        learningStyle: 'mixed',
+      }),
     );
 
-    expect(result.status).toBe('success');
-    expect(result.classification).toBeNull();
+    expect(result.status).toBe('generation_success');
 
     const moduleRows = await db
       .select()
@@ -72,5 +83,11 @@ describe('generation integration - success path', () => {
     expect(attempt?.classification).toBeNull();
     expect(attempt?.modulesCount).toBe(moduleRows.length);
     expect(attempt?.tasksCount).toBe(taskRows.length);
+
+    const [persistedPlan] = await db
+      .select({ generationStatus: learningPlans.generationStatus })
+      .from(learningPlans)
+      .where(eq(learningPlans.id, plan.id));
+    expect(persistedPlan?.generationStatus).toBe('ready');
   });
 });

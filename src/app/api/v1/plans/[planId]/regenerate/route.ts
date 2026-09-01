@@ -5,6 +5,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { throwPlanEntitlementRequired } from '@/features/plans/entitlement/errors';
+import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { planRegenerationRequestSchema } from '@/features/plans/validation/learningPlans';
 import { AppError, NotFoundError, ValidationError } from '@/lib/api/errors';
@@ -62,7 +63,7 @@ function assertRegenerationModelAllowed(
  */
 export const POST: PlainHandler = requestBoundary.route(
   { rateLimit: 'aiGeneration' },
-  async ({ req, params, actor }) => {
+  async ({ req, params, actor, db }) => {
     const planId = requireUuidRouteParam(params, 'planId');
 
     const body = await parseJsonBody(req, {
@@ -92,11 +93,14 @@ export const POST: PlainHandler = requestBoundary.route(
 
     assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
 
-    const result = await requestPlanRegeneration({
-      userId: actor.id,
-      planId,
-      overrides,
-    });
+    const result = await requestPlanRegeneration(
+      {
+        userId: actor.id,
+        planId,
+        overrides,
+      },
+      createDefaultRegenerationOrchestrationDeps(db),
+    );
 
     switch (result.kind) {
       case 'queue-disabled':

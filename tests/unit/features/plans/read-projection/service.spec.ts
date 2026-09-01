@@ -4,14 +4,21 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { DbClient } from '@/lib/db/types';
 
-import { getPlansPageForRead } from '@/features/plans/read-projection/service';
+import {
+  getPlanDetailForRead,
+  getPlansPageForRead,
+} from '@/features/plans/read-projection/service';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { ensureFreeAccessSelectionMock, getPlanListPageRowsForUserMock } =
-  vi.hoisted(() => ({
-    ensureFreeAccessSelectionMock: vi.fn(),
-    getPlanListPageRowsForUserMock: vi.fn(),
-  }));
+const {
+  ensureFreeAccessSelectionMock,
+  getPlanListPageRowsForUserMock,
+  selectOwnedPlanByIdMock,
+} = vi.hoisted(() => ({
+  ensureFreeAccessSelectionMock: vi.fn(),
+  getPlanListPageRowsForUserMock: vi.fn(),
+  selectOwnedPlanByIdMock: vi.fn(),
+}));
 
 vi.mock('@/features/plans/entitlement/store', () => ({
   ensureFreeAccessSelection: ensureFreeAccessSelectionMock,
@@ -19,6 +26,10 @@ vi.mock('@/features/plans/entitlement/store', () => ({
 
 vi.mock('@/lib/db/queries/plan-list', () => ({
   getPlanListPageRowsForUser: getPlanListPageRowsForUserMock,
+}));
+
+vi.mock('@/lib/db/queries/helpers/plans-helpers', () => ({
+  selectOwnedPlanById: selectOwnedPlanByIdMock,
 }));
 
 const query: PlanListQuery = {
@@ -100,6 +111,91 @@ describe('getPlansPageForRead selection-required projection', () => {
       completed: 0,
       generating: 0,
       failed: 0,
+    });
+  });
+});
+
+describe('getPlansPageForRead entitlement redaction', () => {
+  const lockedId = '22222222-2222-4222-8222-222222222222';
+  const pageRows: PlanListPage = {
+    ...rows,
+    items: [
+      rows.items[0],
+      {
+        id: lockedId,
+        topic: 'Locked plan',
+        createdAt: rows.referenceTimestamp,
+        updatedAt: rows.referenceTimestamp,
+        status: 'active',
+        completion: 0.8,
+        completedTasks: 4,
+        totalTasks: 5,
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    ensureFreeAccessSelectionMock.mockResolvedValue({
+      snapshot: {
+        subscriptionTier: 'free',
+        initialPlanGeneratedAt: new Date('2026-08-26T10:00:00.000Z'),
+        freeAccessPlanId: selectionCandidate.id,
+        freeAccessPlanSelectedAt: new Date('2026-08-26T11:00:00.000Z'),
+      },
+      decision: 'not_applicable',
+      candidates: [],
+    });
+    getPlanListPageRowsForUserMock.mockResolvedValue(pageRows);
+  });
+
+  it('keeps selected-plan progress and redacts locked sibling progress', async () => {
+    const page = await getPlansPageForRead({
+      userId: 'user-1',
+      dbClient: {} as DbClient,
+      query,
+      referenceTimestamp: pageRows.referenceTimestamp,
+    });
+
+    expect(page.selectionRequired).toBe(false);
+    expect(page.items).toEqual([
+      {
+        ...pageRows.items[0],
+        completion: 0.5,
+        access: 'full',
+      },
+      {
+        id: lockedId,
+        topic: 'Locked plan',
+        createdAt: pageRows.referenceTimestamp,
+        updatedAt: pageRows.referenceTimestamp,
+        status: 'active',
+        completion: 0,
+        completedTasks: 0,
+        totalTasks: 0,
+        access: 'locked',
+      },
+    ]);
+  });
+});
+
+describe('getPlanDetailForRead ownership gate', () => {
+  beforeEach(() => {
+    selectOwnedPlanByIdMock.mockReset();
+    selectOwnedPlanByIdMock.mockResolvedValue(null);
+  });
+
+  it('returns null without loading detail when the plan is not owned', async () => {
+    const detail = await getPlanDetailForRead({
+      planId: 'plan-missing',
+      userId: 'user-1',
+      dbClient: {} as DbClient,
+    });
+
+    expect(detail).toBeNull();
+    expect(selectOwnedPlanByIdMock).toHaveBeenCalledWith({
+      planId: 'plan-missing',
+      ownerUserId: 'user-1',
+      dbClient: expect.anything(),
     });
   });
 });

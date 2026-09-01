@@ -4,7 +4,7 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { PlanSummary } from '@/shared/types/db.types';
 
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/selectors';
+import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/read-status';
 import { getPlansPageForRead } from '@/features/plans/read-projection/service';
 import { generationAttempts, taskProgress } from '@supabase/schema';
 import { db } from '@supabase/service-role';

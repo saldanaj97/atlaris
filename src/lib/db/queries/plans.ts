@@ -1,6 +1,6 @@
 /**
  * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
- * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
+ * Callers must pass the request RLS client or an explicit service-role client.
  */
 
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
@@ -34,14 +34,12 @@ import {
   assertValidPaginationOptions,
   type PaginationOptions,
 } from '@/shared/constants/pagination';
-import { getDb } from '@supabase/runtime';
 import {
   generationAttempts,
   learningPlans,
   modules,
   tasks,
 } from '@supabase/schema';
-import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
 
 export type DeletePlanDbClient = Pick<
@@ -194,10 +192,10 @@ function isDeletablePlanStatus(
 
 export async function getPlanSummaryRowsForUser(
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
   options?: PlanListOptions,
 ): Promise<PlanSummaryRows> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
   assertValidPaginationOptions(options);
   const planRows = await fetchUserPlanListRows(client, userId, options);
 
@@ -248,10 +246,10 @@ export async function getPlanSummaryRowsForUser(
 
 export async function getLightweightPlanSummaryRowsForUser(
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
   options?: PaginationOptions,
 ): Promise<LightweightPlanSummaryRows> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
   assertValidPaginationOptions(options);
   const planRows = await fetchUserPlanListRows(
     client,
@@ -326,9 +324,9 @@ async function getOwnedPlanWithAttemptMeta(
 export async function getLearningPlanDetailRows(
   planId: string,
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
 ): Promise<LearningPlanDetailRows | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const ownedPlan = await getOwnedPlanWithAttemptMeta(client, planId, userId);
   if (!ownedPlan) {
@@ -393,15 +391,15 @@ type PlanAttemptsResult = {
  *
  * @param planId - Plan ID
  * @param userId - Authenticated user ID (ownership check)
- * @param dbClient - Optional client; defaults to getDb()
+ * @param dbClient - Required request RLS or service-role client
  * @returns { plan, attempts } or null if plan not found or not owned by user
  */
 export async function getPlanAttemptsForUser(
   planId: string,
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
 ): Promise<PlanAttemptsResult | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const plan = await selectOwnedPlanById({
     planId,
@@ -432,9 +430,9 @@ export async function getPlanAttemptsForUser(
 export async function getPlanStatusRowsForUser(
   planId: string,
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
 ): Promise<PlanStatusRows | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const ownedPlan = await getOwnedPlanWithAttemptMeta(client, planId, userId);
   if (!ownedPlan) {
@@ -482,17 +480,17 @@ type DeletePlanResult =
  *
  * @param planId - Plan ID to delete
  * @param userId - Authenticated user ID (ownership enforced via WHERE + RLS)
- * @param dbClient - Optional client; defaults to serviceRoleDb (learning_plans
+ * @param dbClient - Required service-role client (learning_plans
  *   DELETE is server-owned; ownership is enforced via explicit userId filters)
  * @returns DeletePlanResult indicating success or failure reason
  */
 export async function deletePlan(
   planId: string,
   userId: string,
-  dbClient?: DeletePlanDbClient,
+  dbClient: DeletePlanDbClient,
   deps: DeletePlanDeps = defaultDeletePlanDeps,
 ): Promise<DeletePlanResult> {
-  const client = dbClient ?? serviceRoleDb;
+  const client = dbClient;
 
   return client.transaction(async (tx) => {
     await lockPlanLifecycle(tx, planId);
@@ -550,9 +548,9 @@ export async function deletePlan(
  */
 export async function getPlanSummaryCount(
   userId: string,
-  dbClient?: DbClient,
+  dbClient: DbClient,
 ): Promise<number> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [result] = await client
     .select({ total: count() })

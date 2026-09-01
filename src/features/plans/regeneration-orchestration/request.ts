@@ -1,3 +1,4 @@
+import type { RegenerationOrchestrationDeps } from './deps';
 import type {
   RequestPlanRegenerationArgs,
   RequestPlanRegenerationResult,
@@ -8,13 +9,8 @@ import {
   resolveRegenerationPolicyDenial,
 } from './admission';
 import { attachPlanRegenerationWorkflow } from './attach-workflow';
-import {
-  createDefaultRegenerationOrchestrationDeps,
-  type RegenerationOrchestrationDeps,
-} from './deps';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 import { recordRegenerationWorkflowAttachUncertain } from '@/lib/logging/ops-alerts';
-import { getDb } from '@supabase/runtime';
 
 type EnqueuedRegenerationWork =
   | { kind: 'enqueued'; jobId: string }
@@ -340,9 +336,9 @@ function mapEnqueuedRegeneration(
 
 export async function requestPlanRegeneration(
   args: RequestPlanRegenerationArgs,
-  deps?: RegenerationOrchestrationDeps,
+  deps: RegenerationOrchestrationDeps,
 ): Promise<RequestPlanRegenerationResult> {
-  const d = deps ?? createDefaultRegenerationOrchestrationDeps(getDb());
+  const d = deps;
 
   const admission = await admitPlanRegeneration(args, d);
   if (admission.kind === 'rejected') {

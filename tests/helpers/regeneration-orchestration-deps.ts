@@ -44,7 +44,6 @@ export function makeRegenerationOrchestrationDeps(
         activePlans: { current: 0, limit: Number.POSITIVE_INFINITY },
         regenerations: { used: 0, limit: 25 },
       })),
-      runReserved: vi.fn(),
     },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),

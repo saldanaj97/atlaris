@@ -40,7 +40,6 @@ export function createModuleLessonContentGenerateHandler(
         userId: actor.id,
         planId,
         moduleId,
-        userTier: actor.subscriptionTier,
         signal: req.signal,
         correlationId,
       });

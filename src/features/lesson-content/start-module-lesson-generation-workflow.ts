@@ -1,6 +1,6 @@
 import type { GenerateModuleLessonsResult } from '@/features/lesson-content/generate-module-lessons.types';
+import type { ModuleLessonWorkflowInput } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
-import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
@@ -20,7 +20,6 @@ export type StartModuleLessonGenerationParams = {
   readonly userId: string;
   readonly planId: string;
   readonly moduleId: string;
-  readonly userTier: SubscriptionTier;
   readonly modelOverride?: string;
   readonly signal?: AbortSignal;
   readonly correlationId: string;
@@ -42,7 +41,13 @@ export type StartModuleLessonGenerationDeps = {
     userId: string,
   ) => Promise<ModuleLessonGenerationContext | null>;
   readonly revert?: typeof revertModuleLessonGeneratingToNotGenerated;
-  readonly workflowStart?: typeof start;
+  readonly workflowStart?: (
+    workflowFn: typeof moduleLessonGenerationWorkflow,
+    args: [ModuleLessonWorkflowInput],
+  ) => Promise<{
+    readonly runId: string;
+    readonly returnValue: Promise<unknown>;
+  }>;
   readonly workflowFn?: typeof moduleLessonGenerationWorkflow;
 };
 
@@ -97,7 +102,6 @@ export async function startModuleLessonGeneration(
         userId: params.userId,
         planId: params.planId,
         moduleId: params.moduleId,
-        userTier: params.userTier,
         modelOverride: params.modelOverride,
         correlationId: params.correlationId,
       },

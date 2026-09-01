@@ -6,19 +6,14 @@ import type {
   AiPlanGenerationProvider,
   GenerationInput,
 } from '@/features/ai/types/provider.types';
-import type {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+import type { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import type {
   AttemptRejection,
   AttemptReservation,
   AttemptsDbClient,
-  GenerationAttemptRecord,
 } from '@/lib/db/queries/types/attempts.types';
 
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { pacePlan } from '@/features/ai/pacing';
 import { ProviderTimeoutError } from '@/features/ai/providers/errors';
 import { randomUUID } from 'node:crypto';
@@ -26,8 +21,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 type AttemptOpsOverrides = {
   reserveAttemptSlot: typeof reserveAttemptSlot;
-  finalizeAttemptSuccess: typeof finalizeAttemptSuccess;
-  finalizeAttemptFailure: typeof finalizeAttemptFailure;
 };
 
 /** Drizzle methods required by attempt operations; type-checked so signature changes are caught. */
@@ -130,29 +123,6 @@ function buildReservation(
   };
 }
 
-function buildAttemptRecord(
-  planId: string,
-  overrides: Partial<GenerationAttemptRecord> = {},
-): GenerationAttemptRecord {
-  return {
-    id: buildId('attempt-record'),
-    planId,
-    status: 'success',
-    classification: null,
-    durationMs: 1,
-    modulesCount: 1,
-    tasksCount: 2,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash: buildId('hash'),
-    metadata: null,
-    createdAt: new Date('2024-01-01T00:00:00.000Z'),
-    generationPurpose: 'initial',
-    ...overrides,
-  };
-}
-
 function createProvider(
   modules: Array<{
     title: string;
@@ -178,57 +148,27 @@ function createProvider(
 }
 
 function createDbHarness(params?: {
-  planId?: string;
   reservation?: AttemptReservation | AttemptRejection;
-  successAttempt?: GenerationAttemptRecord;
-  failureAttempt?: GenerationAttemptRecord;
 }): {
   attemptOperations: AttemptOpsOverrides;
   dbClient: AttemptsDbClient;
   reserveAttemptSlotMock: ReturnType<typeof vi.fn<typeof reserveAttemptSlot>>;
-  finalizeAttemptSuccessMock: ReturnType<
-    typeof vi.fn<typeof finalizeAttemptSuccess>
-  >;
-  finalizeAttemptFailureMock: ReturnType<
-    typeof vi.fn<typeof finalizeAttemptFailure>
-  >;
 } {
-  const planId = params?.planId ?? buildId('plan');
   const reservation = params?.reservation ?? buildReservation();
-  const successAttempt = params?.successAttempt ?? buildAttemptRecord(planId);
-  const failureAttempt =
-    params?.failureAttempt ??
-    buildAttemptRecord(successAttempt.planId, {
-      status: 'failure',
-      classification: 'timeout',
-      modulesCount: 0,
-      tasksCount: 0,
-    });
-
   const reserveAttemptSlotMock = vi
     .fn<typeof reserveAttemptSlot>()
     .mockResolvedValue(reservation);
-  const finalizeAttemptSuccessMock = vi
-    .fn<typeof finalizeAttemptSuccess>()
-    .mockResolvedValue(successAttempt);
-  const finalizeAttemptFailureMock = vi
-    .fn<typeof finalizeAttemptFailure>()
-    .mockResolvedValue(failureAttempt);
 
   return {
     attemptOperations: {
       reserveAttemptSlot: reserveAttemptSlotMock,
-      finalizeAttemptSuccess: finalizeAttemptSuccessMock,
-      finalizeAttemptFailure: finalizeAttemptFailureMock,
     },
     dbClient: createAttemptsDbClientMock(),
     reserveAttemptSlotMock,
-    finalizeAttemptSuccessMock,
-    finalizeAttemptFailureMock,
   };
 }
 
-describe('runGenerationAttempt pacing', () => {
+describe('runGenerationExecution pacing', () => {
   const parsedModules = [
     {
       title: 'Module 1',
@@ -253,17 +193,11 @@ describe('runGenerationAttempt pacing', () => {
     vi.clearAllMocks();
   });
 
-  it('applies pacing after parsing and before recording success', async () => {
+  it('applies pacing after parsing and returns unfinalized success', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const {
-      attemptOperations,
-      dbClient,
-      finalizeAttemptSuccessMock,
-      reserveAttemptSlotMock,
-    } = createDbHarness({
-      successAttempt: buildAttemptRecord(context.planId),
-    });
+    const { attemptOperations, dbClient, reserveAttemptSlotMock } =
+      createDbHarness();
     const options: RunGenerationOptions = {
       attemptOperations,
       provider,
@@ -274,21 +208,15 @@ describe('runGenerationAttempt pacing', () => {
     };
 
     const expectedPaced = pacePlan(parsedModules, context.input);
-    const result = await runGenerationAttempt(context, options);
+    const result = await runGenerationExecution(context, options);
 
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') {
+    expect(result.kind).toBe('success');
+    if (result.kind !== 'success') {
       throw new Error('Expected success result');
     }
 
     expect(result.modules).toEqual(expectedPaced);
     expect(result.metadata).toEqual({ model: 'gpt-4' });
-    expect(finalizeAttemptSuccessMock).toHaveBeenCalledWith(
-      expect.objectContaining({
-        modules: expectedPaced,
-        providerMetadata: { model: 'gpt-4' },
-      }),
-    );
     expect(reserveAttemptSlotMock).toHaveBeenCalledWith(
       expect.objectContaining({
         generationPurpose: 'initial',
@@ -302,12 +230,10 @@ describe('runGenerationAttempt pacing', () => {
       generationPurpose: 'regeneration',
     });
     const provider = createProvider(parsedModules);
-    const { attemptOperations, dbClient } = createDbHarness({
-      successAttempt: buildAttemptRecord(context.planId),
-    });
+    const { attemptOperations, dbClient } = createDbHarness();
 
     await expect(
-      runGenerationAttempt(context, {
+      runGenerationExecution(context, {
         attemptOperations,
         provider,
         dbClient,
@@ -338,20 +264,17 @@ describe('runGenerationAttempt pacing', () => {
       }),
     });
     const provider = createProvider(denseModules);
-    const { attemptOperations, dbClient } = createDbHarness({
-      planId: context.planId,
-      successAttempt: buildAttemptRecord(context.planId),
-    });
+    const { attemptOperations, dbClient } = createDbHarness();
 
-    const result = await runGenerationAttempt(context, {
+    const result = await runGenerationExecution(context, {
       attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
     });
 
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') {
+    expect(result.kind).toBe('success');
+    if (result.kind !== 'success') {
       throw new Error('Expected success result');
     }
     const totalTasks = result.modules.reduce((sum, module) => {
@@ -363,60 +286,51 @@ describe('runGenerationAttempt pacing', () => {
   it('maps in_progress reservation rejection to rate_limit classification', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const {
-      attemptOperations,
-      dbClient,
-      finalizeAttemptFailureMock,
-      finalizeAttemptSuccessMock,
-    } = createDbHarness({
-      planId: context.planId,
+    const { attemptOperations, dbClient } = createDbHarness({
       reservation: {
         reserved: false,
         reason: 'in_progress',
       },
     });
 
-    const result = await runGenerationAttempt(context, {
+    const result = await runGenerationExecution(context, {
       attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
     });
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('rate_limit');
-    expect(result.attempt.classification).toBe('rate_limit');
-    expect(finalizeAttemptSuccessMock).not.toHaveBeenCalled();
-    expect(finalizeAttemptFailureMock).not.toHaveBeenCalled();
+    expect(result.kind).toBe('failure_rejected');
+    if (result.kind !== 'failure_rejected') {
+      throw new Error('Expected rejection result');
+    }
+    expect(result.result.classification).toBe('rate_limit');
+    expect(result.result.attempt.classification).toBe('rate_limit');
   });
 
   it('returns capped failure without parsing or pacing', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
-    const {
-      attemptOperations,
-      dbClient,
-      finalizeAttemptFailureMock,
-      finalizeAttemptSuccessMock,
-    } = createDbHarness({
-      planId: context.planId,
+    const { attemptOperations, dbClient } = createDbHarness({
       reservation: {
         reserved: false,
         reason: 'capped',
       },
     });
 
-    const result = await runGenerationAttempt(context, {
+    const result = await runGenerationExecution(context, {
       attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
     });
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('capped');
-    expect(finalizeAttemptSuccessMock).not.toHaveBeenCalled();
-    expect(finalizeAttemptFailureMock).not.toHaveBeenCalled();
+    expect(result.kind).toBe('failure_rejected');
+    if (result.kind !== 'failure_rejected') {
+      throw new Error('Expected rejection result');
+    }
+    expect(result.result.classification).toBe('capped');
+    expect(provider.generate).not.toHaveBeenCalled();
   });
 
   it('classifies ProviderTimeoutError as timed out without parsing', async () => {
@@ -428,29 +342,21 @@ describe('runGenerationAttempt pacing', () => {
         metadata: {},
       }),
     };
-    const { attemptOperations, dbClient, finalizeAttemptFailureMock } =
-      createDbHarness({
-        planId: context.planId,
-        failureAttempt: buildAttemptRecord(context.planId, {
-          status: 'failure',
-          classification: 'timeout',
-        }),
-      });
+    const { attemptOperations, dbClient } = createDbHarness();
 
-    const result = await runGenerationAttempt(context, {
+    const result = await runGenerationExecution(context, {
       attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
     });
 
-    expect(result.status).toBe('failure');
-    if (result.status !== 'failure') {
-      throw new Error('Expected failure result');
+    expect(result.kind).toBe('failure_reserved');
+    if (result.kind !== 'failure_reserved') {
+      throw new Error('Expected reserved failure result');
     }
     expect(result.classification).toBe('timeout');
     expect(result.timedOut).toBe(true);
-    expect(finalizeAttemptFailureMock).toHaveBeenCalledTimes(1);
   });
 
   it('keeps modules unchanged when no deadline is provided', async () => {
@@ -461,23 +367,20 @@ describe('runGenerationAttempt pacing', () => {
       }),
     });
     const provider = createProvider(parsedModules);
-    const { attemptOperations, dbClient } = createDbHarness({
-      planId: context.planId,
-      successAttempt: buildAttemptRecord(context.planId),
-    });
+    const { attemptOperations, dbClient } = createDbHarness();
 
-    const result = await runGenerationAttempt(context, {
+    const result = await runGenerationExecution(context, {
       attemptOperations,
       provider,
       dbClient,
       timeoutConfig: { baseMs: 30_000, extensionMs: 10_000 },
     });
 
-    expect(result.status).toBe('success');
-    if (result.status !== 'success') {
+    expect(result.kind).toBe('success');
+    if (result.kind !== 'success') {
       throw new Error('Expected success result');
     }
-    // pacePlan treats missing deadlines as "no trim", so orchestrator should persist parsed modules as-is.
+    // pacePlan treats missing deadlines as "no trim", so orchestrator should return parsed modules as-is.
     expect(result.modules).toEqual(parsedModules);
   });
 });

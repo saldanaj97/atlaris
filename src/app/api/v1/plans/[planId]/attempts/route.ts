@@ -6,12 +6,13 @@ import { json } from '@/lib/api/response';
 
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
-  async ({ params, actor }) => {
+  async ({ params, actor, db }) => {
     const planId = requireUuidRouteParam(params, 'planId');
 
     const attempts = await getPlanGenerationAttemptsForRead({
       planId,
       userId: actor.id,
+      dbClient: db,
     });
     if (!attempts) {
       throw new NotFoundError('Learning plan not found.');

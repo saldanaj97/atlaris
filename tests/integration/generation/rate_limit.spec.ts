@@ -1,18 +1,29 @@
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
-import { getDb } from '@supabase/runtime';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const authUserId = 'auth_generation_rate_limit';
 const authEmail = 'generation-rate-limit@example.com';
 
 describe('generation integration - rate limit classification', () => {
-  it('records rate_limit classification when provider signals throttling', async () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'rate_limit');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('records rate_limit classification when the mock provider signals throttling', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });
 
@@ -29,27 +40,22 @@ describe('generation integration - rate limit classification', () => {
       })
       .returning();
 
-    const mock = createMockProvider({ scenario: 'rate_limit' });
-
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'High Demand Topic',
-          notes: 'Expecting rate limit classification',
-          skillLevel: 'advanced',
-          weeklyHours: 8,
-          learningStyle: 'reading',
-        },
-      },
-      { provider: mock.provider, dbClient: getDb() },
+        topic: 'High Demand Topic',
+        notes: 'Expecting rate limit classification',
+        skillLevel: 'advanced',
+        weeklyHours: 8,
+        learningStyle: 'reading',
+      }),
     );
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('rate_limit');
-    expect(mock.invocationCount).toBe(1);
+    expect(result.status).toBe('retryable_failure');
+    if (result.status === 'retryable_failure') {
+      expect(result.classification).toBe('rate_limit');
+    }
 
     const [attempt] = await db
       .select()

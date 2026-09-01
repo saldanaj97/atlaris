@@ -7,7 +7,6 @@ import {
 } from '@/features/billing/usage-metrics';
 import { getCorrelationId } from '@/lib/api/context';
 import { AppError } from '@/lib/api/errors';
-import { getDb } from '@supabase/runtime';
 import { users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 
@@ -32,18 +31,14 @@ type BillingAccountSnapshot = {
 
 type SnapshotArgsBase = {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   correlationId?: string;
 };
 
 export async function getBillingAccountSnapshot(
   args: SnapshotArgsBase,
 ): Promise<BillingAccountSnapshot> {
-  const {
-    userId,
-    dbClient = getDb(),
-    correlationId = getCorrelationId(),
-  } = args;
+  const { userId, dbClient, correlationId = getCorrelationId() } = args;
 
   const [billingRow] = await dbClient
     .select({

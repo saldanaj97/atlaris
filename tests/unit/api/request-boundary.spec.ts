@@ -54,7 +54,7 @@ describe('requestBoundary', () => {
     clearAllUserRateLimiters();
   });
 
-  it('provides a scoped actor, db, owned access, and correlation id for components', async () => {
+  it('provides a scoped actor, db, and correlation id for components', async () => {
     const user = buildUserFixture({
       id: 'user_1',
       authUserId: 'auth_1',
@@ -70,10 +70,6 @@ describe('requestBoundary', () => {
 
       expect(currentScope.actor).toEqual(user);
       expect(currentScope.db).toBe(serviceDb);
-      expect(currentScope.owned).toEqual({
-        userId: user.id,
-        dbClient: serviceDb,
-      });
       expect(typeof currentScope.correlationId).toBe('string');
       expect(requestContext?.user).toMatchObject({
         id: user.id,
@@ -86,35 +82,6 @@ describe('requestBoundary', () => {
     });
 
     expect(scope).not.toBeNull();
-  });
-
-  it('does not emit the withServerComponentContext deprecation warning', async () => {
-    const user = buildUserFixture({
-      id: 'user_1',
-      authUserId: 'auth_1',
-      email: 'component@example.test',
-      name: 'Component User',
-    });
-
-    setTestUser(user.authUserId);
-    getUserByAuthIdMock.mockResolvedValue(user);
-
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    await expect(requestBoundary.component(async () => 'ok')).resolves.toBe(
-      'ok',
-    );
-
-    expect(
-      warn.mock.calls.some((args) =>
-        args.some(
-          (arg) =>
-            typeof arg === 'string' &&
-            arg.includes('withServerComponentContext() is deprecated'),
-        ),
-      ),
-    ).toBe(false);
-    warn.mockRestore();
   });
 
   it('returns null for optional component and action callers when unauthenticated', async () => {
@@ -145,7 +112,6 @@ describe('requestBoundary', () => {
       expect(scope.actor).toEqual(user);
       expect(scope.db).toBe(serviceDb);
       expect(requestContext?.db).toBe(serviceDb);
-      expect(scope.owned.userId).toBe(user.id);
 
       return new Response('ok', { status: 200 });
     });
@@ -397,7 +363,7 @@ describe('requestBoundary', () => {
 
     const result = await requestBoundary.action(async (scope) => {
       expect(scope.actor).toEqual(user);
-      expect(scope.owned.userId).toBe(user.id);
+      expect(scope.db).toBe(serviceDb);
       return 'ok';
     });
 
