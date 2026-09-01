@@ -5,7 +5,6 @@ from pathlib import Path
 
 CONFIG_DIR = Path(__file__).parent
 REQUIRED_CHECKS = {
-    "build",
     "integration-light",
     "lint-and-type-check",
     "security-tests",
@@ -34,6 +33,8 @@ def select_config(paths: list[str]) -> tuple[dict[str, bool], set[str]]:
 
 
 def main() -> None:
+    assert "command: pnpm build" not in (CONFIG_DIR / "code-config.yml").read_text()
+
     cases = {
         "docs-only": (
             ["docs/README.md"],

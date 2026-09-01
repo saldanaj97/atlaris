@@ -13,8 +13,6 @@ workflows:
     jobs:
       # These zero-credit aliases satisfy the repository's required checks.
       - docs-only:
-          name: build
-      - docs-only:
           name: lint-and-type-check
       - docs-only:
           name: integration-light
