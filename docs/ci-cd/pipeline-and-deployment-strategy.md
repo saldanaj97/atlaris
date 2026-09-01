@@ -16,7 +16,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Start work from `develop`.
 - Open PRs into `develop` (or `main` only for true hotfixes).
 - PRs run CircleCI `ci-pr` checks.
-- Vercel's Git integration deploys branch pushes as Preview and `main` pushes as Production.
+- CircleCI owns code and test validation; Vercel's Git integration is the authoritative Next.js build and deployment validation.
+- Vercel deploys branch pushes as Preview and `main` pushes as Production.
 - Vercel's dashboard-configured Ignored Build Step skips builds for docs-only commits.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
@@ -45,15 +46,15 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch or `pipeline.git.base_revision` for `main`/`develop` pushes. Standalone feature-branch pushes do not launch a setup workflow; PR events own validation.
 - Every changed-file pipeline includes `.circleci/shared-config.yml`. Docs-only changes—including root Markdown files—add `.circleci/docs-config.yml`; code, mixed, and CI/config changes add `.circleci/code-config.yml`. The orb merges the selected fragments into the single continuation config.
 - `.circleci/no-updates.yml` is the fallback when the comparison contains no changed files.
-- Docs-only pipelines publish zero-credit no-op jobs under the seven required check names. They do not provision code CI executors or run lint, build, audit, or test commands.
+- Docs-only pipelines publish zero-credit no-op jobs under the six required CircleCI check names. They do not provision code CI executors or run lint, audit, or test commands. Vercel still publishes a successful required status when its Ignored Build Step skips the deployment.
 
 ### 2) CircleCI `ci-pr` (`.circleci/code-config.yml`)
 
 - Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
 - Draft PRs do not run `ci-pr`; the gate starts when the PR is marked ready for review and reruns on later updates.
-- Runs: lint, type-check, dependency audit, build, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
+- Runs: lint, type-check, dependency audit, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
-- `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job; GitHub rulesets must require the individual CircleCI job names: `lint-and-type-check`, `vulnerability-scan`, `build`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
+- `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
 ### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
@@ -67,7 +68,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
 - Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
 
-Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
+Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
 
 ### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -116,7 +117,7 @@ Vercel's native Git integration is separate from CircleCI: every branch push cre
 
 1. You push to a feature branch and open a PR to `develop`.
 2. CircleCI `ci-pr` validates code quality and tests.
-3. Vercel's Git integration creates a Preview deployment for the branch push or PR; the Ignored Build Step skips docs-only commits.
+3. Vercel's required GitHub status validates the Next.js build and Preview deployment; the Ignored Build Step reports success for docs-only commits.
 4. Configure preview Supabase settings in Vercel if preview deployments need a database.
 
 ---

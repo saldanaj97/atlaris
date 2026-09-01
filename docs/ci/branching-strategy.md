@@ -87,6 +87,8 @@ We use two protected branches that serve as anchors for all development:
 
 PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`main` is CircleCI `ci-trunk` only.
 
+Vercel's required GitHub status is the authoritative Next.js build and deployment gate. CircleCI does not repeat `pnpm build`.
+
 ### 1. CircleCI `ci-pr` - PR Validation
 
 **Triggers:** GitHub App `pull_request` events whose head is not `main` (feature/hotfix PRs plus the `develop` → `main` promotion PR); draft PRs wait until marked ready for review
@@ -96,13 +98,12 @@ PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`m
 - Lint (Oxlint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
-- Build (Next.js)
 - Unit tests
 - Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
 - RLS security tests
 - Production workflow tests
 
-**Purpose:** Fast feedback on PRs before merge. GitHub rulesets require these job names, not a GitHub Actions aggregator.
+**Purpose:** Fast feedback on PRs before merge. GitHub rulesets require the `Vercel` status plus the six CircleCI validation job names, not a GitHub Actions aggregator.
 
 ### 2. CircleCI `ci-trunk` - Full CI (post-merge)
 
@@ -172,8 +173,8 @@ git commit -m "feat: ..."
 
 ### Step 4: PR review process
 
-1. CI runs automatically (CircleCI `ci-pr`)
-2. Vercel creates a Preview deployment; docs-only commits are skipped by the Ignored Build Step
+1. CircleCI `ci-pr` runs code and test validation
+2. Vercel validates the Next.js build and Preview deployment; docs-only commits report success through the Ignored Build Step
 3. Address feedback and merge
 
 ### Step 5: Merge to `develop`
