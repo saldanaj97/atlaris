@@ -59,15 +59,15 @@ next-env.d.ts
 # git worktrees
 .worktrees/
 
-# ide rules
+# shared Cursor agent files
 .cursor/*
 !.cursor/environment.json
+!.cursor/rules/
+!.cursor/rules/**
 !.cursor/skills/
 !.cursor/skills/**
 .cursor/skills/**/artifacts/
 .cursor/skills/**/.run.json
-!.cursor/rules/
-!.cursor/rules/**
 .opencode/*
 
 # extras
