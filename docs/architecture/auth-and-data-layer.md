@@ -48,9 +48,16 @@ Local product testing that expects a first-login auto-create without a seeded `u
 ### When to use which
 
 ```typescript
-// API route — withAuth, or requestBoundary.route (see request-boundary.ts)
-export const GET = withAuth(async ({ user }) => {
-  const plans = await getPlanSummariesForUser(user.id);
+// API route — requestBoundary.route (see request-boundary.ts)
+import { listLightweightPlansForApi } from '@/features/plans/read-projection/service';
+import { requestBoundary } from '@/lib/api/request-boundary';
+import { json } from '@/lib/api/response';
+
+export const GET = requestBoundary.route(async ({ actor, db }) => {
+  const plans = await listLightweightPlansForApi({
+    userId: actor.id,
+    dbClient: db,
+  });
   return json(plans);
 });
 
@@ -155,7 +162,7 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 
 | Context                      | What to use                        | Why                                                    |
 | ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
-| Inside auth wrappers         | `getDb()` or the `rlsDb` callback  | Returns request-scoped RLS client                      |
+| Request / test context establishment | Ambient `getDb()` only inside `withAuth` / `requestBoundary` / `runWithTestContext` (those wrappers already hold `rlsDb`). Do not call `getDb()` from route, action, query, or feature-helper bodies. | Establishes the RLS client on request context and passes it as `db` / `dbClient`. |
 | Query / feature helpers below request establishment | Explicit required `dbClient` (JCS-62). Request paths pass the RLS-scoped client from `requestBoundary` (`actor` / `db`). Named worker / workflow owners pass or own a service-role client. | Ambient `getDb()` stays only at true request / test context establishment (`withAuth` / `requestBoundary` / `runWithTestContext`). Helpers must not default to ambient acquisition. |
 | First-user provisioning      | `provisionUserFromVerifiedAuthSession` (service-role) | Authenticated role cannot INSERT `users` after contract cutover |
 | Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
@@ -211,7 +218,7 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 | ------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
 | Call `getDb()` outside an auth wrapper                       | Use `withAuth` or `requestBoundary` (or the legacy shims)                          |
 | Pass user ID from request body to query functions            | Always use `ctx.user` / `actor` from the boundary callback                         |
-| Import `@supabase/service-role` in API routes                | Use `getDb()` which returns the RLS-scoped client                                  |
+| Import `@supabase/service-role` in API routes                | Pass the RLS `db` from `requestBoundary.route` (`actor` / `db`)                    |
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
