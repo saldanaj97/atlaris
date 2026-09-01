@@ -24,13 +24,13 @@ If any layer fails, access is denied. The system is **fail-closed** — missing 
 | Server components | `requestBoundary.component(...)` | `{ actor, db, ... }`                             | Async server components  |
 | Server actions    | `requestBoundary.action(...)`    | `{ actor, db, ... }`                             | `'use server'` functions |
 
-`requestBoundary.route` is built on `withAuth` + rate-limit options. `requestBoundary.component` and `requestBoundary.action` call `withServerComponentContext` and `withServerActionContext` internally — those two functions are **compatibility shims** for call sites that have not moved to `requestBoundary` yet; new code should use `requestBoundary.component` / `requestBoundary.action` instead.
+`requestBoundary.route` is built on `withAuth` + rate-limit options. `requestBoundary.component` calls internal `runServerComponentContext`; `requestBoundary.action` calls `withServerActionContext`. There is no `withServerComponentContext` export — new and existing server-component call sites use `requestBoundary.component`.
 
 **API routes** still use `withAuth(handler)` directly (or via `requestBoundary.route`); that pattern stays primary for `app/api/`.
 
 ## Lower-level auth helpers (`@/lib/api/auth`)
 
-`withServerComponentContext` and `withServerActionContext` still establish authenticated DB context; they sit below `requestBoundary` and share a single private helper (`runWithAuthenticatedContext`) that:
+`runServerComponentContext` (internal, used by `requestBoundary.component`) and `withServerActionContext` (used by `requestBoundary.action`) establish authenticated DB context. They sit below `requestBoundary` and share a single private helper (`runWithAuthenticatedContext`) that:
 
 1. Creates an RLS client via `createAuthenticatedRlsClient(authUserId)`
 2. Wraps execution in `withRequestContext` so `getDb()` returns the RLS client
@@ -78,7 +78,7 @@ const tier = await requestBoundary.component(
 );
 ```
 
-`withServerActionContext` / `withServerComponentContext` are still valid for existing code; prefer `requestBoundary.action` / `requestBoundary.component` in new or refactored files.
+`withServerActionContext` remains the authenticated action helper used by `requestBoundary.action`. There is no `withServerComponentContext` export; server components use `requestBoundary.component`. Prefer `requestBoundary.action` / `requestBoundary.component`.
 
 `getEffectiveAuthUserId()` is for **redirect-only** identity checks (e.g. “is anyone logged in?”) where you do not need RLS-backed `getDb()`. Anything that runs queries with tenant data must go through a full auth boundary above.
 
@@ -86,7 +86,7 @@ const tier = await requestBoundary.component(
 
 - `withAuth` (and `requestBoundary.route` built on it): Throws `AuthError` if unauthenticated (returns 401 via `withErrorBoundary` when so wrapped)
 - `withServerActionContext` and `requestBoundary.action`: Return `null` if unauthenticated (caller decides how to handle)
-- `withServerComponentContext` and `requestBoundary.component`: Return `null` if unauthenticated (caller decides how to handle)
+- `requestBoundary.component` (via internal `runServerComponentContext`): Return `null` if unauthenticated (caller decides how to handle)
 
 When a server action boundary wraps an action whose successful return type can be `void` / `undefined`, use an explicit `result === null` check for auth failure rather than a generic falsy check.
 
@@ -120,7 +120,7 @@ For security-sensitive flows (OAuth callbacks), use `getAuthUserId()` instead �
 Request arrives
     │
     ▼
-withAuth / requestBoundary (or withServerActionContext / withServerComponentContext)
+withAuth / requestBoundary (component: `runServerComponentContext`; action: `withServerActionContext`)
     │
     ├── getEffectiveAuthUserId() → auth user ID from session cookie
     │

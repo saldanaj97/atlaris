@@ -31,6 +31,7 @@ describe('generation integration - attempt cap boundary', () => {
   beforeAll(() => {
     vi.stubEnv('AI_PROVIDER', 'mock');
     vi.stubEnv('MOCK_AI_SCENARIO', 'success');
+    vi.stubEnv('MOCK_GENERATION_FAILURE_RATE', '0');
     vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
   });
 

@@ -198,7 +198,7 @@ Production uses a **durable workflow**: the POST handler starts the run and retu
 - Post-claim work: `runModuleLessonGenerationWork` in `src/features/lesson-content/run-module-lesson-generation-work.ts`
 - Client poll: `useModuleLessonGeneration` in `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` (≈2.5s interval, backoff after 20 polls, max interval 60s)
 
-`generateModuleLessons` in `src/features/lesson-content/generate-module-lessons.ts` remains a **sync/legacy helper** (claim + work inline) used by tests; the POST handler does **not** call it.
+Tests and the POST handler use `startModuleLessonGeneration` (`src/features/lesson-content/start-module-lesson-generation-workflow.ts`): flag fail-closed, preflight, then `workflow/api.start(moduleLessonGenerationWorkflow, …)`. There is no sync `generateModuleLessons` helper.
 
 ### Preconditions and guards
 
