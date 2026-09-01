@@ -1,7 +1,11 @@
 import { RevealAnimation } from './RevealAnimation';
-import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
+import {
+  marketingPrimaryCtaClassName,
+  marketingSecondaryCtaClassName,
+} from '@/app/(marketing)/_shared/marketing-cta';
 import { StarField } from '@/app/(marketing)/_shared/StarField';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -42,7 +46,7 @@ export function PolarisSection() {
               asChild
               className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
             >
-              <Link href='/plans/new'>
+              <Link href={ROUTES.PLANS.NEW}>
                 Begin tonight
                 <ArrowRight
                   className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
@@ -51,9 +55,10 @@ export function PolarisSection() {
               </Link>
             </Button>
             <Link
-              href='/pricing'
+              href={ROUTES.PRICING}
               className={cn(
-                'inline-flex font-serif text-sm font-medium underline-offset-4 opacity-80 transition-[opacity,transform] hover:underline hover:opacity-100',
+                marketingSecondaryCtaClassName,
+                'border-background/30 bg-transparent text-background hover:bg-background/10 dark:border-background/30 dark:bg-transparent dark:text-background dark:hover:bg-background/10',
                 styles.ctaMotion,
               )}
             >

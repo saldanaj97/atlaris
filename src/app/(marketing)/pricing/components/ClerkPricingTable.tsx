@@ -56,9 +56,9 @@ const PLAN_NAME_BY_SLUG: Record<string, string> = {
 };
 
 const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
-  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free',
-  [CLERK_BILLING_PLAN_SLUGS.starter]: 'Choose Starter',
-  [CLERK_BILLING_PLAN_SLUGS.pro]: 'Choose Pro',
+  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free tonight',
+  [CLERK_BILLING_PLAN_SLUGS.starter]: 'Begin with Starter',
+  [CLERK_BILLING_PLAN_SLUGS.pro]: 'Begin with Pro',
 };
 
 const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
@@ -269,11 +269,13 @@ export function ClerkPricingTable({
 
   return (
     <PricingCards
+      loading={plans.length === 0}
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}
       renderAction={(plan, planPeriod, actionClassName) => {
-        const label = PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Choose plan';
+        const label =
+          PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Begin with this plan';
         const actionKey = `${plan.slug}:${planPeriod}`;
         const actionRef = (button: HTMLButtonElement | null) => {
           if (button) actionButtons.current.set(actionKey, button);

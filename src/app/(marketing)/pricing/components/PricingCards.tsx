@@ -14,6 +14,7 @@ import { useRef, type ReactNode } from 'react';
 import styles from './PricingCards.module.css';
 
 type PricingCardsProps = {
+  loading?: boolean;
   period: BillingPeriod;
   plans: readonly PricingPlan[];
   onPeriodChange: (period: BillingPeriod) => void;
@@ -35,6 +36,7 @@ function formatPricingMoney(money: PricingMoney | null): string {
 }
 
 export function PricingCards({
+  loading = false,
   onPeriodChange,
   period,
   plans,
@@ -69,7 +71,16 @@ export function PricingCards({
       </div>
 
       <div ref={rootRef} className={styles.cards}>
-        <div className={styles.table}>
+        <div aria-busy={loading} className={styles.table}>
+          {loading && plans.length === 0
+            ? [0, 1, 2].map((index) => (
+                <div
+                  aria-hidden='true'
+                  className={`${styles.card} ${styles.cardPlaceholder}`}
+                  key={index}
+                />
+              ))
+            : null}
           {plans.map((plan) => {
             const planPeriod = resolvePlanPeriod(plan, period);
             const useAnnual = planPeriod === 'annual';

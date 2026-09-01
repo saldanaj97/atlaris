@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react';
 
 import { StarField } from '@/app/(marketing)/_shared/StarField';
+import { APP_SHELL_HEADER_TUCK } from '@/components/layout/app-shell-width';
 
 import styles from './Pricing.module.css';
 
@@ -33,7 +34,7 @@ export function PricingShell({ children }: { children: ReactNode }) {
 function CelestialBackdrop() {
   return (
     <div
-      className='pointer-events-none absolute inset-0 overflow-hidden text-foreground'
+      className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${APP_SHELL_HEADER_TUCK}`}
       aria-hidden='true'
     >
       {/* Warm dusk glow — up where the hero sits */}
@@ -50,7 +51,7 @@ function Hero() {
 
   return (
     <header
-      className='mx-auto flex max-w-3xl flex-col items-center px-6 pt-10 pb-6 text-center sm:pt-12 sm:pb-8 md:px-8'
+      className='mx-auto flex max-w-3xl flex-col items-center px-6 pt-10 pb-6 text-center sm:pb-8 md:px-8'
       aria-labelledby='pricing-hero-heading'
     >
       <p className={styles.heroOverline}>{copy.overline}</p>

@@ -265,7 +265,7 @@ describe('ClerkPricingTable', () => {
     const checkout = await screen.findByTestId('checkout-plan_starter');
     expect(checkout).toHaveAttribute('data-period', 'month');
     expect(
-      within(checkout).getByRole('button', { name: 'Choose Starter' }),
+      within(checkout).getByRole('button', { name: 'Begin with Starter' }),
     ).toBeVisible();
 
     await user.click(screen.getByRole('button', { name: 'Yearly' }));
@@ -415,7 +415,7 @@ describe('ClerkPricingTable', () => {
     await renderPricingTable();
 
     expect(
-      await screen.findByRole('button', { name: 'Choose Starter' }),
+      await screen.findByRole('button', { name: 'Begin with Starter' }),
     ).toBeDisabled();
     expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
     expect(
@@ -566,6 +566,26 @@ describe('ClerkPricingTable', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
+  });
+
+  it('shows placeholder cards while Clerk plans are loading', async () => {
+    let resolvePlans!: (value: { data: (typeof STARTER_PLAN)[] }) => void;
+    mocks.getPlans.mockReturnValue(
+      new Promise((resolve) => {
+        resolvePlans = resolve;
+      }),
+    );
+
+    await renderPricingTable();
+
+    const table = document.querySelector('[aria-busy="true"]');
+    expect(table).not.toBeNull();
+    expect(table?.querySelectorAll('[aria-hidden="true"]')).toHaveLength(3);
+
+    resolvePlans({ data: [STARTER_PLAN] });
+    expect(
+      await screen.findByRole('article', { name: 'Starter' }),
+    ).toBeVisible();
   });
 
   it('renders the monthly fee from Clerk plan data', async () => {

@@ -3,6 +3,7 @@ import {
   marketingSecondaryCtaClassName,
 } from '@/app/(marketing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
+import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -49,7 +50,7 @@ export function HeroSection() {
           asChild
           className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
         >
-          <Link href='/plans/new'>
+          <Link href={ROUTES.PLANS.NEW}>
             {copy.primaryCta}
             <ArrowRight
               className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
@@ -58,10 +59,10 @@ export function HeroSection() {
           </Link>
         </Button>
         <Link
-          href='/pricing'
+          href={ROUTES.PRICING}
           className={cn(
             marketingSecondaryCtaClassName,
-            'h-auto px-8 py-4 text-base',
+            'h-auto px-8 py-4',
             styles.ctaMotion,
           )}
         >
