@@ -120,18 +120,25 @@ const mockDb = {
 } as unknown as ReturnType<typeof getDb>;
 ```
 
-### Request Context Injection
+### Explicit Database Client Injection
+
+Query helpers no longer accept ambient `getDb` / request-context dependency bags. Pass the request RLS client or a named service-role client as the required `dbClient`.
 
 ```typescript
-const mockedGetDb = vi.fn();
-const mockedGetRequestContext = vi.fn();
-const mockedCleanupDbClient = vi.fn().mockResolvedValue(undefined);
+import type { UsersDbClient } from '@/lib/db/queries/types/users.types';
+import { getUserByAuthId } from '@/lib/db/queries/users';
 
-const user = await getUserByAuthId(authUserId, undefined, {
-  getRequestContext: mockedGetRequestContext,
-  getDb: mockedGetDb,
-  cleanupDbClient: mockedCleanupDbClient,
-});
+const mockDb = {
+  select: vi.fn().mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      leftJoin: vi.fn().mockReturnValue({
+        where: vi.fn().mockResolvedValue([]),
+      }),
+    }),
+  }),
+} as unknown as UsersDbClient;
+
+const user = await getUserByAuthId(authUserId, mockDb);
 ```
 
 ### Key Imports
@@ -484,7 +491,7 @@ describe('deletePlan', () => {
 | Principle            | How                                                                                       |
 | -------------------- | ----------------------------------------------------------------------------------------- |
 | Mock drizzle methods | `vi.fn()` chains: `.mockReturnValue()` for builders, `.mockResolvedValue()` for terminals |
-| Inject mocks         | Pass mock `dbClient` to query helpers instead of relying on module mocks                  |
+| Inject mocks         | Pass an explicit mock `dbClient`; do not inject ambient `getDb` / request-context bags    |
 | Validate SQL         | Capture where clauses, inspect via `PgDialect.sqlToQuery()`                               |
 | Test data            | `buildUserFixture()`, `createTestPlan()`, `createId()`                                    |
 | Safety net           | `tests/unit/setup.ts` globally mocks `@supabase/service-role`                             |
