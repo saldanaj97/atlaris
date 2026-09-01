@@ -6,10 +6,10 @@ This directory is the maintained source for verifying user-facing Atlaris behavi
 
 - Launch with `./node_modules/.bin/tsx scripts/verify-atlaris/control.ts launch --mode=anon` or `--mode=auth`.
 - Anon lives at `http://127.0.0.1:3100`. Auth lives at `http://127.0.0.1:3101`.
-- Run `... control.ts doctor` and require the expected URL, mode, and (for anon) `/dashboard` → 307.
+- Run `... control.ts doctor` and require the expected URL, mode, and (for anon) `/dashboard` → 307 to `/auth/sign-in` (auth `/dashboard` 2xx).
 - Never drive `:3000` or any instance this run did not start.
 - One mode at a time. Cleanup before switching anon ↔ auth.
-- Auth uses the seeded local product-testing user, mock AI, and fixture pricing (checkout disabled).
+- Auth uses the seeded local product-testing user, mock AI, and fixture pricing (checkout disabled). The seed creates three fixed plus 42 additional ready plans, so a fresh auth dashboard is resume, not empty.
 - Put proof under `.cursor/skills/verify-atlaris/artifacts/<run-id>/<feature-id>/`. Cleanup must not delete it.
 
 ## Driving conventions

@@ -9,6 +9,21 @@ import type { StartedPostgreSqlContainer } from '@testcontainers/postgresql';
  */
 import type { ChildProcess } from 'node:child_process';
 
+import {
+  APP_COMMAND_MARK,
+  SUPERVISOR_COMMAND_MARK,
+  dashboardReadyWanted,
+  decideExistingLaunch,
+  isExpectedDashboard,
+  isOwnedCommand,
+  isOwnedListenerCommand,
+  recordedListenerPid,
+  resolveRunFileContents,
+  shouldTerminatePid,
+  type DashboardProbe,
+  type Mode,
+  type RunFile,
+} from './control-logic';
 import { prepareSmokeDatabase } from '@tests/helpers/smoke/db-pipeline';
 import {
   SMOKE_ANON_PORT,
@@ -32,24 +47,14 @@ import { execFileSync, spawn } from 'node:child_process';
 import {
   existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
+  renameSync,
   unlinkSync,
   writeFileSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
-
-type Mode = 'anon' | 'auth';
-
-type RunFile = {
-  mode: Mode;
-  url: string;
-  port: number;
-  supervisorPid: number;
-  appPid: number | null;
-  listenPid: number | null;
-  containerId: string;
-  stateFile: string;
-};
+import { dirname, join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const READY_MS = 180_000;
 const POLL_MS = 1_000;
@@ -126,16 +131,68 @@ function pidAlive(pid: number): boolean {
   }
 }
 
-function readRun(): RunFile | null {
-  const path = runFilePath();
-  if (!existsSync(path)) {
+function tmpRunPaths(): string[] {
+  const dir = skillDir();
+  if (!existsSync(dir)) {
+    return [];
+  }
+  return readdirSync(dir)
+    .filter((name) => name.startsWith('.run.json') && name.endsWith('.tmp'))
+    .map((name) => join(dir, name));
+}
+
+function readOptionalFile(path: string): string | null {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
     return null;
   }
-  return JSON.parse(readFileSync(path, 'utf8')) as RunFile;
+}
+
+function readRun(): RunFile | null {
+  const path = runFilePath();
+  const primary = existsSync(path) ? readOptionalFile(path) : null;
+  const tmpCandidates = tmpRunPaths()
+    .map((tmpPath) => readOptionalFile(tmpPath))
+    .filter((raw): raw is string => raw !== null);
+  return resolveRunFileContents(primary, tmpCandidates);
 }
 
 function writeRun(run: RunFile): void {
-  writeFileSync(runFilePath(), `${JSON.stringify(run, null, 2)}\n`);
+  mkdirSync(skillDir(), { recursive: true });
+  const path = runFilePath();
+  const tmp = `${path}.${process.pid}.tmp`;
+  writeFileSync(tmp, `${JSON.stringify(run, null, 2)}\n`);
+  renameSync(tmp, path);
+}
+
+function updateRun(patch: Partial<RunFile>): void {
+  const current = readRun();
+  if (!current) {
+    return;
+  }
+  writeRun({ ...current, ...patch });
+}
+
+function clearRunFiles(): void {
+  for (const path of [runFilePath(), ...tmpRunPaths()]) {
+    try {
+      unlinkSync(path);
+    } catch {
+      // gone
+    }
+  }
+}
+
+function processArgs(pid: number): string | null {
+  try {
+    const out = execFileSync('ps', ['-p', String(pid), '-o', 'args='], {
+      encoding: 'utf8',
+    }).trim();
+    return out || null;
+  } catch {
+    return null;
+  }
 }
 
 function modeUrls(mode: Mode): { port: number; url: string; path: string } {
@@ -149,12 +206,16 @@ function modeUrls(mode: Mode): { port: number; url: string; path: string } {
   return { port: SMOKE_AUTH_PORT, url: smokeAuthAppUrl(), path: '/dashboard' };
 }
 
-async function httpStatus(
+async function probeHttp(
   url: string,
   redirect: 'follow' | 'manual',
-): Promise<number> {
+): Promise<DashboardProbe> {
   const response = await fetch(url, { redirect });
-  return response.status;
+  return {
+    status: response.status,
+    url: response.url,
+    location: response.headers.get('location'),
+  };
 }
 
 async function waitReady(mode: Mode, url: string, path: string): Promise<void> {
@@ -165,18 +226,15 @@ async function waitReady(mode: Mode, url: string, path: string): Promise<void> {
   while (Date.now() < deadline) {
     try {
       const redirect = mode === 'anon' ? 'manual' : 'follow';
-      const status = await httpStatus(target, redirect);
+      const probe = await probeHttp(target, redirect);
       serverHits += 1;
-      if (mode === 'anon' && status === 307) {
-        return;
-      }
-      if (mode === 'auth' && status >= 200 && status < 400) {
+      if (isExpectedDashboard(mode, probe, url)) {
         return;
       }
       streakFail += 1;
       if (serverHits >= 8 && streakFail >= 8) {
         throw new Error(
-          `${target} returned ${status} repeatedly (want ${mode === 'anon' ? '307' : '2xx'}).`,
+          `${target} returned ${probe.status} repeatedly (want ${dashboardReadyWanted(mode)}).`,
         );
       }
     } catch (error) {
@@ -274,21 +332,21 @@ async function doctor(): Promise<void> {
   }
   const { path } = modeUrls(run.mode);
   const redirect = run.mode === 'anon' ? 'manual' : 'follow';
-  const status = await httpStatus(`${run.url}${path}`, redirect);
+  const probe = await probeHttp(`${run.url}${path}`, redirect);
+  if (!isExpectedDashboard(run.mode, probe, run.url)) {
+    throw new Error(
+      run.mode === 'anon'
+        ? `Anon doctor expected /dashboard → 307 to /auth/sign-in, got ${probe.status} ${probe.location ?? probe.url}. Wrong instance.`
+        : `${run.url}${path} returned ${probe.status} at ${probe.url} (want 2xx on /dashboard).`,
+    );
+  }
   if (run.mode === 'anon') {
-    if (status !== 307) {
-      throw new Error(
-        `Anon doctor expected /dashboard → 307 sign-in, got ${status}. Wrong instance.`,
-      );
-    }
-    const landing = await httpStatus(`${run.url}/landing`, 'follow');
-    if (landing < 200 || landing >= 400) {
+    const landing = await probeHttp(`${run.url}/landing`, 'follow');
+    if (landing.status < 200 || landing.status >= 400) {
       console.warn(
-        `VERIFY_DOCTOR warn /landing returned ${landing}. Marketing pages need a real NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.`,
+        `VERIFY_DOCTOR warn /landing returned ${landing.status}. Marketing pages need a real NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY.`,
       );
     }
-  } else if (status < 200 || status >= 400) {
-    throw new Error(`${run.url}${path} returned ${status}.`);
   }
   mkdirSync(artifactsDir(), { recursive: true });
   console.log(
@@ -296,63 +354,81 @@ async function doctor(): Promise<void> {
   );
 }
 
+async function terminateOwned(
+  pid: number | null,
+  isOwned: (command: string | null) => boolean,
+  waitMs: number,
+): Promise<void> {
+  if (pid === null || !pidAlive(pid)) {
+    return;
+  }
+  if (!shouldTerminatePid(pid, process.pid, processArgs(pid), isOwned)) {
+    return;
+  }
+  killPid(pid, 'SIGTERM');
+  const deadline = Date.now() + waitMs;
+  while (Date.now() < deadline && pidAlive(pid)) {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  if (pidAlive(pid) && isOwned(processArgs(pid))) {
+    killPid(pid, 'SIGKILL');
+  }
+}
+
 async function cleanup(): Promise<void> {
   const run = readRun();
   if (!run) {
+    clearRunFiles();
     console.log('VERIFY_CLEANUP nothing to do');
     return;
   }
-  if (run.supervisorPid !== process.pid && pidAlive(run.supervisorPid)) {
-    killPid(run.supervisorPid, 'SIGTERM');
-    const deadline = Date.now() + 8_000;
-    while (Date.now() < deadline && pidAlive(run.supervisorPid)) {
-      await new Promise((resolve) => setTimeout(resolve, 200));
-    }
-    if (pidAlive(run.supervisorPid)) {
-      killPid(run.supervisorPid, 'SIGKILL');
-    }
+  await terminateOwned(
+    run.supervisorPid,
+    (command) => isOwnedCommand(command, SUPERVISOR_COMMAND_MARK),
+    8_000,
+  );
+  await terminateOwned(
+    run.appPid,
+    (command) => isOwnedCommand(command, APP_COMMAND_MARK),
+    500,
+  );
+  // ponytail: never fall back to the current port owner when listenPid is null
+  await terminateOwned(recordedListenerPid(run), isOwnedListenerCommand, 500);
+  if (run.containerId) {
+    dockerStop(run.containerId);
   }
-  if (run.appPid && pidAlive(run.appPid)) {
-    killPid(run.appPid, 'SIGTERM');
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    if (pidAlive(run.appPid)) {
-      killPid(run.appPid, 'SIGKILL');
-    }
+  if (run.stateFile) {
+    cleanupSmokeStateFile(run.stateFile);
   }
-  const listenPid = run.listenPid ?? listeningPid(run.port);
-  if (listenPid && pidAlive(listenPid) && listenPid !== process.pid) {
-    killPid(listenPid, 'SIGTERM');
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    if (pidAlive(listenPid)) {
-      killPid(listenPid, 'SIGKILL');
-    }
-  }
-  dockerStop(run.containerId);
-  cleanupSmokeStateFile(run.stateFile);
-  try {
-    unlinkSync(runFilePath());
-  } catch {
-    // gone
-  }
+  clearRunFiles();
   console.log(`VERIFY_CLEANUP done (artifacts kept at ${artifactsDir()})`);
 }
 
 async function launch(mode: Mode): Promise<void> {
   const existing = readRun();
   if (existing) {
+    let doctorOk = false;
+    let doctorError: unknown;
     try {
       await doctor();
-      if (existing.mode === mode) {
-        console.log(`VERIFY_READY url=${existing.url} (reused)`);
-        return;
-      }
+      doctorOk = true;
+    } catch (error) {
+      doctorError = error;
+    }
+    const decision = decideExistingLaunch(existing.mode, mode, doctorOk);
+    if (decision === 'reuse') {
+      console.log(`VERIFY_READY url=${existing.url} (reused)`);
+      return;
+    }
+    if (decision === 'reject-opposite-mode') {
       throw new Error(
         `A ${existing.mode} instance already owns ${existing.url}. Cleanup before launching ${mode}.`,
       );
-    } catch (error) {
-      console.warn(`Stale run (${String(error)}). Cleaning up.`);
-      await cleanup();
     }
+    console.warn(`Stale run (${String(doctorError)}). Cleaning up.`);
+    await cleanup();
+  } else {
+    clearRunFiles();
   }
 
   const { port, url, path } = modeUrls(mode);
@@ -384,11 +460,7 @@ async function launch(mode: Mode): Promise<void> {
     if (stateFile) {
       cleanupSmokeStateFile(stateFile);
     }
-    try {
-      unlinkSync(runFilePath());
-    } catch {
-      // gone
-    }
+    clearRunFiles();
   };
 
   process.once('SIGINT', () => {
@@ -401,6 +473,16 @@ async function launch(mode: Mode): Promise<void> {
   try {
     const started = await startSmokePostgresContainer();
     container = started;
+    writeRun({
+      mode,
+      url,
+      port,
+      supervisorPid: process.pid,
+      appPid: null,
+      listenPid: null,
+      containerId: started.getId(),
+      stateFile: '',
+    });
     const connectionUrl = started.getConnectionUri();
     await prepareSmokeDatabase(connectionUrl);
     await assertSeededSmokeUserPresent(connectionUrl);
@@ -410,6 +492,7 @@ async function launch(mode: Mode): Promise<void> {
       buildSmokeStatePayload(connectionUrl),
     );
     stateFile = statePath;
+    updateRun({ stateFile: statePath });
 
     app = spawn(
       join(root, 'node_modules/.bin/tsx'),
@@ -420,23 +503,10 @@ async function launch(mode: Mode): Promise<void> {
         stdio: 'inherit',
       },
     );
-
-    writeRun({
-      mode,
-      url,
-      port,
-      supervisorPid: process.pid,
-      appPid: app.pid ?? null,
-      listenPid: null,
-      containerId: started.getId(),
-      stateFile: statePath,
-    });
+    updateRun({ appPid: app.pid ?? null });
 
     await waitReady(mode, url, path);
-    const current = readRun();
-    if (current) {
-      writeRun({ ...current, listenPid: listeningPid(port) });
-    }
+    updateRun({ listenPid: listeningPid(port) });
     console.log(
       `VERIFY_READY url=${url} mode=${mode} artifacts=${artifactsDir()}`,
     );
@@ -462,8 +532,18 @@ async function main(): Promise<void> {
   await launch(parseMode(process.argv));
 }
 
-main().catch((err: unknown) => {
-  const message = err instanceof Error ? err.message : String(err);
-  console.error('[verify-atlaris]', message);
-  process.exitCode = 1;
-});
+function isDirectExecution(): boolean {
+  const entrypoint = process.argv[1];
+  return (
+    entrypoint !== undefined &&
+    import.meta.url === pathToFileURL(resolve(entrypoint)).href
+  );
+}
+
+if (isDirectExecution()) {
+  main().catch((err: unknown) => {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('[verify-atlaris]', message);
+    process.exitCode = 1;
+  });
+}

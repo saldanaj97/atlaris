@@ -39,7 +39,7 @@ Run this first whenever anything looks off:
 ./node_modules/.bin/tsx scripts/verify-atlaris/control.ts doctor
 ```
 
-Pass means: supervisor pid alive, our port listening, and anon `/dashboard` is a `307` to `/auth/sign-in` (auth `/dashboard` is 2xx). `/landing` 5xx is a warn: marketing pages need a real `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `.env.local`. Fail means cleanup + relaunch, not "try the user's server".
+Pass means: supervisor pid alive, our port listening, and anon `/dashboard` is a `307` whose `Location` is `/auth/sign-in` (auth `/dashboard` finishes `2xx` on `/dashboard`). `/landing` 5xx is a warn: marketing pages need a real `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` in `.env.local`. Fail means cleanup + relaunch, not "try the user's server".
 
 ## Drive
 
@@ -67,7 +67,7 @@ Mocks: `auth` mode uses mock AI and fixture billing. That is the production-loca
 ./node_modules/.bin/tsx scripts/verify-atlaris/control.ts cleanup
 ```
 
-Kills the supervisor and app pids recorded in `.cursor/skills/verify-atlaris/.run.json`, then stops that Docker container id. Never `pkill next`. Does not delete `artifacts/`.
+Kills only recorded supervisor / app / listener pids whose command still matches this run, then stops that Docker container id. A missing `listenPid` is not replaced with whoever currently owns the port. Never `pkill next`. Does not delete `artifacts/`. A healthy opposite-mode run is not stale; cleanup before switching anon ↔ auth.
 
 ## Helpers
 
