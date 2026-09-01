@@ -415,9 +415,12 @@ export class PlanLifecycleService {
   async settleReservationRejection(
     input: ProcessGenerationInput,
     rejection: AttemptRejection,
+    timing: {
+      readonly startedAt: number;
+      readonly clock: () => number;
+    },
   ): Promise<GenerationAttemptResult> {
     const generationPurpose = parseGenerationPurpose(input.generationPurpose);
-    const clock = () => Date.now();
     const nowFn = () => new Date();
     const result = createReservationRejectionResult(
       {
@@ -427,8 +430,8 @@ export class PlanLifecycleService {
         generationPurpose,
       },
       rejection,
-      clock(),
-      clock,
+      timing.startedAt,
+      timing.clock,
       nowFn,
     );
 

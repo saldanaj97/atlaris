@@ -11,10 +11,13 @@ import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generati
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { start } from 'workflow/api';
 
+const DEFAULT_CLOCK = () => Date.now();
+
 export type CreateWorkflowBackedProcessGenerationDeps = {
   readonly reserveAttemptSlot?: typeof reserveAttemptSlot;
   readonly workflowStart?: typeof start;
   readonly workflowFn?: typeof planGenerationWorkflow;
+  readonly clock?: () => number;
   readonly finalizeFailure?: (
     dbClient: AttemptsDbClient,
     input: {
@@ -39,6 +42,7 @@ export function createWorkflowBackedProcessGeneration(
   const reserveSlot = deps.reserveAttemptSlot ?? reserveAttemptSlot;
   const workflowStart = deps.workflowStart ?? start;
   const workflowFn = deps.workflowFn ?? planGenerationWorkflow;
+  const clock = deps.clock ?? DEFAULT_CLOCK;
   const finalizeFailure =
     deps.finalizeFailure ??
     (async (_dbClient, failureInput) => {
@@ -57,6 +61,7 @@ export function createWorkflowBackedProcessGeneration(
     });
 
   return async (input) => {
+    const startedAt = clock();
     const reservation = await reserveSlot({
       planId: input.planId,
       userId: input.userId,
@@ -72,7 +77,10 @@ export function createWorkflowBackedProcessGeneration(
     });
 
     if (!reservation.reserved) {
-      return lifecycleService.settleReservationRejection(input, reservation);
+      return lifecycleService.settleReservationRejection(input, reservation, {
+        startedAt,
+        clock,
+      });
     }
 
     try {

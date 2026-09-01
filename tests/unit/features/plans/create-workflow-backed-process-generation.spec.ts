@@ -53,6 +53,7 @@ describe('createWorkflowBackedProcessGeneration', () => {
       reserved: false as const,
       reason: 'capped' as const,
     };
+    const clock = vi.fn(() => 1_000);
     mocks.reserveAttemptSlot.mockResolvedValue(rejection);
     mocks.settleReservationRejection.mockResolvedValue({
       status: 'permanent_failure',
@@ -68,6 +69,7 @@ describe('createWorkflowBackedProcessGeneration', () => {
         reserveAttemptSlot: mocks.reserveAttemptSlot,
         workflowStart: mocks.workflowStart,
         workflowFn: planGenerationWorkflow,
+        clock,
       },
     );
     const result = await run(input);
@@ -75,10 +77,57 @@ describe('createWorkflowBackedProcessGeneration', () => {
     expect(mocks.settleReservationRejection).toHaveBeenCalledWith(
       input,
       rejection,
+      { startedAt: 1_000, clock },
     );
     expect(mocks.processGenerationAttempt).not.toHaveBeenCalled();
     expect(mocks.workflowStart).not.toHaveBeenCalled();
     expect(result.status).toBe('permanent_failure');
+  });
+
+  it('captures reservation-rejection start before reserveAttemptSlot and forwards clock', async () => {
+    const events: string[] = [];
+    const clock = vi.fn(() => {
+      events.push('clock');
+      return 5_000;
+    });
+    const rejection = {
+      reserved: false as const,
+      reason: 'capped' as const,
+    };
+    mocks.reserveAttemptSlot.mockImplementation(async () => {
+      events.push('reserve');
+      return rejection;
+    });
+    mocks.settleReservationRejection.mockImplementation(async () => {
+      events.push('settle');
+      return {
+        status: 'permanent_failure',
+        classification: 'capped',
+        error: new Error('capped'),
+      };
+    });
+
+    const run = createWorkflowBackedProcessGeneration(
+      lifecycleService,
+      dbClient,
+      'corr-timing',
+      {
+        reserveAttemptSlot: mocks.reserveAttemptSlot,
+        workflowStart: mocks.workflowStart,
+        workflowFn: planGenerationWorkflow,
+        clock,
+      },
+    );
+    await run(input);
+
+    expect(events).toEqual(['clock', 'reserve', 'settle']);
+    expect(clock).toHaveBeenCalledTimes(1);
+    expect(mocks.settleReservationRejection).toHaveBeenCalledWith(
+      input,
+      rejection,
+      { startedAt: 5_000, clock },
+    );
+    expect(mocks.workflowStart).not.toHaveBeenCalled();
   });
 
   it('starts workflow after reservation and returns run.returnValue', async () => {

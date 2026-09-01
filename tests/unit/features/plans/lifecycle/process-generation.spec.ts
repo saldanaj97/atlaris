@@ -640,6 +640,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     const result = await service.settleReservationRejection(
       validGenerationInput,
       { reserved: false, reason: 'capped' },
+      { startedAt: 1_000, clock: () => 1_000 },
     );
 
     expect(result.status).toBe('permanent_failure');
@@ -663,6 +664,7 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     const result = await service.settleReservationRejection(
       validGenerationInput,
       { reserved: false, reason: 'in_progress' },
+      { startedAt: 1_000, clock: () => 1_000 },
     );
 
     expect(result.status).toBe('retryable_failure');
@@ -670,6 +672,34 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(
       vi.mocked(ports.generationFinalization.finalizeFailure),
     ).not.toHaveBeenCalled();
+  });
+
+  it('computes reservation-rejection duration from forwarded start and clock', async () => {
+    const clock = vi.fn(() => 1_250);
+
+    const result = await service.settleReservationRejection(
+      validGenerationInput,
+      { reserved: false, reason: 'capped' },
+      { startedAt: 1_000, clock },
+    );
+
+    expect(result.status).toBe('permanent_failure');
+    if (result.status === 'permanent_failure') {
+      expect(result.classification).toBe('capped');
+    }
+    expect(clock).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'plan_only',
+        planId: 'plan-gen-001',
+        userId: 'user-abc',
+        classification: 'capped',
+        durationMs: 250,
+      }),
+    );
   });
 
   it('settles a reserved pre-provider failure without calling runGeneration', async () => {
