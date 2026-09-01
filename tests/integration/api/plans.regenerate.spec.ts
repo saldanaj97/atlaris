@@ -88,6 +88,9 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
         planId,
         overrides: { skillLevel: 'advanced' },
       }),
+      expect.objectContaining({
+        dbClient: expect.anything(),
+      }),
     );
   });
 
@@ -378,6 +381,9 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       expect(mockRequestPlanRegeneration).toHaveBeenCalledWith(
         expect.objectContaining({
           overrides: { model: 'google/gemini-3-pro-preview' },
+        }),
+        expect.objectContaining({
+          dbClient: expect.anything(),
         }),
       );
     });
