@@ -12,12 +12,16 @@ export class MissingRequestDbContextError extends Error {
 }
 
 /**
- * Returns the appropriate database client based on execution context:
- * - In test mode: Always returns service-role DB (bypasses RLS for integration tests)
- * - In request handlers: Returns the RLS-enforced DB from request context
- * - In non-test runtimes without request context: throws (fail-closed)
+ * Ambient request-establishment client only.
  *
- * This allows query modules to work in all contexts without explicit context passing.
+ * Allowed callers:
+ * - `src/lib/api/request-boundary.ts` (`RequestScope.db`)
+ * - `src/lib/api/auth.ts` (`runWithTestContext` only)
+ *
+ * Query and feature modules below that seam must take an explicit `dbClient`.
+ * - In test mode: returns service-role DB (bypasses RLS for integration tests)
+ * - In request handlers: returns the RLS-enforced DB from request context
+ * - In non-test runtimes without request context: throws (fail-closed)
  *
  * @returns Drizzle database client (RLS-enforced in production requests, service-role elsewhere)
  */

@@ -1,5 +1,8 @@
 import { DEFAULT_ATTEMPT_CAP } from '@/features/ai/generation-policy';
-import { derivePlanReadStatus } from '@/features/plans/read-projection/read-status';
+import {
+  buildPlanDetailStatusSnapshot,
+  derivePlanReadStatus,
+} from '@/features/plans/read-projection/read-status';
 import { describe, expect, it } from 'vitest';
 
 describe('derivePlanReadStatus', () => {
@@ -144,5 +147,30 @@ describe('derivePlanReadStatus', () => {
         attemptCap: DEFAULT_ATTEMPT_CAP,
       }),
     ).toBe('pending');
+  });
+});
+
+describe('buildPlanDetailStatusSnapshot', () => {
+  it('uses the consolidated read status and maps a known classification', () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    const snapshot = buildPlanDetailStatusSnapshot({
+      plan: {
+        id: 'plan-1',
+        generationStatus: 'failed',
+        createdAt,
+        updatedAt: createdAt,
+      },
+      hasModules: false,
+      attemptsCount: 1,
+      latestAttempt: { classification: 'validation' },
+    });
+
+    expect(snapshot.planId).toBe('plan-1');
+    expect(snapshot.status).toBe('failed');
+    expect(snapshot.attempts).toBe(1);
+    expect(snapshot.attemptCap).toBe(DEFAULT_ATTEMPT_CAP);
+    expect(snapshot.latestClassification).toBe('validation');
+    expect(snapshot.createdAt).toBe(createdAt.toISOString());
+    expect(snapshot.updatedAt).toBe(createdAt.toISOString());
   });
 });

@@ -1,6 +1,6 @@
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { runGenerationExecution } from '@/features/ai/orchestrator';
 import { getDb } from '@supabase/runtime';
 import { learningPlans, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -13,6 +13,7 @@ describe('AI Router (mock in tests)', () => {
 
   beforeEach(() => {
     process.env.AI_PROVIDER = 'mock';
+    process.env.MOCK_GENERATION_DELAY_MS = '0';
 
     authUserId = buildTestAuthUserId('ai-router');
     email = buildTestEmail(authUserId);
@@ -24,7 +25,6 @@ describe('AI Router (mock in tests)', () => {
   });
 
   it('returns modules using mock provider via router', async () => {
-    // Ensure a user + plan exist and are linked
     const [userRow] = await db
       .insert(users)
       .values({ authUserId, email, name: 'Test' })
@@ -53,7 +53,7 @@ describe('AI Router (mock in tests)', () => {
       })
       .returning();
 
-    const result = await runGenerationAttempt(
+    const result = await runGenerationExecution(
       {
         planId: planRow.id,
         userId,
@@ -69,9 +69,8 @@ describe('AI Router (mock in tests)', () => {
       { dbClient: getDb() },
     );
 
-    // In test setup, DB is truncated and direct insertion is allowed, but here we only assert result shape
-    expect(result.status).toBe('success');
-    if (result.status === 'success') {
+    expect(result.kind).toBe('success');
+    if (result.kind === 'success') {
       expect(result.modules.length).toBeGreaterThan(0);
     }
   });

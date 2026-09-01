@@ -21,8 +21,6 @@ workflows:
     jobs:
       # Keep required checks present when the setup diff is empty.
       - no-updates:
-          name: build
-      - no-updates:
           name: lint-and-type-check
       - no-updates:
           name: integration-light

@@ -6,7 +6,6 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 
 import { getAttemptCap } from '@/lib/config/env';
-import { getDb } from '@supabase/runtime';
 import { sql, type SQL } from 'drizzle-orm';
 
 export type PlanListRowStatus = PlanReadStatus;
@@ -253,9 +252,9 @@ export async function getPlanListPageRowsForUser(params: {
   referenceTimestamp: string;
   pageSize: number;
   planIds?: string[];
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanListQueryPageRows> {
-  const client = params.dbClient ?? getDb();
+  const client = params.dbClient;
   const { pageSize } = params;
   const rowsSql = planListRowsSql({
     userId: params.userId,

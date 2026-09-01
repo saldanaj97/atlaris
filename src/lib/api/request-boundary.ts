@@ -21,10 +21,6 @@ import { randomUUID } from 'node:crypto';
 export type RequestScope = Readonly<{
   actor: ActorUser;
   db: DbClient;
-  owned: Readonly<{
-    userId: string;
-    dbClient: DbClient;
-  }>;
   correlationId: string;
 }>;
 
@@ -45,10 +41,6 @@ function buildScope(actor: ActorUser, db: DbClient): RequestScope {
   return {
     actor,
     db,
-    owned: {
-      userId: actor.id,
-      dbClient: db,
-    },
     correlationId: getCorrelationId() ?? randomUUID(),
   };
 }

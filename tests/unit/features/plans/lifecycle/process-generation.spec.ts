@@ -2,79 +2,15 @@ import type { PlanLifecycleServicePorts } from '@/features/plans/lifecycle/servi
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 
 import { makeCanonicalUsage } from '../../../../fixtures/canonical-usage.factory';
+import { createMockPorts } from './lifecycle-test-helpers';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const defaultReservation = makeAttemptReservation();
-
-function mockSuccessAttemptReturn(planId: string) {
-  return {
-    id: defaultReservation.attemptId,
-    planId,
-    status: 'success' as const,
-    classification: null,
-    durationMs: 1500,
-    modulesCount: 1,
-    tasksCount: 0,
-    truncatedTopic: false,
-    truncatedNotes: false,
-    normalizedEffort: false,
-    promptHash: defaultReservation.promptHash,
-    metadata: null,
-    createdAt: new Date(),
-    generationPurpose: 'initial',
-  };
-}
-
-function createMockPorts(
-  overrides?: Partial<PlanLifecycleServicePorts>,
-): PlanLifecycleServicePorts {
-  const reservation = defaultReservation;
-  return {
-    planPersistence: {
-      atomicInsertPlan: async () => ({
-        status: 'created' as const,
-        id: 'plan-123',
-      }),
-      findCappedPlanWithoutModules: async () => null,
-      markGenerationSuccess: vi.fn().mockResolvedValue(undefined),
-      markGenerationFailure: vi.fn().mockResolvedValue(undefined),
-    },
-    quota: {
-      resolveUserTier: async () => 'free' as const,
-      checkDurationCap: () => ({ allowed: true }),
-      normalizePlanDuration: () => ({
-        startDate: '2025-01-01',
-        deadlineDate: '2025-01-15',
-        totalWeeks: 2,
-      }),
-    },
-    generation: {
-      runGeneration: vi.fn().mockResolvedValue({
-        status: 'success' as const,
-        modules: [{ title: 'Module 1', estimatedMinutes: 60, tasks: [] }],
-        metadata: {
-          provider: 'openai',
-          model: 'gpt-4o',
-          usage: { promptTokens: 100, completionTokens: 200 },
-        },
-        usage: makeCanonicalUsage(),
-        durationMs: 1500,
-        reservation,
-        extendedTimeout: false,
-      }),
-    },
-    generationFinalization: {
-      finalizeSuccess: vi
-        .fn()
-        .mockResolvedValue(mockSuccessAttemptReturn('plan-gen-001')),
-      finalizeFailure: vi.fn().mockResolvedValue(undefined),
-    },
-    ...overrides,
-  };
-}
+const defaultReservation = makeAttemptReservation({
+  attemptId: 'attempt-plan-gen-001',
+});
 
 const validGenerationInput: ProcessGenerationInput = {
   planId: 'plan-gen-001',
@@ -130,7 +66,9 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
           model: 'gpt-4o',
         }),
         generationPurpose: 'initial',
-        preparation: defaultReservation,
+        preparation: expect.objectContaining({
+          attemptId: 'attempt-plan-gen-001',
+        }),
         extendedTimeout: false,
       }),
     );
@@ -696,6 +634,101 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     expect(
       vi.mocked(ports.generationFinalization.finalizeFailure),
     ).not.toHaveBeenCalled();
+  });
+
+  it('settles a reservation rejection without calling runGeneration', async () => {
+    const result = await service.settleReservationRejection(
+      validGenerationInput,
+      { reserved: false, reason: 'capped' },
+      { startedAt: 1_000, clock: () => 1_000 },
+    );
+
+    expect(result.status).toBe('permanent_failure');
+    if (result.status === 'permanent_failure') {
+      expect(result.classification).toBe('capped');
+    }
+    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'plan_only',
+        planId: 'plan-gen-001',
+        userId: 'user-abc',
+        classification: 'capped',
+      }),
+    );
+  });
+
+  it('does not finalize an in_progress reservation rejection', async () => {
+    const result = await service.settleReservationRejection(
+      validGenerationInput,
+      { reserved: false, reason: 'in_progress' },
+      { startedAt: 1_000, clock: () => 1_000 },
+    );
+
+    expect(result.status).toBe('retryable_failure');
+    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).not.toHaveBeenCalled();
+  });
+
+  it('computes reservation-rejection duration from forwarded start and clock', async () => {
+    const clock = vi.fn(() => 1_250);
+
+    const result = await service.settleReservationRejection(
+      validGenerationInput,
+      { reserved: false, reason: 'capped' },
+      { startedAt: 1_000, clock },
+    );
+
+    expect(result.status).toBe('permanent_failure');
+    if (result.status === 'permanent_failure') {
+      expect(result.classification).toBe('capped');
+    }
+    expect(clock).toHaveBeenCalledTimes(1);
+    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'plan_only',
+        planId: 'plan-gen-001',
+        userId: 'user-abc',
+        classification: 'capped',
+        durationMs: 250,
+      }),
+    );
+  });
+
+  it('settles a reserved pre-provider failure without calling runGeneration', async () => {
+    const reservation = makeAttemptReservation({ attemptId: 'att-settle' });
+    await service.settleReservedAttemptFailure({
+      reservation,
+      planId: 'plan-gen-001',
+      userId: 'user-abc',
+      error: new Error('workflow unavailable'),
+      classification: 'provider_error',
+      generationPurpose: 'initial',
+      retryable: true,
+      durationMs: 0,
+      timedOut: false,
+      extendedTimeout: false,
+    });
+
+    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
+    expect(
+      vi.mocked(ports.generationFinalization.finalizeFailure),
+    ).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: 'reserved_attempt',
+        attemptId: 'att-settle',
+        classification: 'provider_error',
+        retryable: true,
+        usageKind: 'plan',
+      }),
+    );
   });
 
   it('falls back to "unknown" provider/model when metadata is sparse', async () => {

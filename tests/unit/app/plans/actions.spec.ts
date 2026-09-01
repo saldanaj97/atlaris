@@ -65,7 +65,6 @@ function makeActionTestScope(): RequestScope {
   return {
     actor: actionTestActor,
     db: actionTestDb,
-    owned: { userId: actionTestActor.id, dbClient: actionTestDb },
     correlationId: 'test-correlation-id',
   };
 }

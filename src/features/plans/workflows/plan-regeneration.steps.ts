@@ -33,7 +33,6 @@ import {
   updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { commitPlanGenerationFailure } from '@/features/plans/lifecycle/generation-finalization/store';
 import { resolveRegenerationPolicyDenial } from '@/features/plans/regeneration-orchestration/admission';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import {
@@ -283,14 +282,15 @@ async function compensatePostReservationAdmission(
     reservation.status === undefined ||
     reservation.status === 'in_progress'
   ) {
-    await commitPlanGenerationFailure(serviceRoleDb, {
-      variant: 'reserved_attempt',
+    const lifecycle = createPlanLifecycleService({ dbClient: serviceRoleDb });
+    await lifecycle.settleReservedAttemptFailure({
+      reservation,
       planId: input.planId,
       userId: input.userId,
-      attemptId: reservation.attemptId,
-      preparation: reservation,
-      classification: 'validation',
       error,
+      classification: 'validation',
+      generationPurpose,
+      retryable: false,
       durationMs: 0,
       timedOut: false,
       extendedTimeout: false,
@@ -298,9 +298,6 @@ async function compensatePostReservationAdmission(
         ...workflowMetadata,
         startedAt: reservation.startedAt.toISOString(),
       },
-      generationPurpose,
-      usageKind: 'plan',
-      retryable: false,
     });
   }
 

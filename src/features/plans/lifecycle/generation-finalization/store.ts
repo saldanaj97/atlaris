@@ -12,7 +12,6 @@ import {
   canonicalUsageToRecordParams,
   recordUsageInTx,
 } from '../../../../../supabase/usage';
-import { resolveUserTier } from '@/features/billing/tier';
 import {
   getCurrentMonth,
   incrementUsageInTx,
@@ -149,12 +148,10 @@ export async function commitPlanGenerationSuccess(
   });
 
   try {
-    const currentTier = await resolveUserTier(input.userId, dbClient);
     await enqueueFirstProgressiveModuleLessons({
       dbClient,
       userId: input.userId,
       planId: input.planId,
-      userTier: currentTier,
       correlationId: getCorrelationId() ?? attempt.id,
     });
   } catch (error) {

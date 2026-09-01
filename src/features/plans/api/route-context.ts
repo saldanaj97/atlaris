@@ -5,7 +5,6 @@ import type { DbClient } from '@/lib/db/types';
 import { assertPlanContentAccess } from '@/features/plans/entitlement/access';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import { getDb } from '@supabase/runtime';
 
 export type PlansDbClient = DbClient;
 
@@ -34,9 +33,9 @@ export function requireUuidRouteParam(
 export async function requireOwnedPlanById(params: {
   planId: string;
   ownerUserId: string;
-  dbClient?: PlansDbClient;
+  dbClient: PlansDbClient;
 }): Promise<LearningPlanRecord> {
-  const dbClient = params.dbClient ?? getDb();
+  const dbClient = params.dbClient;
   const plan = await selectOwnedPlanById({
     planId: params.planId,
     ownerUserId: params.ownerUserId,
@@ -53,7 +52,7 @@ export async function requireOwnedPlanById(params: {
 export async function requirePlanContentAccess(params: {
   planId: string;
   ownerUserId: string;
-  dbClient?: PlansDbClient;
+  dbClient: PlansDbClient;
 }): Promise<LearningPlanRecord> {
   const plan = await requireOwnedPlanById(params);
   await assertPlanContentAccess({

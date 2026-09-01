@@ -57,6 +57,8 @@ export function createPlanLifecycleService(params: {
       normalizePlanDuration: normalizePlanDurationForTier,
     },
     generation: createPlanLifecycleGeneration(dbClient),
+    // Intended owner: these store functions implement the lifecycle port.
+    // Production callers settle through PlanLifecycleService, not these imports.
     generationFinalization: {
       finalizeSuccess: (input) => commitPlanGenerationSuccess(dbClient, input),
       finalizeFailure: (input) => commitPlanGenerationFailure(dbClient, input),

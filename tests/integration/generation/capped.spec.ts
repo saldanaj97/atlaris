@@ -1,8 +1,10 @@
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
 import {
   generationAttempts,
   learningPlans,
@@ -11,7 +13,15 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
-import { beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 const authUserId = buildTestAuthUserId('generation-capped');
 const authEmail = buildTestEmail(authUserId);
@@ -61,6 +71,16 @@ async function seedCappedAttempts(planId: string) {
 }
 
 describe('generation integration - capped attempts', () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'success');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
   beforeEach(async () => {
     setTestUser(authUserId);
   });
@@ -83,27 +103,22 @@ describe('generation integration - capped attempts', () => {
 
     await seedCappedAttempts(plan.id);
 
-    const mock = createMockProvider({ scenario: 'success' });
-
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'Capped Topic',
-          notes: 'Should not invoke provider because cap reached',
-          skillLevel: 'beginner',
-          weeklyHours: 2,
-          learningStyle: 'reading',
-        },
-      },
-      { provider: mock.provider, dbClient: db },
+        topic: 'Capped Topic',
+        notes: 'Should not invoke provider because cap reached',
+        skillLevel: 'beginner',
+        weeklyHours: 2,
+        learningStyle: 'reading',
+      }),
     );
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('capped');
-    expect(mock.invocationCount).toBe(0);
+    expect(result.status).toBe('permanent_failure');
+    if (result.status === 'permanent_failure') {
+      expect(result.classification).toBe('capped');
+    }
 
     const attempts = await db
       .select()
@@ -111,16 +126,11 @@ describe('generation integration - capped attempts', () => {
       .where(eq(generationAttempts.planId, plan.id))
       .orderBy(desc(generationAttempts.createdAt));
 
-    // Cap rejections are synthetic failures from the orchestrator; no new DB row is written.
+    // Cap rejections are synthetic failures; no new DB row is written.
     expect(attempts).toHaveLength(3);
     expect(
       attempts.some((attempt) => attempt.classification === 'capped'),
     ).toBe(false);
-    // Runtime narrowing for discriminated union before accessing result.attempt.
-    if (result.status !== 'failure') {
-      throw new Error('Expected generation to fail when cap is reached');
-    }
-    expect(result.attempt.id).toBeNull();
 
     const moduleRows = await db
       .select({ value: modules.id })

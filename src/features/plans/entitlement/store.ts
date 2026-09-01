@@ -6,7 +6,6 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 
 import { resolveFreeAccessSelection } from '@/features/plans/policy/entitlement';
-import { getDb } from '@supabase/runtime';
 import { generationAttempts, learningPlans, users } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, asc, eq, isNull, sql } from 'drizzle-orm';
@@ -49,7 +48,7 @@ function toCandidate(row: {
 
 export async function loadPlanEntitlementSnapshot(
   userId: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
 ): Promise<PlanEntitlementSnapshot> {
   const [row] = await dbClient
     .select({
@@ -85,7 +84,7 @@ and not (
 
 export async function listFreeAccessCandidates(
   userId: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
 ): Promise<FreeAccessPlanCandidate[]> {
   const rows = await dbClient
     .select({
@@ -146,10 +145,10 @@ async function casSelectFreeAccessPlan(params: {
 
 export async function ensureFreeAccessSelection(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   now?: () => Date;
 }): Promise<EnsureFreeAccessSelectionResult> {
-  const dbClient = params.dbClient ?? getDb();
+  const dbClient = params.dbClient;
   const snapshot = await loadPlanEntitlementSnapshot(params.userId, dbClient);
   const pendingDecision = resolveFreeAccessSelection({
     tier: snapshot.subscriptionTier,
@@ -202,10 +201,10 @@ export async function ensureFreeAccessSelection(params: {
 export async function selectFreeAccessPlan(params: {
   userId: string;
   planId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   now?: () => Date;
 }): Promise<SelectFreeAccessPlanResult> {
-  const dbClient = params.dbClient ?? getDb();
+  const dbClient = params.dbClient;
   const snapshot = await loadPlanEntitlementSnapshot(params.userId, dbClient);
   const decision = resolveFreeAccessSelection({
     tier: snapshot.subscriptionTier,

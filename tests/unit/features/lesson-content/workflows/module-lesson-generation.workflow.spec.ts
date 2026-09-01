@@ -13,7 +13,6 @@ const input: ModuleLessonWorkflowInput = {
   userId: createId('user'),
   planId: createId('plan'),
   moduleId: createId('module'),
-  userTier: 'free',
   correlationId: createId('corr'),
 };
 const workflow = createModuleLessonGenerationWorkflow(workflowMocks);

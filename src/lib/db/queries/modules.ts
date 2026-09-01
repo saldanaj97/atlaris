@@ -4,30 +4,30 @@ import type {
   TaskProgress,
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
+import type { DbClient } from '@/lib/db/types';
 
 import {
   fetchModuleTaskMetricsRows,
   fetchTaskRelationRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
-import { getDb } from '@supabase/runtime';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { and, asc, eq } from 'drizzle-orm';
 
-type ModulesDbClient = ReturnType<typeof getDb>;
+type ModulesDbClient = DbClient;
 
 export type { ModuleDetailRows };
 
 /**
  * Module rows for module-detail read projection (plan-scoped ownership).
- * Uses getDb() for request-scoped RLS when `dbClient` omitted.
+ * Requires an explicit request RLS or service-role client.
  */
 export async function getModuleDetailRows(
   planId: string,
   moduleId: string,
   userId: string,
-  dbClient?: ModulesDbClient,
+  dbClient: ModulesDbClient,
 ): Promise<ModuleDetailRows | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [scoped] = await client
     .select({
@@ -102,12 +102,12 @@ export async function getModuleLessonGenerationStatus(
   planId: string,
   moduleId: string,
   userId: string,
-  dbClient?: ModulesDbClient,
+  dbClient: ModulesDbClient,
 ): Promise<{
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
   workflowRunId?: string;
 } | null> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const [row] = await client
     .select({

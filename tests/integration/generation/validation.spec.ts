@@ -1,7 +1,9 @@
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import {
+  buildTestProcessGenerationInput,
+  processTestGenerationAttempt,
+} from '../../helpers/process-generation-attempt';
 import {
   generationAttempts,
   learningPlans,
@@ -10,13 +12,23 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 const authUserId = 'auth_generation_validation';
 const authEmail = 'generation-validation@example.com';
 
 describe('generation integration - validation failure', () => {
-  it('classifies attempt as validation when provider output is empty', async () => {
+  beforeAll(() => {
+    vi.stubEnv('AI_PROVIDER', 'mock');
+    vi.stubEnv('MOCK_AI_SCENARIO', 'invalid_response');
+    vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
+  });
+
+  afterAll(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('records a failed attempt when the mock provider returns invalid JSON', async () => {
     setTestUser(authUserId);
     const userId = await ensureUser({ authUserId, email: authEmail });
 
@@ -33,26 +45,22 @@ describe('generation integration - validation failure', () => {
       })
       .returning();
 
-    const mock = createMockProvider({ scenario: 'validation' });
-
-    const result = await runGenerationAttempt(
-      {
+    const result = await processTestGenerationAttempt(
+      buildTestProcessGenerationInput({
         planId: plan.id,
         userId,
-        generationPurpose: 'initial',
-        input: {
-          topic: 'Constraint Testing Topic',
-          notes: 'Expecting validation failure due to zero modules',
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'practice',
-        },
-      },
-      { provider: mock.provider, dbClient: db },
+        topic: 'Constraint Testing Topic',
+        notes: 'Expecting validation failure due to invalid JSON',
+        skillLevel: 'beginner',
+        weeklyHours: 5,
+        learningStyle: 'practice',
+      }),
     );
 
-    expect(result.status).toBe('failure');
-    expect(result.classification).toBe('validation');
+    expect(result.status).toBe('retryable_failure');
+    if (result.status === 'retryable_failure') {
+      expect(result.classification).toBe('provider_error');
+    }
 
     const moduleRows = await db
       .select({ value: modules.id })
@@ -73,7 +81,7 @@ describe('generation integration - validation failure', () => {
       .where(eq(generationAttempts.planId, plan.id));
 
     expect(attempt?.status).toBe('failure');
-    expect(attempt?.classification).toBe('validation');
+    expect(attempt?.classification).toBe('provider_error');
     expect(attempt?.modulesCount).toBe(0);
     expect(attempt?.tasksCount).toBe(0);
   });

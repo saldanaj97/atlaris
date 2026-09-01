@@ -6,16 +6,18 @@ import type {
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
-import { commitPlanGenerationFailure } from '@/features/plans/lifecycle/generation-finalization/store';
 import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
 import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { start } from 'workflow/api';
 
+const DEFAULT_CLOCK = () => Date.now();
+
 export type CreateWorkflowBackedProcessGenerationDeps = {
   readonly reserveAttemptSlot?: typeof reserveAttemptSlot;
   readonly workflowStart?: typeof start;
   readonly workflowFn?: typeof planGenerationWorkflow;
+  readonly clock?: () => number;
   readonly finalizeFailure?: (
     dbClient: AttemptsDbClient,
     input: {
@@ -26,32 +28,6 @@ export type CreateWorkflowBackedProcessGenerationDeps = {
     },
   ) => Promise<void>;
 };
-
-async function defaultFinalizeWorkflowStartFailure(
-  dbClient: AttemptsDbClient,
-  input: {
-    reservation: AttemptReservation;
-    planId: string;
-    userId: string;
-    error: Error;
-  },
-): Promise<void> {
-  await commitPlanGenerationFailure(dbClient, {
-    variant: 'reserved_attempt',
-    planId: input.planId,
-    userId: input.userId,
-    attemptId: input.reservation.attemptId,
-    preparation: input.reservation,
-    classification: 'provider_error',
-    error: input.error,
-    durationMs: 0,
-    timedOut: false,
-    extendedTimeout: false,
-    usageKind: 'plan',
-    generationPurpose: input.reservation.generationPurpose,
-    retryable: true,
-  });
-}
 
 /**
  * Reserves the attempt in-process (emitting `plan_start`), then runs durable
@@ -66,10 +42,26 @@ export function createWorkflowBackedProcessGeneration(
   const reserveSlot = deps.reserveAttemptSlot ?? reserveAttemptSlot;
   const workflowStart = deps.workflowStart ?? start;
   const workflowFn = deps.workflowFn ?? planGenerationWorkflow;
+  const clock = deps.clock ?? DEFAULT_CLOCK;
   const finalizeFailure =
-    deps.finalizeFailure ?? defaultFinalizeWorkflowStartFailure;
+    deps.finalizeFailure ??
+    (async (_dbClient, failureInput) => {
+      await lifecycleService.settleReservedAttemptFailure({
+        reservation: failureInput.reservation,
+        planId: failureInput.planId,
+        userId: failureInput.userId,
+        error: failureInput.error,
+        classification: 'provider_error',
+        generationPurpose: failureInput.reservation.generationPurpose,
+        retryable: true,
+        durationMs: 0,
+        timedOut: false,
+        extendedTimeout: false,
+      });
+    });
 
   return async (input) => {
+    const startedAt = clock();
     const reservation = await reserveSlot({
       planId: input.planId,
       userId: input.userId,
@@ -85,7 +77,10 @@ export function createWorkflowBackedProcessGeneration(
     });
 
     if (!reservation.reserved) {
-      return lifecycleService.processGenerationAttempt(input);
+      return lifecycleService.settleReservationRejection(input, reservation, {
+        startedAt,
+        clock,
+      });
     }
 
     try {

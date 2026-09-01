@@ -62,6 +62,12 @@ next-env.d.ts
 # ide rules
 .cursor/*
 !.cursor/environment.json
+!.cursor/skills/
+!.cursor/skills/**
+.cursor/skills/**/artifacts/
+.cursor/skills/**/.run.json
+!.cursor/rules/
+!.cursor/rules/**
 .opencode/*
 
 # extras

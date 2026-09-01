@@ -18,7 +18,6 @@ const params = {
   userId: createId('user'),
   planId: createId('plan'),
   moduleId: createId('module'),
-  userTier: 'free' as const,
   correlationId: createId('corr'),
 };
 
@@ -81,10 +80,12 @@ describe('startModuleLessonGeneration', () => {
           userId: params.userId,
           planId: params.planId,
           moduleId: params.moduleId,
-          userTier: 'free',
           correlationId: params.correlationId,
         }),
       ],
+    );
+    expect(mocks.workflowStart.mock.calls[0]?.[1]?.[0]).not.toHaveProperty(
+      'userTier',
     );
   });
 
@@ -151,10 +152,12 @@ describe('startModuleLessonGeneration', () => {
           userId: params.userId,
           planId: params.planId,
           moduleId: params.moduleId,
-          userTier: 'free',
           correlationId: params.correlationId,
         }),
       ],
+    );
+    expect(mocks.workflowStart.mock.calls[0]?.[1]?.[0]).not.toHaveProperty(
+      'userTier',
     );
   });
 

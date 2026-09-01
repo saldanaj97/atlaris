@@ -27,11 +27,11 @@ import {
   toClientGenerationAttempts,
   toClientPlanDetail,
 } from '@/features/plans/read-projection/detail-dto';
+import { buildModuleDetailReadModel } from '@/features/plans/read-projection/module-detail';
 import {
   buildPlanDetailStatusSnapshot,
   type PlanDetailStatusSnapshot,
-} from '@/features/plans/read-projection/detail-status';
-import { buildModuleDetailReadModel } from '@/features/plans/read-projection/module-detail';
+} from '@/features/plans/read-projection/read-status';
 import {
   buildLightweightPlanSummaries,
   buildPlanSummaries,
@@ -56,7 +56,7 @@ import { logger } from '@/lib/logging/logger';
 async function requireOwnedPlanReadable(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<boolean> {
   const owned = await selectOwnedPlanById({
     planId: params.planId,
@@ -72,6 +72,16 @@ async function requireOwnedPlanReadable(params: {
     dbClient: params.dbClient,
   });
   return true;
+}
+
+async function loadIfOwnedPlanReadable<T>(
+  params: { planId: string; userId: string; dbClient: DbClient },
+  load: () => Promise<T | null>,
+): Promise<T | null> {
+  if (!(await requireOwnedPlanReadable(params))) {
+    return null;
+  }
+  return load();
 }
 
 function redactLockedPlanSummary(summary: PlanSummary): PlanSummary {
@@ -121,7 +131,7 @@ function projectSummariesForAccess<T extends { plan: { id: string } }>(
 
 async function listPlanSummaries(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   options?: PaginationOptions & {
     orderBy?: 'createdAt' | 'updatedAt';
     planIds?: string[];
@@ -148,7 +158,7 @@ const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
 
 export async function listDashboardPlanSummaries(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanSummary[]> {
   return listPlanSummaries({
     userId: params.userId,
@@ -162,7 +172,7 @@ export async function listDashboardPlanSummaries(params: {
 
 export async function getDashboardPlanData(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
   const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
@@ -230,7 +240,7 @@ export async function getDashboardPlanData(params: {
 
 export async function getPlansPageForRead(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   query: PlanListQuery;
   referenceTimestamp?: string;
 }): Promise<PlanListPage> {
@@ -288,7 +298,7 @@ export async function getPlansPageForRead(params: {
 
 export async function listLightweightPlansForApi(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
   options?: PaginationOptions;
 }): Promise<LightweightPlanSummary[]> {
   const [{ snapshot }, rows] = await Promise.all([
@@ -317,16 +327,9 @@ export async function listLightweightPlansForApi(params: {
   });
 }
 
-export async function listUsageAnalyticsPlanSummaries(params: {
-  userId: string;
-  dbClient?: DbClient;
-}): Promise<LightweightPlanSummary[]> {
-  return listLightweightPlansForApi(params);
-}
-
 export async function getPlanListTotalCount(params: {
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<number> {
   return getPlanSummaryCount(params.userId, params.dbClient);
 }
@@ -334,173 +337,146 @@ export async function getPlanListTotalCount(params: {
 export async function getPlanDetailForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ClientPlanDetail | null> {
-  if (
-    !(await requireOwnedPlanReadable({
-      planId: params.planId,
-      userId: params.userId,
-      dbClient: params.dbClient,
-    }))
-  ) {
-    return null;
-  }
-
-  const rows = await getLearningPlanDetailRows(
-    params.planId,
-    params.userId,
-    params.dbClient,
-  );
-
-  if (!rows) {
-    return null;
-  }
-
-  const detail = buildLearningPlanDetail(rows);
-  const clientDetail = toClientPlanDetail(detail);
-  if (clientDetail === undefined) {
-    logger.error(
-      {
-        planId: detail.plan.id,
-        userId: params.userId,
-        attemptsCount: detail.attemptsCount,
-        latestAttemptId: detail.latestAttempt?.id,
-      },
-      'Failed to map learning plan detail to client detail',
+  return loadIfOwnedPlanReadable(params, async () => {
+    const rows = await getLearningPlanDetailRows(
+      params.planId,
+      params.userId,
+      params.dbClient,
     );
-    return null;
-  }
 
-  return clientDetail;
+    if (!rows) {
+      return null;
+    }
+
+    const detail = buildLearningPlanDetail(rows);
+    const clientDetail = toClientPlanDetail(detail);
+    if (clientDetail === undefined) {
+      logger.error(
+        {
+          planId: detail.plan.id,
+          userId: params.userId,
+          attemptsCount: detail.attemptsCount,
+          latestAttemptId: detail.latestAttempt?.id,
+        },
+        'Failed to map learning plan detail to client detail',
+      );
+      return null;
+    }
+
+    return clientDetail;
+  });
 }
 
 export async function getPlanGenerationStatusSnapshot(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<PlanDetailStatusSnapshot | null> {
-  if (
-    !(await requireOwnedPlanReadable({
-      planId: params.planId,
-      userId: params.userId,
-      dbClient: params.dbClient,
-    }))
-  ) {
-    return null;
-  }
+  return loadIfOwnedPlanReadable(params, async () => {
+    const rows = await getPlanStatusRowsForUser(
+      params.planId,
+      params.userId,
+      params.dbClient,
+    );
 
-  const rows = await getPlanStatusRowsForUser(
-    params.planId,
-    params.userId,
-    params.dbClient,
-  );
+    if (!rows) {
+      return null;
+    }
 
-  if (!rows) {
-    return null;
-  }
-
-  return buildPlanDetailStatusSnapshot(rows);
+    return buildPlanDetailStatusSnapshot(rows);
+  });
 }
 
 export async function getModuleLessonGenerationStatusForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<{
   planId: string;
   moduleId: string;
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
   workflowRunId?: string;
 } | null> {
-  if (
-    !(await requireOwnedPlanReadable({
+  return loadIfOwnedPlanReadable(params, async () => {
+    const snapshot = await getModuleLessonGenerationStatus(
+      params.planId,
+      params.moduleId,
+      params.userId,
+      params.dbClient,
+    );
+
+    if (!snapshot) {
+      return null;
+    }
+
+    return {
       planId: params.planId,
-      userId: params.userId,
-      dbClient: params.dbClient,
-    }))
-  ) {
-    return null;
-  }
-
-  const snapshot = await getModuleLessonGenerationStatus(
-    params.planId,
-    params.moduleId,
-    params.userId,
-    params.dbClient,
-  );
-
-  if (!snapshot) {
-    return null;
-  }
-
-  return {
-    planId: params.planId,
-    moduleId: params.moduleId,
-    ...snapshot,
-  };
+      moduleId: params.moduleId,
+      ...snapshot,
+    };
+  });
 }
 
 export async function getPlanGenerationAttemptsForRead(params: {
   planId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ClientGenerationAttempt[] | null> {
-  if (
-    !(await requireOwnedPlanReadable({
-      planId: params.planId,
-      userId: params.userId,
-      dbClient: params.dbClient,
-    }))
-  ) {
-    return null;
-  }
+  return loadIfOwnedPlanReadable(params, async () => {
+    const attempts = await getPlanAttemptsForUser(
+      params.planId,
+      params.userId,
+      params.dbClient,
+    );
 
-  const attempts = await getPlanAttemptsForUser(
-    params.planId,
-    params.userId,
-    params.dbClient,
-  );
+    if (!attempts) {
+      return null;
+    }
 
-  if (!attempts) {
-    return null;
-  }
-
-  return toClientGenerationAttempts(attempts.attempts);
+    return toClientGenerationAttempts(attempts.attempts);
+  });
 }
 
 export async function getModuleDetailForRead(params: {
   planId: string;
   moduleId: string;
   userId: string;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<ModuleDetailReadModel | null> {
-  if (
-    !(await requireOwnedPlanReadable({
-      planId: params.planId,
-      userId: params.userId,
-      dbClient: params.dbClient,
-    }))
-  ) {
-    return null;
-  }
+  return loadIfOwnedPlanReadable(params, async () => {
+    const rows = await getModuleDetailRows(
+      params.planId,
+      params.moduleId,
+      params.userId,
+      params.dbClient,
+    );
 
-  const rows = await getModuleDetailRows(
-    params.planId,
-    params.moduleId,
-    params.userId,
-    params.dbClient,
-  );
+    if (!rows) {
+      return null;
+    }
 
-  if (!rows) {
-    return null;
-  }
+    try {
+      const readModel = buildModuleDetailReadModel(rows);
+      if (!readModel) {
+        logger.error(
+          {
+            planId: params.planId,
+            moduleId: params.moduleId,
+            userId: params.userId,
+          },
+          'Failed to build module detail read model',
+        );
+        return null;
+      }
 
-  try {
-    const readModel = buildModuleDetailReadModel(rows);
-    if (!readModel) {
+      return readModel;
+    } catch (err) {
       logger.error(
         {
+          err,
           planId: params.planId,
           moduleId: params.moduleId,
           userId: params.userId,
@@ -509,18 +485,5 @@ export async function getModuleDetailForRead(params: {
       );
       return null;
     }
-
-    return readModel;
-  } catch (err) {
-    logger.error(
-      {
-        err,
-        planId: params.planId,
-        moduleId: params.moduleId,
-        userId: params.userId,
-      },
-      'Failed to build module detail read model',
-    );
-    return null;
-  }
+  });
 }

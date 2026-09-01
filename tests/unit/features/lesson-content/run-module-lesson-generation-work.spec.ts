@@ -156,7 +156,6 @@ describe('runModuleLessonGenerationWork', () => {
           userId,
           planId,
           moduleId,
-          userTier: 'free',
           generationMetadata: {
             version: 1,
             workflow: {
@@ -197,7 +196,6 @@ describe('runModuleLessonGenerationWork', () => {
           userId,
           planId,
           moduleId,
-          userTier: 'free',
           generationMetadata: {
             version: 1,
             workflow: {
@@ -246,7 +244,6 @@ describe('runModuleLessonGenerationWork', () => {
         userId,
         planId,
         moduleId,
-        userTier: 'free',
         now,
       },
       {
@@ -299,7 +296,6 @@ describe('runModuleLessonGenerationWork', () => {
           userId: createId('user'),
           planId: createId('plan'),
           moduleId: createId('module'),
-          userTier: 'free',
         },
         {
           serverDbClient: fakeDb,
@@ -325,7 +321,6 @@ describe('runModuleLessonGenerationWork', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'free',
       },
       {
         serverDbClient: fakeDb,
@@ -375,7 +370,6 @@ describe('runModuleLessonGenerationWork', () => {
           userId: createId('user'),
           planId: createId('plan'),
           moduleId: createId('module'),
-          userTier: 'free',
         },
         {
           serverDbClient: fakeDb,
@@ -408,7 +402,6 @@ describe('runModuleLessonGenerationWork', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'free',
       },
       {
         serverDbClient: fakeDb,
@@ -444,7 +437,6 @@ describe('runModuleLessonGenerationWork', () => {
         userId,
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'pro',
       },
       {
         serverDbClient: fakeDb,
@@ -478,7 +470,6 @@ describe('runModuleLessonGenerationWork', () => {
           userId: createId('user'),
           planId: createId('plan'),
           moduleId: createId('module'),
-          userTier: tier,
         },
         {
           serverDbClient: fakeDb,
@@ -495,7 +486,7 @@ describe('runModuleLessonGenerationWork', () => {
     },
   );
 
-  it('replaces a stale workflow userTier with the current DB tier', async () => {
+  it('uses the current DB tier and does not accept a stale caller userTier', async () => {
     mocks.resolveUserTier.mockResolvedValue('pro');
     mocks.getUserPreferences.mockResolvedValue({
       preferredAiModel: null,
@@ -510,20 +501,23 @@ describe('runModuleLessonGenerationWork', () => {
     mocks.invokeProvider.mockResolvedValue(providerOk());
     mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
 
-    await runModuleLessonGenerationWork(
-      {
-        load: workLoad(),
-        userId: createId('user'),
-        planId: createId('plan'),
-        moduleId: createId('module'),
-        userTier: 'free',
-      },
-      {
-        serverDbClient: fakeDb,
-        resolveGenerationEnabled: async () => true,
-      },
-    );
+    const staleCallerSnapshot = {
+      load: workLoad(),
+      userId: createId('user'),
+      planId: createId('plan'),
+      moduleId: createId('module'),
+      userTier: 'free' as const,
+    };
 
+    await runModuleLessonGenerationWork(staleCallerSnapshot, {
+      serverDbClient: fakeDb,
+      resolveGenerationEnabled: async () => true,
+    });
+
+    expect(mocks.resolveUserTier).toHaveBeenCalledWith(
+      staleCallerSnapshot.userId,
+      fakeDb,
+    );
     expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
       'pro',
       'google/gemini-3-flash-preview',
@@ -557,7 +551,6 @@ describe('runModuleLessonGenerationWork', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        userTier: 'pro',
         modelOverride: 'openai/gpt-5.2',
       },
       {

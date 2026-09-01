@@ -34,7 +34,7 @@ export async function removePlanForWrite(params: {
   planId: string;
   userId: string;
 }): Promise<void> {
-  const result = await deletePlan(params.planId, params.userId);
+  const result = await deletePlan(params.planId, params.userId, serviceRoleDb);
 
   if (result.success) {
     return;

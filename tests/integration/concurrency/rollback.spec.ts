@@ -1,16 +1,16 @@
+import { makeCanonicalUsage } from '../../fixtures/canonical-usage.factory';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import { createMockProvider } from '../../helpers/mockProvider';
-import { runGenerationAttempt } from '@/features/ai/orchestrator';
+import { commitPlanGenerationSuccess } from '@/features/plans/lifecycle/generation-finalization/store';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 /**
- * Injects a DB error during recordSuccess to assert full rollback (no modules / tasks persisted).
- * We monkey-patch the db client passed into runGenerationAttempt to throw after inserting modules
- * before the attempt record, ensuring transaction rollback semantics.
+ * Injects a failure after attempt persist so the single finalization
+ * transaction rolls back modules/tasks (plan stays generating).
  */
 
 describe('Concurrency - rollback on DB error', () => {
@@ -34,73 +34,62 @@ describe('Concurrency - rollback on DB error', () => {
       })
       .returning();
 
-    // Mock provider success scenario so we reach recordSuccess.
-    const mock = createMockProvider({ scenario: 'success' });
-
-    // Wrap db with a client that throws after first module insert.
-    let moduleInsertCount = 0;
-    const failingClient = {
-      ...db,
-      insert: (...args: any[]) => (db as any).insert(...args),
-      transaction: async (cb: any) => {
-        return await (db as any).transaction(async (tx: any) => {
-          const originalInsert = tx.insert.bind(tx);
-          tx.insert = (table: any) => {
-            const builder = originalInsert(table);
-            const originalValues = builder.values.bind(builder);
-            builder.values = (vals: any) => {
-              if (table === modules) {
-                moduleInsertCount += (vals as any[]).length;
-              }
-              return originalValues(vals);
-            };
-            const originalReturning = builder.returning.bind(builder);
-            builder.returning = (...rArgs: any[]) => {
-              const retBuilder = originalReturning(...rArgs);
-              const _originalExecute = retBuilder.then.bind(retBuilder);
-              return retBuilder;
-            };
-            return builder;
-          };
-
-          const result = await cb(tx);
-          // Force failure after modules & tasks inserted but before commit
-          if (moduleInsertCount > 0) {
-            throw new Error('Injected failure after module/task insertion');
-          }
-          return result;
-        });
+    const reservation = await reserveAttemptSlot({
+      planId: plan.id,
+      userId,
+      input: {
+        topic: 'Rollback Plan',
+        skillLevel: 'beginner',
+        weeklyHours: 2,
+        learningStyle: 'reading',
       },
-    } as any;
+      generationPurpose: 'initial',
+      dbClient: db,
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
 
-    let error: unknown = null;
-    try {
-      await runGenerationAttempt(
+    await expect(
+      commitPlanGenerationSuccess(
+        db,
         {
           planId: plan.id,
           userId,
+          attemptId: reservation.attemptId,
+          preparation: reservation,
+          modules: [
+            {
+              title: 'Rollback Mod',
+              description: undefined,
+              estimatedMinutes: 10,
+              tasks: [],
+            },
+          ],
+          providerMetadata: {},
+          usage: makeCanonicalUsage(),
+          durationMs: 100,
+          extendedTimeout: false,
+          usageKind: 'plan',
           generationPurpose: 'initial',
-          input: {
-            topic: 'Rollback Plan',
-            notes: 'Should rollback completely',
-            skillLevel: 'beginner',
-            weeklyHours: 2,
-            learningStyle: 'reading',
+        },
+        {
+          afterSuccessfulAttemptPersist: () => {
+            throw new Error('Injected failure after attempt persist');
           },
         },
-        { provider: mock.provider, dbClient: failingClient },
-      );
-    } catch (e) {
-      error = e;
-    }
-
-    expect(error).toBeTruthy();
+      ),
+    ).rejects.toThrow('Injected failure after attempt persist');
 
     const moduleRows = await db
       .select()
       .from(modules)
       .where(eq(modules.planId, plan.id));
-    const taskRows = await db.select().from(tasks);
+    const taskRows = await db
+      .select()
+      .from(tasks)
+      .innerJoin(modules, eq(tasks.moduleId, modules.id))
+      .where(eq(modules.planId, plan.id));
     expect(moduleRows.length).toBe(0);
     expect(taskRows.length).toBe(0);
   });

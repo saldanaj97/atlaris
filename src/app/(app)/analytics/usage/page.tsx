@@ -4,7 +4,7 @@ import { UsageAnalyticsContent } from './usage-analytics-content';
 import { buildUsageAnalyticsModel } from './usage-analytics-model';
 import { UsageAnalyticsTimezoneSync } from './usage-analytics-timezone-sync';
 import { ROUTES } from '@/features/navigation/routes';
-import { listUsageAnalyticsPlanSummaries } from '@/features/plans/read-projection/service';
+import { listLightweightPlansForApi } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { getLearningActivityEventsForUser } from '@/lib/db/queries/tasks';
 import { redirect } from 'next/navigation';
@@ -28,7 +28,7 @@ const SIGN_IN_RETURN_PATH = `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComp
 export default async function UsageAnalyticsPage() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
     const [summaries, activityEvents] = await Promise.all([
-      listUsageAnalyticsPlanSummaries({
+      listLightweightPlansForApi({
         userId: actor.id,
         dbClient: db,
       }),

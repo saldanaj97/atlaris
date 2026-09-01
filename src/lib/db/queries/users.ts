@@ -5,98 +5,12 @@ import type {
   UsersDbClient,
 } from '@/lib/db/queries/types/users.types';
 
-import { getRequestContext } from '@/lib/api/context';
 import {
   DEFAULT_USER_PREFERENCES,
   type UserPreferenceValues,
 } from '@/lib/db/queries/user-preferences';
-import { getDb } from '@supabase/runtime';
 import { userPreferences, users } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
-
-const SUBSCRIPTION_TIERS = new Set(['free', 'starter', 'pro']);
-const SUBSCRIPTION_STATUSES = new Set([
-  'active',
-  'canceled',
-  'past_due',
-  'trialing',
-]);
-
-interface UsersQueryDeps {
-  getDb: typeof getDb;
-}
-
-function isOptionalString(value: unknown): value is string | null {
-  return value === null || typeof value === 'string';
-}
-
-function isOptionalDate(value: unknown): value is Date | null {
-  return value === null || value instanceof Date;
-}
-
-function hasCoreIdentityFields(maybeUser: Partial<ActorUser>): boolean {
-  return (
-    typeof maybeUser.id === 'string' &&
-    typeof maybeUser.authUserId === 'string' &&
-    (typeof maybeUser.email === 'string' || maybeUser.email === null)
-  );
-}
-
-function hasValidSubscriptionTier(maybeUser: Partial<ActorUser>): boolean {
-  return (
-    typeof maybeUser.subscriptionTier === 'string' &&
-    SUBSCRIPTION_TIERS.has(maybeUser.subscriptionTier)
-  );
-}
-
-function hasValidSubscriptionStatus(maybeUser: Partial<ActorUser>): boolean {
-  return (
-    maybeUser.subscriptionStatus === null ||
-    (typeof maybeUser.subscriptionStatus === 'string' &&
-      SUBSCRIPTION_STATUSES.has(maybeUser.subscriptionStatus))
-  );
-}
-
-function isActorUser(user: unknown): user is ActorUser {
-  if (!user || typeof user !== 'object') {
-    return false;
-  }
-
-  const maybeUser = user as Partial<ActorUser>;
-
-  return (
-    hasCoreIdentityFields(maybeUser) &&
-    hasValidSubscriptionTier(maybeUser) &&
-    typeof maybeUser.monthlyExportCount === 'number' &&
-    maybeUser.createdAt instanceof Date &&
-    maybeUser.updatedAt instanceof Date &&
-    typeof maybeUser.analyticsTimezone === 'string' &&
-    isOptionalString(maybeUser.name) &&
-    hasValidSubscriptionStatus(maybeUser) &&
-    isOptionalDate(maybeUser.subscriptionPeriodEnd) &&
-    isOptionalDate(maybeUser.initialPlanGeneratedAt) &&
-    isOptionalString(maybeUser.freeAccessPlanId) &&
-    isOptionalDate(maybeUser.freeAccessPlanSelectedAt) &&
-    isOptionalString(maybeUser.preferredAiModel) &&
-    isOptionalString(maybeUser.preferredRegenerationAiModel) &&
-    isOptionalString(maybeUser.preferredLessonAiModel)
-  );
-}
-
-function matchingContextActorUser(
-  contextUser: unknown,
-  authUserId: string,
-): ActorUser | undefined {
-  if (
-    !contextUser ||
-    typeof contextUser !== 'object' ||
-    !('authUserId' in contextUser) ||
-    (contextUser as { authUserId: string }).authUserId !== authUserId
-  ) {
-    return undefined;
-  }
-  return isActorUser(contextUser) ? contextUser : undefined;
-}
 
 function toActorUser(
   user: DbUser,
@@ -119,48 +33,23 @@ function toActorUser(
   };
 }
 
-interface GetUserByAuthIdDeps extends UsersQueryDeps {
-  getRequestContext: typeof getRequestContext;
-  cleanupDbClient?: () => Promise<void>;
-}
-
-const defaultUsersQueryDeps: UsersQueryDeps = {
-  getDb,
-};
-
-const defaultGetUserByAuthIdDeps: GetUserByAuthIdDeps = {
-  getRequestContext,
-  ...defaultUsersQueryDeps,
-};
-
 /**
- * User-related queries for account lookup, creation, and deletion.
- * Uses RLS-enforced client by default; pass explicit dbClient for DI/testing.
+ * User-related queries for account lookup and creation.
+ * Callers must pass the request RLS client or an explicit service-role client.
  */
 
 /**
  * Looks up a user by their auth provider ID.
  *
  * @param authUserId - The external auth provider user ID
- * @param dbClient - Optional RLS-enforced client; defaults to getDb()
+ * @param dbClient - Required RLS or service-role client
  * @returns The user record, or undefined if not found
  */
 export async function getUserByAuthId(
   authUserId: string,
-  dbClient?: UsersDbClient,
-  deps: GetUserByAuthIdDeps = defaultGetUserByAuthIdDeps,
+  dbClient: UsersDbClient,
 ): Promise<ActorUser | undefined> {
-  if (dbClient === undefined) {
-    const contextUser = deps.getRequestContext()?.user;
-    const cached = matchingContextActorUser(contextUser, authUserId);
-    if (cached !== undefined) {
-      return cached;
-    }
-  }
-
-  const client = dbClient ?? deps.getDb();
-
-  const result = await client
+  const result = await dbClient
     .select({
       user: users,
       preferences: {
@@ -182,16 +71,13 @@ export async function getUserByAuthId(
  * Creates a new user record.
  *
  * @param userData - User fields (authUserId, email, optional name)
- * @param dbClient - Optional RLS-enforced client; defaults to getDb()
+ * @param dbClient - Required RLS or service-role client
  * @returns The created user record, or undefined on failure
  */
 export async function createUser(
   userData: CreateUserData,
-  dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps,
+  dbClient: UsersDbClient,
 ): Promise<DbUser | undefined> {
-  const client = dbClient ?? deps.getDb();
-
   const insertData = {
     authUserId: userData.authUserId,
     email: userData.email,
@@ -199,7 +85,7 @@ export async function createUser(
     clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
   };
 
-  const result = await client.insert(users).values(insertData).returning();
+  const result = await dbClient.insert(users).values(insertData).returning();
   return result[0];
 }
 
@@ -209,11 +95,9 @@ export async function createUser(
  */
 export async function getOrCreateUser(
   userData: CreateUserData,
-  dbClient?: UsersDbClient,
-  deps: UsersQueryDeps = defaultUsersQueryDeps,
+  dbClient: UsersDbClient,
 ): Promise<ActorUser | undefined> {
-  const client = dbClient ?? deps.getDb();
-  const inserted = await client
+  const inserted = await dbClient
     .insert(users)
     .values({
       authUserId: userData.authUserId,
@@ -228,5 +112,5 @@ export async function getOrCreateUser(
     return toActorUser(inserted[0], null);
   }
 
-  return getUserByAuthId(userData.authUserId, client);
+  return getUserByAuthId(userData.authUserId, dbClient);
 }

@@ -297,6 +297,72 @@ describe('PlanLifecycleService', () => {
         expect(result.tier).toBe('pro');
       }
     });
+
+    it('rejects when the free plan allowance has already been used', async () => {
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: async () => ({
+            status: 'free_allowance_used' as const,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('free_allowance_used');
+      if (result.status === 'free_allowance_used') {
+        expect(result.reason).toContain('free plan allowance');
+        expect(result.upgradeUrl).toBe('/pricing');
+      }
+    });
+
+    it('rejects when a free initial generation is already in progress', async () => {
+      ports = createMockPorts({
+        planPersistence: {
+          ...createMockPorts().planPersistence,
+          atomicInsertPlan: async () => ({
+            status: 'free_generation_in_progress' as const,
+          }),
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('free_generation_in_progress');
+      if (result.status === 'free_generation_in_progress') {
+        expect(result.reason).toContain('already being generated');
+      }
+    });
+
+    it('rejects when the normalized duration cap is exceeded', async () => {
+      const checkDurationCap = vi
+        .fn()
+        .mockReturnValueOnce({ allowed: true })
+        .mockReturnValueOnce({
+          allowed: false,
+          reason: 'Normalized duration exceeds tier limits',
+          upgradeUrl: '/upgrade',
+        });
+      ports = createMockPorts({
+        quota: {
+          ...createMockPorts().quota,
+          checkDurationCap,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('duration_exceeded');
+      if (result.status === 'duration_exceeded') {
+        expect(result.reason).toContain('Normalized duration');
+        expect(result.upgradeUrl).toBe('/upgrade');
+      }
+      expect(checkDurationCap).toHaveBeenCalledTimes(2);
+    });
   });
 
   describe('processGenerationAttempt', () => {

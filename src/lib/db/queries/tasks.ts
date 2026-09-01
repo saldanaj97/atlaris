@@ -7,7 +7,6 @@ import type {
 import type { ProgressStatus } from '@/shared/types/db.types';
 import type { SQL } from 'drizzle-orm';
 
-import { getDb } from '@supabase/runtime';
 import {
   learningActivityEvents,
   learningPlans,
@@ -49,9 +48,9 @@ function selectOwnedTaskRowsForUser(
 export async function getAllTasksInPlan(
   userId: string,
   planId: string,
-  dbClient?: TasksDbClient,
+  dbClient: TasksDbClient,
 ): Promise<DbTask[]> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   const rows = await selectOwnedTaskRowsForUser(
     client,
@@ -63,9 +62,9 @@ export async function getAllTasksInPlan(
 
 export async function getLearningActivityEventsForUser(
   userId: string,
-  dbClient?: TasksDbClient,
+  dbClient: TasksDbClient,
 ): Promise<DbLearningActivityEvent[]> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return client
     .select()
@@ -81,7 +80,7 @@ export async function getLearningActivityEventsForUser(
  * @param userId - The ID of the user.
  * @param taskId - The ID of the task.
  * @param status - The new progress status to set.
- * @param dbClient - Optional TasksDbClient used for transactions/internal testing.
+ * @param dbClient - Required TasksDbClient used for transactions/internal testing.
  * @returns A promise that resolves to the task progress record.
  * @throws Error if the task is not found or access is denied
  */
@@ -89,10 +88,10 @@ async function setTaskProgress(
   userId: string,
   taskId: string,
   status: ProgressStatus,
-  dbClient?: TasksDbClient,
+  dbClient: TasksDbClient,
   options: TaskProgressWriteOptions = {},
 ): Promise<DbTaskProgress> {
-  const client = dbClient ?? getDb();
+  const client = dbClient;
 
   return await client.transaction(async (tx) => {
     const [taskRow] = await selectOwnedTaskRowsForUser(
@@ -145,7 +144,7 @@ async function setTaskProgress(
 export async function setTaskProgressBatch(
   userId: string,
   updates: Array<{ taskId: string; status: ProgressStatus }>,
-  dbClient?: TasksDbClient,
+  dbClient: TasksDbClient,
   scope: TaskProgressBatchScope = {},
 ): Promise<DbTaskProgress[]> {
   if (updates.length === 0) return [];
@@ -164,7 +163,7 @@ export async function setTaskProgressBatch(
     return [result];
   }
 
-  const client = dbClient ?? getDb();
+  const client = dbClient;
   const taskIds = updates.map((u) => u.taskId);
   const scopeConditions: SQL[] = [inArray(tasks.id, taskIds)];
   if (scope.planId !== undefined) {

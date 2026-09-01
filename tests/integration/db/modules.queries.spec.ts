@@ -3,6 +3,7 @@ import { createTestPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { getModuleDetailRows } from '@/lib/db/queries/modules';
+import { db } from '@supabase/service-role';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('Module Queries', () => {
@@ -51,7 +52,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 45,
       });
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.plan.id).toBe(planId);
@@ -72,6 +73,7 @@ describe('Module Queries', () => {
         planId,
         '00000000-0000-0000-0000-000000000000',
         userId,
+        db,
       );
 
       expect(result).toBeNull();
@@ -82,7 +84,7 @@ describe('Module Queries', () => {
       const module = await createTestModule({ planId, title: 'Scoped' });
 
       expect(
-        await getModuleDetailRows(otherPlan.id, module.id, userId),
+        await getModuleDetailRows(otherPlan.id, module.id, userId, db),
       ).toBeNull();
     });
 
@@ -94,7 +96,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 0,
       });
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.module.title).toBe('Empty Module');
@@ -133,7 +135,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 60,
       });
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.taskRows.map((t) => t.order)).toEqual([1, 2, 3]);
@@ -154,7 +156,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 90,
       });
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.taskRows).toHaveLength(1);
@@ -199,7 +201,7 @@ describe('Module Queries', () => {
         estimatedMinutes: 30,
       });
 
-      const result = await getModuleDetailRows(planId, module1.id, userId);
+      const result = await getModuleDetailRows(planId, module1.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.taskRows).toHaveLength(1);
@@ -226,7 +228,7 @@ describe('Module Queries', () => {
         ),
       );
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.module.id).toBe(module.id);
@@ -252,7 +254,7 @@ describe('Module Queries', () => {
         description: 'Task description',
       });
 
-      const result = await getModuleDetailRows(planId, module.id, userId);
+      const result = await getModuleDetailRows(planId, module.id, userId, db);
 
       expect(result).not.toBeNull();
       expect(result?.module.order).toBe(5);
@@ -267,7 +269,12 @@ describe('Module Queries', () => {
         title: 'Private Module',
       });
 
-      const result = await getModuleDetailRows(planId, module.id, attackerId);
+      const result = await getModuleDetailRows(
+        planId,
+        module.id,
+        attackerId,
+        db,
+      );
 
       expect(result).toBeNull();
     });

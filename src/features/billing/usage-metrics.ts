@@ -6,7 +6,6 @@ import { resolveUserTier } from './tier';
 import { ValidationError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { getDb } from '@supabase/runtime';
 import { learningPlans, usageMetrics } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, eq, sql } from 'drizzle-orm';
@@ -69,7 +68,7 @@ async function selectUsageMetricsForMonth(
 async function getOrCreateUsageMetrics(
   userId: string,
   month: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
 ) {
   const [created] = await serviceRoleDb
     .insert(usageMetrics)
@@ -105,7 +104,7 @@ async function getOrCreateUsageMetrics(
 export async function incrementUsage(
   userId: string,
   type: UsageType,
-  dbClient: DbClient = serviceRoleDb,
+  dbClient: DbClient,
 ): Promise<void> {
   const month = getCurrentMonth();
 
@@ -136,9 +135,9 @@ export async function incrementUsage(
 export async function getUsageSummaryForTier(args: {
   userId: string;
   tier: SubscriptionTier;
-  dbClient?: DbClient;
+  dbClient: DbClient;
 }): Promise<UsageSummary> {
-  const { userId, tier, dbClient = getDb() } = args;
+  const { userId, tier, dbClient } = args;
   const limits = TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
   if (limits === undefined) {
     logger.info(
@@ -182,7 +181,7 @@ export async function getUsageSummaryForTier(args: {
  */
 export async function getUsageSummary(
   userId: string,
-  dbClient: DbClient = getDb(),
+  dbClient: DbClient,
 ): Promise<UsageSummary> {
   const tier = await resolveUserTier(userId, dbClient);
   return getUsageSummaryForTier({ userId, tier, dbClient });

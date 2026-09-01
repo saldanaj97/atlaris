@@ -3,15 +3,11 @@ import type {
   AttemptOperationsOverrides,
   GenerationAttemptContext,
   GenerationExecutionResult,
-  GenerationResult,
   RunGenerationOptions,
 } from '@/features/ai/types/orchestrator.types';
 import type { ProviderMetadata } from '@/features/ai/types/provider.types';
 
-import {
-  buildUnfinalizedReservedFailure,
-  finalizeReservedExecutionFailure,
-} from '@/features/ai/orchestrator/attempt-failures';
+import { buildUnfinalizedReservedFailure } from '@/features/ai/orchestrator/attempt-failures';
 import { generateWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
 import { createReservationRejectionResult } from '@/features/ai/orchestrator/reservation';
 import {
@@ -23,11 +19,7 @@ import {
 import { pacePlan } from '@/features/ai/pacing';
 import { parseGenerationStream } from '@/features/ai/parser';
 import { getGenerationProvider } from '@/features/ai/providers/factory';
-import {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { isAttemptsDbClient } from '@/lib/db/queries/helpers/attempts-db-client';
 import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 
@@ -38,10 +30,6 @@ function resolveAttemptOperations(
 ): AttemptOperations {
   return {
     reserveAttemptSlot: overrides?.reserveAttemptSlot ?? reserveAttemptSlot,
-    finalizeAttemptSuccess:
-      overrides?.finalizeAttemptSuccess ?? finalizeAttemptSuccess,
-    finalizeAttemptFailure:
-      overrides?.finalizeAttemptFailure ?? finalizeAttemptFailure,
   };
 }
 
@@ -163,54 +151,4 @@ export async function runGenerationExecution(
       rawText,
     });
   }
-}
-
-/** Reserve + generate + finalize attempt row (modules/tasks) in DB. Plan lifecycle + usage finalization stay separate. */
-export async function runGenerationAttempt(
-  context: GenerationAttemptContext,
-  options: RunGenerationOptions,
-): Promise<GenerationResult> {
-  const nowFn = options.now ?? (() => new Date());
-  const dbClient = options.dbClient;
-  const attemptOps = resolveAttemptOperations(options.attemptOperations);
-
-  const exec = await runGenerationExecution(context, options);
-
-  if (exec.kind === 'failure_rejected') {
-    return exec.result;
-  }
-
-  if (exec.kind === 'failure_reserved') {
-    return finalizeReservedExecutionFailure({
-      unfinalized: exec,
-      attemptOps,
-      context,
-      dbClient,
-      nowFn,
-    });
-  }
-
-  const attempt = await attemptOps.finalizeAttemptSuccess({
-    attemptId: exec.reservation.attemptId,
-    planId: context.planId,
-    preparation: exec.reservation,
-    modules: exec.modules,
-    providerMetadata: exec.metadata,
-    durationMs: exec.durationMs,
-    extendedTimeout: exec.extendedTimeout,
-    dbClient,
-    now: nowFn,
-  });
-
-  return {
-    status: 'success',
-    classification: null,
-    modules: exec.modules,
-    rawText: exec.rawText,
-    metadata: exec.metadata,
-    durationMs: exec.durationMs,
-    extendedTimeout: exec.extendedTimeout,
-    timedOut: false,
-    attempt,
-  };
 }

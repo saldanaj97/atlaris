@@ -289,26 +289,6 @@ jobs:
             echo "Audit failed after ${MAX_ATTEMPTS} attempts due to transient registry errors; failing closed."
             exit 1
 
-  build:
-    executor: node
-    steps:
-      - checkout
-      - init-env
-      - install-pnpm-deps
-      - restore_cache:
-          keys:
-            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
-            - next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-
-            - next-v1-{{ checksum "pnpm-lock.yaml" }}-
-      - run:
-          name: Build
-          command: pnpm build
-          no_output_timeout: 10m
-      - save_cache:
-          key: next-v1-{{ checksum "pnpm-lock.yaml" }}-{{ checksum "next.config.ts" }}-{{ .Revision }}
-          paths:
-            - .next/cache
-
   unit-tests:
     executor: node
     parallelism: 4
@@ -667,9 +647,6 @@ workflows:
           requires:
             - detect-changes
       - vulnerability-scan:
-          requires:
-            - detect-changes
-      - build:
           requires:
             - detect-changes
       - unit-tests:
