@@ -1,0 +1,12 @@
+[submodule ".agents/skill-sources/supabase-agent-skills"]
+	path = .agents/skill-sources/supabase-agent-skills
+	url = https://github.com/supabase/agent-skills.git
+	branch = main
+[submodule ".agents/skill-sources/clerk-skills"]
+	path = .agents/skill-sources/clerk-skills
+	url = https://github.com/clerk/skills.git
+	branch = main
+[submodule ".agents/skill-sources/sentry-agent-skills"]
+	path = .agents/skill-sources/sentry-agent-skills
+	url = https://github.com/getsentry/sentry-agent-skills.git
+	branch = main
