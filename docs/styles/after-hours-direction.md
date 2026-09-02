@@ -192,6 +192,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                 |
 | Pricing | `MarketingPageShell` + `PricingShell` + `ClerkPricingTable` → custom `PricingCards` (a retryable `RouteErrorState` when billing fails to load). Fixture / local product testing: `LocalPricingPreview` (same cards, checkout disabled). |
+| About | `MarketingPageShell` + celestial backdrop; Hero → Builder → Sky (hairline metaphor list) → Method (`bg-card rounded-4xl` does / does-not panel) → Contact (`mailto:support@atlaris.app`) → Close (pill CTAs). No inverted band. |
 | Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline` |
 
 
@@ -201,6 +202,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 
 - `src/app/(marketing)/landing/components/Landing.tsx`
 - `src/app/(marketing)/pricing/page.tsx` + `PricingShell.tsx` + `ClerkPricingTable.tsx` / `PricingCards.tsx` / `LocalPricingPreview.tsx` + `pricing-plan-features.ts`
+- `src/app/(marketing)/about/page.tsx`
 - `src/components/shared/nav/SiteHeaderChrome.tsx`
 - `src/app/(app)/dashboard/page.tsx`
 - `DESIGN.md` Layout section

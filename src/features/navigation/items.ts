@@ -34,4 +34,5 @@ export const authenticatedNavItems: NavItem[] = [
 export const unauthenticatedNavItems: NavItem[] = [
   { label: 'Home', href: ROUTES.LANDING },
   { label: 'Pricing', href: ROUTES.PRICING },
+  { label: 'About', href: ROUTES.ABOUT },
 ];

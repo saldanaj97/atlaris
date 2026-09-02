@@ -1,0 +1,125 @@
+/* After Hours about motion. Keep movement quiet, composited, and one-shot. */
+
+.revealItem {
+  opacity: 1;
+  transform: none;
+  animation-delay: calc(var(--i, 0) * 90ms);
+}
+
+.reveal[data-reveal-state='observing'] .revealItem {
+  opacity: 0;
+  transform: translate3d(0, 1.25rem, 0);
+}
+
+.reveal[data-reveal-state='visible'] .revealItem {
+  transition:
+    opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+.heroOverline,
+.heroLead,
+.heroEmphasis,
+.heroCopy {
+  animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.heroOverline {
+  animation-delay: 40ms;
+}
+
+.heroLead {
+  animation-delay: 80ms;
+}
+
+.heroEmphasis {
+  animation-name: heroEmphasis;
+  animation-delay: 180ms;
+  transform-origin: 50% 100%;
+}
+
+.heroCopy {
+  animation-delay: 330ms;
+}
+
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.35rem, 0);
+  }
+}
+
+@keyframes heroEmphasis {
+  from {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+    transform: translate3d(0, 1rem, 0) scale(0.985);
+  }
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.ambientOrb {
+  animation: ambientFloat var(--orb-duration, 18s) ease-in-out
+    var(--orb-delay, 0s) infinite alternate;
+}
+
+.ambientOrbPrimary {
+  --orb-duration: 17s;
+  --orb-x: -1.5rem;
+  --orb-y: 1.25rem;
+  --orb-scale: 1.05;
+}
+
+.ambientOrbMuted {
+  --orb-duration: 21s;
+  --orb-delay: -5s;
+  --orb-x: 1.75rem;
+  --orb-y: -1rem;
+  --orb-scale: 1.08;
+}
+
+@keyframes ambientFloat {
+  to {
+    transform: translate3d(var(--orb-x), var(--orb-y), 0)
+      scale(var(--orb-scale));
+  }
+}
+
+.ctaMotion:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .ctaMotion:hover {
+    transform: translateY(-0.125rem);
+  }
+
+  .ctaMotion:active {
+    transform: translateY(-0.125rem) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroOverline,
+  .heroLead,
+  .heroEmphasis,
+  .heroCopy,
+  .ambientOrb {
+    animation: none;
+  }
+
+  .reveal[data-reveal-state] .revealItem {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .ctaMotion:hover,
+  .ctaMotion:active {
+    transform: none;
+  }
+}
