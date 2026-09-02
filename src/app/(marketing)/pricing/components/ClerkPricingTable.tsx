@@ -56,9 +56,9 @@ const PLAN_NAME_BY_SLUG: Record<string, string> = {
 };
 
 const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
-  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free',
-  [CLERK_BILLING_PLAN_SLUGS.starter]: 'Choose Starter',
-  [CLERK_BILLING_PLAN_SLUGS.pro]: 'Choose Pro',
+  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free tonight',
+  [CLERK_BILLING_PLAN_SLUGS.starter]: 'Begin with Starter',
+  [CLERK_BILLING_PLAN_SLUGS.pro]: 'Begin with Pro',
 };
 
 const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
@@ -158,12 +158,17 @@ export function ClerkPricingTable({
   const { billing, loaded } = useClerk();
   const { isLoaded, userId } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(
+    null,
+  );
   const [period, setPeriod] = useState<BillingPeriod>('month');
   const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
     null,
   );
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const fetchKey = `${loaded}-${Boolean(billing)}-${isLoaded}-${userId ?? ''}-${reloadNonce}`;
+  const plansLoading = completedFetchKey !== fetchKey;
   const [subscriptionUserId, setSubscriptionUserId] = useState<string | null>(
     null,
   );
@@ -191,6 +196,7 @@ export function ClerkPricingTable({
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
         const nextPlans = result.data.map(normalizePlan);
+        setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);
         setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
@@ -231,6 +237,7 @@ export function ClerkPricingTable({
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        setCompletedFetchKey(fetchKey);
         setLoadFailed(true);
         if (isLoaded && userId) clearCheckoutParams();
         clientLogger.error('Failed to load Clerk billing plans', {
@@ -243,7 +250,8 @@ export function ClerkPricingTable({
     return () => {
       cancelled = true;
     };
-  }, [billing, isLoaded, loaded, reloadNonce, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react/exhaustive-effect-dependencies -- fetchKey encodes billing, auth, and reload triggers.
+  }, [fetchKey]);
 
   useEffect(() => {
     if (!pendingCheckout) return;
@@ -269,11 +277,13 @@ export function ClerkPricingTable({
 
   return (
     <PricingCards
+      loading={plansLoading}
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}
       renderAction={(plan, planPeriod, actionClassName) => {
-        const label = PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Choose plan';
+        const label =
+          PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Begin with this plan';
         const actionKey = `${plan.slug}:${planPeriod}`;
         const actionRef = (button: HTMLButtonElement | null) => {
           if (button) actionButtons.current.set(actionKey, button);

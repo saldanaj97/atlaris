@@ -191,7 +191,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 | Surface | Composition                                                                                                         |
 | ------- | ------------------------------------------------------------------------------------------------------------------- |
 | Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                 |
-| Pricing | `MarketingPageShell` + `PricingShell` + `ClerkPricingTable` → custom `PricingCards` (native `<PricingTable />` only when billing fails to load). Fixture / local product testing: `LocalPricingPreview` (same cards, checkout disabled). |
+| Pricing | `MarketingPageShell` + `PricingShell` + `ClerkPricingTable` → custom `PricingCards` (a retryable `RouteErrorState` when billing fails to load). Fixture / local product testing: `LocalPricingPreview` (same cards, checkout disabled). |
 | Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline` |
 
 
