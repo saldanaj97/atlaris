@@ -74,7 +74,7 @@ flowchart LR
 - Plan UI/SSE hooks --> `src/app/api/v1/plans/stream`: generation session entrypoint.
 - `/api/v1/plans/stream` --> `src/features/plans/session/plan-generation-session.ts`: session orchestration behind `requestBoundary.route`.
 - `PlanGenerationSession` --> `PlanLifecycleService`: plan lifecycle is the central hexagonal service.
-- `PlanLifecycleService` --> collaborator ports declared in `src/features/plans/lifecycle/service.ts` (persistence, quota, generation, finalization) and `creation-pipeline.ts` (`CreationGatePorts`): depends on ports, not concrete adapters.
+- `PlanLifecycleService` --> collaborator ports declared in `src/features/plans/lifecycle/service.ts` as `PlanLifecycleServicePorts` (`planPersistence`, `quota`, `generation`, `generationFinalization`): depends on ports, not concrete adapters.
 - `src/features/plans/lifecycle/factory.ts` --> `plan-persistence-store.ts`, `generation.ts`, `generation-finalization/store.ts`, billing tier/duration policy: concrete lifecycle wiring on one DB client.
 - `src/features/plans/lifecycle/generation.ts` --> `src/features/ai/orchestrator.ts`: model/provider orchestration.
 - `AI orchestrator` --> `src/features/ai/providers/` factory/OpenRouter/router/mock: provider selection and invocation spans.
@@ -113,7 +113,7 @@ flowchart LR
 - Supabase runtime/RLS: `supabase/runtime.ts`, `supabase/rls.ts`, `supabase/schema`, `supabase/migrations`
 - Architecture enforcement: `tests/unit/architecture/import-boundaries.spec.ts`, `.oxlintrc.json`
 - Existing architecture docs: `docs/architecture/*`, `docs/database/client-usage.md`, `supabase/AGENTS.md`
-- Plan lifecycle: `src/features/plans/lifecycle/service.ts`, `types.ts`, `factory.ts`, `creation-pipeline.ts`
+- Plan lifecycle: `src/features/plans/lifecycle/service.ts`, `types.ts`, `factory.ts`
 - Plan session/read model: `src/features/plans/session/plan-generation-session.ts`, `src/features/plans/session/usePlanGenerationSession.ts`, `src/features/plans/read-projection/service.ts`
 - AI generation: `src/features/ai/orchestrator.ts`, `src/features/ai/providers/` (factory, openrouter, router, mock)
 - Billing: `src/features/billing/*-quota-boundary.ts`, `metered-reservation.ts`, `metered-quota-boundary-core.ts`, `account-snapshot.ts`, `clerk-billing/` (plan-mapping, projection, reconciliation)
