@@ -1,0 +1,124 @@
+---
+description: Architecture relationship diagram for Atlaris services, boundaries, and modules
+alwaysApply: true
+---
+
+# Atlaris Architecture Relationships
+
+Use this map to navigate service ownership, import direction, and high-risk boundaries before editing. Prefer the named feature boundaries and request wrappers over reaching into core modules directly.
+
+## Layer Map
+
+```mermaid
+flowchart TB
+  App["src/app\nroutes, RSC, server actions, API handlers"]
+  UI["src/components + src/hooks\nclient UI and orchestration"]
+  Features["src/features\ndomain services, workflows, adapters"]
+  Lib["src/lib\ninfra, auth, API wrappers, DB queries, logging, proxy"]
+  Shared["src/shared\nleaf types, schemas, constants"]
+  Supabase["supabase\nschema, RLS, migrations, runtime, service-role"]
+
+  App --> UI
+  App --> Features
+  App --> Lib
+  UI --> Features
+  UI --> Lib
+  Features --> Lib
+  Features --> Shared
+  Lib --> Shared
+  Lib --> Supabase
+  Features --> Supabase
+
+  Features -. forbidden .-> App
+  Shared -. forbidden .-> Features
+```
+
+## Request And Data Flow
+
+```mermaid
+flowchart LR
+  Proxy["src/proxy.ts\nClerk middleware, CSP,\nmaintenance, workflow gate"]
+  Policy["src/lib/proxy/middleware-policy.ts"]
+  Boundary["src/lib/api/request-boundary.ts\nroute / component / action"]
+  Auth["src/lib/api/auth.ts\nClerk auth + app user"]
+  Context["src/lib/api/context.ts\nrequest context"]
+  Runtime["supabase/runtime.ts\nRLS DB runtime"]
+  RLS["supabase/rls.ts\nRLS context factory"]
+  Route["src/app/**\nroute/action/component"]
+  Feature["src/features/**\nfeature boundary/service"]
+  Queries["src/lib/db/queries/*\nDrizzle query modules"]
+  Schema["supabase/schema + migrations"]
+
+  Proxy --> Policy
+  Proxy --> Route
+  Route --> Boundary
+  Boundary --> Auth
+  Boundary --> Feature
+  Auth --> Context
+  Context --> Runtime
+  Runtime --> RLS
+  Feature --> Queries
+  Queries --> Runtime
+  Runtime --> Schema
+```
+
+## Key Relationship Edges
+
+- `src/proxy.ts` --> `src/lib/proxy/middleware-policy.ts`: ingress policy, CSP, maintenance, workflow callback gating.
+- `src/app/**` --> `src/lib/api/request-boundary.ts`: wrap API routes, RSC loaders, and server actions with `requestBoundary.route`, `.component`, or `.action`.
+- `requestBoundary.*` --> `src/lib/api/auth.ts`: establish Clerk auth and ensure the internal app user before RLS work.
+- `src/lib/api/auth.ts` --> `src/lib/api/context.ts`: creates request context used by RLS-aware DB access.
+- `src/lib/api/context.ts` --> `supabase/runtime.ts` --> `supabase/rls.ts`: DB runtime and RLS context wiring.
+- `src/app/(app|marketing|auth)` --> `src/components`, `src/hooks`, `src/features`: route groups compose UI and feature boundaries.
+- Client islands --> `src/app/_shared/client-api.ts`: use typed client API helpers for browser calls.
+- Plan UI/SSE hooks --> `src/app/api/v1/plans/stream`: generation session entrypoint.
+- `/api/v1/plans/stream` --> `src/features/plans/session/plan-generation-session.ts`: session orchestration behind `requestBoundary.route`.
+- `PlanGenerationSession` --> `PlanLifecycleService`: plan lifecycle is the central hexagonal service.
+- `PlanLifecycleService` --> collaborator ports declared in `src/features/plans/lifecycle/service.ts` as `PlanLifecycleServicePorts` (`planPersistence`, `quota`, `generation`, `generationFinalization`): depends on ports, not concrete adapters.
+- `src/features/plans/lifecycle/factory.ts` --> `plan-persistence-store.ts`, `generation.ts`, `generation-finalization/store.ts`, billing tier/duration policy: concrete lifecycle wiring on one DB client.
+- `src/features/plans/lifecycle/generation.ts` --> `src/features/ai/orchestrator.ts`: model/provider orchestration.
+- `AI orchestrator` --> `src/features/ai/providers/` factory/OpenRouter/router/mock: provider selection and invocation spans.
+- `generation-finalization/store.ts` --> DB modules/tasks/attempts/usage: persist completed plan state and metering effects.
+- App/UI plan reads --> `src/features/plans/read-projection/service.ts`: read plan projections through this feature boundary.
+- `src/features/plans/read-projection/service.ts` --> `src/lib/db/queries/plans.ts`: allowed raw plan-query access point.
+- Generation work (lesson content, plan regeneration) --> `src/features/billing/*-quota-boundary.ts`: quota checks and reservations enter through feature-owned boundaries.
+- Billing quota boundaries --> `src/features/billing/metered-reservation.ts` + `metered-quota-boundary-core.ts`: core reservation logic; do not call directly from routes.
+- Clerk billing webhook (`src/app/api/v1/clerk/billing/webhook`) + maintenance reconcile (`src/app/api/internal/maintenance/billing/reconcile-clerk`) --> `src/features/billing/clerk-billing/` (plan-mapping, projection, reconciliation): Clerk Billing subscription state.
+- Billing reads (subscription route, plans page, settings billing) --> `src/features/billing/account-snapshot.ts`: account tier/usage snapshot boundary.
+- Lesson generation route (`.../lesson-content/generate/handler.ts`) --> `src/features/lesson-content/start-module-lesson-generation-workflow.ts`: choose async workflow or inline path.
+- Lesson generation work --> `src/features/lesson-content/run-module-lesson-generation-work.ts`: module lesson generation orchestrator.
+- Lesson content work --> lesson quota boundary + OpenRouter + service-role persistence: generation, metering, and privileged writes.
+- Internal worker routes --> `src/lib/api/internal/internal-worker-access.ts` (jobs) and `src/lib/api/internal/maintenance-route.ts` (maintenance): authenticate internal jobs before execution.
+- Internal worker routes --> `src/features/jobs/**`: job execution and regeneration orchestration.
+- Email notifications --> `src/features/notifications/email/` (delivery workflow, Resend adapter, service-role persistence via `src/lib/db/queries/email-*.ts`); entered from `src/app/api/v1/notifications` and `src/app/api/internal/maintenance/notifications`.
+- Telemetry entrypoints --> `src/instrumentation.ts`, `sentry.*.config.ts`, `src/lib/logging/request-context.ts`, `src/lib/observability/metrics.ts`: tracing, request logs, metrics, AI invocation spans.
+
+## Boundary Rules
+
+- `src/features/**` must not import `src/app/**`; features are reusable domain boundaries below routes.
+- `src/shared/**` stays leaf-only: shared contracts, types, schemas, and constants should not import `src/features/**`.
+- `src/app/**` must not import blocked raw plan read query exports from `src/lib/db/queries/plans.ts`; use `src/features/plans/read-projection/service.ts`.
+- Use `requestBoundary.route`, `.component`, or `.action` before auth, RLS-sensitive DB work, or feature mutations from app entrypoints.
+- RLS-sensitive queries in high-risk modules must receive an explicit DB client; avoid hidden global DB access.
+- `@supabase/service-role` is allowed only in named feature, workflow, or worker boundaries; Oxlint blocks it from `src/app/**`, `src/lib/api/**`, and `src/lib/integrations/**`.
+- Billing consumers should enter through quota boundaries, `account-snapshot.ts`, or `clerk-billing/` modules, not `metered-reservation.ts` or `metered-quota-boundary-core.ts` directly.
+- Plan lifecycle code should depend on lifecycle ports and factory-wired adapters, not concrete persistence/provider modules from the service core.
+- Drizzle query modules live in `src/lib/db/queries/*`; schema, RLS, and migrations live under `supabase/`.
+
+## Quick File Index
+
+- Request boundary: `src/lib/api/request-boundary.ts`
+- Auth and context: `src/lib/api/auth.ts`, `src/lib/api/context.ts`, `src/lib/auth/server.ts`
+- Ingress/proxy: `src/proxy.ts`, `src/lib/proxy/middleware-policy.ts`
+- Supabase runtime/RLS: `supabase/runtime.ts`, `supabase/rls.ts`, `supabase/schema`, `supabase/migrations`
+- Architecture enforcement: `tests/unit/architecture/import-boundaries.spec.ts`, `.oxlintrc.json`
+- Existing architecture docs: `docs/architecture/*`, `docs/database/client-usage.md`, `supabase/AGENTS.md`
+- Plan lifecycle: `src/features/plans/lifecycle/service.ts`, `types.ts`, `factory.ts`
+- Plan session/read model: `src/features/plans/session/plan-generation-session.ts`, `src/features/plans/session/usePlanGenerationSession.ts`, `src/features/plans/read-projection/service.ts`
+- AI generation: `src/features/ai/orchestrator.ts`, `src/features/ai/providers/` (factory, openrouter, router, mock)
+- Billing: `src/features/billing/*-quota-boundary.ts`, `metered-reservation.ts`, `metered-quota-boundary-core.ts`, `account-snapshot.ts`, `clerk-billing/` (plan-mapping, projection, reconciliation)
+- Lesson content: `src/features/lesson-content/run-module-lesson-generation-work.ts`, `start-module-lesson-generation-workflow.ts`, `generate-module-lessons.ts`
+- Notifications: `src/features/notifications/email/`, `src/lib/db/queries/email-*.ts`
+- Jobs/workers: `src/app/api/internal/**`, `src/lib/api/internal/internal-worker-access.ts`, `src/lib/api/internal/maintenance-route.ts`, `src/features/jobs/`
+- UI/client API: `src/app/(app)`, `src/app/(marketing)`, `src/app/(auth)`, `src/app/_shared/client-api.ts`, `src/components`, `src/hooks`
+- Observability: `src/instrumentation.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `src/lib/logging/request-context.ts`, `src/lib/observability/metrics.ts`

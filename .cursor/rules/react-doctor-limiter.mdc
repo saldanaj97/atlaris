@@ -1,0 +1,24 @@
+---
+description: Run react-doctor only as a final UI-change check before commit, push, or review.
+globs: **/*.tsx,**/*.ts,**/*.jsx,**/*.js,**/*.css
+alwaysApply: false
+---
+
+# React Doctor Timing
+
+Do not run `react-doctor` after every UI edit. It slows down the development loop.
+
+Run `react-doctor` only when the conditions below are true:
+
+- The changed files include UI-related code, such as React components, app routes/pages, UI feature files, or styling.
+- There are more than 5 changed UI-related files.
+- One of these is happening:
+  - The code is about to be committed.
+  - The code is about to be pushed.
+  - The user asked for a review.
+
+Use the repo's current changed-scope command when available:
+
+```bash
+npx -y react-doctor@latest . --verbose --scope changed
+```

@@ -1,0 +1,14 @@
+---
+description: Read After Hours brand docs before app/marketing/components UI, copy, or brand token changes
+globs: src/app/(app)/**/*,src/app/(marketing)/**/*,src/components/**/*
+alwaysApply: false
+---
+
+# After Hours design context
+
+Before touching marketing UI, `(marketing)/**` copy, or `globals.css` token changes that affect the After Hours brand:
+
+1. Read `DESIGN.md` (Overview + Brand direction).
+2. Read `docs/styles/after-hours-direction.md` in full — including the **Experience** section (metaphor system, voice, landing choreography, anti-patterns).
+
+Runtime truth is `src/app/globals.css`; implementation recipes are in `docs/styles/style-guide.md`. Do not restate the vibe here or in code comments — the docs above are the single source.

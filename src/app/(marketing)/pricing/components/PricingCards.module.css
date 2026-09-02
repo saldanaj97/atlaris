@@ -92,12 +92,12 @@
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 33rem;
+  min-height: 30.5rem;
   padding: 2.75rem 1.125rem 1.125rem;
   /* Glow bleeds under the card; face paint is on ::after. */
   overflow: visible;
   border: 1.5px solid color-mix(in oklab, var(--border) 82%, transparent);
-  border-radius: 1.5rem;
+  border-radius: var(--radius-4xl);
   background: transparent;
   box-shadow: none;
   transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
@@ -185,6 +185,18 @@
   border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
   border-bottom: none;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+
+.cardPlaceholder {
+  animation: none;
+  transform: none;
+  border-color: color-mix(in oklab, var(--border) 50%, transparent);
+  background: color-mix(in oklab, var(--card) 70%, transparent);
+}
+
+.cardPlaceholder::before,
+.cardPlaceholder::after {
+  display: none;
 }
 
 /* Center featured plan (Starter) — peach accent border */
@@ -311,6 +323,11 @@
   letter-spacing: 0.04em;
 }
 
+.checkoutButton:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
 .checkoutButton:disabled {
   cursor: default;
   opacity: 0.72;
@@ -342,7 +359,7 @@
   .card {
     min-height: 28rem;
     padding-top: 2.5rem;
-    border-radius: 1.25rem;
+    border-radius: var(--radius-4xl);
   }
 
   .card::before {

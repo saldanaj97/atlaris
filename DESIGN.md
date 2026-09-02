@@ -260,7 +260,7 @@ Unauthenticated `/` routes to `/landing`. Live marketing composition:
 - Landing: `Landing.tsx` — Hero → Drift → Route → Instruments → Questions →
   Polaris, wrapped in `MarketingPageShell`.
 - Pricing: `PricingShell` chrome + route-owned plan cards backed by Clerk
-  Billing, with Clerk's `<PricingTable />` as the load-failure fallback.
+  Billing, with a retryable `RouteErrorState` when billing fails to load.
 - Shared marketing helpers (keep small): `MarketingPageShell`, `StarField`,
   `marketing-cta.ts` (pill CTAs), `marketing-header-classes.ts` (editorial nav
   underline + compact header CTA). Prefer route-local sections over new shared
