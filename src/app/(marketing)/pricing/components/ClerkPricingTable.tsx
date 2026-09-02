@@ -158,12 +158,17 @@ export function ClerkPricingTable({
   const { billing, loaded } = useClerk();
   const { isLoaded, userId } = useAuth();
   const [plans, setPlans] = useState<PricingPlan[]>([]);
+  const [completedFetchKey, setCompletedFetchKey] = useState<string | null>(
+    null,
+  );
   const [period, setPeriod] = useState<BillingPeriod>('month');
   const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
     null,
   );
   const [loadFailed, setLoadFailed] = useState(false);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const fetchKey = `${loaded}-${Boolean(billing)}-${isLoaded}-${userId ?? ''}-${reloadNonce}`;
+  const plansLoading = completedFetchKey !== fetchKey;
   const [subscriptionUserId, setSubscriptionUserId] = useState<string | null>(
     null,
   );
@@ -191,6 +196,7 @@ export function ClerkPricingTable({
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
         const nextPlans = result.data.map(normalizePlan);
+        setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);
         setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
@@ -231,6 +237,7 @@ export function ClerkPricingTable({
       })
       .catch((error: unknown) => {
         if (cancelled) return;
+        setCompletedFetchKey(fetchKey);
         setLoadFailed(true);
         if (isLoaded && userId) clearCheckoutParams();
         clientLogger.error('Failed to load Clerk billing plans', {
@@ -243,7 +250,7 @@ export function ClerkPricingTable({
     return () => {
       cancelled = true;
     };
-  }, [billing, isLoaded, loaded, reloadNonce, userId]);
+  }, [billing, fetchKey, isLoaded, loaded, reloadNonce, userId]);
 
   useEffect(() => {
     if (!pendingCheckout) return;
@@ -269,7 +276,7 @@ export function ClerkPricingTable({
 
   return (
     <PricingCards
-      loading={plans.length === 0}
+      loading={plansLoading}
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}

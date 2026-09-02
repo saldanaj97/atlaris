@@ -568,6 +568,17 @@ describe('ClerkPricingTable', () => {
     expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
 
+  it('clears loading placeholders after Clerk returns an empty plan list', async () => {
+    mocks.getPlans.mockResolvedValue({ data: [] });
+
+    await renderPricingTable();
+
+    await waitFor(() => expect(mocks.getPlans).toHaveBeenCalled());
+    expect(document.querySelector('[aria-busy="true"]')).toBeNull();
+    expect(document.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
+    expect(screen.queryByRole('article')).not.toBeInTheDocument();
+  });
+
   it('shows placeholder cards while Clerk plans are loading', async () => {
     let resolvePlans!: (value: { data: (typeof STARTER_PLAN)[] }) => void;
     mocks.getPlans.mockReturnValue(
