@@ -250,7 +250,8 @@ export function ClerkPricingTable({
     return () => {
       cancelled = true;
     };
-  }, [billing, fetchKey, isLoaded, loaded, reloadNonce, userId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react/exhaustive-effect-dependencies -- fetchKey encodes billing, auth, and reload triggers.
+  }, [fetchKey]);
 
   useEffect(() => {
     if (!pendingCheckout) return;
