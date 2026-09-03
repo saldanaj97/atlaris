@@ -23,6 +23,7 @@ export const ROUTES = {
     ROOT: '/settings',
   },
   PRICING: '/pricing',
+  ABOUT: '/about',
   MAINTENANCE: '/maintenance',
 } as const;
 

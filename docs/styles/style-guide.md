@@ -275,7 +275,7 @@ From `Landing.tsx` / `PricingShell.tsx`:
 
 ### 1. Hero / marketing pages
 
-**Examples:** Landing, Pricing. (`/about` redirects to `/landing`.)
+**Examples:** Landing, Pricing, About.
 
 #### Heading
 

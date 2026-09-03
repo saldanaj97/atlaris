@@ -1,5 +1,6 @@
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { unauthenticatedNavItems } from '@/features/navigation';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -121,6 +122,31 @@ describe('MobileNavigation', () => {
     expect(screen.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'href',
       '/dashboard',
+    );
+  });
+
+  it('renders About in the marketing sheet', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <TooltipProvider>
+        <MobileNavigation
+          isMarketing
+          pathname='/about'
+          navItems={unauthenticatedNavItems}
+        />
+      </TooltipProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+
+    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
+      'href',
+      '/about',
+    );
+    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
   });
 

@@ -12,6 +12,7 @@ describe('normalizeNavPathname', () => {
   it('strips a trailing slash on marketing routes', () => {
     expect(normalizeNavPathname('/landing/')).toBe('/landing');
     expect(normalizeNavPathname('/pricing/')).toBe('/pricing');
+    expect(normalizeNavPathname('/about/')).toBe('/about');
   });
 });
 
@@ -20,5 +21,8 @@ describe('isNavItemActive', () => {
     expect(
       isNavItemActive('/landing/', { href: '/landing', label: 'Home' }),
     ).toBe(true);
+    expect(isNavItemActive('/about/', { href: '/about', label: 'About' })).toBe(
+      true,
+    );
   });
 });
