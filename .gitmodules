@@ -10,3 +10,11 @@
 	path = .agents/skill-sources/sentry-agent-skills
 	url = https://github.com/getsentry/sentry-agent-skills.git
 	branch = main
+[submodule ".agents/skill-sources/resend-skills"]
+	path = .agents/skill-sources/resend-skills
+	url = https://github.com/resend/resend-skills.git
+	branch = main
+[submodule ".agents/skill-sources/posthog-ai-plugin"]
+	path = .agents/skill-sources/posthog-ai-plugin
+	url = https://github.com/PostHog/ai-plugin.git
+	branch = main
