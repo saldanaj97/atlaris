@@ -16,7 +16,7 @@ Every Vercel Preview, Staging, and Production deployment must run with `NODE_ENV
 
 Prefer the exported grouped configs instead of raw keys:
 
-- `appEnv` - Runtime mode, app URL, maintenance mode (`MAINTENANCE_MODE` env hard-on; combines with the `maintenance-mode` Vercel Flag — see [Vercel Flags](#vercel-flags))
+- `appEnv` - Runtime mode, app URL, and `MAINTENANCE_MODE` fail-safe (used only if the `maintenance-mode` Vercel Flag fails to evaluate — see [Vercel Flags](#vercel-flags))
 - `databaseEnv` - Database connection settings for Supabase Postgres
 - `clerkAuthEnv` - Clerk publishable and secret keys
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
@@ -45,11 +45,11 @@ Declared flags:
 
 | Flag key                      | Code export                 | Default / failure mode                                                                                                                                               | Combines with                                                                                               |
 | ----------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `maintenance-mode`            | `maintenanceMode`           | No `defaultValue` on the flag; evaluation errors **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — env `true` forces maintenance on regardless of the flag |
+| `maintenance-mode`            | `maintenanceMode`           | First production gate. No `defaultValue` on the flag; evaluation errors use the `MAINTENANCE_MODE` fail-safe if env is true, otherwise **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — fail-safe only if flag evaluation throws; unused when the flag resolves. Do not set env for normal ops. |
 | `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts`      | Resend + production `APP_URL` (see `emailEnv`)                                                              |
 | `module-lesson-generation`    | `moduleLessonGeneration`    | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts`            | Synchronous and Workflow SDK module lesson generation                                                       |
 
-**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery and lesson generation stay off; maintenance stays off unless `MAINTENANCE_MODE=true`.
+**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery, lesson generation, and maintenance stay off. `MAINTENANCE_MODE` is not a local override — it applies only if flag evaluation throws.
 
 **Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
@@ -61,7 +61,7 @@ Operational kill switches stay in Vercel Flags. Deployment, maintenance, privacy
 
 `src/flags.ts` is the only Flags SDK declaration file. Flags Explorer discovery is `src/app/.well-known/vercel/flags/route.ts` (`getProviderData` of that module only). Preference Settings opt-ins are not flags — see [user-preferences.md](../architecture/user-preferences.md).
 
-`MAINTENANCE_MODE` is an independent env hard-on (`appEnv.maintenanceMode`). Env `true` forces maintenance on without evaluating `maintenance-mode`.
+`maintenance-mode` is the first production gate: turn it On/Off in Vercel Flags. `MAINTENANCE_MODE` is a fail-safe only — if flag evaluation throws and the env is `true`, force maintenance; otherwise fail open. Do not set the env for day-to-day ops, and do not also set it `true` when the flag is already On.
 
 #### Deployment and maintenance gates (owner × runtime)
 
@@ -69,7 +69,7 @@ The three Flags above are the only Flags SDK keys. Everything in this table is e
 
 | Control                                                                                          | Owner                                                                                         | Runtime                                                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `MAINTENANCE_MODE`                                                                               | Vercel env (`appEnv`)                                                                         | Proxy hard-on; short-circuits `maintenance-mode` evaluation                                                                                                                                                                      |
+| `MAINTENANCE_MODE`                                                                               | Vercel env (`appEnv`)                                                                         | Fail-safe only when `maintenance-mode` evaluation throws; unused on the happy path                                                                                                                                               |
 | `FLAGS` / `FLAGS_SECRET`                                                                         | Vercel env                                                                                    | Enables `vercelAdapter()` and Flags Explorer; unset uses each flag's local fallback                                                                                                                                              |
 | `REGENERATION_QUEUE_ENABLED` + `REGENERATION_WORKER_TOKEN`                                       | Vercel env (`regenerationQueueEnv`) + GitHub Actions repo var / `Production – atlaris` secret | HTTP `POST /api/internal/jobs/regeneration/process`. Scheduled by `.github/workflows/regeneration-worker-scheduler.yml` every 15 minutes when the repo var is `true`; manual dispatch bypasses that gate                         |
 | `PLAN_CLEANUP_ENABLED` + `MAINTENANCE_WORKER_TOKEN`                                              | Vercel env (`maintenanceEnv`) + GitHub Actions repo var / `Production – atlaris` secret       | HTTP `POST /api/internal/maintenance/plans/cleanup`. Scheduled by `.github/workflows/plan-cleanup-scheduler.yml` every 15 minutes when the repo var is `true`; manual dispatch bypasses that gate                                |

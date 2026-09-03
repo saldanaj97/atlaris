@@ -9,13 +9,13 @@ export async function resolveEffectiveMaintenanceMode(
   envMaintenanceMode: boolean,
   options: { resolveMaintenanceFlag: ResolveMaintenanceFlag },
 ): Promise<boolean> {
-  if (envMaintenanceMode) {
-    return true;
-  }
-
   try {
     return await options.resolveMaintenanceFlag();
   } catch (error: unknown) {
+    if (envMaintenanceMode) {
+      return true;
+    }
+
     console.warn(`[atlaris] ${MAINTENANCE_FLAG_FAIL_OPEN}`, error);
     Sentry.withScope((scope) => {
       scope.setTag('feature', 'maintenance_flag');
