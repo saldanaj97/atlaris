@@ -1,7 +1,7 @@
 # User Preferences
 
 **Audience:** Developers changing settings, AI model defaults, email opt-ins, or analytics timezone.  
-**Last Updated:** August 2026
+**Last Updated:** September 2026
 
 Preferences live in dedicated tables (not on `users`). Auth actor loading joins `user_preferences`; missing tables during cutover fail actor resolution — see [deploy.md](../development/deploy.md) for migration order.
 
@@ -88,7 +88,7 @@ Token: HMAC payload with purpose `email_unsubscribe_all` (`src/features/notifica
 
 ## Feature flags (related)
 
-Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags — see [environment.md](../development/environment.md#vercel-flags) for the full Flags SDK table (including `module-lesson-generation`).
+Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags. These three keys stay Vercel-backed operational kill switches — they do not move to PostHog. Future user/cohort/experiment/percentage product rollouts belong in PostHog; do not add `@flags-sdk/posthog` for these controls. Ownership rule and env/scheduler inventory: [environment.md — Flag and gate ownership](../development/environment.md#flag-and-gate-ownership). Fail-open/fail-closed table: [environment.md — Vercel Flags](../development/environment.md#vercel-flags).
 
 | Flag key                      | Default               | Role                                                             |
 | ----------------------------- | --------------------- | ---------------------------------------------------------------- |
