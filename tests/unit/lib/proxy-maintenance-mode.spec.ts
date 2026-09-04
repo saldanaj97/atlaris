@@ -1,6 +1,6 @@
 import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import * as Sentry from '@sentry/nextjs';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@sentry/nextjs', () => ({
   withScope: vi.fn(
@@ -20,14 +20,18 @@ vi.mock('@sentry/nextjs', () => ({
 }));
 
 describe('resolveEffectiveMaintenanceMode', () => {
-  it('returns true without evaluating the flag when env maintenance mode is enabled', async () => {
-    const resolveMaintenanceFlag = vi.fn();
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('returns the Vercel flag value even when env maintenance mode is enabled', async () => {
+    const resolveMaintenanceFlag = vi.fn().mockResolvedValue(false);
 
     await expect(
       resolveEffectiveMaintenanceMode(true, { resolveMaintenanceFlag }),
-    ).resolves.toBe(true);
+    ).resolves.toBe(false);
 
-    expect(resolveMaintenanceFlag).not.toHaveBeenCalled();
+    expect(resolveMaintenanceFlag).toHaveBeenCalledOnce();
   });
 
   it('returns the flag value when env maintenance mode is disabled', async () => {
@@ -38,6 +42,19 @@ describe('resolveEffectiveMaintenanceMode', () => {
     ).resolves.toBe(true);
 
     expect(resolveMaintenanceFlag).toHaveBeenCalledOnce();
+  });
+
+  it('uses MAINTENANCE_MODE as fail-safe only when flag evaluation throws', async () => {
+    const resolveMaintenanceFlag = vi
+      .fn()
+      .mockRejectedValue(new Error('flags unavailable'));
+
+    await expect(
+      resolveEffectiveMaintenanceMode(true, { resolveMaintenanceFlag }),
+    ).resolves.toBe(true);
+
+    expect(resolveMaintenanceFlag).toHaveBeenCalledOnce();
+    expect(Sentry.captureException).not.toHaveBeenCalled();
   });
 
   it('fails open when flag evaluation fails and env maintenance mode is disabled', async () => {
