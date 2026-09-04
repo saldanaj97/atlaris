@@ -261,6 +261,9 @@ Unauthenticated `/` routes to `/landing`. Live marketing composition:
   Polaris, wrapped in `MarketingPageShell`.
 - Pricing: `PricingShell` chrome + route-owned plan cards backed by Clerk
   Billing, with a retryable `RouteErrorState` when billing fails to load.
+- About: route-local sections under `src/app/(marketing)/about/` — Hero →
+  Builder → Sky → Method → Contact → Close, wrapped in `MarketingPageShell`;
+  no inverted band (Polaris stays unique to landing).
 - Shared marketing helpers (keep small): `MarketingPageShell`, `StarField`,
   `marketing-cta.ts` (pill CTAs), `marketing-header-classes.ts` (editorial nav
   underline + compact header CTA). Prefer route-local sections over new shared
@@ -278,6 +281,8 @@ Use these live routes as visual anchors:
   celestial composition, display type, and section order.
 - Marketing pricing: `src/app/(marketing)/pricing/page.tsx` plus
   `PricingShell.tsx` for After Hours pricing chrome around Clerk billing.
+- Marketing about: `src/app/(marketing)/about/page.tsx` for builder, night-sky
+  metaphor, method, and contact.
 
 ## Elevation & Depth
 

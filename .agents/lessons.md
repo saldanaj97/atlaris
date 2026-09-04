@@ -103,3 +103,27 @@
 **Rule:** When using the production mock provider, treat `invalid_response` as retryable `provider_error`. Empty-module validation is a different parser path and is not a named `MOCK_AI_SCENARIO` value.
 
 **Impact:** Lifecycle tests that expect `permanent_failure` / `validation` will fail if they only stub `invalid_response`.
+
+## 2026-09-02: /orchestrate kickoff needs cloud-agent secrets, not local env
+
+**Context:** The JCS-63 root planner (`bc-1f6f2e42-4d98-4b7b-940d-afc781a46a8b`) launched fine from a local shell with `CURSOR_API_KEY` set, then stalled inside the cloud VM. The VM had no `CURSOR_API_KEY`, no `SLACK_BOT_TOKEN`, and no `bun` on PATH, so it could not spawn a single child task. It finished after 135 s asking for the key.
+
+**Rule:** Before `bun cli.ts kickoff`, confirm `CURSOR_API_KEY` (and `SLACK_BOT_TOKEN` if Slack is wanted) exist in Cursor Dashboard > Cloud Agents > Secrets. Local env only authenticates the dispatcher. Also, a bare model id in `plan.json` resolves to the server default variant; for `claude-fable-5-1` that is `thinking=true context=1m effort=high`. Pinning `context=300k` requires a `MODEL_CATALOG` entry on the machine running the loop.
+
+**Impact:** Without the secret the whole tree is dead on arrival and the credits for the root planner are spent for nothing. Without a catalog entry the planner cannot honor a context-size rule by prompt text alone.
+
+## 2026-09-02: /orchestrate model policy lives in plan.json task defs, not in the worker
+
+**Context:** The first JCS-63 worker ran the whole feature on `fable-5-1-high` because the planner classified "page with copy" as a design task. The pstack rule puts `feature` on Grok and Fable on prose and judgment only.
+
+**Rule:** Split by role before spawning. Prose and design judgment go to a Fable worker whose deliverable is its handoff (`pathsAllowed: []`, `(no branch)`); implementation goes to a Grok worker with `dependsOn` on the prose task so the script relays the copy verbatim. The script resolves `task.model` through `MODEL_CATALOG` at spawn, so the policy is enforced by the plan, not by prompt text.
+
+**Impact:** Fable finished the copy in 5 min and Grok the page in 11 min. The mixed worker had produced no branch after 26 min.
+
+## 2026-09-02: verify-atlaris on this Mac needs the OrbStack socket and real Clerk dev keys
+
+**Context:** `control.ts launch` failed with `Could not find a working container runtime strategy` right after `orb start`, then marketing routes returned 500 `Publishable key not valid`. `/var/run/docker.sock` does not exist here; `.env.local` has no Clerk keys and `.env.agents` holds placeholders.
+
+**Rule:** `export DOCKER_HOST=unix:///Users/juansaldana/.orbstack/run/docker.sock` before `launch`, `doctor`, and `cleanup`. For marketing pages, `clerk env pull --instance dev --file /tmp/<run>.env`, then `set -a; source /tmp/<run>.env; set +a` in the launch shell and delete the file afterward. Do not write the keys into repo env files.
+
+**Impact:** Without the socket Testcontainers never starts Postgres; without the keys every `(marketing)` route 500s and the live pass is impossible.

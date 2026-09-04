@@ -1,6 +1,6 @@
 ---
 description: Run react-doctor only as a final UI-change check before commit, push, or review.
-globs: **/*.tsx,**/*.ts,**/*.jsx,**/*.js,**/*.css
+globs: "**/*.tsx,**/*.ts,**/*.jsx,**/*.js,**/*.css"
 alwaysApply: false
 ---
 

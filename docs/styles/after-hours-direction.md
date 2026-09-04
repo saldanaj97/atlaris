@@ -25,7 +25,6 @@ Atlaris is a celestial atlas for learning: it guides you through the night sky o
 
 One coherent metaphor — navigation by night sky. Every named concept maps to a product idea:
 
-
 | Metaphor                      | Product meaning                                       | Where it's live                           |
 | ----------------------------- | ----------------------------------------------------- | ----------------------------------------- |
 | **Atlas**                     | The product itself: custom maps and guides            | Brand name, wordmark                      |
@@ -38,7 +37,6 @@ One coherent metaphor — navigation by night sky. Every named concept maps to a
 | **Quiet hours / after hours** | The user's real study time — evenings, 9pm–11pm       | Hero subheadline, `QuestionsSection`      |
 | **"Make space"**              | The core promise: room for the work that changes you  | Hero headline                             |
 
-
 ### Emotional register
 
 **Feels like:** a lamplit desk at 10pm; a navigator who already charted tonight's leg; calm certainty; patience (the plan waits, nothing expires or punishes).
@@ -47,7 +45,7 @@ One coherent metaphor — navigation by night sky. Every named concept maps to a
 
 ### Voice & copy
 
-Sora is the brand voice (see Typography below). Tone: quiet, assured, second person, short declarative sentences — often a plain lead line with an italic emphasis turn ("Ambition isn't your problem. *Drift is.*"). Copy acknowledges failure gently and without blame ("one busy Thursday, and the map goes dark").
+Sora is the brand voice (see Typography below). Tone: quiet, assured, second person, short declarative sentences — often a plain lead line with an italic emphasis turn ("Ambition isn't your problem. _Drift is._"). Copy acknowledges failure gently and without blame ("one busy Thursday, and the map goes dark").
 
 CTA language stays inside the metaphor and the time of day: **"Begin tonight"**, "See pricing", "Chart your course", "Start free tonight". Never generic growth-speak: no "Get started free", "Boost your learning", "Supercharge", no exclamation points.
 
@@ -83,22 +81,18 @@ The vibe lands through the locked specs in this file: Typography (Sora vs Work S
 
 > **Sora speaks for the brand. Work Sans runs the product.**
 
-
 | Font          | Role              | Where                                                     | Weights                                                                    |
 | ------------- | ----------------- | --------------------------------------------------------- | -------------------------------------------------------------------------- |
 | **Sora**      | Brand / marketing | Landing, pricing, marketing nav, CTAs, wordmark           | 700 wordmark · 600 headings · 500 subheads/buttons · 400 body              |
 | **Work Sans** | Product UI        | Dashboard, plans, analytics, settings, forms, tables, IDs | 600 headings · 500 labels/controls · 400 body · `tabular-nums` for figures |
 
-
 ### Retired for this direction
-
 
 | Font                                       | Former role                         | Status                                                                                                        |
 | ------------------------------------------ | ----------------------------------- | ------------------------------------------------------------------------------------------------------------- |
 | **Young Serif**                            | Marketing display (`.marketing-h`*) | **Retired.** Marketing uses responsive `font-serif` (Sora) utilities; `.marketing-h`* classes removed.        |
 | **JetBrains Mono**                         | Default product mono in exploration | Do not use as a brand voice; keep only if needed for true code/IDs (optional, not part of the two-font story) |
 | **Instrument Serif / other canvas trials** | Exploration only                    | Discarded                                                                                                     |
-
 
 Do not add a third brand face. Product stays Work Sans; marketing brand voice is Sora only.
 
@@ -118,7 +112,6 @@ Semantic Tailwind names stay (`background`, `foreground`, `primary`, `panel`, �
 
 ### Dark (velvet nocturne)
 
-
 | Role               | Hex       | Notes                      |
 | ------------------ | --------- | -------------------------- |
 | Background         | `#180d18` | Page ground                |
@@ -133,9 +126,7 @@ Semantic Tailwind names stay (`background`, `foreground`, `primary`, `panel`, �
 | CTA ink            | `#f8ead7` | Text on CTA plate          |
 | CTA accent ink     | `#1b0e19` | Text on solid accent fills |
 
-
 ### Light (celestial parchment)
-
 
 | Role               | Hex       | Notes                      |
 | ------------------ | --------- | -------------------------- |
@@ -151,9 +142,7 @@ Semantic Tailwind names stay (`background`, `foreground`, `primary`, `panel`, �
 | CTA ink            | `#26102a` | Text on CTA plate          |
 | CTA accent ink     | `#f4ebe1` | Text on solid accent fills |
 
-
 ### Semantic mapping (live)
-
 
 | Semantic token                | After Hours role                        |
 | ----------------------------- | --------------------------------------- |
@@ -167,7 +156,6 @@ Semantic Tailwind names stay (`background`, `foreground`, `primary`, `panel`, �
 | `--border` / `--input`        | line                                    |
 | `--ring`                      | accent (focus)                          |
 | `chart-1` … `chart-5`         | Peach/plum progression in `globals.css` |
-
 
 State colors (`destructive`, `success`, `warning`) keep functional hues; retune only if contrast fails on new surfaces.
 
@@ -187,13 +175,12 @@ State colors (`destructive`, `success`, `warning`) keep functional hues; retune 
 
 Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing`.
 
-
-| Surface | Composition                                                                                                         |
-| ------- | ------------------------------------------------------------------------------------------------------------------- |
-| Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                 |
+| Surface | Composition                                                                                                                                                                                                                             |
+| ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Landing | `MarketingPageShell` + celestial backdrop; Hero → Drift → Route → Instruments → Questions → Polaris                                                                                                                                     |
 | Pricing | `MarketingPageShell` + `PricingShell` + `ClerkPricingTable` → custom `PricingCards` (a retryable `RouteErrorState` when billing fails to load). Fixture / local product testing: `LocalPricingPreview` (same cards, checkout disabled). |
-| Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline` |
-
+| About   | `MarketingPageShell` + celestial backdrop; Hero → Builder → Sky (hairline metaphor list) → Method (`bg-card rounded-4xl` does / does-not panel) → Contact (`mailto:support@atlaris.app`) → Close (pill CTAs). No inverted band.         |
+| Shared  | `MarketingPageShell`, `StarField`, `marketing-cta.ts`, `marketing-header-classes.ts`, route-local `SectionOverline`                                                                                                                     |
 
 **Retired wrappers:** `MarketingHero`, `MarketingSection`, `MarketingCard`, liquid-glass stack, `HeaderLiquidGlassShell`, `marketing-glass-surface`.
 
@@ -201,6 +188,7 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 
 - `src/app/(marketing)/landing/components/Landing.tsx`
 - `src/app/(marketing)/pricing/page.tsx` + `PricingShell.tsx` + `ClerkPricingTable.tsx` / `PricingCards.tsx` / `LocalPricingPreview.tsx` + `pricing-plan-features.ts`
+- `src/app/(marketing)/about/page.tsx`
 - `src/components/shared/nav/SiteHeaderChrome.tsx`
 - `src/app/(app)/dashboard/page.tsx`
 - `DESIGN.md` Layout section
@@ -235,7 +223,6 @@ Tokens + fonts live in `globals.css` / `layout.tsx`. `DESIGN.md` YAML mirrors `g
 ---
 
 ## Related docs
-
 
 | Doc                                  | Role                                                                       |
 | ------------------------------------ | -------------------------------------------------------------------------- |
