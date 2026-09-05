@@ -24,7 +24,6 @@ export const ROUTES = {
   },
   PRICING: '/pricing',
   ABOUT: '/about',
-  MAINTENANCE: '/maintenance',
 } as const;
 
 export function planDetailPath(planId: string): string {

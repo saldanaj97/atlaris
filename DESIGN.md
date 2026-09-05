@@ -246,8 +246,8 @@ for the locked type split. Do not introduce another font without updating
 ## Layout
 
 App pages are left-aligned, scan-friendly, and constrained. Prefer shared
-layout primitives such as `PageShell`, `PageHeader`, `Surface`, `MetricCard`,
-and shadcn UI components before creating new layout patterns.
+layout primitives such as `PageShell`, `PageHeader`, `Surface`, and shadcn UI
+components before creating new layout patterns.
 
 Marketing pages use centered hero composition, larger Sora type, hairline
 dividers, and a **celestial backdrop** (blurred semantic-token orbs + the

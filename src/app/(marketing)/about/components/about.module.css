@@ -3,7 +3,6 @@
 .revealItem {
   opacity: 1;
   transform: none;
-  animation-delay: calc(var(--i, 0) * 90ms);
 }
 
 .reveal[data-reveal-state='observing'] .revealItem {

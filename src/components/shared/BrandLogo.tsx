@@ -6,8 +6,6 @@ interface BrandLogoProps {
   size?: 'sm' | 'md';
   /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
-  /** Use solid brand color instead of gradient (avoids theme hydration mismatch in chrome). */
-  variant?: 'gradient' | 'solid';
 }
 
 /**
@@ -15,11 +13,7 @@ interface BrandLogoProps {
  * Wordmark uses display face (Sora via `font-serif`); chrome stays on product tokens.
  * Always links to the marketing landing page — `/` redirects signed-in users to dashboard.
  */
-export default function BrandLogo({
-  size = 'md',
-  onClick,
-  variant = 'solid',
-}: BrandLogoProps) {
+export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
   const isSmall = size === 'sm';
 
   return (
@@ -30,9 +24,7 @@ export default function BrandLogo({
       aria-label='Atlaris - Go to homepage'
     >
       <span
-        className={`font-serif font-bold tracking-tight ${
-          variant === 'gradient' ? 'gradient-text' : 'text-foreground'
-        } ${isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'}`}
+        className={`font-serif font-bold tracking-tight text-foreground ${isSmall ? 'text-base sm:text-lg' : 'text-xl sm:text-2xl'}`}
       >
         Atlaris
         <span aria-hidden='true' className='text-primary'>
