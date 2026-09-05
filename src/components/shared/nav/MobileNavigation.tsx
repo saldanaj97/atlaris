@@ -1,8 +1,10 @@
 'use client';
 
 import type { NavItem } from '@/features/navigation';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import BrandLogo from '../BrandLogo';
+import AppSidebar from '@/components/shared/nav/AppSidebar';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
@@ -21,14 +23,17 @@ import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
 interface MobileNavigationProps {
   isMarketing: boolean;
+  isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
+  tier?: SubscriptionTier;
   canCreatePlan?: boolean;
   isAuthenticated?: boolean;
+  userName?: string;
 }
 
 /**
@@ -36,12 +41,17 @@ interface MobileNavigationProps {
  */
 export default function MobileNavigation({
   isMarketing,
+  isAppShell = false,
   pathname,
   navItems,
+  tier,
   canCreatePlan,
   isAuthenticated = false,
+  userName,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
+  const navigationDismissedRef = useRef(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
@@ -54,6 +64,11 @@ export default function MobileNavigation({
         : ROUTES.PRICING
     : ROUTES.PLANS.NEW;
 
+  const handleNavigation = () => {
+    navigationDismissedRef.current = true;
+    setOpen(false);
+  };
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -61,6 +76,7 @@ export default function MobileNavigation({
           <Button
             variant='ghost'
             size='icon-sm'
+            ref={triggerRef}
             onClick={() => setOpen(true)}
             className='rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             aria-label='Open menu'
@@ -74,97 +90,122 @@ export default function MobileNavigation({
       {/* Sheet content sliding from left */}
       <SheetContent
         side='left'
-        className='w-72 border-r border-border bg-card p-0 shadow-lg'
+        onCloseAutoFocus={(event) => {
+          event.preventDefault();
+          if (navigationDismissedRef.current) {
+            navigationDismissedRef.current = false;
+            return;
+          }
+          triggerRef.current?.focus();
+        }}
+        className={cn(
+          'w-72 border-r border-border p-0 shadow-lg',
+          isAppShell ? 'bg-sidebar' : 'bg-card',
+        )}
       >
-        <SheetHeader className='p-6'>
-          <BrandLogo size='sm' onClick={() => setOpen(false)} />
-          <SheetTitle className='sr-only'>Navigation Menu</SheetTitle>
-        </SheetHeader>
+        {isAppShell ? (
+          <>
+            <SheetHeader className='sr-only p-0'>
+              <SheetTitle>Application navigation</SheetTitle>
+            </SheetHeader>
+            <AppSidebar
+              pathname={pathname}
+              navItems={navItems}
+              tier={tier}
+              canCreatePlan={canCreatePlan}
+              userName={userName}
+              navigationLabel='Mobile navigation'
+              onNavigate={handleNavigation}
+            />
+          </>
+        ) : (
+          <>
+            <SheetHeader className='p-6'>
+              <BrandLogo size='sm' onClick={handleNavigation} />
+              <SheetTitle className='sr-only'>Navigation Menu</SheetTitle>
+            </SheetHeader>
 
-        {/* Navigation items */}
-        <nav
-          className='flex flex-1 flex-col gap-2 px-4'
-          aria-label='Mobile navigation'
-        >
-          {/* Primary action — marketing peach CTA or app create-plan */}
-          {isMarketing ? (
-            <Button
-              asChild
-              variant='default'
-              className={cn(
-                marketingHeaderPrimaryCtaClassName,
-                'mb-2 h-auto w-full justify-center py-3',
-              )}
+            {/* Navigation items */}
+            <nav
+              className='flex flex-1 flex-col gap-2 px-4'
+              aria-label='Mobile navigation'
             >
-              <Link
-                href={primaryCtaHref}
-                onClick={() => {
-                  setOpen(false);
-                }}
-              >
-                {primaryCtaLabel}
-              </Link>
-            </Button>
-          ) : appCtaHref ? (
-            <Button
-              asChild
-              variant='default'
-              className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
-            >
-              <Link
-                href={appCtaHref}
-                onClick={() => {
-                  setOpen(false);
-                }}
-              >
-                {canCreatePlan === false ? null : <Plus className='size-4' />}
-                {canCreatePlan === false ? 'Upgrade' : 'Create New Plan'}
-              </Link>
-            </Button>
-          ) : null}
-
-          {navItems.map((item) => {
-            const isActive = isNavItemActive(pathname, item);
-            return (
-              <div key={item.href} className='flex flex-col gap-1'>
-                <Link
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  aria-current={isActive ? 'page' : undefined}
-                  className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
-                    isActive
-                      ? 'bg-primary text-primary-foreground shadow-md'
-                      : 'text-muted-foreground hover:bg-muted hover:text-primary'
-                  }`}
+              {/* Primary action — marketing peach CTA or app create-plan */}
+              {isMarketing ? (
+                <Button
+                  asChild
+                  variant='default'
+                  className={cn(
+                    marketingHeaderPrimaryCtaClassName,
+                    'mb-2 h-auto w-full justify-center py-3',
+                  )}
                 >
-                  {item.label}
-                </Link>
-                {item.dropdown && (
-                  <div className='ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30'>
-                    {item.dropdown.map((subItem) => {
-                      const isSubActive = isNavItemActive(pathname, subItem);
-                      return (
-                        <Link
-                          key={subItem.href}
-                          href={subItem.href}
-                          onClick={() => setOpen(false)}
-                          aria-current={isSubActive ? 'page' : undefined}
-                          className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
-                            isSubActive
-                              ? 'text-primary dark:text-primary'
-                              : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
-                          }`}
-                        >
-                          {subItem.label}
-                        </Link>
-                      );
-                    })}
+                  <Link href={primaryCtaHref} onClick={handleNavigation}>
+                    {primaryCtaLabel}
+                  </Link>
+                </Button>
+              ) : appCtaHref ? (
+                <Button
+                  asChild
+                  variant='default'
+                  className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
+                >
+                  <Link href={appCtaHref} onClick={handleNavigation}>
+                    {canCreatePlan === false ? null : (
+                      <Plus className='size-4' />
+                    )}
+                    {canCreatePlan === false ? 'Upgrade' : 'Create New Plan'}
+                  </Link>
+                </Button>
+              ) : null}
+
+              {navItems.map((item) => {
+                const isActive = isNavItemActive(pathname, item);
+                return (
+                  <div key={item.href} className='flex flex-col gap-1'>
+                    <Link
+                      href={item.href}
+                      onClick={handleNavigation}
+                      aria-current={isActive ? 'page' : undefined}
+                      className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'text-muted-foreground hover:bg-muted hover:text-primary'
+                      }`}
+                    >
+                      {item.label}
+                    </Link>
+                    {item.dropdown && (
+                      <div className='ml-4 flex flex-col gap-1 border-l border-primary/20 pl-4 dark:border-primary/30'>
+                        {item.dropdown.map((subItem) => {
+                          const isSubActive = isNavItemActive(
+                            pathname,
+                            subItem,
+                          );
+                          return (
+                            <Link
+                              key={subItem.href}
+                              href={subItem.href}
+                              onClick={handleNavigation}
+                              aria-current={isSubActive ? 'page' : undefined}
+                              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                                isSubActive
+                                  ? 'text-primary dark:text-primary'
+                                  : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
+                              }`}
+                            >
+                              {subItem.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            );
-          })}
-        </nav>
+                );
+              })}
+            </nav>
+          </>
+        )}
       </SheetContent>
     </Sheet>
   );
