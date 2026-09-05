@@ -1,37 +1,30 @@
 ---
-description: Defer tests and reviews unless explicitly requested, fixing CI, or 10+ files changed in the thread
+description: Match verification to changed behavior and risk; stop once relevant evidence is sufficient
 alwaysApply: true
 ---
 
 # Selective Verification
 
-Do not run tests, lint suites, react-doctor, or broad code reviews as a default finishing step after edits.
+This is the repository's single source for verification timing and scope. Skills and tool-specific rules defer to it. File counts, committing, or finishing a turn do not independently require a test suite or automated review.
 
-## Default: skip verification runs
+## Choose the smallest useful check
 
-After making changes, stop when the task is done. Do not proactively run:
+- **Trivial documentation, copy, or cosmetic edits:** inspect the diff and relevant output; skip application tests and automated reviews unless requested. Use structural checks for instruction, configuration, or reference changes when they can catch an actual error.
+- **Meaningful behavior changes and bug fixes:** add or adjust a focused regression case when applicable and run the smallest check that exercises the changed behavior and relevant failure path. Use the existing framework and production entrypoint where practical, not assertions that mirror implementation.
+- **Security, authentication, authorization, billing, data integrity, migrations, or concurrency:** run the targeted checks that establish the affected invariant and failure boundaries, even for a one-file change. Preserve required safety and CI gates.
+- **CI failures:** inspect the causal failure and run the smallest check that reproduces or validates its fix.
+- **Explicit verification requests and required checks:** complete the requested scope and applicable project checks. Broaden verification when shared contracts or integration risk make focused checks insufficient.
 
-- `pnpm test`, `pnpm test:unit`, `pnpm check:full`, or similar full suites
-- `react-doctor` or other automated review tools
-- Broad "review and ship" / security / bugbot passes
+Prefer a specific spec or `pnpm test:unit:changed` over full suites. Run the whole suite only when requested, required by a gate, or justified by unresolved integration risk. Do not repeat tests solely to produce more evidence.
 
-Small or scoped edits do not need a verification run before you report back.
+## Automated reviews and React Doctor
 
-## When to run verification
+Use an automated review when requested or when material correctness, security, accessibility, or integration risk warrants it. React Doctor is one possible check for relevant React changes, not a mandatory companion to every edit or targeted test. Follow its installed CLI contract and inspect actionable diagnostics rather than chasing a score.
 
-Run tests or reviews only in these cases:
+For an authorized multi-agent implementation workflow, use one combined review per completed wave. Reuse implementers for corrections; avoid an additional whole-issue review after the wave reviews already cover it.
 
-1. **User explicitly asks** — e.g. "run tests", "check:full", "review this", "react-doctor"
-2. **Fixing CI failures** — run the smallest scoped command that reproduces or validates the failing check (targeted spec file, changed-package tests, or the specific CI step)
-3. **Large thread scope** — this conversation has modified **10 or more files**; then run appropriate scoped verification before marking work complete
+## Stop and report
 
-## When running tests, stay scoped
+Once the relevant checks pass, broaden or repeat them only after new changes, failures, or unresolved material concerns invalidate the evidence. Re-run only the affected checks after a fix.
 
-Prefer targeted commands over full suites:
-
-- `pnpm test:unit:changed` or a specific spec file tied to the edit
-- Do not run the entire test suite unless the user asks or CI failure requires it
-
-## Overrides
-
-This rule takes precedence over other instructions that say to always run `pnpm test` or `pnpm check:full` after every change. Those apply only when this rule's triggers are met.
+Record what ran and its result. Explain a skipped, unavailable, or failing required check; never imply it passed. Local checks, hosted CI, deployment, review resolution, and merge proof remain separate.

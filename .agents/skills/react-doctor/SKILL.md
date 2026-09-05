@@ -1,19 +1,12 @@
 ---
 name: react-doctor
-description: Run after making React changes to catch issues early. Use when reviewing code, finishing a feature, or fixing bugs in a React project.
-version: 1.0.0
+description: Apply Atlaris verification policy when React Doctor is requested or useful for a material React concern.
 ---
 
-# React Doctor
+# Atlaris react-doctor overlay
 
-Scans your React codebase for security, performance, correctness, and architecture issues. Outputs a 0-100 score with actionable diagnostics.
+Read the target checkout's `AGENTS.md`, `ENGINEERING_RULES.md`, and `.cursor/rules/selective-verification.mdc`. This file adds repository policy; it does not define a second workflow.
 
-## Usage
+Load the user-scoped `react-doctor` skill from the available skill catalog (on this installation, `~/.agents/skills/react-doctor/SKILL.md`; otherwise check `~/.codex/skills/react-doctor/SKILL.md`). Select that distinct user-scoped file, not this overlay, and execute its workflow once. Resolve its references relative to its own directory. If the shared skill is unavailable in another checkout, use the installed React Doctor CLI help and the repository policy for an explicitly requested or justified scan. Do not invent flags or make an optional personal skill a prerequisite for using the installed tool.
 
-```bash
-npx -y react-doctor@latest . --verbose --diff
-```
-
-## Workflow
-
-Run after making changes to catch issues early. Fix errors first, then re-run to verify the score improved.
+Repository verification timing and scope come only from `.cursor/rules/selective-verification.mdc`. Preserve the user's authorized scope, unrelated work, and separate local and hosted evidence.

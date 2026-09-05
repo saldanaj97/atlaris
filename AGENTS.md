@@ -49,10 +49,11 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 Before implementing:
 
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- Infer routine reversible choices from the request, prior authorization, and repository evidence. State material assumptions briefly.
+- Ask through the available question tool only when missing information materially changes the outcome or authorization is required. Continue independent authorized work while waiting.
 - If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- Pause only the work that depends on an unresolved decision. Complete the authorized preparation before asking for approval, and do not ask again for permission already given.
+- Explicit user instructions override skill defaults, subject to system and developer instructions. A skill does not expand task scope; identify the exact instruction if it would block authorized work.
 
 ### 2. Simplicity First
 
@@ -92,7 +93,7 @@ Transform tasks into verifiable goals:
 
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+- "Refactor X" → "Verify the affected behavior with the smallest relevant check"
 
 For multi-step tasks, state a brief plan:
 
@@ -110,11 +111,9 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Testing
 
-- Use TDD for new features and bug fixes when applicable
-- Ensure tests cover relevant scenarios and edge cases
-- Write clear, descriptive test cases that explain the intent of the test
-- Do not run tests, `check:full`, or automated reviews after small edits by default — see `.cursor/rules/selective-verification.mdc`
-- Run verification only when asked, when fixing CI failures, or when the current thread has changed 10+ files; prefer scoped commands (`pnpm test:unit:changed`, a targeted spec file) over full suites
+- `.cursor/rules/selective-verification.mdc` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
+- Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
+- Report the checks actually run and their outcomes. A skipped check is not a pass.
 
 ## Cursor Cloud database
 
@@ -130,7 +129,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
 - Verification: Prove correctness when it matters — diffs, targeted tests, logs, demos. Full-suite runs follow `.cursor/rules/selective-verification.mdc`, not every small change.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
-- Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+- Testing: Apply the central selective-verification policy and relevant engineering rules for behavioral coverage.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
