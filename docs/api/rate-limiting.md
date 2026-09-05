@@ -40,10 +40,8 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 | ------------------ | ------------ | -------- | ------------------------------------------------------------- |
 | `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                              |
 | `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate request limiter)     |
-| `integration`      | 30 requests  | 1 hour   | Reserved for future third-party endpoints                     |
 | `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences, Server Actions |
 | `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences                     |
-| `oauth`            | 20 requests  | 1 hour   | Reserved for future OAuth initiation                          |
 
 ### IP Rate Limits (Unauthenticated / Machine Endpoints)
 
@@ -52,7 +50,6 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 | `health`    | 60 requests  | 1 minute | Worker health                                          |
 | `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                  |
 | `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                      |
-| `auth`      | 10 requests  | 1 minute | Defined; no current route uses it                      |
 | `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)         |
 | `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs, notification cron |
 
@@ -76,7 +73,7 @@ Located in `src/lib/api/ip-rate-limit.ts`. Shared sliding-window algorithm: `src
 
 - **Storage**: In-memory LRU cache **per Node.js process**
 - **Key**: Client IP (`X-Forwarded-For`, `X-Real-IP`, `CF-Connecting-IP`; unknown if none)
-- **Scope**: Per IP category (`health`, `webhook`, `publicApi`, `auth`, `docs`, `internal`)
+- **Scope**: Per IP category (`health`, `webhook`, `publicApi`, `docs`, `internal`)
 - **Opt-in**: A route must call `checkIpRateLimit(request, category)`. Declaring a category in `IP_RATE_LIMIT_CONFIGS` does not enforce it.
 - **Multi-instance note**: Each serverless instance enforces its own counters. Limits are best-effort, not globally strict.
 
@@ -166,10 +163,8 @@ Server Actions share framework POST paths, so they cannot be targeted reliably w
 | ------------------------------------------------------------- | ------------------ |
 | Plan generation, regeneration                                 | `aiGeneration`     |
 | Module lesson batch generation                                | `lessonGeneration` |
-| Future third-party integration writes                         | `integration`      |
 | Plan delete/bulk-delete, profile, preferences, Server Actions | `mutation`         |
 | GET endpoints for data retrieval / status polls               | `read`             |
-| Future OAuth initiation (not callbacks)                       | `oauth`            |
 
 ### IP limiter (`checkIpRateLimit`)
 
@@ -182,7 +177,7 @@ checkIpRateLimit(request, 'publicApi'); // unsubscribe POST
 checkIpRateLimit(request, 'internal'); // notification cron / workers
 ```
 
-`checkIpRateLimit` throws `RateLimitError` when the window is exceeded. Routes that already use `withErrorBoundary` map that to the canonical 429 payload. It does not attach `X-RateLimit-*` headers by itself; use `getRateLimitHeaders` when a route needs them.
+`checkIpRateLimit` throws `RateLimitError` when the window is exceeded. Routes that already use `withErrorBoundary` map that to the canonical 429 payload. The canonical error response includes the headers supplied by `RateLimitError`. Successful IP-limited responses do not automatically include rate-limit headers.
 
 ### Plan Generation (Special Case)
 
@@ -279,10 +274,6 @@ Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-lim
 - `GET /api/v1/user/profile`
 - `GET /api/v1/resources`
 
-### Integration / OAuth (`integration`, `oauth`)
-
-These categories remain available in the shared user-limiter configuration for future provider work. There are currently no active Google OAuth or integration API routes.
-
 ### IP: Health (`health`)
 
 - `GET /api/health/worker`
@@ -314,10 +305,6 @@ Available only in development and test; otherwise these routes return `404`.
 - `GET /api/cron/notifications/email`
 
 Maintenance POSTs apply `internal` through `createMaintenancePostRoute` in `src/lib/api/internal/maintenance-route.ts`.
-
-### IP: Auth (`auth`)
-
-Defined in `IP_RATE_LIMIT_CONFIGS` (10 requests / minute). No current route calls `checkIpRateLimit(request, 'auth')`.
 
 ## Future Considerations
 

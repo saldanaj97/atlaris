@@ -63,16 +63,6 @@ export const USER_RATE_LIMIT_CONFIGS = {
   },
 
   /**
-   * MEDIUM-HIGH COST - Third-party integrations (Google Calendar)
-   * External API calls with rate limits on the provider side.
-   * Balance between usability and preventing provider rate limits.
-   */
-  integration: {
-    maxRequests: 30,
-    windowMs: 60 * 60 * 1000, // 30 requests per hour
-  },
-
-  /**
    * MEDIUM COST - Plan CRUD, task updates, mutations
    * Database writes that could be abused to create excessive data.
    */
@@ -88,15 +78,6 @@ export const USER_RATE_LIMIT_CONFIGS = {
   read: {
     maxRequests: 120,
     windowMs: 60 * 1000, // 120 requests per minute
-  },
-
-  /**
-   * SPECIAL - OAuth flows
-   * Auth endpoints need protection from brute force but allow normal flows.
-   */
-  oauth: {
-    maxRequests: 20,
-    windowMs: 60 * 60 * 1000, // 20 requests per hour
   },
 } as const;
 

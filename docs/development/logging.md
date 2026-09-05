@@ -19,18 +19,12 @@ Ensure `enableMetrics: true` is set in all Sentry config files (server, edge, cl
 Use application metrics for numeric health signals that are not naturally errors or logs: business event counts, queue depth, success/failure rates, and operation durations.
 
 ```typescript
-import {
-  countMetric,
-  distributionMetric,
-  gaugeMetric,
-} from '@/lib/observability/metrics';
+import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 
 countMetric('atlaris.plan.created', 1, {
   attributes: { source: 'manual' },
   unit: 'event',
 });
-
-gaugeMetric('atlaris.queue.depth', pendingJobs, { unit: 'item' });
 
 distributionMetric('atlaris.plan.generate.duration', durationMs, {
   attributes: { provider: 'openrouter' },
@@ -41,7 +35,7 @@ distributionMetric('atlaris.plan.generate.duration', durationMs, {
 Rules:
 
 - Metric names must use the `atlaris.` prefix and dot-separated names.
-- Use `countMetric` for event totals, `gaugeMetric` for current values, and `distributionMetric` for latency, size, and other values where percentiles matter.
+- Use `countMetric` for event totals and `distributionMetric` for latency, size, and other values where percentiles matter.
 - Keep attributes useful and bounded. Do not add raw prompt text, emails, plan titles, or other high-cardinality/PII fields.
 - Always set `unit` when the value has a unit, especially time and size.
 - Do not import `Sentry.metrics` directly in feature code; use the wrapper so Sentry disable flags and value guards stay centralized.
