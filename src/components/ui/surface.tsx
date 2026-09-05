@@ -3,7 +3,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const surfaceVariants = cva(
-  'rounded-2xl border text-panel-foreground transition-[box-shadow,background-color,border-color]',
+  'rounded-[12px] border text-panel-foreground transition-[box-shadow,background-color,border-color]',
   {
     variants: {
       variant: {
@@ -15,8 +15,8 @@ const surfaceVariants = cva(
       },
       padding: {
         none: '',
-        comfortable: 'p-5',
-        compact: 'p-4',
+        comfortable: 'p-[24px]',
+        compact: 'p-[16px]',
       },
     },
     defaultVariants: {

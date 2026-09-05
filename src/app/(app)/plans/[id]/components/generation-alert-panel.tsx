@@ -11,9 +11,9 @@ const ALERT_VARIANT_CLASSES = {
   },
   destructive: {
     container:
-      'flex items-start gap-3 rounded-lg border border-destructive/20 bg-destructive/10 p-4',
-    icon: 'mt-0.5 size-5 shrink-0 text-destructive',
-    title: 'font-semibold text-destructive',
+      'flex items-start gap-3 rounded-lg border border-danger bg-danger-subtle p-4',
+    icon: 'mt-0.5 size-5 shrink-0 text-danger',
+    title: 'font-semibold text-danger',
   },
 } as const;
 

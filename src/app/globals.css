@@ -1,68 +1,77 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
+@import '../styles/generated/atlaris-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   color-scheme: light;
-  /* After Hours — celestial parchment */
-  --background: #f4ebe1;
-  --foreground: #26102a;
-  --card: #faf4ec;
-  --card-foreground: #26102a;
-  --popover: #faf4ec;
-  --popover-foreground: #26102a;
-  --primary: #984c2c;
-  --primary-dark: #984c2c;
-  --primary-foreground: #f4ebe1;
-  --secondary: #e6d5c9;
-  --secondary-foreground: #6e5268;
-  --muted: #efe5db;
-  --muted-foreground: #6e5268;
-  --accent: #e6d5c9;
-  --accent-foreground: #6e5268;
-  --destructive: oklch(0.64 0.21 25.39);
-  /* Success (Phase 4): completion / positive UI; use bg-success, text-success, border-success/* */
-  --success: oklch(0.52 0.14 155);
-  --success-foreground: oklch(0.99 0 0);
-  /* Product surfaces: panels, inset areas, subtle emphasis (not marketing glass) */
-  --panel: #faf4ec;
-  --panel-foreground: #26102a;
-  --panel-muted: #efe5db;
-  --panel-border: #c9a898;
-  --warning: oklch(0.75 0.15 85);
-  --warning-foreground: oklch(0.22 0.04 85);
-  --disabled: oklch(0.96 0.01 261.82);
-  --disabled-foreground: #6e5268;
-  --border: #c9a898;
-  --input: #c9a898;
-  --ring: #c96d42;
-  --chart-1: #c96d42;
-  --chart-2: #984c2c;
-  --chart-3: #8b4560;
-  --chart-4: #6e5268;
-  --chart-5: #26102a;
-  --sidebar: #faf4ec;
-  --sidebar-foreground: #26102a;
-  --sidebar-primary: #984c2c;
-  --sidebar-primary-foreground: #f4ebe1;
-  --sidebar-accent: #efe5db;
-  --sidebar-accent-foreground: #26102a;
-  --sidebar-border: #c9a898;
-  --sidebar-ring: #c96d42;
-  --app-background-image:
-    radial-gradient(
-      circle at 78% 0%,
-      color-mix(in srgb, #c96d42 14%, #f4ebe1) 0,
-      transparent 32%
-    ),
-    radial-gradient(
-      circle at 12% 88%,
-      color-mix(in srgb, #c9a898 40%, #f4ebe1) 0,
-      transparent 42%
-    ),
-    linear-gradient(160deg, #f4ebe1 0%, #faf4ec 48%, #e6d5c9 100%);
-  --app-background-size: auto, auto, auto;
+  /* JCS-86 light extension: the external package supplies dark values only. */
+  --background: #f8fafc;
+  --foreground: #070b10;
+  --card: #ffffff;
+  --card-foreground: #070b10;
+  --popover: #eef2f7;
+  --popover-foreground: #070b10;
+  --primary: #5b4bb7;
+  --primary-dark: #493a9a;
+  --primary-foreground: #f8fafc;
+  --action-primary: #8b78ff;
+  --action-primary-hover: #a08fff;
+  --action-primary-pressed: #7c68eb;
+  --action-primary-foreground: #070b10;
+  --link: #5b4bb7;
+  --link-hover: #493a9a;
+  --secondary: #eef2f7;
+  --secondary-foreground: #070b10;
+  --muted: #e2e8f0;
+  --muted-foreground: #526174;
+  --accent: #e2e8f0;
+  --accent-foreground: #070b10;
+  --destructive: #b42318;
+  --destructive-foreground: #f8fafc;
+  --action-destructive: #c7344f;
+  --action-destructive-hover: #ce3954;
+  --action-destructive-pressed: #ba2c46;
+  --action-destructive-foreground: #f8fafc;
+  --danger: #b42318;
+  --danger-subtle: #fef3f2;
+  --success: #066b4d;
+  --success-foreground: #f8fafc;
+  --warning: #8a5a00;
+  --warning-foreground: #f8fafc;
+  --disabled: #eef2f7;
+  --disabled-foreground: #62738a;
+  --panel: #ffffff;
+  --panel-foreground: #070b10;
+  --panel-muted: #eef2f7;
+  --panel-border: #b8c5d6;
+  --border: #b8c5d6;
+  --input: #62738a;
+  --ring: #493a9a;
+  --chart-1: #5b4bb7;
+  --chart-2: #175cd3;
+  --chart-3: #087f5b;
+  --chart-4: #8a5a00;
+  --chart-5: #b42318;
+  --sidebar: #ffffff;
+  --sidebar-foreground: #070b10;
+  --sidebar-primary: #8b78ff;
+  --sidebar-primary-foreground: #070b10;
+  --sidebar-accent: #e2e8f0;
+  --sidebar-accent-foreground: #070b10;
+  --sidebar-border: #b8c5d6;
+  --sidebar-ring: #493a9a;
+  --app-background-image: none;
+  --app-background-size: auto;
+
+  --motion-duration-feedback: 150ms;
+  --motion-duration-overlay: 200ms;
+  --motion-duration-reveal: 300ms;
+  --motion-duration-immediate: 0ms;
+  --motion-easing-standard: cubic-bezier(0.2, 0, 0, 1);
+  --motion-easing-enter: cubic-bezier(0, 0, 0.2, 1);
+  --motion-easing-exit: cubic-bezier(0.4, 0, 1, 1);
 
   --font-family-base:
     var(--font-work-sans), ui-sans-serif, system-ui, -apple-system,
@@ -81,7 +90,7 @@
 
   --font-sans: var(--font-family-base);
   --font-serif: var(--font-family-display);
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
   /* Product controls derive rounded-* from --radius; marketing keeps explicit rounded-2xl/3xl. */
   --radius: 0.75rem;
@@ -106,64 +115,84 @@
 
 .dark {
   color-scheme: dark;
-  /* After Hours — velvet nocturne */
-  --background: #180d18;
-  --foreground: #f8ead7;
-  --card: #2b1728;
-  --card-foreground: #f8ead7;
-  --popover: #2b1728;
-  --popover-foreground: #f8ead7;
-  --primary: #f0a06e;
-  --primary-dark: #f0a06e;
-  --primary-foreground: #1b0e19;
-  --secondary: #3b2135;
-  --secondary-foreground: #c7aeb7;
-  --muted: #351b30;
-  --muted-foreground: #c7aeb7;
-  --accent: #3b2135;
-  --accent-foreground: #f0a06e;
-  --destructive: oklch(0.64 0.21 25.39);
-  --success: oklch(0.62 0.14 155);
-  --success-foreground: oklch(0.12 0.02 155);
-  --panel: #2b1728;
-  --panel-foreground: #f8ead7;
-  --panel-muted: #351b30;
-  --panel-border: #7a4b62;
-  --warning: oklch(0.72 0.14 85);
-  --warning-foreground: oklch(0.15 0.02 85);
-  --disabled: oklch(0.3 0 0);
-  --disabled-foreground: #c7aeb7;
-  --border: #7a4b62;
-  --input: #7a4b62;
-  --ring: #f0a06e;
-  --chart-1: #f0a06e;
-  --chart-2: #e8b896;
-  /* Mid series / completed status: warm peach-rose — stronger than muted ink on nocturne. */
-  --chart-3: #d9a08c;
-  --chart-4: #7a4b62;
-  /* Soft series: muted parchment-rose — readable on card (#2b1728); old soft fill was invisible. */
-  --chart-5: #c7aeb7;
-  --sidebar: #2b1728;
-  --sidebar-foreground: #f8ead7;
-  --sidebar-primary: #f0a06e;
-  --sidebar-primary-foreground: #1b0e19;
-  --sidebar-accent: #351b30;
-  --sidebar-accent-foreground: #f8ead7;
-  --sidebar-border: #7a4b62;
-  --sidebar-ring: #f0a06e;
-  --app-background-image:
-    radial-gradient(
-      circle at 78% 0%,
-      color-mix(in srgb, #f0a06e 12%, #180d18) 0,
-      transparent 32%
-    ),
-    radial-gradient(
-      circle at 14% 86%,
-      color-mix(in srgb, #7a4b62 28%, #180d18) 0,
-      transparent 42%
-    ),
-    linear-gradient(140deg, #180d18 0%, #2b1728 52%, #351b30 100%);
-  --app-background-size: auto, auto, auto;
+}
+
+/* Generated dark primitives are owned by the external token package. This bridge
+ * maps the reviewed semantic roles onto the application's existing API. */
+[data-atlaris-theme='dark'] {
+  color-scheme: dark;
+  --background: var(--at-semantic-color-background-canvas);
+  --foreground: var(--at-semantic-color-text-primary);
+  --card: var(--at-semantic-color-background-surface);
+  --card-foreground: var(--at-semantic-color-text-primary);
+  --popover: var(--at-semantic-color-background-raised);
+  --popover-foreground: var(--at-semantic-color-text-primary);
+  --primary: var(--at-semantic-color-text-link);
+  --primary-dark: var(--at-semantic-color-action-primary-background);
+  --primary-foreground: var(--at-semantic-color-action-primary-foreground);
+  --action-primary: var(--at-semantic-color-action-primary-background);
+  --action-primary-hover: var(--at-semantic-color-action-primary-hover);
+  --action-primary-pressed: var(--at-semantic-color-action-primary-pressed);
+  --action-primary-foreground: var(
+    --at-semantic-color-action-primary-foreground
+  );
+  --link: var(--at-semantic-color-text-link);
+  --link-hover: var(--at-semantic-color-text-link-hover);
+  --secondary: var(--at-semantic-color-background-raised);
+  --secondary-foreground: var(--at-semantic-color-text-primary);
+  --muted: var(--at-semantic-color-background-hover);
+  --muted-foreground: var(--at-semantic-color-text-muted);
+  --accent: var(--at-semantic-color-background-hover);
+  --accent-foreground: var(--at-semantic-color-text-primary);
+  --destructive: var(--at-semantic-color-status-danger-foreground);
+  --destructive-foreground: var(--at-semantic-color-text-inverse);
+  --action-destructive: var(--at-semantic-color-action-destructive-background);
+  --action-destructive-hover: var(--at-semantic-color-action-destructive-hover);
+  --action-destructive-pressed: var(
+    --at-semantic-color-action-destructive-pressed
+  );
+  --action-destructive-foreground: var(
+    --at-semantic-color-action-destructive-foreground
+  );
+  --danger: var(--at-semantic-color-status-danger-foreground);
+  --danger-subtle: var(--at-semantic-color-status-danger-background);
+  --success: var(--at-semantic-color-status-success-foreground);
+  --success-foreground: var(--at-semantic-color-action-success-foreground);
+  --warning: var(--at-semantic-color-status-warning-foreground);
+  --warning-foreground: var(--at-semantic-color-text-inverse);
+  --disabled: var(--at-semantic-color-state-disabled-background);
+  --disabled-foreground: var(--at-semantic-color-state-disabled-foreground);
+  --panel: var(--at-semantic-color-background-surface);
+  --panel-foreground: var(--at-semantic-color-text-primary);
+  --panel-muted: var(--at-semantic-color-background-raised);
+  --panel-border: var(--at-semantic-color-border-subtle);
+  --border: var(--at-semantic-color-border-subtle);
+  --input: var(--at-semantic-color-border-control);
+  --ring: var(--at-semantic-color-focus-ring);
+  --chart-1: var(--at-semantic-color-chart-series-1);
+  --chart-2: var(--at-semantic-color-chart-series-2);
+  --chart-3: var(--at-semantic-color-chart-series-3);
+  --chart-4: var(--at-semantic-color-chart-series-4);
+  --chart-5: var(--at-semantic-color-chart-series-5);
+  --sidebar: var(--at-semantic-color-background-surface);
+  --sidebar-foreground: var(--at-semantic-color-text-primary);
+  --sidebar-primary: var(--at-semantic-color-action-primary-background);
+  --sidebar-primary-foreground: var(
+    --at-semantic-color-action-primary-foreground
+  );
+  --sidebar-accent: var(--at-semantic-color-background-hover);
+  --sidebar-accent-foreground: var(--at-semantic-color-text-primary);
+  --sidebar-border: var(--at-semantic-color-border-subtle);
+  --sidebar-ring: var(--at-semantic-color-focus-ring);
+  --app-background-image: none;
+  --app-background-size: auto;
+  --motion-duration-feedback: var(--at-semantic-motion-feedback);
+  --motion-duration-overlay: var(--at-semantic-motion-overlay);
+  --motion-duration-reveal: var(--at-semantic-motion-reveal);
+  --motion-duration-immediate: var(--at-primitive-motion-duration-instant);
+  --motion-easing-standard: var(--at-primitive-motion-easing-standard);
+  --motion-easing-enter: var(--at-primitive-motion-easing-enter);
+  --motion-easing-exit: var(--at-primitive-motion-easing-exit);
 }
 
 @theme inline {
@@ -176,6 +205,12 @@
   --color-primary: var(--primary);
   --color-primary-dark: var(--primary-dark);
   --color-primary-foreground: var(--primary-foreground);
+  --color-action-primary: var(--action-primary);
+  --color-action-primary-hover: var(--action-primary-hover);
+  --color-action-primary-pressed: var(--action-primary-pressed);
+  --color-action-primary-foreground: var(--action-primary-foreground);
+  --color-link: var(--link);
+  --color-link-hover: var(--link-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-muted: var(--muted);
@@ -183,6 +218,13 @@
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-action-destructive: var(--action-destructive);
+  --color-action-destructive-hover: var(--action-destructive-hover);
+  --color-action-destructive-pressed: var(--action-destructive-pressed);
+  --color-action-destructive-foreground: var(--action-destructive-foreground);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-panel: var(--panel);
@@ -346,22 +388,22 @@
 
 @utility animate-dashboard-unfold {
   animation-name: dashboard-unfold;
-  animation-duration: 700ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: var(--motion-duration-reveal);
+  animation-timing-function: var(--motion-easing-enter);
   animation-fill-mode: both;
 }
 
 @utility animate-dashboard-trace {
   animation-name: dashboard-trace;
-  animation-duration: 720ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: var(--motion-duration-reveal);
+  animation-timing-function: var(--motion-easing-enter);
   animation-fill-mode: both;
 }
 
 @utility animate-dashboard-ledger-row {
   animation-name: dashboard-ledger-row;
-  animation-duration: 500ms;
-  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  animation-duration: var(--motion-duration-feedback);
+  animation-timing-function: var(--motion-easing-standard);
   animation-fill-mode: both;
 }
 
@@ -414,9 +456,18 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: var(--motion-duration-immediate) !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: var(--motion-duration-immediate) !important;
+    scroll-behavior: auto !important;
+  }
+
   .animate-dashboard-unfold,
   .animate-dashboard-trace,
   .animate-dashboard-ledger-row {
-    animation: none;
+    animation-name: none;
   }
 }

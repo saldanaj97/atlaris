@@ -1,6 +1,8 @@
-# After Hours — approved product direction
+# After Hours — historical design direction
 
-**Status:** **Live.** Semantic CSS vars, typography, marketing surfaces, navigation, and core product pages follow After Hours.
+> **Archived; not current design guidance.** The [canonical design system](./design-system.md) supersedes this direction. Start at [DESIGN.md](../../DESIGN.md). The historical snapshot below preserves the former brand rationale, metaphor, copy and visual recipes; “live”, “locked”, “complete” and imperative wording describe that earlier direction, not instructions for new work. Shared runtime foundations have moved to the new system; unmigrated page compositions may still retain historical styling.
+
+**Former status:** Live at the time this direction was recorded.
 
 **Decision date:** 2026-07-18
 **Exploration reference:** Cursor canvas `theme-after-hours-site.canvas.tsx` (full-site mocks: Landing, Pricing, Dashboard, Plans, Analytics, Settings, Achievements)
@@ -57,7 +59,7 @@ Pricing continues the story: "Chart your course" / "One sky. Three ways to cross
 
 ### Product vs marketing
 
-Same story, different density. Marketing tells the story out loud (Sora, celestial backdrop, narrative sections). Product **is** the instrument: quiet, dense, operational Work Sans UI — no orbs, no hero type, no metaphor-heavy copy in dashboards. See "Design contexts (do not mix)" in `[style-guide.md](./style-guide.md)`.
+Same story, different density. Marketing tells the story out loud (Sora, celestial backdrop, narrative sections). Product **is** the instrument: quiet, dense, operational Work Sans UI — no orbs, no hero type, no metaphor-heavy copy in dashboards. The former “Design contexts (do not mix)” recipes are preserved in the [historical style guide](https://github.com/saldanaj97/atlaris/blob/1e8f401169f6a4f8978fb2ac76c31ec04c1c6efd/docs/styles/style-guide.md).
 
 ### Anti-patterns
 
@@ -226,6 +228,7 @@ Tokens + fonts live in `globals.css` / `layout.tsx`. `DESIGN.md` YAML mirrors `g
 
 | Doc                                  | Role                                                                       |
 | ------------------------------------ | -------------------------------------------------------------------------- |
-| `[DESIGN.md](../../DESIGN.md)`       | After Hours YAML + prose (mirrors `globals.css`)                           |
-| `[style-guide.md](./style-guide.md)` | Live usage for After Hours product tokens + type                           |
+| [DESIGN.md](../../DESIGN.md) | Current agent entry point; supersedes the former YAML mirror |
+| [design-system.md](./design-system.md) | Canonical current detailed specification |
+| [style-guide.md](./style-guide.md) | Compatibility pointer, not an independent style system |
 | Implementation plan (archived)       | `.agents/recaps/07-18-2026/plans/after-hours-implementation-groundwork.md` |

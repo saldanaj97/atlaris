@@ -57,7 +57,7 @@ export default function DesktopHeader({
     isAuthenticated && canCreatePlan === false ? 'Upgrade' : 'New Plan';
 
   return (
-    <div className='relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid'>
+    <div className='relative hidden h-[64px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:grid'>
       {/* Brand (left) */}
       <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
         <BrandLogo />

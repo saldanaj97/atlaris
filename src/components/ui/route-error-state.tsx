@@ -33,7 +33,7 @@ export function RouteErrorState({
       )}
     >
       <div
-        className='mb-4 flex size-11 items-center justify-center rounded-xl border border-destructive/20 bg-destructive/10 text-destructive'
+        className='mb-4 flex size-11 items-center justify-center rounded-xl border border-danger bg-danger-subtle text-danger'
         aria-hidden='true'
       >
         <AlertTriangle className='size-5' />

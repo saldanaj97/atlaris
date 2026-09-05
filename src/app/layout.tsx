@@ -28,7 +28,7 @@ const clerkAppearance = {
   variables: {
     borderRadius: 'var(--radius)',
     colorBackground: 'var(--panel)',
-    colorPrimary: 'var(--primary)',
+    colorPrimary: 'var(--action-primary)',
     colorText: 'var(--foreground)',
     colorTextSecondary: 'var(--muted-foreground)',
     fontFamily: 'var(--font-family-base)',
@@ -36,11 +36,12 @@ const clerkAppearance = {
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
-    footerActionLink: 'text-primary hover:text-primary-dark',
-    formButtonPrimary: 'bg-primary hover:bg-primary/90',
+    footerActionLink: 'text-link hover:text-link-hover',
+    formButtonPrimary:
+      'bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover',
     headerSubtitle: 'text-muted-foreground',
     headerTitle: 'text-foreground',
-    socialButtonsBlockButton: 'border-border text-foreground hover:bg-muted/70',
+    socialButtonsBlockButton: 'border-input text-foreground hover:bg-muted/70',
   },
 };
 
@@ -110,8 +111,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4ebe1' },
-    { media: '(prefers-color-scheme: dark)', color: '#180d18' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    { media: '(prefers-color-scheme: dark)', color: '#070b10' },
   ],
 };
 
@@ -138,7 +139,7 @@ export default function RootLayout({
       >
         <a
           href='#main-content'
-          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 text-sm font-medium text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
         >
           Skip to main content
         </a>

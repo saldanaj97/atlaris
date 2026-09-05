@@ -30,9 +30,9 @@ const VARIANT_STYLES: Record<
   }
 > = {
   primary: {
-    pill: 'border-primary/30 bg-primary/10 text-primary hover:bg-primary/20 data-[state=open]:bg-primary/20 dark:border-primary/40 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30 dark:data-[state=open]:bg-primary/30',
-    dropdown: 'border-border/80 bg-popover/95 dark:border-border',
-    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-primary/10 data-[state=checked]:text-primary dark:data-[highlighted]:bg-foreground/10 dark:data-[state=checked]:bg-primary/15',
+    pill: 'border-input bg-action-primary/10 text-link hover:bg-action-primary/20 data-[state=open]:bg-action-primary/20',
+    dropdown: 'border-input bg-popover',
+    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-action-primary/10 data-[state=checked]:text-link',
   },
 };
 
@@ -117,9 +117,9 @@ export function InlineDropdown<TValue extends string>({
           className={cn(
             'inline-flex min-h-10 w-full items-center justify-between gap-1.5 overflow-hidden rounded-md border px-3 py-2 text-sm font-medium whitespace-nowrap shadow-sm outline-none sm:w-[var(--inline-dropdown-width)]',
             'transition-[width,background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
-            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 dark:focus-visible:ring-offset-background',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             isPlaceholder
-              ? 'border-border/70 bg-muted/30 text-muted-foreground hover:border-border hover:bg-muted/45 data-[state=open]:border-primary/30 data-[state=open]:bg-muted/45 dark:bg-muted/20 dark:hover:bg-muted/30'
+              ? 'border-input bg-card text-muted-foreground hover:border-foreground data-[state=open]:border-ring data-[state=open]:bg-muted'
               : styles.pill,
           )}
         >

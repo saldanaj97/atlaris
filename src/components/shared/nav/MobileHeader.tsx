@@ -70,7 +70,7 @@ export default function MobileHeader({
       : 'New plan';
 
   return (
-    <div className='relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden'>
+    <div className='relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2 md:hidden'>
       <div className='relative z-10 flex shrink-0'>
         <MobileNavigation
           isMarketing={isMarketing}
