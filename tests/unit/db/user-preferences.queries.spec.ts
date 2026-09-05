@@ -8,7 +8,6 @@ import {
   saveEmailNotificationPreferences,
   upsertUserAnalyticsTimezone,
   upsertUserModelPreferences,
-  upsertUserPreferredAiModel,
 } from '@/lib/db/queries/user-preferences';
 import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
@@ -169,9 +168,9 @@ describe('user preference queries', () => {
       execute: execute as unknown as DbClient['execute'],
     });
 
-    const result = await upsertUserPreferredAiModel(
+    const result = await upsertUserModelPreferences(
       'user-1',
-      'google/gemini-2.0-flash-exp:free',
+      { preferredAiModel: 'google/gemini-2.0-flash-exp:free' },
       dbClient,
     );
 

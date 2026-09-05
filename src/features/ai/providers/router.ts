@@ -144,38 +144,22 @@ function waitForRetry(signal?: AbortSignal): Promise<void> {
 }
 
 export class RouterGenerationProvider implements AiPlanGenerationProvider {
-  private readonly providers: (() => AiPlanGenerationProvider)[];
+  private readonly providerFactory: () => AiPlanGenerationProvider;
 
   constructor(cfg: RouterConfig = {}) {
     if (cfg.useMock === true) {
-      this.providers = [() => new MockGenerationProvider()];
-      return;
-    }
-
-    if (cfg.useMock === false) {
-      const model = cfg.model ?? aiEnv.defaultModel;
-      this.providers = [
-        () =>
-          new OpenRouterProvider({
-            model,
-            ...(cfg.fallbackModels !== undefined
-              ? { fallbackModels: cfg.fallbackModels }
-              : {}),
-          }),
-      ];
+      this.providerFactory = () => new MockGenerationProvider();
       return;
     }
 
     const model = cfg.model ?? aiEnv.defaultModel;
-    this.providers = [
-      () =>
-        new OpenRouterProvider({
-          model,
-          ...(cfg.fallbackModels !== undefined
-            ? { fallbackModels: cfg.fallbackModels }
-            : {}),
-        }),
-    ];
+    this.providerFactory = () =>
+      new OpenRouterProvider({
+        model,
+        ...(cfg.fallbackModels !== undefined
+          ? { fallbackModels: cfg.fallbackModels }
+          : {}),
+      });
   }
 
   private async invokeWithRetry(
@@ -203,63 +187,56 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     throw new Error('Provider retry loop exited unexpectedly');
   }
 
-  private async runWithProviderFallback(
+  private async runWithProvider(
     options: GenerationOptions | undefined,
     run: (
       provider: AiPlanGenerationProvider,
     ) => Promise<ProviderGenerateResult>,
   ): Promise<ProviderGenerateResult> {
-    let lastError: unknown;
-
-    for (const factory of this.providers) {
-      const provider = factory();
-      const providerName = provider.constructor?.name ?? 'unknown-provider';
-      if (!appEnv.isProduction) {
-        logger.debug(
-          {
-            source: 'ai-router',
-            event: 'provider_attempt',
-            provider: providerName,
-          },
-          'AI router attempting provider',
-        );
-      }
-      try {
-        const result = await this.invokeWithRetry(() => run(provider), options);
-        return result;
-      } catch (err) {
-        if (isAbortError(err)) {
-          throw err;
-        }
-
-        lastError = err;
-        const message = err instanceof Error ? err.message : 'unknown error';
-        logger.warn(
-          {
-            source: 'ai-router',
-            event: 'provider_failed',
-            provider: providerName,
-            message,
-            ...(err instanceof Error && !appEnv.isProduction
-              ? { stack: err.stack }
-              : {}),
-          },
-          'AI router provider failed',
-        );
-      }
+    const provider = this.providerFactory();
+    const providerName = provider.constructor?.name ?? 'unknown-provider';
+    if (!appEnv.isProduction) {
+      logger.debug(
+        {
+          source: 'ai-router',
+          event: 'provider_attempt',
+          provider: providerName,
+        },
+        'AI router attempting provider',
+      );
     }
+    try {
+      return await this.invokeWithRetry(() => run(provider), options);
+    } catch (error) {
+      if (isAbortError(error)) {
+        throw error;
+      }
 
-    if (lastError instanceof Error) {
-      throw lastError;
+      const message = error instanceof Error ? error.message : 'unknown error';
+      logger.warn(
+        {
+          source: 'ai-router',
+          event: 'provider_failed',
+          provider: providerName,
+          message,
+          ...(error instanceof Error && !appEnv.isProduction
+            ? { stack: error.stack }
+            : {}),
+        },
+        'AI router provider failed',
+      );
+
+      throw error instanceof Error
+        ? error
+        : new Error('All AI providers failed');
     }
-    throw new Error('All AI providers failed');
   }
 
   async generate(
     input: GenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    return this.runWithProviderFallback(options, (provider) =>
+    return this.runWithProvider(options, (provider) =>
       provider.generate(input, options),
     );
   }
@@ -268,7 +245,7 @@ export class RouterGenerationProvider implements AiPlanGenerationProvider {
     input: ModuleLessonBatchGenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    return this.runWithProviderFallback(options, (provider) =>
+    return this.runWithProvider(options, (provider) =>
       provider.generateModuleLessonBatch(input, options),
     );
   }

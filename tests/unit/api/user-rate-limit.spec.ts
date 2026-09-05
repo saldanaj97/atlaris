@@ -321,10 +321,8 @@ describe('User Rate Limiting', () => {
     it('has expected categories', () => {
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('lessonGeneration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('aiGeneration');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('integration');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('mutation');
       expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('read');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('oauth');
     });
 
     it('lessonGeneration is stricter per hour than aiGeneration', () => {
@@ -338,12 +336,9 @@ describe('User Rate Limiting', () => {
       ).toBeLessThan(requestsPerHour(USER_RATE_LIMIT_CONFIGS.aiGeneration));
     });
 
-    it('aiGeneration is stricter than integration and mutation buckets', () => {
+    it('aiGeneration is stricter than mutation and read buckets', () => {
       const aiLimit = USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests;
 
-      expect(aiLimit).toBeLessThanOrEqual(
-        USER_RATE_LIMIT_CONFIGS.integration.maxRequests,
-      );
       expect(aiLimit).toBeLessThan(
         USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
       );
@@ -355,9 +350,6 @@ describe('User Rate Limiting', () => {
 
       expect(readLimit).toBeGreaterThan(
         USER_RATE_LIMIT_CONFIGS.aiGeneration.maxRequests,
-      );
-      expect(readLimit).toBeGreaterThan(
-        USER_RATE_LIMIT_CONFIGS.integration.maxRequests,
       );
       expect(readLimit).toBeGreaterThan(
         USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,

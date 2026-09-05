@@ -22,19 +22,6 @@ function isSentryMetricsEnabled(): boolean {
   return flag?.trim().toLowerCase() !== 'false';
 }
 
-function toMetricOptions(
-  options: ApplicationMetricOptions | undefined,
-): MetricOptions | undefined {
-  if (!options) {
-    return undefined;
-  }
-
-  return {
-    attributes: options.attributes,
-    unit: options.unit,
-  };
-}
-
 function shouldCaptureMetric(value: number): boolean {
   return isSentryMetricsEnabled() && Number.isFinite(value);
 }
@@ -48,19 +35,7 @@ export function countMetric(
     return;
   }
 
-  Sentry.metrics.count(name, value, toMetricOptions(options));
-}
-
-export function gaugeMetric(
-  name: AtlarisMetricName,
-  value: number,
-  options?: ApplicationMetricOptions,
-): void {
-  if (!shouldCaptureMetric(value)) {
-    return;
-  }
-
-  Sentry.metrics.gauge(name, value, toMetricOptions(options));
+  Sentry.metrics.count(name, value, options);
 }
 
 export function distributionMetric(
@@ -72,5 +47,5 @@ export function distributionMetric(
     return;
   }
 
-  Sentry.metrics.distribution(name, value, toMetricOptions(options));
+  Sentry.metrics.distribution(name, value, options);
 }

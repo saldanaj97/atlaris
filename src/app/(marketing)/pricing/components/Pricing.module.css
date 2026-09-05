@@ -71,12 +71,6 @@
   }
 }
 
-@media (max-width: 900px) {
-  .shell {
-    padding-top: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .heroOverline,
   .heroSubline {

@@ -25,7 +25,7 @@ export function createModuleLessonContentGenerateHandler(
 ): PlainHandler {
   return requestBoundary.route(
     { rateLimit: 'lessonGeneration' },
-    async ({ req, actor, db, params, correlationId }) => {
+    async ({ actor, db, params, correlationId }) => {
       const planId = requireUuidRouteParam(params, 'planId');
       const moduleId = requireUuidRouteParam(params, 'moduleId');
 
@@ -40,7 +40,6 @@ export function createModuleLessonContentGenerateHandler(
         userId: actor.id,
         planId,
         moduleId,
-        signal: req.signal,
         correlationId,
       });
 

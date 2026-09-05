@@ -58,14 +58,10 @@ export function calculateTotalWeeks({
 }
 
 export function normalizePlanDurationForTier({
-  tier: _tier,
-  weeklyHours: _weeklyHours,
   startDate,
   deadlineDate,
   today = new Date(),
 }: {
-  tier: SubscriptionTier;
-  weeklyHours: number;
   startDate?: string | null;
   deadlineDate?: string | null;
   today?: Date;
@@ -106,7 +102,6 @@ export function normalizePlanDurationForTier({
 
 export function checkPlanDurationCap(params: {
   tier: SubscriptionTier;
-  weeklyHours: number;
   totalWeeks: number;
 }): PlanDurationCapResult {
   const caps = TIER_LIMITS[params.tier];

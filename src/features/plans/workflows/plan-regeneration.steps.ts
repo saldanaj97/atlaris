@@ -219,7 +219,6 @@ async function prepareRegeneration(
     admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
-    weeklyHours: generationInput.weeklyHours,
     startDate: generationInput.startDate,
     deadlineDate: generationInput.deadlineDate,
   });

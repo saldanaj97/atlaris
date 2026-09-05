@@ -39,10 +39,8 @@ describe('calculateTotalWeeks', () => {
 });
 
 describe('normalizePlanDurationForTier', () => {
-  it('does not clamp over-cap deadline for free tier', () => {
+  it('does not clamp an over-cap deadline', () => {
     const res = normalizePlanDurationForTier({
-      tier: 'free',
-      weeklyHours: 5,
       startDate: '2025-01-01',
       deadlineDate: '2025-06-01',
       today: new Date('2025-01-01T12:00:00Z'),
@@ -54,8 +52,6 @@ describe('normalizePlanDurationForTier', () => {
 
   it('returns null start when no startDate passed', () => {
     const res = normalizePlanDurationForTier({
-      tier: 'pro',
-      weeklyHours: 10,
       deadlineDate: null,
       today: new Date('2025-01-15T12:00:00Z'),
     });
@@ -68,7 +64,6 @@ describe('checkPlanDurationCap', () => {
     const weeks = 3;
     const res = checkPlanDurationCap({
       tier: 'free',
-      weeklyHours: 5,
       totalWeeks: weeks,
     });
     expect(res.allowed).toBe(false);
@@ -79,7 +74,6 @@ describe('checkPlanDurationCap', () => {
   it('allows free == 2 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'free',
-      weeklyHours: 5,
       totalWeeks: 2,
     });
     expect(res.allowed).toBe(true);
@@ -88,7 +82,6 @@ describe('checkPlanDurationCap', () => {
   it('allows pro unlimited', () => {
     const res = checkPlanDurationCap({
       tier: 'pro',
-      weeklyHours: 10,
       totalWeeks: 52,
     });
     expect(res.allowed).toBe(true);
@@ -97,7 +90,6 @@ describe('checkPlanDurationCap', () => {
   it('blocks starter > 8 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'starter',
-      weeklyHours: 5,
       totalWeeks: 9,
     });
     expect(res.allowed).toBe(false);
@@ -108,7 +100,6 @@ describe('checkPlanDurationCap', () => {
   it('allows starter == 8 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'starter',
-      weeklyHours: 5,
       totalWeeks: 8,
     });
     expect(res.allowed).toBe(true);
@@ -117,7 +108,6 @@ describe('checkPlanDurationCap', () => {
   it('allows starter < 8 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'starter',
-      weeklyHours: 5,
       totalWeeks: 4,
     });
     expect(res.allowed).toBe(true);
@@ -126,7 +116,6 @@ describe('checkPlanDurationCap', () => {
   it('returns upgradeUrl when blocked', () => {
     const res = checkPlanDurationCap({
       tier: 'free',
-      weeklyHours: 5,
       totalWeeks: 3,
     });
     expect(res.allowed).toBe(false);
@@ -136,7 +125,6 @@ describe('checkPlanDurationCap', () => {
   it('returns correct recommendation for plans > 8 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'free',
-      weeklyHours: 5,
       totalWeeks: 10,
     });
     expect(res.allowed).toBe(false);
@@ -146,20 +134,9 @@ describe('checkPlanDurationCap', () => {
   it('returns correct recommendation for plans <= 8 weeks', () => {
     const res = checkPlanDurationCap({
       tier: 'free',
-      weeklyHours: 5,
       totalWeeks: 5,
     });
     expect(res.allowed).toBe(false);
     expect(res.reason).toMatch(/starter/);
-  });
-
-  it('does not reject high weeklyHours after maxHours was removed', () => {
-    const res = checkPlanDurationCap({
-      tier: 'free',
-      weeklyHours: 40,
-      totalWeeks: 2,
-    });
-    expect(res.allowed).toBe(true);
-    expect(res.reason).toBeUndefined();
   });
 });

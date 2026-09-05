@@ -78,7 +78,6 @@ async function admitPlanRegeneration(
   const merged = buildPersistedRegenerationInput(plan, overrides);
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
-    weeklyHours: merged.weeklyHours,
     startDate: merged.startDate,
     deadlineDate: merged.deadlineDate,
   });

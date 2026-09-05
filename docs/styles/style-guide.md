@@ -57,9 +57,9 @@ All product colors should come from **semantic tokens** in `globals.css`. They a
 | `warning` / `warning-foreground`                              | Caution (non-destructive)                           |
 | `disabled` / `disabled-foreground`                            | Unavailable or disabled copy/surfaces               |
 
-**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), [`Surface`](../../src/components/ui/surface.tsx), and [`MetricCard`](../../src/components/ui/metric-card.tsx) on product routes. Product routes stay opaque — no marketing celestial backdrop. Marketing panels are mostly opaque `bg-card` / `rounded-4xl`; use `backdrop-blur` only for narrow cases (e.g. dashed screenshot placeholders). Do not reintroduce liquid-glass or a shared glass surface system.
+**App chrome:** use shared [`PageShell`](../../src/components/ui/page-shell.tsx), [`PageHeader`](../../src/components/ui/page-header.tsx), and [`Surface`](../../src/components/ui/surface.tsx) on product routes. Product routes stay opaque — no marketing celestial backdrop. Marketing panels are mostly opaque `bg-card` / `rounded-4xl`; use `backdrop-blur` only for narrow cases (e.g. dashed screenshot placeholders). Do not reintroduce liquid-glass or a shared glass surface system.
 
-**Site header:** marketing paths (`/`, `/landing`, `/pricing`) use marketing navigation; other paths use app navigation. Shared header chrome is a flat full-bleed `bg-background` with an editorial hairline — not glass. Marketing nav/CTA classes live in [`marketing-header-classes.ts`](../../src/components/shared/nav/marketing-header-classes.ts). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) defaults to solid `text-primary` in chrome to avoid theme hydration mismatch; use `variant="gradient"` only where client-only rendering is acceptable.
+**Site header:** marketing paths (`/`, `/landing`, `/pricing`) use marketing navigation; other paths use app navigation. Shared header chrome is a flat full-bleed `bg-background` with an editorial hairline — not glass. Marketing nav/CTA classes live in [`marketing-header-classes.ts`](../../src/components/shared/nav/marketing-header-classes.ts). [`BrandLogo`](../../src/components/shared/BrandLogo.tsx) uses the solid `text-foreground` wordmark to avoid theme hydration mismatch in shared chrome.
 
 **Marketing composition:**
 
@@ -132,7 +132,7 @@ Use responsive Sora via `font-serif`:
 - Section headings: `text-3xl sm:text-4xl` is a common scale
 - **Default emphasis:** italic `text-primary` on the second hero line
 - **Section overlines:** uppercase Sora, wide tracking — see `SectionOverline`
-- **`gradient-text`:** optional accent only (wordmark `variant="gradient"`, rare headlines) — not the default hero treatment
+- **`gradient-text`:** optional accent only for rare headlines — not the default hero treatment
 
 ### Subtitle / helper text
 

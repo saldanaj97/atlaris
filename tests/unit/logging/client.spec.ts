@@ -1,6 +1,9 @@
 import { clientLogger } from '@/lib/logging/client';
+import * as Sentry from '@sentry/nextjs';
 import { spyOnConsole } from '@tests/helpers/console-spy';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.unmock('@/lib/logging/client');
 
 describe('Client Logger', () => {
   let consoleError: ReturnType<typeof spyOnConsole>;
@@ -24,6 +27,22 @@ describe('Client Logger', () => {
     consoleDebug.restore();
     consoleLog.restore();
   });
+
+  it.each(['error', 'warn', 'info', 'debug'] as const)(
+    'forwards %s logs and attributes to Sentry',
+    (level) => {
+      const sentryLog = vi
+        .spyOn(Sentry.logger, level)
+        .mockImplementation(() => {});
+      const attributes = { requestId: 'request-1' };
+      try {
+        clientLogger[level]('Request handled', attributes);
+        expect(sentryLog).toHaveBeenCalledWith('Request handled', attributes);
+      } finally {
+        sentryLog.mockRestore();
+      }
+    },
+  );
 
   describe('error', () => {
     it('should call console.error', () => {

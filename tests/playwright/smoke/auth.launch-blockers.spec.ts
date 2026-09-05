@@ -61,7 +61,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
         response.request().method() === 'POST',
     );
 
-    await page.getByRole('button', { name: 'Generate my plan' }).click();
+    await page.getByRole('button', { name: 'Chart this course' }).click();
     const generationResponse = await generationResponsePromise;
     expect(generationResponse.ok()).toBe(true);
 
@@ -92,7 +92,10 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     const moduleUrlBeforeNext = page.url();
     await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible();
 
-    const nextModuleLink = page.getByLabel('Next module');
+    const nextModuleLink = page.getByRole('link', {
+      name: 'Next module',
+      exact: true,
+    });
     if ((await nextModuleLink.count()) > 0) {
       // Some generated plans can legitimately end on a single module, so only
       // exercise next-module navigation when the UI exposes that control.
@@ -120,7 +123,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
-    await expectHeading(page, /invest in your growth/i);
+    await expectHeading(page, /one sky\. three ways to cross it\./i);
 
     await page.goto('/settings#billing');
     await expect(page).toHaveURL(SETTINGS_URL);

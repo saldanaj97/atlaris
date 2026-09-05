@@ -1,7 +1,5 @@
 import type { Metadata } from 'next';
-import type { ReactElement, ReactNode } from 'react';
-
-import { PageShell } from '@/components/ui/page-shell';
+import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
   title: 'Settings',
@@ -15,8 +13,8 @@ export const metadata: Metadata = {
  */
 export default function SettingsLayout({
   children,
-}: {
+}: Readonly<{
   children: ReactNode;
-}): ReactElement {
-  return <PageShell>{children}</PageShell>;
+}>) {
+  return children;
 }

@@ -31,20 +31,7 @@ function createSentryLogger(level: BrowserLogLevel): LogMethod {
       method(...args);
     }
 
-    switch (level) {
-      case 'error':
-        Sentry.logger.error(message, attributes);
-        break;
-      case 'warn':
-        Sentry.logger.warn(message, attributes);
-        break;
-      case 'info':
-        Sentry.logger.info(message, attributes);
-        break;
-      case 'debug':
-        Sentry.logger.debug(message, attributes);
-        break;
-    }
+    Sentry.logger[level](message, attributes);
   };
 }
 

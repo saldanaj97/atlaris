@@ -15,10 +15,7 @@
         "rules": ["deslop/unused-export"]
       },
       {
-        "files": [
-          "src/components/ui/alert.tsx",
-          "src/components/ui/hover-card.tsx"
-        ],
+        "files": ["src/components/ui/hover-card.tsx"],
         "rules": ["react-doctor/no-multi-comp"]
       },
       {
