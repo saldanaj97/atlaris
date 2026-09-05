@@ -66,6 +66,8 @@ export default function AuthControls({
                 appearance={{
                   elements: {
                     avatarBox: 'size-9',
+                    userButtonTrigger:
+                      'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:size-11',
                   },
                 }}
               />
@@ -81,7 +83,7 @@ export default function AuthControls({
               <Link
                 href={`${ROUTES.SETTINGS.ROOT}#profile`}
                 aria-label='Account'
-                className='inline-flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+                className='inline-flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none [@media(pointer:coarse)]:size-11'
               >
                 {userImageUrl ? (
                   <Image

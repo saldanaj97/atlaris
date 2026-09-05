@@ -60,7 +60,7 @@ export function ThemeToggle({
         disabled
         aria-label='Toggle theme'
       >
-        <Sun className='size-5' />
+        <Sun aria-hidden='true' className='size-5' />
       </Button>
     );
   }
@@ -78,9 +78,9 @@ export function ThemeToggle({
       aria-label={label}
     >
       {isDark ? (
-        <Sun className='size-5 transition-transform' />
+        <Sun aria-hidden='true' className='size-5 transition-transform' />
       ) : (
-        <Moon className='size-5 transition-transform' />
+        <Moon aria-hidden='true' className='size-5 transition-transform' />
       )}
     </Button>
   );

@@ -39,7 +39,14 @@ function renderDesktopHeader(
 
 describe('DesktopHeader layout', () => {
   it('keeps authenticated nav items accessible at md width', () => {
-    renderDesktopHeader();
+    const { container } = renderDesktopHeader();
+
+    expect(container.firstElementChild?.firstElementChild).toHaveClass(
+      'md:grid',
+    );
+    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
+      'lg:grid',
+    );
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(
@@ -63,6 +70,29 @@ describe('DesktopHeader layout', () => {
     expect(
       screen.queryByRole('link', { name: 'New Plan' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('leaves app-shell navigation and branding to the sidebar', () => {
+    const { container } = renderDesktopHeader({ isAppShell: true });
+
+    expect(container.firstElementChild?.firstElementChild).toHaveClass(
+      'lg:grid',
+    );
+    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
+      'md:grid',
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Dashboard' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Settings' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
+    expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
   it('renders unauthenticated nav links without clipping at md width', () => {

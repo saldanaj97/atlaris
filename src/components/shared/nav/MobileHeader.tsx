@@ -20,6 +20,8 @@ import Link from 'next/link';
 
 interface MobileHeaderProps {
   isMarketing: boolean;
+  /** App-shell routes keep the drawer trigger in this topbar. */
+  isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -38,6 +40,7 @@ interface MobileHeaderProps {
  */
 export default function MobileHeader({
   isMarketing,
+  isAppShell = false,
   pathname,
   navItems,
   tier,
@@ -70,14 +73,22 @@ export default function MobileHeader({
       : 'New plan';
 
   return (
-    <div className='relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2 md:hidden'>
+    <div
+      className={cn(
+        'relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2',
+        isAppShell ? 'lg:hidden' : 'md:hidden',
+      )}
+    >
       <div className='relative z-10 flex shrink-0'>
         <MobileNavigation
           isMarketing={isMarketing}
+          isAppShell={isAppShell}
           pathname={pathname}
           navItems={navItems}
+          tier={tier}
           canCreatePlan={canCreatePlan}
           isAuthenticated={isAuthenticated}
+          userName={userName}
         />
       </div>
 

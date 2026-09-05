@@ -10,11 +10,14 @@ import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/mark
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
 import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
   isMarketing: boolean;
+  /** App-shell routes render navigation in the sidebar. */
+  isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -33,6 +36,7 @@ interface DesktopHeaderProps {
  */
 export default function DesktopHeader({
   isMarketing,
+  isAppShell = false,
   pathname,
   navItems,
   tier,
@@ -42,6 +46,7 @@ export default function DesktopHeader({
   userName,
   userImageUrl,
 }: DesktopHeaderProps) {
+  const showAppShellChrome = isAppShell && !isMarketing;
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
@@ -57,23 +62,40 @@ export default function DesktopHeader({
     isAuthenticated && canCreatePlan === false ? 'Upgrade' : 'New Plan';
 
   return (
-    <div className='relative hidden h-[64px] w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center md:grid'>
+    <div
+      className={cn(
+        'relative hidden h-[64px] w-full items-center',
+        isAppShell ? 'lg:grid' : 'md:grid',
+        showAppShellChrome
+          ? 'grid-cols-[minmax(0,1fr)_auto]'
+          : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+      )}
+    >
       {/* Brand (left) */}
-      <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
-        <BrandLogo />
-      </div>
+      {!showAppShellChrome ? (
+        <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
+          <BrandLogo />
+        </div>
+      ) : null}
 
       {/* Navigation (center column) */}
-      <div className='relative z-10 flex justify-self-center'>
-        <DesktopNavigation
-          pathname={pathname}
-          navItems={navItems}
-          appearance={isMarketing ? 'marketing' : 'default'}
-        />
-      </div>
+      {!showAppShellChrome ? (
+        <div className='relative z-10 flex justify-self-center'>
+          <DesktopNavigation
+            pathname={pathname}
+            navItems={navItems}
+            appearance={isMarketing ? 'marketing' : 'default'}
+          />
+        </div>
+      ) : null}
 
       {/* Auth / CTA controls (right) */}
-      <div className='relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end'>
+      <div
+        className={cn(
+          'relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end',
+          showAppShellChrome && 'col-start-2',
+        )}
+      >
         {isMarketing ? (
           <>
             <ThemeToggle
