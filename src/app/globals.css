@@ -42,6 +42,7 @@
   --warning-foreground: #f8fafc;
   --disabled: #eef2f7;
   --disabled-foreground: #62738a;
+  --disabled-border: #b8c5d6;
   --panel: #ffffff;
   --panel-foreground: #070b10;
   --panel-muted: #eef2f7;
@@ -162,6 +163,7 @@
   --warning-foreground: var(--at-semantic-color-text-inverse);
   --disabled: var(--at-semantic-color-state-disabled-background);
   --disabled-foreground: var(--at-semantic-color-state-disabled-foreground);
+  --disabled-border: var(--at-semantic-color-state-disabled-border);
   --panel: var(--at-semantic-color-background-surface);
   --panel-foreground: var(--at-semantic-color-text-primary);
   --panel-muted: var(--at-semantic-color-background-raised);
@@ -235,6 +237,7 @@
   --color-warning-foreground: var(--warning-foreground);
   --color-disabled: var(--disabled);
   --color-disabled-foreground: var(--disabled-foreground);
+  --color-disabled-border: var(--disabled-border);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);

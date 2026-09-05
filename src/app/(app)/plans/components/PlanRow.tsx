@@ -57,20 +57,22 @@ export function PlanRow({
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
       <TableCell className='w-10 px-3'>
-        <input
-          type='checkbox'
-          checked={selected}
-          disabled={!selectable}
-          aria-label={
-            selectable
-              ? `Select ${plan.topic}`
-              : `Cannot select ${plan.topic} while it is generating`
-          }
-          onChange={(event) =>
-            onSelectionChange?.(plan.id, event.currentTarget.checked)
-          }
-          className='size-4 shrink-0 rounded border border-border accent-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-        />
+        <label className='inline-flex min-h-[44px] min-w-[44px] items-center justify-center'>
+          <input
+            type='checkbox'
+            checked={selected}
+            disabled={!selectable}
+            aria-label={
+              selectable
+                ? `Select ${plan.topic}`
+                : `Cannot select ${plan.topic} while it is generating`
+            }
+            onChange={(event) =>
+              onSelectionChange?.(plan.id, event.currentTarget.checked)
+            }
+            className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+          />
+        </label>
       </TableCell>
 
       <TableCell className='max-w-md min-w-72 py-4'>

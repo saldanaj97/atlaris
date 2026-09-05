@@ -265,9 +265,10 @@ describe('PlansList', () => {
         .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
     ).toHaveLength(2);
 
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
-    );
+    const rowCheckbox = screen.getByRole('checkbox', {
+      name: 'Select Master React Hooks',
+    });
+    await user.click(rowCheckbox.closest('label')!);
 
     expect(
       screen.getByRole('group', { name: 'Bulk plan actions' }),
@@ -311,9 +312,10 @@ describe('PlansList', () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
-    );
+    const selectAllCheckbox = screen.getByRole('checkbox', {
+      name: 'Select all plans on page',
+    });
+    await user.click(selectAllCheckbox.closest('label')!);
 
     expect(screen.getByLabelText('Bulk plan actions')).toHaveTextContent(
       '2 selected',

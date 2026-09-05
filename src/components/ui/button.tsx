@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,border-color,box-shadow,transform] motion-reduce:transition-none disabled:pointer-events-none disabled:opacity-60 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-danger aria-invalid:ring-2 aria-invalid:ring-danger cursor-pointer",
+  "inline-flex items-center justify-center gap-[8px] whitespace-nowrap rounded-[8px] border border-transparent text-sm leading-5 font-medium transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 disabled:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background aria-invalid:border-danger aria-invalid:ring-[2px] aria-invalid:ring-danger cursor-pointer",
   {
     variants: {
       variant: {
@@ -13,25 +13,28 @@ const buttonVariants = cva(
         destructive:
           'bg-action-destructive text-action-destructive-foreground hover:bg-action-destructive-hover active:bg-action-destructive-pressed focus-visible:ring-danger',
         outline:
-          'border border-input bg-card shadow-xs hover:bg-accent hover:text-accent-foreground',
+          'border-input bg-card shadow-xs hover:bg-secondary hover:text-secondary-foreground active:bg-accent active:text-accent-foreground',
         secondary:
-          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+          'bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground active:bg-accent',
         ghost:
-          'hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50',
+          'hover:bg-secondary hover:text-secondary-foreground active:bg-accent active:text-accent-foreground',
         link: 'text-link underline-offset-4 hover:text-link-hover hover:underline',
-        cta: 'group rounded-lg bg-action-primary text-action-primary-foreground shadow-lg shadow-action-primary/20 hover:-translate-y-0.5 hover:bg-action-primary-hover hover:shadow-xl hover:shadow-action-primary/25 active:bg-action-primary-pressed',
+        cta: 'group bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover active:bg-action-primary-pressed',
         'soft-primary':
-          'border border-link/25 bg-action-primary/10 text-link hover:border-link/35 hover:bg-action-primary/15',
+          'border-link/25 bg-action-primary/10 text-link hover:border-link/35 hover:bg-action-primary/20 active:bg-action-primary/30',
         success:
-          'bg-success text-success-foreground hover:bg-success/90 focus-visible:ring-success',
+          'bg-success text-success-foreground hover:bg-success/90 active:bg-success/80 focus-visible:ring-success',
       },
       size: {
-        default: 'h-9 px-4 py-2 has-[>svg]:px-3',
-        sm: 'h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5',
-        lg: 'h-10 rounded-md px-6 has-[>svg]:px-4',
-        icon: 'size-9',
-        'icon-sm': 'size-8',
-        'icon-lg': 'size-10',
+        default:
+          'min-h-[40px] px-[16px] py-[8px] has-[>svg]:px-[12px] [@media(pointer:coarse)]:min-h-[44px]',
+        sm: 'min-h-[32px] gap-[6px] px-[12px] py-[6px] has-[>svg]:px-[10px] data-[size=sm]:[&_svg:not([class*="size-"])]:size-[16px] [@media(pointer:coarse)]:min-h-[44px]',
+        lg: 'min-h-[48px] px-[24px] py-[12px] has-[>svg]:px-[16px] data-[size=lg]:[&_svg:not([class*="size-"])]:size-[24px]',
+        icon: 'size-[40px] p-0 [@media(pointer:coarse)]:size-[44px]',
+        'icon-sm':
+          'size-[32px] p-0 data-[size=icon-sm]:[&_svg:not([class*="size-"])]:size-[16px] [@media(pointer:coarse)]:size-[44px]',
+        'icon-lg':
+          'size-[48px] p-0 data-[size=icon-lg]:[&_svg:not([class*="size-"])]:size-[24px]',
       },
     },
     defaultVariants: {

@@ -120,7 +120,7 @@ function SortableTableHead({
         asChild
         variant='ghost'
         size='sm'
-        className='-ml-3 h-8 px-2 text-xs font-medium uppercase'
+        className='-ml-[12px] px-[8px] text-xs font-medium uppercase'
       >
         <Link
           href={plansHref({
@@ -217,7 +217,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
           name='search'
           placeholder='Search plans...'
           aria-label='Search learning plans'
-          className='h-9 w-full border-panel-border bg-panel pl-9'
+          className='min-h-[40px] w-full border-panel-border bg-panel pl-[36px]'
           defaultValue={query.search}
         />
       </form>
@@ -267,23 +267,25 @@ function PlansTable({
       <TableHeader className='bg-transparent [&_tr]:border-border/60'>
         <TableRow className='hover:bg-transparent'>
           <TableHead className='w-10 px-3'>
-            <input
-              type='checkbox'
-              checked={allSelected}
-              disabled={deletablePlans.length === 0}
-              aria-label='Select all plans on page'
-              ref={(element) => {
-                if (element) element.indeterminate = someSelected;
-              }}
-              onChange={(event) => {
-                if (event.currentTarget.checked) {
-                  onSelectAll();
-                  return;
-                }
-                onDeselectAll();
-              }}
-              className='size-4 shrink-0 rounded border border-border accent-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-            />
+            <label className='inline-flex min-h-[44px] min-w-[44px] items-center justify-center'>
+              <input
+                type='checkbox'
+                checked={allSelected}
+                disabled={deletablePlans.length === 0}
+                aria-label='Select all plans on page'
+                ref={(element) => {
+                  if (element) element.indeterminate = someSelected;
+                }}
+                onChange={(event) => {
+                  if (event.currentTarget.checked) {
+                    onSelectAll();
+                    return;
+                  }
+                  onDeselectAll();
+                }}
+                className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+              />
+            </label>
           </TableHead>
           <SortableTableHead column='topic' label='Plan' query={query} />
           <SortableTableHead column='progress' label='Progress' query={query} />

@@ -232,7 +232,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               type='text'
               value={state.name}
               aria-label='Name'
-              className='h-8 w-44 rounded-md'
+              className='w-44'
               onChange={(event) =>
                 dispatch({ type: 'name-changed', name: event.target.value })
               }

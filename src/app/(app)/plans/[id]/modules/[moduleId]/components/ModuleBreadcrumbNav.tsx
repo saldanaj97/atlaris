@@ -29,9 +29,9 @@ function ModuleSwitcherMenuItem({
 
   if (item.isLocked) {
     return (
-      <DropdownMenuItem disabled className='opacity-50'>
-        <span className='flex items-center gap-2 text-muted-foreground/50'>
-          <Lock className='size-4 shrink-0' />
+      <DropdownMenuItem disabled>
+        <span className='flex items-center gap-2 text-disabled-foreground'>
+          <Lock className='size-[16px] shrink-0' />
           <span className='truncate'>{item.title}</span>
         </span>
       </DropdownMenuItem>

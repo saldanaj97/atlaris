@@ -95,7 +95,7 @@ export function PreferenceControls({
           onChange={(event) =>
             dispatch({ type: 'set-deadline-date', value: event.target.value })
           }
-          className='min-h-10 w-full sm:w-auto'
+          className='min-h-[40px] w-full sm:w-auto'
         />
       ) : null}
     </div>
