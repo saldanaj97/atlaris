@@ -48,7 +48,7 @@ export function Toaster() {
           success: 'border-success bg-success/10 text-success',
           title: 'font-medium text-foreground',
           toast:
-            'relative w-full items-start gap-3 rounded-xl border border-input bg-popover p-4 pr-14 text-sm text-popover-foreground shadow-[0_16px_48px_0_rgb(0_0_0_/_0.48)]',
+            'relative flex w-full items-start gap-3 rounded-xl border border-input bg-popover p-4 pr-14 text-sm text-popover-foreground shadow-[0_16px_48px_0_rgb(0_0_0_/_0.48)] [&[data-expanded=false][data-front=false]>*]:opacity-0',
           warning: 'border-warning bg-warning/10 text-warning',
         },
       }}

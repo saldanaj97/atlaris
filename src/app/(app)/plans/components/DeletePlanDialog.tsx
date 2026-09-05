@@ -174,6 +174,7 @@ export function DeletePlanDialog({
 
   // react-doctor-disable-next-line react-doctor/exhaustive-deps -- mount cleanup intentionally flips the mounted ref and aborts the active request.
   useEffect(() => {
+    isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
       abortControllerRef.current?.abort();

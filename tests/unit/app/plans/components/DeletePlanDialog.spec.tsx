@@ -1,7 +1,7 @@
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { useRef, useState } from 'react';
+import { StrictMode, useRef, useState } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockPush = vi.fn();
@@ -58,7 +58,11 @@ describe('DeletePlanDialog', () => {
       ),
     );
 
-    render(<ControlledDeletePlanDialog />);
+    render(
+      <StrictMode>
+        <ControlledDeletePlanDialog />
+      </StrictMode>,
+    );
     await user.click(screen.getByRole('button', { name: 'Delete plan' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
