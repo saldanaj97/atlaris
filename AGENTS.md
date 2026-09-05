@@ -2,6 +2,8 @@
 
 ## Agent Context
 
+Before implementing or reviewing code, read ENGINEERING_RULES.md at the repository root and follow its applicable guidance.
+
 **Agent Memory:** Recurring preferences and durable workspace facts live in `.agents/lessons.md`. Read that file whenever you read or apply this file.
 
 **Agent Context:** Repo-writable planning and handoff artifacts are local-only and belong under the daily recap layout (see below). DO NOT create or update planning artifacts under legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/` paths.`.cursor/plans/` is treated as a read-only export/import surface.
