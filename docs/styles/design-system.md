@@ -51,7 +51,7 @@ The verified generated artifact is adopted at `src/styles/generated/atlaris-toke
 - Existing Work Sans and Sora font loaders remain; exact named-font comparison against the artwork is still open. The mono role uses a system font stack.
 - The existing responsive breakpoints already match §06. Shared page gutters, application title sizes and Surface card dimensions adopt the reference geometry while preserving component APIs and route behavior.
 - The legacy Tailwind `--spacing: 0.2rem` remains for unmigrated consumers. Foundation recipes use explicit dimensions from the quarter-rem reference scale; changing the global multiplier would enlarge every numeric spacing utility by 25%. Control geometry belongs to JCS-94 and route-specific spacing to each page issue.
-- JCS-94 owns complete control, overlay and action recipes. Changes required now to preserve readable action labels, status text, control boundaries and focus are compatibility work for the new token roles.
+- JCS-94 owns complete control and action recipes. JCS-95 owns feedback and overlay compositions (dialogs, sheets, confirmations, toasts and state surfaces). Changes required now to preserve readable action labels, status text, control boundaries and focus are compatibility work for the new token roles.
 - JCS-87 owns sidebar composition. Page layouts, marketing imagery/copy, reader compositions, analytics presentation and JCS-6 brand assets remain their own issues. Shared token adoption does not claim those designs are complete.
 - Local application checks and browser evidence are recorded with JCS-86. Package contrast checks cover source pairs, not all rendered pages or an application-wide accessibility certification.
 
@@ -85,6 +85,7 @@ The verified generated artifact is adopted at `src/styles/generated/atlaris-toke
 - **25 — Accessibility** (Final-stage draft synthesis)
 - **26 — Content & copy** (Final-stage draft synthesis)
 - **27 — Implementation mapping** (Final-stage draft synthesis)
+- **27.9 — Launch adoption map** (JCS-96 repository decision record)
 
 ---
 
@@ -1750,6 +1751,31 @@ The owner of Atlaris can approve design changes; the implementer records evidenc
 | App build/tests/deployment                    | Not performed here         | Normal implementation and release process, separately authorized.                             |
 
 The design-system writing phase is complete. Use this candidate to make the remaining bounded decisions and integrate one real slice; another round of mockups will not prove those implementation contracts.
+
+### 27.9 JCS-96 launch adoption map
+
+JCS-96 records how the supplied launch screenshots map to actual Atlaris product behavior. Static artwork is visual evidence only; a label, metric, avatar, icon or price is adopted only when current route, data, auth and billing contracts support it. This issue owns launch copy and information-architecture decisions. It does not add product features, data sources or billing terms.
+
+| Reference signal | Status | Repository adoption |
+| ---------------- | ------ | ------------------- |
+| Marketing hero and calls to action | Keep / adapt | Keep the current landing, pricing and About copy. Landing `Begin tonight` goes to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA goes to `/auth/sign-in`; an authenticated visitor gets `/dashboard`. |
+| Public information architecture | Keep | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About. |
+| Authenticated navigation | Adapt | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics` with Usage and Achievements), and Settings (`/settings`). The mobile menu remains the responsive composition. |
+| Sidebar-only mockup destinations | Omit | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons. |
+| Plan creation and entitlement actions | Keep / adapt | Authenticated `New Plan` uses `/plans/new` when `canCreatePlan` is true; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture. |
+| Pricing cards and checkout | Adapt | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
+| Dashboard and usage analytics | Keep / adapt | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics. |
+| Achievements | Defer | `/analytics/achievements` is an explicit “Coming soon” surface; the mockup does not authorize a working achievement system. |
+| About and builder copy | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch. |
+| Social proof and aggregate statistics | Omit | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source. |
+| Account and settings | Keep / adapt | Use the existing settings ledger (Profile, Plan & billing, Usage, AI model, Integrations and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts. |
+| Brand imagery and metadata | Defer | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset. |
+
+Ownership remains explicit: JCS-96 owns this launch copy and information-architecture map; JCS-87 owns the authenticated sidebar composition; JCS-94 owns controls and action recipes; JCS-95 owns feedback and overlay compositions; JCS-6 owns brand assets and metadata. Clerk billing architecture owns plan and entitlement semantics, and the usage analytics metric contract owns analytics meanings. A future destination or claim change updates its owning issue and this record together.
+
+Evidence paths are `src/features/navigation/items.ts`, `src/features/navigation/routes.ts`, `src/components/shared/SiteHeader.tsx`, `src/components/shared/nav/DesktopHeader.tsx`, `src/components/shared/nav/MobileHeader.tsx`, the landing/About/pricing sources under `src/app/(marketing)/`, `src/shared/constants/tier-limits.ts`, `src/app/(app)/analytics/usage/`, `src/app/(app)/analytics/achievements/page.tsx`, `src/app/(app)/settings/components/SettingsLedgerPage.tsx`, `docs/architecture/clerk-billing-architecture.md` and `docs/architecture/usage-analytics-metric-contract.md`. Static review references are retained at `/Users/juansaldana/Downloads/Atlaris Redesign/` (`landing.png`, `pricing.png`, `about.png`, `dashboard.png`, `generation.png` and `settings.png`).
+
+The unresolved owner decision is whether the current About attribution — “Juan Saldana designs, builds, and runs Atlaris” — and response promise — “Juan reads every message” — are approved public launch copy. The recorded default is to defer publication and omit those claims from a launch surface if the owner does not approve them. No avatar, testimonial, rating or aggregate metric is approved by this map.
 
 ---
 
