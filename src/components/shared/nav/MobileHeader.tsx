@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/tooltip';
 import { type NavItem, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileHeaderProps {
@@ -114,7 +114,13 @@ export default function MobileHeader({
                 'px-3 py-1.5 text-xs',
               )}
             >
-              <Link href={primaryCtaHref}>{primaryCtaLabel}</Link>
+              <Link href={primaryCtaHref}>
+                {primaryCtaLabel}
+                <ArrowRight
+                  aria-hidden='true'
+                  className='size-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+                />
+              </Link>
             </Button>
           </>
         ) : (

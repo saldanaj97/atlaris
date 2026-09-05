@@ -125,6 +125,9 @@ describe('MobileNavigation', () => {
       'href',
       '/dashboard',
     );
+    expect(
+      screen.queryByRole('link', { name: 'Sign in' }),
+    ).not.toBeInTheDocument();
   });
 
   it('renders About in the marketing sheet', async () => {
@@ -160,6 +163,10 @@ describe('MobileNavigation', () => {
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
     expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+      'href',
+      '/auth/sign-in',
+    );
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/auth/sign-in',
     );

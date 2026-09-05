@@ -157,4 +157,23 @@ describe('DesktopHeader layout', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
+
+  it('exposes sign-in and the visitor CTA on signed-out marketing chrome', () => {
+    renderDesktopHeader({
+      isMarketing: true,
+      pathname: '/landing',
+      navItems: unauthenticatedNavItems,
+      isAuthenticated: false,
+      showClerkUserButton: false,
+    });
+
+    expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+      'href',
+      '/auth/sign-in',
+    );
+    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+      'href',
+      '/auth/sign-in',
+    );
+  });
 });

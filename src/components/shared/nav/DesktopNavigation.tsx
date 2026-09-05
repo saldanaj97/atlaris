@@ -150,6 +150,11 @@ export default function DesktopNavigation({
         'hidden flex-nowrap items-center md:flex',
         appearance === 'marketing' ? 'gap-6 lg:gap-8' : 'gap-4 lg:gap-6',
       )}
+      aria-label={
+        appearance === 'marketing'
+          ? 'Marketing navigation'
+          : 'Primary navigation'
+      }
     >
       {navItems.map((item) => renderNavItem(item))}
     </nav>

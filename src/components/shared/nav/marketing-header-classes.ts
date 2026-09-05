@@ -11,7 +11,7 @@ export const marketingHeaderPrimaryCtaClassName =
  * that draws in from the left. No pill chrome.
  */
 export const marketingHeaderNavLinkClassName =
-  'relative inline-flex h-auto shrink-0 items-center whitespace-nowrap bg-transparent px-0.5 py-1.5 font-serif text-sm font-medium tracking-[0.04em] text-muted-foreground transition-colors duration-200 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-300 after:ease-out hover:text-foreground hover:after:scale-x-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none motion-reduce:transition-none motion-reduce:after:transition-none';
+  'relative inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap bg-transparent px-0.5 py-1.5 font-serif text-sm font-medium tracking-[0.04em] text-muted-foreground transition-colors duration-200 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-px after:origin-left after:scale-x-0 after:bg-primary after:transition-transform after:duration-300 after:ease-out hover:text-foreground hover:after:scale-x-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none motion-reduce:transition-none motion-reduce:after:transition-none';
 
 /** Active page: full ink and a settled underline. */
 export const marketingHeaderNavLinkActiveClassName =

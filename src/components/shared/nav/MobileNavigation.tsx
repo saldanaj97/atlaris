@@ -21,7 +21,7 @@ import {
 } from '@/components/ui/tooltip';
 import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { Menu, Plus } from 'lucide-react';
+import { ArrowRight, Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
 
@@ -63,7 +63,6 @@ export default function MobileNavigation({
         ? ROUTES.PLANS.NEW
         : ROUTES.PRICING
     : ROUTES.PLANS.NEW;
-
   const handleNavigation = () => {
     navigationDismissedRef.current = true;
     setOpen(false);
@@ -132,18 +131,39 @@ export default function MobileNavigation({
             >
               {/* Primary action — marketing peach CTA or app create-plan */}
               {isMarketing ? (
-                <Button
-                  asChild
-                  variant='default'
-                  className={cn(
-                    marketingHeaderPrimaryCtaClassName,
-                    'mb-2 h-auto w-full justify-center py-3',
-                  )}
-                >
-                  <Link href={primaryCtaHref} onClick={handleNavigation}>
-                    {primaryCtaLabel}
-                  </Link>
-                </Button>
+                <>
+                  <Button
+                    asChild
+                    variant='default'
+                    className={cn(
+                      marketingHeaderPrimaryCtaClassName,
+                      'mb-2 h-auto w-full justify-center py-3',
+                    )}
+                  >
+                    <Link href={primaryCtaHref} onClick={handleNavigation}>
+                      {primaryCtaLabel}
+                      <ArrowRight
+                        aria-hidden='true'
+                        className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+                      />
+                    </Link>
+                  </Button>
+                  {!isAuthenticated ? (
+                    <Button
+                      asChild
+                      variant='ghost'
+                      size='sm'
+                      className='text-sm text-muted-foreground hover:text-foreground'
+                    >
+                      <Link
+                        href={ROUTES.AUTH.SIGN_IN}
+                        onClick={handleNavigation}
+                      >
+                        Sign in
+                      </Link>
+                    </Button>
+                  ) : null}
+                </>
               ) : appCtaHref ? (
                 <Button
                   asChild
@@ -167,11 +187,12 @@ export default function MobileNavigation({
                       href={item.href}
                       onClick={handleNavigation}
                       aria-current={isActive ? 'page' : undefined}
-                      className={`rounded-xl px-4 py-3 text-sm font-medium transition-colors ${
+                      className={cn(
+                        'flex min-h-[44px] items-center rounded-xl px-4 py-3 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                         isActive
                           ? 'bg-primary text-primary-foreground shadow-md'
-                          : 'text-muted-foreground hover:bg-muted hover:text-primary'
-                      }`}
+                          : 'text-muted-foreground hover:bg-muted hover:text-primary',
+                      )}
                     >
                       {item.label}
                     </Link>
@@ -188,11 +209,12 @@ export default function MobileNavigation({
                               href={subItem.href}
                               onClick={handleNavigation}
                               aria-current={isSubActive ? 'page' : undefined}
-                              className={`rounded-md px-3 py-2 text-xs font-medium transition-colors ${
+                              className={cn(
+                                'flex min-h-[44px] items-center rounded-md px-3 py-2 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                                 isSubActive
                                   ? 'text-primary dark:text-primary'
-                                  : 'text-muted-foreground hover:text-primary dark:hover:text-primary'
-                              }`}
+                                  : 'text-muted-foreground hover:text-primary dark:hover:text-primary',
+                              )}
                             >
                               {subItem.label}
                             </Link>
