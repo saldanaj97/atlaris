@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { About } from '@/app/(marketing)/about/components/About';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 
 const ABOUT_TITLE = 'About | Atlaris';
 const ABOUT_DESCRIPTION =
@@ -13,14 +14,7 @@ export const metadata: Metadata = {
     title: ABOUT_TITLE,
     description: ABOUT_DESCRIPTION,
     url: '/about',
-    images: [
-      {
-        url: '/og-landing.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Atlaris',
-      },
-    ],
+    images: [OG_DEFAULT_IMAGE],
     type: 'website',
     siteName: 'Atlaris',
   },
@@ -28,7 +22,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: ABOUT_TITLE,
     description: ABOUT_DESCRIPTION,
-    images: ['/og-landing.jpg'],
+    images: [OG_DEFAULT_IMAGE.url],
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },

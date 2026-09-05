@@ -15,6 +15,7 @@ import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     description:
       'View, search, and manage your learning plans and track your progress in Atlaris.',
     url: '/plans',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { PageHeader } from '@/components/ui/page-header';
 import { Surface } from '@/components/ui/surface';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { BookOpen, Flame, Star, Target, Trophy, Zap } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -11,7 +12,7 @@ export const metadata: Metadata = {
     title: 'Achievements | Atlaris',
     description: 'Milestones from plan progress, streaks, and consistency.',
     url: '/analytics/achievements',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 

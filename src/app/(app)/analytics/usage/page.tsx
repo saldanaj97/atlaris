@@ -7,6 +7,7 @@ import { ROUTES } from '@/features/navigation/routes';
 import { listLightweightPlansForApi } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { getLearningActivityEventsForUser } from '@/lib/db/queries/tasks';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
@@ -18,7 +19,7 @@ export const metadata: Metadata = {
     description:
       'Review current completion progress and estimated completed learning time across your plans.',
     url: '/analytics/usage',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 

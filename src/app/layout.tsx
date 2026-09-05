@@ -4,6 +4,7 @@ import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
 import { Toaster } from 'sonner';
@@ -65,18 +66,34 @@ const clerkLocalization = {
 export const metadata: Metadata = {
   title: 'Atlaris | Plans for the quiet hours',
   description: metadataDescription,
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/brand/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/favicon-16.svg', sizes: '16x16', type: 'image/svg+xml' },
+      { url: '/brand/favicon-32.svg', sizes: '32x32', type: 'image/svg+xml' },
+      {
+        url: '/brand/favicon-on-light.svg',
+        media: '(prefers-color-scheme: light)',
+        type: 'image/svg+xml',
+      },
+      {
+        url: '/brand/favicon-on-dark.svg',
+        media: '(prefers-color-scheme: dark)',
+        type: 'image/svg+xml',
+      },
+    ],
+    apple: [
+      {
+        url: '/brand/favicon-on-light.svg',
+        type: 'image/svg+xml',
+      },
+    ],
+  },
   openGraph: {
     title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
-    images: [
-      { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
-      {
-        url: '/og-landing.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Atlaris Landing',
-      },
-    ],
+    images: [OG_DEFAULT_IMAGE],
     type: 'website',
     siteName: 'Atlaris',
   },
@@ -84,7 +101,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE.url],
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },

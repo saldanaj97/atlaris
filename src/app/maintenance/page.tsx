@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ShieldAlert, Wrench } from 'lucide-react';
 
 export const metadata: Metadata = {
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
     description:
       'Atlaris is temporarily unavailable while we perform maintenance and infrastructure upgrades.',
     url: '/maintenance',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 

@@ -54,10 +54,18 @@ describe('AboutPage', () => {
       url: '/about',
       type: 'website',
       siteName: 'Atlaris',
+      images: [
+        {
+          url: '/brand/og-default.png',
+          width: 1734,
+          height: 907,
+        },
+      ],
     });
     expect(metadata.twitter).toMatchObject({
       card: 'summary_large_image',
       title: 'About | Atlaris',
+      images: ['/brand/og-default.png'],
       site: '@atlarisapp',
       creator: '@atlarisapp',
     });
