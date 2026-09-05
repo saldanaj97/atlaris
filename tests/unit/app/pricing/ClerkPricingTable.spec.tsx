@@ -133,7 +133,7 @@ describe('ClerkPricingTable', () => {
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
     expect(await screen.findByRole('alert')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Try Again' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
     expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
 
     mocks.useClerk.mockReturnValue({
@@ -156,7 +156,7 @@ describe('ClerkPricingTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active learning plans')).toBeVisible();
     expect(screen.getByText('Priority queue access')).toBeVisible();
@@ -557,7 +557,7 @@ describe('ClerkPricingTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active learning plans')).toBeVisible();
     expect(screen.getByText('Priority queue access')).toBeVisible();

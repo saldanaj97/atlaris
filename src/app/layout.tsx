@@ -3,11 +3,11 @@ import type { Metadata, Viewport } from 'next';
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
+import { Toaster } from '@/components/ui/sonner';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
-import { Toaster } from 'sonner';
 
 import './globals.css';
 

@@ -14,7 +14,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { clientLogger } from '@/lib/logging/client';
-import { useEffect, useRef, useState } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { z } from 'zod';
 
@@ -52,6 +52,8 @@ type BulkDeletePlansDialogProps = {
   plans: Pick<PlanListItem, 'id' | 'topic' | 'status'>[];
   onDeleted: (result: BulkDeletePlansResult) => void;
   onOutcomeUnknown: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  successFocusRef?: RefObject<HTMLElement | null>;
 };
 
 type BulkDeleteRequestResult =
@@ -81,9 +83,20 @@ export function BulkDeletePlansDialog({
   plans,
   onDeleted,
   onOutcomeUnknown,
+  returnFocusRef,
+  successFocusRef,
 }: BulkDeletePlansDialogProps) {
   const [deleting, setDeleting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const focusAfterCloseRef = useRef<'return' | 'success'>('return');
+
+  const handleOpenChange = (nextOpen: boolean): void => {
+    if (!nextOpen) {
+      setErrorMessage(null);
+    }
+    onOpenChange(nextOpen);
+  };
 
   // react-doctor-disable-next-line react-doctor/exhaustive-deps -- unmount cleanup intentionally aborts the active request.
   useEffect(() => {
@@ -103,6 +116,7 @@ export function BulkDeletePlansDialog({
     const controller = new AbortController();
     abortControllerRef.current = controller;
     setDeleting(true);
+    setErrorMessage(null);
 
     let result: BulkDeleteRequestResult;
     let isCurrentRequest = false;
@@ -143,6 +157,7 @@ export function BulkDeletePlansDialog({
     if (!isCurrentRequest) return;
 
     if (result.kind === 'success') {
+      focusAfterCloseRef.current = 'success';
       onOpenChange(false);
       onDeleted(result.result);
       return;
@@ -155,6 +170,7 @@ export function BulkDeletePlansDialog({
       });
 
       if (result.outcomeUnknown) {
+        focusAfterCloseRef.current = 'success';
         onOpenChange(false);
         onOutcomeUnknown();
         toast.error(
@@ -163,31 +179,62 @@ export function BulkDeletePlansDialog({
         return;
       }
 
-      toast.error(result.message);
+      setErrorMessage(result.message);
     }
   };
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent>
+    <AlertDialog open={open} onOpenChange={handleOpenChange}>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          const preferredTarget =
+            focusAfterCloseRef.current === 'success'
+              ? successFocusRef?.current
+              : returnFocusRef?.current;
+          const fallbackTarget = returnFocusRef?.current;
+          const target =
+            preferredTarget?.isConnected &&
+            !preferredTarget.hasAttribute('disabled')
+              ? preferredTarget
+              : fallbackTarget;
+
+          focusAfterCloseRef.current = 'return';
+          if (target?.isConnected && !target.hasAttribute('disabled')) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>Delete selected plans</AlertDialogTitle>
-          <AlertDialogDescription className='space-y-2'>
-            <p>
-              This will permanently delete {plans.length} selected plan
-              {plans.length === 1 ? '' : 's'} and all associated modules, tasks,
-              progress, schedules, and generation history. This action cannot be
-              undone and you will not receive a refund for the AI generation
-              credits used to generate these plans.
-            </p>
-            <p>Selected: {formatPlanTopicList(plans)}</p>
-            <p>Are you sure you want to delete these plans?</p>
+          <AlertDialogDescription asChild>
+            <div className='space-y-2'>
+              <p>
+                This will permanently delete {plans.length} selected plan
+                {plans.length === 1 ? '' : 's'} and all associated modules,
+                tasks, progress, schedules, and generation history. This action
+                cannot be undone and you will not receive a refund for the AI
+                generation credits used to generate these plans.
+              </p>
+              <p>Selected: {formatPlanTopicList(plans)}</p>
+              <p>Are you sure you want to delete these plans?</p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {errorMessage ? (
+          <p
+            role='alert'
+            className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 text-sm text-danger'
+          >
+            {errorMessage}
+          </p>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant='destructive'
+            aria-busy={deleting}
+            aria-live='polite'
             disabled={deleting || plans.length === 0}
             onClick={(event) => {
               event.preventDefault();

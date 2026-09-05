@@ -16,7 +16,13 @@ import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
 import posthog from 'posthog-js';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
+import {
+  type ReactElement,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { toast } from 'sonner';
 
 interface DeletePlanDialogBaseProps {
@@ -25,6 +31,8 @@ interface DeletePlanDialogBaseProps {
   isGenerating: boolean;
   /** Where to navigate after successful deletion. Defaults to '/plans'. */
   redirectTo?: string;
+  returnFocusRef?: RefObject<HTMLElement | null>;
+  successFocusRef?: RefObject<HTMLElement | null>;
 }
 
 /** Controlled mode: parent owns open state; no trigger child is rendered. */
@@ -48,7 +56,7 @@ type DeletePlanDialogProps =
 type DeletePlanRequestResult =
   | { kind: 'success' }
   | { kind: 'aborted' }
-  | { kind: 'error'; message: string; error: unknown };
+  | { kind: 'error'; message: string; error: unknown; outcomeUnknown?: true };
 
 function startDeleteRequest(abortControllerRef: {
   current: AbortController | null;
@@ -88,6 +96,7 @@ async function requestPlanDeletion(
       kind: 'error',
       message: error instanceof Error ? error.message : 'Failed to delete plan',
       error,
+      outcomeUnknown: true,
     };
   }
 }
@@ -139,13 +148,19 @@ export function DeletePlanDialog({
   redirectTo = '/plans',
   open: controlledOpen,
   onOpenChange: controlledOnOpenChange,
+  returnFocusRef,
+  successFocusRef,
   children,
 }: DeletePlanDialogProps): ReactElement {
   const router = useRouter();
   const isControlled = controlledOpen !== undefined;
   const [internalOpen, setInternalOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const open = isControlled ? controlledOpen : internalOpen;
   const setOpen = (value: boolean) => {
+    if (!value) {
+      setErrorMessage(null);
+    }
     if (isControlled) {
       controlledOnOpenChange?.(value);
     } else {
@@ -155,6 +170,7 @@ export function DeletePlanDialog({
   const [deleting, setDeleting] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
   const isMountedRef = useRef(true);
+  const focusAfterCloseRef = useRef<'return' | 'success'>('return');
 
   // react-doctor-disable-next-line react-doctor/exhaustive-deps -- mount cleanup intentionally flips the mounted ref and aborts the active request.
   useEffect(() => {
@@ -172,12 +188,14 @@ export function DeletePlanDialog({
 
     const controller = startDeleteRequest(abortControllerRef);
     setDeleting(true);
+    setErrorMessage(null);
 
     const result = await requestPlanDeletion(planId, controller.signal);
 
     switch (result.kind) {
       case 'success':
         posthog.capture('plan_deletion_confirmed', { plan_id: planId });
+        focusAfterCloseRef.current = 'success';
         finalizeDeleteRequest({
           controller,
           abortControllerRef,
@@ -204,13 +222,19 @@ export function DeletePlanDialog({
           planId,
           error: result.error,
         });
-        toast.error(result.message);
         finalizeDeleteRequest({
           controller,
           abortControllerRef,
           isMountedRef,
           setDeleting,
         });
+        if (result.outcomeUnknown) {
+          toast.error(result.message);
+          return;
+        }
+        if (isMountedRef.current) {
+          setErrorMessage(result.message);
+        }
         return;
     }
   };
@@ -222,23 +246,54 @@ export function DeletePlanDialog({
           {children}
         </AlertDialogTrigger>
       )}
-      <AlertDialogContent>
+      <AlertDialogContent
+        onCloseAutoFocus={(event) => {
+          const preferredTarget =
+            focusAfterCloseRef.current === 'success'
+              ? successFocusRef?.current
+              : returnFocusRef?.current;
+          const fallbackTarget = returnFocusRef?.current;
+          const target =
+            preferredTarget?.isConnected &&
+            !preferredTarget.hasAttribute('disabled')
+              ? preferredTarget
+              : fallbackTarget;
+
+          focusAfterCloseRef.current = 'return';
+          if (target?.isConnected && !target.hasAttribute('disabled')) {
+            event.preventDefault();
+            target.focus();
+          }
+        }}
+      >
         <AlertDialogHeader>
           <AlertDialogTitle>Delete plan</AlertDialogTitle>
-          <AlertDialogDescription className='space-y-2'>
-            <p>
-              This will permanently delete &quot;{planTopic}&quot; and all its
-              modules, tasks, and progress. This action cannot be undone and you
-              will not receive a refund for the AI generation credit used to
-              generate this plan.
-            </p>
-            <p>Are you sure you want to delete this plan?</p>
+          <AlertDialogDescription asChild>
+            <div className='space-y-2'>
+              <p>
+                This will permanently delete &quot;{planTopic}&quot; and all its
+                modules, tasks, and progress. This action cannot be undone and
+                you will not receive a refund for the AI generation credit used
+                to generate this plan.
+              </p>
+              <p>Are you sure you want to delete this plan?</p>
+            </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {errorMessage ? (
+          <p
+            role='alert'
+            className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 text-sm text-danger'
+          >
+            {errorMessage}
+          </p>
+        ) : null}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
           <AlertDialogAction
             variant='destructive'
+            aria-busy={deleting}
+            aria-live='polite'
             disabled={deleting || isGenerating}
             onClick={(e) => {
               e.preventDefault();

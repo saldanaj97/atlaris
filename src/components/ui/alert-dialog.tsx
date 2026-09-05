@@ -35,7 +35,7 @@ function AlertDialogOverlay({
     <AlertDialogPrimitive.Overlay
       data-slot='alert-dialog-overlay'
       className={cn(
-        'fixed inset-0 z-50 bg-black/50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0',
+        'fixed inset-0 z-[51] bg-black/72 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none motion-reduce:transition-none',
         className,
       )}
       {...props}
@@ -57,7 +57,7 @@ function AlertDialogContent({
         data-slot='alert-dialog-content'
         data-size={size}
         className={cn(
-          'group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border border-input bg-popover p-6 text-popover-foreground shadow-lg duration-200 data-[size=sm]:max-w-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[size=default]:sm:max-w-lg',
+          'group/alert-dialog-content fixed top-[50%] left-[50%] z-[52] grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[32rem] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl border border-input bg-popover p-4 text-popover-foreground shadow-[0_16px_48px_0_rgb(0_0_0_/_0.48)] duration-200 data-[size=sm]:max-w-[20rem] data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 motion-reduce:animate-none motion-reduce:transition-none sm:p-6',
           className,
         )}
         {...props}
@@ -135,7 +135,7 @@ function AlertDialogMedia({
     <div
       data-slot='alert-dialog-media'
       className={cn(
-        "mb-2 inline-flex size-16 items-center justify-center rounded-sm bg-muted sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8",
+        "mb-2 inline-flex size-16 items-center justify-center rounded-xl border border-input bg-action-primary/10 text-link sm:group-data-[size=default]/alert-dialog-content:row-span-2 *:[svg:not([class*='size-'])]:size-8",
         className,
       )}
       {...props}

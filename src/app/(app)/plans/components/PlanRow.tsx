@@ -20,7 +20,7 @@ import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { useState } from 'react';
+import { type RefObject, useRef, useState } from 'react';
 
 interface PlanRowProps {
   plan: PlanListItem;
@@ -29,6 +29,7 @@ interface PlanRowProps {
   selected?: boolean;
   selectable?: boolean;
   onSelectionChange?: (planId: string, selected: boolean) => void;
+  successFocusRef?: RefObject<HTMLElement | null>;
 }
 
 export function PlanRow({
@@ -38,6 +39,7 @@ export function PlanRow({
   selected = false,
   selectable = true,
   onSelectionChange,
+  successFocusRef,
 }: PlanRowProps) {
   const progressPercent = Math.max(
     0,
@@ -49,6 +51,7 @@ export function PlanRow({
     referenceTimestamp,
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const actionsTriggerRef = useRef<HTMLButtonElement>(null);
 
   return (
     <TableRow
@@ -159,10 +162,13 @@ export function PlanRow({
           isGenerating={plan.status === 'generating'}
           open={deleteDialogOpen}
           onOpenChange={setDeleteDialogOpen}
+          returnFocusRef={actionsTriggerRef}
+          successFocusRef={successFocusRef}
         />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button
+              ref={actionsTriggerRef}
               variant='ghost'
               size='icon-sm'
               title='Plan actions'

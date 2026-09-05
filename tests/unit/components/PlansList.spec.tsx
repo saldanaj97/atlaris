@@ -561,9 +561,10 @@ describe('PlansList', () => {
     expect(
       await screen.findByRole('button', { name: 'Delete 2 plans' }),
     ).toBeEnabled();
-    expect(toast.error).toHaveBeenCalledWith(
+    expect(screen.getByRole('alert')).toHaveTextContent(
       'Plans cannot be deleted right now.',
     );
+    expect(toast.error).not.toHaveBeenCalled();
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 

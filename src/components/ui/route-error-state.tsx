@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { AlertTriangle } from 'lucide-react';
+import { useId } from 'react';
 
 interface RouteErrorStateProps {
   title: string;
@@ -20,15 +21,20 @@ export function RouteErrorState({
   title,
   message,
   onRetry,
-  retryLabel = 'Try Again',
+  retryLabel = 'Try again',
   actions,
   className,
 }: RouteErrorStateProps) {
+  const titleId = useId();
+  const messageId = useId();
+
   return (
     <div
       role='alert'
+      aria-describedby={messageId}
+      aria-labelledby={titleId}
       className={cn(
-        'mx-auto flex w-full max-w-xl flex-col items-center justify-center rounded-2xl border border-panel-border bg-panel p-6 text-center shadow-sm sm:p-8',
+        'mx-auto flex w-full max-w-[32rem] flex-col items-center justify-center rounded-xl border border-panel-border bg-panel p-4 text-center shadow-none sm:p-6',
         className,
       )}
     >
@@ -38,8 +44,13 @@ export function RouteErrorState({
       >
         <AlertTriangle className='size-5' />
       </div>
-      <h2 className='mb-2 text-xl font-semibold text-foreground'>{title}</h2>
-      <p className='mb-5 max-w-md text-sm leading-relaxed text-muted-foreground'>
+      <h2 id={titleId} className='mb-2 text-xl font-semibold text-foreground'>
+        {title}
+      </h2>
+      <p
+        id={messageId}
+        className='mb-5 max-w-md text-sm leading-relaxed text-muted-foreground'
+      >
         {message}
       </p>
       {actions ??

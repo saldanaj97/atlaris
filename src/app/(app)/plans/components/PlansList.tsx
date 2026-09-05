@@ -33,7 +33,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { type RefObject, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 interface PlansListProps {
@@ -150,12 +150,14 @@ function BulkPlanActionsToolbar({
   deleteDisabled,
   onClear,
   onDelete,
+  deleteButtonRef,
 }: {
   selectedCount: number;
   toolbarMessage: string | null;
   deleteDisabled: boolean;
   onClear: () => void;
   onDelete: () => void;
+  deleteButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   return (
     <fieldset
@@ -184,6 +186,7 @@ function BulkPlanActionsToolbar({
             Clear
           </Button>
           <Button
+            ref={deleteButtonRef}
             type='button'
             variant='destructive'
             size='sm'
@@ -198,7 +201,13 @@ function BulkPlanActionsToolbar({
   );
 }
 
-function PlansSearch({ query }: { query: PlanListQuery }) {
+function PlansSearch({
+  query,
+  searchInputRef,
+}: {
+  query: PlanListQuery;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+}) {
   return (
     <div className='flex flex-wrap items-center gap-2'>
       <form action='/plans' className='relative min-w-64 flex-1'>
@@ -213,6 +222,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
           <input type='hidden' name='sort' value={query.sort} />
         ) : null}
         <Input
+          ref={searchInputRef}
           type='search'
           name='search'
           placeholder='Search plans...'
@@ -246,6 +256,7 @@ function PlansTable({
   onSelectionChange,
   onSelectAll,
   onDeselectAll,
+  successFocusRef,
 }: {
   page: PlanListPage;
   query: PlanListQuery;
@@ -254,6 +265,7 @@ function PlansTable({
   onSelectionChange: (planId: string, selected: boolean) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  successFocusRef: RefObject<HTMLElement | null>;
 }) {
   const selectedCount = deletablePlans.filter((plan) =>
     selectedPlanIds.has(plan.id),
@@ -307,6 +319,7 @@ function PlansTable({
             selected={selectedPlanIds.has(plan.id)}
             selectable={isPlanBulkDeletable(plan)}
             onSelectionChange={onSelectionChange}
+            successFocusRef={successFocusRef}
           />
         ))}
       </TableBody>
@@ -322,6 +335,8 @@ export function PlansList({ page, query }: PlansListProps) {
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
+  const bulkDeleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const deletablePlans = page.items.filter(isPlanBulkDeletable);
   const selectedDeletablePlans = deletablePlans.filter((plan) =>
     selectedPlanIds.has(plan.id),
@@ -402,7 +417,7 @@ export function PlansList({ page, query }: PlansListProps) {
 
   return (
     <div className='space-y-5'>
-      <PlansSearch query={query} />
+      <PlansSearch query={query} searchInputRef={searchInputRef} />
 
       {selectedDeletablePlans.length > 0 ? (
         <BulkPlanActionsToolbar
@@ -414,6 +429,7 @@ export function PlansList({ page, query }: PlansListProps) {
             if (isReconciliationPending) return;
             setBulkDeleteOpen(true);
           }}
+          deleteButtonRef={bulkDeleteTriggerRef}
         />
       ) : null}
 
@@ -423,6 +439,8 @@ export function PlansList({ page, query }: PlansListProps) {
         plans={selectedDeletablePlans}
         onDeleted={handleBulkDeleted}
         onOutcomeUnknown={handleBulkDeleteOutcomeUnknown}
+        returnFocusRef={bulkDeleteTriggerRef}
+        successFocusRef={searchInputRef}
       />
 
       {page.items.length === 0 ? (
@@ -440,6 +458,7 @@ export function PlansList({ page, query }: PlansListProps) {
           onSelectionChange={handleSelectionChange}
           onSelectAll={handleSelectAllOnPage}
           onDeselectAll={handleClearSelection}
+          successFocusRef={searchInputRef}
         />
       )}
 
