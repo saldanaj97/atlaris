@@ -91,10 +91,7 @@ export async function reserveRegenerationQuotaAtProviderStart(args: {
       );
     }
 
-    const quota = await reserveMeteredUsageInTx(tx, {
-      userId: args.userId,
-      meter: 'regeneration',
-    });
+    const quota = await reserveMeteredUsageInTx(tx, args.userId);
     if (!quota.ok) {
       return quota;
     }

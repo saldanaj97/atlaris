@@ -12,13 +12,12 @@ export function createAbortError(message = 'Operation aborted.'): DOMException {
  *
  * If the signal is already aborted, the listener is invoked synchronously and
  * a no-op cleanup is returned. Otherwise, an "abort" event listener is
- * attached (via addEventListener when available, or onabort as fallback), and
+ * attached, and
  * a cleanup function is returned that removes that listener. Call the cleanup
  * when the listener is no longer needed to avoid leaks.
  *
- * Cross-environment: works with both DOM and Node AbortSignal implementations
- * (e.g. from AbortController, fetch, or Node's events). Prefers addEventListener
- * when present; falls back to onabort for minimal signal-like objects.
+ * Works with both DOM and Node AbortSignal implementations (e.g. from
+ * AbortController, fetch, or Node's events).
  *
  * @param signal - The AbortSignal to listen to (DOM or Node).
  * @param listener - Callback invoked when the signal is or becomes aborted.
@@ -34,44 +33,13 @@ export function attachAbortListener(
     return () => {};
   }
 
-  if (
-    'addEventListener' in signal &&
-    typeof signal.addEventListener === 'function'
-  ) {
-    const handler: EventListener = () => listener();
-    signal.addEventListener('abort', handler);
-    return () => {
-      try {
-        signal.removeEventListener?.('abort', handler);
-      } catch {
-        // Ignore cleanup failures.
-      }
-    };
-  }
-
-  // Property-based handler (signal.onabort) limitation: if other code sets
-  // signal.onabort after we attach our wrapper, the returned cleanup (which
-  // does signal.onabort = previous ?? null) will overwrite that later setter
-  // and remove their handler. Symbols: previous (saved before we set
-  // signal.onabort), listener (our callback), and the returned cleanup. Do
-  // not "fix" by restoring previous without considering concurrent setters;
-  // prefer addEventListener/removeEventListener where available.
-  if ('onabort' in signal) {
-    const previous = signal.onabort;
-    signal.onabort = function (this: AbortSignal, ev: Event) {
-      try {
-        if (typeof previous === 'function') {
-          previous.call(this, ev);
-        }
-      } finally {
-        listener();
-      }
-    };
-
-    return () => {
-      signal.onabort = previous ?? null;
-    };
-  }
-
-  return () => {};
+  const handler: EventListener = () => listener();
+  signal.addEventListener('abort', handler);
+  return () => {
+    try {
+      signal.removeEventListener('abort', handler);
+    } catch {
+      // Ignore cleanup failures.
+    }
+  };
 }

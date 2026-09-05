@@ -225,12 +225,6 @@ export async function runModuleLessonGenerationWork(
 
     return { kind: 'failed' };
   } finally {
-    if (lifecycle) {
-      cleanupTimeoutLifecycle({
-        timeout: lifecycle.timeout,
-        cleanupTimeoutAbort: lifecycle.cleanupTimeoutAbort,
-        cleanupExternalAbort: lifecycle.cleanupExternalAbort,
-      });
-    }
+    if (lifecycle) cleanupTimeoutLifecycle(lifecycle);
   }
 }

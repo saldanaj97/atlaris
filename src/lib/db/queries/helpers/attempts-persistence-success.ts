@@ -1,7 +1,6 @@
 import type {
   AttemptReservation,
   FinalizeSuccessPersistenceInTxParams,
-  FinalizeSuccessPersistenceParams,
   GenerationAttemptRecord,
   NormalizedModuleData,
 } from '@/lib/db/queries/types/attempts.types';
@@ -11,10 +10,6 @@ import {
   hasActiveChildModuleGeneration,
   lockPlanLifecycle,
 } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { generationAttempts, modules, tasks } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 
@@ -48,9 +43,7 @@ export function whereInProgressGenerationAttemptForPlan(params: {
 
 /**
  * Persists server-owned generation content inside an existing transaction.
- * Callers that open their own transaction should use persistSuccessfulAttempt,
- * which replays JWT claims only when the dbClient is request-scoped RLS
- * (service-role skips replay).
+ * The lifecycle caller owns transaction setup and JWT claim replay.
  */
 export async function persistSuccessfulAttemptInTx(
   tx: DbTransaction,
@@ -157,17 +150,4 @@ export async function persistSuccessfulAttemptInTx(
   }
 
   return attempt;
-}
-
-export async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams,
-): Promise<GenerationAttemptRecord> {
-  const { dbClient, ...inTxParams } = params;
-
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
-  return dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-    return persistSuccessfulAttemptInTx(tx, inTxParams);
-  });
 }

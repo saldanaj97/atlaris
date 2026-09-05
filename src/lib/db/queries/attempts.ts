@@ -2,14 +2,13 @@ import type {
   AttemptReservation,
   AttemptMetadata,
   AttemptsDbClient,
-  FinalizeFailureParams,
-  FinalizeSuccessParams,
   GenerationAttemptRecord,
   ReserveAttemptResult,
   ReserveAttemptSlotParams,
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbTransaction } from '@/lib/db/types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
 import { getAttemptCap } from '@/lib/config/env';
@@ -17,18 +16,11 @@ import {
   attemptMetadataWithAdmittedTier,
   readAdmittedTierFromAttemptMetadata,
 } from '@/lib/db/queries/helpers/attempt-admitted-tier';
-import { logAttemptEvent } from '@/lib/db/queries/helpers/attempts-helpers';
 import {
-  buildMetadata,
   sanitizeInput,
   toPromptHashPayload,
 } from '@/lib/db/queries/helpers/attempts-input';
-import { normalizeParsedModules } from '@/lib/db/queries/helpers/attempts-persistence-normalization';
-import {
-  assertAttemptIdMatchesReservation,
-  persistSuccessfulAttempt,
-  whereInProgressGenerationAttemptForPlan,
-} from '@/lib/db/queries/helpers/attempts-persistence-success';
+import { whereInProgressGenerationAttemptForPlan } from '@/lib/db/queries/helpers/attempts-persistence-success';
 import {
   computeRetryAfterSeconds,
   selectUserGenerationAttemptWindowStats,
@@ -57,10 +49,7 @@ import {
 } from '@/shared/constants/generation';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
-import {
-  describeGenerationPurpose,
-  parseGenerationPurpose,
-} from '@/shared/types/generation-purpose';
+import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts } from '@supabase/schema';
 import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
@@ -421,78 +410,12 @@ export async function reserveAttemptSlot(
   });
 }
 
-/**
- * Finalizes a previously reserved attempt as successful.
- * Updates the in-progress attempt row and replaces plan modules/tasks.
- */
-export async function finalizeAttemptSuccess({
-  attemptId,
-  planId,
-  preparation,
-  modules: parsedModules,
-  providerMetadata,
-  durationMs,
-  extendedTimeout,
-  dbClient,
-  now,
-}: FinalizeSuccessParams): Promise<GenerationAttemptRecord> {
-  assertAttemptIdMatchesReservation(attemptId, preparation);
-
-  const nowFn = now ?? (() => new Date());
-
-  const { normalizedModules, normalizationFlags } =
-    normalizeParsedModules(parsedModules);
-
-  const modulesCount = normalizedModules.length;
-  const tasksCount = normalizedModules.reduce(
-    (sum, module) => sum + module.tasks.length,
-    0,
-  );
-
-  const finishedAt = nowFn();
-
-  const metadata = buildMetadata({
-    sanitized: preparation.sanitized,
-    providerMetadata,
-    modulesClamped: normalizationFlags.modulesClamped,
-    tasksClamped: normalizationFlags.tasksClamped,
-    startedAt: preparation.startedAt,
-    finishedAt,
-    extendedTimeout,
-  });
-
-  const updatedAttempt = await persistSuccessfulAttempt({
-    attemptId,
-    planId,
-    preparation,
-    normalizedModules,
-    normalizationFlags,
-    modulesCount,
-    tasksCount,
-    durationMs,
-    metadata,
-    finishedAt,
-    dbClient,
-  });
-
-  logAttemptEvent('success', {
-    planId,
-    attemptId: updatedAttempt.id,
-    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
-    durationMs: updatedAttempt.durationMs,
-    modulesCount,
-    tasksCount,
-  });
-
-  return updatedAttempt;
-}
-
 export async function persistFailedAttemptInTx(
   tx: DbTransaction,
   params: {
     readonly attemptId: string;
     readonly planId: string;
-    readonly classification: FinalizeFailureParams['classification'];
+    readonly classification: FailureClassification;
     readonly durationMs: number;
     readonly metadata: AttemptMetadata;
   },
@@ -520,65 +443,4 @@ export async function persistFailedAttemptInTx(
   }
 
   return updatedAttempt;
-}
-
-/**
- * Finalizes a previously reserved attempt as failed.
- * Updates only the in-progress attempt row.
- * Plan-level failure transitions are handled separately by lifecycle helpers
- * such as markPlanGenerationFailure() in features/plans/lifecycle/plan-persistence-store.ts.
- */
-export async function finalizeAttemptFailure({
-  attemptId,
-  planId,
-  preparation,
-  classification,
-  durationMs,
-  timedOut = false,
-  extendedTimeout = false,
-  providerMetadata,
-  dbClient,
-  now,
-}: FinalizeFailureParams): Promise<GenerationAttemptRecord> {
-  assertAttemptIdMatchesReservation(attemptId, preparation);
-
-  const nowFn = now ?? (() => new Date());
-  const finishedAt = nowFn();
-
-  const metadata = buildMetadata({
-    sanitized: preparation.sanitized,
-    providerMetadata,
-    modulesClamped: false,
-    tasksClamped: false,
-    startedAt: preparation.startedAt,
-    finishedAt,
-    extendedTimeout,
-    failure: { classification, timedOut },
-  });
-
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
-  const attempt = await dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
-    return persistFailedAttemptInTx(tx, {
-      attemptId,
-      planId,
-      classification,
-      durationMs,
-      metadata,
-    });
-  });
-
-  logAttemptEvent('failure', {
-    planId,
-    attemptId: attempt.id,
-    generationPurpose: describeGenerationPurpose(preparation.generationPurpose),
-    classification,
-    durationMs: attempt.durationMs,
-    timedOut,
-    extendedTimeout,
-  });
-
-  return attempt;
 }

@@ -143,18 +143,18 @@ Settings remains DB-backed. Manage/current-plan Clerk buttons live on `/pricing`
 
 Tier caps: `src/shared/constants/tier-limits.ts` (`TIER_LIMITS` for `free` / `starter` / `pro`).
 
-| Cap                        | Enforcement                                                                                                                        |
-| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| Active plans               | `atomicCheckAndInsertPlan` / `countPlansContributingToCap`                                                                         |
-| Lifetime Free initial plan | `initial_plan_generated_at` + namespace-1 admission lock; do not infer from `usage_metrics.plans_generated`                        |
-| Plan duration (`maxWeeks`) | `checkPlanDurationCap` during creation and regeneration (no clamp)                                                                 |
+| Cap                        | Enforcement                                                                                                                                   |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Active plans               | `atomicCheckAndInsertPlan` / `countPlansContributingToCap`                                                                                    |
+| Lifetime Free initial plan | `initial_plan_generated_at` + namespace-1 admission lock; do not infer from `usage_metrics.plans_generated`                                   |
+| Plan duration (`maxWeeks`) | `checkPlanDurationCap` during creation and regeneration (no clamp)                                                                            |
 | Monthly regenerations      | Free is not included (`PLAN_REGENERATION_NOT_INCLUDED`). Paid: `reserveRegenerationQuotaAtProviderStart` → `usage_metrics.regenerations_used` |
-| Module lesson generation   | Request-rate limiter only. `usage_metrics.lesson_modules_generated` remains observational (do not drop).                           |
-| AI model allowlist         | `validateModelForTier` / settings AI section                                                                                       |
+| Module lesson generation   | Request-rate limiter only. `usage_metrics.lesson_modules_generated` remains observational (do not drop).                                      |
+| AI model allowlist         | `validateModelForTier` / settings AI section                                                                                                  |
 
 Exports are not a product entitlement. Do not advertise, meter, or reserve them. `users.monthly_export_count` and `usage_metrics.exports_used` remain in the schema for compatibility only.
 
-Metered reservation core: `src/features/billing/metered-reservation.ts`. Monthly regeneration settlement is `reserveRegenerationQuotaAtProviderStart` (increment + provider-start marker in one transaction). Month key is `YYYY-MM` on `usage_metrics`.
+Monthly regeneration settlement is owned by `reserveRegenerationQuotaAtProviderStart`. It locks the user and current-month usage row, increments `usage_metrics.regenerations_used`, and persists the provider-start marker in one transaction. A marker already present on the processing job is the idempotency guard; retries settle a new attempt only after the prior marker is cleared. The private reservation core is an implementation detail of this boundary. Month keys use `YYYY-MM` on `usage_metrics`.
 
 ## Local / fixture tooling
 
@@ -191,7 +191,7 @@ Single page `/settings` (`SettingsLedgerPage`):
 | Reconciliation + webhook apply | `src/features/billing/clerk-billing/reconciliation.ts`              |
 | Checkout return                | `src/features/billing/checkout-return.ts`                           |
 | Account snapshot / usage       | `src/features/billing/account-snapshot.ts`, `usage-metrics.ts`      |
-| Quota boundaries               | `*-quota-boundary.ts`, `metered-reservation.ts`                     |
+| Quota boundaries               | `*-quota-boundary.ts`                                               |
 | Webhook route                  | `src/app/api/v1/clerk/billing/webhook/route.ts`                     |
 | Reconcile route                | `src/app/api/internal/maintenance/billing/reconcile-clerk/route.ts` |
 | Fixture script                 | `scripts/db/apply-clerk-billing-fixture.ts`                         |

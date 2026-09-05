@@ -21,7 +21,6 @@ describe('resolveRegenerationPolicyDenial', () => {
     expect(
       resolveRegenerationPolicyDenial({
         tier: 'free',
-        weeklyHours: 5,
         startDate: '2026-01-01',
         deadlineDate: '2026-06-01',
       }),
@@ -31,7 +30,6 @@ describe('resolveRegenerationPolicyDenial', () => {
   it('returns duration-exceeded for Starter over 8 weeks', () => {
     const denial = resolveRegenerationPolicyDenial({
       tier: 'starter',
-      weeklyHours: 5,
       startDate: '2026-01-01',
       deadlineDate: '2026-04-01',
     });
@@ -42,7 +40,6 @@ describe('resolveRegenerationPolicyDenial', () => {
     expect(
       resolveRegenerationPolicyDenial({
         tier: 'pro',
-        weeklyHours: 5,
         startDate: '2026-01-01',
         deadlineDate: '2027-01-01',
       }),
@@ -53,7 +50,6 @@ describe('resolveRegenerationPolicyDenial', () => {
     expect(
       resolveRegenerationPolicyDenial({
         tier: 'starter',
-        weeklyHours: 5,
         startDate: '2026-01-01',
         deadlineDate: '2026-02-12',
       }),
@@ -64,7 +60,6 @@ describe('resolveRegenerationPolicyDenial', () => {
     expect(
       resolveRegenerationPolicyDenial({
         tier: 'pro',
-        weeklyHours: 5,
         startDate: '2026-02-02',
         deadlineDate: '2026-02-01',
       }),
