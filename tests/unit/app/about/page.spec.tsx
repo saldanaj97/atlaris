@@ -103,8 +103,16 @@ describe('AboutPage', () => {
     expect(
       screen.queryByRole('link', { name: 'Plans' }),
     ).not.toBeInTheDocument();
+    const contactSection = screen.getByRole('region', {
+      name: /if the map is wrong/i,
+    });
     expect(
-      screen.getByRole('link', { name: 'support@atlaris.app' }),
+      within(contactSection).getByRole('link', {
+        name: 'support@atlaris.app',
+      }),
+    ).toHaveAttribute('href', 'mailto:support@atlaris.app');
+    expect(
+      within(footer).getByRole('link', { name: 'support@atlaris.app' }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
   });
 });
