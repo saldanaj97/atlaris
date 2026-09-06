@@ -12,7 +12,8 @@ import {
 import { TimelinePlanFooter } from './TimelinePlanFooter';
 import { TimelineModuleCard } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
 import { Accordion } from '@/components/ui/accordion';
-import { Card, CardContent } from '@/components/ui/card';
+import { Surface } from '@/components/ui/surface';
+import { formatMinutes } from '@/features/plans/formatters';
 import {
   buildTaskStatusMap as getStatusesFromModules,
   deriveActiveModuleId,
@@ -45,6 +46,10 @@ export function PlanTimeline({
   const visibleExpandedModuleIds = getVisibleExpandedModuleIds(
     expandedModuleIds,
     activeModuleId,
+  );
+  const estimatedMinutes = modules.reduce(
+    (total, module) => total + module.estimatedMinutes,
+    0,
   );
 
   const handleModuleToggle = (moduleId: string) => {
@@ -81,57 +86,76 @@ export function PlanTimeline({
 
   if (modules.length === 0) {
     return (
-      <section className='mt-12'>
-        <Card className='text-center'>
-          <CardContent className='p-6'>
+      <section id='learning-path' className='scroll-mt-8'>
+        <Surface padding='none' className='overflow-hidden'>
+          <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
+            <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+              Route
+            </p>
+            <h2 className='mt-1 text-xl font-semibold text-foreground'>
+              Your learning path
+            </h2>
+          </div>
+          <div className='p-6 text-center'>
             <p className='text-muted-foreground'>No modules available yet.</p>
-          </CardContent>
-        </Card>
+          </div>
+        </Surface>
       </section>
     );
   }
 
   return (
-    <section className='mt-12 scroll-mt-8'>
-      <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
-        <h2 className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-          Route · Learning modules
-        </h2>
-        <span className='text-xs text-muted-foreground tabular-nums'>
-          {modules.length} module{modules.length !== 1 ? 's' : ''}
-        </span>
-      </div>
+    <section id='learning-path' className='scroll-mt-8'>
+      <Surface padding='none' className='overflow-hidden'>
+        <div className='flex flex-col gap-3 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6'>
+          <div className='min-w-0'>
+            <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+              Route
+            </p>
+            <h2 className='mt-1 text-xl font-semibold text-foreground'>
+              Your learning path
+            </h2>
+            <p className='mt-1 text-sm text-muted-foreground'>
+              {modules.length} module{modules.length !== 1 ? 's' : ''} ·{' '}
+              {formatMinutes(estimatedMinutes)} estimated
+            </p>
+          </div>
+          <span className='shrink-0 text-xs text-muted-foreground'>
+            {isPlanComplete ? 'Route complete' : 'Keep moving at your pace'}
+          </span>
+        </div>
 
-      <div className='relative pb-4'>
-        <div
-          className='pointer-events-none absolute top-3 bottom-10 left-8 w-px -translate-x-1/2 bg-border/70'
-          aria-hidden
-        />
-        <Accordion
-          type='multiple'
-          value={visibleExpandedModuleIds}
-          className='space-y-4 pb-2'
-        >
-          {timelineModules.map((mod) => {
-            return (
-              <TimelineModuleCard
-                key={mod.id}
-                planId={planId}
-                module={mod}
-                isOpen={visibleExpandedModuleIds.includes(mod.id)}
-                statuses={effectiveStatuses}
-                onModuleToggle={handleModuleToggle}
-                onTaskStatusChange={handleTaskStatusChange}
-              />
-            );
-          })}
-        </Accordion>
+        <div className='relative px-3 py-5 sm:px-5'>
+          <div
+            className='pointer-events-none absolute top-8 bottom-14 left-8 w-px -translate-x-1/2 bg-border/70'
+            aria-hidden
+          />
+          <Accordion
+            type='multiple'
+            value={visibleExpandedModuleIds}
+            className='space-y-4 pb-2'
+          >
+            {timelineModules.map((mod) => {
+              return (
+                <TimelineModuleCard
+                  key={mod.id}
+                  planId={planId}
+                  module={mod}
+                  isOpen={visibleExpandedModuleIds.includes(mod.id)}
+                  statuses={effectiveStatuses}
+                  onModuleToggle={handleModuleToggle}
+                  onTaskStatusChange={handleTaskStatusChange}
+                />
+              );
+            })}
+          </Accordion>
 
-        <TimelinePlanFooter
-          isPlanComplete={isPlanComplete}
-          moduleCount={modules.length}
-        />
-      </div>
+          <TimelinePlanFooter
+            isPlanComplete={isPlanComplete}
+            moduleCount={modules.length}
+          />
+        </div>
+      </Surface>
     </section>
   );
 }

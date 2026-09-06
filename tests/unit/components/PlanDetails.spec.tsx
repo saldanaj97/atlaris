@@ -58,6 +58,38 @@ function createMockPlan(status: ClientPlanDetail['status']): ClientPlanDetail {
   };
 }
 
+function createCompletedPlan(): ClientPlanDetail {
+  const plan = createMockPlan('ready');
+  return {
+    ...plan,
+    totalTasks: 1,
+    completedTasks: 1,
+    totalMinutes: 30,
+    completedMinutes: 30,
+    completedModules: 1,
+    modules: [
+      {
+        id: 'completed-module-id',
+        order: 1,
+        title: 'Completed module',
+        description: null,
+        estimatedMinutes: 30,
+        tasks: [
+          {
+            id: 'completed-task-id',
+            order: 1,
+            title: 'Completed task',
+            description: null,
+            estimatedMinutes: 30,
+            status: 'completed',
+            resources: [],
+          },
+        ],
+      },
+    ],
+  };
+}
+
 describe('PlanDetails', () => {
   beforeEach(() => {
     vi.resetModules();
@@ -77,4 +109,17 @@ describe('PlanDetails', () => {
       expect(screen.queryByText(/learning modules/i)).not.toBeInTheDocument();
     },
   );
+
+  it('keeps an empty ready plan out of the complete state', async () => {
+    await renderPlanDetails(createMockPlan('ready'));
+
+    expect(screen.queryByText('Plan complete')).not.toBeInTheDocument();
+    expect(screen.getByText('No next module available.')).toBeInTheDocument();
+  });
+
+  it('reports a ready plan complete when every task and module is complete', async () => {
+    await renderPlanDetails(createCompletedPlan());
+
+    expect(screen.getByText('Plan complete')).toBeInTheDocument();
+  });
 });
