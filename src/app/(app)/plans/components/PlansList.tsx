@@ -161,7 +161,7 @@ function BulkPlanActionsToolbar({
 }) {
   return (
     <fieldset
-      className='m-0 min-w-0 space-y-3 rounded-xl border border-panel-border bg-panel px-4 py-3'
+      className='m-0 min-w-0 space-y-3 rounded-[12px] border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>

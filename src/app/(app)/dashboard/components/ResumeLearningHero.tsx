@@ -1,6 +1,8 @@
 import type { PlanSummary } from '@/shared/types/db.types';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 import { planDetailPath } from '@/features/navigation/routes';
 import Link from 'next/link';
 
@@ -36,8 +38,11 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const progressPercent = Math.round(clampedCompletion * 100);
 
   return (
-    <article className='relative h-full overflow-hidden rounded-2xl border border-panel-border bg-panel text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none'>
-      <div className='flex h-full flex-col p-6 sm:p-7'>
+    <Card
+      as='article'
+      className='relative h-full overflow-hidden p-6 animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'
+    >
+      <div className='flex h-full flex-col'>
         <div className='flex items-start justify-between gap-4'>
           <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
             Current focus
@@ -62,21 +67,12 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         </div>
 
         <div className='mt-8'>
-          <progress
-            className='sr-only'
-            aria-label={`${plan.plan.topic} progress`}
+          <Progress
             value={progressPercent}
             max={100}
+            aria-label={`${plan.plan.topic} progress`}
+            className='h-1.5'
           />
-          <div
-            className='h-1.5 overflow-hidden rounded-full bg-muted'
-            aria-hidden='true'
-          >
-            <div
-              className='h-full origin-left rounded-full bg-primary animate-dashboard-trace [animation-delay:260ms] motion-reduce:animate-none'
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
         </div>
 
         <div className='mt-auto pt-8'>
@@ -100,6 +96,6 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           </Button>
         </div>
       </div>
-    </article>
+    </Card>
   );
 }

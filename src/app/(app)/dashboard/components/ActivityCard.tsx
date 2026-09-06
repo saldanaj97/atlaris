@@ -13,7 +13,7 @@ const activityPresentation = {
   progress: {
     icon: ArrowUpRight,
     label: 'Progress made',
-    className: 'border-chart-3/30 bg-chart-3/10 text-chart-3',
+    className: 'border-chart-2/30 bg-chart-2/10 text-chart-2',
   },
   completed: {
     icon: Check,
@@ -38,7 +38,7 @@ export function ActivityCard({
   return (
     <Link
       href={`/plans/${activity.planId}`}
-      className='group animate-dashboard-ledger-row grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-4 transition-colors duration-500 hover:bg-secondary/40 focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:animate-none sm:px-6'
+      className='group grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 transition-colors duration-150 animate-dashboard-ledger-row hover:bg-panel-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:animate-none motion-reduce:transition-none sm:px-6'
       style={{ animationDelay: `${360 + Math.min(index, 8) * 55}ms` }}
     >
       <span

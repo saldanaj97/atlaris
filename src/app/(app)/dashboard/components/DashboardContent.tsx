@@ -5,6 +5,7 @@ import {
 import { ActivityFeed } from '@/app/(app)/dashboard/components/ActivityFeed';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
+import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
@@ -16,7 +17,10 @@ import { redirect } from 'next/navigation';
 function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
   if (!weeklyHours) {
     return (
-      <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+      <Card
+        as='aside'
+        className='h-full p-6 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'
+      >
         <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
           This week
         </p>
@@ -26,12 +30,15 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
         <p className='mt-2 text-sm text-muted-foreground'>
           Your weekly learning pace will appear with an active plan.
         </p>
-      </aside>
+      </Card>
     );
   }
 
   return (
-    <aside className='h-full rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'>
+    <Card
+      as='aside'
+      className='h-full p-6 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'
+    >
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
         This week
       </p>
@@ -51,7 +58,7 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
           Completed learning time will appear here once it can be measured.
         </p>
       </div>
-    </aside>
+    </Card>
   );
 }
 
@@ -126,7 +133,7 @@ export function DashboardContentSkeleton() {
       <div className='space-y-8'>
         <div className='grid gap-6 md:grid-cols-[minmax(0,1.55fr)_minmax(16rem,0.65fr)]'>
           <section aria-label='Resume learning loading'>
-            <div className='h-full rounded-2xl border border-panel-border bg-panel p-6 sm:p-7'>
+            <Card as='article' className='h-full p-6 sm:p-7'>
               <div className='flex justify-between gap-4'>
                 <Skeleton className='h-3 w-28 bg-secondary' />
                 <Skeleton className='h-4 w-24 bg-muted' />
@@ -138,20 +145,20 @@ export function DashboardContentSkeleton() {
                 <Skeleton className='h-3 w-40 bg-muted' />
                 <Skeleton className='mt-5 h-11 w-28 bg-primary/40' />
               </div>
-            </div>
+            </Card>
           </section>
 
-          <aside className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground sm:p-7'>
+          <Card as='aside' className='p-6 sm:p-7'>
             <Skeleton className='h-3 w-20 bg-secondary' />
             <Skeleton className='mt-8 h-9 w-28' />
             <Skeleton className='mt-2 h-4 w-32 bg-muted' />
             <Skeleton className='mt-6 h-1.5 w-full rounded-full bg-muted' />
             <Skeleton className='mt-3 h-3 w-full bg-muted' />
-          </aside>
+          </Card>
         </div>
 
         <section aria-label='Recent activity loading'>
-          <div className='overflow-hidden rounded-2xl border border-panel-border bg-panel'>
+          <Card as='section' className='gap-0 overflow-hidden p-0'>
             <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
               <Skeleton className='h-6 w-32' />
               <Skeleton className='mt-2 h-4 w-64 bg-muted' />
@@ -171,7 +178,7 @@ export function DashboardContentSkeleton() {
                 </div>
               ))}
             </div>
-          </div>
+          </Card>
         </section>
       </div>
     </>

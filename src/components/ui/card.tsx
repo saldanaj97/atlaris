@@ -6,13 +6,13 @@ function Card({
   as: Comp = 'div',
   ...props
 }: React.ComponentProps<'div'> & {
-  as?: 'div' | 'section';
+  as?: 'div' | 'section' | 'article' | 'aside';
 }) {
   return (
     <Comp
       data-slot='card'
       className={cn(
-        'flex flex-col gap-6 rounded-2xl border border-border bg-card py-6 text-card-foreground shadow-sm',
+        'flex flex-col gap-6 rounded-[12px] border border-panel-border bg-panel py-6 text-panel-foreground shadow-sm',
         className,
       )}
       {...props}

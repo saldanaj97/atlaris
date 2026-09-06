@@ -2,6 +2,7 @@ import type { ActivityItem } from '../types';
 
 import { ActivityCard } from './ActivityCard';
 import { EmptyActivityState } from './EmptyActivityState';
+import { Card } from '@/components/ui/card';
 
 interface ActivityFeedProps {
   activities: ActivityItem[];
@@ -10,9 +11,10 @@ interface ActivityFeedProps {
 /** Dashboard ledger for generated, progressed, and completed plans. */
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
-    <section
+    <Card
+      as='section'
       aria-labelledby='activity-feed-heading'
-      className='overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-sm'
+      className='gap-0 overflow-hidden p-0'
     >
       <header className='border-b border-border/60 px-5 py-5 sm:px-6'>
         <h2
@@ -37,6 +39,6 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
           ))}
         </ul>
       )}
-    </section>
+    </Card>
   );
 }

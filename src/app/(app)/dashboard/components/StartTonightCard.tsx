@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
@@ -12,7 +13,10 @@ export function StartTonightCard({
   canCreatePlan?: boolean;
 }) {
   return (
-    <article className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'>
+    <Card
+      as='article'
+      className='p-6 animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'
+    >
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
         Tonight&apos;s table
       </p>
@@ -41,6 +45,6 @@ export function StartTonightCard({
       <p className='mt-6 border-t border-border/50 pt-4 text-xs text-muted-foreground'>
         Start with a topic you care about — Atlaris will chart the path.
       </p>
-    </article>
+    </Card>
   );
 }

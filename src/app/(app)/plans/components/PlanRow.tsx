@@ -5,9 +5,11 @@ import type { PlanListItem } from '@/features/plans/read-projection/types';
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
 import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
+  getPlanStatusBadgeClassName,
   getPlanStatusDotClassName,
   PLAN_STATUS_LABELS,
 } from '@/app/(app)/plans/plan-status-theme';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -15,6 +17,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Progress } from '@/components/ui/progress';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
@@ -105,21 +108,20 @@ export function PlanRow({
 
       <TableCell className='min-w-44'>
         {plan.access === 'locked' ? (
-          <span className='text-xs text-muted-foreground'>Locked</span>
+          <Badge
+            variant='outline'
+            className='border-border bg-panel-muted text-muted-foreground'
+          >
+            Locked
+          </Badge>
         ) : (
           <div className='flex items-center gap-2.5'>
-            <progress
-              className='sr-only'
+            <Progress
               value={progressPercent}
               max={100}
               aria-label={`${progressPercent}% complete`}
+              className='h-1.5 w-20 shrink-0'
             />
-            <div className='h-px w-20 bg-border' aria-hidden='true'>
-              <div
-                className='h-[3px] -translate-y-px bg-primary transition-[width] duration-500 motion-reduce:transition-none'
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
             <span className='w-9 text-right text-xs text-foreground tabular-nums'>
               {progressPercent}%
             </span>
@@ -134,7 +136,10 @@ export function PlanRow({
       </TableCell>
 
       <TableCell>
-        <span className='inline-flex items-center gap-2 text-xs font-medium whitespace-nowrap text-muted-foreground'>
+        <Badge
+          variant='outline'
+          className={getPlanStatusBadgeClassName(plan.status)}
+        >
           <span
             className={cn(
               'size-1.5 rounded-full',
@@ -143,7 +148,7 @@ export function PlanRow({
             aria-hidden='true'
           />
           {PLAN_STATUS_LABELS[plan.status]}
-        </span>
+        </Badge>
       </TableCell>
 
       <TableCell>
