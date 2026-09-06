@@ -93,7 +93,15 @@ const nextConfig: NextConfig = {
 };
 
 // workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).
-const workflowNextConfig = withWorkflow(nextConfig);
+// Next's detached telemetry uploader reloads this config in the dev phase.
+// Skip Workflow there so it cannot leave an orphaned watcher/build service.
+// Remove after upgrading to a release containing vercel/next.js#97718.
+const isDetachedTelemetry = process.argv[1]
+  ?.replaceAll('\\', '/')
+  .endsWith('/next/dist/telemetry/detached-flush.js');
+const workflowNextConfig = isDetachedTelemetry
+  ? nextConfig
+  : withWorkflow(nextConfig);
 
 export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:
