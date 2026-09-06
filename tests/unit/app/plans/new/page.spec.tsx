@@ -153,6 +153,29 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   describe('defaults', () => {
+    it('labels the goal and groups the required plan preferences', () => {
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
+
+      expect(
+        screen.getByRole('heading', { name: 'Start with your goal' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('group', { name: 'Plan preferences' }),
+      ).toBeInTheDocument();
+
+      const topicInput = screen.getByRole('textbox', {
+        name: 'What do you want to learn?',
+      });
+      expect(topicInput).toHaveAttribute('aria-required', 'true');
+      expect(topicInput).toHaveAttribute(
+        'aria-describedby',
+        expect.stringContaining('-topic-help'),
+      );
+      expect(
+        screen.getByText('Complete your goal and preferences to continue.'),
+      ).toBeInTheDocument();
+    });
+
     it('shows preference placeholders before selection', async () => {
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 

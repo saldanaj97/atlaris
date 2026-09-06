@@ -35,69 +35,81 @@ export function PreferenceControls({
     subscriptionTier === 'pro' && state.deadlineWeeks === CUSTOM_DEADLINE_VALUE;
 
   return (
-    <div
-      className={cn(
-        'm-0 grid min-w-0 grid-cols-1 gap-3',
-        'sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-3',
-        'xl:flex-none',
-      )}
-    >
-      <InlineDropdown
-        id={`${baseId}-skill-level`}
-        ariaLabel='Skill level'
-        options={SKILL_LEVEL_OPTIONS}
-        value={state.skillLevel}
-        onChange={(value) => dispatch({ type: 'set-skill-level', value })}
-        placeholder='Experience'
-        variant='primary'
-      />
-      <InlineDropdown
-        id={`${baseId}-weekly-hours`}
-        ariaLabel='Weekly hours'
-        options={WEEKLY_HOURS_OPTIONS}
-        value={state.weeklyHours}
-        onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
-        icon={<Clock className='size-3.5' />}
-        placeholder='Weekly time'
-        variant='primary'
-      />
-      <InlineDropdown
-        id={`${baseId}-learning-style`}
-        ariaLabel='Learning style'
-        options={LEARNING_STYLE_OPTIONS}
-        value={state.learningStyle}
-        onChange={(value) => dispatch({ type: 'set-learning-style', value })}
-        placeholder='Learning style'
-        variant='primary'
-      />
-      <InlineDropdown
-        id={`${baseId}-deadline`}
-        ariaLabel='Deadline'
-        options={deadlineOptions}
-        value={state.deadlineWeeks}
-        onChange={(value) =>
-          dispatch({
-            type: 'set-deadline-weeks',
-            value,
-          })
-        }
-        icon={<Calendar className='size-3.5' />}
-        placeholder='Finish by'
-        variant='primary'
-      />
-      {showCustomDeadline ? (
-        <Input
-          id={`${baseId}-deadline-date`}
-          ref={setLocalMinimumDeadline}
-          type='date'
-          aria-label='Custom deadline date'
-          value={state.deadlineDate ?? ''}
-          onChange={(event) =>
-            dispatch({ type: 'set-deadline-date', value: event.target.value })
-          }
-          className='min-h-[40px] w-full sm:w-auto'
+    <fieldset className='m-0 min-w-0'>
+      <legend className='mb-3 text-sm leading-5 font-medium text-foreground'>
+        Plan preferences
+      </legend>
+      <div
+        className={cn(
+          'grid min-w-0 grid-cols-1 gap-3',
+          'sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-end lg:gap-x-4 lg:gap-y-3',
+          'xl:flex-none',
+        )}
+      >
+        <InlineDropdown
+          id={`${baseId}-skill-level`}
+          ariaLabel='Skill level'
+          options={SKILL_LEVEL_OPTIONS}
+          value={state.skillLevel}
+          onChange={(value) => dispatch({ type: 'set-skill-level', value })}
+          placeholder='Experience'
+          variant='primary'
         />
-      ) : null}
-    </div>
+        <InlineDropdown
+          id={`${baseId}-weekly-hours`}
+          ariaLabel='Weekly hours'
+          options={WEEKLY_HOURS_OPTIONS}
+          value={state.weeklyHours}
+          onChange={(value) => dispatch({ type: 'set-weekly-hours', value })}
+          icon={<Clock className='size-3.5' />}
+          placeholder='Weekly time'
+          variant='primary'
+        />
+        <InlineDropdown
+          id={`${baseId}-learning-style`}
+          ariaLabel='Learning style'
+          options={LEARNING_STYLE_OPTIONS}
+          value={state.learningStyle}
+          onChange={(value) => dispatch({ type: 'set-learning-style', value })}
+          placeholder='Learning style'
+          variant='primary'
+        />
+        <InlineDropdown
+          id={`${baseId}-deadline`}
+          ariaLabel='Deadline'
+          options={deadlineOptions}
+          value={state.deadlineWeeks}
+          onChange={(value) =>
+            dispatch({
+              type: 'set-deadline-weeks',
+              value,
+            })
+          }
+          icon={<Calendar className='size-3.5' />}
+          placeholder='Finish by'
+          variant='primary'
+        />
+        {showCustomDeadline ? (
+          <div className='w-full sm:w-auto'>
+            <label htmlFor={`${baseId}-deadline-date`} className='sr-only'>
+              Custom deadline date
+            </label>
+            <Input
+              id={`${baseId}-deadline-date`}
+              ref={setLocalMinimumDeadline}
+              type='date'
+              value={state.deadlineDate ?? ''}
+              onChange={(event) =>
+                dispatch({
+                  type: 'set-deadline-date',
+                  value: event.target.value,
+                })
+              }
+              className='min-h-[40px] w-full sm:w-auto'
+            />
+          </div>
+        ) : null}
+      </div>
+    </fieldset>
   );
 }
