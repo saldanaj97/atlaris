@@ -2,10 +2,11 @@ import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 import { Button } from '@/components/ui/button';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { SectionOverline } from '@/components/ui/section-overline';
 import { planDetailPath } from '@/features/navigation/routes';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
 import { ArrowRight, Sparkles } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 interface PlanOverviewProps {
@@ -27,36 +28,25 @@ export function PlanOverviewHeader({
 
   return (
     <header className='relative isolate overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
-      <div
-        aria-hidden='true'
-        className='pointer-events-none absolute inset-0 hidden dark:block'
-      >
-        <Image
-          src='/artwork/planetary-horizon-desktop.jpg'
-          alt=''
-          aria-hidden='true'
-          width={1672}
-          height={640}
-          sizes='100vw'
-          className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-80 md:block'
-        />
-        <Image
-          src='/artwork/planetary-horizon-mobile.jpg'
-          alt=''
-          aria-hidden='true'
-          width={705}
-          height={941}
-          sizes='100vw'
-          className='absolute inset-0 size-full object-cover object-[68%_42%] opacity-75 md:hidden'
-        />
-        <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/90 to-panel/20' />
-      </div>
+      <ResponsiveBackdrop
+        desktop={{
+          src: '/artwork/planetary-horizon-desktop.jpg',
+          objectPosition: '78% 50%',
+          className: 'opacity-80',
+        }}
+        mobile={{
+          src: '/artwork/planetary-horizon-mobile.jpg',
+          objectPosition: '68% 42%',
+          className: 'opacity-75',
+        }}
+      />
 
       <div className='relative max-w-3xl'>
-        <p className='flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] text-primary uppercase'>
-          <Sparkles aria-hidden='true' className='size-4' />
+        <SectionOverline
+          icon={<Sparkles aria-hidden='true' className='size-4' />}
+        >
           Learning plan · {formatSkillLevel(plan.skillLevel)}
-        </p>
+        </SectionOverline>
         <h1 className='font-heading mt-3 max-w-2xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance wrap-break-word text-foreground sm:text-[40px]'>
           {plan.topic}
         </h1>

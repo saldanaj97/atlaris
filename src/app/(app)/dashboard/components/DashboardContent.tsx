@@ -9,12 +9,12 @@ import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearn
 import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { getDashboardPlanData } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import Image from 'next/image';
 import { redirect } from 'next/navigation';
 
 const WEEKLY_PACE_TITLE_ID = 'dashboard-weekly-pace-heading';
@@ -23,30 +23,18 @@ const WEEKLY_PACE_TITLE_ID = 'dashboard-weekly-pace-heading';
 function DashboardHero({ subtitle }: { subtitle: ReactNode }) {
   return (
     <div className='relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
-      <div
-        aria-hidden='true'
-        className='pointer-events-none absolute inset-0 hidden dark:block'
-      >
-        <Image
-          src='/artwork/planetary-horizon-desktop.jpg'
-          alt=''
-          aria-hidden='true'
-          width={1672}
-          height={640}
-          sizes='100vw'
-          className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-80 md:block'
-        />
-        <Image
-          src='/artwork/planetary-horizon-mobile.jpg'
-          alt=''
-          aria-hidden='true'
-          width={705}
-          height={941}
-          sizes='100vw'
-          className='absolute inset-y-0 right-0 h-full w-[76%] object-cover object-[68%_42%] opacity-75 md:hidden'
-        />
-        <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/90 to-panel/20' />
-      </div>
+      <ResponsiveBackdrop
+        desktop={{
+          src: '/artwork/planetary-horizon-desktop.jpg',
+          objectPosition: '78% 50%',
+          className: 'opacity-80',
+        }}
+        mobile={{
+          src: '/artwork/planetary-horizon-mobile.jpg',
+          objectPosition: '68% 42%',
+          className: 'inset-y-0 right-0 h-full w-[76%] opacity-75',
+        }}
+      />
 
       <PageHeader
         title='Dashboard'

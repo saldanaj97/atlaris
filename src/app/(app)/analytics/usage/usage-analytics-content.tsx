@@ -7,6 +7,8 @@ import type { ReactNode } from 'react';
 import { WeeklyLineChart } from './usage-analytics-charts';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
@@ -22,7 +24,6 @@ import {
   TrendingDown,
   TrendingUp,
 } from 'lucide-react';
-import Image from 'next/image';
 
 const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
 const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
@@ -242,36 +243,25 @@ export function UsageAnalyticsContent({
 function AnalyticsHero() {
   return (
     <header className='relative isolate overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
-      <div
-        aria-hidden='true'
-        className='pointer-events-none absolute inset-0 hidden dark:block'
-      >
-        <Image
-          src='/artwork/planetary-horizon-desktop.jpg'
-          alt=''
-          aria-hidden='true'
-          width={1672}
-          height={640}
-          sizes='100vw'
-          className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-80 md:block'
-        />
-        <Image
-          src='/artwork/planetary-horizon-mobile.jpg'
-          alt=''
-          aria-hidden='true'
-          width={705}
-          height={941}
-          sizes='100vw'
-          className='absolute inset-0 size-full object-cover object-[68%_42%] opacity-75 md:hidden'
-        />
-        <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/90 to-panel/20' />
-      </div>
+      <ResponsiveBackdrop
+        desktop={{
+          src: '/artwork/planetary-horizon-desktop.jpg',
+          objectPosition: '78% 50%',
+          className: 'opacity-80',
+        }}
+        mobile={{
+          src: '/artwork/planetary-horizon-mobile.jpg',
+          objectPosition: '68% 42%',
+          className: 'opacity-75',
+        }}
+      />
 
       <div className='relative max-w-2xl'>
-        <p className='flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] text-primary uppercase'>
-          <BarChart3 aria-hidden='true' className='size-4' />
+        <SectionOverline
+          icon={<BarChart3 aria-hidden='true' className='size-4' />}
+        >
           Analytics
-        </p>
+        </SectionOverline>
         <h1 className='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'>
           Learning <span className='text-primary'>analytics</span>
         </h1>
@@ -300,9 +290,9 @@ function SectionHeading({
   return (
     <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
       <div className='min-w-0'>
-        <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+        <SectionOverline className='tracking-[0.14em] text-muted-foreground'>
           {eyebrow}
-        </p>
+        </SectionOverline>
         <h2 id={id} className='mt-1 text-xl font-semibold text-foreground'>
           {title}
         </h2>

@@ -5,8 +5,9 @@ import type React from 'react';
 
 import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
 import { Card } from '@/components/ui/card';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { SectionOverline } from '@/components/ui/section-overline';
 import { Check, Sparkles } from 'lucide-react';
-import Image from 'next/image';
 
 export function CreatePlanPageClient({
   subscriptionTier,
@@ -16,36 +17,25 @@ export function CreatePlanPageClient({
   return (
     <div className='w-full space-y-6'>
       <header className='relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel px-5 py-7 sm:px-7 sm:py-8 lg:px-9 lg:py-10'>
-        <div
-          aria-hidden='true'
-          className='pointer-events-none absolute inset-0 hidden dark:block'
-        >
-          <Image
-            src='/artwork/planetary-horizon-desktop.jpg'
-            alt=''
-            aria-hidden='true'
-            width={1672}
-            height={640}
-            sizes='100vw'
-            className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-80 md:block'
-          />
-          <Image
-            src='/artwork/planetary-horizon-mobile.jpg'
-            alt=''
-            aria-hidden='true'
-            width={705}
-            height={941}
-            sizes='100vw'
-            className='absolute inset-0 size-full object-cover object-[68%_42%] opacity-75 md:hidden'
-          />
-          <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/90 to-panel/20' />
-        </div>
+        <ResponsiveBackdrop
+          desktop={{
+            src: '/artwork/planetary-horizon-desktop.jpg',
+            objectPosition: '78% 50%',
+            className: 'opacity-80',
+          }}
+          mobile={{
+            src: '/artwork/planetary-horizon-mobile.jpg',
+            objectPosition: '68% 42%',
+            className: 'opacity-75',
+          }}
+        />
 
         <div className='relative max-w-2xl'>
-          <p className='flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] text-primary uppercase'>
-            <Sparkles aria-hidden='true' className='size-4' />
+          <SectionOverline
+            icon={<Sparkles aria-hidden='true' className='size-4' />}
+          >
             Create your plan
-          </p>
+          </SectionOverline>
           <h1 className='font-heading mt-3 max-w-xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'>
             What do you want to <span className='text-primary'>learn?</span>
           </h1>

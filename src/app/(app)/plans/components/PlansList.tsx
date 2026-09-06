@@ -15,6 +15,7 @@ import {
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { Button } from '@/components/ui/button';
+import { CtaBanner } from '@/components/ui/cta-banner';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { SectionOverline } from '@/components/ui/section-overline';
 import { ROUTES } from '@/features/navigation/routes';
 import {
   ArrowRight,
@@ -32,7 +34,6 @@ import {
   ListFilter,
   Search,
 } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type RefObject, useRef, useState, useTransition } from 'react';
@@ -383,32 +384,10 @@ function PlansGrid({
 
 function PlansNextStep({ canCreatePlan }: { canCreatePlan: boolean }) {
   return (
-    <section
-      aria-labelledby='plans-next-step'
-      className='relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm'
-    >
-      <picture className='pointer-events-none absolute inset-0 hidden size-full dark:block'>
-        <source
-          media='(max-width: 767px)'
-          srcSet='/artwork/cta-mountain-mobile.jpg'
-        />
-        <Image
-          src='/artwork/cta-mountain-desktop.jpg'
-          alt=''
-          fill
-          sizes='100vw'
-          className='size-full object-cover object-[58%_50%]'
-        />
-        <div
-          aria-hidden='true'
-          className='absolute inset-0 bg-linear-to-r from-background via-background/90 to-background/15'
-        />
-      </picture>
+    <CtaBanner aria-labelledby='plans-next-step' artwork='mountain'>
       <div className='relative flex min-h-[14rem] flex-col justify-center gap-5 px-5 py-7 sm:min-h-[12rem] sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-8'>
         <div className='max-w-xl'>
-          <p className='text-[11px] font-medium tracking-[0.18em] text-primary uppercase'>
-            Ready for what&apos;s next?
-          </p>
+          <SectionOverline>Ready for what&apos;s next?</SectionOverline>
           <h2
             id='plans-next-step'
             className='font-heading mt-2 text-2xl tracking-[-0.02em] text-foreground sm:text-[28px]'
@@ -427,7 +406,7 @@ function PlansNextStep({ canCreatePlan }: { canCreatePlan: boolean }) {
           </Link>
         </Button>
       </div>
-    </section>
+    </CtaBanner>
   );
 }
 

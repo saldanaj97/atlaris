@@ -6,10 +6,11 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
 import { ModuleRoundNavLink } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleRoundNavLink';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { SectionOverline } from '@/components/ui/section-overline';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import { CheckCircle2, Clock3, ListChecks, Lock } from 'lucide-react';
-import Image from 'next/image';
 
 interface ModuleHeaderProps {
   module: ModuleDetailModule;
@@ -54,36 +55,26 @@ export function ModuleHeader({
       />
 
       <div className='relative isolate min-w-0 overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-sm'>
-        <div
-          aria-hidden='true'
-          className='pointer-events-none absolute inset-0'
-        >
-          <Image
-            src='/artwork/planetary-horizon-desktop.jpg'
-            alt=''
-            width={1672}
-            height={640}
-            sizes='100vw'
-            className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-10 sm:block dark:opacity-80'
-          />
-          <Image
-            src='/artwork/planetary-horizon-mobile.jpg'
-            alt=''
-            width={705}
-            height={941}
-            sizes='100vw'
-            className='absolute inset-0 size-full object-cover object-[68%_42%] opacity-10 sm:hidden dark:opacity-75'
-          />
-          <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/95 to-panel/35 dark:from-panel dark:via-panel/85 dark:to-panel/15' />
-        </div>
+        <ResponsiveBackdrop
+          desktop={{
+            src: '/artwork/planetary-horizon-desktop.jpg',
+            objectPosition: '78% 50%',
+            className: 'opacity-80 sm:block',
+          }}
+          mobile={{
+            src: '/artwork/planetary-horizon-mobile.jpg',
+            objectPosition: '68% 42%',
+            className: 'opacity-75 sm:hidden',
+          }}
+        />
 
         <div className='relative p-5 sm:p-6 md:p-8'>
           <div className='flex min-w-0 flex-col gap-6 sm:flex-row sm:items-end sm:justify-between'>
             <div className='max-w-3xl min-w-0'>
               <div className='flex min-w-0 items-center justify-between gap-4'>
-                <p className='min-w-0 text-[11px] font-medium tracking-[0.14em] text-primary uppercase'>
+                <SectionOverline className='min-w-0 tracking-[0.14em]'>
                   Module {module.order} of {totalModules}
-                </p>
+                </SectionOverline>
                 <div className='flex shrink-0 gap-2 sm:hidden'>
                   <ModuleRoundNavLink
                     planId={planId}
