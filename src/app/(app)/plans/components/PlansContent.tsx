@@ -70,14 +70,14 @@ export async function PlansHeaderCreateAction({
 
   if (result.plansPage.canCreatePlan === false) {
     return (
-      <Button asChild>
+      <Button asChild variant='cta'>
         <Link href={ROUTES.PRICING}>Upgrade</Link>
       </Button>
     );
   }
 
   return (
-    <Button asChild>
+    <Button asChild variant='cta'>
       <Link href={ROUTES.PLANS.NEW}>
         <Plus />
         New Plan

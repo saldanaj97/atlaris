@@ -2,6 +2,27 @@ import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 
 type DateInput = Date | string | null | undefined;
 
+const PLAN_COVER_IMAGES = [
+  '/artwork/cover-mountain-summit.jpg',
+  '/artwork/cover-observatory-night.jpg',
+  '/artwork/cover-lake-forest-dusk.jpg',
+  '/artwork/cover-coastal-inlet-dawn.jpg',
+  '/artwork/cover-planetary-horizon.jpg',
+] as const;
+
+/**
+ * Picks a stable library cover without coupling artwork to lifecycle state.
+ * Plan IDs are the only local input because the read projection carries no
+ * authored cover metadata.
+ */
+export function getPlanCoverImage(planId: string): string {
+  let hash = 0;
+  for (const character of planId) {
+    hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+  }
+  return PLAN_COVER_IMAGES[hash % PLAN_COVER_IMAGES.length];
+}
+
 /**
  * Converts a date to a human-readable relative time string.
  *
