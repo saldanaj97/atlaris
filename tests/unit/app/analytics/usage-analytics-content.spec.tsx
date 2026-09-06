@@ -1,7 +1,14 @@
 import type { UsageAnalyticsModel } from '@/app/(app)/analytics/usage/usage-analytics-model';
 
 import { UsageAnalyticsContent } from '@/app/(app)/analytics/usage/usage-analytics-content';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let observedResizeEntries: {
@@ -161,13 +168,20 @@ describe('UsageAnalyticsContent', () => {
     render(<UsageAnalyticsContent model={model} />);
     await resizeChart(780);
 
+    expect(
+      screen.getByRole('heading', { name: 'Learning analytics' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Current completion')).toBeInTheDocument();
+    expect(screen.getByText('Learning activity')).toBeInTheDocument();
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
-    expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
+    expect(
+      screen.getByText('Progress changes by plan and week.'),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
     expect(
       await screen.findByRole('figure', { name: 'Eight-week pulse' }),
     ).toHaveAccessibleDescription(
-      /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
+      /Progress changes by plan and week\..*Line chart showing progress changes by week for each plan\./,
     );
     expect(
       screen.getByText('Applied TypeScript Architecture'),
@@ -175,29 +189,38 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Database Performance')).toBeInTheDocument();
     expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
     expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('Eight-week pulse analytics design'),
-    ).toHaveClass('w-full');
-    expect(screen.getAllByText('Tasks')).toHaveLength(2);
-    expect(screen.getAllByText('47%')).toHaveLength(2);
-    expect(screen.getByText('28 / 60 complete')).toBeInTheDocument();
+    expect(screen.getByText('28 of 60 tasks complete')).toBeInTheDocument();
+    expect(screen.getByText('47%')).toBeInTheDocument();
     expect(screen.getByText('32 tasks left')).toBeInTheDocument();
-    expect(screen.getAllByText('Modules')).toHaveLength(2);
-    expect(screen.getAllByText('44%')).toHaveLength(2);
-    expect(screen.getByText('8 / 18 complete')).toBeInTheDocument();
+    expect(screen.getByText('8 of 18 modules complete')).toBeInTheDocument();
+    expect(screen.getByText('44%')).toBeInTheDocument();
     expect(screen.getByText('10 modules left')).toBeInTheDocument();
     expect(screen.getByText('Completed time')).toBeInTheDocument();
-    expect(screen.getAllByText('16 hrs')).toHaveLength(2);
+    expect(screen.getByText('16 hrs')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estimated completed learning time'),
+    ).toBeInTheDocument();
     expect(screen.getByText('41 hrs planned total')).toBeInTheDocument();
-    expect(screen.getByText('-1.5 hrs vs last week')).toBeInTheDocument();
-    expect(screen.getAllByText('Active days')).toHaveLength(2);
-    expect(screen.getAllByText('3/7')).toHaveLength(2);
+    const activitySection = screen.getByRole('region', {
+      name: 'Learning activity',
+    });
+    expect(
+      within(activitySection).getByText('Progress changes'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('-3 changes vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Completed events')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('-2 events vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Active days')).toBeInTheDocument();
+    expect(screen.getByText('3/7')).toBeInTheDocument();
     expect(screen.getByText('-2 days vs last week')).toBeInTheDocument();
     expect(screen.getByText('Streak')).toBeInTheDocument();
     expect(screen.getByText('4 days')).toBeInTheDocument();
     expect(screen.getByText('Best 6 days')).toBeInTheDocument();
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Down')).toHaveLength(4);
+    expect(screen.getAllByLabelText('Down')).toHaveLength(3);
+    expect(screen.queryByLabelText('Up')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
