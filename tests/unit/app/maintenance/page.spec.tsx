@@ -9,6 +9,7 @@ describe('MaintenancePage', () => {
     const main = screen.getByRole('main');
     const footer = screen.getByRole('contentinfo');
 
+    expect(main).toHaveAttribute('tabindex', '-1');
     expect(main).toContainElement(
       screen.getByRole('heading', {
         level: 1,

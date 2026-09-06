@@ -55,19 +55,19 @@ export default function MobileHeader({
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
   const appCtaHref = !isAuthenticated
-    ? ROUTES.AUTH.SIGN_IN
+    ? ROUTES.PLANS.NEW
     : canCreatePlan === true
       ? ROUTES.PLANS.NEW
       : canCreatePlan === false
         ? ROUTES.PRICING
         : undefined;
   const appCtaAriaLabel = !isAuthenticated
-    ? 'Sign in'
+    ? 'Create new plan'
     : canCreatePlan === false
       ? 'Upgrade'
       : 'Create new plan';
   const appCtaTooltip = !isAuthenticated
-    ? 'Sign in'
+    ? 'New plan'
     : canCreatePlan === false
       ? 'Upgrade'
       : 'New plan';

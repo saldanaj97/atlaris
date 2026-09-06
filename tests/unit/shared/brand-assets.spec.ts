@@ -25,6 +25,14 @@ describe('brand social assets', () => {
     }
   });
 
+  it('keeps the root favicon compatibility asset available', () => {
+    const favicon = readFileSync(join(process.cwd(), 'public', 'favicon.ico'));
+
+    expect(favicon.subarray(0, 4)).toEqual(Buffer.from([0, 0, 1, 0]));
+    expect(favicon.readUInt16LE(4)).toBe(2);
+    expect([favicon[6], favicon[22]]).toEqual([16, 32]);
+  });
+
   it('publishes an opaque 180px Apple touch icon through root metadata', () => {
     const iconPath = join(
       process.cwd(),

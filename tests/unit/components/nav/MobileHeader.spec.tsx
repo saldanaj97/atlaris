@@ -1,6 +1,6 @@
 import MobileHeader from '@/components/shared/nav/MobileHeader';
 import { TooltipProvider } from '@/components/ui/tooltip';
-import { cleanup, render } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const mobileNavigationMock = vi.hoisted(() =>
@@ -92,5 +92,23 @@ describe('MobileHeader layout', () => {
     );
     expect(drawerProps).not.toHaveProperty('showClerkUserButton');
     expect(drawerProps).not.toHaveProperty('userImageUrl');
+  });
+
+  it('routes signed-out nonmarketing topbar action to the plan form', () => {
+    render(
+      <TooltipProvider>
+        <MobileHeader
+          isMarketing={false}
+          pathname='/auth/sign-in'
+          navItems={[]}
+          isAuthenticated={false}
+          showClerkUserButton={false}
+        />
+      </TooltipProvider>,
+    );
+
+    expect(
+      screen.getByRole('link', { name: 'Create new plan' }),
+    ).toHaveAttribute('href', '/plans/new');
   });
 });

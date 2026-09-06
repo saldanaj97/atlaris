@@ -18,6 +18,7 @@ export default function AppLayout({
       <main
         id='main-content'
         className={`flex-1 ${APP_SHELL_MAIN_OFFSET} ${APP_SHELL_SIDEBAR_OFFSET}`}
+        tabIndex={-1}
       >
         <PageShell>{children}</PageShell>
       </main>

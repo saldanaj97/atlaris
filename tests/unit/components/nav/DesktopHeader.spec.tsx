@@ -72,6 +72,22 @@ describe('DesktopHeader layout', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('routes signed-out nonmarketing create action to the plan form', () => {
+    renderDesktopHeader({
+      isMarketing: false,
+      pathname: '/auth/sign-in',
+      navItems: unauthenticatedNavItems,
+      canCreatePlan: undefined,
+      isAuthenticated: false,
+      showClerkUserButton: false,
+    });
+
+    expect(screen.getByRole('link', { name: 'New Plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
+  });
+
   it('leaves app-shell navigation and branding to the sidebar', () => {
     const { container } = renderDesktopHeader({ isAppShell: true });
 

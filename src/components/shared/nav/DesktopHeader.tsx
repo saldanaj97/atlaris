@@ -52,7 +52,7 @@ export default function DesktopHeader({
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
   const appCtaHref = !isAuthenticated
-    ? ROUTES.AUTH.SIGN_IN
+    ? ROUTES.PLANS.NEW
     : canCreatePlan === true
       ? ROUTES.PLANS.NEW
       : canCreatePlan === false

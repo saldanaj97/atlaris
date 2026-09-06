@@ -500,9 +500,9 @@ export function PlansList({ page, query }: PlansListProps) {
 
   return (
     <div className='space-y-6'>
-      <div className='flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between'>
+      <div className='flex flex-col gap-3'>
         <PlansStatusRail page={page} query={query} />
-        <div className='flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center xl:max-w-[30rem]'>
+        <div className='flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center'>
           <PlansSearch query={query} searchInputRef={searchInputRef} />
           <PlansSort query={query} />
         </div>

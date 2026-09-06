@@ -25,6 +25,7 @@ export default function MaintenancePage() {
       <main
         id='main-content'
         className='relative isolate flex flex-1 flex-col overflow-hidden'
+        tabIndex={-1}
       >
         <ResponsiveBackdrop
           desktop={{

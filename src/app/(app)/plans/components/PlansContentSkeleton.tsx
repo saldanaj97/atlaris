@@ -5,7 +5,7 @@ import { Search } from 'lucide-react';
 export function PlansContentSkeleton() {
   return (
     <div className='space-y-6' aria-busy='true' aria-label='Loading plans'>
-      <div className='flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between'>
+      <div className='flex flex-col gap-3'>
         <div className='flex min-w-0 items-center gap-1 overflow-hidden rounded-[12px] border border-panel-border bg-panel p-1'>
           {[1, 2, 3, 4, 5].map((item) => (
             <Skeleton
@@ -14,7 +14,7 @@ export function PlansContentSkeleton() {
             />
           ))}
         </div>
-        <div className='flex items-center gap-2 xl:max-w-[30rem] xl:flex-1'>
+        <div className='flex items-center gap-2'>
           <div className='relative flex-1'>
             <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
             <Skeleton className='h-10 w-full rounded-[8px]' />
