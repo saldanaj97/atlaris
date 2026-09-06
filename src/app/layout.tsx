@@ -69,7 +69,6 @@ export const metadata: Metadata = {
   description: metadataDescription,
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: '32x32' },
       { url: '/brand/favicon.svg', type: 'image/svg+xml' },
       { url: '/brand/favicon-16.svg', sizes: '16x16', type: 'image/svg+xml' },
       { url: '/brand/favicon-32.svg', sizes: '32x32', type: 'image/svg+xml' },
@@ -86,8 +85,9 @@ export const metadata: Metadata = {
     ],
     apple: [
       {
-        url: '/brand/favicon-on-light.svg',
-        type: 'image/svg+xml',
+        url: '/brand/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
       },
     ],
   },
