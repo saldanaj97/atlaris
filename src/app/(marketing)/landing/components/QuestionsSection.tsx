@@ -1,5 +1,5 @@
 import { RevealAnimation } from './RevealAnimation';
-import { SectionOverline } from './SectionOverline';
+import { SectionOverline } from '@/components/ui/section-overline';
 
 import styles from './landing.module.css';
 
@@ -34,7 +34,9 @@ export function QuestionsSection() {
     >
       <RevealAnimation>
         <div className='text-center'>
-          <SectionOverline>Quiet questions</SectionOverline>
+          <SectionOverline className='justify-center'>
+            Quiet questions
+          </SectionOverline>
           <h2
             id='landing-questions-heading'
             className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
