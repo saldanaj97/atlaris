@@ -10,7 +10,7 @@ import { APP_SHELL_HEADER_TUCK } from '@/components/layout/app-shell-width';
 
 import styles from './about.module.css';
 
-/** After Hours about page composition. */
+/** About page composition. */
 export function About() {
   return (
     <MarketingPageShell>
@@ -18,9 +18,9 @@ export function About() {
       <div className='relative z-10'>
         <AboutHero />
         <Hairline />
-        <BuilderSection />
         <SkySection />
         <MethodSection />
+        <BuilderSection />
         <ContactSection />
         <CloseSection />
       </div>

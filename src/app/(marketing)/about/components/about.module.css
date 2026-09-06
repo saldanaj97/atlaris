@@ -1,6 +1,55 @@
-/* After Hours about motion. Keep movement quiet, composited, and one-shot. */
+/* About page motion and composed marketing surfaces. */
+
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.heroBackdrop {
+  left: 35%;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 80rem);
+  margin-inline: auto;
+  padding: 3.5rem 1.5rem 4rem;
+}
+
+.heroCopyBlock {
+  max-width: 34rem;
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 2.25rem;
+}
+
+.closeBanner {
+  width: min(calc(100% - 3rem), 80rem);
+  margin: 2rem auto 3rem;
+}
+
+.closeContent {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  padding: 2rem 1.5rem;
+}
 
 .revealItem {
+  opacity: 1;
+  transform: none;
+}
+
+.revealFromLeft,
+.revealFromRight {
   opacity: 1;
   transform: none;
 }
@@ -10,7 +59,18 @@
   transform: translate3d(0, 1.25rem, 0);
 }
 
-.reveal[data-reveal-state='visible'] .revealItem {
+.reveal[data-reveal-state='observing'] .revealFromLeft {
+  opacity: 0;
+  transform: translate3d(-1.5rem, 0, 0);
+}
+
+.reveal[data-reveal-state='observing'] .revealFromRight {
+  opacity: 0;
+  transform: translate3d(1.5rem, 0, 0);
+}
+
+.reveal[data-reveal-state='visible']
+  :is(.revealItem, .revealFromLeft, .revealFromRight) {
   transition:
     opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
     transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
@@ -102,6 +162,22 @@
   }
 }
 
+@media (min-width: 640px) {
+  .heroContent {
+    padding: 4.5rem 2rem 5rem;
+  }
+
+  .closeContent {
+    padding: 2.5rem 2rem;
+  }
+}
+
+@media (max-width: 767px) {
+  .heroBackdrop {
+    left: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .heroOverline,
   .heroLead,
@@ -112,6 +188,12 @@
   }
 
   .reveal[data-reveal-state] .revealItem {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .reveal[data-reveal-state] :is(.revealFromLeft, .revealFromRight) {
     opacity: 1;
     transform: none;
     transition: none;

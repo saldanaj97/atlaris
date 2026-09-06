@@ -1,5 +1,5 @@
 import { RevealAnimation } from './RevealAnimation';
-import { SectionOverline } from './SectionOverline';
+import { SectionOverline } from '@/components/ui/section-overline';
 
 import styles from './about.module.css';
 
@@ -22,24 +22,28 @@ const IT_DOES_NOT = [
 export function MethodSection() {
   return (
     <section
-      className='mx-auto max-w-3xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
       aria-labelledby='about-method-heading'
     >
       <RevealAnimation>
-        <div className='text-center'>
-          <SectionOverline>The method</SectionOverline>
-          <h2
-            id='about-method-heading'
-            className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-            style={{ ['--i' as string]: 1 }}
-          >
-            What the AI does.
-            <span className='block font-medium text-muted-foreground italic'>
-              And what it leaves to you.
-            </span>
-          </h2>
+        <div className='grid gap-6 md:grid-cols-2 md:items-end md:gap-14'>
+          <div>
+            <SectionOverline className={styles.revealItem}>
+              The method
+            </SectionOverline>
+            <h2
+              id='about-method-heading'
+              className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              style={{ ['--i' as string]: 1 }}
+            >
+              What the AI does.
+              <span className='block font-medium text-muted-foreground italic'>
+                And what it leaves to you.
+              </span>
+            </h2>
+          </div>
           <p
-            className={`mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+            className={`max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
             style={{ ['--i' as string]: 2 }}
           >
             You give Atlaris a goal, your level, the hours you have each week,
@@ -52,11 +56,17 @@ export function MethodSection() {
       </RevealAnimation>
 
       <RevealAnimation>
-        <div
-          className={`mt-10 rounded-4xl border border-border/50 bg-card p-6 shadow-sm md:p-7 ${styles.revealItem}`}
-        >
-          <div className='grid gap-8 md:grid-cols-2'>
+        <div className='mt-10 grid gap-4 md:grid-cols-2'>
+          <div
+            className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            style={{ ['--i' as string]: 0 }}
+          >
             <MethodList title='It does' items={IT_DOES} />
+          </div>
+          <div
+            className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            style={{ ['--i' as string]: 1 }}
+          >
             <MethodList title='It does not' items={IT_DOES_NOT} />
           </div>
         </div>
