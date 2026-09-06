@@ -1,6 +1,5 @@
 'use client';
 
-import { LedgerRow } from '@/app/(app)/settings/components/LedgerPrimitives';
 import {
   type ProfileData,
   requestProfile,
@@ -155,6 +154,19 @@ function focusNameInput(node: HTMLInputElement | null): void {
   }
 }
 
+function getProfileInitials(name: string): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
+  return initials || '?';
+}
+
 export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   const profileNameInputId = useId();
 
@@ -222,84 +234,104 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   );
 
   return (
-    <>
-      <LedgerRow label='Name'>
+    <div className='space-y-5'>
+      <div className='rounded-xl border border-panel-border bg-panel-muted/30 p-4 sm:p-5'>
         {state.editingName ? (
-          <div className='flex items-center gap-2'>
-            <Input
-              ref={focusNameInput}
-              id={profileNameInputId}
-              type='text'
-              value={state.name}
-              aria-label='Name'
-              className='w-44'
-              onChange={(event) =>
-                dispatch({ type: 'name-changed', name: event.target.value })
-              }
-              onBlur={() => {
-                if (!isDirty) {
-                  dispatch({ type: 'stop-editing' });
-                }
-              }}
-            />
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              disabled={state.saving}
-              onClick={() => {
-                dispatch({ type: 'cancel-editing' });
-              }}
+          <div className='space-y-3'>
+            <label
+              htmlFor={profileNameInputId}
+              className='text-sm font-medium text-foreground'
             >
-              Cancel
-            </Button>
-            {isDirty ? (
-              <Button
-                size='sm'
-                disabled={state.saving}
-                onClick={() => {
-                  void handleSave();
+              Display name
+            </label>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+              <Input
+                ref={focusNameInput}
+                id={profileNameInputId}
+                type='text'
+                value={state.name}
+                aria-label='Name'
+                className='min-w-0 flex-1'
+                onChange={(event) =>
+                  dispatch({ type: 'name-changed', name: event.target.value })
+                }
+                onBlur={() => {
+                  if (!isDirty) {
+                    dispatch({ type: 'stop-editing' });
+                  }
                 }}
-              >
-                {state.saving ? 'Saving…' : 'Save Changes'}
-              </Button>
-            ) : null}
+              />
+              <div className='flex shrink-0 items-center gap-2'>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='sm'
+                  disabled={state.saving}
+                  onClick={() => {
+                    dispatch({ type: 'cancel-editing' });
+                  }}
+                >
+                  Cancel
+                </Button>
+                {isDirty ? (
+                  <Button
+                    size='sm'
+                    disabled={state.saving}
+                    onClick={() => {
+                      void handleSave();
+                    }}
+                  >
+                    {state.saving ? 'Saving…' : 'Save Changes'}
+                  </Button>
+                ) : null}
+              </div>
+            </div>
           </div>
         ) : (
-          <>
-            <button
-              type='button'
-              className='text-left text-foreground'
-              onClick={() => {
-                dispatch({ type: 'start-editing' });
-              }}
+          <div className='flex min-w-0 items-start gap-4'>
+            <div
+              aria-hidden='true'
+              className='flex size-12 shrink-0 items-center justify-center rounded-full border border-primary/60 bg-primary/10 text-base font-semibold text-primary'
             >
-              {state.name || 'No name set'}
-            </button>
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon-sm'
-              aria-label='Edit name'
-              onClick={() => {
-                dispatch({ type: 'start-editing' });
-              }}
-            >
-              <Pencil />
-            </Button>
-          </>
+              {getProfileInitials(state.name)}
+            </div>
+            <div className='min-w-0 flex-1'>
+              <div className='flex flex-wrap items-center gap-2'>
+                <button
+                  type='button'
+                  className='max-w-full min-w-0 text-left text-base font-semibold break-words text-foreground hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel focus-visible:outline-none'
+                  onClick={() => {
+                    dispatch({ type: 'start-editing' });
+                  }}
+                >
+                  {state.name || 'No name set'}
+                </button>
+                <Button
+                  type='button'
+                  variant='ghost'
+                  size='icon-sm'
+                  aria-label='Edit name'
+                  onClick={() => {
+                    dispatch({ type: 'start-editing' });
+                  }}
+                >
+                  <Pencil />
+                </Button>
+              </div>
+              <p className='mt-1 text-sm break-words text-muted-foreground'>
+                {state.profile.email ?? 'Unavailable'}
+              </p>
+              <p className='mt-1 text-xs text-muted-foreground'>
+                Member since <span>{memberSince}</span>
+              </p>
+            </div>
+          </div>
         )}
-      </LedgerRow>
+      </div>
 
-      <LedgerRow label='Email' hint='Managed by your sign-in provider.'>
-        <span className='text-foreground'>
-          {state.profile.email ?? 'Unavailable'}
-        </span>
-      </LedgerRow>
-
-      <LedgerRow label='Member since'>
-        <span className='text-foreground'>{memberSince}</span>
-      </LedgerRow>
-    </>
+      <p className='text-xs leading-relaxed text-muted-foreground'>
+        Your email address is managed by your sign-in provider.
+      </p>
+    </div>
   );
 }

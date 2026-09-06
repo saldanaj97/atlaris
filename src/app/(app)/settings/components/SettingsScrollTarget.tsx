@@ -21,6 +21,21 @@ function scrollToSection(sectionId: SettingsSectionId): void {
   });
 }
 
+function setActiveSection(sectionId: SettingsSectionId): void {
+  document
+    .querySelectorAll<HTMLElement>('[data-settings-section-link]')
+    .forEach((link) => {
+      const isActive = link.dataset.sectionId === sectionId;
+      link.dataset.active = isActive ? 'true' : 'false';
+
+      if (isActive) {
+        link.setAttribute('aria-current', 'location');
+      } else {
+        link.removeAttribute('aria-current');
+      }
+    });
+}
+
 export function SettingsScrollTarget(): ReactElement | null {
   const pathname = usePathname();
 
@@ -30,7 +45,10 @@ export function SettingsScrollTarget(): ReactElement | null {
 
       const sectionId = parseSectionHash(window.location.hash);
       if (sectionId) {
+        setActiveSection(sectionId);
         scrollToSection(sectionId);
+      } else {
+        setActiveSection('profile');
       }
     };
 

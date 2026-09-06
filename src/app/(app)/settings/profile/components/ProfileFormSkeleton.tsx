@@ -2,24 +2,19 @@ import type { ReactElement } from 'react';
 
 import { Skeleton } from '@/components/ui/skeleton';
 
-/**
- * Skeleton for profile ledger rows.
- */
+/** Skeleton for the profile summary and editable name control. */
 export function ProfileFormSkeleton(): ReactElement {
   return (
-    <>
-      <div className='flex items-center justify-between gap-4 py-3.5'>
-        <Skeleton className='h-4 w-12' />
-        <Skeleton className='h-4 w-32' />
+    <div className='space-y-5'>
+      <div className='flex min-w-0 items-start gap-4 rounded-xl border border-panel-border bg-panel-muted/30 p-4 sm:p-5'>
+        <Skeleton className='size-12 shrink-0 rounded-full' />
+        <div className='min-w-0 flex-1 space-y-2'>
+          <Skeleton className='h-5 w-32' />
+          <Skeleton className='h-4 w-44 max-w-full' />
+          <Skeleton className='h-3 w-36 max-w-full' />
+        </div>
       </div>
-      <div className='flex items-center justify-between gap-4 py-3.5'>
-        <Skeleton className='h-4 w-12' />
-        <Skeleton className='h-4 w-40' />
-      </div>
-      <div className='flex items-center justify-between gap-4 py-3.5'>
-        <Skeleton className='h-4 w-24' />
-        <Skeleton className='h-4 w-28' />
-      </div>
-    </>
+      <Skeleton className='h-3 w-64 max-w-full' />
+    </div>
   );
 }
