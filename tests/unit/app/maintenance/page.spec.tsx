@@ -12,9 +12,21 @@ describe('MaintenancePage', () => {
     expect(main).toContainElement(
       screen.getByRole('heading', {
         level: 1,
-        name: 'Atlaris is temporarily unavailable',
+        name: 'We’ll be back soon.',
       }),
     );
+    const status = within(main).getByRole('region', {
+      name: 'System improvements in progress',
+    });
+    expect(
+      within(status).getByRole('heading', {
+        level: 2,
+        name: 'System improvements in progress',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(status).getByText(/Please try again in a few minutes\./),
+    ).toBeInTheDocument();
     expect(main.nextElementSibling).toBe(footer);
     expect(
       within(footer).getByRole('link', { name: 'support@atlaris.app' }),
