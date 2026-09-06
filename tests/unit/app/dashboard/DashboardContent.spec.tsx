@@ -1,4 +1,7 @@
-import { DashboardContent } from '@/app/(app)/dashboard/components/DashboardContent';
+import {
+  DashboardContent,
+  DashboardContentSkeleton,
+} from '@/app/(app)/dashboard/components/DashboardContent';
 import { render, screen } from '@testing-library/react';
 import {
   buildModuleRows,
@@ -33,6 +36,14 @@ describe('DashboardContent', () => {
     );
   });
 
+  it('names the dashboard loading region while data is pending', () => {
+    render(<DashboardContentSkeleton />);
+
+    expect(
+      screen.getByRole('region', { name: 'Loading dashboard' }),
+    ).toHaveAttribute('aria-busy', 'true');
+  });
+
   it('does not fabricate progress before weekly activity is available', async () => {
     const { modules: _modules, ...plan } = buildPlan({
       generationStatus: 'ready',
@@ -54,6 +65,27 @@ describe('DashboardContent', () => {
     expect(
       screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders a zero-hour weekly target as reported', async () => {
+    const { modules: _modules, ...plan } = buildPlan({
+      generationStatus: 'ready',
+      topic: 'TypeScript',
+      weeklyHours: 0,
+    });
+    const summary = buildPlanSummary({
+      plan,
+      modules: buildModuleRows(plan.id, 1),
+    });
+    mocks.getDashboardPlanDataMock.mockResolvedValue({
+      summaries: [summary],
+      resumePlan: summary,
+    });
+
+    render(await DashboardContent());
+
+    expect(screen.getByText('0 hrs planned')).toBeVisible();
+    expect(screen.queryByText('No pace set yet')).not.toBeInTheDocument();
   });
 
   it('routes the empty dashboard CTA to pricing after Free lifetime access is used', async () => {

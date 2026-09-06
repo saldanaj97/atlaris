@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import {
   generateActivities,
   getDashboardGreeting,
@@ -12,19 +14,64 @@ import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { getDashboardPlanData } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import Image from 'next/image';
 import { redirect } from 'next/navigation';
 
+const WEEKLY_PACE_TITLE_ID = 'dashboard-weekly-pace-heading';
+
+/** Decorative dashboard introduction with the same text-safe horizon treatment as other app pages. */
+function DashboardHero({ subtitle }: { subtitle: ReactNode }) {
+  return (
+    <div className='relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
+      <div
+        aria-hidden='true'
+        className='pointer-events-none absolute inset-0 hidden dark:block'
+      >
+        <Image
+          src='/artwork/planetary-horizon-desktop.jpg'
+          alt=''
+          aria-hidden='true'
+          width={1672}
+          height={640}
+          sizes='100vw'
+          className='absolute inset-0 hidden size-full object-cover object-[78%_50%] opacity-80 md:block'
+        />
+        <Image
+          src='/artwork/planetary-horizon-mobile.jpg'
+          alt=''
+          aria-hidden='true'
+          width={705}
+          height={941}
+          sizes='100vw'
+          className='absolute inset-y-0 right-0 h-full w-[76%] object-cover object-[68%_42%] opacity-75 md:hidden'
+        />
+        <div className='absolute inset-0 bg-linear-to-r from-panel via-panel/90 to-panel/20' />
+      </div>
+
+      <PageHeader
+        title='Dashboard'
+        subtitle={subtitle}
+        className='relative z-10 mb-0 max-w-2xl px-5 py-7 sm:px-7 sm:py-8 lg:px-9 lg:py-10'
+      />
+    </div>
+  );
+}
+
 function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
-  if (!weeklyHours) {
+  if (weeklyHours == null) {
     return (
       <Card
         as='aside'
+        aria-labelledby={WEEKLY_PACE_TITLE_ID}
         className='h-full p-6 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'
       >
         <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
           This week
         </p>
-        <h2 className='mt-6 text-xl font-semibold text-foreground'>
+        <h2
+          id={WEEKLY_PACE_TITLE_ID}
+          className='mt-6 text-xl font-semibold text-foreground'
+        >
           No pace set yet
         </h2>
         <p className='mt-2 text-sm text-muted-foreground'>
@@ -37,6 +84,7 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
   return (
     <Card
       as='aside'
+      aria-labelledby={WEEKLY_PACE_TITLE_ID}
       className='h-full p-6 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-7'
     >
       <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
@@ -51,7 +99,10 @@ function WeeklyPace({ weeklyHours }: { weeklyHours?: number }) {
       </div>
 
       <div className='mt-6 border-t border-border/50 pt-4'>
-        <h2 className='text-base font-medium text-foreground'>
+        <h2
+          id={WEEKLY_PACE_TITLE_ID}
+          className='text-base font-medium text-foreground'
+        >
           Progress tracking coming soon
         </h2>
         <p className='mt-1 text-sm text-muted-foreground'>
@@ -90,10 +141,7 @@ export async function DashboardContent() {
 
   return (
     <>
-      <PageHeader
-        title='Dashboard'
-        subtitle={getDashboardGreeting(name, activePlan)}
-      />
+      <DashboardHero subtitle={getDashboardGreeting(name, activePlan)} />
 
       <div className='space-y-8'>
         <div className='grid gap-6 md:grid-cols-[minmax(0,1.55fr)_minmax(16rem,0.65fr)]'>
@@ -124,9 +172,8 @@ export async function DashboardContent() {
  */
 export function DashboardContentSkeleton() {
   return (
-    <>
-      <PageHeader
-        title='Dashboard'
+    <section aria-label='Loading dashboard' aria-busy='true'>
+      <DashboardHero
         subtitle={<Skeleton className='h-4 w-72 max-w-full bg-muted' />}
       />
 
@@ -148,7 +195,11 @@ export function DashboardContentSkeleton() {
             </Card>
           </section>
 
-          <Card as='aside' className='p-6 sm:p-7'>
+          <Card
+            as='aside'
+            aria-label='Weekly pace loading'
+            className='p-6 sm:p-7'
+          >
             <Skeleton className='h-3 w-20 bg-secondary' />
             <Skeleton className='mt-8 h-9 w-28' />
             <Skeleton className='mt-2 h-4 w-32 bg-muted' />
@@ -181,6 +232,6 @@ export function DashboardContentSkeleton() {
           </Card>
         </section>
       </div>
-    </>
+    </section>
   );
 }
