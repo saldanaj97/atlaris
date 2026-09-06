@@ -7,22 +7,22 @@ import { Surface } from '@/components/ui/surface';
  */
 export function ModuleDetailContentSkeleton() {
   return (
-    <div className='space-y-8'>
+    <section aria-label='Loading module' aria-busy='true' className='space-y-8'>
       {/* ModuleHeader skeleton */}
       <article className='mb-8'>
         {/* Breadcrumb Navigation skeleton */}
-        <nav className='mb-6'>
-          <ol className='flex items-center gap-1 text-sm'>
-            <li>
+        <nav className='mb-6 min-w-0' aria-hidden='true'>
+          <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 text-sm'>
+            <li className='max-w-full min-w-0'>
               <div className='flex items-center gap-1.5 rounded-lg px-2.5 py-1.5'>
                 <Skeleton className='size-3.5' />
                 <Skeleton className='h-4 w-32' />
               </div>
             </li>
-            <li>
+            <li className='shrink-0'>
               <Skeleton className='size-4' />
             </li>
-            <li>
+            <li className='max-w-full min-w-0'>
               <Skeleton className='h-8 w-24 rounded-lg' />
             </li>
           </ol>
@@ -52,7 +52,7 @@ export function ModuleDetailContentSkeleton() {
       </article>
 
       {/* Lessons Section skeleton */}
-      <section>
+      <section aria-hidden='true'>
         <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
           <Skeleton className='h-3 w-20 bg-secondary' />
           <Skeleton className='h-3 w-24' />
@@ -67,7 +67,7 @@ export function ModuleDetailContentSkeleton() {
           ))}
         </div>
       </section>
-    </div>
+    </section>
   );
 }
 

@@ -27,9 +27,9 @@ type LessonResources = NonNullable<ModuleDetailTask['resources']>;
 
 function LockedContentOverlay() {
   return (
-    <div className='relative min-h-75 overflow-hidden rounded-xl border border-border/50'>
-      <div className='flex min-h-75 items-center justify-center bg-background/90 p-8 dark:bg-background/85'>
-        <div className='max-w-sm rounded-lg border border-panel-border bg-panel p-8 text-center text-panel-foreground shadow-sm'>
+    <div className='relative min-h-64 w-full max-w-full min-w-0 overflow-hidden rounded-xl border border-border/50'>
+      <div className='flex min-h-64 min-w-0 items-center justify-center bg-background/90 p-4 sm:p-8 dark:bg-background/85'>
+        <div className='w-full max-w-sm min-w-0 rounded-lg border border-panel-border bg-panel p-5 text-center text-panel-foreground shadow-sm sm:p-8'>
           <div className='mb-4 flex justify-center'>
             <div className='flex size-16 items-center justify-center rounded-full bg-muted'>
               <Lock className='size-8 text-muted-foreground/50' />
@@ -38,7 +38,7 @@ function LockedContentOverlay() {
           <h3 className='mb-2 text-lg font-semibold text-foreground'>
             Lesson Locked
           </h3>
-          <p className='max-w-xs text-sm text-muted-foreground'>
+          <p className='mx-auto max-w-xs text-sm break-words text-muted-foreground'>
             Complete the previous lessons to unlock this content.
           </p>
         </div>
@@ -88,18 +88,19 @@ export function LessonAccordionItem({
     <AccordionItem
       value={lesson.id}
       disabled={isLocked}
+      id={`lesson-${lesson.id}`}
       data-progress-state={
         isLocked ? 'locked' : isCompleted ? 'completed' : 'active'
       }
       className={cn(
-        'rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
+        'min-w-0 max-w-full overflow-hidden rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
         getLessonCardClassName(isLocked, isCompleted),
       )}
     >
       <AccordionTrigger
         hideChevron={false}
         className={cn(
-          'items-center px-6 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180',
+          'min-w-0 items-start px-4 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180 sm:px-6',
           isLocked && 'cursor-not-allowed',
         )}
       >
@@ -111,7 +112,7 @@ export function LessonAccordionItem({
         />
       </AccordionTrigger>
 
-      <AccordionContent className='px-6 pb-6'>
+      <AccordionContent className='min-w-0 px-4 pb-4 sm:px-6 sm:pb-6'>
         <div className='border-t border-border/50 pt-6'>
           {isLocked ? (
             <LockedContentOverlay />

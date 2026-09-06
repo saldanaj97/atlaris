@@ -66,7 +66,7 @@ function ResourceSummary({
   return (
     <div
       className={cn(
-        'mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm',
+        'mb-3 ml-11 flex min-w-0 flex-wrap items-center gap-4 text-sm',
         getLessonMutedTextClassName(isLocked),
       )}
     >
@@ -91,8 +91,8 @@ export function LessonAccordionTriggerContent({
 }) {
   return (
     <>
-      <div className='flex-1 text-left'>
-        <div className='mb-2 flex items-center gap-3'>
+      <div className='min-w-0 flex-1 text-left'>
+        <div className='mb-2 flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2'>
           <LessonMarker
             lesson={lesson}
             isCompleted={isCompleted}
@@ -100,7 +100,7 @@ export function LessonAccordionTriggerContent({
           />
           <h3
             className={cn(
-              'text-lg font-semibold',
+              'min-w-0 flex-1 break-words text-base font-semibold sm:text-lg',
               getLessonTitleClassName(isLocked, isCompleted),
             )}
           >
@@ -116,7 +116,7 @@ export function LessonAccordionTriggerContent({
         {lesson.description ? (
           <p
             className={cn(
-              'mb-3 ml-11 text-sm leading-relaxed',
+              'mb-3 ml-11 min-w-0 break-words text-sm leading-relaxed',
               getLessonMutedTextClassName(isLocked),
             )}
           >
