@@ -9,24 +9,31 @@ const TIMELINE_MODULE_THEME: Record<
   { marker: string; card: string; badge: string; title: string }
 > = {
   completed: {
-    marker: 'border-success text-success',
-    card: 'border-panel-border bg-panel shadow-sm',
+    marker: 'border-success bg-success/10 text-success',
+    card: 'border-success/30 bg-panel shadow-sm',
     badge:
       'bg-success/15 text-success dark:bg-success/25 dark:text-success-foreground',
     title: 'text-foreground/90',
   },
   active: {
-    marker: 'scale-110 border-primary text-primary',
+    marker:
+      'scale-110 border-primary bg-primary/10 text-primary ring-4 ring-primary/10',
     card: 'border-primary/30 bg-panel shadow-sm dark:border-primary/50',
     badge: 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary',
     title: 'text-foreground',
   },
   locked: {
-    marker: 'border-muted-foreground/60 text-muted-foreground/70',
+    marker: 'border-border bg-panel-muted text-muted-foreground',
     card: 'border-border bg-panel-muted shadow-sm dark:bg-muted/30',
     badge: 'bg-muted text-foreground/70',
     title: 'text-foreground/70',
   },
+};
+
+const TIMELINE_CONNECTOR_THEME: Record<ModuleStatus, string> = {
+  completed: 'bg-success/70',
+  active: 'bg-primary/60',
+  locked: 'bg-border',
 };
 
 const PLAN_FOOTER_THEME: Record<
@@ -60,19 +67,20 @@ const LESSON_PROGRESS_THEME: Record<
   { marker: string; card: string; title: string; mutedText: string }
 > = {
   completed: {
-    marker: 'bg-success text-success-foreground',
+    marker: 'border-success bg-success text-success-foreground',
     card: PLAN_FOOTER_THEME.complete.card,
     title: 'text-success dark:text-success',
     mutedText: 'text-muted-foreground',
   },
   active: {
-    marker: 'bg-primary/20 text-primary dark:bg-primary/20 dark:text-primary',
+    marker:
+      'border-primary/50 bg-primary/20 text-primary ring-2 ring-primary/10 dark:bg-primary/20 dark:text-primary',
     card: 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border dark:hover:border-primary/30',
     title: 'text-foreground',
     mutedText: 'text-muted-foreground',
   },
   locked: {
-    marker: 'bg-muted text-muted-foreground/70',
+    marker: 'border-border bg-muted text-muted-foreground/70',
     card: `${TIMELINE_MODULE_THEME.locked.card} opacity-90`,
     title: 'text-foreground/70',
     mutedText: 'text-muted-foreground/80',
@@ -89,6 +97,10 @@ export function getTimelineCardClassName(status: ModuleStatus): string {
 
 export function getTimelineTitleClassName(status: ModuleStatus): string {
   return TIMELINE_MODULE_THEME[status].title;
+}
+
+export function getTimelineConnectorClassName(status: ModuleStatus): string {
+  return TIMELINE_CONNECTOR_THEME[status];
 }
 
 function lessonProgressKind(

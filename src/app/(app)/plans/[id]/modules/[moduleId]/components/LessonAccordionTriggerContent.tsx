@@ -19,19 +19,34 @@ function LessonMarker({
   isCompleted: boolean;
   isLocked: boolean;
 }) {
+  const progressState = isLocked
+    ? 'locked'
+    : isCompleted
+      ? 'completed'
+      : 'active';
+  const statusLabel = isLocked
+    ? `Lesson ${lesson.order}, locked`
+    : isCompleted
+      ? `Lesson ${lesson.order}, completed`
+      : `Lesson ${lesson.order}, available`;
+
   return (
     <div
+      data-state={progressState}
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full',
+        'flex size-8 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none',
         getLessonMarkerClassName(isLocked, isCompleted),
       )}
     >
+      <span className='sr-only'>{statusLabel}</span>
       {isLocked ? (
-        <Lock className='size-4' />
+        <Lock className='size-4' aria-hidden />
       ) : isCompleted ? (
-        <CheckCircle2 className='size-5' />
+        <CheckCircle2 className='size-5' aria-hidden />
       ) : (
-        <span className='text-sm font-semibold'>{lesson.order}</span>
+        <span className='text-sm font-semibold' aria-hidden='true'>
+          {lesson.order}
+        </span>
       )}
     </div>
   );

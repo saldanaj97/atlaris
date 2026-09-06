@@ -85,6 +85,7 @@ describe('PlanTimeline', () => {
     expect(
       screen.getByRole('link', { name: /view full module/i }),
     ).toHaveAttribute('href', `/plans/${planId}/modules/${moduleOneId}`);
+    expect(screen.getByText('Module available')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: /mark task as complete/i }),
     ).toBeInTheDocument();

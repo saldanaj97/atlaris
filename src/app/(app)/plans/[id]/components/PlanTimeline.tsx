@@ -104,7 +104,7 @@ export function PlanTimeline({
 
       <div className='relative pb-4'>
         <div
-          className='pointer-events-none absolute top-3 bottom-10 left-8 w-px -translate-x-1/2 bg-border'
+          className='pointer-events-none absolute top-3 bottom-10 left-8 w-px -translate-x-1/2 bg-border/70'
           aria-hidden
         />
         <Accordion

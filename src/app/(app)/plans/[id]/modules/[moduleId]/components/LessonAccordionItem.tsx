@@ -88,6 +88,9 @@ export function LessonAccordionItem({
     <AccordionItem
       value={lesson.id}
       disabled={isLocked}
+      data-progress-state={
+        isLocked ? 'locked' : isCompleted ? 'completed' : 'active'
+      }
       className={cn(
         'rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
         getLessonCardClassName(isLocked, isCompleted),
