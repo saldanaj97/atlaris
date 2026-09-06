@@ -356,6 +356,134 @@
   opacity: 1;
 }
 
+/* Feature comparison — a quiet, scrollable ledger beneath the cards. */
+.comparison {
+  width: 100%;
+  max-width: 77.5rem;
+  margin-inline: auto;
+  padding: 1.5rem;
+  border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
+  border-radius: var(--radius-xl);
+  background: color-mix(in oklab, var(--card) 66%, transparent);
+}
+
+.comparisonHeader {
+  display: grid;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+}
+
+.comparisonOverline {
+  width: fit-content;
+  margin: 0;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, var(--border));
+  border-radius: 999px;
+  color: var(--primary);
+  font-family: var(--font-family-display);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.comparisonTitle {
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-family-display);
+  font-size: clamp(1.35rem, 2vw, 1.75rem);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
+}
+
+.comparisonDescription {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  line-height: 1.45;
+}
+
+.comparisonScroll {
+  overflow-x: auto;
+  border: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
+  border-radius: var(--radius-lg);
+  scrollbar-color: color-mix(in oklab, var(--primary) 50%, var(--border))
+    transparent;
+}
+
+.comparisonScroll:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.comparisonTable {
+  width: 100%;
+  min-width: 36rem;
+  border-collapse: collapse;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  text-align: left;
+}
+
+.comparisonTable th,
+.comparisonTable td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid color-mix(in oklab, var(--border) 48%, transparent);
+  vertical-align: middle;
+}
+
+.comparisonTable thead th {
+  color: var(--foreground);
+  font-family: var(--font-family-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.comparisonTable thead th:not(:first-child),
+.comparisonTable tbody td {
+  border-left: 1px solid color-mix(in oklab, var(--border) 42%, transparent);
+  text-align: center;
+}
+
+.comparisonTable tbody th {
+  min-width: 12rem;
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+.comparisonTable tbody tr:last-child th,
+.comparisonTable tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.comparisonIncluded,
+.comparisonMissing {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.5rem;
+  min-height: 1.5rem;
+}
+
+.comparisonIncluded {
+  color: var(--primary);
+}
+
+.comparisonIncluded svg {
+  width: 1rem;
+  height: 1rem;
+  stroke-width: 2.5;
+}
+
+.comparisonMissing {
+  color: color-mix(in oklab, var(--muted-foreground) 58%, transparent);
+}
+
 /* Featured CTA — solid peach pill */
 .card[data-featured='true'] .checkoutButton:not(:disabled) {
   border-color: var(--primary);
@@ -392,6 +520,10 @@
 
   .cardTitleContainer {
     min-height: auto;
+  }
+
+  .comparison {
+    padding: 1.125rem;
   }
 }
 

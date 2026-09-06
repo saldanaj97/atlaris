@@ -72,6 +72,15 @@ describe('PricingPage', () => {
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
+    expect(
+      screen.getByRole('heading', {
+        name: 'A brighter future is a skill away.',
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+      'href',
+      ROUTES.PLANS.NEW,
+    );
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,

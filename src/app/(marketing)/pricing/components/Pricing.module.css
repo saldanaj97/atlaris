@@ -8,14 +8,33 @@
   background: var(--background);
 }
 
+.hero {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 81rem);
+  margin-inline: auto;
+  padding: 2.5rem 1.5rem 2.75rem;
+}
+
 /* Hero entrance — overline rises first, then the headline word by word,
    then the subline settles in. */
 
 .heroOverline {
+  width: fit-content;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, var(--border));
+  border-radius: 999px;
   font-family: var(--font-family-display);
   font-size: 0.6875rem;
   font-weight: 500;
   letter-spacing: 0.22em;
+  line-height: 1;
   text-transform: uppercase;
   color: var(--primary);
   opacity: 0;
@@ -42,13 +61,62 @@
   animation: heroRise 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.85s forwards;
 }
 
+.ctaBanner {
+  width: min(calc(100% - 3rem), 81rem);
+  margin: 0 auto 3rem;
+}
+
+.ctaContent {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: start;
+  gap: 0.75rem;
+  padding: 2rem 1.5rem;
+}
+
+.ctaOverline {
+  width: fit-content;
+  padding: 0.35rem 0.65rem;
+  border: 1px solid color-mix(in oklab, var(--primary) 55%, var(--border));
+  border-radius: 999px;
+}
+
+.ctaTitle {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--foreground);
+  font-family: var(--font-family-display);
+  font-size: clamp(1.4rem, 3vw, 2.25rem);
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
+}
+
+.ctaDescription {
+  max-width: 30rem;
+  margin: 0 0 0.35rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.9375rem;
+  line-height: 1.5;
+}
+
 @media (min-width: 640px) {
+  .heroContent {
+    padding: 3.5rem 2rem 3.75rem;
+  }
+
   .heroOverline {
     font-size: 0.75rem;
   }
 
   .heroSubline {
     font-size: 1.125rem;
+  }
+
+  .ctaContent {
+    padding: 2.5rem 2rem;
   }
 }
 

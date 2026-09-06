@@ -579,6 +579,54 @@ describe('ClerkPricingTable', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
+  it('compares only the current non-export features from each live plan', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...FREE_PLAN,
+          name: 'Free',
+          features: [
+            { name: '10 active learning plans' },
+            { name: 'Shared scheduling horizon' },
+            { name: '50 exports per month' },
+          ],
+        },
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: 'Shared scheduling horizon' },
+            { name: 'Priority queue access' },
+            { name: '50 exports per month' },
+          ],
+        },
+      ],
+    });
+
+    await renderPricingTable();
+
+    const comparison = await screen.findByRole('region', {
+      name: 'Plan feature comparison',
+    });
+    expect(comparison).toHaveAttribute('tabindex', '0');
+    expect(
+      within(comparison).getByRole('columnheader', { name: 'Free' }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('columnheader', { name: 'Starter' }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('row', {
+        name: /shared scheduling horizon.*feature listed.*feature listed/i,
+      }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('row', {
+        name: /priority queue access.*feature not listed.*feature listed/i,
+      }),
+    ).toBeVisible();
+    expect(within(comparison).queryByText(/exports?/i)).not.toBeInTheDocument();
+  });
+
   it('shows placeholder cards while Clerk plans are loading', async () => {
     let resolvePlans!: (value: { data: (typeof STARTER_PLAN)[] }) => void;
     mocks.getPlans.mockReturnValue(
