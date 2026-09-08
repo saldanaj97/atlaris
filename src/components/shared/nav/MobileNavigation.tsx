@@ -19,7 +19,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { ROUTES } from '@/features/navigation';
+import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -56,13 +56,11 @@ export default function MobileNavigation({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const appCtaHref = isAuthenticated
-    ? canCreatePlan === undefined
-      ? null
-      : canCreatePlan
-        ? ROUTES.PLANS.NEW
-        : ROUTES.PRICING
-    : ROUTES.PLANS.NEW;
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'Create New Plan',
+  });
   const handleNavigation = () => {
     navigationDismissedRef.current = true;
     setOpen(false);
@@ -164,17 +162,17 @@ export default function MobileNavigation({
                     </Button>
                   ) : null}
                 </>
-              ) : appCtaHref ? (
+              ) : createPlanCta ? (
                 <Button
                   asChild
                   variant='default'
                   className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
                 >
-                  <Link href={appCtaHref} onClick={handleNavigation}>
-                    {canCreatePlan === false ? null : (
+                  <Link href={createPlanCta.href} onClick={handleNavigation}>
+                    {createPlanCta.label === 'Upgrade' ? null : (
                       <Plus className='size-4' />
                     )}
-                    {canCreatePlan === false ? 'Upgrade' : 'Create New Plan'}
+                    {createPlanCta.label}
                   </Link>
                 </Button>
               ) : null}

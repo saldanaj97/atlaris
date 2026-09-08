@@ -6,7 +6,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import BrandLogo from '@/components/shared/BrandLogo';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/features/navigation';
+import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import {
   BarChart3,
@@ -68,13 +68,10 @@ export default function AppSidebar({
     {},
   );
   const idPrefix = useId();
-  const createHref =
-    canCreatePlan === true
-      ? ROUTES.PLANS.NEW
-      : canCreatePlan === false
-        ? ROUTES.PRICING
-        : null;
-  const createLabel = canCreatePlan === false ? 'Upgrade' : 'Create New Plan';
+  const createPlanCta = resolveCreatePlanCta({
+    canCreatePlan,
+    createLabel: 'Create New Plan',
+  });
 
   return (
     <aside
@@ -92,14 +89,14 @@ export default function AppSidebar({
         aria-label={navigationLabel}
         className='flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4'
       >
-        {createHref ? (
+        {createPlanCta ? (
           <Button
             asChild
             className='mb-3 w-full justify-start gap-2 rounded-lg px-3'
           >
-            <Link href={createHref} onClick={onNavigate}>
+            <Link href={createPlanCta.href} onClick={onNavigate}>
               <Plus aria-hidden='true' className='size-5' />
-              {createLabel}
+              {createPlanCta.label}
             </Link>
           </Button>
         ) : null}

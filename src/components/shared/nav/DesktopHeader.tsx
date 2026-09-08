@@ -9,7 +9,7 @@ import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/features/navigation';
+import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -51,15 +51,11 @@ export default function DesktopHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const appCtaHref = !isAuthenticated
-    ? ROUTES.PLANS.NEW
-    : canCreatePlan === true
-      ? ROUTES.PLANS.NEW
-      : canCreatePlan === false
-        ? ROUTES.PRICING
-        : undefined;
-  const appCtaLabel =
-    isAuthenticated && canCreatePlan === false ? 'Upgrade' : 'New Plan';
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'New Plan',
+  });
 
   return (
     <div
@@ -128,16 +124,21 @@ export default function DesktopHeader({
           </>
         ) : (
           <>
-            {appCtaHref ? (
+            {createPlanCta ? (
               <Button
                 variant='ghost'
                 size='sm'
                 className='gap-1.5 text-muted-foreground hover:text-foreground'
                 asChild
               >
-                <Link href={appCtaHref} aria-label={appCtaLabel}>
+                <Link
+                  href={createPlanCta.href}
+                  aria-label={createPlanCta.label}
+                >
                   <Plus className='size-3.5' aria-hidden='true' />
-                  <span className='hidden lg:inline'>{appCtaLabel}</span>
+                  <span className='hidden lg:inline'>
+                    {createPlanCta.label}
+                  </span>
                 </Link>
               </Button>
             ) : null}

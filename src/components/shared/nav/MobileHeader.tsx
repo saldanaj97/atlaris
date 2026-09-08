@@ -13,7 +13,11 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type NavItem, ROUTES } from '@/features/navigation';
+import {
+  type NavItem,
+  resolveCreatePlanCta,
+  ROUTES,
+} from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
@@ -54,23 +58,13 @@ export default function MobileHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const appCtaHref = !isAuthenticated
-    ? ROUTES.PLANS.NEW
-    : canCreatePlan === true
-      ? ROUTES.PLANS.NEW
-      : canCreatePlan === false
-        ? ROUTES.PRICING
-        : undefined;
-  const appCtaAriaLabel = !isAuthenticated
-    ? 'Create new plan'
-    : canCreatePlan === false
-      ? 'Upgrade'
-      : 'Create new plan';
-  const appCtaTooltip = !isAuthenticated
-    ? 'New plan'
-    : canCreatePlan === false
-      ? 'Upgrade'
-      : 'New plan';
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'New plan',
+  });
+  const appCtaAriaLabel =
+    createPlanCta?.label === 'Upgrade' ? 'Upgrade' : 'Create new plan';
 
   return (
     <div
@@ -92,12 +86,8 @@ export default function MobileHeader({
         />
       </div>
 
-      <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden' />
-
-      <div className='pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center'>
-        <div className='pointer-events-auto'>
-          <BrandLogo size='sm' />
-        </div>
+      <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden'>
+        <BrandLogo size='sm' />
       </div>
 
       <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1'>
@@ -125,7 +115,7 @@ export default function MobileHeader({
           </>
         ) : (
           <>
-            {appCtaHref ? (
+            {createPlanCta ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -134,12 +124,17 @@ export default function MobileHeader({
                     size='icon-sm'
                     className='shrink-0 text-muted-foreground hover:text-foreground'
                   >
-                    <Link href={appCtaHref} aria-label={appCtaAriaLabel}>
+                    <Link
+                      href={createPlanCta.href}
+                      aria-label={appCtaAriaLabel}
+                    >
                       <Plus className='size-4' />
                     </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side='bottom'>{appCtaTooltip}</TooltipContent>
+                <TooltipContent side='bottom'>
+                  {createPlanCta.label}
+                </TooltipContent>
               </Tooltip>
             ) : null}
             <div className='shrink-0'>
