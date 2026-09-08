@@ -2,7 +2,7 @@ import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 import { Button } from '@/components/ui/button';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { planDetailPath } from '@/features/navigation/routes';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
@@ -27,21 +27,8 @@ export function PlanOverviewHeader({
   const continueLabel = activeModuleId ? 'Continue learning' : 'Review roadmap';
 
   return (
-    <header className='relative isolate overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
-      <ResponsiveBackdrop
-        desktop={{
-          src: '/artwork/planetary-horizon-desktop.jpg',
-          objectPosition: '78% 50%',
-          className: 'opacity-80',
-        }}
-        mobile={{
-          src: '/artwork/planetary-horizon-mobile.jpg',
-          objectPosition: '68% 42%',
-          className: 'opacity-75',
-        }}
-      />
-
-      <div className='relative max-w-3xl'>
+    <PageHero className='rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
+      <div className='relative z-10 max-w-3xl'>
         <SectionOverline
           icon={<Sparkles aria-hidden='true' className='size-4' />}
         >
@@ -81,6 +68,6 @@ export function PlanOverviewHeader({
           style={{ width: `${stats.completionPercentage}%` }}
         />
       </div>
-    </header>
+    </PageHero>
   );
 }

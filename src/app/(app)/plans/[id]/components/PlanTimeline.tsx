@@ -11,6 +11,7 @@ import {
 } from './plan-timeline-state';
 import { TimelinePlanFooter } from './TimelinePlanFooter';
 import { TimelineModuleCard } from '@/app/(app)/plans/[id]/components/TimelineModuleCard';
+import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import { Accordion } from '@/components/ui/accordion';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
@@ -86,7 +87,7 @@ export function PlanTimeline({
 
   if (modules.length === 0) {
     return (
-      <section id='learning-path' className='scroll-mt-8'>
+      <section id='learning-path' className={APP_SHELL_SCROLL_MARGIN}>
         <Surface padding='none' className='overflow-hidden'>
           <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
             <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
@@ -105,7 +106,7 @@ export function PlanTimeline({
   }
 
   return (
-    <section id='learning-path' className='scroll-mt-8'>
+    <section id='learning-path' className={APP_SHELL_SCROLL_MARGIN}>
       <Surface padding='none' className='overflow-hidden'>
         <div className='flex flex-col gap-3 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6'>
           <div className='min-w-0'>

@@ -6,7 +6,7 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
 import { ModuleRoundNavLink } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleRoundNavLink';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
@@ -54,20 +54,12 @@ export function ModuleHeader({
         isComplete={isModuleComplete}
       />
 
-      <div className='relative isolate min-w-0 overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-sm'>
-        <ResponsiveBackdrop
-          desktop={{
-            src: '/artwork/planetary-horizon-desktop.jpg',
-            objectPosition: '78% 50%',
-            className: 'opacity-80 sm:block',
-          }}
-          mobile={{
-            src: '/artwork/planetary-horizon-mobile.jpg',
-            objectPosition: '68% 42%',
-            className: 'opacity-75 sm:hidden',
-          }}
-        />
-
+      <PageHero
+        as='div'
+        className='min-w-0 rounded-2xl border border-panel-border bg-panel shadow-sm'
+        desktop={{ className: 'opacity-80 sm:block' }}
+        mobile={{ className: 'opacity-75 sm:hidden' }}
+      >
         <div className='relative p-5 sm:p-6 md:p-8'>
           <div className='flex min-w-0 flex-col gap-6 sm:flex-row sm:items-end sm:justify-between'>
             <div className='max-w-3xl min-w-0'>
@@ -164,7 +156,7 @@ export function ModuleHeader({
             </div>
           </div>
         </div>
-      </div>
+      </PageHero>
     </article>
   );
 }

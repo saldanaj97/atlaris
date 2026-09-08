@@ -8,6 +8,7 @@ import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
 import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
+import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import {
   AccordionContent,
   AccordionItem,
@@ -93,6 +94,7 @@ export function LessonAccordionItem({
         isLocked ? 'locked' : isCompleted ? 'completed' : 'active'
       }
       className={cn(
+        APP_SHELL_SCROLL_MARGIN,
         'min-w-0 max-w-full overflow-hidden rounded-2xl border last:border-b transition-[border-color,background-color,box-shadow] duration-300',
         getLessonCardClassName(isLocked, isCompleted),
       )}

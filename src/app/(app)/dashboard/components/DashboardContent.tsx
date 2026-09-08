@@ -9,7 +9,7 @@ import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearn
 import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
 import { Card } from '@/components/ui/card';
 import { PageHeader } from '@/components/ui/page-header';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { PageHero } from '@/components/ui/page-hero';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
@@ -22,26 +22,17 @@ const WEEKLY_PACE_TITLE_ID = 'dashboard-weekly-pace-heading';
 /** Decorative dashboard introduction with the same text-safe horizon treatment as other app pages. */
 function DashboardHero({ subtitle }: { subtitle: ReactNode }) {
   return (
-    <div className='relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
-      <ResponsiveBackdrop
-        desktop={{
-          src: '/artwork/planetary-horizon-desktop.jpg',
-          objectPosition: '78% 50%',
-          className: 'opacity-80',
-        }}
-        mobile={{
-          src: '/artwork/planetary-horizon-mobile.jpg',
-          objectPosition: '68% 42%',
-          className: 'inset-y-0 right-0 h-full w-[76%] opacity-75',
-        }}
-      />
-
+    <PageHero
+      as='div'
+      className='rounded-[12px] border border-panel-border bg-panel'
+      mobile={{ className: 'inset-y-0 right-0 h-full w-[76%] opacity-75' }}
+    >
       <PageHeader
         title='Dashboard'
         subtitle={subtitle}
         className='relative z-10 mb-0 max-w-2xl px-5 py-7 sm:px-7 sm:py-8 lg:px-9 lg:py-10'
       />
-    </div>
+    </PageHero>
   );
 }
 
