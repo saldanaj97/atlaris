@@ -1,4 +1,4 @@
-import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
+import { PostHogUserIdentifier } from '@/shared/analytics/PostHogUserIdentifier';
 import { cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
