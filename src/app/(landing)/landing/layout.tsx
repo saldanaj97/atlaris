@@ -30,7 +30,7 @@ export const metadata: Metadata = {
 };
 
 /**
- * Nested under `(marketing)/layout.tsx`: SiteHeader, flush `<main>`, SiteFooter.
+ * Nested under `(landing)/layout.tsx`: SiteHeader, flush `<main>`, SiteFooter.
  * Root supplies `<html>`, `<body>`, fonts, auth/theme providers, Toaster.
  */
 export default function LandingLayout({

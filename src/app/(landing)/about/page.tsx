@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 
-import { About } from '@/app/(marketing)/about/components/About';
+import { About } from '@/app/(landing)/about/components/About';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 
 const ABOUT_TITLE = 'About | Atlaris';

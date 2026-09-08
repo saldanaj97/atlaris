@@ -83,7 +83,7 @@ Route auth and enablement contract: [internal-worker-routes.md](../architecture/
 
 #### Stale remote flag (`landing-hero-experiment`)
 
-Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/app/(marketing)/landing/components/HeroSection.tsx` and is not flag-gated. Archive or delete the remote Vercel flag only after Juan confirms it is unused in the live dashboard. This documentation change does not archive the remote flag or change live kill-switch values.
+Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/app/(landing)/landing/components/HeroSection.tsx` and is not flag-gated. Archive or delete the remote Vercel flag only after Juan confirms it is unused in the live dashboard. This documentation change does not archive the remote flag or change live kill-switch values.
 
 #### PostHog
 

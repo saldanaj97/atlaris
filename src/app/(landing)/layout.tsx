@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import SiteFooter from '@/components/shared/SiteFooter';
 import SiteHeader from '@/components/shared/SiteHeader';
 
-export default function MarketingLayout({
+export default function LandingLayout({
   children,
 }: Readonly<{ children: ReactNode }>) {
   return (

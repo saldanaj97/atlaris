@@ -1,6 +1,6 @@
 import { LandingPreview } from './DriftSection';
 import { RevealAnimation } from './RevealAnimation';
-import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
+import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { ROUTES } from '@/features/navigation/routes';

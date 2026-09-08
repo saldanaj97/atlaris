@@ -3,8 +3,7 @@
 .revealItem,
 .revealFromLeft,
 .revealFromRight,
-.revealScale,
-.questionRow {
+.revealScale {
   opacity: 1;
   transform: none;
 }
@@ -213,17 +212,6 @@
   }
 }
 
-.questionRow[open] .faqAnswer {
-  animation: faqAnswerIn 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-
-@keyframes faqAnswerIn {
-  from {
-    opacity: 0;
-    transform: translate3d(0, -0.4rem, 0);
-  }
-}
-
 .ctaMotion:active {
   transform: scale(0.98);
 }
@@ -258,19 +246,12 @@
   .heroActions,
   .heroRoutePath,
   .heroRouteNode,
-  .ambientOrb,
-  .questionRow[open] .faqAnswer {
+  .ambientOrb {
     animation: none;
   }
 
   .reveal[data-reveal-state]
-    :is(
-      .revealItem,
-      .revealFromLeft,
-      .revealFromRight,
-      .revealScale,
-      .questionRow
-    ) {
+    :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
     opacity: 1;
     transform: none;
     transition: none;

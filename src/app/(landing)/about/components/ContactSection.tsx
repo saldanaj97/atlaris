@@ -1,5 +1,5 @@
 import { RevealAnimation } from './RevealAnimation';
-import { marketingSecondaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
+import { marketingSecondaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { SectionOverline } from '@/components/ui/section-overline';
 
 import styles from './about.module.css';

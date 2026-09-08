@@ -1,11 +1,10 @@
 import type { CSSProperties, ReactNode } from 'react';
 
-import { marketingPrimaryCtaClassName } from '@/app/(marketing)/_shared/marketing-cta';
-import { StarField } from '@/app/(marketing)/_shared/StarField';
-import { APP_SHELL_HEADER_TUCK } from '@/components/layout/app-shell-width';
+import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
+import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { ROUTES } from '@/features/navigation/routes';
 import { ArrowRight } from 'lucide-react';
@@ -25,7 +24,7 @@ const copy = {
 export function PricingShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
-      <CelestialBackdrop />
+      <CelestialBackdrop variant='dusk' />
       <div className='relative z-10'>
         <Hero />
         <section
@@ -62,39 +61,16 @@ export function PricingShell({ children }: { children: ReactNode }) {
   );
 }
 
-function CelestialBackdrop() {
-  return (
-    <div
-      className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${APP_SHELL_HEADER_TUCK}`}
-      aria-hidden='true'
-    >
-      {/* Warm dusk glow — up where the hero sits */}
-      <div className='absolute -top-28 right-[8%] size-120 rounded-full bg-primary/15 blur-3xl md:size-152' />
-      {/* Plum horizon wash — low left, under the cards */}
-      <div className='absolute bottom-[-10%] -left-24 size-112 rounded-full bg-panel-muted/60 blur-3xl md:size-136' />
-      <StarField />
-    </div>
-  );
-}
-
 function Hero() {
   const words = copy.headline.split(' ');
 
   return (
-    <header className={styles.hero} aria-labelledby='pricing-hero-heading'>
-      <ResponsiveBackdrop
-        desktop={{
-          src: '/artwork/planetary-horizon-desktop.jpg',
-          objectPosition: '78% 42%',
-          className: 'opacity-80',
-        }}
-        mobile={{
-          src: '/artwork/planetary-horizon-mobile.jpg',
-          objectPosition: '68% 42%',
-          className: 'opacity-75',
-        }}
-        overlay='background'
-      />
+    <PageHero
+      className={styles.hero}
+      aria-labelledby='pricing-hero-heading'
+      overlay='background'
+      desktop={{ objectPosition: '78% 42%' }}
+    >
       <div className={styles.heroContent}>
         <SectionOverline className={styles.heroOverline}>
           {copy.overline}
@@ -118,6 +94,6 @@ function Hero() {
         </h1>
         <p className={styles.heroSubline}>{copy.subheadline}</p>
       </div>
-    </header>
+    </PageHero>
   );
 }

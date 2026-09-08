@@ -1,7 +1,7 @@
 /**
  * Compact After Hours header CTAs and nav links (Sora via font-serif).
  * Header-sized cousins of marketing-cta.ts — kept here so shared nav
- * does not import from src/app/(marketing).
+ * does not import from src/app/(landing).
  */
 export const marketingHeaderPrimaryCtaClassName =
   'group h-auto rounded-full border border-primary/70 bg-primary px-4 py-2 font-serif text-sm font-semibold tracking-[0.01em] text-primary-foreground shadow-sm shadow-primary/20 transition-[border-color,box-shadow,transform,background-color] hover:-translate-y-0.5 hover:border-primary hover:bg-primary/90 hover:shadow-md hover:shadow-primary/30 motion-reduce:transform-none motion-reduce:transition-none';

@@ -7,7 +7,7 @@ import {
   type PricingPlan,
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
-import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/pricing/pricing-plan-features';
+import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { ROUTES } from '@/features/navigation/routes';

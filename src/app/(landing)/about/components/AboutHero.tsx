@@ -1,9 +1,9 @@
 import {
   marketingPrimaryCtaClassName,
   marketingSecondaryCtaClassName,
-} from '@/app/(marketing)/_shared/marketing-cta';
+} from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
@@ -22,21 +22,14 @@ const copy = {
 
 export function AboutHero() {
   return (
-    <header className={styles.hero} aria-labelledby='about-hero-heading'>
-      <ResponsiveBackdrop
-        desktop={{
-          src: '/artwork/planetary-horizon-desktop.jpg',
-          objectPosition: '78% 42%',
-          className: 'opacity-80',
-        }}
-        mobile={{
-          src: '/artwork/planetary-horizon-mobile.jpg',
-          objectPosition: '68% 42%',
-          className: 'opacity-70',
-        }}
-        overlay='background'
-        className={styles.heroBackdrop}
-      />
+    <PageHero
+      className={styles.hero}
+      aria-labelledby='about-hero-heading'
+      overlay='background'
+      desktop={{ objectPosition: '78% 42%' }}
+      mobile={{ className: 'opacity-70' }}
+      backdropClassName={styles.heroBackdrop}
+    >
       <div className={styles.heroContent}>
         <div className={styles.heroCopyBlock}>
           <SectionOverline className={styles.heroOverline}>
@@ -86,6 +79,6 @@ export function AboutHero() {
           </div>
         </div>
       </div>
-    </header>
+    </PageHero>
   );
 }

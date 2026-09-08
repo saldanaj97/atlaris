@@ -2,7 +2,7 @@ import { RevealAnimation } from './RevealAnimation';
 import {
   marketingPrimaryCtaClassName,
   marketingSecondaryCtaClassName,
-} from '@/app/(marketing)/_shared/marketing-cta';
+} from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
 import { SectionOverline } from '@/components/ui/section-overline';

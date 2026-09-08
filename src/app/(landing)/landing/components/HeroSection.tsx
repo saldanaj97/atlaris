@@ -3,7 +3,7 @@ import type { CSSProperties } from 'react';
 import {
   marketingPrimaryCtaClassName,
   marketingSecondaryCtaClassName,
-} from '@/app/(marketing)/_shared/marketing-cta';
+} from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
 import { SectionOverline } from '@/components/ui/section-overline';

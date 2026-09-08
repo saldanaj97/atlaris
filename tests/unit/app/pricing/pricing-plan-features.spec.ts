@@ -1,4 +1,4 @@
-import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(marketing)/pricing/pricing-plan-features';
+import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(landing)/pricing/pricing-plan-features';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { describe, expect, it } from 'vitest';
 

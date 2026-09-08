@@ -69,9 +69,9 @@ Beyond the Do/don't list below: no Progress Jam violet, no liquid-glass or glass
 
 Real copy lives in code — quote from these, don't re-invent:
 
-- `src/app/(marketing)/landing/components/HeroSection.tsx` — hero headline, subheadline, CTA labels
-- `src/app/(marketing)/landing/components/DriftSection.tsx`, `RouteSection.tsx`, `InstrumentsSection.tsx`, `QuestionsSection.tsx`, `PolarisSection.tsx` — section copy
-- `src/app/(marketing)/pricing/components/PricingShell.tsx` — pricing hero copy
+- `src/app/(landing)/landing/components/HeroSection.tsx` — hero headline, subheadline, CTA labels
+- `src/app/(landing)/landing/components/DriftSection.tsx`, `RouteSection.tsx`, `InstrumentsSection.tsx`, `QuestionsSection.tsx`, `PolarisSection.tsx` — section copy
+- `src/app/(landing)/pricing/components/PricingShell.tsx` — pricing hero copy
 
 ### Visual translation
 
@@ -188,9 +188,9 @@ Migration phases 0–3 are **complete**. Unauthenticated `/` routes to `/landing
 
 **Visual anchors:**
 
-- `src/app/(marketing)/landing/components/Landing.tsx`
-- `src/app/(marketing)/pricing/page.tsx` + `PricingShell.tsx` + `ClerkPricingTable.tsx` / `PricingCards.tsx` / `LocalPricingPreview.tsx` + `pricing-plan-features.ts`
-- `src/app/(marketing)/about/page.tsx`
+- `src/app/(landing)/landing/components/Landing.tsx`
+- `src/app/(landing)/pricing/page.tsx` + `PricingShell.tsx` + `ClerkPricingTable.tsx` / `PricingCards.tsx` / `LocalPricingPreview.tsx` + `pricing-plan-features.ts`
+- `src/app/(landing)/about/page.tsx`
 - `src/components/shared/nav/SiteHeaderChrome.tsx`
 - `src/app/(app)/dashboard/page.tsx`
 - `DESIGN.md` Layout section

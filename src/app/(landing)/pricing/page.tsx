@@ -1,10 +1,10 @@
 import type { Metadata } from 'next';
 import type { ReactElement } from 'react';
 
-import { MarketingPageShell } from '@/app/(marketing)/_shared/MarketingPageShell';
-import { ClerkPricingTable } from '@/app/(marketing)/pricing/components/ClerkPricingTable';
-import { LocalPricingPreview } from '@/app/(marketing)/pricing/components/LocalPricingPreview';
-import { PricingShell } from '@/app/(marketing)/pricing/components/PricingShell';
+import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
+import { ClerkPricingTable } from '@/app/(landing)/pricing/components/ClerkPricingTable';
+import { LocalPricingPreview } from '@/app/(landing)/pricing/components/LocalPricingPreview';
+import { PricingShell } from '@/app/(landing)/pricing/components/PricingShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
@@ -44,7 +44,7 @@ export default async function PricingPage(): Promise<ReactElement> {
   );
 
   return (
-    <MarketingPageShell>
+    <LandingPageShell>
       <PricingShell>
         {showClerkBilling ? (
           <ClerkPricingTable
@@ -55,6 +55,6 @@ export default async function PricingPage(): Promise<ReactElement> {
           <LocalPricingPreview />
         )}
       </PricingShell>
-    </MarketingPageShell>
+    </LandingPageShell>
   );
 }

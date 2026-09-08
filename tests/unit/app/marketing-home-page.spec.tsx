@@ -1,4 +1,4 @@
-import Home from '@/app/(marketing)/page';
+import Home from '@/app/(landing)/page';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { getSessionSafeMock, redirectMock } = vi.hoisted(() => ({

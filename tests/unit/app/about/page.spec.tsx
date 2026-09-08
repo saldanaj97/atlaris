@@ -1,4 +1,4 @@
-import AboutPage, { metadata } from '@/app/(marketing)/about/page';
+import AboutPage, { metadata } from '@/app/(landing)/about/page';
 import SiteHeaderChrome from '@/components/shared/nav/SiteHeaderChrome';
 import SiteFooter from '@/components/shared/SiteFooter';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -10,11 +10,11 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/about',
 }));
 
-vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
 }));
 
-vi.mock('@/app/(marketing)/about/components/about.module.css', () => ({
+vi.mock('@/app/(landing)/about/components/about.module.css', () => ({
   default: {
     ambientOrb: 'ambientOrb',
     ambientOrbMuted: 'ambientOrbMuted',

@@ -8,15 +8,15 @@ const mocks = vi.hoisted(() => ({
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/PricingCards.module.css', () => ({
   default: {},
 }));
 
-vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/Pricing.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/Pricing.module.css', () => ({
   default: {
     heroOverline: 'heroOverline',
     heroSubline: 'heroSubline',
@@ -34,7 +34,7 @@ vi.mock('@/lib/auth/local-identity', () => ({
   shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
+vi.mock('@/app/(landing)/pricing/components/ClerkPricingTable', () => ({
   ClerkPricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
     mocks.clerkPricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
@@ -43,8 +43,7 @@ vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
 
 async function renderPricingPage(): Promise<void> {
   vi.resetModules();
-  const { default: PricingPage } =
-    await import('@/app/(marketing)/pricing/page');
+  const { default: PricingPage } = await import('@/app/(landing)/pricing/page');
   render(await PricingPage());
 }
 

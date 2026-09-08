@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   useClerk: vi.fn(),
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/PricingCards.module.css', () => ({
   default: { checkoutButton: 'checkoutButton' },
 }));
 
@@ -91,7 +91,7 @@ const STARTER_PLAN = {
 
 async function renderPricingTable(): Promise<void> {
   const { ClerkPricingTable } =
-    await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    await import('@/app/(landing)/pricing/components/ClerkPricingTable');
   render(
     <ClerkPricingTable
       appearance={{}}
@@ -279,7 +279,7 @@ describe('ClerkPricingTable', () => {
 
   it('hydrates monthly server markup before applying a validated annual checkout URL', async () => {
     const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+      await import('@/app/(landing)/pricing/components/ClerkPricingTable');
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
     mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
