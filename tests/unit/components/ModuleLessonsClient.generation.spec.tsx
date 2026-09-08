@@ -1,24 +1,18 @@
-import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
-
-import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
 import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
-import { createId } from '@tests/fixtures/ids';
+  PLAN_ID,
+  MODULE_ID,
+  NEXT_MODULE_ID,
+  GENERATE_URL,
+  STATUS_URL,
+  mockJsonFetchResponse,
+  clientProps,
+  renderClient,
+} from './module-lessons-client-test-utils';
+import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
-import { randomUUID } from 'node:crypto';
 import { toast } from 'sonner';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-
-const PLAN_ID = randomUUID();
-const MODULE_ID = randomUUID();
-const NEXT_MODULE_ID = randomUUID();
-const GENERATE_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/generate`;
-const STATUS_URL = `/api/v1/plans/${PLAN_ID}/modules/${MODULE_ID}/lesson-content/status`;
 
 const refreshMock = vi.fn();
 const toastErrorMock = vi.mocked(toast.error);
@@ -27,83 +21,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: refreshMock }),
 }));
 
-const lesson: ModuleDetailTask = {
-  id: createId('task'),
-  order: 1,
-  title: 'First lesson',
-  description: null,
-  estimatedMinutes: 10,
-  status: 'not_started',
-  lessonContent: null,
-  lessonContentUpdatedAt: null,
-  resources: [],
-};
-
-function mockJsonFetchResponse(
-  body: unknown,
-  options?: { ok?: boolean; status?: number },
-): {
-  ok: boolean;
-  status: number;
-  json: () => Promise<unknown>;
-} {
-  const status = options?.status ?? 200;
-  const ok = options?.ok ?? (status >= 200 && status < 300);
-  return {
-    ok,
-    status,
-    json: vi.fn().mockResolvedValue(body),
-  };
-}
-
-function clientProps(
-  options: Partial<
-    Pick<
-      Parameters<typeof ModuleLessonsClient>[0],
-      | 'lessons'
-      | 'previousModulesComplete'
-      | 'lessonGeneration'
-      | 'planId'
-      | 'moduleId'
-      | 'statuses'
-    >
-  > = {},
-): Parameters<typeof ModuleLessonsClient>[0] {
-  return {
-    planId: options.planId ?? PLAN_ID,
-    moduleId: options.moduleId ?? MODULE_ID,
-    lessons: options.lessons ?? [lesson],
-    nextModuleId: null,
-    previousModulesComplete: options.previousModulesComplete ?? true,
-    statuses: options.statuses ?? {},
-    onStatusChange: vi.fn(),
-    lessonGeneration: options.lessonGeneration ?? {
-      status: 'not_generated',
-      startedAt: null,
-      completedAt: null,
-      failedAt: null,
-      error: null,
-    },
-  };
-}
-
-function renderClient(
-  options: Partial<
-    Pick<
-      Parameters<typeof ModuleLessonsClient>[0],
-      | 'lessons'
-      | 'previousModulesComplete'
-      | 'lessonGeneration'
-      | 'planId'
-      | 'moduleId'
-      | 'statuses'
-    >
-  > = {},
-) {
-  return render(<ModuleLessonsClient {...clientProps(options)} />);
-}
-
-describe('ModuleLessonsClient', () => {
+describe('ModuleLessonsClient generation', () => {
   beforeEach(() => {
     refreshMock.mockReset();
     toastErrorMock.mockReset();
@@ -112,88 +30,6 @@ describe('ModuleLessonsClient', () => {
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
-  });
-
-  it('renders progress and local lesson links from live status and lock state', () => {
-    const secondLesson: ModuleDetailTask = {
-      ...lesson,
-      id: createId('task'),
-      order: 2,
-      title: 'Second lesson',
-      estimatedMinutes: 15,
-    };
-
-    renderClient({
-      lessons: [lesson, secondLesson],
-      statuses: { [lesson.id]: 'completed' },
-      lessonGeneration: {
-        status: 'ready',
-        startedAt: null,
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
-    });
-
-    expect(
-      screen.getByRole('progressbar', { name: 'Lesson progress: 50%' }),
-    ).toHaveAttribute('aria-valuenow', '50');
-    expect(
-      screen.getByRole('link', { name: /1\. First lesson/ }),
-    ).toHaveAttribute('href', `#lesson-${lesson.id}`);
-    expect(
-      screen.getByRole('link', { name: /2\. Second lesson/ }),
-    ).toHaveAttribute('aria-current', 'step');
-  });
-
-  it('keeps locked lessons visible in progress without making them links', () => {
-    const secondLesson: ModuleDetailTask = {
-      ...lesson,
-      id: createId('task'),
-      order: 2,
-      title: 'Second lesson',
-    };
-
-    renderClient({
-      lessons: [lesson, secondLesson],
-      lessonGeneration: {
-        status: 'ready',
-        startedAt: null,
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
-    });
-
-    expect(screen.getByText('2. Second lesson')).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /2\. Second lesson/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByText(', locked', { selector: '.sr-only' }),
-    ).toBeInTheDocument();
-  });
-
-  it('distinguishes an empty lesson collection from zero-percent progress', () => {
-    renderClient({
-      lessons: [],
-      lessonGeneration: {
-        status: 'ready',
-        startedAt: null,
-        completedAt: null,
-        failedAt: null,
-        error: null,
-      },
-    });
-
-    expect(screen.getByText('No lessons available yet')).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Lesson progress will appear when this module has lessons.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('No lessons yet')).toBeInTheDocument();
-    expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
   });
 
   it('auto-starts generation on open and refreshes after ready response', async () => {
