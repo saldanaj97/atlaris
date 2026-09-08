@@ -95,7 +95,7 @@ async function renderPricingTable(): Promise<void> {
   render(
     <ClerkPricingTable
       appearance={{}}
-      newSubscriptionRedirectUrl='/settings#billing'
+      newSubscriptionRedirectUrl='/settings/billing'
     />,
   );
 }
@@ -289,7 +289,7 @@ describe('ClerkPricingTable', () => {
       markup = renderToString(
         <ClerkPricingTable
           appearance={{}}
-          newSubscriptionRedirectUrl='/settings#billing'
+          newSubscriptionRedirectUrl='/settings/billing'
         />,
       );
     } finally {
@@ -317,7 +317,7 @@ describe('ClerkPricingTable', () => {
           container,
           <ClerkPricingTable
             appearance={{}}
-            newSubscriptionRedirectUrl='/settings#billing'
+            newSubscriptionRedirectUrl='/settings/billing'
           />,
           { onRecoverableError },
         );

@@ -13,8 +13,10 @@ describe('checkout-return helpers', () => {
   it('builds the settings redirect with an explicit checkout marker', () => {
     const baselineSignature = 'free|active||0';
 
-    expect(buildCheckoutReturnRedirectUrl('/settings', baselineSignature)).toBe(
-      `/settings?checkout=1&${CHECKOUT_BASELINE_QUERY_PARAM}=free%7Cactive%7C%7C0#billing`,
+    expect(
+      buildCheckoutReturnRedirectUrl('/settings/billing', baselineSignature),
+    ).toBe(
+      `/settings/billing?checkout=1&${CHECKOUT_BASELINE_QUERY_PARAM}=free%7Cactive%7C%7C0`,
     );
   });
 

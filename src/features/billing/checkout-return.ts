@@ -17,7 +17,7 @@ export type CheckoutBillingSignatureInput = {
 };
 
 export function buildCheckoutReturnRedirectUrl(
-  settingsRoot: string,
+  settingsBillingPath: string,
   baselineSignature?: string | null,
 ): string {
   const query = new URLSearchParams({
@@ -27,7 +27,7 @@ export function buildCheckoutReturnRedirectUrl(
     query.set(CHECKOUT_BASELINE_QUERY_PARAM, baselineSignature);
   }
 
-  return `${settingsRoot}?${query.toString()}#billing`;
+  return `${settingsBillingPath}?${query.toString()}`;
 }
 
 export function isCheckoutReturnQueryValue(

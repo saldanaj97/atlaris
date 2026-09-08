@@ -39,7 +39,7 @@ export default async function PricingPage(): Promise<ReactElement> {
     ? await getOptionalCheckoutBillingSignature()
     : null;
   const checkoutReturnUrl = buildCheckoutReturnRedirectUrl(
-    ROUTES.SETTINGS.ROOT,
+    ROUTES.SETTINGS.BILLING,
     checkoutBaseline,
   );
 
