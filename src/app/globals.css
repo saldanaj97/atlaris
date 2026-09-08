@@ -442,12 +442,13 @@
     @apply rounded-full bg-linear-to-br from-primary/30 to-accent/20 opacity-60 blur-3xl;
   }
 
-  /* Gradient text effect - light mode uses primary-dark for visibility on light backgrounds */
+  /* Gradient text: light uses primary → primary-dark. Dark remaps the end stop to
+   * action-primary; --accent is a surface/hover token there and would fade into the canvas. */
   .gradient-text {
     @apply bg-linear-to-r from-primary to-primary-dark bg-clip-text text-transparent;
   }
   .dark .gradient-text {
-    @apply from-primary to-accent;
+    @apply from-primary to-action-primary;
   }
 
   /* Symmetric gradient (primary -> middle -> primary) for headings */
