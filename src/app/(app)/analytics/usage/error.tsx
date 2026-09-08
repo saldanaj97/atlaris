@@ -7,11 +7,11 @@ import { useEffect } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
-  retry: () => void;
+  reset: () => void;
 }
 
 /** Route-level recovery for analytics reads that fail before the page can render. */
-export default function UsageAnalyticsError({ error, retry }: ErrorProps) {
+export default function UsageAnalyticsError({ error, reset }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Usage analytics error:', {
       errorDigest: error.digest,
@@ -29,7 +29,7 @@ export default function UsageAnalyticsError({ error, retry }: ErrorProps) {
       <RouteErrorState
         title='Error loading usage analytics'
         message="We couldn't load your usage analytics. This could be a temporary issue."
-        onRetry={retry}
+        onRetry={reset}
       />
     </>
   );

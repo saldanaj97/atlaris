@@ -5,9 +5,17 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
 import { WeeklyLineChart } from './usage-analytics-charts';
+import {
+  activityStatus,
+  formatCountDelta,
+  formatDayCount,
+  remainingLabel,
+  streakComparison,
+  type UsageAnalyticsMetricTrend,
+} from './usage-analytics-formatters';
 import { Badge } from '@/components/ui/badge';
+import { PageHero } from '@/components/ui/page-hero';
 import { Progress } from '@/components/ui/progress';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
@@ -242,35 +250,20 @@ export function UsageAnalyticsContent({
 /** Decorative page introduction with responsive artwork that stays out of the reading path. */
 function AnalyticsHero() {
   return (
-    <header className='relative isolate overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
-      <ResponsiveBackdrop
-        desktop={{
-          src: '/artwork/planetary-horizon-desktop.jpg',
-          objectPosition: '78% 50%',
-          className: 'opacity-80',
-        }}
-        mobile={{
-          src: '/artwork/planetary-horizon-mobile.jpg',
-          objectPosition: '68% 42%',
-          className: 'opacity-75',
-        }}
-      />
-
-      <div className='relative max-w-2xl'>
-        <SectionOverline
-          icon={<BarChart3 aria-hidden='true' className='size-4' />}
-        >
-          Analytics
-        </SectionOverline>
-        <h1 className='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'>
+    <PageHero
+      className='rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'
+      contentClassName='max-w-2xl'
+      overline='Analytics'
+      overlineIcon={<BarChart3 aria-hidden='true' className='size-4' />}
+      title={
+        <>
           Learning <span className='text-primary'>analytics</span>
-        </h1>
-        <p className='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
-          Current completion progress, weekly progress changes, and estimated
-          completed learning time from your plans.
-        </p>
-      </div>
-    </header>
+        </>
+      }
+      titleClassName='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
+      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+    />
   );
 }
 
@@ -309,18 +302,13 @@ function SectionHeading({
   );
 }
 
-type MetricTrend = {
-  label: 'Up' | 'Down' | 'Flat';
-  icon: 'up' | 'down' | 'flat';
-};
-
 type MetricTileProps = {
   label: string;
   value: string;
   detail: string;
   comparison: string;
   icon: LucideIcon;
-  status?: MetricTrend | null;
+  status?: UsageAnalyticsMetricTrend | null;
   progress?: number;
 };
 
@@ -370,11 +358,12 @@ function MetricTile({
   );
 }
 
-const TREND_ICON_CLASSNAME: Record<MetricTrend['icon'], string> = {
-  up: 'size-5 text-success',
-  down: 'size-5 text-destructive',
-  flat: 'size-5 text-primary',
-};
+const TREND_ICON_CLASSNAME: Record<UsageAnalyticsMetricTrend['icon'], string> =
+  {
+    up: 'size-5 text-success',
+    down: 'size-5 text-destructive',
+    flat: 'size-5 text-primary',
+  };
 
 const TREND_ICON = {
   up: TrendingUp,
@@ -383,74 +372,13 @@ const TREND_ICON = {
 } as const;
 
 /** Renders the up, down, or flat trend icon for a metric status. */
-function TrendStatusIcon({ kind }: { kind: MetricTrend['icon'] }) {
+function TrendStatusIcon({
+  kind,
+}: {
+  kind: UsageAnalyticsMetricTrend['icon'];
+}) {
   const Icon = TREND_ICON[kind];
   return <Icon aria-hidden='true' className={TREND_ICON_CLASSNAME[kind]} />;
-}
-
-/** Formats a day count with correct singular or plural labeling. */
-function formatDayCount(days: number): string {
-  return `${days} ${days === 1 ? 'day' : 'days'}`;
-}
-
-/** Returns a human-readable label for remaining tasks or modules. */
-function remainingLabel(remaining: number, noun: string): string {
-  const safeRemaining = Math.max(0, remaining);
-
-  if (safeRemaining === 0) {
-    return 'Nothing left';
-  }
-
-  return `${safeRemaining} ${safeRemaining === 1 ? noun : `${noun}s`} left`;
-}
-
-/** Compares current and previous values to produce a visible trend. */
-function activityStatus(current: number, previous: number): MetricTrend | null {
-  if (current === 0 && previous === 0) {
-    return null;
-  }
-
-  if (current > previous) {
-    return { label: 'Up', icon: 'up' };
-  }
-
-  if (current < previous) {
-    return { label: 'Down', icon: 'down' };
-  }
-
-  return { label: 'Flat', icon: 'flat' };
-}
-
-/** Formats a week-over-week delta for counts such as changes, events, or days. */
-function formatCountDelta(
-  current: number,
-  previous: number,
-  noun: 'change' | 'event' | 'day',
-): string {
-  const delta = current - previous;
-
-  if (delta === 0) {
-    return 'No change vs last week';
-  }
-
-  const absoluteDelta = Math.abs(delta);
-  const unit = absoluteDelta === 1 ? noun : `${noun}s`;
-
-  return `${delta > 0 ? '+' : '-'}${absoluteDelta} ${unit} vs last week`;
-}
-
-/** Returns comparison copy describing distance from the user's best streak. */
-function streakComparison(current: number, longest: number): string {
-  if (current === 0 && longest === 0) {
-    return 'Start with one active day';
-  }
-
-  if (current >= longest) {
-    return 'Matches your best run';
-  }
-
-  const remaining = longest - current;
-  return `${remaining} ${remaining === 1 ? 'day' : 'days'} from best`;
 }
 
 /** Loading skeleton that mirrors the analytics page hierarchy while data streams in. */
