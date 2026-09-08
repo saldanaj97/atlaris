@@ -1,12 +1,57 @@
 import { ROUTES } from '@/features/navigation';
+import {
+  type BrandLockupVariant,
+  type BrandLogoSize,
+  BRAND_LOCKUPS,
+  getBrandLockupLayout,
+} from '@/shared/constants/brand-assets';
 import Image from 'next/image';
 import Link from 'next/link';
 
 interface BrandLogoProps {
   /** Size variant for responsive display */
-  size?: 'sm' | 'md';
+  size?: BrandLogoSize;
   /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
+}
+
+function LockupImage({
+  variant,
+  size,
+}: {
+  variant: BrandLockupVariant;
+  size: BrandLogoSize;
+}) {
+  const lockup = BRAND_LOCKUPS[variant];
+  const { width, height, imageWidth, imageHeight, offsetX, offsetY } =
+    getBrandLockupLayout(variant, size);
+
+  return (
+    <span
+      className={
+        variant === 'light'
+          ? 'relative block overflow-hidden dark:hidden'
+          : 'relative hidden overflow-hidden dark:block'
+      }
+      style={{ width, height }}
+    >
+      <Image
+        src={lockup.src}
+        alt=''
+        aria-hidden='true'
+        width={lockup.canvasWidth}
+        height={lockup.canvasHeight}
+        sizes={`${imageWidth}px`}
+        className='absolute max-w-none'
+        style={{
+          width: imageWidth,
+          height: imageHeight,
+          left: offsetX,
+          top: offsetY,
+        }}
+      />
+    </span>
+  );
 }
 
 /**
@@ -15,33 +60,15 @@ interface BrandLogoProps {
  * Always links to the marketing landing page — `/` redirects signed-in users to dashboard.
  */
 export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
-  const isSmall = size === 'sm';
-  const lightLogoSize = isSmall ? 'h-6 sm:h-7' : 'h-8 sm:h-9';
-  const darkLogoSize = isSmall ? 'h-10 sm:h-12' : 'h-14 sm:h-16';
-
   return (
     <Link
       href={ROUTES.LANDING}
       onClick={onClick}
-      className='flex items-center'
+      className='inline-flex min-h-11 shrink-0 items-center'
       aria-label='Atlaris - Go to homepage'
     >
-      <Image
-        src='/brand/logo-on-light.png'
-        alt=''
-        aria-hidden='true'
-        width={2172}
-        height={724}
-        className={`${lightLogoSize} w-auto dark:hidden`}
-      />
-      <Image
-        src='/brand/logo-on-dark.png'
-        alt=''
-        aria-hidden='true'
-        width={2172}
-        height={724}
-        className={`hidden w-auto ${darkLogoSize} dark:block`}
-      />
+      <LockupImage variant='light' size={size} />
+      <LockupImage variant='dark' size={size} />
     </Link>
   );
 }
