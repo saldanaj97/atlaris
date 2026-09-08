@@ -47,7 +47,7 @@ Ops delivery runbook: [email-notification-delivery-runbook.md](./email-notificat
 | `#integrations`  | Integrations                                 |
 | `#notifications` | Email notification preferences               |
 
-Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=...#billing`. Scroll targeting: `SettingsScrollTarget`.
+Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=...#billing`. Scroll targeting: `useSettingsSectionHash` / `SettingsSectionNavigation`.
 
 ## API contracts
 

@@ -1,4 +1,4 @@
-import { SettingsScrollTarget } from '@/app/(app)/settings/components/SettingsScrollTarget';
+import { SettingsSectionNavigation } from '@/app/(app)/settings/components/SettingsScrollTarget';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -14,25 +14,20 @@ vi.mock('next/navigation', () => ({
 const scrollIntoViewMock = vi.fn();
 window.HTMLElement.prototype.scrollIntoView = scrollIntoViewMock;
 
-function renderAnchoredPage(): ReturnType<typeof render> {
+function renderSettingsNav(): ReturnType<typeof render> {
   document.body.insertAdjacentHTML(
     'afterbegin',
     `
-      <nav aria-label="Settings sections">
-        <a href="#profile" data-settings-section-link="true" data-section-id="profile">Profile</a>
-        <a href="#billing" data-settings-section-link="true" data-section-id="billing">Billing</a>
-        <a href="#notifications" data-settings-section-link="true" data-section-id="notifications">Notifications</a>
-      </nav>
       <section id="profile"></section>
       <section id="billing"></section>
       <section id="notifications"></section>
     `,
   );
 
-  return render(<SettingsScrollTarget />);
+  return render(<SettingsSectionNavigation />);
 }
 
-describe('SettingsScrollTarget', () => {
+describe('SettingsSectionNavigation', () => {
   beforeEach(() => {
     document.body.innerHTML = '';
     window.history.replaceState({}, '', '/settings');
@@ -50,16 +45,15 @@ describe('SettingsScrollTarget', () => {
   it('activates and scrolls to the initial valid hash target', async () => {
     window.history.replaceState({}, '', '/settings#billing');
 
-    renderAnchoredPage();
+    renderSettingsNav();
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Billing' })).toHaveAttribute(
-        'aria-current',
-        'location',
-      );
+      expect(
+        screen.getByRole('link', { name: /Plan & billing/ }),
+      ).toHaveAttribute('aria-current', 'location');
     });
 
-    expect(screen.getByRole('link', { name: 'Profile' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Profile/ })).not.toHaveAttribute(
       'aria-current',
     );
     expect(scrollIntoViewMock).toHaveBeenCalledWith({
@@ -70,10 +64,10 @@ describe('SettingsScrollTarget', () => {
 
   it('updates the active link on native anchor navigation and removes the listener on cleanup', async () => {
     const user = userEvent.setup();
-    const { unmount } = renderAnchoredPage();
+    const { unmount } = renderSettingsNav();
 
     await waitFor(() => {
-      expect(screen.getByRole('link', { name: 'Profile' })).toHaveAttribute(
+      expect(screen.getByRole('link', { name: /Profile/ })).toHaveAttribute(
         'aria-current',
         'location',
       );
@@ -85,15 +79,15 @@ describe('SettingsScrollTarget', () => {
       notifications.scrollIntoView = notificationsScrollMock;
     }
 
-    await user.click(screen.getByRole('link', { name: 'Notifications' }));
+    await user.click(screen.getByRole('link', { name: /Notifications/ }));
 
     await waitFor(() => {
       expect(
-        screen.getByRole('link', { name: 'Notifications' }),
+        screen.getByRole('link', { name: /Notifications/ }),
       ).toHaveAttribute('aria-current', 'location');
     });
 
-    expect(screen.getByRole('link', { name: 'Profile' })).not.toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Profile/ })).not.toHaveAttribute(
       'aria-current',
     );
     expect(notificationsScrollMock).toHaveBeenCalledWith({
@@ -103,9 +97,10 @@ describe('SettingsScrollTarget', () => {
     expect(window.location.hash).toBe('#notifications');
 
     unmount();
-    notificationsScrollMock.mockClear();
-    await user.click(screen.getByRole('link', { name: 'Billing' }));
+    scrollIntoViewMock.mockClear();
+    window.history.replaceState({}, '', '/settings#billing');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
 
-    expect(notificationsScrollMock).not.toHaveBeenCalled();
+    expect(scrollIntoViewMock).not.toHaveBeenCalled();
   });
 });

@@ -206,7 +206,7 @@ Settings is a **single-page ledger** at `/settings`, not an embedded Clerk `User
 | `integrations` | `/settings#integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
 | `notifications` | `/settings#notifications` | Email notification preferences |
 
-Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Hash scrolling: `SettingsScrollTarget` (retries after mount for late layout).
+Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Hash scrolling: `useSettingsSectionHash` in `SettingsScrollTarget.tsx` drives `SettingsSectionNavigation` from the URL hash.
 
 **Checkout return:** `/pricing` returns to `/settings?checkout=1&checkoutBaseline=…#billing`. `CheckoutSubscriptionSync` polls `GET /api/v1/user/subscription`, then `router.replace('/settings#billing')`. Details: [Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
 

@@ -1,5 +1,6 @@
 import type { ReactElement, ReactNode } from 'react';
 
+import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import { cn } from '@/lib/utils';
 
 const ledgerDivider = 'divide-border/40 dark:divide-border/30';
@@ -26,7 +27,10 @@ export function LedgerSectionBlock({
   return (
     <section
       id={id}
-      className='scroll-mt-24 rounded-[12px] border border-panel-border bg-panel p-5 text-panel-foreground shadow-sm sm:p-6'
+      className={cn(
+        APP_SHELL_SCROLL_MARGIN,
+        'rounded-[12px] border border-panel-border bg-panel p-5 text-panel-foreground shadow-sm sm:p-6',
+      )}
     >
       <div className='grid min-w-0 gap-4 md:grid-cols-[10rem_minmax(0,1fr)] md:gap-8'>
         <div className='md:pt-1'>
