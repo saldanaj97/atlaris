@@ -5,15 +5,14 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import BrandLogo from '@/components/shared/BrandLogo';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
-import { Button } from '@/components/ui/button';
-import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
+import { UpgradeBanner } from '@/components/ui/upgrade-banner';
+import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import {
   BarChart3,
   BookOpen,
   ChevronDown,
   LayoutDashboard,
-  Plus,
   Settings,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,7 +22,6 @@ interface AppSidebarProps {
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
-  canCreatePlan?: boolean;
   userName?: string;
   navigationLabel?: string;
   className?: string;
@@ -58,7 +56,6 @@ export default function AppSidebar({
   pathname,
   navItems,
   tier,
-  canCreatePlan,
   userName,
   navigationLabel = 'Application navigation',
   className,
@@ -68,10 +65,6 @@ export default function AppSidebar({
     {},
   );
   const idPrefix = useId();
-  const createPlanCta = resolveCreatePlanCta({
-    canCreatePlan,
-    createLabel: 'Create New Plan',
-  });
 
   return (
     <aside
@@ -89,18 +82,6 @@ export default function AppSidebar({
         aria-label={navigationLabel}
         className='flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4'
       >
-        {createPlanCta ? (
-          <Button
-            asChild
-            className='mb-3 w-full justify-start gap-2 rounded-lg px-3'
-          >
-            <Link href={createPlanCta.href} onClick={onNavigate}>
-              <Plus aria-hidden='true' className='size-5' />
-              {createPlanCta.label}
-            </Link>
-          </Button>
-        ) : null}
-
         {navItems.map((item) => {
           const isActive = isNavItemActive(pathname, item);
           const isCurrent = isCurrentPath(pathname, item);
@@ -192,25 +173,11 @@ export default function AppSidebar({
 
       <div className='mt-auto shrink-0 space-y-3 border-t border-sidebar-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
         {tier && tier !== 'pro' ? (
-          <div className='rounded-xl border border-sidebar-border bg-sidebar-accent p-3'>
-            <p className='text-sm font-semibold text-sidebar-foreground'>
-              Upgrade to Pro
-            </p>
-            <Button
-              asChild
-              variant='outline'
-              size='sm'
-              className='mt-3 w-full border-sidebar-border bg-sidebar text-sidebar-foreground hover:bg-sidebar-accent'
-            >
-              <Link href={ROUTES.PRICING} onClick={onNavigate}>
-                View plans
-              </Link>
-            </Button>
-          </div>
+          <UpgradeBanner onNavigate={onNavigate} />
         ) : null}
 
         <Link
-          href={`${ROUTES.SETTINGS.ROOT}#profile`}
+          href={ROUTES.SETTINGS.PROFILE}
           onClick={onNavigate}
           aria-label='Account settings'
           className='flex min-h-[44px] items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'

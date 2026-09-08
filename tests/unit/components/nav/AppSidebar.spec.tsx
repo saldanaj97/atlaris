@@ -23,7 +23,6 @@ describe('AppSidebar', () => {
         pathname='/analytics/usage'
         navItems={authenticatedNavItems}
         tier='pro'
-        canCreatePlan
       />,
     );
 
@@ -42,40 +41,45 @@ describe('AppSidebar', () => {
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
-  it('keeps the create action aligned with entitlement state', () => {
+  it('omits a create-plan action and still shows the upgrade banner for non-pro tiers', () => {
     const { rerender } = render(
       <AppSidebar
         pathname='/dashboard'
         navItems={authenticatedNavItems}
         tier='starter'
-        canCreatePlan
       />,
     );
 
     expect(
-      screen.getByRole('link', { name: 'Create New Plan' }),
-    ).toHaveAttribute('href', '/plans/new');
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
     expect(
-      screen.queryByText('Unlock more learning paths, projects, and features.'),
-    ).not.toBeInTheDocument();
+      screen.getByText('Unlock more learning paths, projects, and features.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
 
     rerender(
       <AppSidebar
         pathname='/dashboard'
         navItems={authenticatedNavItems}
         tier='free'
-        canCreatePlan={false}
       />,
     );
 
-    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
-      'href',
-      '/pricing',
-    );
     expect(
       screen.queryByRole('link', { name: 'Create New Plan' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
   });
 
   it('supports a collapsed section and invokes the close callback on navigation', async () => {
@@ -87,7 +91,6 @@ describe('AppSidebar', () => {
         pathname='/dashboard'
         navItems={authenticatedNavItems}
         tier='pro'
-        canCreatePlan
         onNavigate={onNavigate}
       />,
     );

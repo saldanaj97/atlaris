@@ -109,7 +109,6 @@ export default function MobileNavigation({
               pathname={pathname}
               navItems={navItems}
               tier={tier}
-              canCreatePlan={canCreatePlan}
               userName={userName}
               navigationLabel='Mobile navigation'
               onNavigate={handleNavigation}

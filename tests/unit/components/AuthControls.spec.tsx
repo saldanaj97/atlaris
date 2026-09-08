@@ -54,7 +54,7 @@ describe('AuthControls', () => {
     });
 
     const accountLink = screen.getByRole('link', { name: /account/i });
-    expect(accountLink).toHaveAttribute('href', '/settings#profile');
+    expect(accountLink).toHaveAttribute('href', '/settings/profile');
     expect(accountLink).toHaveTextContent('JD');
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
@@ -103,7 +103,7 @@ describe('AuthControls', () => {
         expect(screen.getByText(tier)).toBeInTheDocument();
         expect(screen.getByRole('link', { name: /account/i })).toHaveAttribute(
           'href',
-          '/settings#profile',
+          '/settings/profile',
         );
       },
     );

@@ -48,7 +48,6 @@ describe('MobileNavigation', () => {
           isAppShell
           pathname='/dashboard'
           navItems={navItems}
-          canCreatePlan
           isAuthenticated
         />
       </TooltipProvider>,
@@ -67,11 +66,11 @@ describe('MobileNavigation', () => {
       screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).toHaveAttribute('href', '/landing');
     expect(
-      screen.getByRole('link', { name: 'Create New Plan' }),
-    ).toHaveAttribute('href', '/plans/new');
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('routes authenticated create action to pricing after lifetime access is used', async () => {
+  it('does not render a create-plan or entitlement upgrade action in the app drawer', async () => {
     const user = userEvent.setup();
 
     render(
@@ -89,12 +88,11 @@ describe('MobileNavigation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
-      'href',
-      '/pricing',
-    );
     expect(
       screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
     ).not.toBeInTheDocument();
   });
 

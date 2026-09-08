@@ -71,7 +71,6 @@ export default function SiteHeaderChrome({
           pathname={pathname}
           navItems={resolvedNavItems}
           tier={tier}
-          canCreatePlan={canCreatePlan}
           userName={userName}
         />
       ) : null}
