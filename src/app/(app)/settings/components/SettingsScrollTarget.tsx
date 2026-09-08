@@ -4,21 +4,24 @@ import type { LucideIcon } from 'lucide-react';
 import type { ReactElement } from 'react';
 
 import {
-  SETTINGS_SECTION_IDS,
   SETTINGS_SECTIONS,
+  getSettingsSectionIdFromPathname,
+  parseSettingsSectionHash,
+  settingsSectionPath,
   type SettingsSectionId,
 } from '@/app/(app)/settings/settings-section-ids';
+import { cn } from '@/lib/utils';
 import {
   Bell,
-  BookOpen,
-  CircleGauge,
-  CircleUserRound,
-  CreditCard,
-  Link2,
-  Sparkles,
+  Crown,
+  Link as LinkIcon,
+  Monitor,
+  UserRound,
+  Zap,
 } from 'lucide-react';
-import { usePathname } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 type SettingsNavItem = {
   id: SettingsSectionId;
@@ -27,36 +30,41 @@ type SettingsNavItem = {
   icon: LucideIcon;
 };
 
+type SettingsContentHeadingCopy = {
+  title: string;
+  description: string;
+};
+
 const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   {
     id: SETTINGS_SECTIONS.profile,
     label: 'Profile',
     description: 'Name and account details',
-    icon: CircleUserRound,
+    icon: UserRound,
   },
   {
     id: SETTINGS_SECTIONS.billing,
     label: 'Plan & billing',
     description: 'Subscription and payment',
-    icon: CreditCard,
+    icon: Crown,
   },
   {
     id: SETTINGS_SECTIONS.usage,
     label: 'Usage',
     description: 'Plan and generation limits',
-    icon: CircleGauge,
+    icon: Zap,
   },
   {
     id: SETTINGS_SECTIONS.ai,
     label: 'AI model',
     description: 'Generation preferences',
-    icon: Sparkles,
+    icon: Monitor,
   },
   {
     id: SETTINGS_SECTIONS.integrations,
     label: 'Integrations',
     description: 'Connected tools',
-    icon: Link2,
+    icon: LinkIcon,
   },
   {
     id: SETTINGS_SECTIONS.notifications,
@@ -66,87 +74,129 @@ const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   },
 ];
 
-function parseSectionHash(hash: string): SettingsSectionId | undefined {
-  const sectionId = hash.replace(/^#/, '');
-  return SETTINGS_SECTION_IDS.includes(sectionId as SettingsSectionId)
-    ? (sectionId as SettingsSectionId)
-    : undefined;
+export function getSettingsContentHeading(
+  sectionId: SettingsSectionId,
+): SettingsContentHeadingCopy {
+  switch (sectionId) {
+    case SETTINGS_SECTIONS.profile:
+    case SETTINGS_SECTIONS.billing:
+    case SETTINGS_SECTIONS.usage:
+      return {
+        title: 'Account',
+        description: 'Manage your profile, plan, and account settings.',
+      };
+    case SETTINGS_SECTIONS.ai:
+      return {
+        title: 'AI model',
+        description: 'Generation preferences',
+      };
+    case SETTINGS_SECTIONS.integrations:
+      return {
+        title: 'Integrations',
+        description: 'Connected tools',
+      };
+    case SETTINGS_SECTIONS.notifications:
+      return {
+        title: 'Notifications',
+        description: 'Email preferences',
+      };
+    default: {
+      const _exhaustiveCheck: never = sectionId;
+      return _exhaustiveCheck;
+    }
+  }
 }
 
-function scrollToSection(sectionId: SettingsSectionId): void {
-  document.getElementById(sectionId)?.scrollIntoView({
-    behavior: 'smooth',
-    block: 'start',
-  });
-}
-
-export function useSettingsSectionHash(): SettingsSectionId {
+export function SettingsLegacyHashRedirect(): null {
   const pathname = usePathname();
-  const [activeSection, setActiveSection] =
-    useState<SettingsSectionId>('profile');
+  const router = useRouter();
 
   useEffect(() => {
-    const syncFromHash = (): void => {
-      if (window.location.pathname !== pathname) return;
+    const sectionId = parseSettingsSectionHash(window.location.hash);
+    if (!sectionId) return;
 
-      const sectionId = parseSectionHash(window.location.hash);
-      if (sectionId) {
-        setActiveSection(sectionId);
-        scrollToSection(sectionId);
-        return;
-      }
+    const targetPath = settingsSectionPath(sectionId);
+    const search = window.location.search;
+    if (pathname === targetPath && window.location.hash === '') {
+      return;
+    }
 
-      setActiveSection('profile');
-    };
+    router.replace(`${targetPath}${search}`);
+  }, [pathname, router]);
 
-    syncFromHash();
-    window.addEventListener('hashchange', syncFromHash);
+  return null;
+}
 
-    return () => {
-      window.removeEventListener('hashchange', syncFromHash);
-    };
-  }, [pathname]);
+export function SettingsContentHeading(): ReactElement {
+  const pathname = usePathname();
+  const heading = getSettingsContentHeading(
+    getSettingsSectionIdFromPathname(pathname),
+  );
 
-  return activeSection;
+  return (
+    <div data-testid='settings-content-heading'>
+      <h2
+        id='settings-content-heading'
+        className='font-heading text-[32px] leading-10 tracking-[-0.02em] text-foreground sm:text-[40px] sm:leading-[46px]'
+      >
+        {heading.title}
+      </h2>
+      <p className='mt-1.5 max-w-xl text-sm leading-[22px] text-muted-foreground'>
+        {heading.description}
+      </p>
+    </div>
+  );
 }
 
 export function SettingsSectionNavigation(): ReactElement {
-  const activeSection = useSettingsSectionHash();
+  const pathname = usePathname();
+  const activeSection = getSettingsSectionIdFromPathname(pathname);
 
   return (
-    <nav
-      aria-label='Settings sections'
-      className='h-fit min-w-0 rounded-[12px] border border-panel-border bg-panel p-2 shadow-sm lg:sticky lg:top-24'
-    >
-      <div className='mb-1 flex items-center gap-2 px-3 py-2 text-xs font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-        <BookOpen aria-hidden='true' className='size-4' />
-        Your settings
-      </div>
+    <nav aria-label='Settings sections' className='h-fit min-w-0'>
       <ul className='grid gap-1 sm:grid-cols-2 lg:grid-cols-1'>
         {SETTINGS_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
+          const href = settingsSectionPath(item.id);
           const isActive = item.id === activeSection;
 
           return (
             <li key={item.id}>
-              <a
-                href={`#${item.id}`}
+              <Link
+                href={href}
                 data-active={isActive ? 'true' : 'false'}
-                aria-current={isActive ? 'location' : undefined}
-                className='group flex min-h-[56px] min-w-0 items-center gap-3 rounded-lg border border-transparent px-3 py-2 text-left transition-colors hover:border-panel-border hover:bg-panel-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel focus-visible:outline-none data-[active=true]:border-primary/25 data-[active=true]:bg-primary/10 data-[active=true]:text-foreground'
+                aria-current={isActive ? 'page' : undefined}
+                className={cn(
+                  'group relative flex min-h-11 min-w-0 items-start gap-2 rounded-lg px-3 py-2 pl-3.5 text-left transition-colors',
+                  'hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                  'data-[active=true]:bg-primary/10 data-[active=true]:text-foreground',
+                )}
               >
-                <span className='flex size-9 shrink-0 items-center justify-center rounded-md bg-panel-muted text-muted-foreground transition-colors group-data-[active=true]:bg-primary/15 group-data-[active=true]:text-primary'>
-                  <Icon aria-hidden='true' className='size-5' />
-                </span>
+                <span
+                  aria-hidden='true'
+                  className={cn(
+                    'absolute top-2 bottom-2 left-0 w-0.5',
+                    isActive ? 'bg-primary' : 'bg-transparent',
+                  )}
+                />
+                <Icon
+                  aria-hidden='true'
+                  className={cn(
+                    'mt-0.5 size-5 shrink-0',
+                    isActive
+                      ? 'text-primary'
+                      : 'text-muted-foreground group-hover:text-foreground',
+                  )}
+                />
                 <span className='min-w-0'>
-                  <span className='block truncate text-sm font-medium'>
+                  <span className='block text-sm font-medium [overflow-wrap:anywhere]'>
                     {item.label}
                   </span>
-                  <span className='mt-0.5 block truncate text-xs text-muted-foreground'>
+                  <span className='mt-0.5 block text-xs leading-[18px] [overflow-wrap:anywhere] text-muted-foreground'>
                     {item.description}
                   </span>
                 </span>
-              </a>
+              </Link>
             </li>
           );
         })}

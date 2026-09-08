@@ -5,41 +5,80 @@ import { cn } from '@/lib/utils';
 
 const ledgerDivider = 'divide-border/40 dark:divide-border/30';
 
+export function SettingsLedgerShell({
+  nav,
+  children,
+}: {
+  nav: ReactNode;
+  children: ReactNode;
+}): ReactElement {
+  return (
+    <div className='grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8'>
+      <div className='h-fit min-w-0 rounded-[12px] border border-panel-border bg-panel px-2 py-2 shadow-sm lg:px-2 lg:py-3'>
+        {nav}
+      </div>
+      <div
+        aria-labelledby='settings-content-heading'
+        className='min-w-0 lg:max-w-2xl'
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
 export function SettingsLedgerPanel({
   children,
 }: {
   children: ReactNode;
 }): ReactElement {
-  return <div className='min-w-0 space-y-4'>{children}</div>;
+  return <div className='mt-6 min-w-0 space-y-4'>{children}</div>;
 }
 
 export function LedgerSectionBlock({
   id,
   label,
   description,
+  divided = false,
+  showTitle = true,
   children,
 }: {
   id: string;
   label: string;
-  description: string;
+  description?: string;
+  divided?: boolean;
+  showTitle?: boolean;
   children: ReactNode;
 }): ReactElement {
+  const hasHeader = showTitle || Boolean(description);
+
   return (
     <section
       id={id}
+      aria-label={showTitle ? undefined : label}
       className={cn(
         APP_SHELL_SCROLL_MARGIN,
-        'rounded-[12px] border border-panel-border bg-panel p-5 text-panel-foreground shadow-sm sm:p-6',
+        'rounded-xl border border-panel-border bg-panel-muted/50 p-5 text-panel-foreground sm:p-6',
       )}
     >
-      <div className='grid min-w-0 gap-4 md:grid-cols-[10rem_minmax(0,1fr)] md:gap-8'>
-        <div className='md:pt-1'>
+      <div className='min-w-0'>
+        {showTitle ? (
           <h2 className='font-heading text-lg tracking-[-0.02em]'>{label}</h2>
-          <p className='mt-1 text-sm leading-relaxed text-muted-foreground'>
+        ) : null}
+        {description ? (
+          <p className='mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground'>
             {description}
           </p>
+        ) : null}
+        <div
+          className={cn(
+            'min-w-0',
+            hasHeader && 'mt-5',
+            divided && ['divide-y', ledgerDivider],
+          )}
+        >
+          {children}
         </div>
-        <div className={cn('min-w-0 divide-y', ledgerDivider)}>{children}</div>
       </div>
     </section>
   );

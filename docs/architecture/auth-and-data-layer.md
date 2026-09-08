@@ -195,22 +195,22 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 ## Settings ledger (account UI)
 
-Settings is a **single-page ledger** at `/settings`, not an embedded Clerk `UserProfile`. Profile edits go through the custom `ProfileForm` and app APIs (`PUT /api/v1/user/profile`); entitlements stay on the Postgres projection updated by Clerk Billing webhooks.
+Settings is a **routed ledger** under `/settings`, not an embedded Clerk `UserProfile`. `/settings` redirects to `/settings/profile`. Profile edits go through the custom `ProfileForm` and app APIs (`PUT /api/v1/user/profile`); entitlements stay on the Postgres projection updated by Clerk Billing webhooks.
 
-| Section id | Hash deep link | Contents |
-| ---------- | -------------- | -------- |
-| `profile` | `/settings#profile` | Custom profile form |
-| `billing` | `/settings#billing` | Subscription rows + post-checkout sync |
-| `usage` | `/settings#usage` | Usage / quota |
-| `ai` | `/settings#ai` | AI preferences |
-| `integrations` | `/settings#integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
-| `notifications` | `/settings#notifications` | Email notification preferences |
+| Section id | Route | Contents |
+| ---------- | ----- | -------- |
+| `profile` | `/settings/profile` | Custom profile form |
+| `billing` | `/settings/billing` | Subscription rows + post-checkout sync |
+| `usage` | `/settings/usage` | Usage / quota |
+| `ai` | `/settings/ai` | AI preferences |
+| `integrations` | `/settings/integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
+| `notifications` | `/settings/notifications` | Email notification preferences |
 
-Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Hash scrolling: `useSettingsSectionHash` in `SettingsScrollTarget.tsx` drives `SettingsSectionNavigation` from the URL hash.
+Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Nav: `SettingsSectionNavigation` uses `Link`s and `aria-current` from the pathname.
 
-**Checkout return:** `/pricing` returns to `/settings?checkout=1&checkoutBaseline=…#billing`. `CheckoutSubscriptionSync` polls `GET /api/v1/user/subscription`, then `router.replace('/settings#billing')`. Details: [Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
+**Checkout return:** `/pricing` returns to `/settings/billing?checkout=1&checkoutBaseline=…`. `CheckoutSubscriptionSync` polls `GET /api/v1/user/subscription`, then `router.replace('/settings/billing')`. Details: [Clerk development checkout](../development/environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
 
-**Compatibility shim:** `src/app/(app)/settings/[...user-profile]/page.tsx` still exists for Clerk path-routed billing returns, but it renders the same `SettingsLedgerPage` — not a separate Clerk account portal.
+**Compatibility shim:** `src/app/(app)/settings/[...user-profile]/page.tsx` still exists for Clerk path-routed returns (`/settings/user-profile/...`). Static `/settings/profile` wins for that exact path. The catch-all redirects to profile, or billing when checkout query is present — not a Clerk account portal.
 
 ## Anti-Patterns
 
@@ -222,7 +222,7 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 | Create manual RLS clients in server actions                  | Use `requestBoundary.action` or `withServerActionContext` for lifecycle            |
 | Skip `cleanup()` on RLS clients                              | Use the wrappers — they handle cleanup in `finally`                                |
 | Use `getEffectiveAuthUserId()` for security flows or DB work | Use a full auth boundary; `getAuthUserId()` for OAuth flows ignoring dev overrides |
-| Expect embedded Clerk UserProfile under `/settings/...`      | Use the ledger sections and hash deep links above                                  |
+| Expect embedded Clerk UserProfile under `/settings/...`      | Use the ledger section routes above                                                |
 
 ## Code Locations
 
@@ -236,7 +236,7 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 | Service-role client   | `supabase/service-role.ts`        |
 | Clerk Auth config     | `src/lib/auth/server.ts`          |
 | Quota / usage logic   | `src/features/billing/usage-metrics.ts` |
-| Settings ledger       | `src/app/(app)/settings/components/SettingsLedgerPage.tsx` |
+| Settings layout       | `src/app/(app)/settings/layout.tsx` |
 | Settings section ids  | `src/app/(app)/settings/settings-section-ids.ts` |
 | RLS policies (schema) | `supabase/schema/tables/*.ts`     |
 | Query modules         | `src/lib/db/queries/*.ts`         |

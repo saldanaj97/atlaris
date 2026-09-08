@@ -1,10 +1,14 @@
-import type { ReactElement } from 'react';
+import { runSettingsEntryRedirect } from '@/app/(app)/settings/settings-entry-redirect';
 
-import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
+type SettingsIndexPageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
 /**
- * Unified settings page — Ledger layout with all account sections.
+ * `/settings` is not a stacked ledger. Send users to a real section.
  */
-export default async function SettingsPage(): Promise<ReactElement> {
-  return <SettingsLedgerPage />;
+export default async function SettingsPage({
+  searchParams,
+}: SettingsIndexPageProps): Promise<never> {
+  runSettingsEntryRedirect(await searchParams);
 }

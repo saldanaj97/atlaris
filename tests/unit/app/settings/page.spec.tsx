@@ -1,51 +1,67 @@
-import { render, screen } from '@testing-library/react';
+import {
+  resolveSettingsEntryRedirect,
+  runSettingsEntryRedirect,
+} from '@/app/(app)/settings/settings-entry-redirect';
+import { ROUTES } from '@/features/navigation/routes';
+import { redirect } from 'next/navigation';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  settingsLedgerPageMock: vi.fn(),
+vi.mock('next/navigation', () => ({
+  redirect: vi.fn(),
 }));
 
-vi.mock('@/app/(app)/settings/components/SettingsLedgerPage', () => ({
-  SettingsLedgerPage: (props: Record<string, unknown>) => {
-    mocks.settingsLedgerPageMock(props);
-    return <div data-testid='settings-ledger-page' />;
-  },
-}));
-
-async function renderSettingsPage(): Promise<void> {
-  vi.resetModules();
-  const { default: SettingsPage } = await import('@/app/(app)/settings/page');
-  render(await SettingsPage());
-}
-
-async function renderSettingsUserProfilePage(): Promise<void> {
-  vi.resetModules();
-  const { default: SettingsUserProfilePage } =
-    await import('@/app/(app)/settings/[...user-profile]/page');
-  render(await SettingsUserProfilePage());
-}
-
-describe('SettingsPage', () => {
+describe('settings entry redirect', () => {
   beforeEach(() => {
     vi.resetAllMocks();
   });
 
   afterEach(() => {
-    vi.resetModules();
     vi.restoreAllMocks();
   });
 
-  it('renders the unified settings ledger', async () => {
-    await renderSettingsPage();
+  it('sends /settings to the profile section', () => {
+    expect(resolveSettingsEntryRedirect()).toBe(ROUTES.SETTINGS.PROFILE);
 
-    expect(screen.getByTestId('settings-ledger-page')).toBeVisible();
-    expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({});
+    runSettingsEntryRedirect();
+
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith(ROUTES.SETTINGS.PROFILE);
   });
 
-  it('renders the unified settings ledger for Clerk profile subpaths', async () => {
-    await renderSettingsUserProfilePage();
+  it('sends checkout returns to billing with query markers', () => {
+    expect(
+      resolveSettingsEntryRedirect({
+        checkout: '1',
+        checkoutBaseline: 'free|active||0',
+      }),
+    ).toBe(
+      `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
+    );
+  });
 
-    expect(screen.getByTestId('settings-ledger-page')).toBeVisible();
-    expect(mocks.settingsLedgerPageMock).toHaveBeenCalledWith({});
+  it('keeps the Clerk user-profile catch-all on the same entry redirect', async () => {
+    const { default: SettingsUserProfilePage } =
+      await import('@/app/(app)/settings/[...user-profile]/page');
+
+    await SettingsUserProfilePage({
+      searchParams: Promise.resolve({}),
+    });
+
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith(ROUTES.SETTINGS.PROFILE);
+  });
+
+  it('keeps checkout query on Clerk catch-all returns', async () => {
+    const { default: SettingsUserProfilePage } =
+      await import('@/app/(app)/settings/[...user-profile]/page');
+
+    await SettingsUserProfilePage({
+      searchParams: Promise.resolve({
+        checkout: '1',
+        checkoutBaseline: 'free|active||0',
+      }),
+    });
+
+    expect(vi.mocked(redirect)).toHaveBeenCalledWith(
+      `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
+    );
   });
 });
