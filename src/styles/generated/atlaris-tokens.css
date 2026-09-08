@@ -1,6 +1,7 @@
 /* Generated from tokens/atlaris.tokens.json; SHA-256 4fd076c1a210c533639ec3b3e478b7dffa7303cc8b47c76d7bf8a229b6962873.
  * Draft 0.3, dark theme only. Do not edit generated values.
- * No :root override, no Tailwind --spacing override, no production integration.
+ * Adopted by the JCS-86 semantic bridge in src/app/globals.css.
+ * This file still has no :root override and no Tailwind --spacing override.
  * Apply data-atlaris-theme="dark" to the same element that owns overrides.
  */
 [data-atlaris-theme="dark"] {

@@ -167,7 +167,8 @@
   --panel: var(--at-semantic-color-background-surface);
   --panel-foreground: var(--at-semantic-color-text-primary);
   --panel-muted: var(--at-semantic-color-background-raised);
-  --panel-border: var(--at-semantic-color-border-subtle);
+  /* Hero/card/banner chrome. Subtle (#253244) is a divider; raised is the quieter frame. */
+  --panel-border: var(--at-semantic-color-background-raised);
   --border: var(--at-semantic-color-border-subtle);
   --input: var(--at-semantic-color-border-control);
   --ring: var(--at-semantic-color-focus-ring);

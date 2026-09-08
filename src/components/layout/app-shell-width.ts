@@ -12,5 +12,9 @@ export const APP_SHELL_SIDEBAR_OFFSET = 'lg:pl-56' as const;
 export const APP_SHELL_HEADER_TUCK =
   '-mt-[calc(4rem+env(safe-area-inset-top,0px))]' as const;
 
+/** In-page hash target offset for the fixed 4rem header plus a small gap. */
+export const APP_SHELL_SCROLL_MARGIN =
+  'scroll-mt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)]' as const;
+
 /** Centered product app content column (SiteHeader inner wrapper + PageShell). */
 export const APP_SHELL_COLUMN = 'mx-auto max-w-7xl' as const;
