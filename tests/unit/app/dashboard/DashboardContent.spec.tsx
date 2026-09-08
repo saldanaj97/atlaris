@@ -61,10 +61,23 @@ describe('DashboardContent', () => {
 
     render(await DashboardContent());
 
+    expect(
+      screen.getByRole('heading', { level: 1, name: 'Welcome back, Juan.' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('link', { name: 'Continue learning' }),
+    ).toHaveAttribute('href', `/plans/${plan.id}`);
+    expect(screen.getByRole('link', { name: 'View module' })).toHaveAttribute(
+      'href',
+      `/plans/${plan.id}/modules/${summary.modules[0]?.id}`,
+    );
     expect(screen.getByText('Progress tracking coming soon')).toBeVisible();
     expect(
       screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
+    expect(screen.queryByText('Projects')).not.toBeInTheDocument();
+    expect(screen.queryByText(/hrs learned/i)).not.toBeInTheDocument();
   });
 
   it('renders a zero-hour weekly target as reported', async () => {
@@ -116,5 +129,48 @@ describe('DashboardContent', () => {
     expect(
       screen.queryByRole('link', { name: 'Begin tonight' }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
+  });
+
+  it('shows task-weighted overall progress from live summaries', async () => {
+    const { modules: _smallModules, ...smallPlan } = buildPlan({
+      generationStatus: 'ready',
+      topic: 'Short plan',
+      weeklyHours: 1,
+    });
+    const { modules: _largeModules, ...largePlan } = buildPlan({
+      generationStatus: 'ready',
+      topic: 'Long plan',
+      weeklyHours: 4,
+    });
+    const resume = buildPlanSummary({
+      plan: smallPlan,
+      modules: buildModuleRows(smallPlan.id, 1),
+      completedTasks: 1,
+      totalTasks: 1,
+      completion: 1,
+      completedModules: 1,
+    });
+    const other = buildPlanSummary({
+      plan: largePlan,
+      modules: buildModuleRows(largePlan.id, 3),
+      completedTasks: 0,
+      totalTasks: 9,
+      completion: 0,
+      completedModules: 0,
+    });
+    mocks.getDashboardPlanDataMock.mockResolvedValue({
+      summaries: [resume, other],
+      resumePlan: resume,
+    });
+
+    render(await DashboardContent());
+
+    expect(screen.getByText('10%')).toBeVisible();
+    expect(screen.getByLabelText('Overall task progress')).toHaveAttribute(
+      'aria-valuenow',
+      '10',
+    );
+    expect(screen.queryByText('50%')).not.toBeInTheDocument();
   });
 });

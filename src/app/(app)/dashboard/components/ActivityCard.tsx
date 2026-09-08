@@ -43,7 +43,7 @@ export function ActivityCard({
     >
       <span
         className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-full border',
+          'flex size-9 shrink-0 items-center justify-center rounded-[8px] border',
           presentation.className,
         )}
         aria-hidden='true'

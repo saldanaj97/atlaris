@@ -16,10 +16,10 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
       aria-labelledby='activity-feed-heading'
       className='gap-0 overflow-hidden p-0'
     >
-      <header className='border-b border-border/60 px-5 py-5 sm:px-6'>
+      <header className='px-5 pt-5 pb-1 sm:px-6 sm:pt-6'>
         <h2
           id='activity-feed-heading'
-          className='text-lg font-semibold text-foreground'
+          className='text-lg font-semibold text-foreground sm:text-xl'
         >
           Activity feed
         </h2>
