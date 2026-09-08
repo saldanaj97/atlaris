@@ -89,6 +89,8 @@ Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/a
 
 PostHog is analytics ingest today (`posthog-js`, `posthog-node`, application-owned `/ingest` proxy). Project `551450` had zero active flags when audited on September 2, 2026. Reserve PostHog for future product experiments and cohort rollouts. Do not wire a PostHog Flags adapter for `maintenance-mode`, `email-notification-delivery`, or `module-lesson-generation`.
 
+The app initializes PostHog, identifies users, captures browser events, and captures server events only when `NODE_ENV=production` and the deployment is explicitly Vercel Production. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`; a custom target such as `staging`, or the standard `VERCEL_ENV=preview`, disables PostHog even though Vercel sets `NODE_ENV=production` for those deployments. The browser receives the corresponding values as `NEXT_PUBLIC_VERCEL_TARGET_ENV` and `NEXT_PUBLIC_VERCEL_ENV` from `next.config.ts`. Missing deployment markers fail closed. Local development, tests, Preview, and Staging therefore do not initialize the SDK or issue application-owned PostHog captures.
+
 ### Adding New Variables
 
 If you need a new variable:

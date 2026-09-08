@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { afterMock, captureMock, flushMock, posthogCtorMock } = vi.hoisted(
   () => ({
@@ -25,6 +25,11 @@ vi.mock('posthog-node', () => ({
 
 import { captureAfterResponse } from '@/lib/posthog-server';
 
+beforeEach(() => {
+  vi.stubEnv('VERCEL_TARGET_ENV', '');
+  vi.stubEnv('NEXT_PUBLIC_VERCEL_TARGET_ENV', '');
+});
+
 async function loadPostHogServer() {
   vi.resetModules();
   return import('@/lib/posthog-server');
@@ -37,6 +42,9 @@ describe('captureAfterResponse', () => {
   });
 
   it('schedules capture+flush with Clerk authUserId and does not flush on the call path', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://us.i.posthog.com');
 
@@ -58,6 +66,9 @@ describe('captureAfterResponse', () => {
   });
 
   it('does not throw when after() has no Next request scope', () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     afterMock.mockImplementation(() => {
       throw new Error('`after` was called outside a request scope');
     });
@@ -66,6 +77,19 @@ describe('captureAfterResponse', () => {
       captureAfterResponse({ authUserId: 'user_clerk_abc' }, 'plan_deleted'),
     ).not.toThrow();
     expect(captureMock).not.toHaveBeenCalled();
+  });
+
+  it('does not schedule or construct PostHog in a Vercel Preview deployment', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'preview');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'preview');
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test');
+
+    const { captureAfterResponse: capture } = await loadPostHogServer();
+    capture({ authUserId: 'user_clerk_abc' }, 'plan_deleted');
+
+    expect(afterMock).not.toHaveBeenCalled();
+    expect(posthogCtorMock).not.toHaveBeenCalled();
   });
 });
 
@@ -76,6 +100,9 @@ describe('getPostHogClient', () => {
   });
 
   it('uses EU ingest origin as the Node SDK host for eu.posthog.com', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'eu.posthog.com');
 
@@ -89,6 +116,9 @@ describe('getPostHogClient', () => {
   });
 
   it('inits with US Cloud ingest when the token is set and host is missing', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', '');
 
@@ -102,6 +132,9 @@ describe('getPostHogClient', () => {
   });
 
   it('inits with US Cloud ingest when the token is set and host is invalid', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'not a host');
 
@@ -115,6 +148,9 @@ describe('getPostHogClient', () => {
   });
 
   it('does not init without a project token', async () => {
+    vi.stubEnv('NODE_ENV', 'production');
+    vi.stubEnv('VERCEL_ENV', 'production');
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', '');
     vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://us.posthog.com');
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -122,7 +158,7 @@ describe('getPostHogClient', () => {
     const { getPostHogClient } = await loadPostHogServer();
     expect(getPostHogClient()).toBeNull();
     expect(posthogCtorMock).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalled();
+    expect(warn).not.toHaveBeenCalled();
 
     warn.mockRestore();
   });

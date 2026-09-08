@@ -12,6 +12,7 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { isAbortError } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
@@ -195,7 +196,9 @@ export function DeletePlanDialog({
 
     switch (result.kind) {
       case 'success':
-        posthog.capture('plan_deletion_confirmed', { plan_id: planId });
+        if (isPostHogEnabledInCurrentEnvironment()) {
+          posthog.capture('plan_deletion_confirmed', { plan_id: planId });
+        }
         focusAfterCloseRef.current = 'success';
         finalizeDeleteRequest({
           controller,

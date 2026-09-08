@@ -1,6 +1,7 @@
 // Sentry browser SDK init (Next.js client instrumentation entry).
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
 
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { toBoolean } from '@/lib/config/env/shared';
 import {
   getReplayErrorSampleRate,
@@ -56,12 +57,13 @@ if (isSentryEnabled) {
 }
 
 // PostHog client-side init — runs once when the browser loads the app.
+const isPostHogEnabled = isPostHogEnabledInCurrentEnvironment();
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogUiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
   ? normalizePostHogSdkHost(process.env.NEXT_PUBLIC_POSTHOG_HOST)
   : null;
 
-if (posthogToken) {
+if (isPostHogEnabled && posthogToken) {
   posthog.init(posthogToken, {
     api_host: '/ingest',
     ui_host: posthogUiHost ?? 'https://us.posthog.com',
@@ -72,10 +74,10 @@ if (posthogToken) {
     // Debug logging in development
     debug: process.env.NODE_ENV === 'development',
   });
-} else if (process.env.NODE_ENV !== 'production') {
-  // Warn in non-production so misconfiguration is visible during development.
+} else if (isPostHogEnabled) {
+  // Warn only when an explicit production deployment is misconfigured.
   console.warn(
-    'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN or NEXT_PUBLIC_POSTHOG_HOST variable required by PostHog is missing or un-configured, this causes events to be silently missed. This error stops appearing once both variables are configured',
+    'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is required for PostHog in production; analytics will remain disabled until it is configured.',
   );
 }
 

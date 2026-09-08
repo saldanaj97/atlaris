@@ -17,6 +17,7 @@ import {
   deriveActiveModuleId,
   derivePlanOverviewStats as computeOverviewStats,
 } from '@/features/plans/task-progress/client';
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
@@ -47,12 +48,14 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     if (result?.revalidateFailed) {
       toast.message('Progress saved. Refresh if the page looks stale.');
     }
-    for (const update of updates) {
-      posthog.capture('task_status_changed', {
-        task_id: update.taskId,
-        new_status: update.status,
-        variant: 'timeline',
-      });
+    if (isPostHogEnabledInCurrentEnvironment()) {
+      for (const update of updates) {
+        posthog.capture('task_status_changed', {
+          task_id: update.taskId,
+          new_status: update.status,
+          variant: 'timeline',
+        });
+      }
     }
   }
 
