@@ -44,7 +44,7 @@ PY
 
 This writes only a temporary CSS artifact after validation succeeds. It reads the external source without changing the reference package. Intentional rejected contrast pairs must remain rejected (`as_expected` checks that distinction); this is not an application accessibility certification.
 
-The verified generated artifact is adopted at `src/styles/generated/atlaris-tokens.css`; its values remain generated and must not be edited by hand. Regenerate from the external JSON when dark values change and review the semantic bridge in `src/app/globals.css`. The original package is dark-only: the approved light extension is authored once in the existing `:root` runtime tokens, not copied into a competing dark palette or into the external reference package. The machine-specific package location and generation evidence belong in the ignored local daily recap, not in application configuration.
+The verified generated artifact is adopted at `src/styles/generated/atlaris-tokens.css`; its values remain generated and must not be edited by hand. Regenerate from the external JSON when dark values change and review the semantic bridge in `src/app/globals.css`. The original package is dark-only: the approved light extension is authored once in the existing `:root` runtime tokens, not copied into a competing dark palette or into the external reference package. The machine-specific package location and generation evidence must stay out of application configuration and must not be committed.
 
 ### JCS-86 foundation boundaries
 
