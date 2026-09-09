@@ -15,25 +15,26 @@ import {
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
+import { PlansNextStep } from '@/components/ui/plans-next-step';
+import { ROUTES } from '@/features/navigation/routes';
 import {
-  Table,
-  TableBody,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ListFilter,
   Search,
 } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { type RefObject, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
 interface PlansListProps {
@@ -41,18 +42,35 @@ interface PlansListProps {
   query: PlanListQuery;
 }
 
-type SortableColumn = 'topic' | 'progress' | 'status' | 'updated';
-type SortDirection = 'ascending' | 'descending';
+const FILTER_OPTIONS: ReadonlyArray<{
+  value: FilterStatus;
+  label: string;
+  countKey?: keyof PlanListPage['statusCounts'];
+}> = [
+  { value: 'all', label: 'All plans' },
+  { value: 'active', label: 'Active', countKey: 'active' },
+  { value: 'not_started', label: 'Not started', countKey: 'not_started' },
+  { value: 'completed', label: 'Completed', countKey: 'completed' },
+  { value: 'generating', label: 'Generating', countKey: 'generating' },
+  { value: 'failed', label: 'Failed', countKey: 'failed' },
+  { value: 'inactive', label: 'Inactive', countKey: 'paused' },
+];
 
-const COLUMN_SORTS = {
-  topic: ['topic_asc', 'topic_desc'],
-  progress: ['progress_asc', 'progress_desc'],
-  status: ['status_asc', 'status_desc'],
-  updated: ['updated_asc', 'recently_updated'],
-} as const satisfies Record<
-  SortableColumn,
-  readonly [PlanListSort, PlanListSort]
->;
+const SORT_OPTIONS: ReadonlyArray<{
+  value: PlanListSort;
+  label: string;
+}> = [
+  { value: 'recommended', label: 'Recommended' },
+  { value: 'recently_updated', label: 'Recently updated' },
+  { value: 'newest', label: 'Newest' },
+  { value: 'topic_asc', label: 'Name A–Z' },
+  { value: 'topic_desc', label: 'Name Z–A' },
+  { value: 'progress_desc', label: 'Progress high to low' },
+  { value: 'progress_asc', label: 'Progress low to high' },
+  { value: 'status_asc', label: 'Status' },
+  { value: 'status_desc', label: 'Status descending' },
+  { value: 'updated_asc', label: 'Oldest updated' },
+];
 
 function isPlanBulkDeletable(plan: PlanListItem): boolean {
   return plan.status !== 'generating';
@@ -80,67 +98,156 @@ function plansHref(params: {
   }
 
   const queryString = searchParams.toString();
-  return queryString ? `/plans?${queryString}` : '/plans';
+  return queryString
+    ? `${ROUTES.PLANS.ROOT}?${queryString}`
+    : ROUTES.PLANS.ROOT;
 }
 
-function getSortDirection(
-  sort: PlanListSort,
-  column: SortableColumn,
-): SortDirection | null {
-  const [ascending, descending] = COLUMN_SORTS[column];
-  if (sort === ascending) return 'ascending';
-  if (sort === descending) return 'descending';
-  return null;
-}
-
-function getNextSort(sort: PlanListSort, column: SortableColumn): PlanListSort {
-  const [ascending, descending] = COLUMN_SORTS[column];
-  if (sort === ascending) return descending;
-  if (sort === descending) return ascending;
-  return column === 'progress' || column === 'updated' ? descending : ascending;
-}
-
-function SortableTableHead({
-  column,
-  label,
+function PlansStatusRail({
+  page,
   query,
 }: {
-  column: SortableColumn;
-  label: string;
+  page: PlanListPage;
   query: PlanListQuery;
 }) {
-  const direction = getSortDirection(query.sort, column);
-  const nextSort = getNextSort(query.sort, column);
-  const nextDirection =
-    nextSort === COLUMN_SORTS[column][0] ? 'ascending' : 'descending';
-
   return (
-    <TableHead aria-sort={direction ?? 'none'}>
-      <Button
-        asChild
-        variant='ghost'
-        size='sm'
-        className='-ml-3 h-8 px-2 text-xs font-medium uppercase'
+    <nav
+      aria-label='Plan status filters'
+      className='min-w-0 overflow-hidden rounded-[12px] border border-panel-border bg-panel'
+    >
+      <div className='overflow-x-auto'>
+        <ul className='flex min-w-max items-center gap-1 p-1'>
+          {FILTER_OPTIONS.map((option) => {
+            const isCurrent = option.value === query.status;
+            const count =
+              option.value === 'all'
+                ? page.totalSearchResults
+                : option.countKey
+                  ? page.statusCounts[option.countKey]
+                  : 0;
+
+            return (
+              <li key={option.value}>
+                <Link
+                  href={plansHref({
+                    search: query.search,
+                    status: option.value,
+                    sort: query.sort,
+                  })}
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={`flex min-h-[40px] items-center gap-2 rounded-[8px] px-3 text-sm whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
+                    isCurrent
+                      ? 'bg-primary/10 font-medium text-primary shadow-xs'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                >
+                  {option.label}
+                  <span
+                    className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
+                      isCurrent
+                        ? 'bg-primary/15 text-primary'
+                        : 'bg-panel-muted text-muted-foreground'
+                    }`}
+                  >
+                    {count}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </div>
+    </nav>
+  );
+}
+
+function PlansSearch({
+  query,
+  searchInputRef,
+}: {
+  query: PlanListQuery;
+  searchInputRef: RefObject<HTMLInputElement | null>;
+}) {
+  return (
+    <div className='flex w-full min-w-0 flex-1 flex-col items-stretch gap-2 sm:flex-row sm:items-center'>
+      <form
+        action={ROUTES.PLANS.ROOT}
+        className='relative w-full min-w-0 flex-1'
       >
+        <Search
+          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
+          aria-hidden='true'
+        />
+        {query.status !== 'all' ? (
+          <input type='hidden' name='status' value={query.status} />
+        ) : null}
+        {query.sort !== 'recommended' ? (
+          <input type='hidden' name='sort' value={query.sort} />
+        ) : null}
+        <Input
+          ref={searchInputRef}
+          type='search'
+          name='search'
+          placeholder='Search plans...'
+          aria-label='Search learning plans'
+          className='min-h-[40px] w-full border-panel-border bg-panel pl-[36px]'
+          defaultValue={query.search}
+        />
+      </form>
+      {query.status !== 'all' ? (
         <Link
           href={plansHref({
             search: query.search,
-            status: query.status,
-            sort: nextSort,
+            status: 'all',
+            sort: query.sort,
           })}
-          aria-label={`Sort by ${label} ${nextDirection}`}
+          className='shrink-0 self-start text-xs font-medium text-link hover:text-link-hover hover:underline sm:self-auto'
         >
-          {label}
-          {direction === 'ascending' ? (
-            <ArrowUp aria-hidden='true' />
-          ) : direction === 'descending' ? (
-            <ArrowDown aria-hidden='true' />
-          ) : (
-            <ArrowUpDown aria-hidden='true' />
-          )}
+          Clear{' '}
+          {(
+            FILTER_OPTIONS.find((option) => option.value === query.status)
+              ?.label ?? query.status
+          ).toLowerCase()}{' '}
+          filter
         </Link>
-      </Button>
-    </TableHead>
+      ) : null}
+    </div>
+  );
+}
+
+function PlansSort({ query }: { query: PlanListQuery }) {
+  const currentLabel =
+    SORT_OPTIONS.find((option) => option.value === query.sort)?.label ??
+    'Recommended';
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant='outline' className='w-full shrink-0 sm:w-auto'>
+          <ListFilter aria-hidden='true' />
+          <span className='hidden sm:inline'>Sort:</span>
+          <span className='max-w-[9rem] truncate'>{currentLabel}</span>
+          <ChevronDown aria-hidden='true' />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align='end'>
+        <DropdownMenuLabel>Sort plans</DropdownMenuLabel>
+        {SORT_OPTIONS.map((option) => (
+          <DropdownMenuItem key={option.value} asChild>
+            <Link
+              href={plansHref({
+                search: query.search,
+                status: query.status,
+                sort: option.value,
+              })}
+              aria-current={query.sort === option.value ? 'page' : undefined}
+            >
+              {option.label}
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -150,16 +257,18 @@ function BulkPlanActionsToolbar({
   deleteDisabled,
   onClear,
   onDelete,
+  deleteButtonRef,
 }: {
   selectedCount: number;
   toolbarMessage: string | null;
   deleteDisabled: boolean;
   onClear: () => void;
   onDelete: () => void;
+  deleteButtonRef: RefObject<HTMLButtonElement | null>;
 }) {
   return (
     <fieldset
-      className='m-0 min-w-0 space-y-3 rounded-xl border border-panel-border bg-panel px-4 py-3'
+      className='m-0 min-w-0 space-y-3 rounded-[12px] border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
@@ -184,6 +293,7 @@ function BulkPlanActionsToolbar({
             Clear
           </Button>
           <Button
+            ref={deleteButtonRef}
             type='button'
             variant='destructive'
             size='sm'
@@ -198,62 +308,22 @@ function BulkPlanActionsToolbar({
   );
 }
 
-function PlansSearch({ query }: { query: PlanListQuery }) {
-  return (
-    <div className='flex flex-wrap items-center gap-2'>
-      <form action='/plans' className='relative min-w-64 flex-1'>
-        <Search
-          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
-          aria-hidden='true'
-        />
-        {query.status !== 'all' ? (
-          <input type='hidden' name='status' value={query.status} />
-        ) : null}
-        {query.sort !== 'recommended' ? (
-          <input type='hidden' name='sort' value={query.sort} />
-        ) : null}
-        <Input
-          type='search'
-          name='search'
-          placeholder='Search plans...'
-          aria-label='Search learning plans'
-          className='h-9 w-full border-panel-border bg-panel pl-9'
-          defaultValue={query.search}
-        />
-      </form>
-      {query.status !== 'all' ? (
-        <Button asChild variant='ghost' size='sm'>
-          <Link
-            href={plansHref({
-              search: query.search,
-              status: 'all',
-              sort: query.sort,
-            })}
-          >
-            Clear {query.status.replaceAll('_', ' ')} filter
-          </Link>
-        </Button>
-      ) : null}
-    </div>
-  );
-}
-
-function PlansTable({
+function PlansGrid({
   page,
-  query,
   deletablePlans,
   selectedPlanIds,
   onSelectionChange,
   onSelectAll,
   onDeselectAll,
+  successFocusRef,
 }: {
   page: PlanListPage;
-  query: PlanListQuery;
   deletablePlans: PlanListItem[];
   selectedPlanIds: Set<string>;
   onSelectionChange: (planId: string, selected: boolean) => void;
   onSelectAll: () => void;
   onDeselectAll: () => void;
+  successFocusRef: RefObject<HTMLElement | null>;
 }) {
   const selectedCount = deletablePlans.filter((plan) =>
     selectedPlanIds.has(plan.id),
@@ -263,39 +333,36 @@ function PlansTable({
   const someSelected = selectedCount > 0 && !allSelected;
 
   return (
-    <Table aria-label='Learning plans' className='min-w-[840px]'>
-      <TableHeader className='bg-transparent [&_tr]:border-border/60'>
-        <TableRow className='hover:bg-transparent'>
-          <TableHead className='w-10 px-3'>
-            <input
-              type='checkbox'
-              checked={allSelected}
-              disabled={deletablePlans.length === 0}
-              aria-label='Select all plans on page'
-              ref={(element) => {
-                if (element) element.indeterminate = someSelected;
-              }}
-              onChange={(event) => {
-                if (event.currentTarget.checked) {
-                  onSelectAll();
-                  return;
-                }
-                onDeselectAll();
-              }}
-              className='size-4 shrink-0 rounded border border-border accent-primary focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50'
-            />
-          </TableHead>
-          <SortableTableHead column='topic' label='Plan' query={query} />
-          <SortableTableHead column='progress' label='Progress' query={query} />
-          <TableHead className='text-xs uppercase'>Tasks</TableHead>
-          <SortableTableHead column='status' label='Status' query={query} />
-          <SortableTableHead column='updated' label='Updated' query={query} />
-          <TableHead className='w-12'>
-            <span className='sr-only'>Actions</span>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody className='[&_tr:last-child]:border-b [&_tr:last-child]:border-border/60'>
+    <div className='space-y-3'>
+      <div className='flex items-center justify-between gap-3'>
+        <label className='inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground'>
+          <input
+            type='checkbox'
+            checked={allSelected}
+            disabled={deletablePlans.length === 0}
+            aria-label='Select all plans on page'
+            ref={(element) => {
+              if (element) element.indeterminate = someSelected;
+            }}
+            onChange={(event) => {
+              if (event.currentTarget.checked) {
+                onSelectAll();
+                return;
+              }
+              onDeselectAll();
+            }}
+            className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+          />
+          Select all on page
+        </label>
+        <p className='text-xs text-muted-foreground'>
+          {page.totalItems} {page.totalItems === 1 ? 'plan' : 'plans'}
+        </p>
+      </div>
+      <ul
+        aria-label='Learning plans'
+        className='grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'
+      >
         {page.items.map((plan, index) => (
           <PlanRow
             key={plan.id}
@@ -305,10 +372,11 @@ function PlansTable({
             selected={selectedPlanIds.has(plan.id)}
             selectable={isPlanBulkDeletable(plan)}
             onSelectionChange={onSelectionChange}
+            successFocusRef={successFocusRef}
           />
         ))}
-      </TableBody>
-    </Table>
+      </ul>
+    </div>
   );
 }
 
@@ -320,6 +388,8 @@ export function PlansList({ page, query }: PlansListProps) {
   );
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
+  const bulkDeleteTriggerRef = useRef<HTMLButtonElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const deletablePlans = page.items.filter(isPlanBulkDeletable);
   const selectedDeletablePlans = deletablePlans.filter((plan) =>
     selectedPlanIds.has(plan.id),
@@ -399,8 +469,14 @@ export function PlansList({ page, query }: PlansListProps) {
   };
 
   return (
-    <div className='space-y-5'>
-      <PlansSearch query={query} />
+    <div className='space-y-6'>
+      <div className='flex flex-col gap-3'>
+        <PlansStatusRail page={page} query={query} />
+        <div className='flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center'>
+          <PlansSearch query={query} searchInputRef={searchInputRef} />
+          <PlansSort query={query} />
+        </div>
+      </div>
 
       {selectedDeletablePlans.length > 0 ? (
         <BulkPlanActionsToolbar
@@ -412,6 +488,7 @@ export function PlansList({ page, query }: PlansListProps) {
             if (isReconciliationPending) return;
             setBulkDeleteOpen(true);
           }}
+          deleteButtonRef={bulkDeleteTriggerRef}
         />
       ) : null}
 
@@ -421,6 +498,8 @@ export function PlansList({ page, query }: PlansListProps) {
         plans={selectedDeletablePlans}
         onDeleted={handleBulkDeleted}
         onOutcomeUnknown={handleBulkDeleteOutcomeUnknown}
+        returnFocusRef={bulkDeleteTriggerRef}
+        successFocusRef={searchInputRef}
       />
 
       {page.items.length === 0 ? (
@@ -430,14 +509,14 @@ export function PlansList({ page, query }: PlansListProps) {
           filterStatus={query.status}
         />
       ) : (
-        <PlansTable
+        <PlansGrid
           page={page}
-          query={query}
           deletablePlans={deletablePlans}
           selectedPlanIds={selectedPlanIds}
           onSelectionChange={handleSelectionChange}
           onSelectAll={handleSelectAllOnPage}
           onDeselectAll={handleClearSelection}
+          successFocusRef={searchInputRef}
         />
       )}
 
@@ -502,6 +581,10 @@ export function PlansList({ page, query }: PlansListProps) {
             </Button>
           </div>
         </nav>
+      ) : null}
+
+      {page.items.length > 0 && page.canCreatePlan !== undefined ? (
+        <PlansNextStep canCreatePlan={page.canCreatePlan} />
       ) : null}
     </div>
   );

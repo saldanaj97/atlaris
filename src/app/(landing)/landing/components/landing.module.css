@@ -1,0 +1,278 @@
+/* Landing motion and route overlays. Content remains visible without JS or motion. */
+
+.revealItem,
+.revealFromLeft,
+.revealFromRight,
+.revealScale {
+  opacity: 1;
+  transform: none;
+}
+
+.reveal[data-reveal-state='observing']
+  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+  opacity: 0;
+}
+
+.reveal[data-reveal-state='observing'] .revealItem {
+  transform: translate3d(0, 1.25rem, 0);
+}
+
+.reveal[data-reveal-state='observing'] .revealFromLeft {
+  transform: translate3d(-1.5rem, 0, 0);
+}
+
+.reveal[data-reveal-state='observing'] .revealFromRight {
+  transform: translate3d(1.5rem, 0, 0);
+}
+
+.reveal[data-reveal-state='observing'] .revealScale {
+  transform: translate3d(0, 0.75rem, 0) scale(0.965);
+}
+
+.reveal[data-reveal-state='visible']
+  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+  transition:
+    opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
+    transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
+}
+
+.hero {
+  min-height: 35rem;
+}
+
+.heroOverline,
+.heroLead,
+.heroEmphasis,
+.heroCopy,
+.heroActions {
+  animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.heroOverline {
+  animation-delay: 40ms;
+}
+
+.heroLead {
+  animation-delay: 80ms;
+}
+
+.heroEmphasis {
+  animation-name: heroEmphasis;
+  animation-delay: 180ms;
+  transform-origin: 50% 100%;
+}
+
+.heroCopy {
+  animation-delay: 330ms;
+}
+
+.heroActions {
+  animation-delay: 470ms;
+}
+
+@keyframes heroRise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 1.35rem, 0);
+  }
+}
+
+@keyframes heroEmphasis {
+  from {
+    clip-path: inset(0 0 100% 0);
+    opacity: 0;
+    transform: translate3d(0, 1rem, 0) scale(0.985);
+  }
+  to {
+    clip-path: inset(0);
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.heroRoute {
+  position: absolute;
+  inset: 0 0 0 43%;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.heroRoutePath {
+  stroke-dashoffset: 0;
+  animation: routeDraw 1.4s cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
+}
+
+.heroRouteNode {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: routeNodeIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+.heroRouteNode:nth-of-type(2) {
+  animation-delay: 90ms;
+}
+
+.heroRouteNode:nth-of-type(3) {
+  animation-delay: 180ms;
+}
+
+.heroRouteNode:nth-of-type(4) {
+  animation-delay: 270ms;
+}
+
+.heroRouteLabels {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.heroRouteLabel {
+  position: absolute;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  transform: translate(-50%, -50%);
+  color: var(--foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-shadow: 0 1px 8px var(--background);
+}
+
+.heroRouteLabel::before {
+  width: 0.4rem;
+  height: 0.4rem;
+  border: 1px solid var(--background);
+  border-radius: 999px;
+  background: #9bc4ff;
+  box-shadow: 0 0 0.55rem rgb(155 196 255 / 70%);
+  content: '';
+}
+
+.heroRouteLabel:last-child {
+  color: #d8b66a;
+}
+
+.heroRouteLabel:last-child::before {
+  width: 0.65rem;
+  height: 0.65rem;
+  background: #d8b66a;
+  box-shadow: 0 0 0.75rem rgb(216 182 106 / 80%);
+}
+
+@keyframes routeDraw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes routeNodeIn {
+  from {
+    opacity: 0;
+    transform: scale(0);
+  }
+}
+
+.previewFrame {
+  box-shadow: 0 18px 60px rgb(0 0 0 / 12%);
+}
+
+.ambientOrb {
+  animation: ambientFloat var(--orb-duration, 18s) ease-in-out
+    var(--orb-delay, 0s) infinite alternate;
+}
+
+.ambientOrbPrimary {
+  --orb-duration: 17s;
+  --orb-x: -1.5rem;
+  --orb-y: 1.25rem;
+  --orb-scale: 1.05;
+}
+
+.ambientOrbMuted {
+  --orb-duration: 21s;
+  --orb-delay: -5s;
+  --orb-x: 1.75rem;
+  --orb-y: -1rem;
+  --orb-scale: 1.08;
+}
+
+@keyframes ambientFloat {
+  to {
+    transform: translate3d(var(--orb-x), var(--orb-y), 0)
+      scale(var(--orb-scale));
+  }
+}
+
+.ctaMotion:active {
+  transform: scale(0.98);
+}
+
+@media (hover: hover) {
+  .ctaMotion:hover {
+    transform: translateY(-0.125rem);
+  }
+
+  .ctaMotion:active {
+    transform: translateY(-0.125rem) scale(0.98);
+  }
+}
+
+@media (max-width: 767px) {
+  .heroRoute {
+    position: relative;
+    inset: auto;
+    min-height: 18rem;
+  }
+
+  .heroRouteLabel {
+    font-size: 0.625rem;
+  }
+}
+
+@media (max-width: 359px) {
+  .hero {
+    min-height: 0;
+  }
+
+  .heroRoute {
+    min-height: 15rem;
+  }
+
+  .heroRouteLabel {
+    letter-spacing: 0.1em;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heroOverline,
+  .heroLead,
+  .heroEmphasis,
+  .heroCopy,
+  .heroActions,
+  .heroRoutePath,
+  .heroRouteNode,
+  .ambientOrb {
+    animation: none;
+  }
+
+  .reveal[data-reveal-state]
+    :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .ctaMotion:hover,
+  .ctaMotion:active {
+    transform: none;
+  }
+}

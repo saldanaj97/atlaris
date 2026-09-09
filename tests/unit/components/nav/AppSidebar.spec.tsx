@@ -1,0 +1,107 @@
+import AppSidebar from '@/components/shared/nav/AppSidebar';
+import { authenticatedNavItems } from '@/features/navigation';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('next/link', () => ({
+  default: ({
+    children,
+    href,
+    ...props
+  }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} {...props}>
+      {children}
+    </a>
+  ),
+}));
+
+describe('AppSidebar', () => {
+  it('marks the active child and expands its section', () => {
+    render(
+      <AppSidebar
+        pathname='/analytics/usage'
+        navItems={authenticatedNavItems}
+        tier='pro'
+      />,
+    );
+
+    expect(
+      screen.getByRole('navigation', { name: 'Application navigation' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Usage' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: 'Analytics' })).not.toHaveAttribute(
+      'aria-current',
+    );
+    expect(
+      screen.getByRole('button', { name: 'Collapse Analytics' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('omits a create-plan action and still shows the upgrade banner for non-pro tiers', () => {
+    const { rerender } = render(
+      <AppSidebar
+        pathname='/dashboard'
+        navItems={authenticatedNavItems}
+        tier='starter'
+      />,
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
+    expect(
+      screen.getByText('Unlock more learning paths, projects, and features.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+
+    rerender(
+      <AppSidebar
+        pathname='/dashboard'
+        navItems={authenticatedNavItems}
+        tier='free'
+      />,
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Create New Plan' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+  });
+
+  it('supports a collapsed section and invokes the close callback on navigation', async () => {
+    const user = userEvent.setup();
+    const onNavigate = vi.fn();
+
+    render(
+      <AppSidebar
+        pathname='/dashboard'
+        navItems={authenticatedNavItems}
+        tier='pro'
+        onNavigate={onNavigate}
+      />,
+    );
+
+    expect(
+      screen.queryByRole('link', { name: 'Usage' }),
+    ).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: 'Expand Analytics' }));
+    expect(screen.getByRole('link', { name: 'Usage' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('link', { name: 'Settings' }));
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+});

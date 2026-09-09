@@ -13,13 +13,19 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { type NavItem, ROUTES } from '@/features/navigation';
+import {
+  type NavItem,
+  resolveCreatePlanCta,
+  ROUTES,
+} from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { Plus } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileHeaderProps {
   isMarketing: boolean;
+  /** App-shell routes keep the drawer trigger in this topbar. */
+  isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -34,10 +40,11 @@ interface MobileHeaderProps {
  * Compact header + hamburger when viewport below `md`. From `md` up, {@link DesktopHeader}
  * shows inline nav links instead.
  *
- * Marketing routes: brand + menu + theme toggle + peach CTA (no app avatar chrome).
+ * Marketing routes: brand left, theme + visitor CTA + outlined menu right.
  */
 export default function MobileHeader({
   isMarketing,
+  isAppShell = false,
   pathname,
   navItems,
   tier,
@@ -51,42 +58,40 @@ export default function MobileHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const appCtaHref = !isAuthenticated
-    ? ROUTES.AUTH.SIGN_IN
-    : canCreatePlan === true
-      ? ROUTES.PLANS.NEW
-      : canCreatePlan === false
-        ? ROUTES.PRICING
-        : undefined;
-  const appCtaAriaLabel = !isAuthenticated
-    ? 'Sign in'
-    : canCreatePlan === false
-      ? 'Upgrade'
-      : 'Create new plan';
-  const appCtaTooltip = !isAuthenticated
-    ? 'Sign in'
-    : canCreatePlan === false
-      ? 'Upgrade'
-      : 'New plan';
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'New plan',
+  });
+  const appCtaAriaLabel =
+    createPlanCta?.label === 'Upgrade' ? 'Upgrade' : 'Create new plan';
+
+  const menu = (
+    <MobileNavigation
+      isMarketing={isMarketing}
+      isAppShell={isAppShell}
+      pathname={pathname}
+      navItems={navItems}
+      tier={tier}
+      canCreatePlan={canCreatePlan}
+      isAuthenticated={isAuthenticated}
+      userName={userName}
+    />
+  );
 
   return (
-    <div className='relative grid h-16 w-full grid-cols-[auto_1fr_auto] items-center gap-2 px-3 sm:px-4 md:hidden'>
-      <div className='relative z-10 flex shrink-0'>
-        <MobileNavigation
-          isMarketing={isMarketing}
-          pathname={pathname}
-          navItems={navItems}
-          canCreatePlan={canCreatePlan}
-          isAuthenticated={isAuthenticated}
-        />
+    <div
+      className={cn(
+        'relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2',
+        isAppShell ? 'lg:hidden' : 'md:hidden',
+      )}
+    >
+      <div className='relative z-10 flex min-w-0 shrink-0 items-center'>
+        {isMarketing ? <BrandLogo size='sm' /> : menu}
       </div>
 
-      <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden' />
-
-      <div className='pointer-events-none absolute left-1/2 z-10 flex -translate-x-1/2 items-center'>
-        <div className='pointer-events-auto'>
-          <BrandLogo size='sm' />
-        </div>
+      <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden'>
+        {isMarketing ? null : <BrandLogo size='sm' />}
       </div>
 
       <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1'>
@@ -103,12 +108,19 @@ export default function MobileHeader({
                 'px-3 py-1.5 text-xs',
               )}
             >
-              <Link href={primaryCtaHref}>{primaryCtaLabel}</Link>
+              <Link href={primaryCtaHref}>
+                {primaryCtaLabel}
+                <ArrowRight
+                  aria-hidden='true'
+                  className='size-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+                />
+              </Link>
             </Button>
+            <div className='shrink-0'>{menu}</div>
           </>
         ) : (
           <>
-            {appCtaHref ? (
+            {createPlanCta ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -117,12 +129,17 @@ export default function MobileHeader({
                     size='icon-sm'
                     className='shrink-0 text-muted-foreground hover:text-foreground'
                   >
-                    <Link href={appCtaHref} aria-label={appCtaAriaLabel}>
+                    <Link
+                      href={createPlanCta.href}
+                      aria-label={appCtaAriaLabel}
+                    >
                       <Plus className='size-4' />
                     </Link>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side='bottom'>{appCtaTooltip}</TooltipContent>
+                <TooltipContent side='bottom'>
+                  {createPlanCta.label}
+                </TooltipContent>
               </Tooltip>
             ) : null}
             <div className='shrink-0'>

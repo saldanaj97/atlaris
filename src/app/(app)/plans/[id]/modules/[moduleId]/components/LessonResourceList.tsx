@@ -70,8 +70,8 @@ export function LessonResourceList({
 
   return (
     <div className='mb-6'>
-      <h4 className='mb-3 text-sm font-medium text-foreground'>
-        Learning Resources
+      <h4 className='mb-3 text-sm font-semibold text-foreground'>
+        Learning resources
       </h4>
       <div className='grid gap-3 sm:grid-cols-2'>
         {resources.map((resource) => (

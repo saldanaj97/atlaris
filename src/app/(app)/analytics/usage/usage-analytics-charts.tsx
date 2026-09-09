@@ -524,7 +524,7 @@ export function WeeklyLineChart({
   }, [plans.length]);
 
   return (
-    <div>
+    <div data-testid='eight-week-pulse'>
       <style>
         {`
           @keyframes usage-analytics-point-label-in {

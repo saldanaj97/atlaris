@@ -1,7 +1,17 @@
-import type { UsageAnalyticsModel } from '@/app/(app)/analytics/usage/usage-analytics-model';
+import type {
+  UsageAnalyticsDayRow,
+  UsageAnalyticsModel,
+} from '@/app/(app)/analytics/usage/usage-analytics-model';
 
 import { UsageAnalyticsContent } from '@/app/(app)/analytics/usage/usage-analytics-content';
-import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let observedResizeEntries: {
@@ -86,6 +96,17 @@ const weeklyTrends = weeks.map(
   }),
 );
 
+const dailyTrends: UsageAnalyticsDayRow[] = Array.from(
+  { length: 30 },
+  (_, index) => ({
+    dateKey: `2026-05-${String(index + 1).padStart(2, '0')}`,
+    label: `May ${index + 1}`,
+    progressChangeCount: index % 4,
+    completedEvents: index % 3,
+    estimatedCompletionAddedMinutes: (index % 5) * 20,
+  }),
+);
+
 const model: UsageAnalyticsModel = {
   plans: [
     {
@@ -129,6 +150,24 @@ const model: UsageAnalyticsModel = {
   moduleCompletionPercent: 44,
   completedMinutes: 960,
   totalMinutes: 2460,
+  plansInProgress: 3,
+  planTimeShares: [
+    {
+      id: 'plan-1',
+      topic: 'Applied TypeScript Architecture',
+      completedMinutes: 420,
+      percent: 44,
+    },
+  ],
+  recentEvents: [
+    {
+      id: 'event-1',
+      planId: 'plan-1',
+      planTopic: 'Applied TypeScript Architecture',
+      status: 'completed',
+      occurredAt: new Date('2026-06-28T16:00:00.000Z'),
+    },
+  ],
   analyticsTimezone: 'America/Chicago',
   history: {
     hasActivity: true,
@@ -144,6 +183,7 @@ const model: UsageAnalyticsModel = {
       isCurrentWeek: true,
     },
     weeklyTrends,
+    dailyTrends,
     maxWeeklyProgressChanges: 10,
   },
 };
@@ -157,17 +197,24 @@ describe('UsageAnalyticsContent', () => {
     ).toHaveClass('h-80');
   });
 
-  it('renders the selected trend chart and summary metrics', async () => {
+  it('renders the seven contracted families and the eight-week pulse', async () => {
     render(<UsageAnalyticsContent model={model} />);
     await resizeChart(780);
 
+    expect(
+      screen.getByRole('heading', { name: 'Learning analytics' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Current completion')).toBeInTheDocument();
+    expect(screen.getByText('Learning activity')).toBeInTheDocument();
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
-    expect(screen.getByText('Progress changes by week')).toBeInTheDocument();
+    expect(
+      screen.getByText('Progress changes by plan and week.'),
+    ).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
     expect(
       await screen.findByRole('figure', { name: 'Eight-week pulse' }),
     ).toHaveAccessibleDescription(
-      /Progress changes by week.*Line chart showing progress changes by week for each plan\./,
+      /Progress changes by plan and week\..*Line chart showing progress changes by week for each plan\./,
     );
     expect(
       screen.getByText('Applied TypeScript Architecture'),
@@ -175,30 +222,45 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Database Performance')).toBeInTheDocument();
     expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
     expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(
-      screen.getByLabelText('Eight-week pulse analytics design'),
-    ).toHaveClass('w-full');
-    expect(screen.getAllByText('Tasks')).toHaveLength(2);
-    expect(screen.getAllByText('47%')).toHaveLength(2);
-    expect(screen.getByText('28 / 60 complete')).toBeInTheDocument();
+    expect(screen.getByText('28 of 60 tasks complete')).toBeInTheDocument();
+    expect(screen.getByText('47%')).toBeInTheDocument();
     expect(screen.getByText('32 tasks left')).toBeInTheDocument();
-    expect(screen.getAllByText('Modules')).toHaveLength(2);
-    expect(screen.getAllByText('44%')).toHaveLength(2);
-    expect(screen.getByText('8 / 18 complete')).toBeInTheDocument();
+    expect(screen.getByText('8 of 18 modules complete')).toBeInTheDocument();
+    expect(screen.getByText('44%')).toBeInTheDocument();
     expect(screen.getByText('10 modules left')).toBeInTheDocument();
     expect(screen.getByText('Completed time')).toBeInTheDocument();
-    expect(screen.getAllByText('16 hrs')).toHaveLength(2);
+    expect(screen.getByText('16 hrs')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estimated completed learning time'),
+    ).toBeInTheDocument();
     expect(screen.getByText('41 hrs planned total')).toBeInTheDocument();
-    expect(screen.getByText('-1.5 hrs vs last week')).toBeInTheDocument();
-    expect(screen.getAllByText('Active days')).toHaveLength(2);
-    expect(screen.getAllByText('3/7')).toHaveLength(2);
+    const activitySection = screen.getByRole('region', {
+      name: 'Learning activity',
+    });
+    expect(
+      within(activitySection).getByText('Progress changes'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('-3 changes vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Completed events')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('-2 events vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Active days')).toBeInTheDocument();
+    expect(screen.getByText('3/7')).toBeInTheDocument();
     expect(screen.getByText('-2 days vs last week')).toBeInTheDocument();
     expect(screen.getByText('Streak')).toBeInTheDocument();
     expect(screen.getByText('4 days')).toBeInTheDocument();
     expect(screen.getByText('Best 6 days')).toBeInTheDocument();
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Down')).toHaveLength(4);
+    expect(screen.getAllByLabelText('Down')).toHaveLength(3);
+    expect(screen.queryByLabelText('Up')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plans in progress')).not.toBeInTheDocument();
+    expect(screen.queryByText('Time spent learning')).not.toBeInTheDocument();
+    expect(screen.queryByText('Time by plan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recent activity')).not.toBeInTheDocument();
+    expect(screen.queryByText('vs. previous 30 days')).not.toBeInTheDocument();
     expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
     expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
     expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();

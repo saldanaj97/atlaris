@@ -1,8 +1,12 @@
 import type { Metadata } from 'next';
 
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
-import { ShieldAlert, Wrench } from 'lucide-react';
+import { MaintenanceRecheckButton } from './MaintenanceRecheckButton';
+import BrandLogo from '@/components/shared/BrandLogo';
+import SiteFooter from '@/components/shared/SiteFooter';
+import { Card } from '@/components/ui/card';
+import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
+import { Settings2 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Maintenance | Atlaris',
@@ -13,78 +17,85 @@ export const metadata: Metadata = {
     description:
       'Atlaris is temporarily unavailable while we perform maintenance and infrastructure upgrades.',
     url: '/maintenance',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 
 export default function MaintenancePage() {
   return (
-    <main
-      id='main-content'
-      className='flex min-h-screen items-center justify-center bg-background p-4 sm:p-6'
-    >
-      <Card className='w-full max-w-lg gap-5 py-5 text-center sm:py-6'>
-        <CardContent className='space-y-5 px-5 sm:px-6'>
-          <div className='flex justify-center'>
-            <div className='animate-pulse rounded-full border border-primary/20 bg-primary p-4 shadow-sm motion-reduce:animate-none'>
-              <ShieldAlert
-                className='size-7 text-primary-foreground'
-                aria-hidden='true'
-              />
+    <div className='flex min-h-screen flex-col bg-background'>
+      <main
+        id='main-content'
+        className='relative isolate flex flex-1 flex-col overflow-hidden'
+        tabIndex={-1}
+      >
+        <ResponsiveBackdrop
+          desktop={{
+            src: '/artwork/maintenance-backdrop-desktop.jpg',
+            objectPosition: '50% 50%',
+          }}
+          mobile={{
+            src: '/artwork/maintenance-backdrop-mobile.jpg',
+            objectPosition: '70% 50%',
+          }}
+          overlay='background'
+        />
+
+        <div className='relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 sm:px-6'>
+          <header className='flex items-center py-5'>
+            <BrandLogo linked={false} size='sm' />
+          </header>
+
+          <div className='flex flex-1 flex-col items-center justify-center py-12 sm:py-16'>
+            <div className='w-full max-w-2xl text-center'>
+              <p className='mx-auto inline-flex rounded-full border border-primary/35 bg-panel px-4 py-2 text-[11px] leading-none font-medium tracking-[0.22em] text-primary uppercase'>
+                Maintenance
+              </p>
+
+              <h1 className='mx-auto mt-7 max-w-[20ch] font-serif text-[2.75rem] leading-[1.05] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'>
+                We’ll be back <span className='text-primary'>soon.</span>
+              </h1>
+
+              <p className='mx-auto mt-5 max-w-[34rem] text-base leading-relaxed text-muted-foreground sm:text-lg'>
+                Atlaris is temporarily unavailable while maintenance is in
+                progress. Please try again in a few minutes.
+              </p>
+
+              <Card
+                as='section'
+                aria-labelledby='maintenance-status-heading'
+                className='mx-auto mt-8 max-w-[28rem] gap-0 p-5 text-left sm:p-6'
+              >
+                <div className='flex items-start gap-4'>
+                  <span className='grid size-12 shrink-0 place-items-center rounded-full bg-primary/15 text-primary'>
+                    <Settings2 className='size-6' aria-hidden='true' />
+                  </span>
+                  <div className='min-w-0'>
+                    <h2
+                      id='maintenance-status-heading'
+                      className='text-base font-medium text-foreground'
+                    >
+                      System improvements in progress
+                    </h2>
+                    <p className='mt-1 text-sm leading-relaxed text-muted-foreground'>
+                      Please try again in a few minutes. Thank you for your
+                      patience.
+                    </p>
+                  </div>
+                </div>
+              </Card>
+
+              <MaintenanceRecheckButton />
             </div>
           </div>
 
-          <div className='flex justify-center'>
-            <Badge variant='default' className='gap-2 px-3 py-1'>
-              <span className='relative flex size-2'>
-                <span className='absolute inline-flex h-full w-full animate-ping rounded-full bg-primary-foreground opacity-75 motion-reduce:animate-none'></span>
-                <span className='relative inline-flex size-2 rounded-full bg-primary-foreground'></span>
-              </span>
-              Maintenance Active
-            </Badge>
-          </div>
-
-          <h1 className='font-heading text-2xl text-foreground sm:text-3xl'>
-            Atlaris is temporarily unavailable
-          </h1>
-
-          <p className='mx-auto max-w-md text-sm leading-relaxed text-muted-foreground sm:text-base'>
-            Scheduled maintenance is in progress. Plan creation, settings, and
-            analytics are paused until service resumes.
+          <p className='mx-auto max-w-md pb-8 text-center text-[11px] leading-relaxed tracking-[0.18em] text-muted-foreground uppercase'>
+            “A brighter future takes a little patience.”
+            <span className='mt-1 block'>— Atlaris</span>
           </p>
-
-          <div className='rounded-lg border border-border bg-muted/40 p-4 text-left'>
-            <div className='flex items-start gap-3'>
-              <Wrench
-                className='mt-0.5 size-4 shrink-0 text-primary'
-                aria-hidden='true'
-              />
-              <div className='space-y-2 text-sm'>
-                <p>
-                  <span className='font-medium text-foreground'>Status:</span>{' '}
-                  systems are being updated.
-                </p>
-                <p>
-                  <span className='font-medium text-foreground'>Recovery:</span>{' '}
-                  expected shortly.
-                </p>
-                <p>
-                  <span className='font-medium text-foreground'>
-                    Need help?
-                  </span>{' '}
-                  Contact support with your account email.
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-
-        <CardFooter className='border-t border-border px-5 text-center sm:px-6'>
-          <p className='w-full text-sm text-muted-foreground'>
-            Refresh this page in a few minutes for the latest state.
-          </p>
-        </CardFooter>
-      </Card>
-    </main>
+        </div>
+      </main>
+      <SiteFooter variant='maintenance' />
+    </div>
   );
 }

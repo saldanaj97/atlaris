@@ -41,7 +41,7 @@ export const loadBillingSnapshot = cache(async () => {
 
   if (!result) {
     redirect(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#billing`)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.BILLING)}`,
     );
   }
 

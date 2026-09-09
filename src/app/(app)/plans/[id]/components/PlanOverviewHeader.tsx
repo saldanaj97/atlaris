@@ -1,95 +1,76 @@
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
-import { StatCell } from '@/app/(app)/plans/[id]/components/StatCell';
+import { Button } from '@/components/ui/button';
+import { PageHero } from '@/components/ui/page-hero';
+import { SectionOverline } from '@/components/ui/section-overline';
+import { planDetailPath } from '@/features/navigation/routes';
 import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
+import { ArrowRight, Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 interface PlanOverviewProps {
   plan: ClientPlanDetail;
   stats: PlanOverviewStats;
+  activeModuleId?: string | null;
 }
 
-/** Plan detail hero: topic, bearing, and supporting plan metrics. */
-export function PlanOverviewHeader({ plan, stats }: PlanOverviewProps) {
-  const {
-    completedTasks,
-    totalTasks,
-    completionPercentage: completion,
-    totalMinutes,
-    estimatedWeeks,
-    completedModules,
-    totalModules,
-    estimatedCompletionDate,
-  } = stats;
+/** Introduces the plan and keeps the primary learning action near its title. */
+export function PlanOverviewHeader({
+  plan,
+  stats,
+  activeModuleId = null,
+}: PlanOverviewProps) {
+  const continueHref = activeModuleId
+    ? `${planDetailPath(plan.id)}/modules/${activeModuleId}`
+    : '#learning-path';
+  const continueLabel = activeModuleId ? 'Continue learning' : 'Review roadmap';
 
   return (
-    <article>
-      <div className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
-        <div className='grid gap-6 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-8'>
-          <div className='min-w-0'>
-            <div className='flex flex-wrap items-center gap-x-3 gap-y-1'>
-              <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-                Learning plan
-              </p>
-              <p className='text-xs text-muted-foreground'>
-                {formatSkillLevel(plan.skillLevel)} level
-              </p>
-            </div>
-            <h2 className='mt-2 line-clamp-3 text-2xl font-semibold wrap-break-word text-foreground sm:line-clamp-2 md:text-3xl'>
-              {plan.topic}
-            </h2>
-          </div>
+    <PageHero className='rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
+      <div className='relative z-10 max-w-3xl'>
+        <SectionOverline
+          icon={<Sparkles aria-hidden='true' className='size-4' />}
+        >
+          Learning plan · {formatSkillLevel(plan.skillLevel)}
+        </SectionOverline>
+        <h1 className='font-heading mt-3 max-w-2xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance wrap-break-word text-foreground sm:text-[40px]'>
+          {plan.topic}
+        </h1>
+        <p className='mt-3 max-w-xl text-sm leading-relaxed wrap-break-word text-muted-foreground sm:text-base'>
+          A structured path for learning {plan.topic}, paced around your
+          available time.
+        </p>
 
-          <div className='flex items-end justify-between gap-6 border-t border-border/50 pt-4 sm:block sm:border-t-0 sm:border-l sm:py-1 sm:pl-7 sm:text-right'>
-            <div>
-              <p className='text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
-                Progress
-              </p>
-              <p className='mt-1 text-4xl font-semibold text-foreground tabular-nums'>
-                <span className='sr-only'>
-                  Plan progress: {completion}% complete
-                </span>
-                <span aria-hidden='true'>
-                  {completion}
-                  <span className='text-xl text-muted-foreground'>%</span>
-                </span>
-              </p>
-            </div>
-            <p className='text-xs text-muted-foreground tabular-nums sm:mt-2'>
-              {completedTasks} of {totalTasks} tasks complete
-            </p>
-          </div>
+        <div className='mt-5 flex flex-wrap items-center gap-3'>
+          <Button asChild variant='cta'>
+            <Link href={continueHref}>
+              {continueLabel}
+              <ArrowRight aria-hidden='true' />
+            </Link>
+          </Button>
+          <Button asChild variant='outline'>
+            <a href='#learning-path'>View roadmap</a>
+          </Button>
+          <span className='text-xs text-muted-foreground tabular-nums'>
+            {stats.completionPercentage}% complete ·{' '}
+            {formatMinutes(stats.totalMinutes)} planned
+            {stats.totalModules > 0
+              ? ` · ${stats.completedModules} of ${stats.totalModules} modules`
+              : null}
+          </span>
         </div>
-
-        <dl className='mt-6 grid divide-y divide-border/40 border-t border-border/50 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:pt-5'>
-          <StatCell
-            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
-            label='Modules'
-            value={`${completedModules} of ${totalModules}`}
-            sublabel='modules complete'
-          />
-          <StatCell
-            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
-            label='Total effort'
-            value={formatMinutes(totalMinutes)}
-            sublabel={
-              plan.weeklyHours
-                ? `${plan.weeklyHours} hr${plan.weeklyHours === 1 ? '' : 's'} per week`
-                : 'Weekly pace not set'
-            }
-          />
-          <StatCell
-            className='py-4 sm:px-6 sm:py-0 sm:first:pl-0 sm:last:pr-0'
-            label='Est. finish'
-            value={estimatedCompletionDate ?? '—'}
-            sublabel={
-              estimatedWeeks
-                ? `${estimatedWeeks} week${estimatedWeeks === 1 ? '' : 's'} at current pace`
-                : 'Not calculated'
-            }
-          />
-        </dl>
       </div>
-    </article>
+
+      <div
+        aria-hidden='true'
+        className='absolute right-0 bottom-0 left-0 h-1 bg-border/50'
+      >
+        <div
+          className='h-full bg-action-primary transition-[width] duration-500 motion-reduce:transition-none'
+          style={{ width: `${stats.completionPercentage}%` }}
+        />
+      </div>
+    </PageHero>
   );
 }

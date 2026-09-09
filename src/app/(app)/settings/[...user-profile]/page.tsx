@@ -1,8 +1,16 @@
-import type { ReactElement } from 'react';
+import { runSettingsEntryRedirect } from '@/app/(app)/settings/settings-entry-redirect';
 
-import { SettingsLedgerPage } from '@/app/(app)/settings/components/SettingsLedgerPage';
+type SettingsUserProfilePageProps = {
+  searchParams?: Promise<Record<string, string | string[] | undefined>>;
+};
 
-/** Renders Clerk's path-routed profile subpages within the settings ledger. */
-export default async function SettingsUserProfilePage(): Promise<ReactElement> {
-  return <SettingsLedgerPage />;
+/**
+ * Clerk path-routed fallback (`/settings/user-profile/...` and other unmatched
+ * settings segments). Static `/settings/profile` wins for that exact path.
+ * Keep this catch-all so Clerk returns do not 404; send them to a real section.
+ */
+export default async function SettingsUserProfilePage({
+  searchParams,
+}: SettingsUserProfilePageProps): Promise<never> {
+  runSettingsEntryRedirect(await searchParams);
 }

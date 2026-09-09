@@ -1,3 +1,4 @@
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { resolvePostHogRewriteDestinations } from '@/lib/posthog-rewrite-destinations';
 import { after } from 'next/server';
 import { PostHog } from 'posthog-node';
@@ -24,6 +25,10 @@ function resolvePostHogNodeSdkHost(rawHost: string | undefined): string {
  * the same US Cloud ingest origin as the `/ingest` proxy.
  */
 export function getPostHogClient(): PostHog | null {
+  if (!isPostHogEnabledInCurrentEnvironment()) {
+    return null;
+  }
+
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   if (!token) {
     if (process.env.NODE_ENV !== 'production') {
@@ -59,6 +64,10 @@ export function captureAfterResponse(
   event: string,
   properties?: Record<string, unknown>,
 ): void {
+  if (!isPostHogEnabledInCurrentEnvironment()) {
+    return;
+  }
+
   const distinctId = actor.authUserId;
   const send = async () => {
     const posthog = getPostHogClient();

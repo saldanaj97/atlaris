@@ -95,12 +95,12 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Brand direction and UI style reference.
+Canonical design specification and compatibility entry point. Shared foundations are adopted; page and component migration continues.
 
 | File | Description |
 |------|-------------|
-| [after-hours-direction.md](./styles/after-hours-direction.md) | Approved After Hours product direction |
-| [style-guide.md](./styles/style-guide.md) | Colors, tokens, typography, layout, components |
+| [design-system.md](./styles/design-system.md) | Canonical detailed design specification; proposals and implementation gaps remain explicit |
+| [style-guide.md](./styles/style-guide.md) | Compatibility pointer to the canonical design system |
 
 ## `testing/`
 
@@ -168,7 +168,7 @@ docs/
 │   ├── security-audit-checklist.md
 │   └── supply-chain-policy.md
 ├── styles/
-│   ├── after-hours-direction.md
+│   ├── design-system.md
 │   └── style-guide.md
 ├── testing/
 │   ├── db-test-patterns.md

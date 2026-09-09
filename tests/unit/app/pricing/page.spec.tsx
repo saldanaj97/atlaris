@@ -8,15 +8,15 @@ const mocks = vi.hoisted(() => ({
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/PricingCards.module.css', () => ({
   default: {},
 }));
 
-vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/Pricing.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/Pricing.module.css', () => ({
   default: {
     heroOverline: 'heroOverline',
     heroSubline: 'heroSubline',
@@ -34,7 +34,7 @@ vi.mock('@/lib/auth/local-identity', () => ({
   shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
+vi.mock('@/app/(landing)/pricing/components/ClerkPricingTable', () => ({
   ClerkPricingTable: (props: { newSubscriptionRedirectUrl?: string }) => {
     mocks.clerkPricingTableMock(props);
     return <div data-testid='clerk-pricing-table' />;
@@ -43,8 +43,7 @@ vi.mock('@/app/(marketing)/pricing/components/ClerkPricingTable', () => ({
 
 async function renderPricingPage(): Promise<void> {
   vi.resetModules();
-  const { default: PricingPage } =
-    await import('@/app/(marketing)/pricing/page');
+  const { default: PricingPage } = await import('@/app/(landing)/pricing/page');
   render(await PricingPage());
 }
 
@@ -72,9 +71,18 @@ describe('PricingPage', () => {
     ).toBeVisible();
     expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
+    expect(
+      screen.getByRole('heading', {
+        name: 'A brighter future is a skill away.',
+      }),
+    ).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+      'href',
+      ROUTES.PLANS.NEW,
+    );
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.ROOT}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing`,
+        newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
       }),
     );
   });

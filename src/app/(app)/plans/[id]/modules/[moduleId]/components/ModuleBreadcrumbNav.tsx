@@ -29,9 +29,9 @@ function ModuleSwitcherMenuItem({
 
   if (item.isLocked) {
     return (
-      <DropdownMenuItem disabled className='opacity-50'>
-        <span className='flex items-center gap-2 text-muted-foreground/50'>
-          <Lock className='size-4 shrink-0' />
+      <DropdownMenuItem disabled>
+        <span className='flex items-center gap-2 text-disabled-foreground'>
+          <Lock className='size-[16px] shrink-0' />
           <span className='truncate'>{item.title}</span>
         </span>
       </DropdownMenuItem>
@@ -79,21 +79,24 @@ export function ModuleBreadcrumbNav({
   isComplete: boolean;
 }) {
   return (
-    <nav className='mb-6'>
-      <ol className='flex items-center gap-1 text-sm'>
-        <li>
+    <nav aria-label='Breadcrumb' className='mb-4 min-w-0'>
+      <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 text-sm'>
+        <li className='max-w-full min-w-0'>
           <Link
             href={`/plans/${planId}`}
-            className='inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none'
+            className='inline-flex min-h-11 max-w-full min-w-0 items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none'
+            title={planTopic}
           >
-            <ArrowLeft className='size-3.5' />
-            <span className='max-w-56 truncate sm:max-w-88'>{planTopic}</span>
+            <ArrowLeft className='size-3.5 shrink-0' aria-hidden />
+            <span className='max-w-full min-w-0 truncate sm:max-w-88'>
+              {planTopic}
+            </span>
           </Link>
         </li>
-        <li className='text-muted-foreground/40'>
+        <li className='shrink-0 text-muted-foreground/40' aria-hidden='true'>
           <ChevronRight className='size-4' />
         </li>
-        <li>
+        <li className='max-w-full min-w-0'>
           <DropdownMenu>
             <DropdownMenuTrigger
               aria-label={
@@ -101,18 +104,19 @@ export function ModuleBreadcrumbNav({
                   ? `Module ${moduleOrder}, completed`
                   : `Module ${moduleOrder}`
               }
+              aria-current='page'
               className={cn(
-                'inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                'inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                 isComplete
                   ? 'bg-success/15 text-success hover:bg-success/25 dark:bg-success/25 dark:text-success-foreground dark:hover:bg-success/30'
                   : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
               )}
             >
               {isComplete ? (
-                <CheckCircle2 className='size-3.5' aria-hidden />
+                <CheckCircle2 className='size-3.5 shrink-0' aria-hidden />
               ) : null}
-              Module {moduleOrder}
-              <ChevronDown className='size-3.5' />
+              <span className='min-w-0 truncate'>Module {moduleOrder}</span>
+              <ChevronDown className='size-3.5 shrink-0' aria-hidden />
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align='start'

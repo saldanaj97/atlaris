@@ -13,9 +13,13 @@ export function TimelinePlanFooter({
   const moduleLabel = `${moduleCount} module${moduleCount !== 1 ? 's' : ''}`;
 
   return (
-    <div className='mt-5 flex items-center'>
+    <div
+      className='mt-5 flex items-center'
+      data-progress-state={isPlanComplete ? 'completed' : 'active'}
+    >
       <div className='relative flex w-16 shrink-0 items-center justify-center'>
         <span
+          data-state={isPlanComplete ? 'completed' : 'active'}
           className={cn(
             'z-10 size-2.5 rounded-full border-2 bg-panel',
             isPlanComplete ? 'border-success bg-success' : 'border-border',

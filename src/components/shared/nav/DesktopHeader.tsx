@@ -9,12 +9,15 @@ import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { ROUTES } from '@/features/navigation';
+import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
 import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
   isMarketing: boolean;
+  /** App-shell routes render navigation in the sidebar. */
+  isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
@@ -28,11 +31,12 @@ interface DesktopHeaderProps {
 /**
  * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
- * Layout: brand (left) | navigation (center) | auth controls (right)
- * Marketing routes use After Hours chrome: outline nav pills + one peach CTA.
+ * App layout: brand (left) | navigation (center) | auth controls (right)
+ * Marketing layout: brand + nav (left) | sign-in + theme + inverse CTA (right)
  */
 export default function DesktopHeader({
   isMarketing,
+  isAppShell = false,
   pathname,
   navItems,
   tier,
@@ -42,40 +46,77 @@ export default function DesktopHeader({
   userName,
   userImageUrl,
 }: DesktopHeaderProps) {
+  const showAppShellChrome = isAppShell && !isMarketing;
+  const showMarketingChrome = isMarketing && !showAppShellChrome;
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const appCtaHref = !isAuthenticated
-    ? ROUTES.AUTH.SIGN_IN
-    : canCreatePlan === true
-      ? ROUTES.PLANS.NEW
-      : canCreatePlan === false
-        ? ROUTES.PRICING
-        : undefined;
-  const appCtaLabel =
-    isAuthenticated && canCreatePlan === false ? 'Upgrade' : 'New Plan';
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'New Plan',
+  });
 
   return (
-    <div className='relative hidden h-16 w-full grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-5 md:grid'>
-      {/* Brand (left) */}
-      <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
-        <BrandLogo />
-      </div>
+    <div
+      className={cn(
+        'relative hidden h-[64px] w-full items-center',
+        isAppShell ? 'lg:grid' : showMarketingChrome ? 'md:flex' : 'md:grid',
+        showAppShellChrome
+          ? 'grid-cols-[minmax(0,1fr)_auto]'
+          : showMarketingChrome
+            ? 'justify-between gap-8'
+            : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+      )}
+    >
+      {!showAppShellChrome ? (
+        <div
+          className={cn(
+            'relative z-10 flex min-w-0 items-center',
+            showMarketingChrome ? 'gap-8 lg:gap-12' : 'justify-self-start',
+          )}
+        >
+          <BrandLogo />
+          {showMarketingChrome ? (
+            <DesktopNavigation
+              pathname={pathname}
+              navItems={navItems}
+              appearance='marketing'
+            />
+          ) : null}
+        </div>
+      ) : null}
 
-      {/* Navigation (center column) */}
-      <div className='relative z-10 flex justify-self-center'>
-        <DesktopNavigation
-          pathname={pathname}
-          navItems={navItems}
-          appearance={isMarketing ? 'marketing' : 'default'}
-        />
-      </div>
+      {!showAppShellChrome && !showMarketingChrome ? (
+        <div className='relative z-10 flex justify-self-center'>
+          <DesktopNavigation
+            pathname={pathname}
+            navItems={navItems}
+            appearance='default'
+          />
+        </div>
+      ) : null}
 
       {/* Auth / CTA controls (right) */}
-      <div className='relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end'>
+      <div
+        className={cn(
+          'relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end',
+          showAppShellChrome && 'col-start-2',
+        )}
+      >
         {isMarketing ? (
           <>
+            {!isAuthenticated ? (
+              <Button
+                asChild
+                variant='ghost'
+                size='sm'
+                className='text-sm text-muted-foreground hover:text-foreground'
+              >
+                <Link href={ROUTES.AUTH.SIGN_IN}>Sign in</Link>
+              </Button>
+            ) : null}
             <ThemeToggle
               withTooltip
               className='rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
@@ -96,16 +137,21 @@ export default function DesktopHeader({
           </>
         ) : (
           <>
-            {appCtaHref ? (
+            {createPlanCta ? (
               <Button
                 variant='ghost'
                 size='sm'
                 className='gap-1.5 text-muted-foreground hover:text-foreground'
                 asChild
               >
-                <Link href={appCtaHref} aria-label={appCtaLabel}>
+                <Link
+                  href={createPlanCta.href}
+                  aria-label={createPlanCta.label}
+                >
                   <Plus className='size-3.5' aria-hidden='true' />
-                  <span className='hidden lg:inline'>{appCtaLabel}</span>
+                  <span className='hidden lg:inline'>
+                    {createPlanCta.label}
+                  </span>
                 </Link>
               </Button>
             ) : null}

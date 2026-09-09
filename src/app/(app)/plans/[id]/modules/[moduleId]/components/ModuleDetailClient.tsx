@@ -8,6 +8,7 @@ import { logTaskStatusError } from '@/app/(app)/plans/[id]/log-task-status-error
 import { batchUpdateModuleTaskProgressAction } from '@/app/(app)/plans/[id]/modules/[moduleId]/actions';
 import { ModuleHeader } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleHeader';
 import { ModuleLessonsClient } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleLessonsClient';
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import posthog from 'posthog-js';
 import { toast } from 'sonner';
 
@@ -45,12 +46,14 @@ export function ModuleDetailClient({
     if (result?.revalidateFailed) {
       toast.message('Progress saved. Refresh if the page looks stale.');
     }
-    for (const update of updates) {
-      posthog.capture('task_status_changed', {
-        task_id: update.taskId,
-        new_status: update.status,
-        variant: 'lesson',
-      });
+    if (isPostHogEnabledInCurrentEnvironment()) {
+      for (const update of updates) {
+        posthog.capture('task_status_changed', {
+          task_id: update.taskId,
+          new_status: update.status,
+          variant: 'lesson',
+        });
+      }
     }
   }
 

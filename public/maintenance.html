@@ -3,246 +3,253 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Under Maintenance - Atlaris</title>
+    <title>Maintenance | Atlaris</title>
+    <link rel="icon" href="/brand/favicon.svg" type="image/svg+xml" />
     <style>
       :root {
-        --background: oklch(0.9427 0 0);
-        --card-background: oklch(0.9702 0 0);
-        --secondary-background: oklch(100% 0 0);
-        --foreground: oklch(0% 0 0);
-        --main: oklch(66.9% 0.18368 248.8066);
-        --main-foreground: oklch(0% 0 0);
-        --border: oklch(0% 0 0);
-        --shadow: 4px 4px 0px 0px var(--border);
-        --radius-base: 15px;
+        --background: #070b10;
+        --surface: #0b1118;
+        --foreground: #f8fafc;
+        --muted: #b8c5d6;
+        --border: #253244;
+        --primary: #8b78ff;
+        --primary-foreground: #070b10;
       }
 
       * {
+        box-sizing: border-box;
         margin: 0;
         padding: 0;
-        box-sizing: border-box;
       }
 
       body {
-        font-family:
-          -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-          'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-          sans-serif;
-        background: var(--background);
         min-height: 100vh;
         display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
+        flex-direction: column;
+        background: var(--background);
         color: var(--foreground);
+        font-family:
+          'Work Sans',
+          system-ui,
+          -apple-system,
+          sans-serif;
       }
 
-      .maintenance-container {
-        background: var(--card-background);
-        border-radius: var(--radius-base);
-        border: 2px solid var(--border);
-        box-shadow: var(--shadow);
-        max-width: 600px;
-        width: 100%;
-        padding: 48px 40px;
-        text-align: center;
+      header,
+      main,
+      footer {
+        width: min(100%, 42rem);
+        margin-inline: auto;
+        padding-inline: 1.25rem;
       }
 
-      .icon-container {
-        margin-bottom: 24px;
-      }
-
-      .icon {
-        width: 80px;
-        height: 80px;
-        margin: 0 auto;
-        background: var(--main);
-        border: 2px solid var(--border);
-        border-radius: 50%;
-        box-shadow: var(--shadow);
+      header {
         display: flex;
         align-items: center;
-        justify-content: center;
-        animation: pulse 2s ease-in-out infinite;
+        min-height: 4rem;
+        padding-block: 1.25rem;
       }
 
-      @keyframes pulse {
-        0%,
-        100% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.05);
-        }
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.625rem;
       }
 
-      .icon svg {
-        width: 40px;
-        height: 40px;
-        stroke: var(--main-foreground);
-        fill: none;
-        stroke-width: 2;
-        stroke-linecap: round;
-        stroke-linejoin: round;
+      .brand img {
+        display: block;
+        width: 26px;
+        height: 26px;
       }
 
-      h1 {
-        font-size: 32px;
-        font-weight: 700;
-        color: var(--foreground);
-        margin-bottom: 16px;
-        line-height: 1.2;
-      }
-
-      .subtitle {
-        font-size: 18px;
-        color: var(--foreground);
-        opacity: 0.7;
-        margin-bottom: 32px;
-        line-height: 1.6;
-      }
-
-      .message {
-        background: var(--secondary-background);
-        border: 2px solid var(--border);
-        border-radius: var(--radius-base);
-        box-shadow: var(--shadow);
-        padding: 24px;
-        margin-bottom: 32px;
-        text-align: left;
-      }
-
-      .message p {
-        color: var(--foreground);
-        line-height: 1.8;
-        margin-bottom: 16px;
-      }
-
-      .message p:last-child {
-        margin-bottom: 0;
-      }
-
-      .highlight {
-        color: var(--main);
+      .brand span {
+        font-size: 0.75rem;
         font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
       }
 
-      .footer {
-        color: var(--foreground);
-        opacity: 0.6;
-        font-size: 14px;
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 2px solid var(--border);
+      main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding-block: 4.5rem 3rem;
       }
 
-      .footer p {
-        margin-bottom: 8px;
-      }
-
-      .footer p:last-child {
-        margin-bottom: 0;
-      }
-
-      .status-indicator {
+      .badge {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        gap: 8px;
-        background: var(--main);
-        color: var(--main-foreground);
-        border: 2px solid var(--border);
-        padding: 8px 16px;
-        border-radius: var(--radius-base);
-        font-size: 12px;
+        min-height: 2.25rem;
+        padding: 0.625rem 1rem;
+        border-radius: 999px;
+        background: #1c1933;
+        color: var(--primary);
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        max-width: 20ch;
+        margin-top: 1.125rem;
+        font-size: clamp(2.25rem, 8vw, 2.5rem);
+        font-weight: 600;
+        letter-spacing: -0.04em;
+        line-height: 1.15;
+      }
+
+      .lede {
+        max-width: 34rem;
+        margin-top: 1.25rem;
+        color: var(--muted);
+        font-size: 0.9375rem;
+        line-height: 1.575;
+      }
+
+      .status {
+        display: flex;
+        gap: 0.875rem;
+        width: min(100%, 19.375rem);
+        margin-top: 1.5rem;
+        padding: 1.125rem 1rem;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--surface);
+        text-align: left;
+      }
+
+      .status-icon {
+        display: grid;
+        place-items: center;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 999px;
+        background: #1c1933;
+        color: var(--primary);
+        font-size: 1.25rem;
+      }
+
+      .status h2 {
+        font-size: 0.875rem;
         font-weight: 500;
-        margin-bottom: 24px;
-        white-space: nowrap;
       }
 
-      .status-dot {
-        width: 8px;
-        height: 8px;
-        background: var(--main-foreground);
-        border-radius: 50%;
-        animation: blink 1.5s ease-in-out infinite;
+      .status p {
+        margin-top: 0.25rem;
+        color: var(--muted);
+        font-size: 0.75rem;
+        line-height: 1.5;
       }
 
-      @keyframes blink {
-        0%,
-        100% {
-          opacity: 1;
-        }
-        50% {
-          opacity: 0.3;
-        }
+      button {
+        min-height: 44px;
+        margin-top: 1.5rem;
+        padding: 0.75rem 1.125rem;
+        border: 0;
+        border-radius: 10px;
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font: inherit;
+        font-size: 0.875rem;
+        font-weight: 500;
+        cursor: pointer;
       }
 
-      @media (max-width: 640px) {
-        .maintenance-container {
-          padding: 32px 24px;
-        }
+      button:focus-visible {
+        outline: 3px solid color-mix(in oklab, var(--primary) 50%, white);
+        outline-offset: 2px;
+      }
 
-        h1 {
-          font-size: 26px;
-        }
+      .quote {
+        max-width: 19.375rem;
+        margin-top: 1.5rem;
+        color: #8c9cb2;
+        font-size: 0.75rem;
+        font-weight: 600;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+      }
 
-        .subtitle {
-          font-size: 16px;
-        }
+      footer {
+        padding-block: 1.5rem;
+        border-top: 1px solid var(--border);
+      }
 
-        .status-indicator {
-          font-size: 11px;
-          padding: 6px 12px;
+      footer .brand img {
+        width: 24px;
+        height: 24px;
+        margin-bottom: 0.5rem;
+      }
+
+      footer p {
+        color: var(--muted);
+        font-size: 0.875rem;
+        line-height: 1.575;
+      }
+
+      footer a {
+        display: inline-flex;
+        align-items: center;
+        min-height: 44px;
+        color: var(--muted);
+        font-size: 0.875rem;
+        font-weight: 500;
+        text-decoration: none;
+      }
+
+      footer a:focus-visible {
+        outline: 2px solid var(--primary);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        * {
+          animation: none !important;
+          transition: none !important;
         }
       }
     </style>
   </head>
   <body>
-    <div class="maintenance-container">
-      <div class="icon-container">
-        <div class="icon">
-          <svg viewBox="0 0 24 24">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-            <path d="M12 8v4"></path>
-            <path d="M12 16h.01"></path>
-          </svg>
-        </div>
-      </div>
-
-      <div class="status-indicator">
-        <span class="status-dot"></span>
-        <span>System Maintenance in Progress</span>
-      </div>
-
-      <h1>We're Currently Under Maintenance</h1>
-
-      <p class="subtitle">
-        Our platform is temporarily unavailable while we perform important
-        updates and improvements.
+    <header>
+      <p class="brand">
+        <img src="/brand/mark-on-dark.svg" alt="" width="26" height="26" />
+        <span>Atlaris</span>
       </p>
-
-      <div class="message">
-        <p>
-          We sincerely apologize for any inconvenience this may cause. Our team
-          is actively working on critical fixes and system enhancements to
-          improve your experience.
-        </p>
-        <p>
-          <span class="highlight">Good news:</span> We're in the process of
-          migrating to a zero-downtime infrastructure. Once complete, future
-          updates will occur seamlessly without interrupting your service.
-        </p>
-        <p>
-          We appreciate your patience and understanding as we work to make
-          Atlaris better for you.
-        </p>
-      </div>
-
-      <div class="footer">
-        <p>Expected to be back online shortly</p>
-        <p>If you have urgent questions, please contact our support team</p>
-      </div>
-    </div>
+    </header>
+    <main>
+      <p class="badge">Maintenance</p>
+      <h1>We’ll be back soon.</h1>
+      <p class="lede">
+        Atlaris is temporarily unavailable while maintenance is in progress.
+        Please try again in a few minutes.
+      </p>
+      <section class="status" aria-labelledby="maintenance-status-heading">
+        <div class="status-icon" aria-hidden="true">✦</div>
+        <div>
+          <h2 id="maintenance-status-heading">
+            System improvements in progress
+          </h2>
+          <p>Please try again in a few minutes. Thank you for your patience.</p>
+        </div>
+      </section>
+      <button type="button" onclick="location.reload()">Try again</button>
+      <p class="quote">
+        “A brighter future takes a little patience.”<br />— Atlaris
+      </p>
+    </main>
+    <footer>
+      <p class="brand">
+        <img src="/brand/mark-on-dark.svg" alt="" width="24" height="24" />
+        <span>Atlaris</span>
+      </p>
+      <p>Learn. Build. Go further.</p>
+      <a href="mailto:support@atlaris.app">support@atlaris.app</a>
+    </footer>
   </body>
 </html>

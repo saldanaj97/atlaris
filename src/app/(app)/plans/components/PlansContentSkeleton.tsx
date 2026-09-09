@@ -1,81 +1,54 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Search } from 'lucide-react';
 
-/** Skeleton for the plans search and table. */
+/** Skeleton for the plans status rail, search controls, and card library. */
 export function PlansContentSkeleton() {
   return (
-    <div className='space-y-5'>
-      <div className='relative w-full'>
-        <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
-        <Skeleton className='h-9 w-full rounded-md' />
+    <div className='space-y-6' aria-busy='true' aria-label='Loading plans'>
+      <div className='flex flex-col gap-3'>
+        <div className='flex min-w-0 items-center gap-1 overflow-hidden rounded-[12px] border border-panel-border bg-panel p-1'>
+          {[1, 2, 3, 4, 5].map((item) => (
+            <Skeleton
+              key={`status-skeleton-${item}`}
+              className='h-10 w-20 shrink-0 rounded-[8px]'
+            />
+          ))}
+        </div>
+        <div className='flex items-center gap-2'>
+          <div className='relative flex-1'>
+            <Search className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground' />
+            <Skeleton className='h-10 w-full rounded-[8px]' />
+          </div>
+          <Skeleton className='h-10 w-32 shrink-0 rounded-[8px]' />
+        </div>
       </div>
 
-      <Table className='min-w-[840px]'>
-        <TableHeader className='bg-transparent [&_tr]:border-border/60'>
-          <TableRow className='hover:bg-transparent'>
-            <TableHead className='w-10 px-3'>
-              <Skeleton className='size-4 rounded' />
-            </TableHead>
-            <TableHead>
-              <Skeleton className='h-3 w-16' />
-            </TableHead>
-            <TableHead>
-              <Skeleton className='h-3 w-20' />
-            </TableHead>
-            <TableHead>
-              <Skeleton className='h-3 w-14' />
-            </TableHead>
-            <TableHead>
-              <Skeleton className='h-3 w-16' />
-            </TableHead>
-            <TableHead>
-              <Skeleton className='h-3 w-16' />
-            </TableHead>
-            <TableHead className='w-12' />
-          </TableRow>
-        </TableHeader>
-        <TableBody className='[&_tr:last-child]:border-b [&_tr:last-child]:border-border/60'>
-          {[1, 2, 3, 4, 5].map((planSkeletonId) => (
-            <PlanRowSkeleton key={`plan-row-skeleton-${planSkeletonId}`} />
-          ))}
-        </TableBody>
-      </Table>
+      <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
+        {[1, 2, 3, 4, 5, 6].map((item) => (
+          <PlanCardSkeleton key={`plan-card-skeleton-${item}`} />
+        ))}
+      </div>
     </div>
   );
 }
 
-function PlanRowSkeleton() {
+function PlanCardSkeleton() {
   return (
-    <TableRow className='border-border/60'>
-      <TableCell className='w-10 px-3'>
-        <Skeleton className='size-4 rounded' />
-      </TableCell>
-      <TableCell className='min-w-72 py-4'>
-        <Skeleton className='h-4 w-64' />
-      </TableCell>
-      <TableCell>
-        <Skeleton className='h-1 w-32' />
-      </TableCell>
-      <TableCell>
-        <Skeleton className='h-3 w-12' />
-      </TableCell>
-      <TableCell>
-        <Skeleton className='h-3 w-20' />
-      </TableCell>
-      <TableCell>
-        <Skeleton className='h-3 w-16' />
-      </TableCell>
-      <TableCell className='w-12'>
-        <Skeleton className='size-8' />
-      </TableCell>
-    </TableRow>
+    <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
+      <Skeleton className='aspect-[16/9] w-full rounded-none' />
+      <div className='space-y-4 p-4 sm:p-5'>
+        <div className='space-y-2'>
+          <Skeleton className='h-5 w-3/4' />
+          <Skeleton className='h-4 w-full' />
+          <Skeleton className='h-4 w-2/3' />
+        </div>
+        <Skeleton className='h-2 w-full' />
+        <div className='grid grid-cols-2 gap-4 border-t border-border/70 pt-4'>
+          <Skeleton className='h-8 w-20' />
+          <Skeleton className='h-8 w-24' />
+        </div>
+        <Skeleton className='h-10 w-full rounded-[8px]' />
+      </div>
+    </div>
   );
 }

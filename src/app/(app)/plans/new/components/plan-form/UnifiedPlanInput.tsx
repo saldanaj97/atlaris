@@ -10,7 +10,15 @@ import {
 } from './plan-input-state';
 import { PreferenceControls } from './PreferenceControls';
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { isDevelopment } from '@/lib/config/client-env';
@@ -30,7 +38,7 @@ interface UnifiedPlanInputProps {
 /**
  * Unified input for plan generation: goal textarea + preference controls.
  *
- * Frame uses product `Surface` panel; no glassmorphism / mouse glow / gradient orbs.
+ * Frame uses product `Card`; no glassmorphism / mouse glow / gradient orbs.
  */
 export function UnifiedPlanInput({
   onSubmit,
@@ -84,6 +92,8 @@ export function UnifiedPlanInput({
   const topic = state.topic;
 
   const topicInputId = `${baseId}-topic`;
+  const topicHelpId = `${baseId}-topic-help`;
+  const requirementsId = `${baseId}-requirements`;
 
   const hasSelectedPreferences =
     state.skillLevel !== null &&
@@ -94,6 +104,11 @@ export function UnifiedPlanInput({
       Boolean(state.deadlineDate));
   const isFormValid = topic.trim().length > 0 && hasSelectedPreferences;
   const isDisabled = isSubmitting || disabled || !isFormValid;
+  const requirementsMessage = isSubmitting
+    ? 'Generating your learning plan…'
+    : isFormValid
+      ? 'Ready to chart your course.'
+      : 'Complete your goal and preferences to continue.';
 
   const handleSubmit = () => {
     if (!isFormValid || isSubmitting || disabled) {
@@ -136,58 +151,87 @@ export function UnifiedPlanInput({
   };
 
   return (
-    <div className='w-full max-w-5xl'>
-      <Surface
-        padding='none'
-        className='overflow-hidden px-5 py-5 shadow-sm transition-shadow focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/40 sm:px-6 sm:py-6 lg:px-8 lg:py-7'
-      >
-        <div className='pb-6'>
-          <label htmlFor={topicInputId} className='sr-only'>
-            What do you want to learn?
-          </label>
-          <Textarea
-            id={topicInputId}
-            value={topic}
-            onChange={(e) =>
-              dispatch({ type: 'set-topic', value: e.target.value })
-            }
-            onKeyDown={handleKeyDown}
-            placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
-            className='min-h-36 w-full min-w-0 resize-none rounded-md border-0 text-base leading-7 text-foreground shadow-none placeholder:text-muted-foreground focus-visible:ring-0 sm:text-lg md:min-h-40'
-            rows={5}
-            disabled={isSubmitting || disabled}
-          />
-        </div>
+    <section aria-labelledby={`${baseId}-form-heading`} className='w-full'>
+      <Card className='gap-0 py-0'>
+        <CardHeader className='border-b border-border px-5 py-5 sm:px-6'>
+          <CardTitle as='h2' id={`${baseId}-form-heading`}>
+            Your goal
+          </CardTitle>
+          <CardDescription>Tell us what you want to learn.</CardDescription>
+        </CardHeader>
 
-        <div className='flex flex-row flex-wrap items-end justify-between gap-6'>
+        <CardContent className='space-y-6 px-5 py-5 sm:px-6'>
+          <div>
+            <Label htmlFor={topicInputId} className='text-sm leading-5'>
+              What do you want to learn?
+            </Label>
+            <p
+              id={topicHelpId}
+              className='mt-2 text-sm leading-5 text-muted-foreground'
+            >
+              Describe the outcome you want to work toward.
+            </p>
+            <Textarea
+              id={topicInputId}
+              value={topic}
+              onChange={(e) =>
+                dispatch({ type: 'set-topic', value: e.target.value })
+              }
+              onKeyDown={handleKeyDown}
+              placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
+              aria-describedby={topicHelpId}
+              aria-required='true'
+              className='mt-3 min-h-24 w-full min-w-0 resize-y text-base leading-6 sm:min-h-24'
+              rows={4}
+              disabled={isSubmitting || disabled}
+            />
+          </div>
+
           <PreferenceControls
             baseId={baseId}
             state={state}
             dispatch={dispatch}
             subscriptionTier={subscriptionTier}
           />
+        </CardContent>
+
+        <CardFooter className='flex-col items-stretch gap-4 border-t border-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
+          <p
+            id={requirementsId}
+            className='text-sm leading-5 text-muted-foreground'
+          >
+            {requirementsMessage}
+          </p>
           <Button
             type='button'
             variant='cta'
             size='lg'
-            className='ml-auto shrink-0'
+            className='w-full shrink-0 sm:w-auto'
             onClick={handleSubmit}
             disabled={isDisabled}
+            aria-busy={isSubmitting}
+            aria-describedby={requirementsId}
           >
             {isSubmitting ? (
               <>
-                <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
+                <Loader2
+                  aria-hidden='true'
+                  className='size-4 animate-spin motion-reduce:animate-none'
+                />
                 <span>Generating…</span>
               </>
             ) : (
               <>
                 <span>Chart this course</span>
-                <ArrowRight className='ml-2 size-4 transition-transform group-hover:translate-x-1' />
+                <ArrowRight
+                  aria-hidden='true'
+                  className='size-4 transition-transform group-hover:translate-x-1 motion-reduce:transition-none'
+                />
               </>
             )}
           </Button>
-        </div>
-      </Surface>
-    </div>
+        </CardFooter>
+      </Card>
+    </section>
   );
 }

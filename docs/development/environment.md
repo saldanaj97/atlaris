@@ -83,11 +83,13 @@ Route auth and enablement contract: [internal-worker-routes.md](../architecture/
 
 #### Stale remote flag (`landing-hero-experiment`)
 
-Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/app/(marketing)/landing/components/HeroSection.tsx` and is not flag-gated. Archive or delete the remote Vercel flag only after Juan confirms it is unused in the live dashboard. This documentation change does not archive the remote flag or change live kill-switch values.
+Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/app/(landing)/landing/components/HeroSection.tsx` and is not flag-gated. Archive or delete the remote Vercel flag only after Juan confirms it is unused in the live dashboard. This documentation change does not archive the remote flag or change live kill-switch values.
 
 #### PostHog
 
 PostHog is analytics ingest today (`posthog-js`, `posthog-node`, application-owned `/ingest` proxy). Project `551450` had zero active flags when audited on September 2, 2026. Reserve PostHog for future product experiments and cohort rollouts. Do not wire a PostHog Flags adapter for `maintenance-mode`, `email-notification-delivery`, or `module-lesson-generation`.
+
+The app initializes PostHog, identifies users, captures browser events, and captures server events only when `NODE_ENV=production` and the deployment is explicitly Vercel Production. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`; a custom target such as `staging`, or the standard `VERCEL_ENV=preview`, disables PostHog even though Vercel sets `NODE_ENV=production` for those deployments. The browser receives the corresponding values as `NEXT_PUBLIC_VERCEL_TARGET_ENV` and `NEXT_PUBLIC_VERCEL_ENV` from `next.config.ts`. Missing deployment markers fail closed. Local development, tests, Preview, and Staging therefore do not initialize the SDK or issue application-owned PostHog captures.
 
 ### Adding New Variables
 
@@ -190,7 +192,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 | **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
 | **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota.                                                                                              |
 
-**Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders After Hours plan cards through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
+**Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders plan cards with the existing page composition through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
 
 #### Clerk Dashboard contract (same Development instance)
 
@@ -209,7 +211,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 - Clerk’s shared development payment gateway uses Stripe test cards ([Stripe testing](https://docs.stripe.com/testing)). **No app-owned Stripe account, Stripe API keys, Stripe products, or Stripe prices are required.**
 - Never commit Clerk keys or webhook secrets.
 
-Before checkout, `/pricing` adds the signed-in user's current billing signature to Clerk's `/settings?checkout=1&checkoutBaseline=...#billing` return URL. Settings compares that short-lived UI-only baseline with the DB-backed subscription API, shows a bounded “Updating your subscription…” state while the webhook projection catches up, then removes both query markers and refreshes the rows. Settings remains the DB-backed account and entitlement surface.
+Before checkout, `/pricing` adds the signed-in user's current billing signature to Clerk's `/settings/billing?checkout=1&checkoutBaseline=...` return URL. Settings compares that short-lived UI-only baseline with the DB-backed subscription API, shows a bounded “Updating your subscription…” state while the webhook projection catches up, then removes both query markers and refreshes the rows. Settings remains the DB-backed account and entitlement surface.
 
 #### Manual real-checkout verification (opt-in; not default CI)
 

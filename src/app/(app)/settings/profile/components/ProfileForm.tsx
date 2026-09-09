@@ -1,18 +1,27 @@
 'use client';
 
-import { LedgerRow } from '@/app/(app)/settings/components/LedgerPrimitives';
 import {
   type ProfileData,
   requestProfile,
   saveProfileName,
 } from '@/app/(app)/settings/profile/components/profile-client';
 import { ProfileFormSkeleton } from '@/app/(app)/settings/profile/components/ProfileFormSkeleton';
+import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
+import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
-import { Pencil } from 'lucide-react';
-import { type ReactElement, useEffect, useId, useReducer, useRef } from 'react';
+import { cn } from '@/lib/utils';
+import {
+  type ReactElement,
+  type ReactNode,
+  useEffect,
+  useId,
+  useReducer,
+  useRef,
+} from 'react';
 import { toast } from 'sonner';
 
 interface ProfileFormProps {
@@ -22,7 +31,6 @@ interface ProfileFormProps {
 interface ProfileFormState {
   profile: ProfileData | null;
   name: string;
-  editingName: boolean;
   loading: boolean;
   saving: boolean;
   error: string | null;
@@ -32,9 +40,6 @@ type ProfileFormAction =
   | { type: 'load-started' }
   | { type: 'load-succeeded'; profile: ProfileData }
   | { type: 'load-failed'; message: string }
-  | { type: 'start-editing' }
-  | { type: 'cancel-editing' }
-  | { type: 'stop-editing' }
   | { type: 'name-changed'; name: string }
   | { type: 'save-started' }
   | { type: 'save-succeeded'; profile: ProfileData }
@@ -43,7 +48,6 @@ type ProfileFormAction =
 const INITIAL_PROFILE_FORM_STATE: ProfileFormState = {
   profile: null,
   name: '',
-  editingName: false,
   loading: true,
   saving: false,
   error: null,
@@ -64,7 +68,6 @@ function profileFormReducer(
       return {
         profile: action.profile,
         name: action.profile.name ?? '',
-        editingName: false,
         loading: false,
         saving: false,
         error: null,
@@ -74,22 +77,6 @@ function profileFormReducer(
         ...state,
         loading: false,
         error: action.message,
-      };
-    case 'start-editing':
-      return {
-        ...state,
-        editingName: true,
-      };
-    case 'stop-editing':
-      return {
-        ...state,
-        editingName: false,
-      };
-    case 'cancel-editing':
-      return {
-        ...state,
-        name: state.profile?.name ?? '',
-        editingName: false,
       };
     case 'name-changed':
       return {
@@ -105,7 +92,6 @@ function profileFormReducer(
       return {
         profile: action.profile,
         name: action.profile.name ?? '',
-        editingName: false,
         loading: false,
         saving: false,
         error: null,
@@ -149,14 +135,40 @@ function fetchProfile(
   return controller;
 }
 
-function focusNameInput(node: HTMLInputElement | null): void {
-  if (node) {
-    node.focus();
-  }
+function getProfileInitials(name: string): string {
+  const initials = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toUpperCase();
+
+  return initials || '?';
+}
+
+function ProfileCard({ children }: { children: ReactNode }): ReactElement {
+  return (
+    <Card
+      as='section'
+      id={SETTINGS_SECTIONS.profile}
+      className={cn(APP_SHELL_SCROLL_MARGIN, 'gap-[24px] shadow-none')}
+    >
+      <CardHeader>
+        <CardTitle as='h2' className='text-xl leading-[28px]'>
+          Profile
+        </CardTitle>
+      </CardHeader>
+      <CardContent className='@container'>{children}</CardContent>
+    </Card>
+  );
 }
 
 export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
   const profileNameInputId = useId();
+  const profileEmailInputId = useId();
+  const profileEmailHelpId = useId();
 
   const [state, dispatch] = useReducer(
     profileFormReducer,
@@ -201,14 +213,16 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
   if (state.error || !state.profile) {
     return (
-      <RouteErrorState
-        title='Unable to load profile'
-        message={state.error ?? 'Unable to load profile data.'}
-        onRetry={() => {
-          profileFetchControllerRef.current?.abort();
-          profileFetchControllerRef.current = fetchProfile(dispatch);
-        }}
-      />
+      <ProfileCard>
+        <RouteErrorState
+          title='Unable to load profile'
+          message={state.error ?? 'Unable to load profile data.'}
+          onRetry={() => {
+            profileFetchControllerRef.current?.abort();
+            profileFetchControllerRef.current = fetchProfile(dispatch);
+          }}
+        />
+      </ProfileCard>
     );
   }
 
@@ -216,90 +230,88 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
     locale,
     {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: 'short',
     },
   );
+  const email = state.profile.email ?? 'Unavailable';
 
   return (
-    <>
-      <LedgerRow label='Name'>
-        {state.editingName ? (
-          <div className='flex items-center gap-2'>
+    <ProfileCard>
+      <div className='space-y-[24px]'>
+        <div className='flex min-w-0 items-center justify-between gap-[16px]'>
+          <div className='flex min-w-0 items-center gap-[16px]'>
+            <div
+              aria-hidden='true'
+              className='flex size-[64px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-action-soft text-2xl font-semibold tracking-[-0.01em] text-foreground'
+            >
+              {getProfileInitials(state.name)}
+            </div>
+            <div className='min-w-0'>
+              <p className='text-xl leading-[28px] font-semibold [overflow-wrap:anywhere] text-foreground'>
+                {state.name || 'No name set'}
+              </p>
+              <p className='text-sm leading-[22px] [overflow-wrap:anywhere] text-muted-foreground'>
+                {email}
+              </p>
+              <p className='text-xs leading-[18px] text-muted-foreground'>
+                Member since <span>{memberSince}</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className='grid min-w-0 gap-[16px] @min-[34rem]:grid-cols-2'>
+          <div className='min-w-0 space-y-[8px]'>
+            <label
+              htmlFor={profileNameInputId}
+              className='text-sm leading-[20px] font-medium text-foreground'
+            >
+              Display name
+            </label>
             <Input
-              ref={focusNameInput}
               id={profileNameInputId}
               type='text'
               value={state.name}
               aria-label='Name'
-              className='h-8 w-44 rounded-md'
               onChange={(event) =>
                 dispatch({ type: 'name-changed', name: event.target.value })
               }
-              onBlur={() => {
-                if (!isDirty) {
-                  dispatch({ type: 'stop-editing' });
-                }
-              }}
             />
-            <Button
-              type='button'
-              variant='ghost'
-              size='sm'
-              disabled={state.saving}
-              onClick={() => {
-                dispatch({ type: 'cancel-editing' });
-              }}
-            >
-              Cancel
-            </Button>
-            {isDirty ? (
-              <Button
-                size='sm'
-                disabled={state.saving}
-                onClick={() => {
-                  void handleSave();
-                }}
-              >
-                {state.saving ? 'Saving…' : 'Save Changes'}
-              </Button>
-            ) : null}
           </div>
-        ) : (
-          <>
-            <button
-              type='button'
-              className='text-left text-foreground'
-              onClick={() => {
-                dispatch({ type: 'start-editing' });
-              }}
+          <div className='min-w-0 space-y-[8px]'>
+            <label
+              htmlFor={profileEmailInputId}
+              className='text-sm leading-[20px] font-medium text-foreground'
             >
-              {state.name || 'No name set'}
-            </button>
-            <Button
-              type='button'
-              variant='ghost'
-              size='icon-sm'
-              aria-label='Edit name'
-              onClick={() => {
-                dispatch({ type: 'start-editing' });
-              }}
+              Email address
+            </label>
+            <Input
+              id={profileEmailInputId}
+              type='email'
+              value={email}
+              readOnly
+              aria-describedby={profileEmailHelpId}
+            />
+            <p
+              id={profileEmailHelpId}
+              className='text-xs leading-[18px] text-muted-foreground'
             >
-              <Pencil />
-            </Button>
-          </>
-        )}
-      </LedgerRow>
+              Your email address is managed by your sign-in provider.
+            </p>
+          </div>
+        </div>
 
-      <LedgerRow label='Email' hint='Managed by your sign-in provider.'>
-        <span className='text-foreground'>
-          {state.profile.email ?? 'Unavailable'}
-        </span>
-      </LedgerRow>
-
-      <LedgerRow label='Member since'>
-        <span className='text-foreground'>{memberSince}</span>
-      </LedgerRow>
-    </>
+        <div className='flex justify-end'>
+          <Button
+            disabled={!isDirty || state.saving}
+            onClick={() => {
+              void handleSave();
+            }}
+          >
+            {state.saving ? 'Saving…' : 'Save changes'}
+          </Button>
+        </div>
+      </div>
+    </ProfileCard>
   );
 }

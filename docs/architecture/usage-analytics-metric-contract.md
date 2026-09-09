@@ -62,7 +62,7 @@ Historical empty state: streaks and weekly summaries only reflect progress chang
   recorded.
 - Reuse existing completion projections instead of creating a parallel
   completion model.
-- Keep operational telemetry, billing usage metrics (Settings `#usage`), and
+- Keep operational telemetry, billing usage metrics (Settings `/settings/usage`), and
   user-facing learning analytics separate.
 
 ## Relevant Code Surfaces

@@ -21,6 +21,12 @@ export const ROUTES = {
   },
   SETTINGS: {
     ROOT: '/settings',
+    PROFILE: '/settings/profile',
+    BILLING: '/settings/billing',
+    USAGE: '/settings/usage',
+    AI: '/settings/ai',
+    INTEGRATIONS: '/settings/integrations',
+    NOTIFICATIONS: '/settings/notifications',
   },
   PRICING: '/pricing',
   ABOUT: '/about',

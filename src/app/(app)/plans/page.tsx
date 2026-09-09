@@ -11,10 +11,11 @@ import {
   PlansHeaderCreateAction,
 } from '@/app/(app)/plans/components/PlansContent';
 import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
+import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
 import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
-import { PageHeader } from '@/components/ui/page-header';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { Suspense } from 'react';
 
 export const metadata: Metadata = {
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
     description:
       'View, search, and manage your learning plans and track your progress in Atlaris.',
     url: '/plans',
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 
@@ -81,30 +82,22 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
 
   return (
     <>
-      {/* Static header - renders immediately; usage summary streams in independently. */}
-      <PageHeader
-        title='Your Plans'
-        subtitle='Search, sort, and track your learning plan library.'
-        actions={
-          <>
-            <Suspense
-              fallback={
-                <div className='flex items-center gap-3'>
-                  <Skeleton className='h-4 w-32' />
-                  <Skeleton className='h-6 w-24 rounded-full' />
-                </div>
-              }
-            >
-              <PlanHeaderSummaryContent dataPromise={plansPageData} />
-            </Suspense>
-            <Suspense fallback={<Skeleton className='h-9 w-28' />}>
-              <PlansHeaderCreateAction dataPromise={plansPageData} />
-            </Suspense>
-          </>
-        }
-      />
+      <PlansHero>
+        <Suspense fallback={<Skeleton className='h-10 w-28' />}>
+          <PlansHeaderCreateAction dataPromise={plansPageData} />
+        </Suspense>
+        <Suspense
+          fallback={
+            <div className='flex items-center gap-3'>
+              <Skeleton className='h-4 w-32' />
+              <Skeleton className='h-6 w-24 rounded-full' />
+            </div>
+          }
+        >
+          <PlanHeaderSummaryContent dataPromise={plansPageData} />
+        </Suspense>
+      </PlansHero>
 
-      {/* Data-dependent content (search and table) - wrapped in Suspense */}
       <Suspense fallback={<PlansContentSkeleton />}>
         <PlansContent dataPromise={plansPageData} query={query} />
       </Suspense>

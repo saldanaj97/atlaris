@@ -20,7 +20,7 @@ const mocks = vi.hoisted(() => ({
   useClerk: vi.fn(),
 }));
 
-vi.mock('@/app/(marketing)/pricing/components/PricingCards.module.css', () => ({
+vi.mock('@/app/(landing)/pricing/components/PricingCards.module.css', () => ({
   default: { checkoutButton: 'checkoutButton' },
 }));
 
@@ -91,11 +91,11 @@ const STARTER_PLAN = {
 
 async function renderPricingTable(): Promise<void> {
   const { ClerkPricingTable } =
-    await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+    await import('@/app/(landing)/pricing/components/ClerkPricingTable');
   render(
     <ClerkPricingTable
       appearance={{}}
-      newSubscriptionRedirectUrl='/settings#billing'
+      newSubscriptionRedirectUrl='/settings/billing'
     />,
   );
 }
@@ -133,7 +133,7 @@ describe('ClerkPricingTable', () => {
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
     expect(await screen.findByRole('alert')).toBeVisible();
-    expect(screen.getByRole('button', { name: 'Try Again' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
     expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
 
     mocks.useClerk.mockReturnValue({
@@ -156,7 +156,7 @@ describe('ClerkPricingTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active learning plans')).toBeVisible();
     expect(screen.getByText('Priority queue access')).toBeVisible();
@@ -279,7 +279,7 @@ describe('ClerkPricingTable', () => {
 
   it('hydrates monthly server markup before applying a validated annual checkout URL', async () => {
     const { ClerkPricingTable } =
-      await import('@/app/(marketing)/pricing/components/ClerkPricingTable');
+      await import('@/app/(landing)/pricing/components/ClerkPricingTable');
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
     mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
@@ -289,7 +289,7 @@ describe('ClerkPricingTable', () => {
       markup = renderToString(
         <ClerkPricingTable
           appearance={{}}
-          newSubscriptionRedirectUrl='/settings#billing'
+          newSubscriptionRedirectUrl='/settings/billing'
         />,
       );
     } finally {
@@ -317,7 +317,7 @@ describe('ClerkPricingTable', () => {
           container,
           <ClerkPricingTable
             appearance={{}}
-            newSubscriptionRedirectUrl='/settings#billing'
+            newSubscriptionRedirectUrl='/settings/billing'
           />,
           { onRecoverableError },
         );
@@ -557,7 +557,7 @@ describe('ClerkPricingTable', () => {
       ],
     });
 
-    await user.click(screen.getByRole('button', { name: 'Try Again' }));
+    await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active learning plans')).toBeVisible();
     expect(screen.getByText('Priority queue access')).toBeVisible();
@@ -577,6 +577,54 @@ describe('ClerkPricingTable', () => {
     expect(document.querySelector('[aria-busy="true"]')).toBeNull();
     expect(document.querySelectorAll('[aria-hidden="true"]')).toHaveLength(0);
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
+  });
+
+  it('compares only the current non-export features from each live plan', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [
+        {
+          ...FREE_PLAN,
+          name: 'Free',
+          features: [
+            { name: '10 active learning plans' },
+            { name: 'Shared scheduling horizon' },
+            { name: '50 exports per month' },
+          ],
+        },
+        {
+          ...STARTER_PLAN,
+          features: [
+            { name: 'Shared scheduling horizon' },
+            { name: 'Priority queue access' },
+            { name: '50 exports per month' },
+          ],
+        },
+      ],
+    });
+
+    await renderPricingTable();
+
+    const comparison = await screen.findByRole('region', {
+      name: 'Plan feature comparison',
+    });
+    expect(comparison).toHaveAttribute('tabindex', '0');
+    expect(
+      within(comparison).getByRole('columnheader', { name: 'Free' }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('columnheader', { name: 'Starter' }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('row', {
+        name: /shared scheduling horizon.*feature listed.*feature listed/i,
+      }),
+    ).toBeVisible();
+    expect(
+      within(comparison).getByRole('row', {
+        name: /priority queue access.*feature not listed.*feature listed/i,
+      }),
+    ).toBeVisible();
+    expect(within(comparison).queryByText(/exports?/i)).not.toBeInTheDocument();
   });
 
   it('shows placeholder cards while Clerk plans are loading', async () => {

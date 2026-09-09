@@ -1,27 +1,43 @@
 'use client';
 
 import type { UsageAnalyticsModel } from './usage-analytics-model';
+import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { WeeklyLineChart } from './usage-analytics-charts';
 import {
-  ActiveProgressBarChart,
-  RadialStackedMetricChart,
-  RadialTextMetricChart,
-  StackedEventsBarChart,
-  StreakStepLineChart,
-  WeeklyLineChart,
-} from './usage-analytics-charts';
-import { PageHeader } from '@/components/ui/page-header';
+  activityStatus,
+  formatCountDelta,
+  formatDayCount,
+  remainingLabel,
+  streakComparison,
+  type UsageAnalyticsMetricTrend,
+} from './usage-analytics-formatters';
+import { Badge } from '@/components/ui/badge';
+import { PageHero } from '@/components/ui/page-hero';
+import { Progress } from '@/components/ui/progress';
+import { SectionOverline } from '@/components/ui/section-overline';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
-import { cn } from '@/lib/utils';
-import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
+import {
+  Activity,
+  BarChart3,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  Clock,
+  Flame,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+} from 'lucide-react';
 
 const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
 const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
 const EIGHT_WEEK_PULSE_SUMMARY_ID = 'usage-eight-week-pulse-summary';
 
-/** Renders the usage analytics page: eight-week pulse chart and summary metric tiles. */
+/** Renders the usage analytics page with current completion and activity history. */
 export function UsageAnalyticsContent({
   model,
 }: {
@@ -29,33 +45,27 @@ export function UsageAnalyticsContent({
 }) {
   const currentWeek = model.history.currentWeek;
   const previousWeek = model.history.weeklyTrends.at(-2) ?? null;
-  const cards = [
+  const completionCards = [
     {
       label: 'Tasks',
       value: `${model.taskCompletionPercent}%`,
       detail:
         model.totalTasks > 0
-          ? `${model.completedTasks} / ${model.totalTasks} complete`
+          ? `${model.completedTasks} of ${model.totalTasks} tasks complete`
           : 'No tasks tracked yet',
       comparison:
         model.totalTasks > 0
           ? remainingLabel(model.totalTasks - model.completedTasks, 'task')
           : 'Create a plan to track tasks',
-      chart: (
-        <RadialTextMetricChart
-          value={`${model.taskCompletionPercent}%`}
-          sublabel='Tasks'
-          percent={model.taskCompletionPercent}
-        />
-      ),
-      className: 'sm:col-span-2',
+      icon: CheckCircle2,
+      progress: model.totalTasks > 0 ? model.taskCompletionPercent : undefined,
     },
     {
       label: 'Modules',
       value: `${model.moduleCompletionPercent}%`,
       detail:
         model.totalModules > 0
-          ? `${model.completedModules} / ${model.totalModules} complete`
+          ? `${model.completedModules} of ${model.totalModules} modules complete`
           : 'No modules tracked yet',
       comparison:
         model.totalModules > 0
@@ -64,91 +74,77 @@ export function UsageAnalyticsContent({
               'module',
             )
           : 'Create a plan to track modules',
-      chart: (
-        <RadialTextMetricChart
-          value={`${model.moduleCompletionPercent}%`}
-          sublabel='Modules'
-          percent={model.moduleCompletionPercent}
-        />
-      ),
+      icon: BookOpen,
+      progress:
+        model.totalModules > 0 ? model.moduleCompletionPercent : undefined,
     },
     {
       label: 'Completed time',
       value: formatMinutes(model.completedMinutes),
-      detail:
+      detail: 'Estimated completed learning time',
+      comparison:
         model.totalMinutes > 0
           ? `${formatMinutes(model.totalMinutes)} planned total`
           : 'No estimated time yet',
-      status: activityStatus(
-        currentWeek.estimatedCompletionAddedMinutes,
-        previousWeek?.estimatedCompletionAddedMinutes ?? 0,
-      ),
-      comparison:
+      icon: Clock,
+      progress:
         model.totalMinutes > 0
-          ? formatMinuteDelta(
-              currentWeek.estimatedCompletionAddedMinutes,
-              previousWeek?.estimatedCompletionAddedMinutes ?? 0,
-            )
-          : 'Create a plan to track time',
-      chart: (
-        <RadialStackedMetricChart
-          completed={model.completedMinutes}
-          total={model.totalMinutes}
-          value={formatMinutes(model.completedMinutes)}
-          sublabel='Completed'
-        />
-      ),
+          ? Math.min(100, (model.completedMinutes / model.totalMinutes) * 100)
+          : undefined,
     },
+  ] as const;
+
+  const activityCards = [
     {
       label: 'Progress changes',
       value: currentWeek.progressChangeCount.toString(),
-      detail: `Across ${formatDayCount(currentWeek.activeDays).toLowerCase()}`,
-      status: activityStatus(
-        currentWeek.progressChangeCount,
-        previousWeek?.progressChangeCount ?? 0,
-      ),
+      detail: currentWeek.activeDays
+        ? `Across ${formatDayCount(currentWeek.activeDays).toLowerCase()}`
+        : 'No changes recorded this week',
       comparison: formatCountDelta(
         currentWeek.progressChangeCount,
         previousWeek?.progressChangeCount ?? 0,
         'change',
       ),
-      chart: <ActiveProgressBarChart weeks={model.history.weeklyTrends} />,
+      status: activityStatus(
+        currentWeek.progressChangeCount,
+        previousWeek?.progressChangeCount ?? 0,
+      ),
+      icon: Activity,
     },
     {
       label: 'Completed events',
       value: currentWeek.completedEvents.toString(),
-      detail: `${formatMinutes(currentWeek.estimatedCompletionAddedMinutes)} added`,
-      status: activityStatus(
-        currentWeek.completedEvents,
-        previousWeek?.completedEvents ?? 0,
-      ),
+      detail: currentWeek.completedEvents
+        ? `${formatMinutes(currentWeek.estimatedCompletionAddedMinutes)} estimated time added`
+        : 'No completed events this week',
       comparison: formatCountDelta(
         currentWeek.completedEvents,
         previousWeek?.completedEvents ?? 0,
         'event',
       ),
-      chart: <StackedEventsBarChart weeks={model.history.weeklyTrends} />,
+      status: activityStatus(
+        currentWeek.completedEvents,
+        previousWeek?.completedEvents ?? 0,
+      ),
+      icon: CheckCircle2,
     },
     {
       label: 'Active days',
       value: `${currentWeek.activeDays}/7`,
-      detail: `${currentWeek.progressChangeCount} changes logged`,
-      status: activityStatus(
-        currentWeek.activeDays,
-        previousWeek?.activeDays ?? 0,
-      ),
+      detail: currentWeek.progressChangeCount
+        ? `${currentWeek.progressChangeCount} changes logged`
+        : 'No activity logged this week',
       comparison: formatCountDelta(
         currentWeek.activeDays,
         previousWeek?.activeDays ?? 0,
         'day',
       ),
-      chart: (
-        <RadialTextMetricChart
-          value={`${currentWeek.activeDays}/7`}
-          sublabel='Active days'
-          percent={(currentWeek.activeDays / 7) * 100}
-        />
+      status: activityStatus(
+        currentWeek.activeDays,
+        previousWeek?.activeDays ?? 0,
       ),
+      icon: CalendarDays,
     },
     {
       label: 'Streak',
@@ -158,97 +154,183 @@ export function UsageAnalyticsContent({
         model.history.currentStreakDays,
         model.history.longestStreakDays,
       ),
-      chart: (
-        <StreakStepLineChart
-          current={model.history.currentStreakDays}
-          longest={model.history.longestStreakDays}
-        />
-      ),
+      icon: Flame,
     },
   ] as const;
 
   return (
-    <div className='space-y-5'>
-      <PageHeader
-        title='Usage'
-        subtitle='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
-      />
+    <div className='space-y-8'>
+      <AnalyticsHero />
 
-      <Surface
-        aria-label='Eight-week pulse analytics design'
-        padding='none'
-        className='w-full px-5 pt-5'
-      >
-        <div className='min-w-0'>
-          <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-            Trend
-          </p>
-          <h2
-            id={EIGHT_WEEK_PULSE_TITLE_ID}
-            className='mt-1 text-xl font-semibold text-foreground'
-          >
-            Eight-week pulse
-          </h2>
-          <p
-            id={EIGHT_WEEK_PULSE_DESCRIPTION_ID}
-            className='mt-1 text-sm text-muted-foreground'
-          >
-            Progress changes by week
-          </p>
-          <p id={EIGHT_WEEK_PULSE_SUMMARY_ID} className='sr-only'>
-            Line chart showing progress changes by week for each plan.
-          </p>
+      <section aria-labelledby='usage-completion-heading' className='space-y-4'>
+        <SectionHeading
+          eyebrow='Overview'
+          id='usage-completion-heading'
+          title='Current completion'
+          description='Progress across every plan, based on the tasks and modules you have completed.'
+          aside='All plans'
+        />
+        <div className='grid gap-4 md:grid-cols-3'>
+          {completionCards.map((card) => (
+            <MetricTile key={card.label} {...card} />
+          ))}
         </div>
+      </section>
 
-        <div className='mt-5'>
-          <WeeklyLineChart
-            weeks={model.history.weeklyTrends}
-            plans={model.plans}
-            labelledBy={EIGHT_WEEK_PULSE_TITLE_ID}
-            describedBy={`${EIGHT_WEEK_PULSE_DESCRIPTION_ID} ${EIGHT_WEEK_PULSE_SUMMARY_ID}`}
-          />
+      <section aria-labelledby='usage-activity-heading' className='space-y-4'>
+        <SectionHeading
+          eyebrow='Activity'
+          id='usage-activity-heading'
+          title='Learning activity'
+          description='Recorded progress changes and streaks in your analytics timezone.'
+          aside={
+            <Badge variant='product'>This week · {currentWeek.label}</Badge>
+          }
+        />
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+          {activityCards.map((card) => (
+            <MetricTile key={card.label} {...card} />
+          ))}
         </div>
-      </Surface>
+      </section>
 
-      <section
-        aria-label='Usage analytics summary'
-        className='grid gap-3 sm:grid-cols-2 lg:grid-cols-4'
-      >
-        {cards.map((card) => (
-          <MetricTile key={card.label} {...card} />
-        ))}
+      <section aria-labelledby={EIGHT_WEEK_PULSE_TITLE_ID}>
+        <Surface padding='none' className='overflow-hidden'>
+          <div className='flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6'>
+            <div className='min-w-0'>
+              <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
+                Trend
+              </p>
+              <h2
+                id={EIGHT_WEEK_PULSE_TITLE_ID}
+                className='mt-1 text-xl font-semibold text-foreground'
+              >
+                Eight-week pulse
+              </h2>
+              <p
+                id={EIGHT_WEEK_PULSE_DESCRIPTION_ID}
+                className='mt-1 text-sm text-muted-foreground'
+              >
+                Progress changes by plan and week.
+              </p>
+            </div>
+            <Badge variant='product' className='self-start'>
+              Monday-start weeks
+            </Badge>
+          </div>
+
+          <div className='min-w-0 overflow-x-auto px-5 pt-5 sm:px-6'>
+            <p id={EIGHT_WEEK_PULSE_SUMMARY_ID} className='sr-only'>
+              Line chart showing progress changes by week for each plan. Values
+              come from recorded task status changes.
+            </p>
+            <WeeklyLineChart
+              weeks={model.history.weeklyTrends}
+              plans={model.plans}
+              labelledBy={EIGHT_WEEK_PULSE_TITLE_ID}
+              describedBy={`${EIGHT_WEEK_PULSE_DESCRIPTION_ID} ${EIGHT_WEEK_PULSE_SUMMARY_ID}`}
+            />
+          </div>
+
+          <div className='px-5 pb-5 sm:px-6'>
+            <p className='border-t border-border/60 pt-4 text-sm text-muted-foreground'>
+              {!model.plans.length
+                ? 'No plans yet. The pulse will appear when a plan records progress.'
+                : !model.history.hasActivity
+                  ? 'No progress changes have been recorded in this eight-week window. Complete a task to start your history.'
+                  : 'History reflects progress changes recorded in your analytics timezone.'}
+            </p>
+          </div>
+        </Surface>
       </section>
     </div>
   );
 }
 
-/** Renders one summary metric with value, detail, trend, and week-over-week comparison. */
+/** Decorative page introduction with responsive artwork that stays out of the reading path. */
+function AnalyticsHero() {
+  return (
+    <PageHero
+      className='rounded-[12px] border border-panel-border bg-panel shadow-sm'
+      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col justify-center px-5 py-8 sm:min-h-[14rem] sm:px-8 sm:py-10 lg:px-10'
+      overline='Analytics'
+      overlineIcon={<BarChart3 aria-hidden='true' className='size-4' />}
+      title={
+        <>
+          Learning <span className='text-primary'>analytics</span>
+        </>
+      }
+      titleClassName='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
+      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+    />
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  id,
+  title,
+  description,
+  aside,
+}: {
+  eyebrow: string;
+  id: string;
+  title: string;
+  description: string;
+  aside: ReactNode;
+}) {
+  return (
+    <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
+      <div className='min-w-0'>
+        <SectionOverline className='tracking-[0.14em] text-muted-foreground'>
+          {eyebrow}
+        </SectionOverline>
+        <h2 id={id} className='mt-1 text-xl font-semibold text-foreground'>
+          {title}
+        </h2>
+        <p className='mt-1 max-w-2xl text-sm text-muted-foreground'>
+          {description}
+        </p>
+      </div>
+      {typeof aside === 'string' ? (
+        <p className='shrink-0 text-sm text-muted-foreground'>{aside}</p>
+      ) : (
+        aside
+      )}
+    </div>
+  );
+}
+
+type MetricTileProps = {
+  label: string;
+  value: string;
+  detail: string;
+  comparison: string;
+  icon: LucideIcon;
+  status?: UsageAnalyticsMetricTrend | null;
+  progress?: number;
+};
+
+/** Renders one metric with its actual scope, optional completion bar, and comparison. */
 function MetricTile({
   label,
   value,
   detail,
-  status,
   comparison,
-  chart,
-  className,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  status?: MetricTrend | null;
-  comparison: string;
-  chart: ReactNode;
-  className?: string;
-}) {
+  icon: Icon,
+  status,
+  progress,
+}: MetricTileProps) {
   return (
-    <Surface
-      padding='none'
-      className={cn('flex min-h-72 flex-col p-4', className)}
-    >
+    <Surface padding='none' className='flex min-h-44 flex-col p-5 sm:p-6'>
       <div className='flex items-start justify-between gap-3'>
-        <p className='text-xs font-medium tracking-wide text-muted-foreground uppercase'>
-          {label}
-        </p>
+        <span
+          className='flex size-11 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'
+          aria-hidden='true'
+        >
+          <Icon className='size-5' />
+        </span>
         {status ? (
           <span aria-label={status.label} className='inline-flex'>
             <TrendStatusIcon kind={status.icon} />
@@ -256,29 +338,32 @@ function MetricTile({
         ) : null}
       </div>
 
-      <div className='mt-3 min-w-0'>
-        <p className='text-4xl font-semibold text-foreground tabular-nums'>
-          {value}
-        </p>
-        <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
-      </div>
+      <p className='mt-5 text-sm text-muted-foreground'>{label}</p>
+      <p className='mt-1 text-3xl font-semibold text-foreground tabular-nums'>
+        {value}
+      </p>
+      <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
 
-      <div className='mt-4 min-h-36 overflow-visible'>{chart}</div>
-      <p className='mt-auto pt-3 text-sm text-muted-foreground'>{comparison}</p>
+      {progress !== undefined ? (
+        <Progress
+          value={progress}
+          max={100}
+          aria-label={`${label} completion`}
+          className='mt-5 h-1.5'
+        />
+      ) : null}
+
+      <p className='mt-auto pt-4 text-xs text-muted-foreground'>{comparison}</p>
     </Surface>
   );
 }
 
-type MetricTrend = {
-  label: 'Up' | 'Down' | 'Flat';
-  icon: 'up' | 'down' | 'flat';
-};
-
-const TREND_ICON_CLASSNAME: Record<MetricTrend['icon'], string> = {
-  up: 'size-5 text-success',
-  down: 'size-5 text-destructive',
-  flat: 'size-5 text-primary',
-};
+const TREND_ICON_CLASSNAME: Record<UsageAnalyticsMetricTrend['icon'], string> =
+  {
+    up: 'size-5 text-success',
+    down: 'size-5 text-destructive',
+    flat: 'size-5 text-primary',
+  };
 
 const TREND_ICON = {
   up: TrendingUp,
@@ -287,83 +372,73 @@ const TREND_ICON = {
 } as const;
 
 /** Renders the up, down, or flat trend icon for a metric status. */
-function TrendStatusIcon({ kind }: { kind: MetricTrend['icon'] }) {
+function TrendStatusIcon({
+  kind,
+}: {
+  kind: UsageAnalyticsMetricTrend['icon'];
+}) {
   const Icon = TREND_ICON[kind];
   return <Icon aria-hidden='true' className={TREND_ICON_CLASSNAME[kind]} />;
 }
 
-/** Formats a day count with correct singular or plural labeling. */
-function formatDayCount(days: number): string {
-  return `${days} ${days === 1 ? 'day' : 'days'}`;
+/** Loading skeleton that mirrors the analytics page hierarchy while data streams in. */
+export function UsageAnalyticsContentSkeleton() {
+  return (
+    <section
+      aria-label='Loading usage analytics'
+      aria-busy='true'
+      className='space-y-8'
+    >
+      <div className='rounded-[12px] border border-panel-border bg-panel p-5 sm:min-h-[14rem] sm:p-8'>
+        <Skeleton className='h-4 w-28 bg-secondary' />
+        <Skeleton className='mt-5 h-10 w-full max-w-md' />
+        <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />
+      </div>
+
+      <div className='space-y-4'>
+        <div>
+          <Skeleton className='h-3 w-20 bg-muted' />
+          <Skeleton className='mt-2 h-6 w-40' />
+          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+        </div>
+        <div className='grid gap-4 md:grid-cols-3'>
+          {[1, 2, 3].map((id) => (
+            <MetricTileSkeleton key={`usage-completion-skeleton-${id}`} />
+          ))}
+        </div>
+      </div>
+
+      <div className='space-y-4'>
+        <div>
+          <Skeleton className='h-3 w-20 bg-muted' />
+          <Skeleton className='mt-2 h-6 w-40' />
+          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+        </div>
+        <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
+          {[1, 2, 3, 4].map((id) => (
+            <MetricTileSkeleton key={`usage-activity-skeleton-${id}`} />
+          ))}
+        </div>
+      </div>
+
+      <div className='rounded-[12px] border border-panel-border bg-panel p-5 sm:p-6'>
+        <Skeleton className='h-3 w-16 bg-muted' />
+        <Skeleton className='mt-2 h-6 w-44' />
+        <Skeleton className='mt-2 h-4 w-56 bg-muted' />
+        <Skeleton className='mt-6 h-80 w-full bg-secondary' />
+      </div>
+    </section>
+  );
 }
 
-/** Returns a human-readable label for remaining tasks or modules. */
-function remainingLabel(remaining: number, noun: string): string {
-  const safeRemaining = Math.max(0, remaining);
-
-  if (safeRemaining === 0) {
-    return 'Nothing left';
-  }
-
-  return `${safeRemaining} ${safeRemaining === 1 ? noun : `${noun}s`} left`;
-}
-
-/** Compares current and previous values to produce a visible trend. */
-function activityStatus(current: number, previous: number): MetricTrend | null {
-  if (current === 0 && previous === 0) {
-    return null;
-  }
-
-  if (current > previous) {
-    return { label: 'Up', icon: 'up' };
-  }
-
-  if (current < previous) {
-    return { label: 'Down', icon: 'down' };
-  }
-
-  return { label: 'Flat', icon: 'flat' };
-}
-
-/** Formats a week-over-week delta for counts such as changes, events, or days. */
-function formatCountDelta(
-  current: number,
-  previous: number,
-  noun: 'change' | 'event' | 'day',
-): string {
-  const delta = current - previous;
-
-  if (delta === 0) {
-    return 'No change vs last week';
-  }
-
-  const absoluteDelta = Math.abs(delta);
-  const unit = absoluteDelta === 1 ? noun : `${noun}s`;
-
-  return `${delta > 0 ? '+' : '-'}${absoluteDelta} ${unit} vs last week`;
-}
-
-/** Formats a week-over-week delta for estimated completed minutes. */
-function formatMinuteDelta(current: number, previous: number): string {
-  const delta = current - previous;
-
-  if (delta === 0) {
-    return 'No change vs last week';
-  }
-
-  return `${delta > 0 ? '+' : '-'}${formatMinutes(Math.abs(delta))} vs last week`;
-}
-
-/** Returns comparison copy describing distance from the user's best streak. */
-function streakComparison(current: number, longest: number): string {
-  if (current === 0 && longest === 0) {
-    return 'Start with one active day';
-  }
-
-  if (current >= longest) {
-    return 'Matches your best run';
-  }
-
-  const remaining = longest - current;
-  return `${remaining} ${remaining === 1 ? 'day' : 'days'} from best`;
+function MetricTileSkeleton() {
+  return (
+    <div className='min-h-44 rounded-[12px] border border-panel-border bg-panel p-5 sm:p-6'>
+      <Skeleton className='size-11 rounded-full bg-secondary' />
+      <Skeleton className='mt-5 h-4 w-28 bg-muted' />
+      <Skeleton className='mt-2 h-8 w-24' />
+      <Skeleton className='mt-2 h-4 w-36 bg-muted' />
+      <Skeleton className='mt-5 h-1.5 w-full rounded-full bg-secondary' />
+    </div>
+  );
 }

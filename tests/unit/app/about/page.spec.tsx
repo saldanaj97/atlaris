@@ -1,4 +1,4 @@
-import AboutPage, { metadata } from '@/app/(marketing)/about/page';
+import AboutPage, { metadata } from '@/app/(landing)/about/page';
 import SiteHeaderChrome from '@/components/shared/nav/SiteHeaderChrome';
 import SiteFooter from '@/components/shared/SiteFooter';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -10,21 +10,29 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/about',
 }));
 
-vi.mock('@/app/(marketing)/_shared/star-field.module.css', () => ({
+vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
   default: { star: 'star' },
 }));
 
-vi.mock('@/app/(marketing)/about/components/about.module.css', () => ({
+vi.mock('@/app/(landing)/about/components/about.module.css', () => ({
   default: {
     ambientOrb: 'ambientOrb',
     ambientOrbMuted: 'ambientOrbMuted',
     ambientOrbPrimary: 'ambientOrbPrimary',
+    closeBanner: 'closeBanner',
+    closeContent: 'closeContent',
     ctaMotion: 'ctaMotion',
     heroCopy: 'heroCopy',
+    heroCopyBlock: 'heroCopyBlock',
     heroEmphasis: 'heroEmphasis',
+    hero: 'hero',
+    heroActions: 'heroActions',
+    heroBackdrop: 'heroBackdrop',
     heroLead: 'heroLead',
     heroOverline: 'heroOverline',
     reveal: 'reveal',
+    revealFromLeft: 'revealFromLeft',
+    revealFromRight: 'revealFromRight',
     revealItem: 'revealItem',
   },
 }));
@@ -47,17 +55,25 @@ describe('AboutPage', () => {
   it('exports About metadata with description and social blocks', () => {
     expect(metadata.title).toBe('About | Atlaris');
     expect(metadata.description).toBe(
-      'Who builds Atlaris, why it borrows the night sky, and what the AI does and does not do when it charts your plan.',
+      'Why Atlaris borrows the night sky, and what the AI does and does not do when it charts your plan.',
     );
     expect(metadata.openGraph).toMatchObject({
       title: 'About | Atlaris',
       url: '/about',
       type: 'website',
       siteName: 'Atlaris',
+      images: [
+        {
+          url: '/brand/og-default.png',
+          width: 1200,
+          height: 630,
+        },
+      ],
     });
     expect(metadata.twitter).toMatchObject({
       card: 'summary_large_image',
       title: 'About | Atlaris',
+      images: ['/brand/og-default.png'],
       site: '@atlarisapp',
       creator: '@atlarisapp',
     });
@@ -95,8 +111,22 @@ describe('AboutPage', () => {
     expect(
       screen.queryByRole('link', { name: 'Plans' }),
     ).not.toBeInTheDocument();
+    const contactSection = screen.getByRole('region', {
+      name: /if the map is wrong/i,
+    });
     expect(
-      screen.getByRole('link', { name: 'support@atlaris.app' }),
+      within(contactSection).getByRole('link', {
+        name: 'support@atlaris.app',
+      }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
+    expect(
+      within(footer).getByRole('link', { name: 'support@atlaris.app' }),
+    ).toHaveAttribute('href', 'mailto:support@atlaris.app');
+    expect(screen.queryByText(/built by one person/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/replies may take a night/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/10,000/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/alex r\./i)).not.toBeInTheDocument();
   });
 });
