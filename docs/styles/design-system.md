@@ -14,7 +14,7 @@ This is a bounded foundations migration, not completion of the page or component
 
 **Original package context:** the handbook below was authored against `f8994dc7144ca8ce64354771c8fd95082cdd52a6`. Statements about the old `DESIGN.md` precedence in §§00.3 and 27 describe that snapshot; the repository adoption notes above supersede that documentation conflict and identify the runtime slice implemented here. References to `tokens/atlaris.tokens.json`, generated CSS/catalogs, package scripts, HTML/PDF specimens, JSON registries and earlier stage files describe the original external reference package. Those companion files remain outside the repository. The supplied compiler can generate tokens externally as described below; do not reconstruct a competing token source from these tables. Package/handbook checks are separate from application checks. Use the inherited source registers below for the retained chapter reference IDs.
 
-The [style-guide compatibility pointer](./style-guide.md) and [archived After Hours direction](./after-hours-direction.md) do not establish current design rules. Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
+The [style-guide compatibility pointer](./style-guide.md) does not establish current design rules. Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
 ### External token generation
 

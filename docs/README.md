@@ -95,12 +95,11 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Canonical design specification, compatibility entry point and historical direction. Shared foundations are adopted; page and component migration continues.
+Canonical design specification and compatibility entry point. Shared foundations are adopted; page and component migration continues.
 
 | File | Description |
 |------|-------------|
 | [design-system.md](./styles/design-system.md) | Canonical detailed design specification; proposals and implementation gaps remain explicit |
-| [after-hours-direction.md](./styles/after-hours-direction.md) | Archived After Hours rationale and visual history; not current guidance |
 | [style-guide.md](./styles/style-guide.md) | Compatibility pointer to the canonical design system |
 
 ## `testing/`
@@ -169,7 +168,6 @@ docs/
 │   ├── security-audit-checklist.md
 │   └── supply-chain-policy.md
 ├── styles/
-│   ├── after-hours-direction.md
 │   ├── design-system.md
 │   └── style-guide.md
 ├── testing/

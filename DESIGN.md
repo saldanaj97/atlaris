@@ -19,7 +19,7 @@ Read [the canonical design system](docs/styles/design-system.md) before introduc
 | Actual runtime visual implementation   | [globals.css](src/app/globals.css), runtime tokens and shared components. Shared foundations follow the canonical specification; page and component migration remains scoped to their issues. |
 | Agent/developer starting point         | This file; it defers detailed design rules to the canonical specification.                                                                                                                    |
 
-Current CSS describes what runs; it does not override the intended design specification. Design mockups do not authorize new product functionality. [style-guide.md](docs/styles/style-guide.md) is a compatibility pointer; [after-hours-direction.md](docs/styles/after-hours-direction.md) is historical and has no current design authority.
+Current CSS describes what runs; it does not override the intended design specification. Design mockups do not authorize new product functionality. [style-guide.md](docs/styles/style-guide.md) is a compatibility pointer and has no current design authority.
 
 ## Brand direction
 
