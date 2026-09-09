@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-[8px] whitespace-nowrap rounded-[8px] border border-transparent text-sm leading-5 font-medium transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 disabled:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background aria-invalid:border-danger aria-invalid:ring-[2px] aria-invalid:ring-danger cursor-pointer",
+  "inline-flex min-w-0 items-center justify-center gap-[8px] whitespace-normal [overflow-wrap:anywhere] rounded-[8px] border border-transparent text-sm leading-[20px] font-medium transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 disabled:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background aria-invalid:border-danger focus-visible:aria-invalid:border-danger cursor-pointer",
   {
     variants: {
       variant: {
@@ -21,7 +21,7 @@ const buttonVariants = cva(
         link: 'text-link underline-offset-4 hover:text-link-hover hover:underline',
         cta: 'group bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover active:bg-action-primary-pressed',
         'soft-primary':
-          'border-link/25 bg-action-primary/10 text-link hover:border-link/35 hover:bg-action-primary/20 active:bg-action-primary/30',
+          'border-link bg-action-soft text-link hover:bg-secondary active:bg-muted',
         success:
           'bg-success text-success-foreground hover:bg-success/90 active:bg-success/80 focus-visible:ring-success',
       },

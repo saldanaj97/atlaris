@@ -3,15 +3,15 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const surfaceVariants = cva(
-  'rounded-[12px] border text-panel-foreground transition-[box-shadow,background-color,border-color]',
+  'min-w-0 rounded-[12px] border text-panel-foreground transition-[box-shadow,background-color,border-color]',
   {
     variants: {
       variant: {
-        default: 'border-panel-border bg-panel shadow-sm',
-        muted: 'border-panel-border bg-panel-muted shadow-sm',
+        default: 'border-border bg-panel shadow-sm',
+        muted: 'border-border bg-panel-muted shadow-sm',
         interactive:
-          'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md',
-        inset: 'border-border/80 bg-muted/40 shadow-none dark:bg-muted/25',
+          'border-border bg-panel shadow-sm hover:border-input hover:bg-panel-muted hover:shadow-md',
+        inset: 'border-border bg-background shadow-none',
       },
       padding: {
         none: '',

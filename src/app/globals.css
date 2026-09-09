@@ -20,6 +20,7 @@
   --action-primary-hover: #a08fff;
   --action-primary-pressed: #7c68eb;
   --action-primary-foreground: #070b10;
+  --action-soft: color-mix(in srgb, var(--primary) 10%, var(--background));
   --link: #5b4bb7;
   --link-hover: #493a9a;
   --secondary: #eef2f7;
@@ -137,6 +138,7 @@
   --action-primary-foreground: var(
     --at-semantic-color-action-primary-foreground
   );
+  --action-soft: var(--at-semantic-color-background-selected);
   --link: var(--at-semantic-color-text-link);
   --link-hover: var(--at-semantic-color-text-link-hover);
   --secondary: var(--at-semantic-color-background-raised);
@@ -212,6 +214,7 @@
   --color-action-primary-hover: var(--action-primary-hover);
   --color-action-primary-pressed: var(--action-primary-pressed);
   --color-action-primary-foreground: var(--action-primary-foreground);
+  --color-action-soft: var(--action-soft);
   --color-link: var(--link);
   --color-link-hover: var(--link-hover);
   --color-secondary: var(--secondary);

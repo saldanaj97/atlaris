@@ -96,7 +96,7 @@ export default function MobileNavigation({
           triggerRef.current?.focus();
         }}
         className={cn(
-          'w-72 border-r border-border p-0 shadow-lg',
+          'w-[min(18rem,calc(100vw-2rem))] border-r border-border p-0 shadow-lg',
           isAppShell ? 'bg-sidebar' : 'bg-card',
         )}
       >

@@ -36,14 +36,14 @@ function SelectTrigger({
       data-slot='select-trigger'
       data-size={size}
       className={cn(
-        "flex w-fit items-center justify-between gap-[8px] rounded-[8px] border border-input bg-card px-[12px] py-[8px] text-sm leading-5 whitespace-nowrap shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-foreground focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 aria-invalid:border-danger aria-invalid:ring-[2px] aria-invalid:ring-danger aria-invalid:hover:border-danger data-placeholder:text-muted-foreground data-[size=default]:min-h-[40px] data-[size=sm]:min-h-[32px] [@media(pointer:coarse)]:min-h-[44px] *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground",
+        "flex w-fit min-w-0 max-w-full items-center justify-between gap-[8px] rounded-[8px] border border-input bg-card px-[12px] py-[8px] text-base leading-[24px] whitespace-normal [overflow-wrap:anywhere] shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-muted-foreground focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 aria-invalid:border-danger aria-invalid:hover:border-danger focus-visible:aria-invalid:border-danger data-placeholder:text-muted-foreground data-[size=default]:min-h-[40px] data-[size=sm]:min-h-[32px] data-[size=sm]:text-sm data-[size=sm]:leading-[20px] [@media(pointer:coarse)]:min-h-[44px] *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:whitespace-normal *:data-[slot=select-value]:[overflow-wrap:anywhere] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[20px] data-[size=sm]:[&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground",
         className,
       )}
       {...props}
     >
       {children}
       <SelectPrimitive.Icon asChild>
-        <ChevronDownIcon className='size-4 opacity-50' />
+        <ChevronDownIcon />
       </SelectPrimitive.Icon>
     </SelectPrimitive.Trigger>
   );
@@ -61,7 +61,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot='select-content'
         className={cn(
-          'relative z-50 max-h-(--radix-select-content-available-height) min-w-[12rem] max-w-[20rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[16px] border border-panel-border bg-popover text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
+          'relative z-50 max-h-(--radix-select-content-available-height) min-w-[12rem] max-w-[20rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[8px] border border-input bg-popover text-popover-foreground shadow-md data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
           position === 'popper' &&
             'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
           className,

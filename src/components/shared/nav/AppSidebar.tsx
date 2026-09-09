@@ -38,7 +38,12 @@ function NavIcon({ href }: { href: string }) {
           ? BarChart3
           : Settings;
 
-  return <Icon aria-hidden='true' className='size-5 shrink-0' />;
+  return (
+    <Icon
+      aria-hidden='true'
+      className='size-[var(--at-primitive-size-icon-default,1.25rem)] shrink-0'
+    />
+  );
 }
 
 function tierLabel(tier?: SubscriptionTier): string {
@@ -74,13 +79,13 @@ export default function AppSidebar({
         className,
       )}
     >
-      <div className='flex h-16 shrink-0 items-center px-4 pt-[env(safe-area-inset-top,0px)]'>
+      <div className='flex h-[var(--at-semantic-layout-header-min,4rem)] shrink-0 items-center px-[var(--at-primitive-space-4,1rem)] pt-[env(safe-area-inset-top,0px)]'>
         <BrandLogo size='sm' onClick={onNavigate} />
       </div>
 
       <nav
         aria-label={navigationLabel}
-        className='flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-3 py-4'
+        className='flex min-h-0 flex-1 flex-col gap-[var(--at-primitive-space-1,0.25rem)] overflow-y-auto px-[var(--at-primitive-space-4,1rem)] py-[var(--at-primitive-space-6,1.5rem)]'
       >
         {navItems.map((item) => {
           const isActive = isNavItemActive(pathname, item);
@@ -97,10 +102,10 @@ export default function AppSidebar({
                   onClick={onNavigate}
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cn(
-                    'group relative flex min-h-[44px] min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'group relative flex min-h-[var(--at-component-navigation-item-height,2.75rem)] min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
                     isActive
-                      ? 'bg-sidebar-accent text-sidebar-primary'
+                      ? 'bg-action-soft text-sidebar-foreground'
                       : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
                   )}
                 >
@@ -111,7 +116,7 @@ export default function AppSidebar({
                     />
                   ) : null}
                   <NavIcon href={item.href} />
-                  <span className='min-w-0 truncate'>{item.label}</span>
+                  <span className='min-w-0 wrap-anywhere'>{item.label}</span>
                 </Link>
 
                 {item.dropdown ? (
@@ -120,7 +125,7 @@ export default function AppSidebar({
                     aria-controls={subnavId}
                     aria-expanded={isExpanded}
                     aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.label}`}
-                    className='flex size-[44px] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+                    className='flex size-[var(--at-semantic-size-control-touch,2.75rem)] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
                     onClick={() =>
                       setExpandedItems((current) => ({
                         ...current,
@@ -153,10 +158,10 @@ export default function AppSidebar({
                         onClick={onNavigate}
                         aria-current={isSubActive ? 'page' : undefined}
                         className={cn(
-                          'flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                          'flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center rounded-lg px-3 py-2 text-sm transition-colors',
                           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
                           isSubActive
-                            ? 'bg-sidebar-accent text-sidebar-primary'
+                            ? 'bg-action-soft text-sidebar-foreground'
                             : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
                         )}
                       >
@@ -180,17 +185,20 @@ export default function AppSidebar({
           href={ROUTES.SETTINGS.PROFILE}
           onClick={onNavigate}
           aria-label='Account settings'
-          className='flex min-h-[44px] items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+          className='flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
         >
           <span className='min-w-0'>
-            <span className='block truncate font-medium text-sidebar-foreground'>
+            <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
               {userName || 'Account'}
             </span>
-            <span className='block truncate text-xs text-muted-foreground'>
+            <span className='block text-xs wrap-anywhere text-muted-foreground'>
               {tierLabel(tier)}
             </span>
           </span>
-          <Settings aria-hidden='true' className='size-5 shrink-0' />
+          <Settings
+            aria-hidden='true'
+            className='size-[var(--at-primitive-size-icon-default,1.25rem)] shrink-0'
+          />
         </Link>
       </div>
     </aside>

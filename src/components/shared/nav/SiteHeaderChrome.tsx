@@ -67,7 +67,7 @@ export default function SiteHeaderChrome({
 
       {isAppShell ? (
         <AppSidebar
-          className='fixed inset-y-0 left-0 z-40 hidden w-56 border-r border-sidebar-border lg:flex'
+          className='fixed inset-y-0 left-0 z-40 hidden w-[var(--at-semantic-layout-sidebar,14rem)] border-r border-sidebar-border lg:flex'
           pathname={pathname}
           navItems={resolvedNavItems}
           tier={tier}
