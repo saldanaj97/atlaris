@@ -4,9 +4,15 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type React from 'react';
 
 import { AiPlanGenerationPanel } from '@/app/(app)/plans/new/components/AiPlanGenerationPanel';
-import { Card } from '@/components/ui/card';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { PageHero } from '@/components/ui/page-hero';
-import { Check, Sparkles } from 'lucide-react';
+import { Check } from 'lucide-react';
+
+const PLAN_CONSTRAINTS = [
+  'A clear destination',
+  'Weekly time you can sustain',
+  'A finish date that stays realistic',
+] as const;
 
 export function CreatePlanPageClient({
   subscriptionTier,
@@ -14,56 +20,49 @@ export function CreatePlanPageClient({
   subscriptionTier: SubscriptionTier;
 }): React.ReactElement {
   return (
-    <div className='w-full space-y-6'>
+    <div className='flex w-full flex-col gap-4 sm:gap-6'>
       <PageHero
-        className='rounded-[12px] border border-panel-border bg-panel px-5 py-7 sm:px-7 sm:py-8 lg:px-9 lg:py-10'
-        contentClassName='max-w-2xl'
+        className='rounded-[12px] border border-panel-border bg-panel px-5 py-6 sm:px-8 sm:py-5'
+        contentClassName='max-w-3xl'
         overline='Create your plan'
-        overlineIcon={<Sparkles aria-hidden='true' className='size-4' />}
         title={
           <>
             What do you want to <span className='text-primary'>learn?</span>
           </>
         }
-        titleClassName='font-heading mt-3 max-w-xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+        titleClassName='font-heading mt-2.5 max-w-xl text-[32px] leading-10 tracking-[-0.02em] text-balance text-foreground'
         description='Name the goal, your level, and the time you actually have. Atlaris charts the route.'
-        descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+        descriptionClassName='mt-2.5 max-w-xl text-base leading-[26px] text-muted-foreground'
       />
 
-      <div className='grid items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
+      <div className='grid items-start gap-4 lg:grid-cols-[minmax(0,40rem)_minmax(16rem,18rem)]'>
         <AiPlanGenerationPanel subscriptionTier={subscriptionTier} />
 
         <Card
           as='aside'
           aria-labelledby='plan-generation-note'
-          className='hidden gap-4 p-6 xl:flex'
+          className='gap-4 p-4 sm:p-6'
         >
-          <Sparkles aria-hidden='true' className='size-5 text-primary' />
-          <h2
-            id='plan-generation-note'
-            className='text-xl leading-7 font-semibold text-foreground'
-          >
-            Built around your week
-          </h2>
-          <p className='text-sm leading-relaxed text-muted-foreground'>
-            Your goal, experience, weekly time, learning style, and finish date
-            give Atlaris the context to shape a useful learning route.
-          </p>
-          <ul className='mt-auto space-y-3 border-t border-border/60 pt-4 text-sm text-muted-foreground'>
-            <li className='flex items-start gap-2'>
-              <Check
-                aria-hidden='true'
-                className='mt-0.5 size-4 shrink-0 text-primary'
-              />
-              <span>Clear goal and next steps</span>
-            </li>
-            <li className='flex items-start gap-2'>
-              <Check
-                aria-hidden='true'
-                className='mt-0.5 size-4 shrink-0 text-primary'
-              />
-              <span>A pace that fits your schedule</span>
-            </li>
+          <div className='space-y-2'>
+            <CardTitle as='h2' id='plan-generation-note'>
+              Built around your week
+            </CardTitle>
+            <CardDescription>
+              The route stays grounded in the constraints you choose.
+            </CardDescription>
+          </div>
+          <ul className='space-y-3 text-sm text-foreground'>
+            {PLAN_CONSTRAINTS.map((item) => (
+              <li key={item} className='flex items-start gap-2'>
+                <span
+                  aria-hidden='true'
+                  className='mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-success/15 text-success'
+                >
+                  <Check className='size-3.5' />
+                </span>
+                <span>{item}</span>
+              </li>
+            ))}
           </ul>
         </Card>
       </div>

@@ -77,8 +77,10 @@ describe('AiPlanGenerationPanel', () => {
   }
 
   async function chooseOption(currentLabel: string, nextLabel: string) {
-    const currentValue = screen.getByText(currentLabel);
-    const trigger = currentValue.closest('button');
+    const currentValue = screen
+      .getAllByText(currentLabel)
+      .find((node) => node.closest('button'));
+    const trigger = currentValue?.closest('button');
 
     if (!(trigger instanceof HTMLButtonElement)) {
       throw new Error(`Could not find dropdown trigger for "${currentLabel}"`);
@@ -157,7 +159,7 @@ describe('AiPlanGenerationPanel', () => {
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       expect(
-        screen.getByRole('heading', { name: 'Start with your goal' }),
+        screen.getByRole('heading', { name: 'Your goal' }),
       ).toBeInTheDocument();
       expect(
         screen.getByRole('group', { name: 'Plan preferences' }),
