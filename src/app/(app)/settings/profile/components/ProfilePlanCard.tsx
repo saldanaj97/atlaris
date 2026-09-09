@@ -34,13 +34,13 @@ export async function ProfilePlanCard(): Promise<ReactElement> {
 
   if (!snapshot || !isSubscriptionTier(snapshot.tier)) {
     return (
-      <Card as='section' className='gap-4 shadow-none'>
+      <Card as='section' className='gap-[24px] shadow-none'>
         <CardHeader>
-          <CardTitle as='h3' className='text-xl leading-7'>
+          <CardTitle as='h3' className='text-xl leading-[28px]'>
             Plan
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className='@container'>
           <p className='text-sm text-muted-foreground'>
             Unavailable right now.
           </p>
@@ -53,27 +53,27 @@ export async function ProfilePlanCard(): Promise<ReactElement> {
   const features = PRICING_PLAN_FEATURES[snapshot.tier];
 
   return (
-    <Card as='section' className='gap-4 shadow-none'>
+    <Card as='section' className='gap-[24px] shadow-none'>
       <CardHeader>
-        <CardTitle as='h3' className='text-xl leading-7'>
+        <CardTitle as='h3' className='text-xl leading-[28px]'>
           Plan
         </CardTitle>
         <CardDescription>
           You're currently on the {tierName} plan.
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className='space-y-5 rounded-[8px] border border-panel-border bg-panel-muted/50 p-4'>
-          <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
-            <div className='flex min-w-0 items-center gap-3'>
+      <CardContent className='@container'>
+        <div className='space-y-[24px] rounded-[8px] border border-border bg-background p-[16px]'>
+          <div className='flex flex-col gap-[16px] @min-[32rem]:flex-row @min-[32rem]:items-center @min-[32rem]:justify-between'>
+            <div className='flex min-w-0 items-center gap-[12px]'>
               <span
                 aria-hidden='true'
-                className='flex size-11 shrink-0 items-center justify-center rounded-[8px] bg-primary/10 text-primary'
+                className='flex size-[44px] shrink-0 items-center justify-center rounded-[8px] bg-action-soft text-foreground'
               >
                 <Crown className='size-[22px]' />
               </span>
               <div className='min-w-0'>
-                <p className='text-xl leading-7 font-semibold text-foreground'>
+                <p className='text-xl leading-[28px] font-semibold text-foreground'>
                   {tierName} Plan
                 </p>
                 <p className='text-sm leading-[22px] text-muted-foreground'>
@@ -88,14 +88,14 @@ export async function ProfilePlanCard(): Promise<ReactElement> {
               </Link>
             </Button>
           </div>
-          <ul className='grid gap-2.5 sm:grid-cols-2'>
+          <ul className='grid gap-[12px] @min-[32rem]:grid-cols-2'>
             {features.map((feature) => (
-              <li key={feature} className='flex items-center gap-2'>
+              <li key={feature} className='flex min-w-0 items-start gap-[8px]'>
                 <span
                   aria-hidden='true'
-                  className='flex size-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground'
+                  className='flex size-[20px] shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground'
                 >
-                  <Check className='size-3.5' />
+                  <Check className='size-[14px]' />
                 </span>
                 <span className='text-sm leading-[22px] text-muted-foreground'>
                   {feature}

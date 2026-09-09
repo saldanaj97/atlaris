@@ -137,7 +137,7 @@ export function SettingsContentHeading(): ReactElement {
     <div data-testid='settings-content-heading'>
       <h2
         id='settings-content-heading'
-        className='font-heading text-[32px] leading-10 tracking-[-0.02em] text-foreground sm:text-[40px] sm:leading-[46px]'
+        className='font-heading text-[32px] leading-[40px] tracking-[-0.02em] text-foreground sm:text-[40px] sm:leading-[46px]'
       >
         {heading.title}
       </h2>
@@ -154,7 +154,7 @@ export function SettingsSectionNavigation(): ReactElement {
 
   return (
     <nav aria-label='Settings sections' className='h-fit min-w-0'>
-      <ul className='grid gap-1 sm:grid-cols-2 lg:grid-cols-1'>
+      <ul className='grid gap-[4px] sm:grid-cols-2 lg:grid-cols-1'>
         {SETTINGS_NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const href = settingsSectionPath(item.id);
@@ -167,9 +167,9 @@ export function SettingsSectionNavigation(): ReactElement {
                 data-active={isActive ? 'true' : 'false'}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'group relative flex min-h-11 min-w-0 items-start gap-2 rounded-lg px-3 py-2 pl-3.5 text-left transition-colors',
+                  'group relative flex min-h-[44px] min-w-0 items-start gap-[8px] rounded-lg px-[12px] py-[8px] pl-[14px] text-left transition-colors',
                   'hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
-                  'data-[active=true]:bg-primary/10 data-[active=true]:text-foreground',
+                  'data-[active=true]:bg-action-soft data-[active=true]:text-foreground',
                 )}
               >
                 <span
@@ -182,9 +182,9 @@ export function SettingsSectionNavigation(): ReactElement {
                 <Icon
                   aria-hidden='true'
                   className={cn(
-                    'mt-0.5 size-5 shrink-0',
+                    'mt-[2px] size-[20px] shrink-0',
                     isActive
-                      ? 'text-primary'
+                      ? 'text-foreground'
                       : 'text-muted-foreground group-hover:text-foreground',
                   )}
                 />

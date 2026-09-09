@@ -1114,7 +1114,7 @@ The specimen demonstrates an outline and sample prose, not actual persisted per-
 
 ### 20.6 Settings and analytics composition
 
-Settings remains a unified ledger: Profile, Plan & billing, Usage, AI model, Integrations, Notifications. Preserve the real section IDs, profile catch-all, checkout synchronization host and independent Suspense boundaries. A local contents list is an anchor index into that page, not six newly created routes or locally reimplemented account management. One section waiting for data must not turn every other section into a skeleton. [R08]
+Settings uses shared chrome with the existing routed sections: Profile, Plan & billing, Usage, AI model, Integrations, Notifications. The earlier single-ledger proposal is superseded by the current route contract. Preserve section IDs, the profile catch-all, checkout synchronization host and independent Suspense boundaries. Local navigation links to those existing section routes; it does not reimplement account management. One section waiting for data must not turn every other section into a skeleton.
 
 Analytics retains the Eight-week pulse and Tasks, Modules, Completed time, Progress changes, Completed events, Active days, Streak. Layout can regroup the first three as current completion and the remaining four as activity/streak context, provided the time scope is explicit. A task-completion percent is not an average of plan percentages; completed time is estimated, not a timer. A week still in progress should be visibly identified. The companion v0.3 specification remains the detailed metric contract. [A03 §17.5]
 

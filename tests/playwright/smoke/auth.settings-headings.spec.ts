@@ -16,7 +16,7 @@ const ASYNC_SECTION_TIMEOUT_MS = 15_000;
 test('settings root redirects to the profile section', async ({ page }) => {
   await page.goto('/settings');
   await expect(page).toHaveURL(/\/settings\/profile$/);
-  await expectHeading(page, 'Make Atlaris yours.', 1);
+  await expectHeading(page, 'Settings', 1);
   await expectHeading(page, 'Profile', 2, ASYNC_SECTION_TIMEOUT_MS);
   await expect(
     page.getByRole('heading', { name: 'Plan & billing', exact: true }),

@@ -13,14 +13,11 @@ export function SettingsLedgerShell({
   children: ReactNode;
 }): ReactElement {
   return (
-    <div className='grid min-w-0 gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-8'>
-      <div className='h-fit min-w-0 rounded-[12px] border border-panel-border bg-panel px-2 py-2 shadow-sm lg:px-2 lg:py-3'>
+    <div className='grid min-w-0 gap-[24px] lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-[32px]'>
+      <div className='min-w-0 border-b border-border pb-[16px] lg:border-r lg:border-b-0 lg:pr-[16px] lg:pb-0'>
         {nav}
       </div>
-      <div
-        aria-labelledby='settings-content-heading'
-        className='min-w-0 lg:max-w-2xl'
-      >
+      <div aria-labelledby='settings-content-heading' className='min-w-0'>
         {children}
       </div>
     </div>
@@ -32,7 +29,7 @@ export function SettingsLedgerPanel({
 }: {
   children: ReactNode;
 }): ReactElement {
-  return <div className='mt-6 min-w-0 space-y-4'>{children}</div>;
+  return <div className='mt-[24px] min-w-0 space-y-[24px]'>{children}</div>;
 }
 
 export function LedgerSectionBlock({

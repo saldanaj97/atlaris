@@ -153,14 +153,14 @@ function ProfileCard({ children }: { children: ReactNode }): ReactElement {
     <Card
       as='section'
       id={SETTINGS_SECTIONS.profile}
-      className={cn(APP_SHELL_SCROLL_MARGIN, 'gap-4 shadow-none')}
+      className={cn(APP_SHELL_SCROLL_MARGIN, 'gap-[24px] shadow-none')}
     >
       <CardHeader>
-        <CardTitle as='h2' className='text-xl leading-7'>
+        <CardTitle as='h2' className='text-xl leading-[28px]'>
           Profile
         </CardTitle>
       </CardHeader>
-      <CardContent>{children}</CardContent>
+      <CardContent className='@container'>{children}</CardContent>
     </Card>
   );
 }
@@ -237,20 +237,20 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
 
   return (
     <ProfileCard>
-      <div className='space-y-4'>
-        <div className='flex min-w-0 items-center justify-between gap-4'>
-          <div className='flex min-w-0 items-center gap-4'>
+      <div className='space-y-[24px]'>
+        <div className='flex min-w-0 items-center justify-between gap-[16px]'>
+          <div className='flex min-w-0 items-center gap-[16px]'>
             <div
               aria-hidden='true'
-              className='flex size-16 shrink-0 items-center justify-center rounded-full border-2 border-primary bg-primary/10 text-2xl font-semibold tracking-[-0.01em] text-foreground'
+              className='flex size-[64px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-action-soft text-2xl font-semibold tracking-[-0.01em] text-foreground'
             >
               {getProfileInitials(state.name)}
             </div>
             <div className='min-w-0'>
-              <p className='text-xl leading-7 font-semibold break-words text-foreground'>
+              <p className='text-xl leading-[28px] font-semibold [overflow-wrap:anywhere] text-foreground'>
                 {state.name || 'No name set'}
               </p>
-              <p className='text-sm leading-[22px] break-words text-muted-foreground'>
+              <p className='text-sm leading-[22px] [overflow-wrap:anywhere] text-muted-foreground'>
                 {email}
               </p>
               <p className='text-xs leading-[18px] text-muted-foreground'>
@@ -260,11 +260,11 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
           </div>
         </div>
 
-        <div className='grid gap-4 sm:grid-cols-2'>
-          <div className='space-y-2'>
+        <div className='grid min-w-0 gap-[16px] @min-[34rem]:grid-cols-2'>
+          <div className='min-w-0 space-y-[8px]'>
             <label
               htmlFor={profileNameInputId}
-              className='text-sm leading-5 font-medium text-foreground'
+              className='text-sm leading-[20px] font-medium text-foreground'
             >
               Display name
             </label>
@@ -278,10 +278,10 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
               }
             />
           </div>
-          <div className='space-y-2'>
+          <div className='min-w-0 space-y-[8px]'>
             <label
               htmlFor={profileEmailInputId}
-              className='text-sm leading-5 font-medium text-foreground'
+              className='text-sm leading-[20px] font-medium text-foreground'
             >
               Email address
             </label>
