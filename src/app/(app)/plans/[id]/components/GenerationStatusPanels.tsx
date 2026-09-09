@@ -68,7 +68,7 @@ export function FailurePanel({
           : 'Generation Failed'
       }
       body={viewState.failedPlanMessage}
-      badge={isInterruptedWithoutError ? 'interrupted' : 'Failed'}
+      badge={isInterruptedWithoutError ? undefined : 'Failed'}
       meta={
         viewState.attempts > 0 ? (
           <p className='text-sm text-muted-foreground'>
