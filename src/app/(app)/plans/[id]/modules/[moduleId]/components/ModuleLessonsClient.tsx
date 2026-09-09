@@ -17,7 +17,7 @@ import { Surface } from '@/components/ui/surface';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Circle, ListChecks, Lock } from 'lucide-react';
+import { CheckCircle2, Circle, Lock } from 'lucide-react';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -57,34 +57,21 @@ function LessonProgressPanel({
       aria-labelledby='lesson-progress-heading'
       className='min-w-0 xl:sticky xl:top-24'
     >
-      <div className='overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-sm'>
-        <div className='flex min-w-0 items-start justify-between gap-4 border-b border-border/60 px-4 py-4 sm:px-5 sm:py-5'>
-          <div className='flex min-w-0 items-center gap-3'>
-            <span
-              className='flex size-9 shrink-0 items-center justify-center rounded-full border border-primary/25 bg-primary/10 text-primary'
-              aria-hidden='true'
-            >
-              <ListChecks className='size-4' />
-            </span>
-            <div className='min-w-0'>
-              <h2
-                id='lesson-progress-heading'
-                className='font-semibold text-foreground'
-              >
-                Lesson progress
-              </h2>
-              <p className='mt-1 text-xs text-muted-foreground tabular-nums'>
-                {totalLessons > 0
-                  ? `${completedLessons} of ${totalLessons} lesson${totalLessons === 1 ? '' : 's'}`
-                  : 'No lessons available yet'}
-              </p>
-            </div>
-          </div>
-          {completionPercent !== null ? (
-            <span className='shrink-0 text-2xl font-semibold text-foreground tabular-nums'>
-              {completionPercent}%
-            </span>
-          ) : null}
+      <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel-muted shadow-sm'>
+        <div className='min-w-0 px-4 py-4 sm:px-5'>
+          <h2
+            id='lesson-progress-heading'
+            className='text-xl leading-7 font-semibold text-foreground'
+          >
+            Lesson progress
+          </h2>
+          <p className='mt-2 text-sm leading-[22px] text-muted-foreground tabular-nums'>
+            {totalLessons > 0
+              ? `${completedLessons} of ${totalLessons} lesson${totalLessons === 1 ? '' : 's'}${
+                  completionPercent !== null ? ` · ${completionPercent}%` : ''
+                }`
+              : 'No lessons available yet'}
+          </p>
         </div>
 
         {totalLessons === 0 ? (
@@ -119,7 +106,7 @@ function LessonProgressPanel({
                       : 'border-transparent text-muted-foreground',
                     isLocked
                       ? 'cursor-not-allowed opacity-80'
-                      : 'hover:border-border hover:bg-panel-muted hover:text-foreground',
+                      : 'hover:border-border hover:bg-panel hover:text-foreground',
                   );
                   const markerClassName = cn(
                     'flex size-7 shrink-0 items-center justify-center rounded-full border',
@@ -209,17 +196,7 @@ export function ModuleLessonsClient({
   return (
     <>
       <div className='grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
-        <LessonProgressPanel
-          lessons={lessons}
-          statuses={statuses}
-          lessonLocks={lessonLocks}
-          firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
-        />
-
-        <section
-          aria-labelledby='lessons-heading'
-          className='min-w-0 xl:col-start-1 xl:row-start-1'
-        >
+        <section aria-labelledby='lessons-heading' className='min-w-0'>
           <div className='mb-6 flex min-w-0 items-baseline justify-between gap-4 border-b border-border pb-2'>
             <h2
               id='lessons-heading'
@@ -274,6 +251,13 @@ export function ModuleLessonsClient({
             </Accordion>
           )}
         </section>
+
+        <LessonProgressPanel
+          lessons={lessons}
+          statuses={statuses}
+          lessonLocks={lessonLocks}
+          firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
+        />
       </div>
 
       {isModuleComplete && (

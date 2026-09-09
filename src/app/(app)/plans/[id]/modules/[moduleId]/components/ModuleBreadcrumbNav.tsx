@@ -79,7 +79,7 @@ export function ModuleBreadcrumbNav({
   isComplete: boolean;
 }) {
   return (
-    <nav aria-label='Breadcrumb' className='mb-6 min-w-0'>
+    <nav aria-label='Breadcrumb' className='mb-4 min-w-0'>
       <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 text-sm'>
         <li className='max-w-full min-w-0'>
           <Link

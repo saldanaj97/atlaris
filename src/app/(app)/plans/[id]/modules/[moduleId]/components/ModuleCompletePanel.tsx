@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -10,29 +11,34 @@ export function ModuleCompletePanel({
   nextModuleId: string | null;
 }) {
   return (
-    <section className='rounded-2xl border border-success/30 bg-success/5 p-6 text-center shadow-sm dark:border-success/30 dark:bg-success/10'>
-      <CheckCircle2 className='mx-auto mb-3 size-12 text-success' />
-      <h3 className='mb-2 text-xl font-semibold text-success'>
-        Module Completed!
-      </h3>
-      <p className='mb-4 text-success/90'>
-        Great work! You&apos;ve completed all lessons in this module.
-      </p>
+    <Card className='mt-8 gap-4 p-6'>
+      <div className='flex items-start gap-3'>
+        <CheckCircle2
+          aria-hidden='true'
+          className='mt-0.5 size-6 shrink-0 text-success'
+        />
+        <div className='min-w-0 space-y-2'>
+          <CardTitle as='h3'>Module completed</CardTitle>
+          <CardDescription>
+            You have finished every lesson in this module.
+          </CardDescription>
+        </div>
+      </div>
       {nextModuleId ? (
-        <Button asChild variant='success' className='h-auto px-6 py-3'>
+        <Button asChild className='w-full sm:w-auto'>
           <Link href={`/plans/${planId}/modules/${nextModuleId}`}>
-            Continue to Next Module
+            Continue to next module
             <ArrowRight className='size-4' />
           </Link>
         </Button>
       ) : (
-        <Button asChild className='h-auto px-6 py-3'>
+        <Button asChild variant='outline' className='w-full sm:w-auto'>
           <Link href={`/plans/${planId}`}>
-            Back to Plan Overview
+            Back to plan overview
             <ArrowRight className='size-4' />
           </Link>
         </Button>
       )}
-    </section>
+    </Card>
   );
 }
