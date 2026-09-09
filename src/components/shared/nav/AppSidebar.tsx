@@ -176,7 +176,7 @@ export default function AppSidebar({
         })}
       </nav>
 
-      <div className='mt-auto shrink-0 space-y-3 border-t border-sidebar-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+      <div className='mt-auto shrink-0 space-y-3 border-sidebar-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
         {tier && tier !== 'pro' ? (
           <UpgradeBanner onNavigate={onNavigate} />
         ) : null}
