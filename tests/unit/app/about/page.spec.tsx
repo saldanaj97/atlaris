@@ -55,7 +55,7 @@ describe('AboutPage', () => {
   it('exports About metadata with description and social blocks', () => {
     expect(metadata.title).toBe('About | Atlaris');
     expect(metadata.description).toBe(
-      'Who builds Atlaris, why it borrows the night sky, and what the AI does and does not do when it charts your plan.',
+      'Why Atlaris borrows the night sky, and what the AI does and does not do when it charts your plan.',
     );
     expect(metadata.openGraph).toMatchObject({
       title: 'About | Atlaris',
@@ -122,5 +122,11 @@ describe('AboutPage', () => {
     expect(
       within(footer).getByRole('link', { name: 'support@atlaris.app' }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
+    expect(screen.queryByText(/built by one person/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/replies may take a night/i),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/10,000/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/alex r\./i)).not.toBeInTheDocument();
   });
 });

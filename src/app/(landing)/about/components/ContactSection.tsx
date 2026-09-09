@@ -28,9 +28,8 @@ export function ContactSection() {
           className={`mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
           style={{ ['--i' as string]: 2 }}
         >
-          A question, a bug, a resource that should not be there, a plan that
-          missed the point. Write in through the address below. Replies may take
-          a night.
+          A question, a bug, a resource that should not be there, or a plan that
+          missed the point. Write in through the address below.
         </p>
         <div
           className={`mt-8 ${styles.revealItem}`}

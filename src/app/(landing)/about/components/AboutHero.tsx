@@ -17,7 +17,7 @@ const copy = {
   headlineLead: 'Made after hours.',
   headlineEmphasis: 'For the hours you actually have.',
   subline:
-    'Atlaris is a learning atlas built by one person. Here is who, why the night sky, and what the AI does and does not do.',
+    'Atlaris is a learning atlas. Here is why the night sky, and what the AI does and does not do.',
 } as const;
 
 export function AboutHero() {

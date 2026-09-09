@@ -5,7 +5,6 @@ import { ContactSection } from './ContactSection';
 import { MethodSection } from './MethodSection';
 import { SkySection } from './SkySection';
 import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
-import { Hairline } from '@/app/(landing)/_shared/Hairline';
 import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
 
 import styles from './about.module.css';
@@ -21,7 +20,6 @@ export function About() {
       />
       <div className='relative z-10'>
         <AboutHero />
-        <Hairline />
         <SkySection />
         <MethodSection />
         <BuilderSection />
