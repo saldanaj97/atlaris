@@ -127,6 +127,12 @@ describe('DashboardContent', () => {
       '/pricing',
     );
     expect(
+      screen.getByRole('heading', { name: 'Start learning' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText('Progress will appear here once you have a plan.'),
+    ).toBeVisible();
+    expect(
       screen.queryByRole('link', { name: 'Begin tonight' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Join the community')).not.toBeInTheDocument();

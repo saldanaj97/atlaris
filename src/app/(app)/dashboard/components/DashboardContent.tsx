@@ -18,10 +18,12 @@ import { YourProgressCard } from '@/app/(app)/dashboard/components/YourProgressC
 import { Card } from '@/components/ui/card';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
+import { surfaceVariants } from '@/components/ui/surface';
 import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { getDashboardPlanData } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { cn } from '@/lib/utils';
 import { redirect } from 'next/navigation';
 
 const DASHBOARD_GRID =
@@ -35,7 +37,12 @@ function DashboardHero({
   description: ReactNode;
 }) {
   return (
-    <header className='rounded-[12px] border border-panel-border bg-panel px-6 py-5 shadow-sm sm:px-8 sm:py-6'>
+    <header
+      className={cn(
+        surfaceVariants({ padding: 'none' }),
+        'px-6 py-5 sm:px-8 sm:py-6',
+      )}
+    >
       <SectionOverline>Current focus</SectionOverline>
       <h1 className='font-heading mt-2 max-w-3xl text-[28px] leading-[1.15] tracking-[-0.02em] text-balance text-foreground sm:text-[32px]'>
         {title}
