@@ -4,8 +4,48 @@ import {
   RetryAction,
 } from './generation-retry-actions';
 import { type PlanPendingViewState } from './plan-pending-view-state';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Surface } from '@/components/ui/surface';
 import { Loader2, RefreshCw } from 'lucide-react';
+
+function WaitingStatusPanel({
+  title,
+  body,
+  badge,
+  meta,
+}: {
+  title: string;
+  body: string;
+  badge: string;
+  meta?: string;
+}) {
+  return (
+    <Surface variant='muted' padding='compact' className='flex flex-col gap-4'>
+      <div>
+        <h3 className='text-xl leading-7 font-semibold text-foreground'>
+          {title}
+        </h3>
+        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+          {body}
+        </p>
+      </div>
+      <div className='flex flex-wrap items-center gap-2'>
+        <Badge
+          variant='outline'
+          className='border-link/40 bg-action-soft text-link hover:bg-action-soft'
+        >
+          {badge}
+        </Badge>
+        <Loader2
+          aria-hidden='true'
+          className='size-4 animate-spin text-link motion-reduce:animate-none'
+        />
+      </div>
+      {meta ? <p className='text-sm text-muted-foreground'>{meta}</p> : null}
+    </Surface>
+  );
+}
 
 export function FailurePanel({
   viewState,
@@ -28,6 +68,7 @@ export function FailurePanel({
           : 'Generation Failed'
       }
       body={viewState.failedPlanMessage}
+      badge={isInterruptedWithoutError ? 'interrupted' : 'Failed'}
       meta={
         viewState.attempts > 0 ? (
           <p className='text-sm text-muted-foreground'>
@@ -64,9 +105,10 @@ export function ConnectionIssuePanel({
       variant='warning'
       title='Connection Issue'
       body={displayError}
+      badge='Check again'
       footer={
         <Button onClick={onRefresh} className='w-full' variant='outline'>
-          <RefreshCw className='mr-2 size-4' />
+          <RefreshCw className='size-4' />
           Refresh
         </Button>
       }
@@ -82,49 +124,32 @@ export function ProcessingPanel({
   attemptCap: number;
 }) {
   return (
-    <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none' />
-      <div className='space-y-1'>
-        <p className='font-semibold'>Generating Your Learning Plan</p>
-        <p className='text-sm text-muted-foreground'>
-          Our AI is crafting personalized modules and tasks tailored to your
-          goals. This may take a moment.
-        </p>
-        {attempts > 1 ? (
-          <p className='text-sm text-muted-foreground'>
-            Attempt {attempts} of {attemptCap}
-          </p>
-        ) : null}
-      </div>
-    </div>
+    <WaitingStatusPanel
+      title='Generating Your Learning Plan'
+      body='Our AI is crafting personalized modules and tasks tailored to your goals.'
+      badge='Generating'
+      meta={attempts > 1 ? `Attempt ${attempts} of ${attemptCap}` : undefined}
+    />
   );
 }
 
 export function PendingPanel() {
   return (
-    <div className='flex items-start gap-3 rounded-lg bg-muted/50 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-muted-foreground motion-reduce:animate-none' />
-      <div className='space-y-1'>
-        <p className='font-semibold'>Queued for Generation</p>
-        <p className='text-sm text-muted-foreground'>
-          Your learning plan is queued and will begin generation shortly.
-        </p>
-      </div>
-    </div>
+    <WaitingStatusPanel
+      title='Queued for Generation'
+      body='Your learning plan is queued and will begin generation shortly.'
+      badge='Preparing'
+    />
   );
 }
 
 export function ReadyPanel() {
   return (
-    <div className='flex items-start gap-3 rounded-lg bg-primary/5 p-4'>
-      <Loader2 className='mt-0.5 size-5 shrink-0 animate-spin text-primary motion-reduce:animate-none' />
-      <div className='space-y-1'>
-        <p className='font-semibold'>Loading…</p>
-        <p className='text-sm text-muted-foreground'>
-          Your plan is ready. Preparing the view.
-        </p>
-      </div>
-    </div>
+    <WaitingStatusPanel
+      title='Loading…'
+      body='Your plan is ready. Preparing the view.'
+      badge='Ready'
+    />
   );
 }
 
@@ -138,9 +163,10 @@ export function UnsupportedStatusPanel({
       variant='warning'
       title='Unknown Generation Status'
       body='This plan reported an unsupported status. Refresh to check for the latest state.'
+      badge='Unknown'
       footer={
         <Button onClick={onRefresh} className='w-full' variant='outline'>
-          <RefreshCw className='mr-2 size-4' />
+          <RefreshCw className='size-4' />
           Refresh
         </Button>
       }

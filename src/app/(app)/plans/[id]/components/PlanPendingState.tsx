@@ -6,7 +6,7 @@ import { GenerationStatusContent } from './GenerationStatusContent';
 import { PendingPlanDetails } from './PendingPlanDetails';
 import { buildPlanPendingViewState } from './plan-pending-view-state';
 import { PlanStatusHeader } from './PlanStatusHeader';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardDescription } from '@/components/ui/card';
 import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
 import { usePlanStatus } from '@/hooks/usePlanStatus';
 import { useRetryGeneration } from '@/hooks/useRetryGeneration';
@@ -55,46 +55,46 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
 
   return (
     <div className='space-y-6'>
-      <Card>
+      <Card className='gap-0 py-0'>
         <PlanStatusHeader
           plan={plan}
           isPolling={isPolling}
           viewState={viewState}
         />
 
-        <CardContent className='space-y-6' aria-live='polite'>
-          <GenerationStatusContent
-            viewState={viewState}
-            isRetryDisabled={isRetryDisabled}
-            onRefresh={() => {
-              revalidate().catch((refreshError: unknown) => {
-                clientLogger.error('Failed to refresh plan status', {
-                  error: refreshError,
-                  planId: plan.id,
+        <CardContent className='space-y-6 px-6 py-6'>
+          <div aria-live='polite'>
+            <GenerationStatusContent
+              viewState={viewState}
+              isRetryDisabled={isRetryDisabled}
+              onRefresh={() => {
+                revalidate().catch((refreshError: unknown) => {
+                  clientLogger.error('Failed to refresh plan status', {
+                    error: refreshError,
+                    planId: plan.id,
+                  });
                 });
-              });
-            }}
-            onRetry={() => {
-              retryGeneration().catch((retryRuntimeError: unknown) => {
-                clientLogger.error('Failed to retry plan generation', {
-                  error: retryRuntimeError,
-                  planId: plan.id,
+              }}
+              onRetry={() => {
+                retryGeneration().catch((retryRuntimeError: unknown) => {
+                  clientLogger.error('Failed to retry plan generation', {
+                    error: retryRuntimeError,
+                    planId: plan.id,
+                  });
                 });
-              });
-            }}
-          />
+              }}
+            />
+          </div>
 
           <PendingPlanDetails plan={plan} />
         </CardContent>
       </Card>
 
-      <Card className='text-center text-muted-foreground'>
-        <CardContent>
-          <p>
-            Once generation is complete, your personalized learning modules and
-            tasks will appear here.
-          </p>
-        </CardContent>
+      <Card className='gap-4'>
+        <CardDescription className='px-6 text-center'>
+          Once generation is complete, your personalized learning modules and
+          tasks will appear here.
+        </CardDescription>
       </Card>
     </div>
   );

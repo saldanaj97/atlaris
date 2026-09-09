@@ -1,19 +1,21 @@
 import type { ReactNode } from 'react';
 
-import { AlertCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Surface } from '@/components/ui/surface';
+import { cn } from '@/lib/utils';
 
-const ALERT_VARIANT_CLASSES = {
+const PANEL_VARIANT_CLASSES = {
+  info: {
+    surface: 'muted' as const,
+    badge: 'border-link/40 bg-action-soft text-link hover:bg-action-soft',
+  },
   warning: {
-    container:
-      'flex items-start gap-3 rounded-lg border border-warning/20 bg-warning/10 p-4',
-    icon: 'mt-0.5 size-5 shrink-0 text-warning',
-    title: 'font-semibold text-warning',
+    surface: 'muted' as const,
+    badge: 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/10',
   },
   destructive: {
-    container:
-      'flex items-start gap-3 rounded-lg border border-danger bg-danger-subtle p-4',
-    icon: 'mt-0.5 size-5 shrink-0 text-danger',
-    title: 'font-semibold text-danger',
+    surface: 'inset' as const,
+    badge: undefined,
   },
 } as const;
 
@@ -21,28 +23,43 @@ export function GenerationAlertPanel({
   variant,
   title,
   body,
+  badge,
   meta,
   footer,
 }: {
-  variant: 'destructive' | 'warning';
+  variant: 'destructive' | 'info' | 'warning';
   title: string;
   body: ReactNode;
+  badge?: string;
   meta?: ReactNode;
   footer?: ReactNode;
 }) {
-  const classes = ALERT_VARIANT_CLASSES[variant];
+  const classes = PANEL_VARIANT_CLASSES[variant];
 
   return (
-    <div className={footer ? 'space-y-4' : undefined}>
-      <div className={classes.container}>
-        <AlertCircle className={classes.icon} />
-        <div className='space-y-1'>
-          <p className={classes.title}>{title}</p>
-          <p className='text-sm text-muted-foreground'>{body}</p>
-          {meta}
-        </div>
+    <Surface
+      variant={classes.surface}
+      padding='compact'
+      className='flex flex-col gap-4'
+    >
+      <div>
+        <h3 className='text-xl leading-7 font-semibold text-foreground'>
+          {title}
+        </h3>
+        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+          {body}
+        </p>
       </div>
+      {badge ? (
+        <Badge
+          variant={variant === 'destructive' ? 'destructive' : 'outline'}
+          className={cn(classes.badge)}
+        >
+          {badge}
+        </Badge>
+      ) : null}
+      {meta}
       {footer}
-    </div>
+    </Surface>
   );
 }

@@ -47,9 +47,27 @@ export function getStatusBadgeVariant(
 }
 
 export function getStatusBadgeLabel(viewState: PlanPendingViewState): string {
-  if (viewState.isRetrying) return 'retrying';
+  if (viewState.isRetrying) return 'Generating';
   if (viewState.retryInterrupted) return 'interrupted';
-  return viewState.status;
+
+  switch (viewState.panelKind) {
+    case 'pending':
+      return 'Preparing';
+    case 'processing':
+      return 'Generating';
+    case 'ready':
+      return 'Ready';
+    case 'failure':
+      return 'Failed';
+    case 'connection':
+      return 'Check again';
+    case 'unsupported':
+      return 'Unknown';
+    default: {
+      const _exhaustive: never = viewState.panelKind;
+      return _exhaustive;
+    }
+  }
 }
 
 function parsePlanStatus(status: string): PlanStatus | null {
