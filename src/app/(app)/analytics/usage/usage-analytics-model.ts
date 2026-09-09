@@ -31,10 +31,33 @@ export type UsageAnalyticsWeekRow = {
   isCurrentWeek: boolean;
 };
 
+export type UsageAnalyticsDayRow = {
+  dateKey: string;
+  label: string;
+  progressChangeCount: number;
+  completedEvents: number;
+  estimatedCompletionAddedMinutes: number;
+};
+
 export type UsageAnalyticsPlanRow = {
   id: string;
   topic: string;
   weeklyTrends: UsageAnalyticsWeekRow[];
+};
+
+export type UsageAnalyticsPlanTimeShare = {
+  id: string;
+  topic: string;
+  completedMinutes: number;
+  percent: number;
+};
+
+export type UsageAnalyticsRecentEvent = {
+  id: string;
+  planId: string;
+  planTopic: string;
+  status: ProgressStatus;
+  occurredAt: Date;
 };
 
 export type UsageAnalyticsModel = {
@@ -47,6 +70,9 @@ export type UsageAnalyticsModel = {
   moduleCompletionPercent: number;
   completedMinutes: number;
   totalMinutes: number;
+  plansInProgress: number;
+  planTimeShares: UsageAnalyticsPlanTimeShare[];
+  recentEvents: UsageAnalyticsRecentEvent[];
   analyticsTimezone: string;
   history: {
     hasActivity: boolean;
@@ -54,6 +80,7 @@ export type UsageAnalyticsModel = {
     longestStreakDays: number;
     currentWeek: UsageAnalyticsWeekRow;
     weeklyTrends: UsageAnalyticsWeekRow[];
+    dailyTrends: UsageAnalyticsDayRow[];
     maxWeeklyProgressChanges: number;
   };
 };
@@ -74,7 +101,15 @@ type MutablePlanHistory = {
 };
 
 const WEEK_TREND_COUNT = 8;
+const DAILY_TREND_COUNT = 30;
+const RECENT_EVENT_COUNT = 4;
+const NAMED_PLAN_TIME_SHARE_LIMIT = 4;
 const WEEK_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  timeZone: DEFAULT_ANALYTICS_TIMEZONE,
+});
+const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
   month: 'short',
   day: 'numeric',
   timeZone: DEFAULT_ANALYTICS_TIMEZONE,
@@ -93,6 +128,59 @@ function formatWeekLabel(weekStartDate: string): string {
   return `${WEEK_LABEL_FORMATTER.format(
     dateFromKey(weekStartDate),
   )}-${WEEK_LABEL_FORMATTER.format(dateFromKey(weekEndDate))}`;
+}
+
+/** Builds empty daily trend rows ending at the reference day. */
+function buildDayRows(todayKey: string): UsageAnalyticsDayRow[] {
+  return Array.from({ length: DAILY_TREND_COUNT }, (_, index) => {
+    const dateKey = addDays(todayKey, index - DAILY_TREND_COUNT + 1);
+
+    return {
+      dateKey,
+      label: DAY_LABEL_FORMATTER.format(dateFromKey(dateKey)),
+      progressChangeCount: 0,
+      completedEvents: 0,
+      estimatedCompletionAddedMinutes: 0,
+    };
+  });
+}
+
+/** Groups current-state completed minutes by plan, collapsing overflow into Other. */
+function buildPlanTimeShares(
+  summaries: LightweightPlanSummary[],
+  completedMinutes: number,
+): UsageAnalyticsPlanTimeShare[] {
+  const ranked = summaries
+    .filter((summary) => summary.completedMinutes > 0)
+    .toSorted((left, right) => right.completedMinutes - left.completedMinutes);
+  const named = ranked.slice(0, NAMED_PLAN_TIME_SHARE_LIMIT);
+  const overflowMinutes = ranked
+    .slice(NAMED_PLAN_TIME_SHARE_LIMIT)
+    .reduce((sum, summary) => sum + summary.completedMinutes, 0);
+
+  const shares: UsageAnalyticsPlanTimeShare[] = named.map((summary) => ({
+    id: summary.id,
+    topic: summary.topic,
+    completedMinutes: summary.completedMinutes,
+    percent: sharePercent(summary.completedMinutes, completedMinutes),
+  }));
+
+  if (overflowMinutes > 0) {
+    shares.push({
+      id: 'other',
+      topic: 'Other',
+      completedMinutes: overflowMinutes,
+      percent: sharePercent(overflowMinutes, completedMinutes),
+    });
+  }
+
+  return shares;
+}
+
+/** Returns a 0–100 share, rounded, for a part of a completed-time total. */
+function sharePercent(part: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.round((part / total) * 100);
 }
 
 /** Builds mutable weekly trend rows ending at the current week. */
@@ -144,8 +232,13 @@ export function buildUsageAnalyticsModel(
   const weekRowsByStart = new Map(
     weekRows.map((row) => [row.weekStartDate, row]),
   );
+  const dayRows = buildDayRows(todayKey);
+  const dayRowsByKey = new Map(dayRows.map((row) => [row.dateKey, row]));
   const globalDayKeys = new Set<string>();
   const planHistoryById = new Map<string, MutablePlanHistory>();
+  const planTopicById = new Map(
+    summaries.map((summary) => [summary.id, summary.topic]),
+  );
 
   for (const summary of summaries) {
     const planWeekRows = buildWeekRows(currentWeekStart);
@@ -171,6 +264,15 @@ export function buildUsageAnalyticsModel(
       if (isCompletedEvent) {
         weekRow.completedEvents += 1;
         weekRow.estimatedCompletionAddedMinutes += event.taskEstimatedMinutes;
+      }
+    }
+
+    const dayRow = dayRowsByKey.get(dayKey);
+    if (dayRow) {
+      dayRow.progressChangeCount += 1;
+      if (isCompletedEvent) {
+        dayRow.completedEvents += 1;
+        dayRow.estimatedCompletionAddedMinutes += event.taskEstimatedMinutes;
       }
     }
 
@@ -226,6 +328,19 @@ export function buildUsageAnalyticsModel(
     throw new Error('Current analytics week missing from trend rows');
   }
 
+  const recentEvents = [...activityEvents]
+    .toSorted(
+      (left, right) => right.occurredAt.getTime() - left.occurredAt.getTime(),
+    )
+    .slice(0, RECENT_EVENT_COUNT)
+    .map((event, index) => ({
+      id: `${event.planId}-${event.occurredAt.toISOString()}-${index}`,
+      planId: event.planId,
+      planTopic: planTopicById.get(event.planId) ?? 'Untitled plan',
+      status: event.status,
+      occurredAt: event.occurredAt,
+    }));
+
   return {
     plans,
     completedTasks: totals.completedTasks,
@@ -242,6 +357,12 @@ export function buildUsageAnalyticsModel(
     ),
     completedMinutes: totals.completedMinutes,
     totalMinutes: totals.totalMinutes,
+    plansInProgress: summaries.filter(
+      (summary) =>
+        summary.totalTasks > 0 && summary.completedTasks < summary.totalTasks,
+    ).length,
+    planTimeShares: buildPlanTimeShares(summaries, totals.completedMinutes),
+    recentEvents,
     analyticsTimezone,
     history: {
       hasActivity: activityEvents.length > 0,
@@ -249,6 +370,7 @@ export function buildUsageAnalyticsModel(
       longestStreakDays: longestStreakDays(globalDayKeys),
       currentWeek,
       weeklyTrends,
+      dailyTrends: dayRows,
       maxWeeklyProgressChanges: Math.max(
         1,
         ...weeklyTrends.map((row) => row.progressChangeCount),

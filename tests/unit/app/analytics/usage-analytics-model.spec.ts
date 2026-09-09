@@ -375,4 +375,138 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.history.currentWeek.completedEvents).toBe(1);
     expect(model.history.currentWeek.estimatedCompletionAddedMinutes).toBe(40);
   });
+
+  it('counts plans that still have unfinished tasks as in progress', () => {
+    const model = buildUsageAnalyticsModel([
+      planSummary({
+        id: 'plan-1',
+        completedTasks: 2,
+        totalTasks: 5,
+      }),
+      planSummary({
+        id: 'plan-2',
+        completedTasks: 4,
+        totalTasks: 4,
+      }),
+      planSummary({
+        id: 'plan-3',
+        completedTasks: 0,
+        totalTasks: 0,
+      }),
+    ]);
+
+    expect(model.plansInProgress).toBe(1);
+  });
+
+  it('builds a 30-day activity series from recorded events', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          status: 'completed',
+          taskEstimatedMinutes: 40,
+          occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+        }),
+        activityEvent({
+          status: 'in_progress',
+          occurredAt: new Date('2026-05-20T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.dailyTrends).toHaveLength(30);
+    expect(
+      model.history.dailyTrends.find((day) => day.dateKey === '2026-06-25'),
+    ).toMatchObject({
+      completedEvents: 1,
+      estimatedCompletionAddedMinutes: 40,
+      progressChangeCount: 1,
+    });
+    expect(
+      model.history.dailyTrends.some((day) => day.dateKey === '2026-05-20'),
+    ).toBe(false);
+  });
+
+  it('groups completed time by plan and collapses overflow into Other', () => {
+    const model = buildUsageAnalyticsModel([
+      planSummary({
+        id: 'plan-1',
+        topic: 'React',
+        completedMinutes: 120,
+      }),
+      planSummary({
+        id: 'plan-2',
+        topic: 'SQL',
+        completedMinutes: 80,
+      }),
+      planSummary({
+        id: 'plan-3',
+        topic: 'Go',
+        completedMinutes: 40,
+      }),
+      planSummary({
+        id: 'plan-4',
+        topic: 'Rust',
+        completedMinutes: 20,
+      }),
+      planSummary({
+        id: 'plan-5',
+        topic: 'CSS',
+        completedMinutes: 10,
+      }),
+      planSummary({
+        id: 'plan-6',
+        topic: 'Empty',
+        completedMinutes: 0,
+      }),
+    ]);
+
+    expect(model.planTimeShares).toEqual([
+      { id: 'plan-1', topic: 'React', completedMinutes: 120, percent: 44 },
+      { id: 'plan-2', topic: 'SQL', completedMinutes: 80, percent: 30 },
+      { id: 'plan-3', topic: 'Go', completedMinutes: 40, percent: 15 },
+      { id: 'plan-4', topic: 'Rust', completedMinutes: 20, percent: 7 },
+      { id: 'other', topic: 'Other', completedMinutes: 10, percent: 4 },
+    ]);
+  });
+
+  it('lists the newest recorded events with plan topics', () => {
+    const model = buildUsageAnalyticsModel(
+      [
+        planSummary({ id: 'plan-1', topic: 'React' }),
+        planSummary({ id: 'plan-2', topic: 'SQL' }),
+      ],
+      {
+        activityEvents: [
+          activityEvent({
+            planId: 'plan-1',
+            status: 'completed',
+            occurredAt: new Date('2026-06-23T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-2',
+            status: 'in_progress',
+            occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+          }),
+          activityEvent({
+            planId: 'plan-1',
+            status: 'not_started',
+            occurredAt: new Date('2026-06-24T12:00:00.000Z'),
+          }),
+        ],
+      },
+    );
+
+    expect(model.recentEvents).toHaveLength(3);
+    expect(model.recentEvents[0]).toMatchObject({
+      planId: 'plan-2',
+      planTopic: 'SQL',
+      status: 'in_progress',
+    });
+    expect(model.recentEvents.map((event) => event.status)).toEqual([
+      'in_progress',
+      'not_started',
+      'completed',
+    ]);
+  });
 });

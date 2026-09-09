@@ -12,12 +12,10 @@ import { redirect } from 'next/navigation';
 
 export const metadata: Metadata = {
   title: 'Usage Analytics | Atlaris',
-  description:
-    'Review current completion progress and estimated completed learning time across your plans.',
+  description: 'A clear view of your progress, habits, and learning journey.',
   openGraph: {
     title: 'Usage Analytics | Atlaris',
-    description:
-      'Review current completion progress and estimated completed learning time across your plans.',
+    description: 'A clear view of your progress, habits, and learning journey.',
     url: '/analytics/usage',
     images: [OG_DEFAULT_IMAGE],
   },
