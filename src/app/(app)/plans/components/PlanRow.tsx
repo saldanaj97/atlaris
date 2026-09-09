@@ -48,11 +48,18 @@ interface PlanRowProps {
 function planActionLabel(status: PlanListItem['status']): string {
   switch (status) {
     case 'completed':
+    case 'failed':
       return 'View plan';
     case 'generating':
       return 'View progress';
-    default:
+    case 'active':
+    case 'paused':
+    case 'not_started':
       return 'Continue learning';
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
   }
 }
 
@@ -68,13 +75,29 @@ function PlanProgress({
   }
 
   if (plan.totalTasks <= 0) {
+    if (plan.status === 'generating') {
+      return (
+        <div className='rounded-[8px] border border-border bg-panel-muted/60 p-3'>
+          <p className='text-sm text-muted-foreground'>
+            Your learning path is being prepared.
+          </p>
+        </div>
+      );
+    }
+
+    if (plan.status === 'failed') {
+      return (
+        <div className='rounded-[8px] border border-danger/30 bg-danger-subtle p-3'>
+          <p className='text-sm text-danger'>
+            We couldn&apos;t generate this plan.
+          </p>
+        </div>
+      );
+    }
+
     return (
       <p className='text-sm text-muted-foreground'>
-        {plan.status === 'generating'
-          ? 'Your learning path is being prepared.'
-          : plan.status === 'failed'
-            ? "We couldn't generate this plan."
-            : 'Progress will appear when tasks are ready.'}
+        Progress will appear when tasks are ready.
       </p>
     );
   }
@@ -215,7 +238,7 @@ export function PlanRow({
         </div>
       </div>
 
-      <div className='flex min-h-[19rem] flex-1 flex-col p-4 sm:p-5'>
+      <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='min-w-0'>
           <h2 className='text-lg leading-6 font-semibold wrap-break-word text-foreground'>
             <Link

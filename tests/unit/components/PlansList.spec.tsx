@@ -412,6 +412,89 @@ describe('PlansList', () => {
     ).toBeDisabled();
   });
 
+  it('keeps generating and failed cards honest without fabricated copy', () => {
+    renderPlansList({
+      page: {
+        items: [
+          {
+            ...completedPlan,
+            id: 'plan-generating',
+            topic: 'Generating Plan',
+            status: 'generating',
+            completion: 0,
+            completedTasks: 0,
+            totalTasks: 0,
+          },
+          {
+            ...completedPlan,
+            id: 'plan-failed',
+            topic: 'Failed Plan',
+            status: 'failed',
+            completion: 0,
+            completedTasks: 0,
+            totalTasks: 0,
+          },
+        ],
+        totalItems: 2,
+        totalSearchResults: 2,
+      },
+    });
+
+    const list = screen.getByRole('list', { name: 'Learning plans' });
+    const generatingCard = screen
+      .getByRole('heading', { name: 'Generating Plan' })
+      .closest('li');
+    const failedCard = screen
+      .getByRole('heading', { name: 'Failed Plan' })
+      .closest('li');
+
+    expect(generatingCard).not.toBeNull();
+    expect(failedCard).not.toBeNull();
+    expect(list.contains(generatingCard)).toBe(true);
+    expect(list.contains(failedCard)).toBe(true);
+    expect(generatingCard).toHaveTextContent(
+      'Your learning path is being prepared.',
+    );
+    expect(
+      within(generatingCard!).getByRole('link', { name: /View progress/ }),
+    ).toHaveAttribute('href', '/plans/plan-generating');
+    expect(failedCard).toHaveTextContent("We couldn't generate this plan.");
+    expect(
+      within(failedCard!).getByRole('link', { name: /View plan/ }),
+    ).toHaveAttribute('href', '/plans/plan-failed');
+    expect(list).not.toHaveTextContent('No credits were used');
+    expect(list).not.toHaveTextContent('1-2 minutes');
+    expect(list).not.toHaveTextContent('Browse templates');
+  });
+
+  it('exposes table-equivalent fields from one card list', () => {
+    renderPlansList();
+
+    expect(
+      screen.getAllByRole('list', { name: 'Learning plans' }),
+    ).toHaveLength(1);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    const card = screen
+      .getByRole('heading', { name: 'Master React Hooks' })
+      .closest('li');
+    expect(card).not.toBeNull();
+    expect(within(card!).getByText('Active')).toBeInTheDocument();
+    expect(within(card!).getByText('Progress')).toBeInTheDocument();
+    expect(within(card!).getByText('40%')).toBeInTheDocument();
+    expect(within(card!).getByText('Tasks')).toBeInTheDocument();
+    expect(within(card!).getByText('8 / 20')).toBeInTheDocument();
+    expect(within(card!).getByText('Updated')).toBeInTheDocument();
+    expect(
+      within(card!).getByRole('link', { name: /Continue learning/ }),
+    ).toHaveAttribute('href', '/plans/plan-1');
+    expect(
+      within(card!).getByRole('button', {
+        name: 'Actions for Master React Hooks',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('selects all deletable plans on the current page', async () => {
     const user = userEvent.setup();
     renderPlansList();
