@@ -21,7 +21,7 @@ import { useState } from 'react';
 interface DesktopNavigationProps {
   pathname: string;
   navItems: NavItem[];
-  /** Marketing routes use quiet outline pills; app uses text links. */
+  /** Marketing routes use quiet text links; app uses default text links. */
   appearance?: 'default' | 'marketing';
 }
 

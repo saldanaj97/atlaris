@@ -71,14 +71,19 @@ export default function MobileNavigation({
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant='ghost'
-            size='icon-sm'
+            variant={isMarketing ? 'outline' : 'ghost'}
+            size={isMarketing ? 'sm' : 'icon-sm'}
             ref={triggerRef}
             onClick={() => setOpen(true)}
-            className='rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
+            className={
+              isMarketing
+                ? 'gap-2 rounded-[10px] border-border px-3.5 py-3 font-sans text-sm font-medium text-foreground [@media(pointer:coarse)]:min-h-11'
+                : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
+            }
             aria-label='Open menu'
           >
-            <Menu className='size-5' />
+            {isMarketing ? <span>Menu</span> : null}
+            <Menu className='size-5' aria-hidden='true' />
           </Button>
         </TooltipTrigger>
         <TooltipContent side='bottom'>Menu</TooltipContent>

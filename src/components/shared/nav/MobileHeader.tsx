@@ -40,7 +40,7 @@ interface MobileHeaderProps {
  * Compact header + hamburger when viewport below `md`. From `md` up, {@link DesktopHeader}
  * shows inline nav links instead.
  *
- * Marketing routes: brand + menu + theme toggle + peach CTA (no app avatar chrome).
+ * Marketing routes: brand left, theme + visitor CTA + outlined menu right.
  */
 export default function MobileHeader({
   isMarketing,
@@ -66,6 +66,19 @@ export default function MobileHeader({
   const appCtaAriaLabel =
     createPlanCta?.label === 'Upgrade' ? 'Upgrade' : 'Create new plan';
 
+  const menu = (
+    <MobileNavigation
+      isMarketing={isMarketing}
+      isAppShell={isAppShell}
+      pathname={pathname}
+      navItems={navItems}
+      tier={tier}
+      canCreatePlan={canCreatePlan}
+      isAuthenticated={isAuthenticated}
+      userName={userName}
+    />
+  );
+
   return (
     <div
       className={cn(
@@ -73,21 +86,12 @@ export default function MobileHeader({
         isAppShell ? 'lg:hidden' : 'md:hidden',
       )}
     >
-      <div className='relative z-10 flex shrink-0'>
-        <MobileNavigation
-          isMarketing={isMarketing}
-          isAppShell={isAppShell}
-          pathname={pathname}
-          navItems={navItems}
-          tier={tier}
-          canCreatePlan={canCreatePlan}
-          isAuthenticated={isAuthenticated}
-          userName={userName}
-        />
+      <div className='relative z-10 flex min-w-0 shrink-0 items-center'>
+        {isMarketing ? <BrandLogo size='sm' /> : menu}
       </div>
 
       <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden'>
-        <BrandLogo size='sm' />
+        {isMarketing ? null : <BrandLogo size='sm' />}
       </div>
 
       <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1'>
@@ -112,6 +116,7 @@ export default function MobileHeader({
                 />
               </Link>
             </Button>
+            <div className='shrink-0'>{menu}</div>
           </>
         ) : (
           <>

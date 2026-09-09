@@ -41,12 +41,12 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
   }
 
   return (
-    <footer className='border-t border-border px-4 py-12 sm:px-6 lg:px-8'>
-      <div className='mx-auto max-w-7xl'>
+    <footer className='border-t border-border px-6 py-9 sm:px-8'>
+      <div className='mx-auto flex max-w-7xl flex-col justify-between gap-10 sm:min-h-[11.5rem]'>
         <div className='grid gap-10 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]'>
           <div>
             <BrandLogo size='sm' />
-            <p className='mt-3 max-w-xs text-sm text-muted-foreground'>
+            <p className='mt-3 max-w-xs text-sm leading-[1.375] text-muted-foreground'>
               Learn. Build. Go further.
             </p>
           </div>
@@ -56,15 +56,13 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
             className='grid grid-cols-2 gap-8 sm:col-span-2 sm:grid-cols-2'
           >
             <div>
-              <p className='text-xs font-medium tracking-[0.08em] text-foreground uppercase'>
-                Explore
-              </p>
-              <ul className='mt-4 space-y-3 [@media(pointer:coarse)]:space-y-1'>
+              <p className='text-xs font-medium text-foreground'>Explore</p>
+              <ul className='mt-2 space-y-1.5 [@media(pointer:coarse)]:space-y-1'>
                 {marketingLinks.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className='inline-flex items-center justify-center font-serif text-sm tracking-[0.02em] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]'
+                      className='inline-flex items-center justify-center text-xs leading-[1.125] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]'
                     >
                       {item.label}
                     </Link>
@@ -73,14 +71,12 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
               </ul>
             </div>
             <div>
-              <p className='text-xs font-medium tracking-[0.08em] text-foreground uppercase'>
-                Support
-              </p>
-              <ul className='mt-4 space-y-3 [@media(pointer:coarse)]:space-y-1'>
+              <p className='text-xs font-medium text-foreground'>Support</p>
+              <ul className='mt-2 space-y-1.5 [@media(pointer:coarse)]:space-y-1'>
                 <li>
                   <a
                     href={`mailto:${SUPPORT_EMAIL}`}
-                    className='inline-flex items-center justify-center font-serif text-sm tracking-[0.02em] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]'
+                    className='inline-flex items-center justify-center text-xs leading-[1.125] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none [@media(pointer:coarse)]:min-h-[44px] [@media(pointer:coarse)]:min-w-[44px]'
                   >
                     {SUPPORT_EMAIL}
                   </a>
@@ -90,11 +86,9 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
           </nav>
         </div>
 
-        <div className='mt-12 border-t border-border/60 pt-5'>
-          <p className='text-xs text-muted-foreground' suppressHydrationWarning>
-            © {new Date().getFullYear()} Atlaris. All rights reserved.
-          </p>
-        </div>
+        <p className='text-xs text-muted-foreground' suppressHydrationWarning>
+          © {new Date().getFullYear()} Atlaris. All rights reserved.
+        </p>
       </div>
     </footer>
   );

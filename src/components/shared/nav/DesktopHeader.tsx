@@ -31,8 +31,8 @@ interface DesktopHeaderProps {
 /**
  * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
- * Layout: brand (left) | navigation (center) | auth controls (right)
- * Marketing routes use After Hours chrome: outline nav pills + one peach CTA.
+ * App layout: brand (left) | navigation (center) | auth controls (right)
+ * Marketing layout: brand + nav (left) | sign-in + theme + inverse CTA (right)
  */
 export default function DesktopHeader({
   isMarketing,
@@ -47,6 +47,7 @@ export default function DesktopHeader({
   userImageUrl,
 }: DesktopHeaderProps) {
   const showAppShellChrome = isAppShell && !isMarketing;
+  const showMarketingChrome = isMarketing && !showAppShellChrome;
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
@@ -61,26 +62,38 @@ export default function DesktopHeader({
     <div
       className={cn(
         'relative hidden h-[64px] w-full items-center',
-        isAppShell ? 'lg:grid' : 'md:grid',
+        isAppShell ? 'lg:grid' : showMarketingChrome ? 'md:flex' : 'md:grid',
         showAppShellChrome
           ? 'grid-cols-[minmax(0,1fr)_auto]'
-          : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+          : showMarketingChrome
+            ? 'justify-between gap-8'
+            : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
       )}
     >
-      {/* Brand (left) */}
       {!showAppShellChrome ? (
-        <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
+        <div
+          className={cn(
+            'relative z-10 flex min-w-0 items-center',
+            showMarketingChrome ? 'gap-8 lg:gap-12' : 'justify-self-start',
+          )}
+        >
           <BrandLogo />
+          {showMarketingChrome ? (
+            <DesktopNavigation
+              pathname={pathname}
+              navItems={navItems}
+              appearance='marketing'
+            />
+          ) : null}
         </div>
       ) : null}
 
-      {/* Navigation (center column) */}
-      {!showAppShellChrome ? (
+      {!showAppShellChrome && !showMarketingChrome ? (
         <div className='relative z-10 flex justify-self-center'>
           <DesktopNavigation
             pathname={pathname}
             navItems={navItems}
-            appearance={isMarketing ? 'marketing' : 'default'}
+            appearance='default'
           />
         </div>
       ) : null}
