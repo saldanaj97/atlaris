@@ -13,6 +13,11 @@ interface BrandLogoProps {
   size?: BrandLogoSize;
   /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
+  /**
+   * When false, render the lockup without a destination.
+   * Maintenance must not link home while that route redirects back here.
+   */
+  linked?: boolean;
 }
 
 function LockupImage({
@@ -55,20 +60,41 @@ function LockupImage({
 }
 
 /**
- * Shared brand logo component used across desktop and mobile headers.
- * Uses the supplied lockup exports so the mark and wordmark stay in sync.
- * Always links to the marketing landing page — `/` redirects signed-in users to dashboard.
+ * Shared brand logo used in chrome. Linked lockups go to `/landing`
+ * because `/` sends signed-in users to dashboard. Unlinked lockups
+ * keep the same visible crop without a destination.
  */
-export default function BrandLogo({ size = 'md', onClick }: BrandLogoProps) {
+export default function BrandLogo({
+  size = 'md',
+  onClick,
+  linked = true,
+}: BrandLogoProps) {
+  const lockups = (
+    <>
+      <LockupImage variant='light' size={size} />
+      <LockupImage variant='dark' size={size} />
+    </>
+  );
+
+  if (!linked) {
+    return (
+      <span
+        className='inline-flex min-h-11 shrink-0 items-center px-1'
+        aria-label='Atlaris'
+      >
+        {lockups}
+      </span>
+    );
+  }
+
   return (
     <Link
       href={ROUTES.LANDING}
       onClick={onClick}
-      className='inline-flex min-h-11 shrink-0 items-center'
+      className='inline-flex min-h-11 shrink-0 items-center px-1'
       aria-label='Atlaris - Go to homepage'
     >
-      <LockupImage variant='light' size={size} />
-      <LockupImage variant='dark' size={size} />
+      {lockups}
     </Link>
   );
 }

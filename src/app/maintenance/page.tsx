@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { MaintenanceRecheckButton } from './MaintenanceRecheckButton';
+import BrandLogo from '@/components/shared/BrandLogo';
 import SiteFooter from '@/components/shared/SiteFooter';
 import { Card } from '@/components/ui/card';
 import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
@@ -39,8 +41,12 @@ export default function MaintenancePage() {
           overlay='background'
         />
 
-        <div className='relative z-10 flex flex-1 flex-col items-center px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20'>
-          <div className='flex w-full flex-1 items-center justify-center'>
+        <div className='relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 sm:px-6'>
+          <header className='flex items-center py-5'>
+            <BrandLogo linked={false} size='sm' />
+          </header>
+
+          <div className='flex flex-1 flex-col items-center justify-center py-12 sm:py-16'>
             <div className='w-full max-w-2xl text-center'>
               <p className='mx-auto inline-flex rounded-full border border-primary/35 bg-panel px-4 py-2 text-[11px] leading-none font-medium tracking-[0.22em] text-primary uppercase'>
                 Maintenance
@@ -51,8 +57,8 @@ export default function MaintenancePage() {
               </h1>
 
               <p className='mx-auto mt-5 max-w-[34rem] text-base leading-relaxed text-muted-foreground sm:text-lg'>
-                Atlaris is currently undergoing scheduled maintenance to improve
-                your learning experience. Please try again in a few minutes.
+                Atlaris is temporarily unavailable while maintenance is in
+                progress. Please try again in a few minutes.
               </p>
 
               <Card
@@ -78,10 +84,12 @@ export default function MaintenancePage() {
                   </div>
                 </div>
               </Card>
+
+              <MaintenanceRecheckButton />
             </div>
           </div>
 
-          <p className='mx-auto max-w-md text-center text-[11px] leading-relaxed tracking-[0.18em] text-muted-foreground uppercase'>
+          <p className='mx-auto max-w-md pb-8 text-center text-[11px] leading-relaxed tracking-[0.18em] text-muted-foreground uppercase'>
             “A brighter future takes a little patience.”
             <span className='mt-1 block'>— Atlaris</span>
           </p>
