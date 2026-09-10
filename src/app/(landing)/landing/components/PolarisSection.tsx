@@ -20,7 +20,7 @@ export function PolarisSection() {
         <CtaBanner
           aria-labelledby='landing-polaris-heading'
           artwork='horizon'
-          className={styles.revealScale}
+          className={cn(styles.revealScale, 'border-0')}
         >
           <div className='relative z-10 px-6 py-14 text-center sm:px-10 sm:py-16 md:py-20'>
             <SectionOverline className='justify-center text-primary'>

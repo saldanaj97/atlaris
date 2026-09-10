@@ -18,7 +18,7 @@ export function CloseSection() {
     <CtaBanner
       artwork='mountain'
       aria-labelledby='about-close-heading'
-      className={styles.closeBanner}
+      className={cn(styles.closeBanner, 'border-0')}
     >
       <RevealAnimation>
         <div className={styles.closeContent}>
