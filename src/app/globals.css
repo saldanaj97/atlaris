@@ -169,7 +169,7 @@
   --panel: var(--at-semantic-color-background-surface);
   --panel-foreground: var(--at-semantic-color-text-primary);
   --panel-muted: var(--at-semantic-color-background-raised);
-  /* Hero/card/banner chrome. Subtle (#253244) is a divider; raised is the quieter frame. */
+  /* Chrome frames. Subtle (#253244) is a divider; raised is the quieter frame. */
   --panel-border: var(--at-semantic-color-background-raised);
   --border: var(--at-semantic-color-border-subtle);
   --input: var(--at-semantic-color-border-control);
@@ -187,7 +187,7 @@
   );
   --sidebar-accent: var(--at-semantic-color-background-hover);
   --sidebar-accent-foreground: var(--at-semantic-color-text-primary);
-  --sidebar-border: var(--at-semantic-color-border-subtle);
+  --sidebar-border: var(--at-semantic-color-background-raised);
   --sidebar-ring: var(--at-semantic-color-focus-ring);
   --app-background-image: none;
   --app-background-size: auto;
