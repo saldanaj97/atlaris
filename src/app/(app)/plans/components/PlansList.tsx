@@ -23,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
-import { PlansNextStep } from '@/components/ui/plans-next-step';
 import { ROUTES } from '@/features/navigation/routes';
 import {
   ChevronDown,
@@ -37,6 +36,12 @@ import { useRouter } from 'next/navigation';
 import { type RefObject, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
 
+export const PLANS_LIBRARY_SEARCH_ID = 'plans-library-search';
+
+export const plansLibrarySearchFocusRef: RefObject<HTMLInputElement | null> = {
+  current: null,
+};
+
 interface PlansListProps {
   page: PlanListPage;
   query: PlanListQuery;
@@ -49,11 +54,9 @@ const FILTER_OPTIONS: ReadonlyArray<{
 }> = [
   { value: 'all', label: 'All plans' },
   { value: 'active', label: 'Active', countKey: 'active' },
-  { value: 'not_started', label: 'Not started', countKey: 'not_started' },
   { value: 'completed', label: 'Completed', countKey: 'completed' },
   { value: 'generating', label: 'Generating', countKey: 'generating' },
   { value: 'failed', label: 'Failed', countKey: 'failed' },
-  { value: 'inactive', label: 'Inactive', countKey: 'paused' },
 ];
 
 const SORT_OPTIONS: ReadonlyArray<{
@@ -111,12 +114,9 @@ function PlansStatusRail({
   query: PlanListQuery;
 }) {
   return (
-    <nav
-      aria-label='Plan status filters'
-      className='min-w-0 overflow-hidden rounded-[12px] border border-panel-border bg-panel'
-    >
+    <nav aria-label='Plan status filters' className='min-w-0 overflow-hidden'>
       <div className='overflow-x-auto'>
-        <ul className='flex min-w-max items-center gap-1 p-1'>
+        <ul className='flex min-w-max items-end gap-1'>
           {FILTER_OPTIONS.map((option) => {
             const isCurrent = option.value === query.status;
             const count =
@@ -135,18 +135,18 @@ function PlansStatusRail({
                     sort: query.sort,
                   })}
                   aria-current={isCurrent ? 'page' : undefined}
-                  className={`flex min-h-[40px] items-center gap-2 rounded-[8px] px-3 text-sm whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
+                  className={`flex min-h-[40px] items-center gap-2 border-b-2 px-3 text-sm whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
                     isCurrent
-                      ? 'bg-primary/10 font-medium text-primary shadow-xs'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      ? 'border-primary font-medium text-foreground'
+                      : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {option.label}
                   <span
                     className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
                       isCurrent
-                        ? 'bg-primary/15 text-primary'
-                        : 'bg-panel-muted text-muted-foreground'
+                        ? 'bg-background/70 text-foreground'
+                        : 'bg-background/40 text-muted-foreground'
                     }`}
                   >
                     {count}
@@ -161,13 +161,7 @@ function PlansStatusRail({
   );
 }
 
-function PlansSearch({
-  query,
-  searchInputRef,
-}: {
-  query: PlanListQuery;
-  searchInputRef: RefObject<HTMLInputElement | null>;
-}) {
+function PlansSearch({ query }: { query: PlanListQuery }) {
   return (
     <div className='flex w-full min-w-0 flex-1 flex-col items-stretch gap-2 sm:flex-row sm:items-center'>
       <form
@@ -185,12 +179,13 @@ function PlansSearch({
           <input type='hidden' name='sort' value={query.sort} />
         ) : null}
         <Input
-          ref={searchInputRef}
+          id={PLANS_LIBRARY_SEARCH_ID}
+          ref={plansLibrarySearchFocusRef}
           type='search'
           name='search'
-          placeholder='Search plans...'
+          placeholder='Search your plans...'
           aria-label='Search learning plans'
-          className='min-h-[40px] w-full border-panel-border bg-panel pl-[36px]'
+          className='min-h-[40px] w-full border-border/70 bg-background/40 pl-[36px]'
           defaultValue={query.search}
         />
       </form>
@@ -223,10 +218,13 @@ function PlansSort({ query }: { query: PlanListQuery }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant='outline' className='w-full shrink-0 sm:w-auto'>
+        <Button
+          variant='outline'
+          aria-label={`Sort: ${currentLabel}`}
+          className='w-full shrink-0 border-border/70 bg-background/40 sm:w-auto'
+        >
           <ListFilter aria-hidden='true' />
-          <span className='hidden sm:inline'>Sort:</span>
-          <span className='max-w-[9rem] truncate'>{currentLabel}</span>
+          <span>Sort</span>
           <ChevronDown aria-hidden='true' />
         </Button>
       </DropdownMenuTrigger>
@@ -248,6 +246,25 @@ function PlansSort({ query }: { query: PlanListQuery }) {
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** Query-backed status, search, and sort chrome for the plan library. */
+export function PlansLibraryToolbar({
+  page,
+  query,
+}: {
+  page: PlanListPage;
+  query: PlanListQuery;
+}) {
+  return (
+    <div className='flex w-full min-w-0 flex-col gap-4 lg:flex-row lg:items-end lg:justify-between'>
+      <PlansStatusRail page={page} query={query} />
+      <div className='flex w-full min-w-0 flex-col gap-2 sm:flex-row sm:items-center lg:max-w-xl lg:flex-1 lg:justify-end'>
+        <PlansSearch query={query} />
+        <PlansSort query={query} />
+      </div>
+    </div>
   );
 }
 
@@ -389,7 +406,6 @@ export function PlansList({ page, query }: PlansListProps) {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [toolbarMessage, setToolbarMessage] = useState<string | null>(null);
   const bulkDeleteTriggerRef = useRef<HTMLButtonElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const deletablePlans = page.items.filter(isPlanBulkDeletable);
   const selectedDeletablePlans = deletablePlans.filter((plan) =>
     selectedPlanIds.has(plan.id),
@@ -470,14 +486,6 @@ export function PlansList({ page, query }: PlansListProps) {
 
   return (
     <div className='space-y-6'>
-      <div className='flex flex-col gap-3'>
-        <PlansStatusRail page={page} query={query} />
-        <div className='flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center'>
-          <PlansSearch query={query} searchInputRef={searchInputRef} />
-          <PlansSort query={query} />
-        </div>
-      </div>
-
       {selectedDeletablePlans.length > 0 ? (
         <BulkPlanActionsToolbar
           selectedCount={selectedDeletablePlans.length}
@@ -499,7 +507,7 @@ export function PlansList({ page, query }: PlansListProps) {
         onDeleted={handleBulkDeleted}
         onOutcomeUnknown={handleBulkDeleteOutcomeUnknown}
         returnFocusRef={bulkDeleteTriggerRef}
-        successFocusRef={searchInputRef}
+        successFocusRef={plansLibrarySearchFocusRef}
       />
 
       {page.items.length === 0 ? (
@@ -516,7 +524,7 @@ export function PlansList({ page, query }: PlansListProps) {
           onSelectionChange={handleSelectionChange}
           onSelectAll={handleSelectAllOnPage}
           onDeselectAll={handleClearSelection}
-          successFocusRef={searchInputRef}
+          successFocusRef={plansLibrarySearchFocusRef}
         />
       )}
 
@@ -581,10 +589,6 @@ export function PlansList({ page, query }: PlansListProps) {
             </Button>
           </div>
         </nav>
-      ) : null}
-
-      {page.items.length > 0 && page.canCreatePlan !== undefined ? (
-        <PlansNextStep canCreatePlan={page.canCreatePlan} />
       ) : null}
     </div>
   );

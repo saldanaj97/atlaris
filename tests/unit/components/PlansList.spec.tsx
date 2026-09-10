@@ -7,7 +7,10 @@ import type {
 import type React from 'react';
 
 import { getPlanCoverImage } from '@/app/(app)/plans/components/plan-utils';
-import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import {
+  PlansLibraryToolbar,
+  PlansList,
+} from '@/app/(app)/plans/components/PlansList';
 import {
   PLAN_LIST_PAGE_SIZE,
   PLAN_LIST_SORTS,
@@ -123,11 +126,13 @@ describe('PlansList', () => {
       query?: Partial<PlanListQuery>;
     } = {},
   ) {
+    const page = buildPage(params.page);
+    const query = buildQuery(params.query);
     render(
-      <PlansList
-        page={buildPage(params.page)}
-        query={buildQuery(params.query)}
-      />,
+      <>
+        <PlansLibraryToolbar page={page} query={query} />
+        <PlansList page={page} query={query} />
+      </>,
     );
   }
 
@@ -211,13 +216,32 @@ describe('PlansList', () => {
       screen.getByRole('list', { name: 'Learning plans' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('navigation', { name: 'Plan status filters' }),
-    ).toBeInTheDocument();
-    for (const heading of ['All plans', 'Active', 'Completed', 'Generating']) {
+      screen.getAllByRole('navigation', { name: 'Plan status filters' }),
+    ).toHaveLength(1);
+    const filters = screen.getByRole('navigation', {
+      name: 'Plan status filters',
+    });
+    for (const heading of [
+      'All plans',
+      'Active',
+      'Completed',
+      'Generating',
+      'Failed',
+    ]) {
       expect(
-        screen.getByRole('link', { name: new RegExp(heading) }),
+        within(filters).getByRole('link', { name: new RegExp(heading) }),
       ).toBeInTheDocument();
     }
+    expect(
+      within(filters).queryByRole('link', { name: /Not started/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(filters).queryByRole('link', { name: /Inactive/ }),
+    ).not.toBeInTheDocument();
+    expect(within(filters).getAllByRole('link')).toHaveLength(5);
+    expect(
+      screen.queryByRole('heading', { name: 'Chart another learning path.' }),
+    ).not.toBeInTheDocument();
   });
 
   it('uses a stable cover from the fixed artwork set', () => {
@@ -232,6 +256,19 @@ describe('PlansList', () => {
 
     expect(getPlanCoverImage(activePlan.id)).toBe(cover);
     expect(allowedCovers.has(cover)).toBe(true);
+  });
+
+  it('keeps search and sort query-backed in the library chrome', () => {
+    renderPlansList({
+      query: { search: 'hooks', status: 'active', sort: 'newest' },
+    });
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Search learning plans' }),
+    ).toHaveValue('hooks');
+    expect(
+      screen.getByRole('button', { name: 'Sort: Newest' }),
+    ).toBeInTheDocument();
   });
 
   it('builds server-backed sort links in the sort menu', async () => {

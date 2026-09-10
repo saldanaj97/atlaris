@@ -1,17 +1,20 @@
 import type {
-  FilterStatus,
   PlanListQuery,
   PlanListSort,
 } from '@/features/plans/read-projection/types';
 import type { Metadata } from 'next';
 
 import {
-  PlanHeaderSummaryContent,
   PlansContent,
   PlansHeaderCreateAction,
+  PlansLibraryChrome,
 } from '@/app/(app)/plans/components/PlansContent';
-import { PlansContentSkeleton } from '@/app/(app)/plans/components/PlansContentSkeleton';
+import {
+  PlansChromeSkeleton,
+  PlansContentSkeleton,
+} from '@/app/(app)/plans/components/PlansContentSkeleton';
 import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
+import { resolvePlansLibraryFilterStatus } from '@/app/(app)/plans/plans-library-filter';
 import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
@@ -35,16 +38,6 @@ type PlansPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };
 
-const PLAN_FILTERS = new Set<FilterStatus>([
-  'all',
-  'not_started',
-  'active',
-  'completed',
-  'generating',
-  'failed',
-  'inactive',
-]);
-
 const PLAN_SORTS = new Set<PlanListSort>(PLAN_LIST_SORTS);
 
 function firstSearchParam(value: string | string[] | undefined): string {
@@ -56,12 +49,9 @@ async function parsePlansQuery(
 ): Promise<PlanListQuery> {
   const params = await searchParams;
   const pageValue = Number(firstSearchParam(params?.page));
-  const statusValue = firstSearchParam(params?.status);
-  const canonicalStatusValue =
-    statusValue === 'paused' ? 'inactive' : statusValue;
-  const status = PLAN_FILTERS.has(canonicalStatusValue as FilterStatus)
-    ? (canonicalStatusValue as FilterStatus)
-    : 'all';
+  const status = resolvePlansLibraryFilterStatus(
+    firstSearchParam(params?.status),
+  );
   const sortValue = firstSearchParam(params?.sort);
   const sort = PLAN_SORTS.has(sortValue as PlanListSort)
     ? (sortValue as PlanListSort)
@@ -82,19 +72,15 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
 
   return (
     <>
-      <PlansHero>
+      <PlansHero
+        chrome={
+          <Suspense fallback={<PlansChromeSkeleton />}>
+            <PlansLibraryChrome dataPromise={plansPageData} query={query} />
+          </Suspense>
+        }
+      >
         <Suspense fallback={<Skeleton className='h-10 w-28' />}>
           <PlansHeaderCreateAction dataPromise={plansPageData} />
-        </Suspense>
-        <Suspense
-          fallback={
-            <div className='flex items-center gap-3'>
-              <Skeleton className='h-4 w-32' />
-              <Skeleton className='h-6 w-24 rounded-full' />
-            </div>
-          }
-        >
-          <PlanHeaderSummaryContent dataPromise={plansPageData} />
         </Suspense>
       </PlansHero>
 

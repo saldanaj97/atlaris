@@ -3,57 +3,46 @@ import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
-import { PlanCountBadge } from '@/app/(app)/plans/components/PlanCountBadge';
-import { PlansList } from '@/app/(app)/plans/components/PlansList';
+import {
+  PlansLibraryToolbar,
+  PlansList,
+} from '@/app/(app)/plans/components/PlansList';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
+export function shouldShowPlansLibraryChrome(
+  plansPage: {
+    selectionRequired?: boolean;
+    totalSearchResults: number;
+  },
+  query: Pick<PlanListQuery, 'search' | 'status'>,
+): boolean {
+  if (plansPage.selectionRequired) return false;
+  return !(
+    plansPage.totalSearchResults === 0 &&
+    query.search === '' &&
+    query.status === 'all'
+  );
+}
+
 /**
- * Async component that renders the page-header summary: Active/Completed plan
- * counts plus the plan quota badge. Reads from the same page-data promise
- * already awaited by `PlansContent`, so no additional DB calls are made.
- * Wrapped in its own Suspense boundary by the parent page so the static
- * title and New Plan CTA can render immediately.
+ * Query-backed filter/search chrome streamed into the plans hero.
  */
-export async function PlanHeaderSummaryContent({
+export async function PlansLibraryChrome({
   dataPromise,
+  query,
 }: {
   dataPromise: Promise<PlansPageData | null>;
+  query: PlanListQuery;
 }) {
   const result = await dataPromise;
   if (!result) return null;
+  if (!shouldShowPlansLibraryChrome(result.plansPage, query)) return null;
 
-  const { plansPage, usage } = result;
-
-  return (
-    <div className='flex flex-wrap items-center gap-3 sm:gap-4'>
-      <div className='flex items-center gap-3 text-sm text-muted-foreground'>
-        <span>
-          <span className='font-semibold text-foreground tabular-nums'>
-            {plansPage.statusCounts.active}
-          </span>{' '}
-          Active
-        </span>
-        <span>
-          <span className='font-semibold text-foreground tabular-nums'>
-            {plansPage.statusCounts.completed}
-          </span>{' '}
-          Completed
-        </span>
-      </div>
-      <span className='hidden h-4 w-px bg-border sm:block' aria-hidden='true' />
-      <PlanCountBadge
-        usage={{
-          tier: usage.tier,
-          activePlans: usage.activePlans,
-          regenerations: usage.regenerations,
-        }}
-      />
-    </div>
-  );
+  return <PlansLibraryToolbar page={result.plansPage} query={query} />;
 }
 
 /**
@@ -85,6 +74,7 @@ export async function PlansHeaderCreateAction({
     </Button>
   );
 }
+
 export async function PlansContent({
   dataPromise,
   query,
@@ -111,11 +101,7 @@ export async function PlansContent({
     );
   }
 
-  if (
-    plansPage.totalSearchResults === 0 &&
-    query.search === '' &&
-    query.status === 'all'
-  ) {
+  if (!shouldShowPlansLibraryChrome(plansPage, query)) {
     return (
       <section aria-label='No plans found'>
         <EmptyPlansList
