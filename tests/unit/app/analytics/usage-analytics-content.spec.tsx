@@ -1,8 +1,9 @@
-import type { UsageAnalyticsDayRow } from '@/app/(app)/analytics/usage/usage-analytics-model';
-import type { UsageAnalyticsModel } from '@/app/(app)/analytics/usage/usage-analytics-model';
+import type {
+  UsageAnalyticsDayRow,
+  UsageAnalyticsModel,
+} from '@/app/(app)/analytics/usage/usage-analytics-model';
 
 import { UsageAnalyticsContent } from '@/app/(app)/analytics/usage/usage-analytics-content';
-import { ROUTES } from '@/features/navigation/routes';
 import {
   act,
   cleanup,
@@ -11,7 +12,6 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let observedResizeEntries: {
@@ -158,24 +158,6 @@ const model: UsageAnalyticsModel = {
       completedMinutes: 420,
       percent: 44,
     },
-    {
-      id: 'plan-2',
-      topic: 'Database Performance',
-      completedMinutes: 240,
-      percent: 25,
-    },
-    {
-      id: 'plan-3',
-      topic: 'Dashboard Activity Polish',
-      completedMinutes: 180,
-      percent: 19,
-    },
-    {
-      id: 'plan-4',
-      topic: 'Calendar Sync Hardening',
-      completedMinutes: 120,
-      percent: 13,
-    },
   ],
   recentEvents: [
     {
@@ -184,13 +166,6 @@ const model: UsageAnalyticsModel = {
       planTopic: 'Applied TypeScript Architecture',
       status: 'completed',
       occurredAt: new Date('2026-06-28T16:00:00.000Z'),
-    },
-    {
-      id: 'event-2',
-      planId: 'plan-2',
-      planTopic: 'Database Performance',
-      status: 'in_progress',
-      occurredAt: new Date('2026-06-28T12:00:00.000Z'),
     },
   ],
   analyticsTimezone: 'America/Chicago',
@@ -214,89 +189,86 @@ const model: UsageAnalyticsModel = {
 };
 
 describe('UsageAnalyticsContent', () => {
-  it('renders the screenshot layout with live summary metrics', () => {
+  it('reserves pulse chart space while chart rendering loads', () => {
     render(<UsageAnalyticsContent model={model} />);
+
+    expect(
+      screen.getByRole('status', { name: 'Loading eight-week pulse chart' }),
+    ).toHaveClass('h-80');
+  });
+
+  it('renders the seven contracted families and the eight-week pulse', async () => {
+    render(<UsageAnalyticsContent model={model} />);
+    await resizeChart(780);
 
     expect(
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'A clear view of your progress, habits, and learning journey.',
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Modules completed')).toBeInTheDocument();
-    expect(
-      screen.getByText('8 of 18 modules · 28 of 60 tasks'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Time spent learning')).toBeInTheDocument();
-    expect(screen.getAllByText('16h').length).toBeGreaterThan(0);
-    expect(
-      screen.getByText('Estimated completed learning time'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('41h planned total')).toBeInTheDocument();
-    expect(screen.getByText('Plans in progress')).toBeInTheDocument();
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('Current streak')).toBeInTheDocument();
-    expect(screen.getByText('4 days')).toBeInTheDocument();
-    expect(screen.getByText('2 days from best')).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Learning activity' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Time by plan' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Completed events' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: 'Recent activity' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Completed a task')).toBeInTheDocument();
-    expect(screen.getByText('Updated progress')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View all' })).toHaveAttribute(
-      'href',
-      ROUTES.DASHBOARD,
-    );
-    expect(screen.queryByText('vs. previous 30 days')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Full-Stack Web Development'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
-  });
-
-  it('reserves activity chart space while the default time chart loads', () => {
-    render(<UsageAnalyticsContent model={model} />);
-
-    expect(
-      screen.getByRole('status', { name: 'Loading learning activity chart' }),
-    ).toHaveClass('h-64');
-  });
-
-  it('switches the activity chart to the eight-week pulse', async () => {
-    const user = userEvent.setup();
-    render(<UsageAnalyticsContent model={model} />);
-
-    await user.click(
-      screen.getByRole('combobox', { name: 'Learning activity metric' }),
-    );
-    await user.click(screen.getByRole('option', { name: 'By plan' }));
-
+    expect(screen.getByText('Current completion')).toBeInTheDocument();
+    expect(screen.getByText('Learning activity')).toBeInTheDocument();
+    expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
     expect(
       screen.getByText('Progress changes by plan and week.'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('eight-week-pulse')).toBeInTheDocument();
     expect(screen.getByTestId('weekly-line-chart')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('figure', { name: 'Eight-week pulse' }),
+    ).toHaveAccessibleDescription(
+      /Progress changes by plan and week\..*Line chart showing progress changes by week for each plan\./,
+    );
+    expect(
+      screen.getByText('Applied TypeScript Architecture'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Database Performance')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
+    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
+    expect(screen.getByText('28 of 60 tasks complete')).toBeInTheDocument();
+    expect(screen.getByText('47%')).toBeInTheDocument();
+    expect(screen.getByText('32 tasks left')).toBeInTheDocument();
+    expect(screen.getByText('8 of 18 modules complete')).toBeInTheDocument();
+    expect(screen.getByText('44%')).toBeInTheDocument();
+    expect(screen.getByText('10 modules left')).toBeInTheDocument();
+    expect(screen.getByText('Completed time')).toBeInTheDocument();
+    expect(screen.getByText('16 hrs')).toBeInTheDocument();
+    expect(
+      screen.getByText('Estimated completed learning time'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('41 hrs planned total')).toBeInTheDocument();
+    const activitySection = screen.getByRole('region', {
+      name: 'Learning activity',
+    });
+    expect(
+      within(activitySection).getByText('Progress changes'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('7')).toBeInTheDocument();
+    expect(screen.getByText('-3 changes vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Completed events')).toBeInTheDocument();
+    expect(screen.getByText('3')).toBeInTheDocument();
+    expect(screen.getByText('-2 events vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Active days')).toBeInTheDocument();
+    expect(screen.getByText('3/7')).toBeInTheDocument();
+    expect(screen.getByText('-2 days vs last week')).toBeInTheDocument();
+    expect(screen.getByText('Streak')).toBeInTheDocument();
+    expect(screen.getByText('4 days')).toBeInTheDocument();
+    expect(screen.getByText('Best 6 days')).toBeInTheDocument();
+    expect(screen.getByText('2 days from best')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Down')).toHaveLength(3);
+    expect(screen.queryByLabelText('Up')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText('Plans in progress')).not.toBeInTheDocument();
+    expect(screen.queryByText('Time spent learning')).not.toBeInTheDocument();
+    expect(screen.queryByText('Time by plan')).not.toBeInTheDocument();
+    expect(screen.queryByText('Recent activity')).not.toBeInTheDocument();
+    expect(screen.queryByText('vs. previous 30 days')).not.toBeInTheDocument();
+    expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
+    expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
+    expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
-  it('adds plan labels and chart lines as the pulse chart has room for them', async () => {
-    const user = userEvent.setup();
+  it('adds plan labels and chart lines as the chart has room for them', async () => {
     const { container } = render(<UsageAnalyticsContent model={model} />);
 
-    await user.click(
-      screen.getByRole('combobox', { name: 'Learning activity metric' }),
-    );
-    await user.click(screen.getByRole('option', { name: 'By plan' }));
     await resizeChart(380);
     await waitFor(() => {
       expect(
@@ -305,34 +277,43 @@ describe('UsageAnalyticsContent', () => {
     });
     await resizeChart(380);
 
-    const pulse = within(screen.getByTestId('eight-week-pulse'));
     expect(
-      pulse.getByText('Applied TypeScript Architecture'),
+      screen.getByText('Applied TypeScript Architecture'),
     ).toBeInTheDocument();
-    expect(pulse.getByText('Database Performance')).toBeInTheDocument();
+    expect(screen.getByText('Database Performance')).toBeInTheDocument();
     expect(
-      pulse.queryByText('Dashboard Activity Polish'),
+      screen.queryByText('Dashboard Activity Polish'),
     ).not.toBeInTheDocument();
     expect(
-      pulse.queryByText('Calendar Sync Hardening'),
+      screen.queryByText('Calendar Sync Hardening'),
     ).not.toBeInTheDocument();
     expect(
-      pulse.getByLabelText('2 more plans not shown at this width'),
+      screen.getByLabelText('2 more plans not shown at this width'),
     ).toHaveTextContent('+2 more');
     await waitFor(() => {
       expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
         2,
       );
     });
+    expect(
+      container.querySelector('.recharts-line-dots'),
+    ).not.toBeInTheDocument();
+
+    const linePath = await waitFor(() => {
+      const renderedLinePath = container.querySelector(
+        '.analytics-plan-line .recharts-line-curve',
+      );
+
+      expect(renderedLinePath).not.toBeNull();
+      return renderedLinePath;
+    });
+    expect(linePath?.getAttribute('d')).not.toContain('C');
 
     await resizeChart(780);
 
-    const widePulse = within(screen.getByTestId('eight-week-pulse'));
-    expect(
-      widePulse.getByText('Dashboard Activity Polish'),
-    ).toBeInTheDocument();
-    expect(widePulse.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(widePulse.queryByText('+2 more')).not.toBeInTheDocument();
+    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
+    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
+    expect(screen.queryByText('+2 more')).not.toBeInTheDocument();
     await waitFor(() => {
       expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
         4,
@@ -341,7 +322,6 @@ describe('UsageAnalyticsContent', () => {
   });
 
   it('caps visible plan series at the five available chart colors', async () => {
-    const user = userEvent.setup();
     const sixPlanModel: UsageAnalyticsModel = {
       ...model,
       plans: [
@@ -354,10 +334,6 @@ describe('UsageAnalyticsContent', () => {
       <UsageAnalyticsContent model={sixPlanModel} />,
     );
 
-    await user.click(
-      screen.getByRole('combobox', { name: 'Learning activity metric' }),
-    );
-    await user.click(screen.getByRole('option', { name: 'By plan' }));
     await resizeChart(1400);
 
     expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
@@ -370,24 +346,6 @@ describe('UsageAnalyticsContent', () => {
         5,
       );
     });
-  });
-
-  it('switches completed events between cumulative and weekly views', async () => {
-    const user = userEvent.setup();
-    render(<UsageAnalyticsContent model={model} />);
-
-    expect(
-      screen.getByText('Recorded completions over the eight-week pulse.'),
-    ).toBeInTheDocument();
-
-    await user.click(
-      screen.getByRole('combobox', { name: 'Completed events chart mode' }),
-    );
-    await user.click(screen.getByRole('option', { name: 'Weekly' }));
-
-    expect(
-      screen.getByRole('combobox', { name: 'Completed events chart mode' }),
-    ).toHaveTextContent('Weekly');
   });
 });
 
