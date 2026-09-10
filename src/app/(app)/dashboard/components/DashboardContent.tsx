@@ -9,10 +9,6 @@ import { ActivityFeed } from '@/app/(app)/dashboard/components/ActivityFeed';
 import { LearningRouteCard } from '@/app/(app)/dashboard/components/LearningRouteCard';
 import { ResumeLearningHero } from '@/app/(app)/dashboard/components/ResumeLearningHero';
 import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightCard';
-import {
-  buildSuggestedNextSteps,
-  SuggestedNextSteps,
-} from '@/app/(app)/dashboard/components/SuggestedNextSteps';
 import { WeeklyPaceCard } from '@/app/(app)/dashboard/components/WeeklyPaceCard';
 import { YourProgressCard } from '@/app/(app)/dashboard/components/YourProgressCard';
 import { Card } from '@/components/ui/card';
@@ -35,7 +31,7 @@ function DashboardHero({
   description: ReactNode;
 }) {
   return (
-    <header className='rounded-[12px] border border-panel-border bg-panel px-6 py-5 shadow-sm sm:px-8 sm:py-6'>
+    <header>
       <SectionOverline>Current focus</SectionOverline>
       <h1 className='font-heading mt-2 max-w-3xl text-[28px] leading-[1.15] tracking-[-0.02em] text-balance text-foreground sm:text-[32px]'>
         {title}
@@ -78,11 +74,6 @@ export async function DashboardContent() {
 
   const { name, summaries, resumePlan: activePlan, canCreatePlan } = result;
   const activities = generateActivities(summaries).slice(0, 8);
-  const suggestedSteps = buildSuggestedNextSteps({
-    resumePlanId: activePlan?.plan.id,
-    resumeTopic: activePlan?.plan.topic,
-    canCreatePlan,
-  });
 
   return (
     <div className='space-y-4'>
@@ -124,8 +115,6 @@ export async function DashboardContent() {
           <ActivityFeed activities={activities} />
         </div>
       ) : null}
-
-      <SuggestedNextSteps steps={suggestedSteps} />
     </div>
   );
 }

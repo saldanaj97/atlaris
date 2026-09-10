@@ -78,6 +78,12 @@ describe('DashboardContent', () => {
     expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
     expect(screen.queryByText('Projects')).not.toBeInTheDocument();
     expect(screen.queryByText(/hrs learned/i)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Suggested next steps' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Based on your current plans and available actions.'),
+    ).not.toBeInTheDocument();
   });
 
   it('renders a zero-hour weekly target as reported', async () => {
@@ -130,6 +136,15 @@ describe('DashboardContent', () => {
       screen.queryByRole('link', { name: 'Begin tonight' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('heading', { name: 'Suggested next steps' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('See pricing')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', {
+        name: /Review every route you have started/,
+      }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows task-weighted overall progress from live summaries', async () => {
