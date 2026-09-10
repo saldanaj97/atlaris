@@ -5,9 +5,12 @@ export const APP_SHELL_GUTTER = 'px-[16px] md:px-[24px] xl:px-[32px]' as const;
 export const APP_SHELL_MAIN_OFFSET =
   'pt-[calc(4rem+env(safe-area-inset-top,0px))]' as const;
 
-/** Authenticated app rail offset, matching the 224px desktop sidebar. */
+/**
+ * Authenticated app rail offset. Defaults to the 224px desktop sidebar and
+ * collapses to 0 when `--at-app-sidebar-offset` is set by desktop chrome.
+ */
 export const APP_SHELL_SIDEBAR_OFFSET =
-  'lg:pl-[var(--at-semantic-layout-sidebar,14rem)]' as const;
+  'lg:pl-[var(--at-app-sidebar-offset,var(--at-semantic-layout-sidebar,14rem))]' as const;
 
 /** Landing-only: cancels in-flow offset so a canvas can paint behind the fixed header. */
 export const APP_SHELL_HEADER_TUCK =

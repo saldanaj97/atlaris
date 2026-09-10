@@ -34,6 +34,7 @@ interface MobileNavigationProps {
   canCreatePlan?: boolean;
   isAuthenticated?: boolean;
   userName?: string;
+  userImageUrl?: string | null;
 }
 
 /**
@@ -48,6 +49,7 @@ export default function MobileNavigation({
   canCreatePlan,
   isAuthenticated = false,
   userName,
+  userImageUrl,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
   const navigationDismissedRef = useRef(false);
@@ -96,8 +98,10 @@ export default function MobileNavigation({
           triggerRef.current?.focus();
         }}
         className={cn(
-          'w-[min(18rem,calc(100vw-2rem))] border-r border-border p-0 shadow-lg',
-          isAppShell ? 'bg-sidebar' : 'bg-card',
+          'w-[min(18rem,calc(100vw-2rem))] border-r p-0 shadow-lg',
+          isAppShell
+            ? 'border-sidebar-border bg-sidebar'
+            : 'border-border bg-card',
         )}
       >
         {isAppShell ? (
@@ -110,6 +114,7 @@ export default function MobileNavigation({
               navItems={navItems}
               tier={tier}
               userName={userName}
+              userImageUrl={userImageUrl}
               navigationLabel='Mobile navigation'
               onNavigate={handleNavigation}
             />

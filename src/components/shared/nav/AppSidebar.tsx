@@ -3,8 +3,14 @@
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { AccountAvatar } from '@/components/shared/AccountAvatar';
 import BrandLogo from '@/components/shared/BrandLogo';
+import {
+  DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID,
+  DESKTOP_SIDEBAR_COLLAPSE_LABEL,
+} from '@/components/shared/nav/desktop-sidebar-state';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { UpgradeBanner } from '@/components/ui/upgrade-banner';
 import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
@@ -12,7 +18,9 @@ import {
   BarChart3,
   BookOpen,
   ChevronDown,
+  ChevronRight,
   LayoutDashboard,
+  PanelLeftClose,
   Settings,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -23,9 +31,12 @@ interface AppSidebarProps {
   navItems: NavItem[];
   tier?: SubscriptionTier;
   userName?: string;
+  userImageUrl?: string | null;
   navigationLabel?: string;
   className?: string;
+  id?: string;
   onNavigate?: () => void;
+  onDesktopCollapse?: () => void;
 }
 
 function NavIcon({ href }: { href: string }) {
@@ -62,9 +73,12 @@ export default function AppSidebar({
   navItems,
   tier,
   userName,
+  userImageUrl,
   navigationLabel = 'Application navigation',
   className,
+  id,
   onNavigate,
+  onDesktopCollapse,
 }: AppSidebarProps) {
   const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
     {},
@@ -73,14 +87,30 @@ export default function AppSidebar({
 
   return (
     <aside
+      id={id}
       aria-label='Application sidebar'
       className={cn(
         'flex min-h-full w-full flex-col bg-sidebar text-sidebar-foreground',
         className,
       )}
     >
-      <div className='flex h-[var(--at-semantic-layout-header-min,4rem)] shrink-0 items-center px-[var(--at-primitive-space-4,1rem)] pt-[env(safe-area-inset-top,0px)]'>
-        <BrandLogo size='sm' onClick={onNavigate} />
+      <div className='flex h-[var(--at-semantic-layout-header-min,4rem)] shrink-0 items-center gap-2 px-[var(--at-primitive-space-4,1rem)] pt-[env(safe-area-inset-top,0px)]'>
+        <div className='min-w-0 flex-1'>
+          <BrandLogo size='sm' onClick={onNavigate} />
+        </div>
+        {onDesktopCollapse ? (
+          <button
+            id={DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID}
+            type='button'
+            aria-controls={id}
+            aria-expanded='true'
+            aria-label={DESKTOP_SIDEBAR_COLLAPSE_LABEL}
+            className='flex size-[var(--at-semantic-size-control-touch,2.75rem)] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+            onClick={onDesktopCollapse}
+          >
+            <PanelLeftClose aria-hidden='true' className='size-4' />
+          </button>
+        ) : null}
       </div>
 
       <nav
@@ -176,18 +206,27 @@ export default function AppSidebar({
         })}
       </nav>
 
-      <div className='mt-auto shrink-0 space-y-3 border-sidebar-border p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'>
+      <div className='mt-auto shrink-0 space-y-2 border-sidebar-border px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
         {tier && tier !== 'pro' ? (
           <UpgradeBanner onNavigate={onNavigate} />
+        ) : null}
+
+        {onDesktopCollapse ? (
+          <ThemeToggle
+            withTooltip
+            tooltipSide='top'
+            className='text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
+          />
         ) : null}
 
         <Link
           href={ROUTES.SETTINGS.PROFILE}
           onClick={onNavigate}
           aria-label='Account settings'
-          className='flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center justify-between gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+          className='flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
         >
-          <span className='min-w-0'>
+          <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
+          <span className='min-w-0 flex-1'>
             <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
               {userName || 'Account'}
             </span>
@@ -195,9 +234,9 @@ export default function AppSidebar({
               {tierLabel(tier)}
             </span>
           </span>
-          <Settings
+          <ChevronRight
             aria-hidden='true'
-            className='size-[var(--at-primitive-size-icon-default,1.25rem)] shrink-0'
+            className='size-4 shrink-0 text-muted-foreground'
           />
         </Link>
       </div>

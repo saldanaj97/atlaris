@@ -3,6 +3,12 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AppSidebar from './AppSidebar';
+import {
+  DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID,
+  DESKTOP_SIDEBAR_EXPAND_CONTROL_ID,
+  DESKTOP_SIDEBAR_ID,
+  useDesktopSidebarOpen,
+} from './desktop-sidebar-state';
 import DesktopHeader from './DesktopHeader';
 import MobileHeader from './MobileHeader';
 import { normalizeNavPathname } from './nav-active';
@@ -18,6 +24,7 @@ import {
 } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { usePathname } from 'next/navigation';
+import { useLayoutEffect, useRef } from 'react';
 
 interface SiteHeaderChromeProps {
   navItems: NavItem[];
@@ -40,7 +47,7 @@ function isSupportedAppPath(pathname: string): boolean {
 
 /**
  * Single client boundary for pathname-driven header chrome.
- * Owns the flat full-bleed backdrop, content column, and fading bottom hairline.
+ * Owns the flat full-bleed backdrop and content column.
  *
  * Marketing routes always resolve to marketing nav items, regardless of auth.
  */
@@ -61,17 +68,40 @@ export default function SiteHeaderChrome({
     pathname === ROUTES.ABOUT;
   const isAppShell = isAuthenticated && isSupportedAppPath(pathname);
   const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
+  const { open: desktopSidebarOpen, setOpen: setDesktopSidebarOpen } =
+    useDesktopSidebarOpen(isAppShell);
+  const pendingToggleFocusRef = useRef(false);
+
+  const setSidebarOpen = (next: boolean) => {
+    pendingToggleFocusRef.current = true;
+    setDesktopSidebarOpen(next);
+  };
+
+  useLayoutEffect(() => {
+    if (!pendingToggleFocusRef.current) {
+      return;
+    }
+    pendingToggleFocusRef.current = false;
+    const controlId = desktopSidebarOpen
+      ? DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID
+      : DESKTOP_SIDEBAR_EXPAND_CONTROL_ID;
+    document.getElementById(controlId)?.focus();
+  }, [desktopSidebarOpen]);
+
   return (
     <>
       <div aria-hidden='true' className='absolute inset-0 z-0 bg-background' />
 
-      {isAppShell ? (
+      {isAppShell && desktopSidebarOpen ? (
         <AppSidebar
+          id={DESKTOP_SIDEBAR_ID}
           className='fixed inset-y-0 left-0 z-40 hidden w-[var(--at-semantic-layout-sidebar,14rem)] border-r border-sidebar-border lg:flex'
           pathname={pathname}
           navItems={resolvedNavItems}
           tier={tier}
           userName={userName}
+          userImageUrl={userImageUrl}
+          onDesktopCollapse={() => setSidebarOpen(false)}
         />
       ) : null}
 
@@ -103,11 +133,8 @@ export default function SiteHeaderChrome({
               showClerkUserButton={showClerkUserButton}
               userName={userName}
               userImageUrl={userImageUrl}
-            />
-            {/* Editorial hairline: fades at both ends instead of a hard border. */}
-            <div
-              aria-hidden='true'
-              className='absolute inset-x-0 bottom-0 h-px bg-linear-to-r from-transparent via-border to-transparent'
+              sidebarOpen={desktopSidebarOpen}
+              onSidebarOpenChange={setSidebarOpen}
             />
           </div>
         </div>

@@ -84,31 +84,30 @@ export default async function SiteHeader() {
       );
     }
 
-    // Avatar fallback only — Clerk UserButton owns production avatars.
-    if (!showClerkUserButton) {
-      if (isLocalProductTestingAuthEnabled()) {
-        userName = devAuthEnv.name;
-      } else {
-        try {
-          const user = await currentUser();
-          if (user) {
-            const composedName = [user.firstName, user.lastName]
-              .filter(Boolean)
-              .join(' ');
-            userName =
-              (user.fullName ?? composedName) || user.username || undefined;
-            userImageUrl = user.imageUrl;
-          }
-        } catch (err) {
-          logger.warn(
-            {
-              err,
-              authUserId,
-              source: 'SiteHeader.currentUser',
-            },
-            'Clerk user fetch failed; header avatar falls back to initials',
-          );
+    // Sidebar account row needs live name/avatar. Header Clerk UserButton
+    // still owns the compact header avatar when the rail is collapsed.
+    if (isLocalProductTestingAuthEnabled()) {
+      userName = devAuthEnv.name;
+    } else {
+      try {
+        const user = await currentUser();
+        if (user) {
+          const composedName = [user.firstName, user.lastName]
+            .filter(Boolean)
+            .join(' ');
+          userName =
+            (user.fullName ?? composedName) || user.username || undefined;
+          userImageUrl = user.imageUrl;
         }
+      } catch (err) {
+        logger.warn(
+          {
+            err,
+            authUserId,
+            source: 'SiteHeader.currentUser',
+          },
+          'Clerk user fetch failed; account chrome falls back to initials',
+        );
       }
     }
   }

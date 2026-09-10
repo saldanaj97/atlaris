@@ -83,6 +83,7 @@ export default function MobileHeader({
           canCreatePlan={canCreatePlan}
           isAuthenticated={isAuthenticated}
           userName={userName}
+          userImageUrl={userImageUrl}
         />
       </div>
 

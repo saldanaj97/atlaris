@@ -22,7 +22,7 @@ export function UpgradeBanner({
     <section
       aria-labelledby={titleId}
       className={cn(
-        'rounded-xl border border-panel-border bg-panel p-4',
+        'rounded-xl border border-panel-border bg-panel px-3 py-2.5',
         className,
       )}
     >
@@ -32,13 +32,13 @@ export function UpgradeBanner({
           Upgrade to Pro
         </h2>
       </div>
-      <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
+      <p className='mt-1 text-sm leading-snug text-muted-foreground'>
         Unlock more learning paths, projects, and features.
       </p>
       <Button
         asChild
         variant='outline'
-        className='mt-4 w-full border-panel-border bg-transparent text-foreground hover:bg-muted'
+        className='mt-2.5 w-full border-panel-border bg-transparent text-foreground hover:bg-muted'
       >
         <Link href={href} onClick={onNavigate}>
           View plans
