@@ -74,7 +74,7 @@ const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
   },
 ];
 
-export function getSettingsContentHeading(
+function getSettingsContentHeading(
   sectionId: SettingsSectionId,
 ): SettingsContentHeadingCopy {
   switch (sectionId) {
@@ -167,7 +167,7 @@ export function SettingsSectionNavigation(): ReactElement {
                 data-active={isActive ? 'true' : 'false'}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'group relative flex min-h-[44px] min-w-0 items-start gap-[8px] rounded-lg px-[12px] py-[8px] pl-[14px] text-left transition-colors',
+                  'group relative flex min-h-[44px] min-w-0 items-center gap-[8px] rounded-lg px-[12px] py-[8px] pl-[14px] text-left transition-colors',
                   'hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                   'data-[active=true]:bg-action-soft data-[active=true]:text-foreground',
                 )}
@@ -182,7 +182,7 @@ export function SettingsSectionNavigation(): ReactElement {
                 <Icon
                   aria-hidden='true'
                   className={cn(
-                    'mt-[2px] size-[20px] shrink-0',
+                    'size-[40px] shrink-0',
                     isActive
                       ? 'text-foreground'
                       : 'text-muted-foreground group-hover:text-foreground',
