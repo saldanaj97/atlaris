@@ -6,11 +6,10 @@ import type { ReactNode } from 'react';
 
 import { WeeklyLineChart } from './usage-analytics-charts';
 import {
-  activityStatus,
-  formatCountDelta,
-  formatDayCount,
-  remainingLabel,
-  streakComparison,
+  buildActivityCards,
+  buildCompletionCards,
+  type UsageAnalyticsActivityCard,
+  type UsageAnalyticsCompletionCard,
   type UsageAnalyticsMetricTrend,
 } from './usage-analytics-formatters';
 import { Badge } from '@/components/ui/badge';
@@ -19,7 +18,6 @@ import { Progress } from '@/components/ui/progress';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
-import { formatMinutes } from '@/features/plans/formatters';
 import {
   Activity,
   BarChart3,
@@ -33,6 +31,19 @@ import {
   TrendingUp,
 } from 'lucide-react';
 
+const COMPLETION_CARD_ICONS = {
+  Tasks: CheckCircle2,
+  Modules: BookOpen,
+  'Completed time': Clock,
+} as const satisfies Record<UsageAnalyticsCompletionCard['label'], LucideIcon>;
+
+const ACTIVITY_CARD_ICONS = {
+  'Progress changes': Activity,
+  'Completed events': CheckCircle2,
+  'Active days': CalendarDays,
+  Streak: Flame,
+} as const satisfies Record<UsageAnalyticsActivityCard['label'], LucideIcon>;
+
 const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
 const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
 const EIGHT_WEEK_PULSE_SUMMARY_ID = 'usage-eight-week-pulse-summary';
@@ -44,119 +55,8 @@ export function UsageAnalyticsContent({
   model: UsageAnalyticsModel;
 }) {
   const currentWeek = model.history.currentWeek;
-  const previousWeek = model.history.weeklyTrends.at(-2) ?? null;
-  const completionCards = [
-    {
-      label: 'Tasks',
-      value: `${model.taskCompletionPercent}%`,
-      detail:
-        model.totalTasks > 0
-          ? `${model.completedTasks} of ${model.totalTasks} tasks complete`
-          : 'No tasks tracked yet',
-      comparison:
-        model.totalTasks > 0
-          ? remainingLabel(model.totalTasks - model.completedTasks, 'task')
-          : 'Create a plan to track tasks',
-      icon: CheckCircle2,
-      progress: model.totalTasks > 0 ? model.taskCompletionPercent : undefined,
-    },
-    {
-      label: 'Modules',
-      value: `${model.moduleCompletionPercent}%`,
-      detail:
-        model.totalModules > 0
-          ? `${model.completedModules} of ${model.totalModules} modules complete`
-          : 'No modules tracked yet',
-      comparison:
-        model.totalModules > 0
-          ? remainingLabel(
-              model.totalModules - model.completedModules,
-              'module',
-            )
-          : 'Create a plan to track modules',
-      icon: BookOpen,
-      progress:
-        model.totalModules > 0 ? model.moduleCompletionPercent : undefined,
-    },
-    {
-      label: 'Completed time',
-      value: formatMinutes(model.completedMinutes),
-      detail: 'Estimated completed learning time',
-      comparison:
-        model.totalMinutes > 0
-          ? `${formatMinutes(model.totalMinutes)} planned total`
-          : 'No estimated time yet',
-      icon: Clock,
-      progress:
-        model.totalMinutes > 0
-          ? Math.min(100, (model.completedMinutes / model.totalMinutes) * 100)
-          : undefined,
-    },
-  ] as const;
-
-  const activityCards = [
-    {
-      label: 'Progress changes',
-      value: currentWeek.progressChangeCount.toString(),
-      detail: currentWeek.activeDays
-        ? `Across ${formatDayCount(currentWeek.activeDays).toLowerCase()}`
-        : 'No changes recorded this week',
-      comparison: formatCountDelta(
-        currentWeek.progressChangeCount,
-        previousWeek?.progressChangeCount ?? 0,
-        'change',
-      ),
-      status: activityStatus(
-        currentWeek.progressChangeCount,
-        previousWeek?.progressChangeCount ?? 0,
-      ),
-      icon: Activity,
-    },
-    {
-      label: 'Completed events',
-      value: currentWeek.completedEvents.toString(),
-      detail: currentWeek.completedEvents
-        ? `${formatMinutes(currentWeek.estimatedCompletionAddedMinutes)} estimated time added`
-        : 'No completed events this week',
-      comparison: formatCountDelta(
-        currentWeek.completedEvents,
-        previousWeek?.completedEvents ?? 0,
-        'event',
-      ),
-      status: activityStatus(
-        currentWeek.completedEvents,
-        previousWeek?.completedEvents ?? 0,
-      ),
-      icon: CheckCircle2,
-    },
-    {
-      label: 'Active days',
-      value: `${currentWeek.activeDays}/7`,
-      detail: currentWeek.progressChangeCount
-        ? `${currentWeek.progressChangeCount} changes logged`
-        : 'No activity logged this week',
-      comparison: formatCountDelta(
-        currentWeek.activeDays,
-        previousWeek?.activeDays ?? 0,
-        'day',
-      ),
-      status: activityStatus(
-        currentWeek.activeDays,
-        previousWeek?.activeDays ?? 0,
-      ),
-      icon: CalendarDays,
-    },
-    {
-      label: 'Streak',
-      value: formatDayCount(model.history.currentStreakDays),
-      detail: `Best ${formatDayCount(model.history.longestStreakDays)}`,
-      comparison: streakComparison(
-        model.history.currentStreakDays,
-        model.history.longestStreakDays,
-      ),
-      icon: Flame,
-    },
-  ] as const;
+  const completionCards = buildCompletionCards(model);
+  const activityCards = buildActivityCards(model);
 
   return (
     <div className='space-y-8'>
@@ -172,7 +72,11 @@ export function UsageAnalyticsContent({
         />
         <div className='grid gap-4 md:grid-cols-3'>
           {completionCards.map((card) => (
-            <MetricTile key={card.label} {...card} />
+            <MetricTile
+              key={card.label}
+              {...card}
+              icon={COMPLETION_CARD_ICONS[card.label]}
+            />
           ))}
         </div>
       </section>
@@ -189,7 +93,11 @@ export function UsageAnalyticsContent({
         />
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           {activityCards.map((card) => (
-            <MetricTile key={card.label} {...card} />
+            <MetricTile
+              key={card.label}
+              {...card}
+              icon={ACTIVITY_CARD_ICONS[card.label]}
+            />
           ))}
         </div>
       </section>
