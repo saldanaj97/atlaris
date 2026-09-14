@@ -15,7 +15,7 @@ import styles from './landing.module.css';
 
 export function PolarisSection() {
   return (
-    <section className='px-6 pb-20 md:px-8 md:pb-28'>
+    <section className='px-4 pb-20 sm:px-6 md:px-8 md:pb-28'>
       <RevealAnimation>
         <CtaBanner
           aria-labelledby='landing-polaris-heading'

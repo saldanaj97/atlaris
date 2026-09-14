@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     'Compare Atlaris plans and choose the subscription that fits your learning goals.',
 };
 
-/** Clerk Billing appearance aligned to After Hours semantic tokens. */
+/** Clerk Billing appearance aligned to current semantic tokens. */
 const pricingAppearance = {
   variables: {
     borderRadius: '2rem',

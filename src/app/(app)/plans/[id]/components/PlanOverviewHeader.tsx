@@ -55,6 +55,9 @@ export function PlanOverviewHeader({
           <span className='text-xs text-muted-foreground tabular-nums'>
             {stats.completionPercentage}% complete ·{' '}
             {formatMinutes(stats.totalMinutes)} planned
+            {stats.totalModules > 0
+              ? ` · ${stats.completedModules} of ${stats.totalModules} modules`
+              : null}
           </span>
         </div>
       </div>

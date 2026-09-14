@@ -19,7 +19,7 @@ const copy = {
 } as const;
 
 /**
- * After Hours pricing page chrome — celestial backdrop + hero.
+ * Pricing page chrome — celestial backdrop, hero, live plan table, and CTA.
  */
 export function PricingShell({ children }: { children: ReactNode }) {
   return (
@@ -39,15 +39,17 @@ export function PricingShell({ children }: { children: ReactNode }) {
           className={styles.ctaBanner}
         >
           <div className={styles.ctaContent}>
-            <SectionOverline className={styles.ctaOverline}>
-              Your next chapter
-            </SectionOverline>
-            <h2 id='pricing-cta-heading' className={styles.ctaTitle}>
-              A brighter future is a skill away.
-            </h2>
-            <p className={styles.ctaDescription}>
-              Set a goal and let Atlaris chart the route with you.
-            </p>
+            <div>
+              <SectionOverline className={styles.ctaOverline}>
+                Your next chapter
+              </SectionOverline>
+              <h2 id='pricing-cta-heading' className={styles.ctaTitle}>
+                A brighter future is a skill away.
+              </h2>
+              <p className={styles.ctaDescription}>
+                Set a goal and let Atlaris chart the route with you.
+              </p>
+            </div>
             <Button asChild className={marketingPrimaryCtaClassName}>
               <Link href={ROUTES.PLANS.NEW}>
                 Begin tonight

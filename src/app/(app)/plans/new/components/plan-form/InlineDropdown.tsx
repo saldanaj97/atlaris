@@ -1,12 +1,11 @@
 'use client';
 
 import type { DropdownOption } from '@/app/(app)/plans/new/components/plan-form/types';
-import type { CSSProperties } from 'react';
 
 import { cn } from '@/lib/utils';
 import * as SelectPrimitive from '@radix-ui/react-select';
 import { Check, ChevronDown } from 'lucide-react';
-import { useId, useState } from 'react';
+import { useId } from 'react';
 
 type DropdownVariant = 'primary';
 
@@ -37,15 +36,10 @@ const VARIANT_STYLES: Record<
 };
 
 /**
- * Inline dropdown component that appears as a styled pill within text.
- * Used in the unified plan generation form for natural language-style input.
+ * Labeled preference select for the plan generation form.
  *
- * Built on Radix Select primitives for proper accessibility:
- * - Keyboard navigation (arrow keys, typeahead)
- * - Automatic focus on selected item when opened
- * - Focus management and trapping
- * - Proper ARIA attributes
- * - Outside click and escape key handling
+ * Built on Radix Select primitives for keyboard navigation, typeahead,
+ * focus management, and ARIA attributes.
  */
 export function InlineDropdown<TValue extends string>({
   id,
@@ -60,45 +54,10 @@ export function InlineDropdown<TValue extends string>({
   const generatedId = useId();
   const componentId = id ?? generatedId;
   const styles = VARIANT_STYLES[variant];
-  const selectedOption = options.find((opt) => opt.value === value);
-  const isPlaceholder = !selectedOption;
-  const displayLabel = selectedOption?.label ?? placeholder ?? '';
-  const [triggerWidth, setTriggerWidth] = useState<number | null>(null);
-
-  const measureTrigger = (label: HTMLSpanElement | null) => {
-    if (!label) return;
-
-    label.dataset.label = displayLabel;
-    const nextWidth = label.parentElement?.offsetWidth;
-    if (!nextWidth) return;
-
-    setTriggerWidth((currentWidth) =>
-      currentWidth === nextWidth ? currentWidth : nextWidth,
-    );
-  };
+  const isPlaceholder = !options.some((opt) => opt.value === value);
 
   return (
-    <div
-      className='relative w-full sm:w-auto'
-      style={
-        {
-          '--inline-dropdown-width': triggerWidth
-            ? `${triggerWidth}px`
-            : undefined,
-        } as CSSProperties
-      }
-    >
-      <div
-        aria-hidden='true'
-        className='pointer-events-none invisible absolute inline-flex min-h-[40px] items-center justify-between gap-[6px] rounded-[8px] border px-[12px] py-[8px] text-sm font-medium whitespace-nowrap'
-      >
-        {icon}
-        <span
-          ref={measureTrigger}
-          className='after:content-[attr(data-label)]'
-        />
-        <ChevronDown className='size-[14px]' />
-      </div>
+    <div className='relative w-full'>
       <SelectPrimitive.Root
         value={value ?? ''}
         onValueChange={(nextValue) => {
@@ -116,8 +75,8 @@ export function InlineDropdown<TValue extends string>({
           aria-label={ariaLabel}
           className={cn(
             'inline-flex min-h-[40px] w-full items-center justify-between gap-[6px] overflow-hidden rounded-[8px] border px-[12px] py-[8px] text-sm font-medium leading-5 whitespace-nowrap shadow-sm outline-none hover:border-foreground focus-visible:border-ring [@media(pointer:coarse)]:min-h-[44px]',
-            'transition-[width,background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
-            'focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background sm:w-[var(--inline-dropdown-width)]',
+            'transition-[background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
+            'focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background',
             isPlaceholder
               ? 'border-input bg-card text-muted-foreground hover:border-foreground data-[state=open]:border-ring data-[state=open]:bg-muted'
               : styles.pill,
@@ -136,7 +95,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align='start'
             className={cn(
-              'z-50 min-w-[12rem] max-w-[20rem] overflow-hidden rounded-[16px] border border-input bg-popover p-[8px] shadow-xl',
+              'z-50 min-w-[12rem] w-[var(--radix-select-trigger-width)] max-w-[20rem] overflow-hidden rounded-[16px] border border-input bg-popover p-[8px] shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

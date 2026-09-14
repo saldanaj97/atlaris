@@ -5,7 +5,7 @@ import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 
 const ABOUT_TITLE = 'About | Atlaris';
 const ABOUT_DESCRIPTION =
-  'Who builds Atlaris, why it borrows the night sky, and what the AI does and does not do when it charts your plan.';
+  'Why Atlaris borrows the night sky, and what the AI does and does not do when it charts your plan.';
 
 export const metadata: Metadata = {
   title: ABOUT_TITLE,

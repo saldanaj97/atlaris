@@ -32,6 +32,15 @@ describe('BrandLogo', () => {
     });
   });
 
+  it('can render the lockup without a home destination', () => {
+    render(<BrandLogo linked={false} />);
+
+    expect(screen.getByLabelText('Atlaris')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('uses the compact visible width for sidebar and mobile chrome', () => {
     render(<BrandLogo size='sm' />);
 

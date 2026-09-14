@@ -121,5 +121,9 @@ describe('PlanDetails', () => {
     await renderPlanDetails(createCompletedPlan());
 
     expect(screen.getByText('Plan complete')).toBeInTheDocument();
+    expect(screen.getByText(/1 of 1 modules/)).toBeInTheDocument();
+    expect(screen.queryByText('Resources')).not.toBeInTheDocument();
+    expect(screen.queryByText('Projects')).not.toBeInTheDocument();
+    expect(screen.queryByText('Notes')).not.toBeInTheDocument();
   });
 });

@@ -238,6 +238,20 @@
   }
 }
 
+@media (max-width: 359px) {
+  .hero {
+    min-height: 0;
+  }
+
+  .heroRoute {
+    min-height: 15rem;
+  }
+
+  .heroRouteLabel {
+    letter-spacing: 0.1em;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .heroOverline,
   .heroLead,

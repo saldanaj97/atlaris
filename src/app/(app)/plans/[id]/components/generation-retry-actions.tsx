@@ -1,5 +1,5 @@
 import { Button } from '@/components/ui/button';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export function RetryAction({
   attempts,
@@ -18,14 +18,11 @@ export function RetryAction({
     <Button onClick={onRetry} disabled={isRetryDisabled} className='w-full'>
       {isRetrying ? (
         <>
-          <Loader2 className='mr-2 size-4 animate-spin motion-reduce:animate-none' />
+          <Loader2 className='size-4 animate-spin motion-reduce:animate-none' />
           Retrying…
         </>
       ) : (
-        <>
-          <RefreshCw className='mr-2 size-4' />
-          Retry Generation ({attemptCap - attempts} attempts remaining)
-        </>
+        <>Retry Generation ({attemptCap - attempts} attempts remaining)</>
       )}
     </Button>
   );

@@ -4,6 +4,7 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
 import { StatCell } from '@/app/(app)/plans/[id]/components/StatCell';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Surface } from '@/components/ui/surface';
 import { planDetailPath } from '@/features/navigation/routes';
 import {
   formatLearningStyle,
@@ -42,7 +43,7 @@ export function PlanSummaryRail({
   return (
     <aside className='space-y-4' aria-label='Plan summary'>
       <section aria-labelledby='plan-progress-heading'>
-        <div className='overflow-hidden rounded-2xl border border-panel-border bg-panel shadow-sm'>
+        <Surface padding='none' className='overflow-hidden'>
           <div className='flex items-start justify-between gap-4 border-b border-border/60 px-5 py-5'>
             <div className='flex items-center gap-3'>
               <span
@@ -89,11 +90,11 @@ export function PlanSummaryRail({
               />
             </dl>
           </div>
-        </div>
+        </Surface>
       </section>
 
       <section aria-labelledby='plan-details-heading'>
-        <div className='rounded-2xl border border-panel-border bg-panel p-5 shadow-sm'>
+        <Surface padding='none' className='p-5'>
           <div className='flex items-center gap-3'>
             <span
               className='flex size-9 shrink-0 items-center justify-center rounded-full border border-border bg-panel-muted text-muted-foreground'
@@ -136,11 +137,11 @@ export function PlanSummaryRail({
               value={stats.estimatedCompletionDate ?? 'Not calculated'}
             />
           </dl>
-        </div>
+        </Surface>
       </section>
 
       <section aria-labelledby='plan-next-up-heading'>
-        <div className='rounded-2xl border border-panel-border bg-panel p-5 shadow-sm'>
+        <Surface padding='none' className='p-5'>
           <div className='flex items-center justify-between gap-3'>
             <div className='flex items-center gap-3'>
               <span
@@ -210,7 +211,7 @@ export function PlanSummaryRail({
               </Button>
             </div>
           )}
-        </div>
+        </Surface>
       </section>
     </aside>
   );

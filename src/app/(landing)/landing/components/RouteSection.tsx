@@ -30,7 +30,7 @@ const ROUTE_FEATURES = [
 export function RouteSection() {
   return (
     <section
-      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-4 py-16 sm:px-6 md:px-8 md:py-24'
       aria-labelledby='landing-route-heading'
     >
       <RevealAnimation>

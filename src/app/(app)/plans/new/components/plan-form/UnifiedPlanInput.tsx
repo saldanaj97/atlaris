@@ -10,7 +10,15 @@ import {
 } from './plan-input-state';
 import { PreferenceControls } from './PreferenceControls';
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { isDevelopment } from '@/lib/config/client-env';
@@ -30,7 +38,7 @@ interface UnifiedPlanInputProps {
 /**
  * Unified input for plan generation: goal textarea + preference controls.
  *
- * Frame uses product `Surface` panel; no glassmorphism / mouse glow / gradient orbs.
+ * Frame uses product `Card`; no glassmorphism / mouse glow / gradient orbs.
  */
 export function UnifiedPlanInput({
   onSubmit,
@@ -144,64 +152,50 @@ export function UnifiedPlanInput({
 
   return (
     <section aria-labelledby={`${baseId}-form-heading`} className='w-full'>
-      <Surface
-        padding='none'
-        className='overflow-hidden p-5 shadow-sm sm:p-6 lg:p-7'
-      >
-        <header className='border-b border-border/60 pb-5'>
-          <p className='text-[11px] font-medium tracking-[0.16em] text-primary uppercase'>
-            Your learning route
-          </p>
-          <h2
-            id={`${baseId}-form-heading`}
-            className='mt-2 text-2xl leading-8 font-semibold tracking-[-0.02em] text-foreground'
-          >
-            Start with your goal
-          </h2>
-          <p className='mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground'>
-            Give us the destination and the constraints that shape your route.
-          </p>
-        </header>
+      <Card className='gap-0 py-0'>
+        <CardHeader className='border-b border-border px-5 py-5 sm:px-6'>
+          <CardTitle as='h2' id={`${baseId}-form-heading`}>
+            Your goal
+          </CardTitle>
+          <CardDescription>Tell us what you want to learn.</CardDescription>
+        </CardHeader>
 
-        <div className='pt-5'>
-          <label
-            htmlFor={topicInputId}
-            className='block text-sm leading-5 font-medium text-foreground'
-          >
-            What do you want to learn?
-          </label>
-          <p
-            id={topicHelpId}
-            className='mt-2 text-sm leading-5 text-muted-foreground'
-          >
-            Describe the outcome you want to work toward.
-          </p>
-          <Textarea
-            id={topicInputId}
-            value={topic}
-            onChange={(e) =>
-              dispatch({ type: 'set-topic', value: e.target.value })
-            }
-            onKeyDown={handleKeyDown}
-            placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
-            aria-describedby={topicHelpId}
-            aria-required='true'
-            className='mt-3 min-h-36 w-full min-w-0 resize-y text-base leading-7 sm:min-h-40'
-            rows={5}
-            disabled={isSubmitting || disabled}
-          />
-        </div>
+        <CardContent className='space-y-6 px-5 py-5 sm:px-6'>
+          <div>
+            <Label htmlFor={topicInputId} className='text-sm leading-5'>
+              What do you want to learn?
+            </Label>
+            <p
+              id={topicHelpId}
+              className='mt-2 text-sm leading-5 text-muted-foreground'
+            >
+              Describe the outcome you want to work toward.
+            </p>
+            <Textarea
+              id={topicInputId}
+              value={topic}
+              onChange={(e) =>
+                dispatch({ type: 'set-topic', value: e.target.value })
+              }
+              onKeyDown={handleKeyDown}
+              placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
+              aria-describedby={topicHelpId}
+              aria-required='true'
+              className='mt-3 min-h-24 w-full min-w-0 resize-y text-base leading-6 sm:min-h-24'
+              rows={4}
+              disabled={isSubmitting || disabled}
+            />
+          </div>
 
-        <div className='mt-6'>
           <PreferenceControls
             baseId={baseId}
             state={state}
             dispatch={dispatch}
             subscriptionTier={subscriptionTier}
           />
-        </div>
+        </CardContent>
 
-        <div className='mt-6 flex flex-col gap-4 border-t border-border/60 pt-5 sm:flex-row sm:items-center sm:justify-between'>
+        <CardFooter className='flex-col items-stretch gap-4 border-t border-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
           <p
             id={requirementsId}
             className='text-sm leading-5 text-muted-foreground'
@@ -236,8 +230,8 @@ export function UnifiedPlanInput({
               </>
             )}
           </Button>
-        </div>
-      </Surface>
+        </CardFooter>
+      </Card>
     </section>
   );
 }
