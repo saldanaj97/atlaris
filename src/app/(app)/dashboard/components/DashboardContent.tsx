@@ -72,7 +72,13 @@ export async function DashboardContent() {
     );
   }
 
-  const { name, summaries, resumePlan: activePlan, canCreatePlan } = result;
+  const {
+    name,
+    summaries,
+    resumePlan: activePlan,
+    canCreatePlan,
+    progress,
+  } = result;
   const activities = generateActivities(summaries).slice(0, 8);
 
   return (
@@ -93,7 +99,7 @@ export async function DashboardContent() {
           </section>
         )}
 
-        <YourProgressCard summaries={summaries} />
+        <YourProgressCard progress={progress} />
       </div>
 
       {activePlan && activePlan.modules.length > 0 ? (

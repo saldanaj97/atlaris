@@ -1,15 +1,16 @@
-import type { PlanSummary } from '@/shared/types/db.types';
+import type { DashboardProgressTotals } from '@/features/plans/read-projection/dashboard-progress';
 
-import { getDashboardProgressStats } from '@/app/(app)/dashboard/components/activity-utils';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 
 const TITLE_ID = 'dashboard-your-progress-heading';
 
-export function YourProgressCard({ summaries }: { summaries: PlanSummary[] }) {
-  const stats = getDashboardProgressStats(summaries);
-
-  if (stats.planCount === 0) {
+export function YourProgressCard({
+  progress,
+}: {
+  progress: DashboardProgressTotals;
+}) {
+  if (progress.planCount === 0) {
     return (
       <Card
         as='aside'
@@ -49,12 +50,12 @@ export function YourProgressCard({ summaries }: { summaries: PlanSummary[] }) {
       </p>
 
       <p className='font-heading mt-6 text-[32px] leading-10 tracking-[-0.02em] text-foreground tabular-nums'>
-        {stats.percent}%
+        {progress.percent}%
       </p>
       <p className='mt-1 text-xs text-muted-foreground'>Overall progress</p>
 
       <Progress
-        value={stats.percent}
+        value={progress.percent}
         max={100}
         aria-label='Overall task progress'
         className='mt-3 h-1.5'
@@ -64,19 +65,19 @@ export function YourProgressCard({ summaries }: { summaries: PlanSummary[] }) {
         <div>
           <dt className='text-xs text-muted-foreground'>Modules</dt>
           <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
-            {stats.completedModules}/{stats.totalModules}
+            {progress.completedModules}/{progress.totalModules}
           </dd>
         </div>
         <div>
           <dt className='text-xs text-muted-foreground'>Tasks</dt>
           <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
-            {stats.completedTasks}/{stats.totalTasks}
+            {progress.completedTasks}/{progress.totalTasks}
           </dd>
         </div>
         <div>
           <dt className='text-xs text-muted-foreground'>Plans</dt>
           <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
-            {stats.planCount}
+            {progress.planCount}
           </dd>
         </div>
       </dl>

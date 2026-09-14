@@ -10,6 +10,15 @@ import {
 } from '@tests/fixtures/plan-detail';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+const emptyProgress = {
+  percent: 0,
+  completedModules: 0,
+  totalModules: 0,
+  completedTasks: 0,
+  totalTasks: 0,
+  planCount: 0,
+};
+
 const mocks = vi.hoisted(() => ({
   getDashboardPlanDataMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
@@ -57,6 +66,14 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      progress: {
+        percent: 0,
+        completedModules: 0,
+        totalModules: 1,
+        completedTasks: 0,
+        totalTasks: 1,
+        planCount: 1,
+      },
     });
 
     render(await DashboardContent());
@@ -99,6 +116,14 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      progress: {
+        percent: 0,
+        completedModules: 0,
+        totalModules: 1,
+        completedTasks: 0,
+        totalTasks: 1,
+        planCount: 1,
+      },
     });
 
     render(await DashboardContent());
@@ -124,6 +149,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [],
       resumePlan: undefined,
+      progress: emptyProgress,
     });
 
     render(await DashboardContent());
@@ -153,16 +179,11 @@ describe('DashboardContent', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows task-weighted overall progress from live summaries', async () => {
+  it('shows overall progress from the uncapped aggregate, not the recent-plan window', async () => {
     const { modules: _smallModules, ...smallPlan } = buildPlan({
       generationStatus: 'ready',
       topic: 'Short plan',
       weeklyHours: 1,
-    });
-    const { modules: _largeModules, ...largePlan } = buildPlan({
-      generationStatus: 'ready',
-      topic: 'Long plan',
-      weeklyHours: 4,
     });
     const resume = buildPlanSummary({
       plan: smallPlan,
@@ -172,17 +193,17 @@ describe('DashboardContent', () => {
       completion: 1,
       completedModules: 1,
     });
-    const other = buildPlanSummary({
-      plan: largePlan,
-      modules: buildModuleRows(largePlan.id, 3),
-      completedTasks: 0,
-      totalTasks: 9,
-      completion: 0,
-      completedModules: 0,
-    });
     mocks.getDashboardPlanDataMock.mockResolvedValue({
-      summaries: [resume, other],
+      summaries: [resume],
       resumePlan: resume,
+      progress: {
+        percent: 10,
+        completedModules: 1,
+        totalModules: 4,
+        completedTasks: 1,
+        totalTasks: 10,
+        planCount: 2,
+      },
     });
 
     render(await DashboardContent());
@@ -192,6 +213,7 @@ describe('DashboardContent', () => {
       'aria-valuenow',
       '10',
     );
-    expect(screen.queryByText('50%')).not.toBeInTheDocument();
+    expect(screen.getByText('1/4')).toBeVisible();
+    expect(screen.getByText('1/10')).toBeVisible();
   });
 });

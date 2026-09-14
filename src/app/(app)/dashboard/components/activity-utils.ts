@@ -5,6 +5,10 @@ import type {
   PlanSummary,
 } from '@/shared/types/db.types';
 
+import {
+  buildDashboardProgressTotals,
+  type DashboardProgressTotals,
+} from '@/features/plans/read-projection/dashboard-progress';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
 type DatedActivity = {
@@ -123,35 +127,17 @@ export function getDashboardGreeting(
   return `${getDashboardHeroTitle(name)} ${getDashboardHeroDescription(activePlan)}`;
 }
 
-export function getDashboardProgressStats(summaries: PlanSummary[]): {
-  percent: number;
-  completedModules: number;
-  totalModules: number;
-  completedTasks: number;
-  totalTasks: number;
-  planCount: number;
-} {
-  let completedModules = 0;
-  let totalModules = 0;
-  let completedTasks = 0;
-  let totalTasks = 0;
-
-  for (const summary of summaries) {
-    completedModules += summary.completedModules;
-    totalModules += summary.modules.length;
-    completedTasks += summary.completedTasks;
-    totalTasks += summary.totalTasks;
-  }
-
-  return {
-    percent:
-      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0,
-    completedModules,
-    totalModules,
-    completedTasks,
-    totalTasks,
-    planCount: summaries.length,
-  };
+export function getDashboardProgressStats(
+  summaries: PlanSummary[],
+): DashboardProgressTotals {
+  return buildDashboardProgressTotals(
+    summaries.map((summary) => ({
+      completedModules: summary.completedModules,
+      totalModules: summary.modules.length,
+      completedTasks: summary.completedTasks,
+      totalTasks: summary.totalTasks,
+    })),
+  );
 }
 
 export function getOrderedPlanModules(plan: PlanSummary): Module[] {
