@@ -254,7 +254,7 @@ Keep the mark upright, preserve proportions and retain the approved mark-to-word
 
 Create one complete outlined SVG lockup matching the light-on-dark reference, then derive its dark-on-light colorway from the same geometry. The source PNGs have equal 2172 × 724 canvases but visible bounds of 1177 × 258 (`logo-on-dark.png`) and 1874 × 427 (`logo-on-light.png`) at alpha ≥128. The companion `assets/lockup-display-crop.png` is **only a trimmed presentation copy**, not a new master or a normalization of both variants. [A01 §2]
 
-The social-image source also differs from the root metadata’s `/og-default.jpg` at 1200 × 630. Resolve filename, encoding, dimensions and metadata together during the asset migration; this package changes none of them. [R02]
+Social sharing uses the committed `brand/og-default.png` at 1200 × 630. Root and route metadata read `OG_DEFAULT_IMAGE` (`/brand/og-default.png`); there is no remaining root `/og-default.jpg` contract. [R02]
 
 ---
 
