@@ -158,7 +158,7 @@ export function BulkDeletePlansDialog({
 
     if (result.kind === 'success') {
       focusAfterCloseRef.current = 'success';
-      onOpenChange(false);
+      handleOpenChange(false);
       onDeleted(result.result);
       return;
     }
@@ -171,7 +171,7 @@ export function BulkDeletePlansDialog({
 
       if (result.outcomeUnknown) {
         focusAfterCloseRef.current = 'success';
-        onOpenChange(false);
+        handleOpenChange(false);
         onOutcomeUnknown();
         toast.error(
           'We could not confirm whether the selected plans were deleted. Refreshing the list before another deletion.',
