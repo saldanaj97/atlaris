@@ -246,10 +246,10 @@ describe('PlansList', () => {
 
   it('uses a stable cover from the fixed artwork set', () => {
     const allowedCovers = new Set([
-      '/artwork/cover-mountain-summit.jpg',
-      '/artwork/cover-observatory-night.jpg',
-      '/artwork/cover-lake-forest-dusk.jpg',
-      '/artwork/cover-coastal-inlet-dawn.jpg',
+      '/artwork/mountain-summit-blue-hour.webp',
+      '/artwork/mountain-observatory-night.webp',
+      '/artwork/forest-lake-milky-way.webp',
+      '/artwork/misty-coastal-cliffs.webp',
       '/artwork/cover-planetary-horizon.jpg',
     ]);
     const cover = getPlanCoverImage(activePlan.id);

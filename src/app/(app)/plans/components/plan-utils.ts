@@ -3,10 +3,10 @@ import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 type DateInput = Date | string | null | undefined;
 
 const PLAN_COVER_IMAGES = [
-  '/artwork/cover-mountain-summit.jpg',
-  '/artwork/cover-observatory-night.jpg',
-  '/artwork/cover-lake-forest-dusk.jpg',
-  '/artwork/cover-coastal-inlet-dawn.jpg',
+  '/artwork/mountain-summit-blue-hour.webp',
+  '/artwork/mountain-observatory-night.webp',
+  '/artwork/forest-lake-milky-way.webp',
+  '/artwork/misty-coastal-cliffs.webp',
   '/artwork/cover-planetary-horizon.jpg',
 ] as const;
 

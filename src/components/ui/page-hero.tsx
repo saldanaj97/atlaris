@@ -30,11 +30,11 @@ const artworkPresets: Record<PageHeroArtwork, PageHeroBackdrop> = {
   },
   'mountain-overlook': {
     desktop: {
-      src: '/artwork/plan-library-mountain-overlook-desktop.jpg',
+      src: '/artwork/mountain-summit-blue-hour.webp',
       objectPosition: '58% 50%',
     },
     mobile: {
-      src: '/artwork/plan-library-mountain-overlook-mobile.jpg',
+      src: '/artwork/mountain-summit-blue-hour.webp',
       objectPosition: '58% 50%',
     },
     overlay: 'background',

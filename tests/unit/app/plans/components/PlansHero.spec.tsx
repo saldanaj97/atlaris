@@ -63,4 +63,16 @@ describe('PlansHero', () => {
       within(hero).queryByRole('link', { name: /browse templates/i }),
     ).not.toBeInTheDocument();
   });
+
+  it('uses the summit still for the existing library artwork slot', () => {
+    render(<PlansHero />);
+
+    const hero = screen.getByRole('banner');
+    expect(
+      hero.querySelector('img[src*="mountain-summit-blue-hour.webp"]'),
+    ).not.toBeNull();
+    expect(
+      hero.querySelector('img[src*="plan-library-mountain-overlook"]'),
+    ).toBeNull();
+  });
 });

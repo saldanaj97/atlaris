@@ -27,11 +27,11 @@ const artworkSources: Record<
   },
   mountain: {
     desktop: {
-      src: '/artwork/cta-mountain-desktop.jpg',
+      src: '/artwork/mountain-summit-blue-hour.webp',
       objectPosition: '58% 50%',
     },
     mobile: {
-      src: '/artwork/cta-mountain-mobile.jpg',
+      src: '/artwork/mountain-summit-blue-hour.webp',
       objectPosition: '58% 50%',
     },
     overlay: 'background',

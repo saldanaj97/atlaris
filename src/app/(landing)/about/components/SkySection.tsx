@@ -73,7 +73,7 @@ export function SkySection() {
             style={{ ['--i' as string]: 1 }}
           >
             <Image
-              src='/artwork/about-mission-stargazing.jpg'
+              src='/artwork/mountain-explorer.webp'
               alt='Person standing under a constellation-filled night sky'
               width={800}
               height={450}

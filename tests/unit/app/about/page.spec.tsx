@@ -129,4 +129,22 @@ describe('AboutPage', () => {
     expect(screen.queryByText(/10,000/)).not.toBeInTheDocument();
     expect(screen.queryByText(/alex r\./i)).not.toBeInTheDocument();
   });
+
+  it('uses the shipped workspace and explorer stills in existing About figures', () => {
+    renderAboutTree();
+
+    expect(
+      screen.getByRole('img', {
+        name: 'Illustration of a laptop and desk at night',
+      }),
+    ).toHaveAttribute('src', expect.stringContaining('builder-workspace.webp'));
+    expect(
+      screen.getByRole('img', {
+        name: 'Person standing under a constellation-filled night sky',
+      }),
+    ).toHaveAttribute('src', expect.stringContaining('mountain-explorer.webp'));
+    expect(
+      document.querySelector('img[src*="mountain-summit-blue-hour.webp"]'),
+    ).not.toBeNull();
+  });
 });

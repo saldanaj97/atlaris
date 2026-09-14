@@ -18,7 +18,7 @@ export function BuilderSection() {
             style={{ ['--i' as string]: 0 }}
           >
             <Image
-              src='/artwork/about-builder-workspace.jpg'
+              src='/artwork/builder-workspace.webp'
               alt='Illustration of a laptop and desk at night'
               width={800}
               height={450}
