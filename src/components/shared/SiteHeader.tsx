@@ -65,51 +65,57 @@ export default async function SiteHeader() {
   let userName: string | undefined;
   let userImageUrl: string | undefined;
   if (authUserId) {
-    try {
-      const result = await requestBoundary.component(({ actor }) => ({
+    const entitlementPromise = requestBoundary
+      .component(({ actor }) => ({
         tier: actor.subscriptionTier,
         canCreatePlan: canCreatePlanOnCurrentTier(actor),
-      }));
-      tier = result?.tier;
-      canCreatePlan = result?.canCreatePlan;
-    } catch (err) {
-      // Non-critical for shell render: tier badge omitted; log for ops visibility.
-      logger.warn(
-        {
-          err,
-          authUserId,
-          source: 'SiteHeader.subscriptionTier',
-        },
-        'Subscription tier fetch failed; header renders without tier badge',
-      );
-    }
-
-    // Sidebar account row needs live name/avatar. Header Clerk UserButton
-    // still owns the compact header avatar when the rail is collapsed.
-    if (isLocalProductTestingAuthEnabled()) {
-      userName = devAuthEnv.name;
-    } else {
-      try {
-        const user = await currentUser();
-        if (user) {
-          const composedName = [user.firstName, user.lastName]
-            .filter(Boolean)
-            .join(' ');
-          userName =
-            (user.fullName ?? composedName) || user.username || undefined;
-          userImageUrl = user.imageUrl;
-        }
-      } catch (err) {
+      }))
+      .then((result) => {
+        tier = result?.tier;
+        canCreatePlan = result?.canCreatePlan;
+      })
+      .catch((err: unknown) => {
+        // Non-critical for shell render: tier badge omitted; log for ops visibility.
         logger.warn(
           {
             err,
             authUserId,
-            source: 'SiteHeader.currentUser',
+            source: 'SiteHeader.subscriptionTier',
           },
-          'Clerk user fetch failed; account chrome falls back to initials',
+          'Subscription tier fetch failed; header renders without tier badge',
         );
-      }
-    }
+      });
+
+    // Sidebar account row needs live name/avatar. Header Clerk UserButton
+    // still owns the compact header avatar when the rail is collapsed.
+    const profilePromise = isLocalProductTestingAuthEnabled()
+      ? Promise.resolve().then(() => {
+          userName = devAuthEnv.name;
+        })
+      : currentUser()
+          .then((user) => {
+            if (!user) {
+              return;
+            }
+            const composedName = [user.firstName, user.lastName]
+              .filter(Boolean)
+              .join(' ');
+            userName =
+              (user.fullName ?? composedName) || user.username || undefined;
+            userImageUrl = user.imageUrl;
+          })
+          .catch((err: unknown) => {
+            logger.warn(
+              {
+                err,
+                authUserId,
+                source: 'SiteHeader.currentUser',
+              },
+              'Clerk user fetch failed; account chrome falls back to initials',
+            );
+          });
+
+    await Promise.all([entitlementPromise, profilePromise]);
   }
 
   return (
