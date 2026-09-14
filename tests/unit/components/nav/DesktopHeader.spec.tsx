@@ -161,21 +161,36 @@ describe('DesktopHeader layout', () => {
       </TooltipProvider>,
     );
 
+    const header = container.firstElementChild?.firstElementChild;
+    expect(header).toHaveClass('md:grid');
+    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
+    expect(header).not.toHaveClass('md:flex');
+    expect(header).not.toHaveClass('lg:grid');
+    expect(header).not.toHaveClass('justify-between');
+
     for (const item of unauthenticatedNavItems) {
       expect(
         screen.getByRole('link', { name: item.label }),
       ).toBeInTheDocument();
     }
 
-    const nav = container.querySelector('nav');
-    expect(nav).not.toBeNull();
-    expect(within(nav!).getAllByRole('link')).toHaveLength(
+    const brand = screen.getByRole('link', {
+      name: 'Atlaris - Go to homepage',
+    });
+    const nav = screen.getByRole('navigation', {
+      name: 'Marketing navigation',
+    });
+    expect(header?.children).toHaveLength(3);
+    expect(header?.children[0]).toContainElement(brand);
+    expect(header?.children[1]).toContainElement(nav);
+    expect(brand.parentElement).not.toContainElement(nav);
+    expect(within(nav).getAllByRole('link')).toHaveLength(
       unauthenticatedNavItems.length,
     );
   });
 
   it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {
-    renderDesktopHeader({
+    const { container } = renderDesktopHeader({
       isMarketing: true,
       pathname: '/landing',
       navItems: unauthenticatedNavItems,
@@ -183,13 +198,20 @@ describe('DesktopHeader layout', () => {
       showClerkUserButton: true,
     });
 
+    const header = container.firstElementChild?.firstElementChild;
+    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
+
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',
       '/landing',
     );
-    expect(
-      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
-    ).toHaveAttribute('href', '/landing');
+    const brand = screen.getByRole('link', {
+      name: 'Atlaris - Go to homepage',
+    });
+    expect(brand).toHaveAttribute('href', '/landing');
+    expect(brand.parentElement).not.toContainElement(
+      screen.getByRole('navigation', { name: 'Marketing navigation' }),
+    );
     expect(screen.getByRole('link', { name: 'Pricing' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
       'href',

@@ -39,7 +39,7 @@ interface DesktopHeaderProps {
  * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
  * App layout: brand (left) | navigation (center) | auth controls (right)
- * Marketing layout: brand + nav (left) | sign-in + theme + inverse CTA (right)
+ * Marketing layout: brand (left) | navigation (center) | sign-in + theme + inverse CTA (right)
  */
 export default function DesktopHeader({
   isMarketing,
@@ -73,14 +73,12 @@ export default function DesktopHeader({
     <div
       className={cn(
         'relative hidden h-[64px] w-full items-center',
-        isAppShell ? 'lg:grid' : showMarketingChrome ? 'md:flex' : 'md:grid',
+        isAppShell ? 'lg:grid' : 'md:grid',
         showAppShellChrome
           ? appShellCollapsed
             ? 'grid-cols-[auto_minmax(0,1fr)]'
             : 'grid-cols-[minmax(0,1fr)_auto]'
-          : showMarketingChrome
-            ? 'justify-between gap-8'
-            : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
+          : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
       )}
     >
       {appShellCollapsed ? (
@@ -99,29 +97,17 @@ export default function DesktopHeader({
           </Button>
         </div>
       ) : !showAppShellChrome ? (
-        <div
-          className={cn(
-            'relative z-10 flex min-w-0 items-center',
-            showMarketingChrome ? 'gap-8 lg:gap-12' : 'justify-self-start',
-          )}
-        >
+        <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
           <BrandLogo />
-          {showMarketingChrome ? (
-            <DesktopNavigation
-              pathname={pathname}
-              navItems={navItems}
-              appearance='marketing'
-            />
-          ) : null}
         </div>
       ) : null}
 
-      {!showAppShellChrome && !showMarketingChrome ? (
+      {!showAppShellChrome ? (
         <div className='relative z-10 flex justify-self-center'>
           <DesktopNavigation
             pathname={pathname}
             navItems={navItems}
-            appearance='default'
+            appearance={showMarketingChrome ? 'marketing' : 'default'}
           />
         </div>
       ) : null}
