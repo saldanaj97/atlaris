@@ -37,13 +37,16 @@ export function HeroSection() {
       aria-labelledby='landing-hero-heading'
     >
       <ResponsiveBackdrop
+        className={styles.heroBackdrop}
         desktop={{
           src: '/artwork/landing-planet-desktop.jpg',
           objectPosition: '50% 50%',
+          className: styles.heroPlanet,
         }}
         mobile={{
           src: '/artwork/landing-planet-mobile.jpg',
           objectPosition: '50% 50%',
+          className: styles.heroPlanet,
         }}
         overlay='background'
         sizes='100vw'
