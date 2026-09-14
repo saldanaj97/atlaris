@@ -18,6 +18,7 @@ import { formatMinutes } from '@/features/plans/formatters';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, Lock } from 'lucide-react';
+import { useState } from 'react';
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -35,6 +36,7 @@ interface LessonProgressPanelProps {
   statuses: Record<string, ProgressStatus>;
   lessonLocks: boolean[];
   firstUnlockedIncompleteLessonId: string | undefined;
+  onSelectLesson: (lessonId: string) => void;
 }
 
 function LessonProgressPanel({
@@ -42,6 +44,7 @@ function LessonProgressPanel({
   statuses,
   lessonLocks,
   firstUnlockedIncompleteLessonId,
+  onSelectLesson,
 }: LessonProgressPanelProps) {
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter(
@@ -57,8 +60,8 @@ function LessonProgressPanel({
       aria-labelledby='lesson-progress-heading'
       className='min-w-0 xl:sticky xl:top-24'
     >
-      <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel-muted shadow-sm'>
-        <div className='min-w-0 px-4 py-4 sm:px-5'>
+      <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
+        <div className='min-w-0 px-4 py-4 max-xl:sr-only sm:px-5'>
           <h2
             id='lesson-progress-heading'
             className='text-xl leading-7 font-semibold text-foreground'
@@ -75,11 +78,11 @@ function LessonProgressPanel({
         </div>
 
         {totalLessons === 0 ? (
-          <p className='px-4 py-5 text-sm text-muted-foreground sm:px-5'>
+          <p className='px-4 py-5 text-sm text-muted-foreground max-xl:px-0 max-xl:pt-3 sm:px-5'>
             Lesson progress will appear when this module has lessons.
           </p>
         ) : (
-          <div className='min-w-0 px-4 py-4 sm:px-5 sm:py-5'>
+          <div className='min-w-0 px-4 py-4 max-xl:px-0 max-xl:pt-3 max-xl:pb-0 sm:px-5 sm:py-5'>
             <div className='flex min-w-0 items-center gap-3'>
               <Progress
                 value={completionPercent ?? 0}
@@ -150,6 +153,9 @@ function LessonProgressPanel({
                           href={`#lesson-${lesson.id}`}
                           aria-current={isCurrent ? 'step' : undefined}
                           className={rowClassName}
+                          onClick={() => {
+                            onSelectLesson(lesson.id);
+                          }}
                         >
                           {label}
                         </a>
@@ -189,14 +195,51 @@ export function ModuleLessonsClient({
   ).length;
   const isModuleComplete =
     totalLessons > 0 && completedLessons === totalLessons;
+  const completionPercent =
+    totalLessons > 0
+      ? Math.round((completedLessons / totalLessons) * 100)
+      : null;
 
   const { locks: lessonLocks, firstUnlockedIncompleteLessonId } =
     deriveLessonState(lessons, statuses, previousModulesComplete);
+  const [openLessonId, setOpenLessonId] = useState(
+    firstUnlockedIncompleteLessonId,
+  );
+  const [outlineOpen, setOutlineOpen] = useState(true);
 
   return (
     <>
       <div className='grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
-        <section aria-labelledby='lessons-heading' className='min-w-0'>
+        <details
+          className='min-w-0 xl:col-start-2 xl:row-start-1 xl:[&::details-content]:block'
+          open={outlineOpen}
+          onToggle={(event) => {
+            setOutlineOpen(event.currentTarget.open);
+          }}
+        >
+          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm xl:hidden [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
+            <span className='font-semibold'>Lesson progress</span>
+            {totalLessons > 0 ? (
+              <span className='text-muted-foreground tabular-nums'>
+                {`${completedLessons} of ${totalLessons}${
+                  completionPercent !== null ? ` · ${completionPercent}%` : ''
+                }`}
+              </span>
+            ) : null}
+          </summary>
+          <LessonProgressPanel
+            lessons={lessons}
+            statuses={statuses}
+            lessonLocks={lessonLocks}
+            firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
+            onSelectLesson={setOpenLessonId}
+          />
+        </details>
+
+        <section
+          aria-labelledby='lessons-heading'
+          className='min-w-0 xl:col-start-1 xl:row-start-1'
+        >
           <div className='mb-6 flex min-w-0 items-baseline justify-between gap-4 border-b border-border pb-2'>
             <h2
               id='lessons-heading'
@@ -232,7 +275,10 @@ export function ModuleLessonsClient({
             <Accordion
               type='single'
               collapsible
-              defaultValue={firstUnlockedIncompleteLessonId}
+              value={openLessonId ?? ''}
+              onValueChange={(value) => {
+                setOpenLessonId(value === '' ? undefined : value);
+              }}
               className='space-y-4'
             >
               {lessons.map((lesson, index) => {
@@ -251,13 +297,6 @@ export function ModuleLessonsClient({
             </Accordion>
           )}
         </section>
-
-        <LessonProgressPanel
-          lessons={lessons}
-          statuses={statuses}
-          lessonLocks={lessonLocks}
-          firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
-        />
       </div>
 
       {isModuleComplete && (

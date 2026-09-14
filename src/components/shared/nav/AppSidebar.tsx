@@ -52,7 +52,7 @@ function NavIcon({ href }: { href: string }) {
   return (
     <Icon
       aria-hidden='true'
-      className='size-[var(--at-primitive-size-icon-default,1.25rem)] shrink-0'
+      className='size-(--at-primitive-size-icon-default,1.25rem) shrink-0'
     />
   );
 }
@@ -94,7 +94,7 @@ export default function AppSidebar({
         className,
       )}
     >
-      <div className='flex h-[var(--at-semantic-layout-header-min,4rem)] shrink-0 items-center gap-2 px-[var(--at-primitive-space-4,1rem)] pt-[env(safe-area-inset-top,0px)]'>
+      <div className='flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center gap-2 px-(--at-primitive-space-4,1rem) pt-[env(safe-area-inset-top,0px)]'>
         <div className='min-w-0 flex-1'>
           <BrandLogo size='sm' onClick={onNavigate} />
         </div>
@@ -105,7 +105,7 @@ export default function AppSidebar({
             aria-controls={id}
             aria-expanded='true'
             aria-label={DESKTOP_SIDEBAR_COLLAPSE_LABEL}
-            className='flex size-[var(--at-semantic-size-control-touch,2.75rem)] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+            className='flex size-(--at-semantic-size-control-touch,2.75rem) shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
             onClick={onDesktopCollapse}
           >
             <PanelLeftClose aria-hidden='true' className='size-4' />
@@ -115,7 +115,7 @@ export default function AppSidebar({
 
       <nav
         aria-label={navigationLabel}
-        className='flex min-h-0 flex-1 flex-col gap-[var(--at-primitive-space-1,0.25rem)] overflow-y-auto px-[var(--at-primitive-space-4,1rem)] py-[var(--at-primitive-space-6,1.5rem)]'
+        className='flex min-h-0 flex-1 flex-col gap-(--at-primitive-space-1,0.25rem) overflow-y-auto px-(--at-primitive-space-4,1rem) py-(--at-primitive-space-6,1.5rem)'
       >
         {navItems.map((item) => {
           const isActive = isNavItemActive(pathname, item);
@@ -132,7 +132,7 @@ export default function AppSidebar({
                   onClick={onNavigate}
                   aria-current={isCurrent ? 'page' : undefined}
                   className={cn(
-                    'group relative flex min-h-[var(--at-component-navigation-item-height,2.75rem)] min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'group relative flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
                     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
                     isActive
                       ? 'bg-action-soft text-sidebar-foreground'
@@ -155,7 +155,7 @@ export default function AppSidebar({
                     aria-controls={subnavId}
                     aria-expanded={isExpanded}
                     aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.label}`}
-                    className='flex size-[var(--at-semantic-size-control-touch,2.75rem)] shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+                    className='flex size-(--at-semantic-size-control-touch,2.75rem) shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
                     onClick={() =>
                       setExpandedItems((current) => ({
                         ...current,
@@ -188,7 +188,7 @@ export default function AppSidebar({
                         onClick={onNavigate}
                         aria-current={isSubActive ? 'page' : undefined}
                         className={cn(
-                          'flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                          'flex min-h-(--at-component-navigation-item-height,2.75rem) items-center rounded-lg px-3 py-2 text-sm transition-colors',
                           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
                           isSubActive
                             ? 'bg-action-soft text-sidebar-foreground'
@@ -223,7 +223,7 @@ export default function AppSidebar({
           href={ROUTES.SETTINGS.PROFILE}
           onClick={onNavigate}
           aria-label='Account settings'
-          className='flex min-h-[var(--at-component-navigation-item-height,2.75rem)] items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+          className='flex min-h-(--at-component-navigation-item-height,2.75rem) items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
         >
           <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
           <span className='min-w-0 flex-1'>

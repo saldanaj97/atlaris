@@ -2,6 +2,7 @@ import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { lesson, renderClient } from './module-lessons-client-test-utils';
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -90,5 +91,64 @@ describe('ModuleLessonsClient progress rail', () => {
     ).toBeInTheDocument();
     expect(screen.getByText('No lessons yet')).toBeInTheDocument();
     expect(screen.queryByRole('progressbar')).not.toBeInTheDocument();
+  });
+
+  it('places a lesson-progress disclosure before the reading column', () => {
+    renderClient({
+      lessons: [lesson],
+      lessonGeneration: {
+        status: 'ready',
+        startedAt: null,
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    const disclosure = document.querySelector('details');
+    const lessonsHeading = screen.getByRole('heading', { name: 'Lessons' });
+
+    expect(disclosure).not.toBeNull();
+    expect(disclosure?.querySelector('summary')).toHaveTextContent(
+      'Lesson progress',
+    );
+    expect(
+      disclosure!.compareDocumentPosition(lessonsHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('opens the selected lesson when a progress link is activated', async () => {
+    const user = userEvent.setup();
+    const secondLesson: ModuleDetailTask = {
+      ...lesson,
+      id: createId('task'),
+      order: 2,
+      title: 'Second lesson',
+      estimatedMinutes: 15,
+    };
+
+    renderClient({
+      lessons: [lesson, secondLesson],
+      statuses: { [lesson.id]: 'completed' },
+      lessonGeneration: {
+        status: 'ready',
+        startedAt: null,
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    const firstTrigger = screen.getByRole('button', { name: /First lesson/ });
+    const secondTrigger = screen.getByRole('button', { name: /Second lesson/ });
+
+    expect(firstTrigger).toHaveAttribute('data-state', 'closed');
+    expect(secondTrigger).toHaveAttribute('data-state', 'open');
+
+    await user.click(screen.getByRole('link', { name: /1\. First lesson/ }));
+
+    expect(firstTrigger).toHaveAttribute('data-state', 'open');
+    expect(secondTrigger).toHaveAttribute('data-state', 'closed');
   });
 });
