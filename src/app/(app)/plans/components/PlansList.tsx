@@ -14,6 +14,10 @@ import {
 } from '@/app/(app)/plans/components/BulkDeletePlansDialog';
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { PlanRow } from '@/app/(app)/plans/components/PlanRow';
+import {
+  PLANS_LIBRARY_SEARCH_ID,
+  plansLibrarySearchFocusRef,
+} from '@/app/(app)/plans/components/plans-library-search';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -35,12 +39,6 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { type RefObject, useRef, useState, useTransition } from 'react';
 import { toast } from 'sonner';
-
-export const PLANS_LIBRARY_SEARCH_ID = 'plans-library-search';
-
-export const plansLibrarySearchFocusRef: RefObject<HTMLInputElement | null> = {
-  current: null,
-};
 
 interface PlansListProps {
   page: PlanListPage;
