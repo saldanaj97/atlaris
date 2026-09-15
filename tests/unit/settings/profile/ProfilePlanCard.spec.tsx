@@ -14,11 +14,11 @@ vi.mock(
   }),
 );
 
-async function renderPlanCard(): Promise<void> {
+async function renderPlanCard(locale = 'en-US'): Promise<void> {
   const { ProfilePlanCard } =
     await import('@/app/(app)/settings/profile/components/ProfilePlanCard');
 
-  render(await ProfilePlanCard());
+  render(await ProfilePlanCard({ locale }));
 }
 
 describe('ProfilePlanCard', () => {
@@ -27,7 +27,7 @@ describe('ProfilePlanCard', () => {
     mocks.loadBillingSnapshotMock.mockResolvedValue({
       tier: 'free',
       subscriptionStatus: 'active',
-      subscriptionPeriodEnd: null,
+      subscriptionPeriodEnd: new Date('2026-07-01T00:00:00.000Z'),
       cancelAtPeriodEnd: false,
       usage: {
         tier: 'free',
@@ -38,6 +38,11 @@ describe('ProfilePlanCard', () => {
   });
 
   it('renders the current tier, real feature list, and pricing link', async () => {
+    const nextBilling = new Date('2026-07-01T00:00:00.000Z').toLocaleDateString(
+      'en-US',
+      { year: 'numeric', month: 'short', day: 'numeric' },
+    );
+
     await renderPlanCard();
 
     expect(screen.getByRole('heading', { name: 'Plan' })).toBeVisible();
@@ -46,6 +51,10 @@ describe('ProfilePlanCard', () => {
     ).toBeVisible();
     expect(screen.getByText('Free Plan')).toBeVisible();
     expect(screen.getByText('For finding your rhythm.')).toBeVisible();
+    expect(screen.getByText('Status')).toBeVisible();
+    expect(screen.getByText('Active')).toBeVisible();
+    expect(screen.getByText('Next billing date')).toBeVisible();
+    expect(screen.getByText(nextBilling)).toBeVisible();
     expect(screen.getByRole('link', { name: /View plans/ })).toHaveAttribute(
       'href',
       ROUTES.PRICING,
@@ -66,5 +75,27 @@ describe('ProfilePlanCard', () => {
     expect(
       screen.queryByRole('link', { name: /View plans/ }),
     ).not.toBeInTheDocument();
+    expect(screen.queryByText('Status')).not.toBeInTheDocument();
+  });
+
+  it('shows an em dash when the next billing date is missing', async () => {
+    mocks.loadBillingSnapshotMock.mockResolvedValueOnce({
+      tier: 'free',
+      subscriptionStatus: 'canceled',
+      subscriptionPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      usage: {
+        tier: 'free',
+        activePlans: { current: 1, limit: 1 },
+        regenerations: { used: 0, limit: 0 },
+      },
+    });
+
+    await renderPlanCard();
+
+    expect(screen.getByText('Status')).toBeVisible();
+    expect(screen.getByText('Canceled')).toBeVisible();
+    expect(screen.getByText('Next billing date')).toBeVisible();
+    expect(screen.getByText('—')).toBeVisible();
   });
 });

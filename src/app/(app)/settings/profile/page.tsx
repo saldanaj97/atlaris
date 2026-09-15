@@ -15,7 +15,7 @@ export default async function SettingsProfilePage(): Promise<ReactElement> {
     <SettingsLedgerPanel>
       <ProfileForm locale={locale} />
       <Suspense fallback={<ProfilePlanCardSkeleton />}>
-        <ProfilePlanCard />
+        <ProfilePlanCard locale={locale} />
       </Suspense>
     </SettingsLedgerPanel>
   );

@@ -15,6 +15,13 @@ import { ROUTES } from '@/features/navigation/routes';
 import { ArrowRight, Check, Crown } from 'lucide-react';
 import Link from 'next/link';
 
+type SubscriptionStatus =
+  | 'active'
+  | 'canceled'
+  | 'past_due'
+  | 'trialing'
+  | null;
+
 const PLAN_BLURBS: Record<SubscriptionTier, string> = {
   free: 'For finding your rhythm.',
   starter: 'For building a steady practice.',
@@ -29,7 +36,47 @@ function isSubscriptionTier(value: string): value is SubscriptionTier {
   return value === 'free' || value === 'starter' || value === 'pro';
 }
 
-export async function ProfilePlanCard(): Promise<ReactElement> {
+function formatNextBilling(
+  subscriptionPeriodEnd: Date | string | null | undefined,
+  locale?: string,
+): string {
+  if (!subscriptionPeriodEnd) {
+    return '—';
+  }
+
+  return new Date(subscriptionPeriodEnd).toLocaleDateString(locale ?? 'en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+  });
+}
+
+function formatSubscriptionStatus(status: SubscriptionStatus): string {
+  if (!status) {
+    return '—';
+  }
+
+  switch (status) {
+    case 'active':
+      return 'Active';
+    case 'canceled':
+      return 'Canceled';
+    case 'past_due':
+      return 'Past due';
+    case 'trialing':
+      return 'Trialing';
+    default: {
+      const _exhaustiveCheck: never = status;
+      return _exhaustiveCheck;
+    }
+  }
+}
+
+export async function ProfilePlanCard({
+  locale,
+}: {
+  locale?: string;
+} = {}): Promise<ReactElement> {
   const snapshot = await loadBillingSnapshot();
 
   if (!snapshot || !isSubscriptionTier(snapshot.tier)) {
@@ -51,6 +98,10 @@ export async function ProfilePlanCard(): Promise<ReactElement> {
 
   const tierName = formatPlanTierName(snapshot.tier);
   const features = PRICING_PLAN_FEATURES[snapshot.tier];
+  const subscriptionStatus = formatSubscriptionStatus(
+    snapshot.subscriptionStatus,
+  );
+  const nextBilling = formatNextBilling(snapshot.subscriptionPeriodEnd, locale);
 
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
@@ -88,6 +139,22 @@ export async function ProfilePlanCard(): Promise<ReactElement> {
               </Link>
             </Button>
           </div>
+          <dl className='grid gap-[12px] border-t border-border pt-[16px]'>
+            <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
+              <dt className='text-sm leading-[22px] text-foreground'>Status</dt>
+              <dd className='text-sm leading-[22px] text-muted-foreground'>
+                {subscriptionStatus}
+              </dd>
+            </div>
+            <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
+              <dt className='text-sm leading-[22px] text-foreground'>
+                Next billing date
+              </dt>
+              <dd className='text-sm leading-[22px] text-muted-foreground'>
+                {nextBilling}
+              </dd>
+            </div>
+          </dl>
           <ul className='grid gap-[12px] @min-[32rem]:grid-cols-2'>
             {features.map((feature) => (
               <li key={feature} className='flex min-w-0 items-start gap-[8px]'>

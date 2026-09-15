@@ -69,22 +69,38 @@ describe('SettingsSectionNavigation', () => {
   });
 
   it('marks the pathname section current and links to settings subroutes', () => {
-    mocks.usePathnameMock.mockReturnValue('/settings/billing');
+    mocks.usePathnameMock.mockReturnValue('/settings/usage');
 
     renderSettingsNav();
 
-    expect(
-      screen.getByRole('link', { name: /Plan & billing/ }),
-    ).toHaveAttribute('href', '/settings/billing');
-    expect(
-      screen.getByRole('link', { name: /Plan & billing/ }),
-    ).toHaveAttribute('aria-current', 'page');
+    expect(screen.queryByRole('link', { name: /Plan & billing/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Usage/ })).toHaveAttribute(
+      'href',
+      '/settings/usage',
+    );
+    expect(screen.getByRole('link', { name: /Usage/ })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
     expect(screen.getByRole('link', { name: /Profile/ })).toHaveAttribute(
       'href',
       '/settings/profile',
     );
     expect(screen.getByRole('link', { name: /Profile/ })).not.toHaveAttribute(
       'aria-current',
+    );
+    expect(contentHeading()).toHaveTextContent('Account');
+  });
+
+  it('treats the billing checkout route as the profile tab', () => {
+    mocks.usePathnameMock.mockReturnValue('/settings/billing');
+
+    renderSettingsNav();
+
+    expect(screen.queryByRole('link', { name: /Plan & billing/ })).toBeNull();
+    expect(screen.getByRole('link', { name: /Profile/ })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
     expect(contentHeading()).toHaveTextContent('Account');
   });
@@ -108,7 +124,7 @@ describe('SettingsSectionNavigation', () => {
     );
     expect(contentHeading()).toHaveTextContent('Notifications');
 
-    mocks.usePathnameMock.mockReturnValue('/settings/billing');
+    mocks.usePathnameMock.mockReturnValue('/settings/usage');
     rerender(
       <>
         <SettingsSectionNavigation />
