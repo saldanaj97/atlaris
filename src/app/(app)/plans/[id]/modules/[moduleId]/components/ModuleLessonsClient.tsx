@@ -238,11 +238,21 @@ export function ModuleLessonsClient({
   const [userOpenLessonId, setUserOpenLessonId] = useState<
     string | undefined | null
   >(null);
+  const [appliedHashLessonId, setAppliedHashLessonId] =
+    useState(hashedLessonId);
+  const [outlineOpen, setOutlineOpen] = useState(true);
+
+  if (hashedLessonId !== appliedHashLessonId) {
+    setAppliedHashLessonId(hashedLessonId);
+    if (hashedLessonId !== undefined) {
+      setUserOpenLessonId(null);
+    }
+  }
+
   const openLessonId =
     userOpenLessonId === null
       ? (hashedLessonId ?? firstUnlockedIncompleteLessonId)
       : userOpenLessonId;
-  const [outlineOpen, setOutlineOpen] = useState(true);
 
   return (
     <>

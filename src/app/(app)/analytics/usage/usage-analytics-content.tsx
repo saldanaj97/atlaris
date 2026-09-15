@@ -66,8 +66,8 @@ export function UsageAnalyticsContent({
           eyebrow='Overview'
           id='usage-completion-heading'
           title='Current completion'
-          description='Progress across every plan, based on the tasks and modules you have completed.'
-          aside='All plans'
+          description='Progress across plans you can access, based on the tasks and modules you have completed.'
+          aside='Accessible plans'
         />
         <div className='grid gap-4 md:grid-cols-3'>
           {completionCards.map((card) => (

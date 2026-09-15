@@ -201,6 +201,12 @@ describe('UsageAnalyticsContent', () => {
         .querySelector('[data-slot="dissolved-backdrop"]'),
     ).not.toBeNull();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
+    expect(screen.getByText('Accessible plans')).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Progress across plans you can access, based on the tasks and modules you have completed.',
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText('Learning activity')).toBeInTheDocument();
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
     expect(

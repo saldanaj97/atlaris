@@ -1,7 +1,7 @@
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { lesson, renderClient } from './module-lessons-client-test-utils';
-import { screen, within } from '@testing-library/react';
+import { act, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -222,6 +222,51 @@ describe('ModuleLessonsClient progress rail', () => {
     expect(
       screen.getByRole('button', { name: /Second lesson/ }),
     ).toHaveAttribute('data-state', 'open');
+  });
+
+  it('opens the lesson named by a later hash change after a user selection', async () => {
+    const user = userEvent.setup();
+    const secondLesson: ModuleDetailTask = {
+      ...lesson,
+      id: createId('task'),
+      order: 2,
+      title: 'Second lesson',
+      estimatedMinutes: 15,
+    };
+
+    renderClient({
+      lessons: [lesson, secondLesson],
+      statuses: { [lesson.id]: 'completed' },
+      lessonGeneration: {
+        status: 'ready',
+        startedAt: null,
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    const firstTrigger = screen.getByRole('button', { name: /First lesson/ });
+    const secondTrigger = screen.getByRole('button', { name: /Second lesson/ });
+    const disclosure = within(progressDisclosure());
+
+    await user.click(
+      disclosure.getByRole('link', { name: /1\. First lesson/ }),
+    );
+    expect(firstTrigger).toHaveAttribute('data-state', 'open');
+
+    await user.click(
+      disclosure.getByRole('link', { name: /2\. Second lesson/ }),
+    );
+    expect(secondTrigger).toHaveAttribute('data-state', 'open');
+
+    act(() => {
+      window.location.hash = `#lesson-${lesson.id}`;
+      window.dispatchEvent(new HashChangeEvent('hashchange'));
+    });
+
+    expect(firstTrigger).toHaveAttribute('data-state', 'open');
+    expect(secondTrigger).toHaveAttribute('data-state', 'closed');
   });
 });
 
