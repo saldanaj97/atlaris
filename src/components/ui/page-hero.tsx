@@ -4,6 +4,7 @@ import type {
 } from '@/components/ui/responsive-backdrop';
 import type { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react';
 
+import { DissolvedBackdrop } from '@/components/ui/dissolved-backdrop';
 import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { cn } from '@/lib/utils';
@@ -47,6 +48,7 @@ export interface PageHeroProps extends Omit<
 > {
   artwork?: PageHeroArtwork;
   as?: ElementType;
+  dissolve?: boolean;
   overlay?: ResponsiveBackdropProps['overlay'];
   desktop?: Partial<ResponsiveBackdropSource>;
   mobile?: Partial<ResponsiveBackdropSource>;
@@ -78,6 +80,7 @@ function mergeBackdropSource(
 export function PageHero({
   artwork = 'planetary-horizon',
   as: Comp = 'header',
+  dissolve = false,
   overlay,
   desktop,
   mobile,
@@ -99,6 +102,7 @@ export function PageHero({
   const preset = artworkPresets[artwork];
   const hasChrome =
     overline != null || title != null || description != null || actions != null;
+  const Backdrop = dissolve ? DissolvedBackdrop : ResponsiveBackdrop;
 
   return (
     <Comp
@@ -106,7 +110,7 @@ export function PageHero({
       className={cn('relative isolate overflow-hidden', className)}
       {...props}
     >
-      <ResponsiveBackdrop
+      <Backdrop
         desktop={mergeBackdropSource(preset.desktop, desktop)}
         mobile={mergeBackdropSource(preset.mobile, mobile)}
         overlay={overlay ?? preset.overlay}

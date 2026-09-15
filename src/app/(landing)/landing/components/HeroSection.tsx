@@ -5,7 +5,7 @@ import {
   marketingSecondaryCtaClassName,
 } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { DissolvedBackdrop } from '@/components/ui/dissolved-backdrop';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
@@ -36,17 +36,14 @@ export function HeroSection() {
       className={`relative isolate overflow-hidden ${styles.hero}`}
       aria-labelledby='landing-hero-heading'
     >
-      <ResponsiveBackdrop
-        className={styles.heroBackdrop}
+      <DissolvedBackdrop
         desktop={{
           src: '/artwork/landing-planet-desktop.jpg',
           objectPosition: '50% 50%',
-          className: styles.heroPlanet,
         }}
         mobile={{
           src: '/artwork/landing-planet-mobile.jpg',
           objectPosition: '50% 50%',
-          className: styles.heroPlanet,
         }}
         overlay='background'
         sizes='100vw'

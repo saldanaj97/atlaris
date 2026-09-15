@@ -14,7 +14,8 @@ export function PlansHero({
   return (
     <PageHero
       artwork='mountain-overlook'
-      className='mb-6 rounded-[12px] bg-panel shadow-sm'
+      dissolve
+      className='mb-6'
       contentClassName='relative flex min-h-[22rem] flex-col px-0 pt-8 pb-5 sm:min-h-[26rem] sm:pt-10 sm:pb-6'
       overline='Your plans'
       overlineIcon={<Sparkles aria-hidden='true' className='size-4' />}

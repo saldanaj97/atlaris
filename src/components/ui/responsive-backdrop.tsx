@@ -15,6 +15,7 @@ export interface ResponsiveBackdropProps {
   overlay?: 'panel' | 'background';
   sizes?: ImageProps['sizes'];
   className?: string;
+  slot?: string;
 }
 
 const overlayClassNames: Record<
@@ -33,10 +34,11 @@ export function ResponsiveBackdrop({
   overlay = 'panel',
   sizes = '100vw',
   className,
+  slot = 'responsive-backdrop',
 }: ResponsiveBackdropProps) {
   return (
     <div
-      data-slot='responsive-backdrop'
+      data-slot={slot}
       aria-hidden='true'
       className={cn(
         'pointer-events-none absolute inset-0 hidden dark:block',

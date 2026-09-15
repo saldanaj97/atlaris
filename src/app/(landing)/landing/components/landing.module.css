@@ -41,35 +41,6 @@
   background: var(--background);
 }
 
-/* Dissolve the planet plate into --background so the JPEG does not read as a box. */
-.heroPlanet {
-  -webkit-mask-image: radial-gradient(
-    ellipse 108% 100% at 68% 48%,
-    #000 48%,
-    rgb(0 0 0 / 0.88) 74%,
-    rgb(0 0 0 / 0.32) 90%,
-    transparent 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 108% 100% at 68% 48%,
-    #000 48%,
-    rgb(0 0 0 / 0.88) 74%,
-    rgb(0 0 0 / 0.32) 90%,
-    transparent 100%
-  );
-}
-
-.heroBackdrop::after {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(to left, var(--background), transparent 10%),
-    linear-gradient(to bottom, var(--background), transparent 14%),
-    linear-gradient(to top, var(--background), transparent 14%);
-  content: '';
-}
-
 .heroOverline,
 .heroLead,
 .heroEmphasis,
@@ -257,23 +228,6 @@
 }
 
 @media (max-width: 767px) {
-  .heroPlanet {
-    -webkit-mask-image: radial-gradient(
-      ellipse 120% 96% at 60% 56%,
-      #000 42%,
-      rgb(0 0 0 / 0.86) 70%,
-      rgb(0 0 0 / 0.3) 88%,
-      transparent 100%
-    );
-    mask-image: radial-gradient(
-      ellipse 120% 96% at 60% 56%,
-      #000 42%,
-      rgb(0 0 0 / 0.86) 70%,
-      rgb(0 0 0 / 0.3) 88%,
-      transparent 100%
-    );
-  }
-
   .heroRoute {
     position: relative;
     inset: auto;

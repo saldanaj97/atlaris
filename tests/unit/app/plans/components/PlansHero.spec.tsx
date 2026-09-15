@@ -69,6 +69,9 @@ describe('PlansHero', () => {
 
     const hero = screen.getByRole('banner');
     expect(
+      hero.querySelector('[data-slot="dissolved-backdrop"]'),
+    ).not.toBeNull();
+    expect(
       hero.querySelector('img[src*="mountain-summit-blue-hour.webp"]'),
     ).not.toBeNull();
     expect(
