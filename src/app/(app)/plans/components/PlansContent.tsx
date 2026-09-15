@@ -32,8 +32,7 @@ export async function PlansLibraryChrome({
 }
 
 /**
- * Async component that fetches user plans and renders content.
- * Wrapped in Suspense boundary by the parent page.
+ * Entitlement CTA streamed into the plans hero.
  */
 export async function PlansHeaderCreateAction({
   dataPromise,
@@ -61,6 +60,10 @@ export async function PlansHeaderCreateAction({
   );
 }
 
+/**
+ * Async component that fetches user plans and renders content.
+ * Wrapped in Suspense boundary by the parent page.
+ */
 export async function PlansContent({
   dataPromise,
   query,
