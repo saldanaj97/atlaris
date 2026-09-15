@@ -6,7 +6,6 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type React from 'react';
 
-import { getPlanCoverImage } from '@/app/(app)/plans/components/plan-utils';
 import {
   PlansLibraryToolbar,
   PlansList,
@@ -244,18 +243,13 @@ describe('PlansList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses a stable cover from the fixed artwork set', () => {
-    const allowedCovers = new Set([
-      '/artwork/mountain-summit-blue-hour.webp',
-      '/artwork/mountain-observatory-night.webp',
-      '/artwork/forest-lake-milky-way.webp',
-      '/artwork/misty-coastal-cliffs.webp',
-      '/artwork/cover-planetary-horizon.jpg',
-    ]);
-    const cover = getPlanCoverImage(activePlan.id);
+  it('renders plan cards without cover artwork', () => {
+    renderPlansList();
 
-    expect(getPlanCoverImage(activePlan.id)).toBe(cover);
-    expect(allowedCovers.has(cover)).toBe(true);
+    expect(document.querySelector('img')).toBeNull();
+    expect(
+      screen.getByRole('heading', { name: activePlan.topic }),
+    ).toBeInTheDocument();
   });
 
   it('keeps search and sort query-backed in the library chrome', () => {

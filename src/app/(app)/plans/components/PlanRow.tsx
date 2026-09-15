@@ -3,10 +3,7 @@
 import type { PlanListItem } from '@/features/plans/read-projection/types';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
-import {
-  getPlanCoverImage,
-  getPlanLastActivityRelative,
-} from '@/app/(app)/plans/components/plan-utils';
+import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
 import {
   getPlanStatusBadgeClassName,
   getPlanStatusDotClassName,
@@ -31,7 +28,6 @@ import {
   Sparkles,
   Trash2,
 } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { type RefObject, useRef, useState } from 'react';
 
@@ -152,21 +148,10 @@ export function PlanRow({
       )}
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
-      <div className='relative aspect-[16/9] shrink-0 overflow-hidden bg-panel-muted'>
-        <Image
-          src={getPlanCoverImage(plan.id)}
-          alt=''
-          fill
-          sizes='(max-width: 639px) 100vw, (max-width: 1279px) 50vw, 33vw'
-          className='object-cover transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transform-none motion-reduce:transition-none'
-        />
-        <div
-          aria-hidden='true'
-          className='absolute inset-0 bg-linear-to-t from-[#070b10]/85 via-[#070b10]/10 to-[#070b10]/35'
-        />
-        <div className='absolute top-3 right-3 left-3 flex items-start justify-between gap-2'>
+      <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
+        <div className='flex items-start justify-between gap-2'>
           <div className='flex min-w-0 items-center gap-2'>
-            <label className='inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-[#070b10]/55 backdrop-blur-sm'>
+            <label className='inline-flex min-h-[44px] min-w-[44px] items-center justify-center'>
               <input
                 type='checkbox'
                 checked={selected}
@@ -179,15 +164,12 @@ export function PlanRow({
                 onChange={(event) =>
                   onSelectionChange?.(plan.id, event.currentTarget.checked)
                 }
-                className='size-[20px] shrink-0 rounded-[4px] border border-white/70 accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-[#070b10] disabled:cursor-not-allowed disabled:border-white/40 disabled:bg-white/15 disabled:accent-disabled disabled:opacity-100'
+                className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
               />
             </label>
             <Badge
               variant='outline'
-              className={cn(
-                'border-white/25 bg-[#070b10]/60 text-white backdrop-blur-sm',
-                getPlanStatusBadgeClassName(plan.status),
-              )}
+              className={getPlanStatusBadgeClassName(plan.status)}
             >
               <span
                 className={cn(
@@ -218,7 +200,6 @@ export function PlanRow({
                   size='icon-sm'
                   title='Plan actions'
                   aria-label={`Actions for ${plan.topic}`}
-                  className='bg-[#070b10]/55 text-white hover:bg-[#070b10]/75 hover:text-white focus-visible:ring-offset-[#070b10]'
                 >
                   <MoreVertical />
                 </Button>
@@ -236,10 +217,8 @@ export function PlanRow({
             </DropdownMenu>
           </div>
         </div>
-      </div>
 
-      <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
-        <div className='min-w-0'>
+        <div className='mt-3 min-w-0'>
           <h2 className='text-lg leading-6 font-semibold wrap-break-word text-foreground'>
             {isLocked ? (
               plan.topic

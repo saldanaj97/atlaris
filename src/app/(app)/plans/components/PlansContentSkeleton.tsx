@@ -44,8 +44,11 @@ export function PlansContentSkeleton() {
 function PlanCardSkeleton() {
   return (
     <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
-      <Skeleton className='aspect-[16/9] w-full rounded-none' />
       <div className='space-y-4 p-4 sm:p-5'>
+        <div className='flex items-center justify-between gap-2'>
+          <Skeleton className='h-6 w-20' />
+          <Skeleton className='size-8 rounded-[8px]' />
+        </div>
         <div className='space-y-2'>
           <Skeleton className='h-5 w-3/4' />
           <Skeleton className='h-4 w-full' />
