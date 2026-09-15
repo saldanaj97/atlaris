@@ -53,8 +53,10 @@ describe('ProfilePlanCard', () => {
     expect(screen.getByText('For finding your rhythm.')).toBeVisible();
     expect(screen.getByText('Status')).toBeVisible();
     expect(screen.getByText('Active')).toBeVisible();
-    expect(screen.getByText('Next billing date')).toBeVisible();
-    expect(screen.getByText(nextBilling)).toBeVisible();
+    expect(screen.getByText('Billing')).toBeVisible();
+    expect(screen.getByText('—')).toBeVisible();
+    expect(screen.queryByText('Next billing date')).not.toBeInTheDocument();
+    expect(screen.queryByText(nextBilling)).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: /View plans/ })).toHaveAttribute(
       'href',
       ROUTES.PRICING,
@@ -95,7 +97,32 @@ describe('ProfilePlanCard', () => {
 
     expect(screen.getByText('Status')).toBeVisible();
     expect(screen.getByText('Canceled')).toBeVisible();
-    expect(screen.getByText('Next billing date')).toBeVisible();
+    expect(screen.getByText('Billing')).toBeVisible();
     expect(screen.getByText('—')).toBeVisible();
+    expect(screen.queryByText('Next billing date')).not.toBeInTheDocument();
+  });
+
+  it('labels a cancel-at-period-end paid plan by access end date', async () => {
+    const accessEnds = new Date('2026-08-15T00:00:00.000Z').toLocaleDateString(
+      'en-US',
+      { year: 'numeric', month: 'short', day: 'numeric' },
+    );
+    mocks.loadBillingSnapshotMock.mockResolvedValueOnce({
+      tier: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date('2026-08-15T00:00:00.000Z'),
+      cancelAtPeriodEnd: true,
+      usage: {
+        tier: 'pro',
+        activePlans: { current: 1, limit: 20 },
+        regenerations: { used: 0, limit: 20 },
+      },
+    });
+
+    await renderPlanCard();
+
+    expect(screen.getByText('Access ends')).toBeVisible();
+    expect(screen.getByText(accessEnds)).toBeVisible();
+    expect(screen.queryByText('Next billing date')).not.toBeInTheDocument();
   });
 });

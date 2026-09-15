@@ -485,44 +485,4 @@ describe('buildUsageAnalyticsModel', () => {
       { id: 'other', topic: 'Other', completedMinutes: 10, percent: 4 },
     ]);
   });
-
-  it('lists the newest recorded events with plan topics', () => {
-    const model = buildUsageAnalyticsModel(
-      [
-        planSummary({ id: 'plan-1', topic: 'React' }),
-        planSummary({ id: 'plan-2', topic: 'SQL' }),
-      ],
-      {
-        activityEvents: [
-          activityEvent({
-            planId: 'plan-1',
-            status: 'completed',
-            occurredAt: new Date('2026-06-23T12:00:00.000Z'),
-          }),
-          activityEvent({
-            planId: 'plan-2',
-            status: 'in_progress',
-            occurredAt: new Date('2026-06-25T12:00:00.000Z'),
-          }),
-          activityEvent({
-            planId: 'plan-1',
-            status: 'not_started',
-            occurredAt: new Date('2026-06-24T12:00:00.000Z'),
-          }),
-        ],
-      },
-    );
-
-    expect(model.recentEvents).toHaveLength(3);
-    expect(model.recentEvents[0]).toMatchObject({
-      planId: 'plan-2',
-      planTopic: 'SQL',
-      status: 'in_progress',
-    });
-    expect(model.recentEvents.map((event) => event.status)).toEqual([
-      'in_progress',
-      'not_started',
-      'completed',
-    ]);
-  });
 });

@@ -36,7 +36,7 @@ function isSubscriptionTier(value: string): value is SubscriptionTier {
   return value === 'free' || value === 'starter' || value === 'pro';
 }
 
-function formatNextBilling(
+function formatBillingPeriodDate(
   subscriptionPeriodEnd: Date | string | null | undefined,
   locale?: string,
 ): string {
@@ -49,6 +49,22 @@ function formatNextBilling(
     month: 'short',
     day: 'numeric',
   });
+}
+
+function billingPeriodLabel({
+  tier,
+  cancelAtPeriodEnd,
+}: {
+  tier: SubscriptionTier;
+  cancelAtPeriodEnd: boolean;
+}): string {
+  if (cancelAtPeriodEnd) {
+    return 'Access ends';
+  }
+  if (tier === 'free') {
+    return 'Billing';
+  }
+  return 'Next billing date';
 }
 
 function formatSubscriptionStatus(status: SubscriptionStatus): string {
@@ -101,7 +117,14 @@ export async function ProfilePlanCard({
   const subscriptionStatus = formatSubscriptionStatus(
     snapshot.subscriptionStatus,
   );
-  const nextBilling = formatNextBilling(snapshot.subscriptionPeriodEnd, locale);
+  const periodLabel = billingPeriodLabel({
+    tier: snapshot.tier,
+    cancelAtPeriodEnd: snapshot.cancelAtPeriodEnd,
+  });
+  const periodValue =
+    snapshot.tier === 'free' && !snapshot.cancelAtPeriodEnd
+      ? '—'
+      : formatBillingPeriodDate(snapshot.subscriptionPeriodEnd, locale);
 
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
@@ -148,10 +171,10 @@ export async function ProfilePlanCard({
             </div>
             <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
               <dt className='text-sm leading-[22px] text-foreground'>
-                Next billing date
+                {periodLabel}
               </dt>
               <dd className='text-sm leading-[22px] text-muted-foreground'>
-                {nextBilling}
+                {periodValue}
               </dd>
             </div>
           </dl>

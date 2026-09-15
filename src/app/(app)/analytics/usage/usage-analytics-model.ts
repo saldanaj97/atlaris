@@ -52,14 +52,6 @@ export type UsageAnalyticsPlanTimeShare = {
   percent: number;
 };
 
-export type UsageAnalyticsRecentEvent = {
-  id: string;
-  planId: string;
-  planTopic: string;
-  status: ProgressStatus;
-  occurredAt: Date;
-};
-
 export type UsageAnalyticsModel = {
   plans: UsageAnalyticsPlanRow[];
   completedTasks: number;
@@ -72,7 +64,6 @@ export type UsageAnalyticsModel = {
   totalMinutes: number;
   plansInProgress: number;
   planTimeShares: UsageAnalyticsPlanTimeShare[];
-  recentEvents: UsageAnalyticsRecentEvent[];
   analyticsTimezone: string;
   history: {
     hasActivity: boolean;
@@ -102,7 +93,6 @@ type MutablePlanHistory = {
 
 const WEEK_TREND_COUNT = 8;
 const DAILY_TREND_COUNT = 30;
-const RECENT_EVENT_COUNT = 4;
 const NAMED_PLAN_TIME_SHARE_LIMIT = 4;
 const WEEK_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
   month: 'short',
@@ -236,9 +226,6 @@ export function buildUsageAnalyticsModel(
   const dayRowsByKey = new Map(dayRows.map((row) => [row.dateKey, row]));
   const globalDayKeys = new Set<string>();
   const planHistoryById = new Map<string, MutablePlanHistory>();
-  const planTopicById = new Map(
-    summaries.map((summary) => [summary.id, summary.topic]),
-  );
 
   for (const summary of summaries) {
     const planWeekRows = buildWeekRows(currentWeekStart);
@@ -328,19 +315,6 @@ export function buildUsageAnalyticsModel(
     throw new Error('Current analytics week missing from trend rows');
   }
 
-  const recentEvents = [...activityEvents]
-    .toSorted(
-      (left, right) => right.occurredAt.getTime() - left.occurredAt.getTime(),
-    )
-    .slice(0, RECENT_EVENT_COUNT)
-    .map((event, index) => ({
-      id: `${event.planId}-${event.occurredAt.toISOString()}-${index}`,
-      planId: event.planId,
-      planTopic: planTopicById.get(event.planId) ?? 'Untitled plan',
-      status: event.status,
-      occurredAt: event.occurredAt,
-    }));
-
   return {
     plans,
     completedTasks: totals.completedTasks,
@@ -362,7 +336,6 @@ export function buildUsageAnalyticsModel(
         summary.totalTasks > 0 && summary.completedTasks < summary.totalTasks,
     ).length,
     planTimeShares: buildPlanTimeShares(summaries, totals.completedMinutes),
-    recentEvents,
     analyticsTimezone,
     history: {
       hasActivity: weeklyTrends.some((row) => row.progressChangeCount > 0),

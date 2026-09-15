@@ -233,7 +233,14 @@ export function DeletePlanDialog({
           setDeleting,
         });
         if (result.outcomeUnknown) {
-          toast.error(result.message);
+          toast.error(
+            'We could not confirm whether this plan was deleted. Refreshing before another deletion.',
+          );
+          if (isMountedRef.current) {
+            setOpen(false);
+          }
+          router.push(redirectTo);
+          router.refresh();
           return;
         }
         if (isMountedRef.current) {

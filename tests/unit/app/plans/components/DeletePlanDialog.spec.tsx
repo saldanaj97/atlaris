@@ -102,4 +102,21 @@ describe('DeletePlanDialog', () => {
     expect(mockPush).toHaveBeenCalledWith('/plans');
     expect(mockRefresh).toHaveBeenCalled();
   });
+
+  it('closes and refreshes when a delete response is lost', async () => {
+    const user = userEvent.setup();
+    vi.mocked(fetch).mockRejectedValue(new TypeError('Failed to fetch'));
+
+    render(<ControlledDeletePlanDialog />);
+    await user.click(screen.getByRole('button', { name: 'Delete plan' }));
+
+    await waitFor(() => {
+      expect(toast.error).toHaveBeenCalledWith(
+        'We could not confirm whether this plan was deleted. Refreshing before another deletion.',
+      );
+    });
+    expect(mockPush).toHaveBeenCalledWith('/plans');
+    expect(mockRefresh).toHaveBeenCalled();
+    expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
+  });
 });

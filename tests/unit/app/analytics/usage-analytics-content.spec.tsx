@@ -159,15 +159,6 @@ const model: UsageAnalyticsModel = {
       percent: 44,
     },
   ],
-  recentEvents: [
-    {
-      id: 'event-1',
-      planId: 'plan-1',
-      planTopic: 'Applied TypeScript Architecture',
-      status: 'completed',
-      occurredAt: new Date('2026-06-28T16:00:00.000Z'),
-    },
-  ],
   analyticsTimezone: 'America/Chicago',
   history: {
     hasActivity: true,

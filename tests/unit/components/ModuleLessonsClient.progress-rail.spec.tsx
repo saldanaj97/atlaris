@@ -4,7 +4,7 @@ import { lesson, renderClient } from './module-lessons-client-test-utils';
 import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 function progressDisclosure(): HTMLDetailsElement {
   const details = document.querySelector('details');
@@ -193,4 +193,38 @@ describe('ModuleLessonsClient progress rail', () => {
     expect(firstTrigger).toHaveAttribute('data-state', 'open');
     expect(secondTrigger).toHaveAttribute('data-state', 'closed');
   });
+
+  it('opens the lesson named by the URL hash on load', () => {
+    const secondLesson: ModuleDetailTask = {
+      ...lesson,
+      id: createId('task'),
+      order: 2,
+      title: 'Second lesson',
+      estimatedMinutes: 15,
+    };
+    window.location.hash = `#lesson-${secondLesson.id}`;
+
+    renderClient({
+      lessons: [lesson, secondLesson],
+      statuses: { [lesson.id]: 'completed' },
+      lessonGeneration: {
+        status: 'ready',
+        startedAt: null,
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    expect(
+      screen.getByRole('button', { name: /First lesson/ }),
+    ).toHaveAttribute('data-state', 'closed');
+    expect(
+      screen.getByRole('button', { name: /Second lesson/ }),
+    ).toHaveAttribute('data-state', 'open');
+  });
+});
+
+afterEach(() => {
+  window.location.hash = '';
 });

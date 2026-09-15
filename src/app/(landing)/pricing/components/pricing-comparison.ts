@@ -1,5 +1,6 @@
 const FEATURE_WORD_SEPARATOR = /[^a-z0-9]+/;
 const SHARED_CAPABILITY_PREFIX_WORDS = 2;
+const FILLER_FEATURE_WORDS = new Set(['access']);
 
 function featureWords(label: string): string[] {
   return label
@@ -8,18 +9,23 @@ function featureWords(label: string): string[] {
     .filter(Boolean);
 }
 
-function featuresShareCapabilityPrefix(left: string, right: string): boolean {
-  const leftWords = featureWords(left);
-  const rightWords = featureWords(right);
-  const sharedLimit = Math.min(leftWords.length, rightWords.length);
+/** True when the plan feature is the same capability or a richer variant of the row. */
+function planFeatureCoversRow(planLabel: string, rowKey: string): boolean {
+  const planWords = featureWords(planLabel);
+  const rowWords = featureWords(rowKey);
+  const sharedLimit = Math.min(planWords.length, rowWords.length);
   let shared = 0;
 
   for (let index = 0; index < sharedLimit; index += 1) {
-    if (leftWords[index] !== rightWords[index]) break;
+    if (planWords[index] !== rowWords[index]) break;
     shared += 1;
   }
 
-  return shared >= SHARED_CAPABILITY_PREFIX_WORDS;
+  if (shared < SHARED_CAPABILITY_PREFIX_WORDS) {
+    return false;
+  }
+
+  return rowWords.slice(shared).every((word) => FILLER_FEATURE_WORDS.has(word));
 }
 
 export function planListsFeature(
@@ -30,6 +36,6 @@ export function planListsFeature(
     const label = feature.trim();
     if (!label) return false;
     if (label.toLocaleLowerCase() === featureKey) return true;
-    return featuresShareCapabilityPrefix(label, featureKey);
+    return planFeatureCoversRow(label, featureKey);
   });
 }

@@ -32,7 +32,6 @@ function emptyAnalyticsModel(): UsageAnalyticsModel {
     totalMinutes: 0,
     plansInProgress: 0,
     planTimeShares: [],
-    recentEvents: [],
     analyticsTimezone: 'UTC',
     history: {
       hasActivity: false,

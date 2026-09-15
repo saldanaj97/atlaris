@@ -18,7 +18,35 @@ import { formatMinutes } from '@/features/plans/formatters';
 import { deriveLessonState } from '@/features/plans/task-progress/client';
 import { cn } from '@/lib/utils';
 import { CheckCircle2, Circle, Lock } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
+
+const LESSON_HASH_PATTERN = /^#lesson-(.+)$/;
+
+function subscribeToLocationHash(onStoreChange: () => void): () => void {
+  window.addEventListener('hashchange', onStoreChange);
+  return () => window.removeEventListener('hashchange', onStoreChange);
+}
+
+function getLocationHash(): string {
+  return window.location.hash;
+}
+
+function getServerLocationHash(): string {
+  return '';
+}
+
+function lessonIdFromHash(
+  hash: string,
+  lessons: ReadonlyArray<{ id: string }>,
+  locks: readonly boolean[],
+): string | undefined {
+  const match = LESSON_HASH_PATTERN.exec(hash);
+  if (!match) return undefined;
+  const lessonId = match[1];
+  const index = lessons.findIndex((lesson) => lesson.id === lessonId);
+  if (index === -1 || locks[index]) return undefined;
+  return lessonId;
+}
 
 interface ModuleLessonsClientProps {
   planId: string;
@@ -201,9 +229,19 @@ export function ModuleLessonsClient({
 
   const { locks: lessonLocks, firstUnlockedIncompleteLessonId } =
     deriveLessonState(lessons, statuses, previousModulesComplete);
-  const [openLessonId, setOpenLessonId] = useState(
-    firstUnlockedIncompleteLessonId,
+  const locationHash = useSyncExternalStore(
+    subscribeToLocationHash,
+    getLocationHash,
+    getServerLocationHash,
   );
+  const hashedLessonId = lessonIdFromHash(locationHash, lessons, lessonLocks);
+  const [userOpenLessonId, setUserOpenLessonId] = useState<
+    string | undefined | null
+  >(null);
+  const openLessonId =
+    userOpenLessonId === null
+      ? (hashedLessonId ?? firstUnlockedIncompleteLessonId)
+      : userOpenLessonId;
   const [outlineOpen, setOutlineOpen] = useState(true);
 
   return (
@@ -232,7 +270,7 @@ export function ModuleLessonsClient({
             statuses={statuses}
             lessonLocks={lessonLocks}
             firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
-            onSelectLesson={setOpenLessonId}
+            onSelectLesson={setUserOpenLessonId}
           />
         </details>
 
@@ -243,7 +281,7 @@ export function ModuleLessonsClient({
             statuses={statuses}
             lessonLocks={lessonLocks}
             firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
-            onSelectLesson={setOpenLessonId}
+            onSelectLesson={setUserOpenLessonId}
           />
         </div>
 
@@ -288,7 +326,7 @@ export function ModuleLessonsClient({
               collapsible
               value={openLessonId ?? ''}
               onValueChange={(value) => {
-                setOpenLessonId(value === '' ? undefined : value);
+                setUserOpenLessonId(value === '' ? undefined : value);
               }}
               className='space-y-4'
             >

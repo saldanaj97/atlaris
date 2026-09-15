@@ -11,6 +11,15 @@ describe('planListsFeature', () => {
     ).toBe(true);
   });
 
+  it('does not treat starter priority-queue copy as covering the pro row', () => {
+    expect(
+      planListsFeature(
+        { features: ['Priority queue access'] },
+        'priority queue + analytics',
+      ),
+    ).toBe(false);
+  });
+
   it('does not treat unrelated one-word overlap as the same capability', () => {
     expect(
       planListsFeature(
