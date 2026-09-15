@@ -54,9 +54,10 @@ describe('DesktopHeader layout', () => {
       screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).toHaveAttribute('href', '/landing');
     expect(screen.getByRole('link', { name: 'Plans' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'Analytics' }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
+      'href',
+      '/analytics',
+    );
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
   });

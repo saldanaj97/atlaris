@@ -17,10 +17,6 @@ export const authenticatedNavItems: NavItem[] = [
   {
     label: 'Analytics',
     href: ROUTES.ANALYTICS.ROOT,
-    dropdown: [
-      { label: 'Usage', href: ROUTES.ANALYTICS.USAGE },
-      { label: 'Achievements', href: ROUTES.ANALYTICS.ACHIEVEMENTS },
-    ],
   },
   {
     label: 'Settings',

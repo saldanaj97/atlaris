@@ -31,7 +31,7 @@ function renderSidebar(props: Partial<Parameters<typeof AppSidebar>[0]> = {}) {
 }
 
 describe('AppSidebar', () => {
-  it('marks the active child and expands its section', () => {
+  it('marks Analytics as a single destination without a submenu', () => {
     renderSidebar({
       pathname: '/analytics/usage',
     });
@@ -39,16 +39,23 @@ describe('AppSidebar', () => {
     expect(
       screen.getByRole('navigation', { name: 'Application navigation' }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Usage' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
+      'href',
+      '/analytics',
+    );
+    expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(screen.getByRole('link', { name: 'Analytics' })).not.toHaveAttribute(
-      'aria-current',
-    );
     expect(
-      screen.getByRole('button', { name: 'Collapse Analytics' }),
-    ).toHaveAttribute('aria-expanded', 'true');
+      screen.queryByRole('link', { name: 'Usage' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Achievements' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /Analytics/ }),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Collapse sidebar' }),
     ).not.toBeInTheDocument();
@@ -115,17 +122,11 @@ describe('AppSidebar', () => {
     );
   });
 
-  it('supports a collapsed section and invokes the close callback on navigation', async () => {
+  it('invokes the close callback on navigation', async () => {
     const user = userEvent.setup();
     const onNavigate = vi.fn();
 
     renderSidebar({ onNavigate });
-
-    expect(
-      screen.queryByRole('link', { name: 'Usage' }),
-    ).not.toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: 'Expand Analytics' }));
-    expect(screen.getByRole('link', { name: 'Usage' })).toBeInTheDocument();
 
     await user.click(screen.getByRole('link', { name: 'Settings' }));
     expect(onNavigate).toHaveBeenCalledTimes(1);
@@ -141,15 +142,13 @@ describe('AppSidebar', () => {
     const sidebar = screen.getByRole('complementary', {
       name: 'Application sidebar',
     });
-    expect(
-      within(sidebar).getByRole('button', {
-        name: /Switch to (light|dark) mode|Toggle theme/,
-      }),
-    ).toBeInTheDocument();
-
+    const theme = within(sidebar).getByRole('button', {
+      name: /Switch to (light|dark) mode|Toggle theme/,
+    });
     const account = within(sidebar).getByRole('link', {
       name: 'Account settings',
     });
+    expect(theme.parentElement).toContainElement(account);
     expect(account).toHaveAttribute('href', '/settings/profile');
     expect(account).toHaveTextContent('Dev User');
     expect(account).toHaveTextContent('Starter Plan');

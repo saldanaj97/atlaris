@@ -211,34 +211,35 @@ export default function AppSidebar({
           <UpgradeBanner onNavigate={onNavigate} />
         ) : null}
 
-        {onDesktopCollapse ? (
-          <ThemeToggle
-            withTooltip
-            tooltipSide='top'
-            className='text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
-          />
-        ) : null}
-
-        <Link
-          href={ROUTES.SETTINGS.PROFILE}
-          onClick={onNavigate}
-          aria-label='Account settings'
-          className='flex min-h-(--at-component-navigation-item-height,2.75rem) items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
-        >
-          <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
-          <span className='min-w-0 flex-1'>
-            <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
-              {userName || 'Account'}
+        <div className='flex items-center gap-1'>
+          {onDesktopCollapse ? (
+            <ThemeToggle
+              withTooltip
+              tooltipSide='top'
+              className='shrink-0 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
+            />
+          ) : null}
+          <Link
+            href={ROUTES.SETTINGS.PROFILE}
+            onClick={onNavigate}
+            aria-label='Account settings'
+            className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+          >
+            <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
+            <span className='min-w-0 flex-1'>
+              <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
+                {userName || 'Account'}
+              </span>
+              <span className='block text-xs wrap-anywhere text-muted-foreground'>
+                {tierLabel(tier)}
+              </span>
             </span>
-            <span className='block text-xs wrap-anywhere text-muted-foreground'>
-              {tierLabel(tier)}
-            </span>
-          </span>
-          <ChevronRight
-            aria-hidden='true'
-            className='size-4 shrink-0 text-muted-foreground'
-          />
-        </Link>
+            <ChevronRight
+              aria-hidden='true'
+              className='size-4 shrink-0 text-muted-foreground'
+            />
+          </Link>
+        </div>
       </div>
     </aside>
   );
