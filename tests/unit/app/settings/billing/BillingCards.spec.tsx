@@ -63,7 +63,12 @@ describe('BillingCards', () => {
       userId: 'user_billing_cards',
       dbClient: {},
     });
-    expect(screen.getByText('PRO')).toBeVisible();
+    expect(screen.getByText("You're currently on the Pro plan.")).toBeVisible();
+    expect(screen.getByText('Pro Plan')).toBeVisible();
+    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+      'href',
+      ROUTES.PRICING,
+    );
     expect(screen.getByText('Active plans')).toBeVisible();
     expect(screen.getByText('Regenerations (monthly)')).toBeVisible();
     expect(screen.queryByText('Exports (monthly)')).not.toBeInTheDocument();
@@ -94,7 +99,7 @@ describe('BillingCards', () => {
     await expect(BillingPlanRows({})).rejects.toThrow('redirected');
 
     expect(mocks.redirectMock).toHaveBeenCalledWith(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#billing`)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.BILLING)}`,
     );
   });
 });

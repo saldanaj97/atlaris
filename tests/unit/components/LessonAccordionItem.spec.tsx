@@ -81,6 +81,7 @@ describe('LessonAccordionItem', () => {
   it('keeps resources and progress controls visible for unlocked missing content', () => {
     renderLesson(baseLesson);
 
+    expect(screen.getByText('Lesson 1, available')).toBeInTheDocument();
     expect(
       screen.getByText('Lesson content not generated yet'),
     ).toBeInTheDocument();

@@ -3,19 +3,19 @@
 This contract defines what user-facing usage analytics may promise from current
 completion state and append-only learning activity history.
 
-**Last Updated:** August 2026
+**Last Updated:** September 2026
 
 ## Shipped surfaces
 
-| Route | Status |
-| ----- | ------ |
-| `/analytics` | Redirects to `/analytics/usage` |
-| `/analytics/usage` | **Shipped** — completion metrics, estimated completed time, streaks, weekly trends from `learning_activity_events` |
-| `/analytics/achievements` | **Placeholder** — static “coming soon” UI; no badge persistence or unlock logic |
+| Route                     | Status                                                                                                             |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `/analytics`              | Redirects to `/analytics/usage`                                                                                    |
+| `/analytics/usage`        | **Shipped** — completion metrics, estimated completed time, streaks, weekly trends from `learning_activity_events` |
+| `/analytics/achievements` | **Placeholder** — static “coming soon” UI; no badge persistence or unlock logic                                    |
 
 Page data (`src/app/(app)/analytics/usage/page.tsx`):
 
-1. Plan summaries via `listLightweightPlansForApi` in `src/features/plans/read-projection/service.ts` (existing lightweight completion projections, plus access redaction)
+1. Plan summaries via `listLightweightPlansForApi` in `src/features/plans/read-projection/service.ts` (existing lightweight completion projections, plus access redaction). Overview cards therefore cover accessible plans, not locked-plan totals.
 2. Activity rows via `getLearningActivityEventsForUser`
 3. Model build via `buildUsageAnalyticsModel` in `usage-analytics-model.ts`
 
@@ -31,16 +31,16 @@ Historical empty state: streaks and weekly summaries only reflect progress chang
 
 ## Metric Glossary
 
-| Metric | Source of truth | Classification | Contract |
-| --- | --- | --- | --- |
-| `task_completion` | `task_progress.status = 'completed'` | Current-state | A task is complete only while the user's latest progress row for that task is `completed`. |
-| `module_completion` | Existing completion read projections over module tasks | Current-state | A module is complete only when it has at least one task and every task is currently complete. |
-| `plan_completion` | Existing completion read projections over plan tasks | Current-state | `completedTasks / totalTasks`; plans with zero tasks have `0` completion. |
-| `estimated_completed_learning_time` | `tasks.estimated_minutes` for currently completed tasks | Current-state, estimated | Sum task estimates for tasks currently marked complete. This is not actual recorded study time. |
-| `actual_study_time` | Future append-only learning activity history | Historical, actual | Unavailable until explicit study-duration events or another accepted actual-time source exists. |
-| `streaks` | `learning_activity_events` | Historical | Count local study days from recorded progress-change activity. Current streak may continue through yesterday when today has no activity yet. |
-| `weekly_summaries` | `learning_activity_events` | Historical | Summarize recorded progress-change activity in Monday-start learning weeks. |
-| `trends` | `learning_activity_events` | Historical | Show recent weekly progress-change and completed-event history from recorded events only (UI uses an 8-week window). |
+| Metric                              | Source of truth                                         | Classification           | Contract                                                                                                                                     |
+| ----------------------------------- | ------------------------------------------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `task_completion`                   | `task_progress.status = 'completed'`                    | Current-state            | A task is complete only while the user's latest progress row for that task is `completed`.                                                   |
+| `module_completion`                 | Existing completion read projections over module tasks  | Current-state            | A module is complete only when it has at least one task and every task is currently complete.                                                |
+| `plan_completion`                   | Existing completion read projections over plan tasks    | Current-state            | `completedTasks / totalTasks`; plans with zero tasks have `0` completion.                                                                    |
+| `estimated_completed_learning_time` | `tasks.estimated_minutes` for currently completed tasks | Current-state, estimated | Sum task estimates for tasks currently marked complete. This is not actual recorded study time.                                              |
+| `actual_study_time`                 | Future append-only learning activity history            | Historical, actual       | Unavailable until explicit study-duration events or another accepted actual-time source exists.                                              |
+| `streaks`                           | `learning_activity_events`                              | Historical               | Count local study days from recorded progress-change activity. Current streak may continue through yesterday when today has no activity yet. |
+| `weekly_summaries`                  | `learning_activity_events`                              | Historical               | Summarize recorded progress-change activity in Monday-start learning weeks.                                                                  |
+| `trends`                            | `learning_activity_events`                              | Historical               | Show recent weekly progress-change and completed-event history from recorded events only (UI uses an 8-week window).                         |
 
 ## Activity semantics
 
@@ -61,22 +61,23 @@ Historical empty state: streaks and weekly summaries only reflect progress chang
 - Do not backfill full historical study sessions from data that was never
   recorded.
 - Reuse existing completion projections instead of creating a parallel
-  completion model.
-- Keep operational telemetry, billing usage metrics (Settings `#usage`), and
+  completion model. Do not label those redacted totals as covering every
+  owned plan.
+- Keep operational telemetry, billing usage metrics (Settings `/settings/usage`), and
   user-facing learning analytics separate.
 
 ## Relevant Code Surfaces
 
-| Concern | Path |
-| ------- | ---- |
-| Usage page | `src/app/(app)/analytics/usage/page.tsx` |
-| Model + charts | `usage-analytics-model.ts`, `usage-analytics-content.tsx`, `usage-analytics-charts.tsx` |
-| Completion calculations | `src/features/plans/read-projection/completion-metrics.ts` |
-| Plan summary projection | `src/features/plans/read-projection/summary-projection.ts` |
-| Activity events schema | `learningActivityEvents` in `supabase/schema/tables/tasks.ts` |
-| Analytics timezone | `user_preferences.analytics_timezone` (`supabase/schema/tables/user-preferences.ts`) |
-| Timezone helpers | `src/shared/analytics/learning-activity-time.ts` |
-| Achievements placeholder | `src/app/(app)/analytics/achievements/page.tsx` |
+| Concern                  | Path                                                                                    |
+| ------------------------ | --------------------------------------------------------------------------------------- |
+| Usage page               | `src/app/(app)/analytics/usage/page.tsx`                                                |
+| Model + charts           | `usage-analytics-model.ts`, `usage-analytics-content.tsx`, `usage-analytics-charts.tsx` |
+| Completion calculations  | `src/features/plans/read-projection/completion-metrics.ts`                              |
+| Plan summary projection  | `src/features/plans/read-projection/summary-projection.ts`                              |
+| Activity events schema   | `learningActivityEvents` in `supabase/schema/tables/tasks.ts`                           |
+| Analytics timezone       | `user_preferences.analytics_timezone` (`supabase/schema/tables/user-preferences.ts`)    |
+| Timezone helpers         | `src/shared/analytics/learning-activity-time.ts`                                        |
+| Achievements placeholder | `src/app/(app)/analytics/achievements/page.tsx`                                         |
 
 ## Related docs
 

@@ -8,26 +8,31 @@ import { formatSkillLevel } from '@/features/plans/formatters';
 export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
   return (
     <section className='border-t pt-4' aria-labelledby='plan-details-heading'>
-      <h3 id='plan-details-heading' className='mb-2 font-semibold'>
+      <h3 id='plan-details-heading' className='mb-3 text-sm font-semibold'>
         Plan Details
       </h3>
-      <div className='grid grid-cols-1 gap-2 text-sm text-muted-foreground sm:grid-cols-2'>
+      <dl className='grid grid-cols-1 gap-3 text-sm sm:grid-cols-2'>
         <div>
-          <span className='font-medium'>Skill Level:</span>{' '}
-          {formatSkillLevel(plan.skillLevel)}
+          <dt className='text-muted-foreground'>Skill Level</dt>
+          <dd className='mt-0.5 text-foreground'>
+            {formatSkillLevel(plan.skillLevel)}
+          </dd>
         </div>
         <div>
-          <span className='font-medium'>Weekly Hours:</span> {plan.weeklyHours}
+          <dt className='text-muted-foreground'>Weekly Hours</dt>
+          <dd className='mt-0.5 text-foreground'>{plan.weeklyHours}</dd>
         </div>
         <div>
-          <span className='font-medium'>Learning Style:</span>{' '}
-          {plan.learningStyle}
+          <dt className='text-muted-foreground'>Learning Style</dt>
+          <dd className='mt-0.5 text-foreground'>{plan.learningStyle}</dd>
         </div>
         <div>
-          <span className='font-medium'>Origin:</span>{' '}
-          {formatOrigin(plan.origin)}
+          <dt className='text-muted-foreground'>Origin</dt>
+          <dd className='mt-0.5 text-foreground'>
+            {formatOrigin(plan.origin)}
+          </dd>
         </div>
-      </div>
+      </dl>
     </section>
   );
 }

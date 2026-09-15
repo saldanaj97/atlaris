@@ -13,7 +13,8 @@ interface ThemeProviderProps {
  * Theme provider component that wraps next-themes.
  *
  * Configuration:
- * - attribute="class": Uses class-based dark mode (adds .dark to html)
+ * - attribute=["class", "data-atlaris-theme"]: Keeps Tailwind's .dark
+ *   selector and scopes generated tokens to the same root element
  * - defaultTheme="system": Respects user's OS preference by default
  * - enableSystem: Allows automatic theme detection
  * - disableTransitionOnChange: Prevents flash during theme switch
@@ -21,7 +22,7 @@ interface ThemeProviderProps {
 export function ThemeProvider({ children }: ThemeProviderProps) {
   return (
     <NextThemesProvider
-      attribute='class'
+      attribute={['class', 'data-atlaris-theme']}
       defaultTheme='system'
       enableSystem
       disableTransitionOnChange

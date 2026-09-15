@@ -3,6 +3,7 @@
 import type { TimelineModule } from './plan-timeline-state';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
+import { TimelineModuleConnector } from './TimelineModuleConnector';
 import { TimelineModuleMarker } from './TimelineModuleMarker';
 import { TimelineTaskList } from './TimelineTaskList';
 import {
@@ -36,7 +37,9 @@ export function TimelineModuleCard({
     <div
       id={`module-${module.id}`}
       className='group relative flex items-stretch'
+      data-progress-state={module.status}
     >
+      <TimelineModuleConnector status={module.status} />
       <div className='relative flex w-16 shrink-0 items-center justify-center'>
         <TimelineModuleMarker status={module.status} />
       </div>

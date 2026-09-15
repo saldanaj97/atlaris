@@ -1,6 +1,7 @@
 'use client';
 import type { NavItem } from '@/features/navigation';
 
+import { SITE_DESKTOP_NAVIGATION_ID } from '@/components/shared/nav/desktop-nav-sync';
 import {
   marketingHeaderNavLinkActiveClassName,
   marketingHeaderNavLinkClassName,
@@ -21,7 +22,7 @@ import { useState } from 'react';
 interface DesktopNavigationProps {
   pathname: string;
   navItems: NavItem[];
-  /** Marketing routes use quiet outline pills; app uses text links. */
+  /** Marketing routes use quiet text links; app uses default text links. */
   appearance?: 'default' | 'marketing';
 }
 
@@ -146,10 +147,16 @@ export default function DesktopNavigation({
 
   return (
     <nav
+      id={SITE_DESKTOP_NAVIGATION_ID}
       className={cn(
         'hidden flex-nowrap items-center md:flex',
         appearance === 'marketing' ? 'gap-6 lg:gap-8' : 'gap-4 lg:gap-6',
       )}
+      aria-label={
+        appearance === 'marketing'
+          ? 'Marketing navigation'
+          : 'Primary navigation'
+      }
     >
       {navItems.map((item) => renderNavItem(item))}
     </nav>

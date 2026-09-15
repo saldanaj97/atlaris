@@ -1,6 +1,6 @@
-import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
+import { PostHogUserIdentifier } from '@/shared/analytics/PostHogUserIdentifier';
 import { cleanup, render } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { useUserMock, identifyMock, resetMock, getPropertyMock } = vi.hoisted(
   () => ({
@@ -31,8 +31,16 @@ const signedInUser = {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllEnvs();
   vi.clearAllMocks();
   getPropertyMock.mockReset();
+});
+
+beforeEach(() => {
+  vi.stubEnv('NODE_ENV', 'production');
+  vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'production');
+  vi.stubEnv('VERCEL_TARGET_ENV', '');
+  vi.stubEnv('NEXT_PUBLIC_VERCEL_TARGET_ENV', '');
 });
 
 describe('PostHogUserIdentifier', () => {
@@ -111,5 +119,19 @@ describe('PostHogUserIdentifier', () => {
 
     expect(resetMock).not.toHaveBeenCalled();
     expect(identifyMock).not.toHaveBeenCalled();
+  });
+
+  it('does not identify users in a Vercel Preview deployment', () => {
+    vi.stubEnv('NEXT_PUBLIC_VERCEL_ENV', 'preview');
+    useUserMock.mockReturnValue({
+      isLoaded: true,
+      isSignedIn: true,
+      user: signedInUser,
+    });
+
+    render(<PostHogUserIdentifier />);
+
+    expect(identifyMock).not.toHaveBeenCalled();
+    expect(resetMock).not.toHaveBeenCalled();
   });
 });

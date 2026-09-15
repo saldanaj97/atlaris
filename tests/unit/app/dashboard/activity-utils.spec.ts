@@ -3,6 +3,8 @@ import type { GenerationStatus } from '@/shared/types/db.types';
 import {
   generateActivities,
   getDashboardGreeting,
+  getDashboardHeroTitle,
+  getDashboardProgressStats,
 } from '@/app/(app)/dashboard/components/activity-utils';
 import {
   buildModuleRows,
@@ -149,5 +151,50 @@ describe('getDashboardGreeting', () => {
     expect(getDashboardGreeting('Juan Saldana')).toBe(
       'Welcome back, Juan. Ready for your next challenge?',
     );
+  });
+});
+
+describe('getDashboardHeroTitle', () => {
+  it('uses the first name and falls back without one', () => {
+    expect(getDashboardHeroTitle('Juan Saldana')).toBe('Welcome back, Juan.');
+    expect(getDashboardHeroTitle('  ')).toBe('Welcome back.');
+    expect(getDashboardHeroTitle(undefined)).toBe('Welcome back.');
+  });
+});
+
+describe('getDashboardProgressStats', () => {
+  it('weights overall progress by tasks instead of averaging plan percents', () => {
+    const completeSmall = {
+      ...planSummary({
+        id: 'plan-small',
+        topic: 'Short plan',
+        completedTasks: 1,
+        completion: 1,
+        moduleCount: 1,
+        updatedAt: '2026-06-22T00:00:00.000Z',
+      }),
+      totalTasks: 1,
+      completedTasks: 1,
+    };
+    const untouchedLarge = {
+      ...planSummary({
+        id: 'plan-large',
+        topic: 'Long plan',
+        completedTasks: 0,
+        completion: 0,
+        moduleCount: 3,
+        updatedAt: '2026-06-22T00:00:00.000Z',
+      }),
+      totalTasks: 9,
+      completedTasks: 0,
+    };
+
+    const stats = getDashboardProgressStats([completeSmall, untouchedLarge]);
+
+    expect(stats.percent).toBe(10);
+    expect(stats.completedTasks).toBe(1);
+    expect(stats.totalTasks).toBe(10);
+    expect(stats.planCount).toBe(2);
+    expect(stats.totalModules).toBe(4);
   });
 });

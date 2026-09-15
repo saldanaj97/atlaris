@@ -3,6 +3,7 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ReactElement } from 'react';
 
+import { AccountAvatar } from '@/components/shared/AccountAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,7 +13,6 @@ import {
 } from '@/components/ui/tooltip';
 import { ROUTES } from '@/features/navigation';
 import { UserButton } from '@clerk/nextjs';
-import Image from 'next/image';
 import Link from 'next/link';
 
 interface AuthControlsProps {
@@ -31,13 +31,6 @@ const tierVariants: Record<
   starter: 'secondary',
   pro: 'default',
 };
-
-function getInitials(name?: string): string {
-  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
-  if (parts.length === 0) return '?';
-  if (parts.length === 1) return parts[0]!.slice(0, 2).toUpperCase();
-  return `${parts[0]![0]!}${parts[parts.length - 1]![0]!}`.toUpperCase();
-}
 
 export default function AuthControls({
   isAuthenticated,
@@ -66,6 +59,8 @@ export default function AuthControls({
                 appearance={{
                   elements: {
                     avatarBox: 'size-9',
+                    userButtonTrigger:
+                      'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:size-11',
                   },
                 }}
               />
@@ -79,23 +74,14 @@ export default function AuthControls({
           <TooltipTrigger asChild>
             <div className='relative inline-flex'>
               <Link
-                href={`${ROUTES.SETTINGS.ROOT}#profile`}
+                href={ROUTES.SETTINGS.PROFILE}
                 aria-label='Account'
-                className='inline-flex size-9 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none'
+                className='inline-flex rounded-full transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none [@media(pointer:coarse)]:[&>*]:size-11'
               >
-                {userImageUrl ? (
-                  <Image
-                    src={userImageUrl}
-                    alt=''
-                    aria-hidden='true'
-                    width={36}
-                    height={36}
-                    unoptimized
-                    className='size-full object-cover'
-                  />
-                ) : (
-                  <span aria-hidden='true'>{getInitials(userName)}</span>
-                )}
+                <AccountAvatar
+                  userName={userName}
+                  userImageUrl={userImageUrl}
+                />
               </Link>
               {tierBadge}
             </div>

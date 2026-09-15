@@ -21,7 +21,7 @@ POST /api/v1/clerk/billing/webhook
         ├── map user event → ClerkUserProjectionSource
         └── UPDATE users (entitlements or verified primary email/tombstone)
                 │
-                ├── GET /api/v1/user/subscription  → Settings #billing / #usage
+                ├── GET /api/v1/user/subscription  → Settings /settings/billing / /settings/usage
                 └── quota boundaries (plans, regenerations, duration)
 ```
 
@@ -116,13 +116,13 @@ Do not configure the lifecycle events against a different Clerk instance than th
 When Clerk UI is enabled, `/pricing` builds a return URL:
 
 ```text
-/settings?checkout=1&checkoutBaseline=<tier|status|periodEnd|cancelFlag>#billing
+/settings/billing?checkout=1&checkoutBaseline=<tier|status|periodEnd|cancelFlag>
 ```
 
 | Piece    | Source                                                                                                                |
 | -------- | --------------------------------------------------------------------------------------------------------------------- |
 | Baseline | `getOptionalCheckoutBillingSignature` / `buildCheckoutBillingSignature` in `src/features/billing/checkout-return*.ts` |
-| UI       | `CheckoutSubscriptionSync` under Settings `#billing`                                                                  |
+| UI       | `CheckoutSubscriptionSync` under Settings `/settings/billing`                                                         |
 | Poll     | `GET /api/v1/user/subscription` every 2s for up to 30s                                                                |
 | Done     | Current signature ≠ baseline → clear query params, `router.refresh()`                                                 |
 
@@ -175,13 +175,13 @@ Monthly regeneration settlement is owned by `reserveRegenerationQuotaAtProviderS
 
 ## Settings surfaces
 
-Single page `/settings` (`SettingsLedgerPage`):
+Routed settings sections:
 
-| Hash       | Content                                        |
-| ---------- | ---------------------------------------------- |
-| `#billing` | Checkout sync + plan rows from DB snapshot     |
-| `#usage`   | Active plans / regenerations meters            |
-| `#ai`      | Model picker gated by `actor.subscriptionTier` |
+| Route                | Content                                        |
+| -------------------- | ---------------------------------------------- |
+| `/settings/billing`  | Checkout sync + plan rows from DB snapshot     |
+| `/settings/usage`    | Active plans / regenerations meters            |
+| `/settings/ai`       | Model picker gated by `actor.subscriptionTier` |
 
 ## Code map
 

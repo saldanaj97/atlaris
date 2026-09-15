@@ -1,8 +1,8 @@
-import { RevealAnimation } from '@/app/(marketing)/landing/components/RevealAnimation';
+import { RevealAnimation } from '@/app/(landing)/landing/components/RevealAnimation';
 import { act, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/app/(marketing)/landing/components/landing.module.css', () => ({
+vi.mock('@/app/(landing)/landing/components/landing.module.css', () => ({
   default: { reveal: 'reveal' },
 }));
 

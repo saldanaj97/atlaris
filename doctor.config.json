@@ -29,6 +29,16 @@
           "src/components/ui/surface.tsx"
         ],
         "rules": ["react-doctor/only-export-components"]
+      },
+      {
+        "files": ["src/app/(app)/settings/components/SettingsScrollTarget.tsx"],
+        "rules": ["react-doctor/nextjs-no-client-side-redirect"]
+      },
+      {
+        "files": [
+          "src/app/(app)/settings/profile/components/ProfileForm.tsx"
+        ],
+        "rules": ["react-doctor/no-locale-format-in-render"]
       }
     ]
   },

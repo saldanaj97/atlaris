@@ -22,6 +22,10 @@ import {
   resolvePlanContentAccess,
   type PlanEntitlementSnapshot,
 } from '@/features/plans/policy/entitlement';
+import {
+  buildDashboardProgressTotals,
+  type DashboardProgressTotals,
+} from '@/features/plans/read-projection/dashboard-progress';
 import { buildLearningPlanDetail } from '@/features/plans/read-projection/detail-aggregate';
 import {
   toClientGenerationAttempts,
@@ -173,7 +177,11 @@ export async function listDashboardPlanSummaries(params: {
 export async function getDashboardPlanData(params: {
   userId: string;
   dbClient: DbClient;
-}): Promise<{ summaries: PlanSummary[]; resumePlan: PlanSummary | undefined }> {
+}): Promise<{
+  summaries: PlanSummary[];
+  resumePlan: PlanSummary | undefined;
+  progress: DashboardProgressTotals;
+}> {
   const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
     dbClient: params.dbClient,
@@ -184,7 +192,7 @@ export async function getDashboardPlanData(params: {
       ? snapshot.freeAccessPlanId
       : null;
 
-  const [summaries, candidatePage] = await Promise.all([
+  const [summaries, candidatePage, progressSummaries] = await Promise.all([
     listDashboardPlanSummaries(params),
     getPlanListPageRowsForUser({
       userId: params.userId,
@@ -199,7 +207,16 @@ export async function getDashboardPlanData(params: {
       pageSize: 1,
       planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
     }),
+    listLightweightPlansForApi(params),
   ]);
+  const progress = buildDashboardProgressTotals(
+    progressSummaries.map((summary) => ({
+      completedModules: summary.completedModules,
+      totalModules: summary.moduleCount,
+      completedTasks: summary.completedTasks,
+      totalTasks: summary.totalTasks,
+    })),
+  );
   const candidate = candidatePage.items[0];
 
   if (
@@ -208,7 +225,7 @@ export async function getDashboardPlanData(params: {
       candidate.status !== 'not_started' &&
       candidate.status !== 'generating')
   ) {
-    return { summaries, resumePlan: undefined };
+    return { summaries, resumePlan: undefined, progress };
   }
 
   const listedCandidate = summaries.find(
@@ -232,10 +249,10 @@ export async function getDashboardPlanData(params: {
     freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
   });
   if (access !== 'full') {
-    return { summaries, resumePlan: undefined };
+    return { summaries, resumePlan: undefined, progress };
   }
 
-  return { summaries, resumePlan };
+  return { summaries, resumePlan, progress };
 }
 
 export async function getPlansPageForRead(params: {

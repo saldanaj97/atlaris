@@ -25,10 +25,20 @@ const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
 const isSmokeRun = Boolean(smokeDistDir && smokeDistDir.length > 0);
 const useLocalFlagsDefinitionsShim = !isHostedDeployEnv(process.env);
 const allowedDevOrigins = ['127.0.0.1', 'localhost'];
+const publicVercelEnv =
+  process.env.VERCEL_ENV ?? process.env.NEXT_PUBLIC_VERCEL_ENV;
+const publicVercelTargetEnv =
+  process.env.VERCEL_TARGET_ENV ?? process.env.NEXT_PUBLIC_VERCEL_TARGET_ENV;
 
 const nextConfig: NextConfig = {
   allowedDevOrigins,
   distDir: smokeDistDir && smokeDistDir.length > 0 ? smokeDistDir : undefined,
+  env: {
+    ...(publicVercelEnv ? { NEXT_PUBLIC_VERCEL_ENV: publicVercelEnv } : {}),
+    ...(publicVercelTargetEnv
+      ? { NEXT_PUBLIC_VERCEL_TARGET_ENV: publicVercelTargetEnv }
+      : {}),
+  },
   reactCompiler: true,
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns'],
@@ -93,7 +103,15 @@ const nextConfig: NextConfig = {
 };
 
 // workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).
-const workflowNextConfig = withWorkflow(nextConfig);
+// Next's detached telemetry uploader reloads this config in the dev phase.
+// Skip Workflow there so it cannot leave an orphaned watcher/build service.
+// Remove after upgrading to a release containing vercel/next.js#97718.
+const isDetachedTelemetry = process.argv[1]
+  ?.replaceAll('\\', '/')
+  .endsWith('/next/dist/telemetry/detached-flush.js');
+const workflowNextConfig = isDetachedTelemetry
+  ? nextConfig
+  : withWorkflow(nextConfig);
 
 export default withSentryConfig(workflowNextConfig, {
   // For all available options, see:

@@ -19,19 +19,34 @@ function LessonMarker({
   isCompleted: boolean;
   isLocked: boolean;
 }) {
+  const progressState = isLocked
+    ? 'locked'
+    : isCompleted
+      ? 'completed'
+      : 'active';
+  const statusLabel = isLocked
+    ? `Lesson ${lesson.order}, locked`
+    : isCompleted
+      ? `Lesson ${lesson.order}, completed`
+      : `Lesson ${lesson.order}, available`;
+
   return (
     <div
+      data-state={progressState}
       className={cn(
-        'flex size-8 shrink-0 items-center justify-center rounded-full',
+        'flex size-8 shrink-0 items-center justify-center rounded-full border transition-[background-color,border-color,box-shadow] duration-300 ease-out motion-reduce:transition-none',
         getLessonMarkerClassName(isLocked, isCompleted),
       )}
     >
+      <span className='sr-only'>{statusLabel}</span>
       {isLocked ? (
-        <Lock className='size-4' />
+        <Lock className='size-4' aria-hidden />
       ) : isCompleted ? (
-        <CheckCircle2 className='size-5' />
+        <CheckCircle2 className='size-5' aria-hidden />
       ) : (
-        <span className='text-sm font-semibold'>{lesson.order}</span>
+        <span className='text-sm font-semibold' aria-hidden='true'>
+          {lesson.order}
+        </span>
       )}
     </div>
   );
@@ -51,7 +66,7 @@ function ResourceSummary({
   return (
     <div
       className={cn(
-        'mb-3 ml-11 flex flex-wrap items-center gap-4 text-sm',
+        'mb-3 ml-11 flex min-w-0 flex-wrap items-center gap-4 text-sm',
         getLessonMutedTextClassName(isLocked),
       )}
     >
@@ -76,8 +91,8 @@ export function LessonAccordionTriggerContent({
 }) {
   return (
     <>
-      <div className='flex-1 text-left'>
-        <div className='mb-2 flex items-center gap-3'>
+      <div className='min-w-0 flex-1 text-left'>
+        <div className='mb-2 flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2'>
           <LessonMarker
             lesson={lesson}
             isCompleted={isCompleted}
@@ -85,7 +100,7 @@ export function LessonAccordionTriggerContent({
           />
           <h3
             className={cn(
-              'text-lg font-semibold',
+              'min-w-0 flex-1 break-words text-base font-semibold sm:text-lg',
               getLessonTitleClassName(isLocked, isCompleted),
             )}
           >
@@ -101,7 +116,7 @@ export function LessonAccordionTriggerContent({
         {lesson.description ? (
           <p
             className={cn(
-              'mb-3 ml-11 text-sm leading-relaxed',
+              'mb-3 ml-11 min-w-0 break-words text-sm leading-relaxed',
               getLessonMutedTextClassName(isLocked),
             )}
           >

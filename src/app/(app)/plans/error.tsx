@@ -1,6 +1,6 @@
 'use client';
 
-import { PageHeader } from '@/components/ui/page-header';
+import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
@@ -25,10 +25,7 @@ export default function PlansError({ error, reset }: ErrorProps) {
 
   return (
     <>
-      <PageHeader
-        title='Your Plans'
-        subtitle='Search, filter, and track your learning plan library.'
-      />
+      <PlansHero />
 
       <RouteErrorState
         className='border-destructive/20 bg-destructive/5'

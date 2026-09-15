@@ -82,6 +82,22 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.history.longestStreakDays).toBe(0);
   });
 
+  it('treats pulse activity as empty when events fall outside the eight-week window', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-01-02T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.hasActivity).toBe(false);
+    expect(
+      model.history.weeklyTrends.every((row) => row.progressChangeCount === 0),
+    ).toBe(true);
+  });
+
   it('keeps available plan scope when no tasks are completed', () => {
     const model = buildUsageAnalyticsModel([
       planSummary({
@@ -374,5 +390,99 @@ describe('buildUsageAnalyticsModel', () => {
 
     expect(model.history.currentWeek.completedEvents).toBe(1);
     expect(model.history.currentWeek.estimatedCompletionAddedMinutes).toBe(40);
+  });
+
+  it('counts plans that still have unfinished tasks as in progress', () => {
+    const model = buildUsageAnalyticsModel([
+      planSummary({
+        id: 'plan-1',
+        completedTasks: 2,
+        totalTasks: 5,
+      }),
+      planSummary({
+        id: 'plan-2',
+        completedTasks: 4,
+        totalTasks: 4,
+      }),
+      planSummary({
+        id: 'plan-3',
+        completedTasks: 0,
+        totalTasks: 0,
+      }),
+    ]);
+
+    expect(model.plansInProgress).toBe(1);
+  });
+
+  it('builds a 30-day activity series from recorded events', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          status: 'completed',
+          taskEstimatedMinutes: 40,
+          occurredAt: new Date('2026-06-25T12:00:00.000Z'),
+        }),
+        activityEvent({
+          status: 'in_progress',
+          occurredAt: new Date('2026-05-20T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.dailyTrends).toHaveLength(30);
+    expect(
+      model.history.dailyTrends.find((day) => day.dateKey === '2026-06-25'),
+    ).toMatchObject({
+      completedEvents: 1,
+      estimatedCompletionAddedMinutes: 40,
+      progressChangeCount: 1,
+    });
+    expect(
+      model.history.dailyTrends.some((day) => day.dateKey === '2026-05-20'),
+    ).toBe(false);
+  });
+
+  it('groups completed time by plan and collapses overflow into Other', () => {
+    const model = buildUsageAnalyticsModel([
+      planSummary({
+        id: 'plan-1',
+        topic: 'React',
+        completedMinutes: 120,
+      }),
+      planSummary({
+        id: 'plan-2',
+        topic: 'SQL',
+        completedMinutes: 80,
+      }),
+      planSummary({
+        id: 'plan-3',
+        topic: 'Go',
+        completedMinutes: 40,
+      }),
+      planSummary({
+        id: 'plan-4',
+        topic: 'Rust',
+        completedMinutes: 20,
+      }),
+      planSummary({
+        id: 'plan-5',
+        topic: 'CSS',
+        completedMinutes: 10,
+      }),
+      planSummary({
+        id: 'plan-6',
+        topic: 'Empty',
+        completedMinutes: 0,
+      }),
+    ]);
+
+    expect(model.planTimeShares).toEqual([
+      { id: 'plan-1', topic: 'React', completedMinutes: 120, percent: 44 },
+      { id: 'plan-2', topic: 'SQL', completedMinutes: 80, percent: 30 },
+      { id: 'plan-3', topic: 'Go', completedMinutes: 40, percent: 15 },
+      { id: 'plan-4', topic: 'Rust', completedMinutes: 20, percent: 7 },
+      { id: 'other', topic: 'Other', completedMinutes: 10, percent: 4 },
+    ]);
   });
 });

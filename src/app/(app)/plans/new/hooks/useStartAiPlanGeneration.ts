@@ -8,6 +8,7 @@ import {
   planFormPayloadErrorMessage,
 } from '@/features/plans/plan-form-payload';
 import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenerationSession';
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { isAbortError, normalizeThrown } from '@/lib/errors';
 import { clientLogger } from '@/lib/logging/client';
 import { useRouter } from 'next/navigation';
@@ -71,13 +72,15 @@ export function useStartAiPlanGeneration(): {
     isSubmittingRef.current = true;
     setIsSubmitting(true);
 
-    // Track plan creation attempt with non-PII form metadata.
-    posthog.capture('plan_creation_started', {
-      skill_level: data.skillLevel,
-      weekly_hours: data.weeklyHours,
-      learning_style: data.learningStyle,
-      deadline_weeks: data.deadlineWeeks,
-    });
+    if (isPostHogEnabledInCurrentEnvironment()) {
+      // Track plan creation attempt with non-PII form metadata.
+      posthog.capture('plan_creation_started', {
+        skill_level: data.skillLevel,
+        weekly_hours: data.weeklyHours,
+        learning_style: data.learningStyle,
+        deadline_weeks: data.deadlineWeeks,
+      });
+    }
 
     void startSession(
       { kind: 'create', input: mappingResult.payload },
@@ -127,11 +130,13 @@ export function useStartAiPlanGeneration(): {
         const failedPlanId =
           error.planId ?? error.data?.planId ?? planIdRef.current;
 
-        posthog.capture('plan_generation_failed', {
-          error_code: error.code ?? null,
-          plan_id: failedPlanId ?? null,
-        });
-        posthog.captureException(streamError);
+        if (isPostHogEnabledInCurrentEnvironment()) {
+          posthog.capture('plan_generation_failed', {
+            error_code: error.code ?? null,
+            plan_id: failedPlanId ?? null,
+          });
+          posthog.captureException(streamError);
+        }
 
         if (failedPlanId) {
           toast.error('Generation failed. You can retry from the plan page.');

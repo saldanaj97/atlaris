@@ -23,7 +23,7 @@ export async function ModelSelectionCard() {
 
   if (!user) {
     redirect(
-      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(`${ROUTES.SETTINGS.ROOT}#ai`)}`,
+      `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.AI)}`,
     );
   }
 

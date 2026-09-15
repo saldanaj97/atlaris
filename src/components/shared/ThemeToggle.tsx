@@ -17,6 +17,8 @@ interface ThemeToggleProps {
   className?: string;
   /** Wrap in Radix tooltip (use on icon-only instances) */
   withTooltip?: boolean;
+  /** Tooltip placement when `withTooltip` is set */
+  tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
 function subscribeMounted(onStoreChange: () => void): () => void {
@@ -36,6 +38,7 @@ export function ThemeToggle({
   size = 'icon',
   className,
   withTooltip = false,
+  tooltipSide = 'bottom',
 }: ThemeToggleProps) {
   const { theme, setTheme, resolvedTheme } = useTheme();
   const mounted = useSyncExternalStore(
@@ -60,7 +63,7 @@ export function ThemeToggle({
         disabled
         aria-label='Toggle theme'
       >
-        <Sun className='size-5' />
+        <Sun aria-hidden='true' className='size-5' />
       </Button>
     );
   }
@@ -78,9 +81,9 @@ export function ThemeToggle({
       aria-label={label}
     >
       {isDark ? (
-        <Sun className='size-5 transition-transform' />
+        <Sun aria-hidden='true' className='size-5 transition-transform' />
       ) : (
-        <Moon className='size-5 transition-transform' />
+        <Moon aria-hidden='true' className='size-5 transition-transform' />
       )}
     </Button>
   );
@@ -92,7 +95,7 @@ export function ThemeToggle({
   return (
     <Tooltip>
       <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent side='bottom'>{label}</TooltipContent>
+      <TooltipContent side={tooltipSide}>{label}</TooltipContent>
     </Tooltip>
   );
 }

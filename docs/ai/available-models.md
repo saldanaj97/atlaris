@@ -59,4 +59,4 @@ We integrate with multiple top-tier AI providers via OpenRouter to ensure high a
 
 ## Model Selection
 
-Users pick a preferred model under **Settings → AI model** (`#ai`). The value is stored on `user_preferences.preferred_ai_model` and used for subsequent plan/lesson generation when it remains within the user's tier. Persistable options exclude `openrouter/free`; when no preference is set, runtime generation uses `AI_DEFAULT_MODEL` (`openrouter/free`).
+Users pick a preferred model under **Settings → AI model** (`/settings/ai`). The value is stored on `user_preferences.preferred_ai_model` and used for subsequent plan/lesson generation when it remains within the user's tier. Persistable options exclude `openrouter/free`; when no preference is set, runtime generation uses `AI_DEFAULT_MODEL` (`openrouter/free`).

@@ -18,7 +18,6 @@ export function BillingPlanSkeleton() {
       <BillingPlanRowSkeleton />
       <BillingPlanRowSkeleton />
       <BillingPlanRowSkeleton />
-      <BillingPlanRowSkeleton />
     </>
   );
 }
@@ -41,8 +40,6 @@ function UsageMeterSkeleton() {
 export function UsageSkeleton() {
   return (
     <>
-      <UsageMeterSkeleton />
-      <UsageMeterSkeleton />
       <UsageMeterSkeleton />
       <UsageMeterSkeleton />
     </>
