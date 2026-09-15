@@ -1,6 +1,7 @@
 'use client';
 import type { NavItem } from '@/features/navigation';
 
+import { SITE_DESKTOP_NAVIGATION_ID } from '@/components/shared/nav/desktop-nav-sync';
 import {
   marketingHeaderNavLinkActiveClassName,
   marketingHeaderNavLinkClassName,
@@ -146,6 +147,7 @@ export default function DesktopNavigation({
 
   return (
     <nav
+      id={SITE_DESKTOP_NAVIGATION_ID}
       className={cn(
         'hidden flex-nowrap items-center md:flex',
         appearance === 'marketing' ? 'gap-6 lg:gap-8' : 'gap-4 lg:gap-6',

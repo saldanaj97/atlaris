@@ -89,6 +89,16 @@ const STARTER_PLAN = {
   slug: 'starter_plan',
 };
 
+const PRO_PLAN = {
+  annualFee: { amount: 19200, amountFormatted: '192.00' },
+  annualMonthlyFee: { amount: 1600, amountFormatted: '16.00' },
+  fee: { amount: 2000, amountFormatted: '20.00' },
+  features: [],
+  hasBaseFee: true,
+  id: 'plan_pro',
+  slug: 'pro_plan',
+};
+
 async function renderPricingTable(): Promise<void> {
   const { ClerkPricingTable } =
     await import('@/app/(landing)/pricing/components/ClerkPricingTable');
@@ -625,6 +635,23 @@ describe('ClerkPricingTable', () => {
       }),
     ).toBeVisible();
     expect(within(comparison).queryByText(/exports?/i)).not.toBeInTheDocument();
+  });
+
+  it('treats fallback Pro priority-queue copy as covering the Starter comparison row', async () => {
+    mocks.getPlans.mockResolvedValue({
+      data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
+    });
+
+    await renderPricingTable();
+
+    const comparison = await screen.findByRole('region', {
+      name: 'Plan feature comparison',
+    });
+    expect(
+      within(comparison).getByRole('row', {
+        name: /priority queue access.*feature not listed.*feature listed.*feature listed/i,
+      }),
+    ).toBeVisible();
   });
 
   it('shows placeholder cards while Clerk plans are loading', async () => {

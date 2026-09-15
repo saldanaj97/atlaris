@@ -1,9 +1,18 @@
+import {
+  APP_SHELL_DESKTOP_MEDIA_QUERY,
+  MARKETING_DESKTOP_MEDIA_QUERY,
+  SITE_DESKTOP_NAVIGATION_ID,
+} from '@/components/shared/nav/desktop-nav-sync';
+import {
+  DESKTOP_SIDEBAR_EXPAND_CONTROL_ID,
+  DESKTOP_SIDEBAR_ID,
+} from '@/components/shared/nav/desktop-sidebar-state';
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { unauthenticatedNavItems } from '@/features/navigation';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/link', () => ({
   default: ({
@@ -276,5 +285,157 @@ describe('MobileNavigation', () => {
       ).toHaveFocus(),
     );
     document.removeEventListener('click', handleClick);
+  });
+
+  describe('desktop breakpoint', () => {
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    function stubMatchMedia() {
+      const listeners = new Set<(event: { matches: boolean }) => void>();
+      const media = {
+        addEventListener: vi.fn(
+          (type: string, listener: (event: { matches: boolean }) => void) => {
+            if (type === 'change') listeners.add(listener);
+          },
+        ),
+        matches: false,
+        media: '',
+        removeEventListener: vi.fn(
+          (type: string, listener: (event: { matches: boolean }) => void) => {
+            listeners.delete(listener);
+          },
+        ),
+      };
+      const matchMedia = vi.fn((query: string) => {
+        media.media = query;
+        return media;
+      });
+      vi.stubGlobal('matchMedia', matchMedia);
+
+      return {
+        matchMedia,
+        setMatches(matches: boolean) {
+          media.matches = matches;
+          for (const listener of listeners) {
+            listener({ matches });
+          }
+        },
+      };
+    }
+
+    it('closes the app drawer at lg and moves focus to the desktop sidebar', async () => {
+      const user = userEvent.setup();
+      const media = stubMatchMedia();
+
+      render(
+        <>
+          <TooltipProvider>
+            <MobileNavigation
+              isMarketing={false}
+              isAppShell
+              pathname='/dashboard'
+              navItems={navItems}
+              isAuthenticated
+            />
+          </TooltipProvider>
+          <aside id={DESKTOP_SIDEBAR_ID}>
+            <nav aria-label='Application navigation'>
+              <button type='button'>Desktop dashboard</button>
+            </nav>
+          </aside>
+        </>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Open menu' }));
+      expect(
+        screen.getByRole('navigation', { name: 'Mobile navigation' }),
+      ).toBeInTheDocument();
+      expect(media.matchMedia).toHaveBeenCalledWith(
+        APP_SHELL_DESKTOP_MEDIA_QUERY,
+      );
+
+      media.setMatches(true);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('navigation', { name: 'Mobile navigation' }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Desktop dashboard' }),
+      ).toHaveFocus();
+    });
+
+    it('moves app-drawer focus to the sidebar expand control when the sidebar is collapsed', async () => {
+      const user = userEvent.setup();
+      const media = stubMatchMedia();
+
+      render(
+        <>
+          <TooltipProvider>
+            <MobileNavigation
+              isMarketing={false}
+              isAppShell
+              pathname='/dashboard'
+              navItems={navItems}
+              isAuthenticated
+            />
+          </TooltipProvider>
+          <button id={DESKTOP_SIDEBAR_EXPAND_CONTROL_ID} type='button'>
+            Expand sidebar
+          </button>
+        </>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Open menu' }));
+      media.setMatches(true);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('navigation', { name: 'Mobile navigation' }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Expand sidebar' }),
+      ).toHaveFocus();
+    });
+
+    it('closes the marketing drawer at md and moves focus to desktop navigation', async () => {
+      const user = userEvent.setup();
+      const media = stubMatchMedia();
+
+      render(
+        <>
+          <TooltipProvider>
+            <MobileNavigation
+              isMarketing
+              pathname='/landing'
+              navItems={[{ href: '/landing', label: 'Home' }]}
+            />
+          </TooltipProvider>
+          <nav id={SITE_DESKTOP_NAVIGATION_ID}>
+            <button type='button'>Desktop home</button>
+          </nav>
+        </>,
+      );
+
+      await user.click(screen.getByRole('button', { name: 'Open menu' }));
+      expect(media.matchMedia).toHaveBeenCalledWith(
+        MARKETING_DESKTOP_MEDIA_QUERY,
+      );
+
+      media.setMatches(true);
+
+      await waitFor(() =>
+        expect(
+          screen.queryByRole('navigation', { name: 'Mobile navigation' }),
+        ).not.toBeInTheDocument(),
+      );
+      expect(
+        screen.getByRole('button', { name: 'Desktop home' }),
+      ).toHaveFocus();
+    });
   });
 });

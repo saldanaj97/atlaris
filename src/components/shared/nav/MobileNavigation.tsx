@@ -5,6 +5,10 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import BrandLogo from '../BrandLogo';
 import AppSidebar from '@/components/shared/nav/AppSidebar';
+import {
+  desktopMediaQuery,
+  focusVisibleDesktopNavigation,
+} from '@/components/shared/nav/desktop-nav-sync';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { isNavItemActive } from '@/components/shared/nav/nav-active';
 import { Button } from '@/components/ui/button';
@@ -23,7 +27,7 @@ import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Menu, Plus } from 'lucide-react';
 import Link from 'next/link';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 interface MobileNavigationProps {
   isMarketing: boolean;
@@ -53,6 +57,7 @@ export default function MobileNavigation({
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
   const navigationDismissedRef = useRef(false);
+  const closedForBreakpointRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
@@ -68,6 +73,22 @@ export default function MobileNavigation({
     setOpen(false);
   };
 
+  useEffect(() => {
+    if (!open) return;
+    if (typeof window.matchMedia !== 'function') return;
+
+    const media = window.matchMedia(desktopMediaQuery(isAppShell));
+    const closeIfDesktop = () => {
+      if (!media.matches) return;
+      closedForBreakpointRef.current = true;
+      setOpen(false);
+    };
+
+    closeIfDesktop();
+    media.addEventListener('change', closeIfDesktop);
+    return () => media.removeEventListener('change', closeIfDesktop);
+  }, [isAppShell, open]);
+
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -79,7 +100,7 @@ export default function MobileNavigation({
             onClick={() => setOpen(true)}
             className={
               isMarketing
-                ? 'gap-2 rounded-[10px] border-border px-3.5 py-3 font-sans text-sm font-medium text-foreground [@media(pointer:coarse)]:min-h-11'
+                ? 'gap-2 rounded-[10px] border-border px-3.5 py-3 font-sans text-sm font-medium text-foreground pointer-coarse:min-h-11'
                 : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             }
             aria-label='Open menu'
@@ -98,6 +119,11 @@ export default function MobileNavigation({
           event.preventDefault();
           if (navigationDismissedRef.current) {
             navigationDismissedRef.current = false;
+            return;
+          }
+          if (closedForBreakpointRef.current) {
+            closedForBreakpointRef.current = false;
+            focusVisibleDesktopNavigation(isAppShell);
             return;
           }
           triggerRef.current?.focus();
@@ -195,7 +221,7 @@ export default function MobileNavigation({
                       onClick={handleNavigation}
                       aria-current={isActive ? 'page' : undefined}
                       className={cn(
-                        'flex min-h-[44px] items-center rounded-xl px-4 py-3 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                        'flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                         isActive
                           ? 'bg-primary text-primary-foreground shadow-md'
                           : 'text-muted-foreground hover:bg-muted hover:text-primary',
@@ -217,7 +243,7 @@ export default function MobileNavigation({
                               onClick={handleNavigation}
                               aria-current={isSubActive ? 'page' : undefined}
                               className={cn(
-                                'flex min-h-[44px] items-center rounded-md px-3 py-2 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                                'flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                                 isSubActive
                                   ? 'text-primary dark:text-primary'
                                   : 'text-muted-foreground hover:text-primary dark:hover:text-primary',

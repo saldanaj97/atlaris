@@ -45,5 +45,9 @@ describe('SiteFooter', () => {
     expect(
       within(footer).queryByRole('link', { name: 'Pricing' }),
     ).not.toBeInTheDocument();
+    expect(
+      within(footer).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).not.toBeInTheDocument();
+    expect(within(footer).getByLabelText('Atlaris')).toBeInTheDocument();
   });
 });

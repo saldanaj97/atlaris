@@ -7,6 +7,7 @@ import {
   type PricingMoney,
   type PricingPlan,
 } from './pricing-card-model';
+import { planListsFeature } from './pricing-comparison';
 import { usePricingCardParallax } from './usePricingCardParallax';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { Check } from 'lucide-react';
@@ -51,12 +52,6 @@ function getComparisonRows(plans: readonly PricingPlan[]) {
   }
 
   return rows;
-}
-
-function planListsFeature(plan: PricingPlan, featureKey: string): boolean {
-  return plan.features.some(
-    (feature) => feature.trim().toLocaleLowerCase() === featureKey,
-  );
 }
 
 /* oxlint-disable jsx-a11y/no-noninteractive-tabindex -- the named overflow region is intentionally tabbable so keyboard users can scroll the comparison table. */

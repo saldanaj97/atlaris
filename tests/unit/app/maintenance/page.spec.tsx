@@ -44,6 +44,10 @@ describe('MaintenancePage', () => {
     expect(
       within(footer).queryByRole('navigation', { name: 'Footer' }),
     ).not.toBeInTheDocument();
+    expect(
+      within(footer).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).not.toBeInTheDocument();
+    expect(within(footer).getByLabelText('Atlaris')).toBeInTheDocument();
   });
 
   it('keeps the static fallback truthful and operable without a home loop', () => {
