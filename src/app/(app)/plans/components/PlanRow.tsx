@@ -241,12 +241,16 @@ export function PlanRow({
       <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='min-w-0'>
           <h2 className='text-lg leading-6 font-semibold wrap-break-word text-foreground'>
-            <Link
-              href={planHref}
-              className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50'
-            >
-              {plan.topic}
-            </Link>
+            {isLocked ? (
+              plan.topic
+            ) : (
+              <Link
+                href={planHref}
+                className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50'
+              >
+                {plan.topic}
+              </Link>
+            )}
           </h2>
           {isLocked ? (
             <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>

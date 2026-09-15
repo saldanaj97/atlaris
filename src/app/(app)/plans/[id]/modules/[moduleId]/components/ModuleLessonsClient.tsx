@@ -32,6 +32,7 @@ interface ModuleLessonsClientProps {
 }
 
 interface LessonProgressPanelProps {
+  headingId: string;
   lessons: ModuleDetailTask[];
   statuses: Record<string, ProgressStatus>;
   lessonLocks: boolean[];
@@ -40,6 +41,7 @@ interface LessonProgressPanelProps {
 }
 
 function LessonProgressPanel({
+  headingId,
   lessons,
   statuses,
   lessonLocks,
@@ -56,14 +58,11 @@ function LessonProgressPanel({
       : null;
 
   return (
-    <aside
-      aria-labelledby='lesson-progress-heading'
-      className='min-w-0 xl:sticky xl:top-24'
-    >
+    <aside aria-labelledby={headingId} className='min-w-0 xl:sticky xl:top-24'>
       <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
         <div className='min-w-0 px-4 py-4 max-xl:sr-only sm:px-5'>
           <h2
-            id='lesson-progress-heading'
+            id={headingId}
             className='text-xl leading-7 font-semibold text-foreground'
           >
             Lesson progress
@@ -211,13 +210,13 @@ export function ModuleLessonsClient({
     <>
       <div className='grid min-w-0 items-start gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
         <details
-          className='min-w-0 xl:col-start-2 xl:row-start-1 xl:[&::details-content]:block'
+          className='min-w-0 xl:hidden'
           open={outlineOpen}
           onToggle={(event) => {
             setOutlineOpen(event.currentTarget.open);
           }}
         >
-          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm xl:hidden [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
+          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
             <span className='font-semibold'>Lesson progress</span>
             {totalLessons > 0 ? (
               <span className='text-muted-foreground tabular-nums'>
@@ -228,6 +227,7 @@ export function ModuleLessonsClient({
             ) : null}
           </summary>
           <LessonProgressPanel
+            headingId='lesson-progress-heading'
             lessons={lessons}
             statuses={statuses}
             lessonLocks={lessonLocks}
@@ -235,6 +235,17 @@ export function ModuleLessonsClient({
             onSelectLesson={setOpenLessonId}
           />
         </details>
+
+        <div className='hidden min-w-0 xl:col-start-2 xl:row-start-1 xl:block'>
+          <LessonProgressPanel
+            headingId='lesson-progress-heading-wide'
+            lessons={lessons}
+            statuses={statuses}
+            lessonLocks={lessonLocks}
+            firstUnlockedIncompleteLessonId={firstUnlockedIncompleteLessonId}
+            onSelectLesson={setOpenLessonId}
+          />
+        </div>
 
         <section
           aria-labelledby='lessons-heading'

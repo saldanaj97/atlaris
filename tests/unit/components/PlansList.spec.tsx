@@ -369,6 +369,45 @@ describe('PlansList', () => {
     );
   });
 
+  it('keeps a locked plan title as text and sends the action to pricing', () => {
+    renderPlansList({
+      page: {
+        items: [lockedPlan],
+        totalItems: 1,
+        totalSearchResults: 1,
+      },
+    });
+
+    const heading = screen.getByRole('heading', { name: 'Locked Research' });
+    expect(within(heading).queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to unlock' }),
+    ).toHaveAttribute('href', '/pricing');
+    expect(
+      screen.queryByRole('link', { name: 'Locked Research' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('honors a retired status query without adding a tab', () => {
+    renderPlansList({
+      query: { search: 'hooks', status: 'not_started' },
+    });
+
+    const filters = screen.getByRole('navigation', {
+      name: 'Plan status filters',
+    });
+    expect(
+      within(filters).queryByRole('link', { name: /Not started/ }),
+    ).not.toBeInTheDocument();
+    expect(within(filters).getAllByRole('link')).toHaveLength(5);
+    expect(
+      within(filters).queryByRole('link', { current: 'page' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Clear not started filter' }),
+    ).toHaveAttribute('href', '/plans?search=hooks');
+  });
+
   it('retains status in searches and exposes a clear-filter link', () => {
     renderPlansList({
       page: { page: 2, totalPages: 3 },

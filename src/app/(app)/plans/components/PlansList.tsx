@@ -18,6 +18,7 @@ import {
   PLANS_LIBRARY_SEARCH_ID,
   plansLibrarySearchFocusRef,
 } from '@/app/(app)/plans/components/plans-library-search';
+import { plansLibraryFilterLabel } from '@/app/(app)/plans/plans-library-filter';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -196,12 +197,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
           })}
           className='shrink-0 self-start text-xs font-medium text-link hover:text-link-hover hover:underline sm:self-auto'
         >
-          Clear{' '}
-          {(
-            FILTER_OPTIONS.find((option) => option.value === query.status)
-              ?.label ?? query.status
-          ).toLowerCase()}{' '}
-          filter
+          Clear {plansLibraryFilterLabel(query.status).toLowerCase()} filter
         </Link>
       ) : null}
     </div>

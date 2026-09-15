@@ -1,10 +1,18 @@
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { lesson, renderClient } from './module-lessons-client-test-utils';
-import { screen } from '@testing-library/react';
+import { screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createId } from '@tests/fixtures/ids';
 import { describe, expect, it, vi } from 'vitest';
+
+function progressDisclosure(): HTMLDetailsElement {
+  const details = document.querySelector('details');
+  if (!details) {
+    throw new Error('Expected a lesson-progress disclosure');
+  }
+  return details;
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: vi.fn() }),
@@ -32,14 +40,15 @@ describe('ModuleLessonsClient progress rail', () => {
       },
     });
 
+    const disclosure = within(progressDisclosure());
     expect(
-      screen.getByRole('progressbar', { name: 'Lesson progress: 50%' }),
+      disclosure.getByRole('progressbar', { name: 'Lesson progress: 50%' }),
     ).toHaveAttribute('aria-valuenow', '50');
     expect(
-      screen.getByRole('link', { name: /1\. First lesson/ }),
+      disclosure.getByRole('link', { name: /1\. First lesson/ }),
     ).toHaveAttribute('href', `#lesson-${lesson.id}`);
     expect(
-      screen.getByRole('link', { name: /2\. Second lesson/ }),
+      disclosure.getByRole('link', { name: /2\. Second lesson/ }),
     ).toHaveAttribute('aria-current', 'step');
   });
 
@@ -62,12 +71,13 @@ describe('ModuleLessonsClient progress rail', () => {
       },
     });
 
-    expect(screen.getByText('2. Second lesson')).toBeInTheDocument();
+    const disclosure = within(progressDisclosure());
+    expect(disclosure.getByText('2. Second lesson')).toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: /2\. Second lesson/ }),
+      disclosure.queryByRole('link', { name: /2\. Second lesson/ }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByText(', locked', { selector: '.sr-only' }),
+      disclosure.getByText(', locked', { selector: '.sr-only' }),
     ).toBeInTheDocument();
   });
 
@@ -83,9 +93,12 @@ describe('ModuleLessonsClient progress rail', () => {
       },
     });
 
-    expect(screen.getByText('No lessons available yet')).toBeInTheDocument();
+    const disclosure = within(progressDisclosure());
     expect(
-      screen.getByText(
+      disclosure.getByText('No lessons available yet'),
+    ).toBeInTheDocument();
+    expect(
+      disclosure.getByText(
         'Lesson progress will appear when this module has lessons.',
       ),
     ).toBeInTheDocument();
@@ -105,17 +118,42 @@ describe('ModuleLessonsClient progress rail', () => {
       },
     });
 
-    const disclosure = document.querySelector('details');
+    const disclosure = progressDisclosure();
     const lessonsHeading = screen.getByRole('heading', { name: 'Lessons' });
 
-    expect(disclosure).not.toBeNull();
-    expect(disclosure?.querySelector('summary')).toHaveTextContent(
+    expect(disclosure.querySelector('summary')).toHaveTextContent(
       'Lesson progress',
     );
     expect(
-      disclosure!.compareDocumentPosition(lessonsHeading) &
+      disclosure.compareDocumentPosition(lessonsHeading) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('keeps the wide lesson-progress rail outside the mobile disclosure', async () => {
+    const user = userEvent.setup();
+    renderClient({
+      lessons: [lesson],
+      lessonGeneration: {
+        status: 'ready',
+        startedAt: null,
+        completedAt: null,
+        failedAt: null,
+        error: null,
+      },
+    });
+
+    const disclosure = progressDisclosure();
+    const asides = document.querySelectorAll('aside');
+    expect(asides).toHaveLength(2);
+    expect(disclosure.contains(asides[0])).toBe(true);
+    expect(disclosure.contains(asides[1])).toBe(false);
+
+    await user.click(disclosure.querySelector('summary')!);
+
+    expect(disclosure).not.toHaveAttribute('open');
+    expect(document.querySelectorAll('aside')).toHaveLength(2);
+    expect(asides[1]?.querySelector('nav')).not.toBeNull();
   });
 
   it('opens the selected lesson when a progress link is activated', async () => {
@@ -146,7 +184,11 @@ describe('ModuleLessonsClient progress rail', () => {
     expect(firstTrigger).toHaveAttribute('data-state', 'closed');
     expect(secondTrigger).toHaveAttribute('data-state', 'open');
 
-    await user.click(screen.getByRole('link', { name: /1\. First lesson/ }));
+    await user.click(
+      within(progressDisclosure()).getByRole('link', {
+        name: /1\. First lesson/,
+      }),
+    );
 
     expect(firstTrigger).toHaveAttribute('data-state', 'open');
     expect(secondTrigger).toHaveAttribute('data-state', 'closed');
