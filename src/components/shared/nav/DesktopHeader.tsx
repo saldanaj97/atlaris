@@ -35,6 +35,162 @@ interface DesktopHeaderProps {
   onSidebarOpenChange?: (open: boolean) => void;
 }
 
+function DesktopHeaderStart({
+  appShellCollapsed,
+  onSidebarOpenChange,
+  showAppShellChrome,
+}: {
+  appShellCollapsed: boolean;
+  onSidebarOpenChange?: (open: boolean) => void;
+  showAppShellChrome: boolean;
+}) {
+  if (appShellCollapsed) {
+    return (
+      <div className='relative z-10 flex items-center justify-self-start'>
+        <Button
+          id={DESKTOP_SIDEBAR_EXPAND_CONTROL_ID}
+          type='button'
+          variant='ghost'
+          size='icon'
+          aria-controls={DESKTOP_SIDEBAR_ID}
+          aria-expanded={false}
+          aria-label={DESKTOP_SIDEBAR_EXPAND_LABEL}
+          onClick={() => onSidebarOpenChange?.(true)}
+        >
+          <PanelLeft aria-hidden='true' className='size-5' />
+        </Button>
+      </div>
+    );
+  }
+
+  if (!showAppShellChrome) {
+    return (
+      <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
+        <BrandLogo />
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function DesktopHeaderCenter({
+  navItems,
+  pathname,
+  showAppShellChrome,
+  showMarketingChrome,
+}: {
+  navItems: NavItem[];
+  pathname: string;
+  showAppShellChrome: boolean;
+  showMarketingChrome: boolean;
+}) {
+  if (showAppShellChrome) return null;
+
+  return (
+    <div className='relative z-10 flex justify-self-center'>
+      <DesktopNavigation
+        pathname={pathname}
+        navItems={navItems}
+        appearance={showMarketingChrome ? 'marketing' : 'default'}
+      />
+    </div>
+  );
+}
+
+function DesktopMarketingActions({
+  isAuthenticated,
+  primaryCtaHref,
+  primaryCtaLabel,
+}: {
+  isAuthenticated: boolean;
+  primaryCtaHref: string;
+  primaryCtaLabel: string;
+}) {
+  return (
+    <>
+      {!isAuthenticated ? (
+        <Button
+          asChild
+          variant='ghost'
+          size='sm'
+          className='text-sm text-muted-foreground hover:text-foreground'
+        >
+          <Link href={ROUTES.AUTH.SIGN_IN}>Sign in</Link>
+        </Button>
+      ) : null}
+      <ThemeToggle
+        withTooltip
+        className='rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
+      />
+      <Button asChild size='sm' className={marketingHeaderPrimaryCtaClassName}>
+        <Link href={primaryCtaHref}>
+          {primaryCtaLabel}
+          <ArrowRight
+            aria-hidden='true'
+            className='size-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
+          />
+        </Link>
+      </Button>
+    </>
+  );
+}
+
+function DesktopAppActions({
+  canCreatePlan,
+  isAuthenticated,
+  showClerkUserButton,
+  showHeaderAccountChrome,
+  tier,
+  userImageUrl,
+  userName,
+}: {
+  canCreatePlan?: boolean;
+  isAuthenticated: boolean;
+  showClerkUserButton: boolean;
+  showHeaderAccountChrome: boolean;
+  tier?: SubscriptionTier;
+  userImageUrl?: string | null;
+  userName?: string;
+}) {
+  const createPlanCta = resolveCreatePlanCta({
+    isAuthenticated,
+    canCreatePlan,
+    createLabel: 'New Plan',
+  });
+
+  return (
+    <>
+      {createPlanCta ? (
+        <Button
+          variant='ghost'
+          size='sm'
+          className='gap-1.5 text-muted-foreground hover:text-foreground'
+          asChild
+        >
+          <Link href={createPlanCta.href} aria-label={createPlanCta.label}>
+            <Plus className='size-3.5' aria-hidden='true' />
+            <span className='hidden lg:inline'>{createPlanCta.label}</span>
+          </Link>
+        </Button>
+      ) : null}
+
+      {showHeaderAccountChrome ? (
+        <>
+          <ThemeToggle withTooltip />
+          <AuthControls
+            isAuthenticated={isAuthenticated}
+            tier={isAuthenticated ? tier : undefined}
+            showClerkUserButton={showClerkUserButton}
+            userName={userName}
+            userImageUrl={userImageUrl}
+          />
+        </>
+      ) : null}
+    </>
+  );
+}
+
 /**
  * Desktop header (visible from `md` up). Below `md`, {@link MobileHeader} renders.
  *
@@ -63,11 +219,6 @@ export default function DesktopHeader({
     ? ROUTES.DASHBOARD
     : ROUTES.AUTH.SIGN_IN;
   const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const createPlanCta = resolveCreatePlanCta({
-    isAuthenticated,
-    canCreatePlan,
-    createLabel: 'New Plan',
-  });
 
   return (
     <div
@@ -81,38 +232,17 @@ export default function DesktopHeader({
           : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
       )}
     >
-      {appShellCollapsed ? (
-        <div className='relative z-10 flex items-center justify-self-start'>
-          <Button
-            id={DESKTOP_SIDEBAR_EXPAND_CONTROL_ID}
-            type='button'
-            variant='ghost'
-            size='icon'
-            aria-controls={DESKTOP_SIDEBAR_ID}
-            aria-expanded={false}
-            aria-label={DESKTOP_SIDEBAR_EXPAND_LABEL}
-            onClick={() => onSidebarOpenChange?.(true)}
-          >
-            <PanelLeft aria-hidden='true' className='size-5' />
-          </Button>
-        </div>
-      ) : !showAppShellChrome ? (
-        <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
-          <BrandLogo />
-        </div>
-      ) : null}
-
-      {!showAppShellChrome ? (
-        <div className='relative z-10 flex justify-self-center'>
-          <DesktopNavigation
-            pathname={pathname}
-            navItems={navItems}
-            appearance={showMarketingChrome ? 'marketing' : 'default'}
-          />
-        </div>
-      ) : null}
-
-      {/* Auth / CTA controls (right) */}
+      <DesktopHeaderStart
+        appShellCollapsed={appShellCollapsed}
+        onSidebarOpenChange={onSidebarOpenChange}
+        showAppShellChrome={showAppShellChrome}
+      />
+      <DesktopHeaderCenter
+        navItems={navItems}
+        pathname={pathname}
+        showAppShellChrome={showAppShellChrome}
+        showMarketingChrome={showMarketingChrome}
+      />
       <div
         className={cn(
           'relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end',
@@ -120,69 +250,21 @@ export default function DesktopHeader({
         )}
       >
         {isMarketing ? (
-          <>
-            {!isAuthenticated ? (
-              <Button
-                asChild
-                variant='ghost'
-                size='sm'
-                className='text-sm text-muted-foreground hover:text-foreground'
-              >
-                <Link href={ROUTES.AUTH.SIGN_IN}>Sign in</Link>
-              </Button>
-            ) : null}
-            <ThemeToggle
-              withTooltip
-              className='rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
-            />
-            <Button
-              asChild
-              size='sm'
-              className={marketingHeaderPrimaryCtaClassName}
-            >
-              <Link href={primaryCtaHref}>
-                {primaryCtaLabel}
-                <ArrowRight
-                  aria-hidden='true'
-                  className='size-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
-                />
-              </Link>
-            </Button>
-          </>
+          <DesktopMarketingActions
+            isAuthenticated={isAuthenticated}
+            primaryCtaHref={primaryCtaHref}
+            primaryCtaLabel={primaryCtaLabel}
+          />
         ) : (
-          <>
-            {createPlanCta ? (
-              <Button
-                variant='ghost'
-                size='sm'
-                className='gap-1.5 text-muted-foreground hover:text-foreground'
-                asChild
-              >
-                <Link
-                  href={createPlanCta.href}
-                  aria-label={createPlanCta.label}
-                >
-                  <Plus className='size-3.5' aria-hidden='true' />
-                  <span className='hidden lg:inline'>
-                    {createPlanCta.label}
-                  </span>
-                </Link>
-              </Button>
-            ) : null}
-
-            {showHeaderAccountChrome ? (
-              <>
-                <ThemeToggle withTooltip />
-                <AuthControls
-                  isAuthenticated={isAuthenticated}
-                  tier={isAuthenticated ? tier : undefined}
-                  showClerkUserButton={showClerkUserButton}
-                  userName={userName}
-                  userImageUrl={userImageUrl}
-                />
-              </>
-            ) : null}
-          </>
+          <DesktopAppActions
+            canCreatePlan={canCreatePlan}
+            isAuthenticated={isAuthenticated}
+            showClerkUserButton={showClerkUserButton}
+            showHeaderAccountChrome={showHeaderAccountChrome}
+            tier={tier}
+            userImageUrl={userImageUrl}
+            userName={userName}
+          />
         )}
       </div>
     </div>

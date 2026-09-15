@@ -3,6 +3,7 @@ import type { PlanListQuery } from '@/features/plans/read-projection/types';
 
 import { EmptyPlansList } from '@/app/(app)/plans/components/EmptyPlansList';
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
+import { shouldShowPlansLibraryChrome } from '@/app/(app)/plans/components/plans-library-chrome';
 import {
   PlansLibraryToolbar,
   PlansList,
@@ -12,21 +13,6 @@ import { ROUTES } from '@/features/navigation/routes';
 import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-
-export function shouldShowPlansLibraryChrome(
-  plansPage: {
-    selectionRequired?: boolean;
-    totalSearchResults: number;
-  },
-  query: Pick<PlanListQuery, 'search' | 'status'>,
-): boolean {
-  if (plansPage.selectionRequired) return false;
-  return !(
-    plansPage.totalSearchResults === 0 &&
-    query.search === '' &&
-    query.status === 'all'
-  );
-}
 
 /**
  * Query-backed filter/search chrome streamed into the plans hero.

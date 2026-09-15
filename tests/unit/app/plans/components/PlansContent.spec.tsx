@@ -1,9 +1,7 @@
 import type { PlansPageData } from '@/app/(app)/plans/plans-page-data';
 
-import {
-  PlansHeaderCreateAction,
-  shouldShowPlansLibraryChrome,
-} from '@/app/(app)/plans/components/PlansContent';
+import { shouldShowPlansLibraryChrome } from '@/app/(app)/plans/components/plans-library-chrome';
+import { PlansHeaderCreateAction } from '@/app/(app)/plans/components/PlansContent';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
