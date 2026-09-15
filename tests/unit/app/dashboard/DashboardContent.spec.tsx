@@ -208,6 +208,7 @@ describe('DashboardContent', () => {
 
     render(await DashboardContent());
 
+    expect(screen.getByText('Across every learning plan.')).toBeVisible();
     expect(screen.getByText('10%')).toBeVisible();
     expect(screen.getByLabelText('Overall task progress')).toHaveAttribute(
       'aria-valuenow',

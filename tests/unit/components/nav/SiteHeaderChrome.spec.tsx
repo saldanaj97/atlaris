@@ -82,11 +82,11 @@ describe('SiteHeaderChrome desktop sidebar', () => {
         name: /Switch to (light|dark) mode|Toggle theme/,
       }),
     ).toBeInTheDocument();
-    const account = within(sidebar).getByRole('link', {
-      name: 'Account settings',
-    });
-    expect(account).toHaveAttribute('href', '/settings/profile');
-    expect(account).toHaveTextContent('Ada Lovelace');
+    expect(within(sidebar).getByTestId('user-button')).toBeInTheDocument();
+    expect(within(sidebar).getByText('Ada Lovelace')).toBeInTheDocument();
+    expect(
+      within(sidebar).queryByRole('link', { name: 'Account settings' }),
+    ).not.toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
 

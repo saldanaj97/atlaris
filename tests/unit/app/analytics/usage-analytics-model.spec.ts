@@ -82,6 +82,22 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.history.longestStreakDays).toBe(0);
   });
 
+  it('treats pulse activity as empty when events fall outside the eight-week window', () => {
+    const model = buildUsageAnalyticsModel([planSummary({ id: 'plan-1' })], {
+      referenceDate: new Date('2026-06-25T12:00:00.000Z'),
+      activityEvents: [
+        activityEvent({
+          occurredAt: new Date('2026-01-02T12:00:00.000Z'),
+        }),
+      ],
+    });
+
+    expect(model.history.hasActivity).toBe(false);
+    expect(
+      model.history.weeklyTrends.every((row) => row.progressChangeCount === 0),
+    ).toBe(true);
+  });
+
   it('keeps available plan scope when no tasks are completed', () => {
     const model = buildUsageAnalyticsModel([
       planSummary({

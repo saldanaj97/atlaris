@@ -88,4 +88,16 @@ describe('SiteHeader', () => {
       'Ada Lovelace:pro',
     );
   });
+
+  it('skips the Clerk profile lookup when the header does not render account chrome', async () => {
+    mocks.requestBoundaryComponent.mockResolvedValue({
+      tier: 'pro',
+      canCreatePlan: true,
+    });
+
+    render(await SiteHeader({ loadAccountProfile: false }));
+
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+    expect(screen.getByTestId('site-header-chrome')).toHaveTextContent(':pro');
+  });
 });

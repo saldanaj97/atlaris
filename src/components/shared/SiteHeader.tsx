@@ -41,7 +41,12 @@ import { currentUser } from '@clerk/nextjs/server';
  *   actual nav links with their specific interaction patterns (dropdowns vs sheets).
  *
  */
-export default async function SiteHeader() {
+export default async function SiteHeader({
+  loadAccountProfile = true,
+}: {
+  /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
+  loadAccountProfile?: boolean;
+} = {}) {
   const { session } = await getSessionSafe();
   const authUserId = getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;
@@ -86,34 +91,36 @@ export default async function SiteHeader() {
         );
       });
 
-    // Sidebar account row needs live name/avatar. Header Clerk UserButton
-    // still owns the compact header avatar when the rail is collapsed.
-    const profilePromise = isLocalProductTestingAuthEnabled()
-      ? Promise.resolve().then(() => {
-          userName = devAuthEnv.name;
-        })
-      : currentUser()
-          .then((user) => {
-            if (!user) {
-              return;
-            }
-            const composedName = [user.firstName, user.lastName]
-              .filter(Boolean)
-              .join(' ');
-            userName =
-              (user.fullName ?? composedName) || user.username || undefined;
-            userImageUrl = user.imageUrl;
+    // App-shell account chrome needs live name/avatar. Marketing routes skip
+    // this Clerk lookup because they never render those fields.
+    const profilePromise = !loadAccountProfile
+      ? Promise.resolve()
+      : isLocalProductTestingAuthEnabled()
+        ? Promise.resolve().then(() => {
+            userName = devAuthEnv.name;
           })
-          .catch((err: unknown) => {
-            logger.warn(
-              {
-                err,
-                authUserId,
-                source: 'SiteHeader.currentUser',
-              },
-              'Clerk user fetch failed; account chrome falls back to initials',
-            );
-          });
+        : currentUser()
+            .then((user) => {
+              if (!user) {
+                return;
+              }
+              const composedName = [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(' ');
+              userName =
+                (user.fullName ?? composedName) || user.username || undefined;
+              userImageUrl = user.imageUrl;
+            })
+            .catch((err: unknown) => {
+              logger.warn(
+                {
+                  err,
+                  authUserId,
+                  source: 'SiteHeader.currentUser',
+                },
+                'Clerk user fetch failed; account chrome falls back to initials',
+              );
+            });
 
     await Promise.all([entitlementPromise, profilePromise]);
   }

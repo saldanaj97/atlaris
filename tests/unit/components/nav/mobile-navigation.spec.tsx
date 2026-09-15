@@ -287,6 +287,32 @@ describe('MobileNavigation', () => {
     document.removeEventListener('click', handleClick);
   });
 
+  it('moves focus to main content after a navigation closes the drawer', async () => {
+    const user = userEvent.setup();
+
+    render(
+      <>
+        <TooltipProvider>
+          <MobileNavigation
+            isMarketing={false}
+            isAppShell
+            pathname='/dashboard'
+            navItems={navItems}
+            isAuthenticated
+          />
+        </TooltipProvider>
+        <main id='main-content' tabIndex={-1}>
+          Dashboard
+        </main>
+      </>,
+    );
+
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+    await user.click(screen.getByRole('link', { name: 'Plans' }));
+
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
+  });
+
   describe('desktop breakpoint', () => {
     afterEach(() => {
       vi.unstubAllGlobals();

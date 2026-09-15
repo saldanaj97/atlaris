@@ -5,6 +5,10 @@ import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
+vi.mock('@clerk/nextjs', () => ({
+  UserButton: () => <div data-testid='user-button'>Mocked UserButton</div>,
+}));
+
 vi.mock('next/link', () => ({
   default: ({
     children,
@@ -156,5 +160,18 @@ describe('AppSidebar', () => {
     expect(
       screen.queryByRole('link', { name: 'Account' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps the Clerk account menu in the rail when Clerk UI is enabled', () => {
+    renderSidebar({
+      userName: 'Ada Lovelace',
+      showClerkUserButton: true,
+    });
+
+    expect(screen.getByTestId('user-button')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Account settings' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
   });
 });

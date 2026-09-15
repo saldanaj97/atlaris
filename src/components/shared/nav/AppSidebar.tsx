@@ -14,6 +14,7 @@ import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { UpgradeBanner } from '@/components/ui/upgrade-banner';
 import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
+import { UserButton } from '@clerk/nextjs';
 import {
   BarChart3,
   BookOpen,
@@ -32,6 +33,7 @@ interface AppSidebarProps {
   tier?: SubscriptionTier;
   userName?: string;
   userImageUrl?: string | null;
+  showClerkUserButton?: boolean;
   navigationLabel?: string;
   className?: string;
   id?: string;
@@ -74,6 +76,7 @@ export default function AppSidebar({
   tier,
   userName,
   userImageUrl,
+  showClerkUserButton = false,
   navigationLabel = 'Application navigation',
   className,
   id,
@@ -219,26 +222,48 @@ export default function AppSidebar({
               className='shrink-0 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
             />
           ) : null}
-          <Link
-            href={ROUTES.SETTINGS.PROFILE}
-            onClick={onNavigate}
-            aria-label='Account settings'
-            className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
-          >
-            <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
-            <span className='min-w-0 flex-1'>
-              <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
-                {userName || 'Account'}
+          {showClerkUserButton ? (
+            <div className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm'>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'size-9',
+                    userButtonTrigger:
+                      'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar [@media(pointer:coarse)]:size-11',
+                  },
+                }}
+              />
+              <span className='min-w-0 flex-1'>
+                <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
+                  {userName || 'Account'}
+                </span>
+                <span className='block text-xs wrap-anywhere text-muted-foreground'>
+                  {tierLabel(tier)}
+                </span>
               </span>
-              <span className='block text-xs wrap-anywhere text-muted-foreground'>
-                {tierLabel(tier)}
+            </div>
+          ) : (
+            <Link
+              href={ROUTES.SETTINGS.PROFILE}
+              onClick={onNavigate}
+              aria-label='Account settings'
+              className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+            >
+              <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
+              <span className='min-w-0 flex-1'>
+                <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
+                  {userName || 'Account'}
+                </span>
+                <span className='block text-xs wrap-anywhere text-muted-foreground'>
+                  {tierLabel(tier)}
+                </span>
               </span>
-            </span>
-            <ChevronRight
-              aria-hidden='true'
-              className='size-4 shrink-0 text-muted-foreground'
-            />
-          </Link>
+              <ChevronRight
+                aria-hidden='true'
+                className='size-4 shrink-0 text-muted-foreground'
+              />
+            </Link>
+          )}
         </div>
       </div>
     </aside>

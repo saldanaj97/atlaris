@@ -24,7 +24,7 @@ export function YourProgressCard({
           Your progress
         </h2>
         <p className='mt-2 text-sm text-muted-foreground'>
-          Across every active learning plan.
+          Across every learning plan.
         </p>
         <p className='mt-6 text-sm text-muted-foreground'>
           Progress will appear here once you have a plan.
@@ -46,7 +46,7 @@ export function YourProgressCard({
         Your progress
       </h2>
       <p className='mt-2 text-sm text-muted-foreground'>
-        Across every active learning plan.
+        Across every learning plan.
       </p>
 
       <p className='font-heading mt-6 text-[32px] leading-10 tracking-[-0.02em] text-foreground tabular-nums'>

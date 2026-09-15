@@ -16,6 +16,8 @@ export interface ResponsiveBackdropProps {
   sizes?: ImageProps['sizes'];
   className?: string;
   slot?: string;
+  /** Opt in for above-the-fold LCP artwork only. Other callers stay lazy. */
+  priority?: boolean;
 }
 
 const overlayClassNames: Record<
@@ -35,6 +37,7 @@ export function ResponsiveBackdrop({
   sizes = '100vw',
   className,
   slot = 'responsive-backdrop',
+  priority = false,
 }: ResponsiveBackdropProps) {
   return (
     <div
@@ -56,6 +59,7 @@ export function ResponsiveBackdrop({
           alt=''
           fill
           sizes={sizes}
+          priority={priority}
           className='absolute inset-0 size-full object-cover'
           style={
             desktop.objectPosition
@@ -75,6 +79,7 @@ export function ResponsiveBackdrop({
           alt=''
           fill
           sizes={sizes}
+          priority={priority}
           className='absolute inset-0 size-full object-cover'
           style={
             mobile.objectPosition

@@ -39,6 +39,7 @@ interface MobileNavigationProps {
   isAuthenticated?: boolean;
   userName?: string;
   userImageUrl?: string | null;
+  showClerkUserButton?: boolean;
 }
 
 function MobileAppSheetBody({
@@ -48,6 +49,7 @@ function MobileAppSheetBody({
   tier,
   userImageUrl,
   userName,
+  showClerkUserButton,
 }: {
   navItems: NavItem[];
   onNavigate: () => void;
@@ -55,6 +57,7 @@ function MobileAppSheetBody({
   tier?: SubscriptionTier;
   userImageUrl?: string | null;
   userName?: string;
+  showClerkUserButton?: boolean;
 }) {
   return (
     <>
@@ -67,6 +70,7 @@ function MobileAppSheetBody({
         tier={tier}
         userName={userName}
         userImageUrl={userImageUrl}
+        showClerkUserButton={showClerkUserButton}
         navigationLabel='Mobile navigation'
         onNavigate={onNavigate}
       />
@@ -259,6 +263,7 @@ export default function MobileNavigation({
   isAuthenticated = false,
   userName,
   userImageUrl,
+  showClerkUserButton = false,
 }: MobileNavigationProps) {
   const [open, setOpen] = useState(false);
   const navigationDismissedRef = useRef(false);
@@ -305,12 +310,14 @@ export default function MobileNavigation({
             onClick={() => setOpen(true)}
             className={
               isMarketing
-                ? 'gap-2 rounded-[10px] border-border px-3.5 py-3 font-sans text-sm font-medium text-foreground pointer-coarse:min-h-11'
+                ? 'gap-2 rounded-[10px] border-border px-2.5 py-2 font-sans text-sm font-medium text-foreground sm:px-3.5 sm:py-3 pointer-coarse:min-h-11'
                 : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             }
             aria-label='Open menu'
           >
-            {isMarketing ? <span>Menu</span> : null}
+            {isMarketing ? (
+              <span className='hidden sm:inline'>Menu</span>
+            ) : null}
             <Menu className='size-5' aria-hidden='true' />
           </Button>
         </TooltipTrigger>
@@ -323,6 +330,17 @@ export default function MobileNavigation({
           event.preventDefault();
           if (navigationDismissedRef.current) {
             navigationDismissedRef.current = false;
+            queueMicrotask(() => {
+              const active = document.activeElement;
+              if (
+                active instanceof HTMLElement &&
+                active !== document.body &&
+                !triggerRef.current?.contains(active)
+              ) {
+                return;
+              }
+              document.getElementById('main-content')?.focus();
+            });
             return;
           }
           if (closedForBreakpointRef.current) {
@@ -347,6 +365,7 @@ export default function MobileNavigation({
             tier={tier}
             userImageUrl={userImageUrl}
             userName={userName}
+            showClerkUserButton={showClerkUserButton}
           />
         ) : (
           <MobileLinkSheetBody

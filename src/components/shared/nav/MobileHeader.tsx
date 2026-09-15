@@ -77,6 +77,7 @@ export default function MobileHeader({
       isAuthenticated={isAuthenticated}
       userName={userName}
       userImageUrl={userImageUrl}
+      showClerkUserButton={showClerkUserButton}
     />
   );
 
@@ -106,7 +107,7 @@ export default function MobileHeader({
               size='sm'
               className={cn(
                 marketingHeaderPrimaryCtaClassName,
-                'px-3 py-1.5 text-xs',
+                'hidden px-3 py-1.5 text-xs min-[24.375rem]:inline-flex',
               )}
             >
               <Link href={primaryCtaHref}>

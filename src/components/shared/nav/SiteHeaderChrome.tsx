@@ -101,6 +101,7 @@ export default function SiteHeaderChrome({
           tier={tier}
           userName={userName}
           userImageUrl={userImageUrl}
+          showClerkUserButton={showClerkUserButton}
           onDesktopCollapse={() => setSidebarOpen(false)}
         />
       ) : null}

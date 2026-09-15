@@ -365,7 +365,7 @@ export function buildUsageAnalyticsModel(
     recentEvents,
     analyticsTimezone,
     history: {
-      hasActivity: activityEvents.length > 0,
+      hasActivity: weeklyTrends.some((row) => row.progressChangeCount > 0),
       currentStreakDays: currentStreakDays(globalDayKeys, todayKey),
       longestStreakDays: longestStreakDays(globalDayKeys),
       currentWeek,

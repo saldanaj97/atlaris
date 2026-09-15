@@ -89,9 +89,9 @@ describe('MobileHeader layout', () => {
         tier: 'starter',
         userName: 'Signed-out visitor',
         userImageUrl: 'https://example.com/avatar.png',
+        showClerkUserButton: false,
       }),
     );
-    expect(drawerProps).not.toHaveProperty('showClerkUserButton');
   });
 
   it('routes signed-out nonmarketing topbar action to the plan form', () => {

@@ -47,6 +47,7 @@ export function HeroSection() {
         }}
         overlay='background'
         sizes='100vw'
+        priority
       />
 
       <div className='relative z-10 mx-auto grid min-h-[35rem] max-w-7xl items-center gap-8 px-4 py-14 sm:min-h-[38rem] sm:px-6 sm:py-16 md:grid-cols-[minmax(0,0.96fr)_minmax(20rem,1.04fr)] md:px-8 md:py-20 lg:min-h-[40rem]'>
