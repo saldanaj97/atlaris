@@ -20,7 +20,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import {
   Activity,
-  BarChart3,
   BookOpen,
   CalendarDays,
   CheckCircle2,
@@ -159,10 +158,10 @@ export function UsageAnalyticsContent({
 function AnalyticsHero() {
   return (
     <PageHero
-      className='rounded-[12px] border border-panel-border bg-panel shadow-sm'
-      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col justify-center px-5 py-8 sm:min-h-[14rem] sm:px-8 sm:py-10 lg:px-10'
+      dissolve
+      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col justify-center px-0 py-8 sm:min-h-[14rem] sm:py-10'
       overline='Analytics'
-      overlineIcon={<BarChart3 aria-hidden='true' className='size-4' />}
+      overlineClassName='tracking-[0.14em] text-muted-foreground'
       title={
         <>
           Learning <span className='text-primary'>analytics</span>
@@ -297,7 +296,7 @@ export function UsageAnalyticsContentSkeleton() {
       aria-busy='true'
       className='space-y-8'
     >
-      <div className='rounded-[12px] border border-panel-border bg-panel p-5 sm:min-h-[14rem] sm:p-8'>
+      <div className='min-h-[12rem] py-8 sm:min-h-[14rem] sm:py-10'>
         <Skeleton className='h-4 w-28 bg-secondary' />
         <Skeleton className='mt-5 h-10 w-full max-w-md' />
         <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />

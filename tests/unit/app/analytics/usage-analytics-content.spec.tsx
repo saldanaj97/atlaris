@@ -204,6 +204,11 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
+    expect(
+      screen
+        .getByRole('banner')
+        .querySelector('[data-slot="dissolved-backdrop"]'),
+    ).not.toBeNull();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
     expect(screen.getByText('Learning activity')).toBeInTheDocument();
     expect(screen.getByText('Eight-week pulse')).toBeInTheDocument();
