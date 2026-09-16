@@ -34,4 +34,4 @@ Preconditions:
 - `/` is not a distinct page. Assert `/landing` after the redirect.
 - Auth mode (`:3101`) sends `/` to `/dashboard`. This feature is anon-only.
 - Header **Begin tonight** is a link, not the hero button; both names are `Begin tonight`.
-- Pricing copy is the After Hours headline, not the stale smoke string `invest in your growth`.
+- Pricing copy is `One sky. Three ways to cross it.`, not the stale smoke string `invest in your growth`.

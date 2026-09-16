@@ -1,0 +1,14 @@
+---
+description: Read DESIGN.md and the canonical design system before app, landing, or component UI, copy, or token changes
+globs: src/app/(app)/**/*,src/app/(landing)/**/*,src/app/(auth)/**/*,src/app/maintenance/**/*,src/components/**/*,src/app/globals.css
+alwaysApply: false
+---
+
+# Design context
+
+Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy, or brand usage:
+
+1. Read `DESIGN.md` (orientation and source-of-truth table).
+2. Read the relevant chapters of `docs/styles/design-system.md` (canonical intended design).
+
+Runtime visual implementation is `src/app/globals.css` and the shared components. Current application code and tests govern product behavior. Do not treat inherited handbook paragraphs about the pre-adoption After Hours `DESIGN.md` or deleted `style-guide.md` pointer as current authority. Preserve supported light, dark, and system preferences.

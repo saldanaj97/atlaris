@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Atlaris
-description: Agent entry point. The canonical detailed specification is docs/styles/design-system.md; shared foundations are adopted; page and component migration continues.
+description: Agent entry point. The canonical detailed specification is docs/styles/design-system.md. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
 ---
 
 # Atlaris design entry point
@@ -16,10 +16,10 @@ Read [the canonical design system](docs/styles/design-system.md) before introduc
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product behavior and business logic    | Current application code and tests, including real routes, permissions, billing and data contracts.                                                                                           |
 | Intended visual and interaction design | [docs/styles/design-system.md](docs/styles/design-system.md), preserving its source contracts, proposals and open decisions.                                                                  |
-| Actual runtime visual implementation   | [globals.css](src/app/globals.css), runtime tokens and shared components. Shared foundations follow the canonical specification; page and component migration remains scoped to their issues. |
+| Actual runtime visual implementation   | [globals.css](src/app/globals.css), runtime tokens and shared components. Shared foundations follow the canonical specification. JCS-65 implementation children are complete; JCS-97 still owns integrated visual acceptance. |
 | Agent/developer starting point         | This file; it defers detailed design rules to the canonical specification.                                                                                                                    |
 
-Current CSS describes what runs; it does not override the intended design specification. Design mockups do not authorize new product functionality. [style-guide.md](docs/styles/style-guide.md) is a compatibility pointer and has no current design authority.
+Current CSS describes what runs; it does not override the intended design specification. Design mockups do not authorize new product functionality.
 
 ## Brand direction
 
