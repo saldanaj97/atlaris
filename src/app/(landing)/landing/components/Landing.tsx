@@ -1,7 +1,7 @@
+import { CtaSection } from './CtaSection';
 import { DriftSection } from './DriftSection';
 import { HeroSection } from './HeroSection';
 import { InstrumentsSection } from './InstrumentsSection';
-import { PolarisSection } from './PolarisSection';
 import { RouteSection } from './RouteSection';
 import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
 import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
@@ -22,7 +22,7 @@ export function Landing() {
         <DriftSection />
         <RouteSection />
         <InstrumentsSection />
-        <PolarisSection />
+        <CtaSection />
       </div>
     </LandingPageShell>
   );
