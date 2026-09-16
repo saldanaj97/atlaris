@@ -95,12 +95,11 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Canonical design specification and compatibility entry point. Shared foundations are adopted; page and component migration continues.
+Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
 
 | File | Description |
 |------|-------------|
-| [design-system.md](./styles/design-system.md) | Canonical detailed design specification; proposals and implementation gaps remain explicit |
-| [style-guide.md](./styles/style-guide.md) | Compatibility pointer to the canonical design system |
+| [design-system.md](./styles/design-system.md) | Canonical detailed design specification; proposals, historical provenance, and remaining acceptance gaps remain explicit |
 
 ## `testing/`
 
@@ -168,8 +167,7 @@ docs/
 │   ├── security-audit-checklist.md
 │   └── supply-chain-policy.md
 ├── styles/
-│   ├── design-system.md
-│   └── style-guide.md
+│   └── design-system.md
 ├── testing/
 │   ├── db-test-patterns.md
 │   ├── playwright-local-smoke.md

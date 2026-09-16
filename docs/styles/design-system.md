@@ -10,11 +10,11 @@ Earlier section text is preserved with its originating reference IDs. Use the so
 
 This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopts the shared cool-black/lavender foundations through `src/app/globals.css`, generated dark tokens and the existing shared page primitives. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
 
-This is a bounded foundations migration, not completion of the page or component redesign. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison, sidebar behavior, component compositions and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
+JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 recorded the launch copy and information-architecture map. JCS-98 removed the superseded After Hours agent rule and the `docs/styles/style-guide.md` compatibility pointer so those files cannot appear current. JCS-97 still owns integrated visual acceptance across pages and shared components. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
 
-**Original package context:** the handbook below was authored against `f8994dc7144ca8ce64354771c8fd95082cdd52a6`. Statements about the old `DESIGN.md` precedence in §§00.3 and 27 describe that snapshot; the repository adoption notes above supersede that documentation conflict and identify the runtime slice implemented here. References to `tokens/atlaris.tokens.json`, generated CSS/catalogs, package scripts, HTML/PDF specimens, JSON registries and earlier stage files describe the original external reference package. Those companion files remain outside the repository. The supplied compiler can generate tokens externally as described below; do not reconstruct a competing token source from these tables. Package/handbook checks are separate from application checks. Use the inherited source registers below for the retained chapter reference IDs.
+**Original package context:** the handbook below was authored against `f8994dc7144ca8ce64354771c8fd95082cdd52a6`. Statements about the old `DESIGN.md` precedence in §§00.3 and 27 describe that snapshot; the repository adoption notes above and §27.10 supersede that documentation conflict and identify the runtime slice implemented here. References to `tokens/atlaris.tokens.json`, generated CSS/catalogs, package scripts, HTML/PDF specimens, JSON registries and earlier stage files describe the original external reference package. Those companion files remain outside the repository. The supplied compiler can generate tokens externally as described below; do not reconstruct a competing token source from these tables. Package/handbook checks are separate from application checks. Use the inherited source registers below for the retained chapter reference IDs.
 
-The [style-guide compatibility pointer](./style-guide.md) does not establish current design rules. Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
+Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
 ### External token generation
 
@@ -86,6 +86,7 @@ The verified generated artifact is adopted at `src/styles/generated/atlaris-toke
 - **26 — Content & copy** (Final-stage draft synthesis)
 - **27 — Implementation mapping** (Final-stage draft synthesis)
 - **27.9 — Launch adoption map** (JCS-96 repository decision record)
+- **27.10 — Superseded-file cleanup** (JCS-98 repository decision record)
 
 ---
 
@@ -1633,7 +1634,7 @@ This package is documentation and local reference tooling, not a repository patc
 | Generated CSS / catalog  | Package compiler and `dist/`                                                                      | Choose a generated destination such as `src/styles/generated/atlaris-tokens.css`; never hand-edit its values.                                  |
 | Runtime theme            | `src/app/globals.css`                                                                             | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                                            |
 | Agent design entry point | `DESIGN.md`                                                                                       | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter.                 |
-| Older brand guidance     | Paths linked from DESIGN.md: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md` | Inspect at implementation, then supersede/archive explicitly with a pointer to the new authority. These files were not re-read in this stage.  |
+| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10. |
 | Detailed docs            | This package's sections and registries                                                            | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                                 |
 | Existing font loaders    | `src/app/layout.tsx`                                                                              | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                                          |
 | Theme state              | `src/app/ThemeProvider.tsx`                                                                       | Keep class-based dark mode, default system preference and provider behavior.                                                                   |
@@ -1776,6 +1777,26 @@ Ownership remains explicit: JCS-96 owns this launch copy and information-archite
 Evidence paths are `src/features/navigation/items.ts`, `src/features/navigation/routes.ts`, `src/components/shared/SiteHeader.tsx`, `src/components/shared/nav/DesktopHeader.tsx`, `src/components/shared/nav/MobileHeader.tsx`, the landing/About/pricing sources under `src/app/(landing)/`, `src/shared/constants/tier-limits.ts`, `src/app/(app)/analytics/usage/`, `src/app/(app)/analytics/achievements/page.tsx`, `src/app/(app)/settings/layout.tsx`, `docs/architecture/clerk-billing-architecture.md` and `docs/architecture/usage-analytics-metric-contract.md`. Static review references are retained at `/Users/juansaldana/Downloads/Atlaris Redesign/` (`landing.png`, `pricing.png`, `about.png`, `dashboard.png`, `generation.png` and `settings.png`).
 
 The unresolved owner decision is whether the current About attribution — “Juan Saldana designs, builds, and runs Atlaris” — and response promise — “Juan reads every message” — are approved public launch copy. The recorded default is to defer publication and omit those claims from a launch surface if the owner does not approve them. No avatar, testimonial, rating or aggregate metric is approved by this map.
+
+### 27.10 JCS-98 superseded-file cleanup
+
+JCS-98 records the post-migration audit of tracked design documents and agent guidance. Implementation children of JCS-65 are Done on Linear. This cleanup does not claim JCS-97 visual acceptance, does not delete runtime theme behavior, and does not rewrite inherited handbook chapters.
+
+| Path | Disposition | Status |
+| ---- | ----------- | ------ |
+| `docs/styles/after-hours-direction.md` | Already absent from `develop` before this change | Deleted earlier; do not restore |
+| `docs/styles/style-guide.md` | Removed compatibility pointer | Deleted; authority is `DESIGN.md` → this file |
+| `.cursor/rules/design-after-hours.mdc` | Removed stale After Hours agent rule (pointed at the missing direction file and treated `style-guide.md` as recipes) | Replaced by `.cursor/rules/design-system.mdc` |
+| `DESIGN.md`, `AGENTS.md`, `docs/README.md` | Dropped compatibility-pointer language | Current agent/docs entry points only |
+| Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md` | Historical provenance of the `f8994dc` snapshot | Keep; not current authority |
+| `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior | Retained |
+| `src/styles/generated/atlaris-tokens.css` | Generated dark token artifact | Retained; do not hand-edit |
+| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository | Retained as documented provenance |
+| `Atlaris-style-guide.pdf` alias in **A01** | External inventory hash alias | Historical provenance only |
+| `.cursor/rules/redesign.md` | Generic diagnostic skill, not After Hours brand guidance | Retained; Design Values there are not the Atlaris token source |
+| Verify-atlaris pricing assertion | Current launch headline vs the retired smoke string | Retained as a test instruction; no longer labeled After Hours |
+
+Non-runtime “After Hours” comments on `StarField` and `PLAN_CHART_COLORS` were rewritten so they describe current semantic usage instead of the retired peach/plum brand.
 
 ---
 

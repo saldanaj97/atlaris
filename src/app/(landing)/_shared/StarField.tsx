@@ -40,7 +40,7 @@ const STARS = [
 ] as const;
 
 /**
- * Twinkling star field for After Hours marketing surfaces.
+ * Twinkling star field for marketing surfaces.
  * Stars render in `currentColor`, so set a text color on a parent
  * (e.g. `text-foreground` on parchment, `text-background` on inverted panels).
  */

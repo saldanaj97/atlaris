@@ -22,7 +22,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md` then the relevant sections of `docs/styles/design-system.md`. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations are adopted; page and component migration continues. `style-guide.md` is a compatibility pointer, not current design guidance.
+**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md` then the relevant sections of `docs/styles/design-system.md`. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
 
 
 ### 1. Think Before Coding
