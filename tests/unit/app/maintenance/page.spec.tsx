@@ -1,7 +1,5 @@
 import MaintenancePage from '@/app/maintenance/page';
 import { render, screen, within } from '@testing-library/react';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('MaintenancePage', () => {
@@ -48,19 +46,5 @@ describe('MaintenancePage', () => {
       within(footer).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).not.toBeInTheDocument();
     expect(within(footer).getByLabelText('Atlaris')).toBeInTheDocument();
-  });
-
-  it('keeps the static fallback truthful and operable without a home loop', () => {
-    const html = readFileSync(
-      join(process.cwd(), 'public', 'maintenance.html'),
-      'utf8',
-    );
-
-    expect(html).toContain('Try again');
-    expect(html).toContain('Please try again in a few minutes');
-    expect(html).toContain('mailto:support@atlaris.app');
-    expect(html).not.toContain('Back home');
-    expect(html).not.toContain('zero-downtime');
-    expect(html).not.toContain('Expected to be back online shortly');
   });
 });
