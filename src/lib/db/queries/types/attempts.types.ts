@@ -1,6 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
 import type { EffortNormalizationFlags } from '@/shared/constants/effort';
-import type { ParsedModule } from '@/shared/types/ai-parser.types';
 import type {
   GenerationInput,
   ProviderMetadata,
@@ -179,35 +178,7 @@ export interface ReserveAttemptSlotParams {
   now?: () => Date;
 }
 
-export interface FinalizeSuccessParams {
-  attemptId: string;
-  planId: string;
-  preparation: AttemptReservation;
-  modules: ParsedModule[];
-  providerMetadata?: ProviderMetadata;
-  durationMs: number;
-  extendedTimeout: boolean;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-export interface FinalizeFailureParams {
-  attemptId: string;
-  planId: string;
-  preparation: AttemptReservation;
-  classification: FailureClassification;
-  durationMs: number;
-  timedOut?: boolean;
-  extendedTimeout?: boolean;
-  providerMetadata?: ProviderMetadata;
-  error?: AttemptError;
-  /** Required. Pass request-scoped getDb() in API routes to enforce RLS. */
-  dbClient: AttemptsDbClient;
-  now?: () => Date;
-}
-
-export interface FinalizeSuccessPersistenceParams {
+export interface FinalizeSuccessPersistenceInTxParams {
   attemptId: string;
   planId: string;
   preparation: AttemptReservation;
@@ -218,19 +189,7 @@ export interface FinalizeSuccessPersistenceParams {
   durationMs: number;
   metadata: AttemptMetadata;
   finishedAt: Date;
-  dbClient: AttemptsDbClient;
 }
-
-/**
- * Same as {@link FinalizeSuccessPersistenceParams} but for an existing
- * transaction (no `dbClient`). The caller must have already applied RLS/JWT
- * claims to the transaction; use persistSuccessfulAttempt or
- * commitPlanGenerationSuccess when claim setup should be handled for you.
- */
-export type FinalizeSuccessPersistenceInTxParams = Omit<
-  FinalizeSuccessPersistenceParams,
-  'dbClient'
->;
 
 export interface UserGenerationAttemptsSinceParams {
   userId: string;
@@ -242,30 +201,3 @@ export interface UserGenerationAttemptWindowStats {
   count: number;
   oldestAttemptCreatedAt: Date | null;
 }
-
-// ----- Provider error retryability -----
-
-/** Determines if a provider_error is retryable based on error metadata. */
-interface ProviderErrorStatusShape {
-  status?: number;
-  statusCode?: number;
-  httpStatus?: number;
-  response?: { status?: number } | null;
-}
-
-interface AttemptErrorFallbackShape {
-  message: string;
-  code?: string;
-}
-
-type AttemptErrorWithStatus =
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { status: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { statusCode: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { httpStatus: number })
-  | (ProviderErrorStatusShape &
-      Partial<AttemptErrorFallbackShape> & { response: { status: number } });
-
-export type AttemptError = AttemptErrorWithStatus | AttemptErrorFallbackShape;

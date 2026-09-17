@@ -117,7 +117,7 @@ export function NotificationPreferencesForm({
     <div className='space-y-6'>
       <section
         aria-labelledby={`${idPrefix}-unsubscribe-label`}
-        className='rounded-lg border border-border bg-card p-5'
+        className='rounded-xl border border-panel-border bg-panel-muted/30 p-4 sm:p-5'
       >
         <div className='flex items-start justify-between gap-4'>
           <div className='space-y-2'>
@@ -166,7 +166,7 @@ export function NotificationPreferencesForm({
             <section
               key={category}
               aria-labelledby={`${inputId}-label`}
-              className='rounded-lg border border-border bg-card p-5'
+              className='rounded-xl border border-panel-border bg-panel-muted/30 p-4 sm:p-5'
             >
               <div className='flex items-start justify-between gap-4'>
                 <div className='space-y-2'>
@@ -203,7 +203,7 @@ export function NotificationPreferencesForm({
         })}
       </div>
 
-      <div className='flex flex-col gap-3 border-t border-border pt-5 sm:flex-row sm:items-center sm:justify-between'>
+      <div className='flex flex-col gap-3 border-t border-panel-border pt-5 sm:flex-row sm:items-center sm:justify-between'>
         <div className='flex items-center gap-2 text-sm text-muted-foreground'>
           <CheckCircle2 aria-hidden className='size-4' />
           Optional emails are off until you enable them.

@@ -77,8 +77,10 @@ describe('AiPlanGenerationPanel', () => {
   }
 
   async function chooseOption(currentLabel: string, nextLabel: string) {
-    const currentValue = screen.getByText(currentLabel);
-    const trigger = currentValue.closest('button');
+    const currentValue = screen
+      .getAllByText(currentLabel)
+      .find((node) => node.closest('button'));
+    const trigger = currentValue?.closest('button');
 
     if (!(trigger instanceof HTMLButtonElement)) {
       throw new Error(`Could not find dropdown trigger for "${currentLabel}"`);
@@ -153,6 +155,29 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   describe('defaults', () => {
+    it('labels the goal and groups the required plan preferences', () => {
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
+
+      expect(
+        screen.getByRole('heading', { name: 'Your goal' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('group', { name: 'Plan preferences' }),
+      ).toBeInTheDocument();
+
+      const topicInput = screen.getByRole('textbox', {
+        name: 'What do you want to learn?',
+      });
+      expect(topicInput).toHaveAttribute('aria-required', 'true');
+      expect(topicInput).toHaveAttribute(
+        'aria-describedby',
+        expect.stringContaining('-topic-help'),
+      );
+      expect(
+        screen.getByText('Complete your goal and preferences to continue.'),
+      ).toBeInTheDocument();
+    });
+
     it('shows preference placeholders before selection', async () => {
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 

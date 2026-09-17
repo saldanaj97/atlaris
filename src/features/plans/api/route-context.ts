@@ -6,10 +6,6 @@ import { assertPlanContentAccess } from '@/features/plans/entitlement/access';
 import { NotFoundError, ValidationError } from '@/lib/api/errors';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 
-export type PlansDbClient = DbClient;
-
-type LearningPlanRecord = OwnedPlanRecord;
-
 function isUuid(value: string): boolean {
   return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
     value,
@@ -33,8 +29,8 @@ export function requireUuidRouteParam(
 export async function requireOwnedPlanById(params: {
   planId: string;
   ownerUserId: string;
-  dbClient: PlansDbClient;
-}): Promise<LearningPlanRecord> {
+  dbClient: DbClient;
+}): Promise<OwnedPlanRecord> {
   const dbClient = params.dbClient;
   const plan = await selectOwnedPlanById({
     planId: params.planId,
@@ -52,8 +48,8 @@ export async function requireOwnedPlanById(params: {
 export async function requirePlanContentAccess(params: {
   planId: string;
   ownerUserId: string;
-  dbClient: PlansDbClient;
-}): Promise<LearningPlanRecord> {
+  dbClient: DbClient;
+}): Promise<OwnedPlanRecord> {
   const plan = await requireOwnedPlanById(params);
   await assertPlanContentAccess({
     userId: params.ownerUserId,

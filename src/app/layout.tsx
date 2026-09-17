@@ -2,11 +2,12 @@ import type { Metadata, Viewport } from 'next';
 
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
-import { PostHogUserIdentifier } from '@/components/PostHogUserIdentifier';
+import { Toaster } from '@/components/ui/sonner';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
+import { PostHogUserIdentifier } from '@/shared/analytics/PostHogUserIdentifier';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
-import { Toaster } from 'sonner';
 
 import './globals.css';
 
@@ -27,7 +28,7 @@ const clerkAppearance = {
   variables: {
     borderRadius: 'var(--radius)',
     colorBackground: 'var(--panel)',
-    colorPrimary: 'var(--primary)',
+    colorPrimary: 'var(--action-primary)',
     colorText: 'var(--foreground)',
     colorTextSecondary: 'var(--muted-foreground)',
     fontFamily: 'var(--font-family-base)',
@@ -35,11 +36,12 @@ const clerkAppearance = {
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
-    footerActionLink: 'text-primary hover:text-primary-dark',
-    formButtonPrimary: 'bg-primary hover:bg-primary/90',
+    footerActionLink: 'text-link hover:text-link-hover',
+    formButtonPrimary:
+      'bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover',
     headerSubtitle: 'text-muted-foreground',
     headerTitle: 'text-foreground',
-    socialButtonsBlockButton: 'border-border text-foreground hover:bg-muted/70',
+    socialButtonsBlockButton: 'border-input text-foreground hover:bg-muted/70',
   },
 };
 
@@ -65,18 +67,34 @@ const clerkLocalization = {
 export const metadata: Metadata = {
   title: 'Atlaris | Plans for the quiet hours',
   description: metadataDescription,
+  icons: {
+    icon: [
+      { url: '/brand/favicon.svg', type: 'image/svg+xml' },
+      { url: '/brand/favicon-16.svg', sizes: '16x16', type: 'image/svg+xml' },
+      { url: '/brand/favicon-32.svg', sizes: '32x32', type: 'image/svg+xml' },
+      {
+        url: '/brand/favicon-on-light.svg',
+        media: '(prefers-color-scheme: light)',
+        type: 'image/svg+xml',
+      },
+      {
+        url: '/brand/favicon-on-dark.svg',
+        media: '(prefers-color-scheme: dark)',
+        type: 'image/svg+xml',
+      },
+    ],
+    apple: [
+      {
+        url: '/brand/apple-touch-icon.png',
+        sizes: '180x180',
+        type: 'image/png',
+      },
+    ],
+  },
   openGraph: {
     title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
-    images: [
-      { url: '/og-default.jpg', width: 1200, height: 630, alt: 'Atlaris' },
-      {
-        url: '/og-landing.jpg',
-        width: 1200,
-        height: 630,
-        alt: 'Atlaris Landing',
-      },
-    ],
+    images: [OG_DEFAULT_IMAGE],
     type: 'website',
     siteName: 'Atlaris',
   },
@@ -84,7 +102,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Atlaris | Plans for the quiet hours',
     description: metadataDescription,
-    images: ['/og-default.jpg'],
+    images: [OG_DEFAULT_IMAGE.url],
     site: '@atlarisapp',
     creator: '@atlarisapp',
   },
@@ -93,8 +111,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#f4ebe1' },
-    { media: '(prefers-color-scheme: dark)', color: '#180d18' },
+    { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
+    { media: '(prefers-color-scheme: dark)', color: '#070b10' },
   ],
 };
 
@@ -121,7 +139,7 @@ export default function RootLayout({
       >
         <a
           href='#main-content'
-          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 text-sm font-medium text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
         >
           Skip to main content
         </a>

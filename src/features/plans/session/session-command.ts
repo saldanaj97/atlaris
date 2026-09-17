@@ -1,7 +1,7 @@
-import type { PlansDbClient } from '@/features/plans/api/route-context';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
+import type { DbClient } from '@/lib/db/types';
 import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
@@ -61,7 +61,7 @@ export interface RespondRetryStreamArgs {
   planId: string;
   plan: RetryPlanGenerationPlanSnapshot;
   savedPreferredAiModel: string | null;
-  tierDb: PlansDbClient;
+  tierDb: DbClient;
   responseHeaders?: HeadersInit;
   requestId?: string;
 }

@@ -2,36 +2,19 @@
 
 ## Agent Context
 
-**Agent Memory:** Recurring preferences and durable workspace facts live in `.agents/lessons.md`. Read that file whenever you read or apply this file.
-
-**Agent Context:** Repo-writable planning and handoff artifacts are local-only and belong under the daily recap layout (see below). DO NOT create or update planning artifacts under legacy `prds/`, legacy `.plans/`, flat `.agents/plans/`, flat `.agents/handoffs/`, or Cursor-native `.cursor/plans/` paths.`.cursor/plans/` is treated as a read-only export/import surface.
-
-Organize same-day plans and handoff prompts under `.agents/recaps/MM-DD-YYYY/`, where the date folder uses the **current local calendar day** in `MM-DD-YYYY` format (for example, `06-10-2026`).
-
-| Artifact                            | Path                                  |
-| ----------------------------------- | ------------------------------------- |
-| Plans, PRDs, todos, trackers        | `.agents/recaps/MM-DD-YYYY/plans/`    |
-| Handoff prompts and review handoffs | `.agents/recaps/MM-DD-YYYY/handoffs/` |
-
-Before writing a plan or handoff file:
-
-1. Resolve today's date folder: `.agents/recaps/MM-DD-YYYY/`.
-2. If it does not exist, create it plus `plans/` and `handoffs/` subfolders for that day. ie. `.agents/recaps/MM-DD-YYYY/plans/` and `.agents/recaps/MM-DD-YYYY/handoffs/`
-3. Write the artifact under the matching subfolder for its type. ie. `.agents/recaps/MM-DD-YYYY/plans/` for plans, `.agents/recaps/MM-DD-YYYY/handoffs/` for handoff prompts.
-
-Keep the day's `plans/` folder updated with task progress and verification notes when the work calls for it. Durable cross-session lessons still belong in `.agents/lessons.md`, not in daily recap folders.
+Before implementing or reviewing code, read ENGINEERING_RULES.md at the repository root and follow its applicable guidance.
 
 ## Project documentation (`docs/`)
 
-**Docs index:** [`docs/README.md`](docs/README.md) is the directory of every folder and file under `docs/`. Use it to find and open relevant project docs for the current request — architecture, API contracts, database, development, security, styles, testing, CI/CD, and third-party service notes under `docs/third-party-services/` (Clerk CLI, Portless, etc.).
+**Docs index:** `[docs/README.md](docs/README.md)` is the directory of every folder and file under `docs/`. Use it to find and open relevant project docs for the current request — architecture, API contracts, database, development, security, styles, testing, CI/CD, and third-party service notes under `docs/third-party-services/` (Clerk CLI, Portless, etc.).
 
 Before implementing or answering from guesswork when the topic is already documented:
 
-1. Skim [`docs/README.md`](docs/README.md) for matching sections/files.
+1. Skim `[docs/README.md](docs/README.md)` for matching sections/files.
 2. Read only the docs that apply to the request (do not load the whole tree by default).
 3. Prefer those docs over inventing setup, contracts, or runbook steps that already exist.
 
-**Keep the index current:** Whenever you add, remove, rename, or move a file or folder under `docs/` (including any subfolder), update [`docs/README.md`](docs/README.md) in the same change — section table entry, description, and the text tree at the bottom. Do not leave the index stale.
+**Keep the index current:** Whenever you add, remove, rename, or move a file or folder under `docs/` (including any subfolder), update `[docs/README.md](docs/README.md)` in the same change — section table entry, description, and the text tree at the bottom. Do not leave the index stale.
 
 ## Behavioral guidelines
 
@@ -39,7 +22,8 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-- **Design context:** For marketing UI, marketing copy, or brand token work, read `DESIGN.md` (Overview + Brand direction) then `docs/styles/after-hours-direction.md` (including its Experience section) before making changes.
+**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md` then the relevant sections of `docs/styles/design-system.md`. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
+
 
 ### 1. Think Before Coding
 
@@ -47,10 +31,12 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 Before implementing:
 
-- State your assumptions explicitly. If uncertain, ask.
-- If multiple interpretations exist, present them - don't pick silently.
+- Infer routine reversible choices from the request, prior authorization, and repository evidence. State material assumptions briefly.
+- Ask through the available question tool only when missing information materially changes the outcome or authorization is required. Continue independent authorized work while waiting.
 - If a simpler approach exists, say so. Push back when warranted.
-- If something is unclear, stop. Name what's confusing. Ask.
+- Pause only the work that depends on an unresolved decision. Complete the authorized preparation before asking for approval, and do not ask again for permission already given.
+- Explicit user instructions override skill defaults, subject to system and developer instructions. A skill does not expand task scope; identify the exact instruction if it would block authorized work.
+
 
 ### 2. Simplicity First
 
@@ -90,7 +76,7 @@ Transform tasks into verifiable goals:
 
 - "Add validation" → "Write tests for invalid inputs, then make them pass"
 - "Fix the bug" → "Write a test that reproduces it, then make it pass"
-- "Refactor X" → "Ensure tests pass before and after"
+- "Refactor X" → "Verify the affected behavior with the smallest relevant check"
 
 For multi-step tasks, state a brief plan:
 
@@ -108,17 +94,19 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Testing
 
-- Use TDD for new features and bug fixes when applicable
-- Ensure tests cover relevant scenarios and edge cases
-- Write clear, descriptive test cases that explain the intent of the test
-- Do not run tests, `check:full`, or automated reviews after small edits by default — see `.cursor/rules/selective-verification.mdc`
-- Run verification only when asked, when fixing CI failures, or when the current thread has changed 10+ files; prefer scoped commands (`pnpm test:unit:changed`, a targeted spec file) over full suites
+- `.cursor/rules/selective-verification.mdc` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
+- Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
+- Report the checks actually run and their outcomes. A skipped check is not a pass.
+
+
 
 ## Cursor Cloud database
 
 - In Cursor Cloud Agents, run `pnpm db:agent:up` before database work and `pnpm db:agent:status` for diagnosis.
 - The agent database is PostgreSQL 17 on task-local loopback only. Never provide it a hosted URL or run `pnpm db:agent:reset` against staging or production.
 - Keep the ordinary local OrbStack/Supabase workflow unchanged. See `docs/development/local-database.md` for the environment boundaries and command contracts.
+
+
 
 # Core Principles
 
@@ -128,7 +116,15 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Self-Improvement: Learn from mistakes. Update lessons. Iterate until mastered.
 - Verification: Prove correctness when it matters — diffs, targeted tests, logs, demos. Full-suite runs follow `.cursor/rules/selective-verification.mdc`, not every small change.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
-- Testing: Always write tests for new features and bug fixes, if applicable. Ensure that your tests cover the relevant scenarios and edge cases to maintain code quality and reliability.
+- Testing: Apply the central selective-verification policy and relevant engineering rules for behavioral coverage.
+
+
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

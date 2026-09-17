@@ -1,6 +1,14 @@
 import type { ActivityItem } from '../types';
-import type { LearningPlan, PlanSummary } from '@/shared/types/db.types';
+import type {
+  LearningPlan,
+  Module,
+  PlanSummary,
+} from '@/shared/types/db.types';
 
+import {
+  buildDashboardProgressTotals,
+  type DashboardProgressTotals,
+} from '@/features/plans/read-projection/dashboard-progress';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
 type DatedActivity = {
@@ -87,19 +95,18 @@ export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
     .map(({ activity }) => activity);
 }
 
-export function getDashboardGreeting(
-  name: string | null | undefined,
-  activePlan?: PlanSummary,
-): string {
+export function getDashboardHeroTitle(name: string | null | undefined): string {
   const firstName = name?.trim().split(/\s+/)[0];
-  const welcome = firstName ? `Welcome back, ${firstName}.` : 'Welcome back.';
+  return firstName ? `Welcome back, ${firstName}.` : 'Welcome back.';
+}
 
+export function getDashboardHeroDescription(activePlan?: PlanSummary): string {
   if (!activePlan) {
-    return `${welcome} Ready for your next challenge?`;
+    return 'Ready for your next challenge?';
   }
 
   if (activePlan.plan.generationStatus !== 'ready') {
-    return `${welcome} Your plan for ${activePlan.plan.topic} is still being created.`;
+    return `Your plan for ${activePlan.plan.topic} is still being created.`;
   }
 
   const progressPercent = Math.round(
@@ -107,8 +114,49 @@ export function getDashboardGreeting(
   );
 
   if (progressPercent === 0) {
-    return `${welcome} ${activePlan.plan.topic} is ready when you are.`;
+    return `${activePlan.plan.topic} is ready when you are.`;
   }
 
-  return `${welcome} You’re ${progressPercent}% through ${activePlan.plan.topic}. Keep the momentum going.`;
+  return `You’re ${progressPercent}% through ${activePlan.plan.topic}. Keep the momentum going.`;
+}
+
+export function getDashboardGreeting(
+  name: string | null | undefined,
+  activePlan?: PlanSummary,
+): string {
+  return `${getDashboardHeroTitle(name)} ${getDashboardHeroDescription(activePlan)}`;
+}
+
+export function getDashboardProgressStats(
+  summaries: PlanSummary[],
+): DashboardProgressTotals {
+  return buildDashboardProgressTotals(
+    summaries.map((summary) => ({
+      completedModules: summary.completedModules,
+      totalModules: summary.modules.length,
+      completedTasks: summary.completedTasks,
+      totalTasks: summary.totalTasks,
+    })),
+  );
+}
+
+export function getOrderedPlanModules(plan: PlanSummary): Module[] {
+  return plan.modules.toSorted((left, right) => left.order - right.order);
+}
+
+export function getResumeModule(plan: PlanSummary): Module | undefined {
+  const modules = getOrderedPlanModules(plan);
+  if (modules.length === 0) {
+    return undefined;
+  }
+
+  const progressPercent = Math.round(
+    Math.max(0, Math.min(1, plan.completion)) * 100,
+  );
+
+  if (progressPercent >= 100) {
+    return modules.at(-1);
+  }
+
+  return modules[plan.completedModules] ?? modules.at(-1);
 }

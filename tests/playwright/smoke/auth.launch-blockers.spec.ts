@@ -16,16 +16,18 @@ test.describe.configure({ mode: 'serial' });
 test.setTimeout(180_000);
 
 const ANALYTICS_USAGE_URL = /\/analytics\/usage$/;
-const SETTINGS_URL = /\/settings#billing$/;
+const SETTINGS_URL = /\/settings\/billing$/;
 const MODULE_URL = /\/plans\/[0-9a-f-]{36}\/modules\/[0-9a-f-]{36}$/i;
 const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
-  await expectHeading(page, 'Settings', 1);
+  await expectHeading(page, 'Make Atlaris yours.', 1);
   await expectHeading(page, 'Plan & billing', 2);
-  await expectHeading(page, 'Usage', 2);
+  await expect(
+    page.getByRole('heading', { name: 'Usage', exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('Next billing date')).toBeVisible();
   await expect(page.getByText(/^active$/i)).toBeVisible();
@@ -37,7 +39,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('dashboard and plans routes load', async () => {
     await page.goto('/dashboard');
     await expect(page).toHaveURL(/\/dashboard$/);
-    await expectHeading(page, 'Dashboard');
+    await expectHeading(page, /Welcome back/);
 
     await page.goto('/plans');
     await expect(page).toHaveURL(/\/plans$/);
@@ -61,7 +63,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
         response.request().method() === 'POST',
     );
 
-    await page.getByRole('button', { name: 'Generate my plan' }).click();
+    await page.getByRole('button', { name: 'Chart this course' }).click();
     const generationResponse = await generationResponsePromise;
     expect(generationResponse.ok()).toBe(true);
 
@@ -92,7 +94,10 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     const moduleUrlBeforeNext = page.url();
     await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible();
 
-    const nextModuleLink = page.getByLabel('Next module');
+    const nextModuleLink = page.getByRole('link', {
+      name: 'Next module',
+      exact: true,
+    });
     if ((await nextModuleLink.count()) > 0) {
       // Some generated plans can legitimately end on a single module, so only
       // exercise next-module navigation when the UI exposes that control.
@@ -120,9 +125,9 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
-    await expectHeading(page, /invest in your growth/i);
+    await expectHeading(page, /one sky\. three ways to cross it\./i);
 
-    await page.goto('/settings#billing');
+    await page.goto('/settings/billing');
     await expect(page).toHaveURL(SETTINGS_URL);
     await expectBillingPage(page);
   });

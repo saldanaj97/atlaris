@@ -4,7 +4,6 @@ import {
   clearAllRateLimiters,
   createIpRateLimiter,
   getClientIp,
-  getRateLimitHeaders,
   IP_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/ip-rate-limit';
 import { logger } from '@/lib/logging/logger';
@@ -348,45 +347,13 @@ describe('IP Rate Limiting', () => {
         'x-forwarded-for': '192.168.1.1',
       });
 
-      const authConfig = IP_RATE_LIMIT_CONFIGS.auth;
-      for (let i = 0; i < authConfig.maxRequests; i++) {
-        checkIpRateLimit(request, 'auth');
+      const docsConfig = IP_RATE_LIMIT_CONFIGS.docs;
+      for (let i = 0; i < docsConfig.maxRequests; i++) {
+        checkIpRateLimit(request, 'docs');
       }
-      expect(() => checkIpRateLimit(request, 'auth')).toThrow(RateLimitError);
+      expect(() => checkIpRateLimit(request, 'docs')).toThrow(RateLimitError);
 
       expect(() => checkIpRateLimit(request, 'webhook')).not.toThrow();
-    });
-  });
-
-  describe('getRateLimitHeaders', () => {
-    it('returns correct rate limit headers', () => {
-      const request = createMockRequest({
-        'x-forwarded-for': '192.168.1.1',
-      });
-
-      const headers = getRateLimitHeaders(request, 'docs');
-      const docsConfig = IP_RATE_LIMIT_CONFIGS.docs;
-
-      expect(headers['X-RateLimit-Limit']).toBe(String(docsConfig.maxRequests));
-      expect(headers['X-RateLimit-Remaining']).toBe(
-        String(docsConfig.maxRequests),
-      );
-      expect(headers['X-RateLimit-Reset']).toBeDefined();
-      expect(headers['Retry-After']).toBeUndefined();
-    });
-
-    it('updates remaining count after requests', () => {
-      const request = createMockRequest({
-        'x-forwarded-for': '192.168.1.100',
-      });
-
-      checkIpRateLimit(request, 'publicApi');
-      checkIpRateLimit(request, 'publicApi');
-
-      const headers = getRateLimitHeaders(request, 'publicApi');
-      const remaining = parseInt(headers['X-RateLimit-Remaining'], 10);
-
-      expect(remaining).toBe(IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests - 2);
     });
   });
 
@@ -395,20 +362,8 @@ describe('IP Rate Limiting', () => {
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('health');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('webhook');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('publicApi');
-      expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('auth');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('docs');
       expect(IP_RATE_LIMIT_CONFIGS).toHaveProperty('internal');
-    });
-
-    it('auth has lowest limit (brute force protection)', () => {
-      const authLimit = IP_RATE_LIMIT_CONFIGS.auth.maxRequests;
-
-      expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.health.maxRequests);
-      expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.webhook.maxRequests);
-      expect(authLimit).toBeLessThan(
-        IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests,
-      );
-      expect(authLimit).toBeLessThan(IP_RATE_LIMIT_CONFIGS.docs.maxRequests);
     });
 
     it('webhook has highest limit (payment processors)', () => {
@@ -421,7 +376,7 @@ describe('IP Rate Limiting', () => {
         IP_RATE_LIMIT_CONFIGS.publicApi.maxRequests,
       );
       expect(webhookLimit).toBeGreaterThan(
-        IP_RATE_LIMIT_CONFIGS.auth.maxRequests,
+        IP_RATE_LIMIT_CONFIGS.docs.maxRequests,
       );
     });
   });

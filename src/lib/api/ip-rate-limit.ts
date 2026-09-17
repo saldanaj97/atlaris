@@ -61,11 +61,6 @@ export const IP_RATE_LIMIT_CONFIGS = {
     maxRequests: 30,
     windowMs: 60 * 1000, // 30 requests per minute
   },
-  /** Auth endpoints - restrictive to prevent brute force */
-  auth: {
-    maxRequests: 10,
-    windowMs: 60 * 1000, // 10 requests per minute
-  },
   /** Documentation endpoints - moderately permissive */
   docs: {
     maxRequests: 30,
@@ -268,31 +263,6 @@ export function checkIpRateLimit(
   const ip = getClientIp(request, config);
   const limiter = getRateLimiter(type);
   limiter.check(ip);
-}
-
-/**
- * Gets rate limit headers for a response.
- *
- * @param request - The incoming HTTP request
- * @param type - The type of endpoint
- * @returns Headers object with rate limit information
- */
-export function getRateLimitHeaders(
-  request: Request,
-  type: keyof typeof IP_RATE_LIMIT_CONFIGS,
-  config?: IpExtractionConfig,
-): Record<string, string> {
-  const ip = getClientIp(request, config);
-  const limiter = getRateLimiter(type);
-  const rateLimitConfig = IP_RATE_LIMIT_CONFIGS[type];
-  const remaining = limiter.getRemainingRequests(ip);
-  const reset = limiter.getResetTime(ip);
-
-  return {
-    'X-RateLimit-Limit': String(rateLimitConfig.maxRequests),
-    'X-RateLimit-Remaining': String(remaining),
-    'X-RateLimit-Reset': String(reset),
-  };
 }
 
 /**

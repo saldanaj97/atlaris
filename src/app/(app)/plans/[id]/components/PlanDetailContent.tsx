@@ -85,54 +85,79 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 export function PlanDetailContentSkeleton() {
   return (
     <>
-      <header className='mb-6 space-y-4'>
+      <header className='mb-5'>
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <Skeleton className='h-8 w-40' />
           <Skeleton className='h-8 w-28' />
         </div>
-        <div className='space-y-2'>
-          <Skeleton className='h-8 w-full max-w-2xl' />
-          <Skeleton className='h-4 w-full max-w-md' />
-        </div>
       </header>
 
-      <section className='mb-10'>
-        <div className='rounded-2xl border border-panel-border bg-panel p-5 sm:p-6'>
-          <div className='grid gap-6 sm:grid-cols-[minmax(0,1fr)_9rem] sm:gap-8'>
-            <div className='min-w-0'>
-              <Skeleton className='mb-3 h-3 w-44 bg-secondary' />
-              <Skeleton className='h-8 w-full max-w-lg' />
-            </div>
-            <div className='flex items-end justify-between gap-6 border-t border-border/50 pt-4 sm:block sm:border-t-0 sm:border-l sm:pl-7 sm:text-right'>
-              <div className='space-y-2 sm:ml-auto sm:w-fit'>
-                <Skeleton className='h-3 w-16 bg-secondary' />
-                <Skeleton className='h-10 w-20' />
-              </div>
-              <Skeleton className='h-3 w-28 bg-muted sm:mt-2 sm:ml-auto' />
-            </div>
+      <section
+        aria-label='Learning plan loading'
+        className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'
+      >
+        <div className='max-w-3xl'>
+          <Skeleton className='h-3 w-48 bg-secondary' />
+          <Skeleton className='mt-4 h-10 w-full max-w-2xl' />
+          <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />
+          <div className='mt-5 flex flex-wrap gap-3'>
+            <Skeleton className='h-10 w-36 bg-primary/35' />
+            <Skeleton className='h-10 w-28 bg-secondary' />
           </div>
-          <div className='mt-6 grid divide-y divide-border/40 border-t border-border/50 pt-1 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:pt-5'>
-            {[1, 2, 3].map((statSkeletonId) => (
-              <StatCellSkeleton key={`plan-stat-skeleton-${statSkeletonId}`} />
+        </div>
+      </section>
+
+      <div className='mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
+        <section
+          aria-label='Learning path loading'
+          className='overflow-hidden rounded-2xl border border-panel-border bg-panel'
+        >
+          <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
+            <Skeleton className='h-3 w-20 bg-secondary' />
+            <Skeleton className='mt-2 h-6 w-48' />
+            <Skeleton className='mt-2 h-4 w-44 bg-muted' />
+          </div>
+          <div className='space-y-4 px-3 py-5 sm:px-5'>
+            {[1, 2, 3, 4, 5].map((moduleSkeletonId) => (
+              <ModuleAccordionSkeleton
+                key={`plan-module-skeleton-${moduleSkeletonId}`}
+              />
             ))}
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section>
-        <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
-          <Skeleton className='h-3 w-44 bg-secondary' />
-          <Skeleton className='h-3 w-20' />
-        </div>
-
-        <div className='space-y-4'>
-          {[1, 2, 3, 4, 5].map((moduleSkeletonId) => (
-            <ModuleAccordionSkeleton
-              key={`plan-module-skeleton-${moduleSkeletonId}`}
-            />
-          ))}
-        </div>
-      </section>
+        <aside aria-label='Plan summary loading' className='space-y-4'>
+          <div className='rounded-2xl border border-panel-border bg-panel p-5'>
+            <div className='flex items-center justify-between gap-3'>
+              <Skeleton className='h-5 w-28' />
+              <Skeleton className='h-7 w-12' />
+            </div>
+            <Skeleton className='mt-5 h-2 w-full bg-secondary' />
+            <div className='mt-5 grid grid-cols-2 gap-4'>
+              <StatCellSkeleton />
+              <StatCellSkeleton />
+            </div>
+          </div>
+          <div className='rounded-2xl border border-panel-border bg-panel p-5'>
+            <Skeleton className='h-5 w-28' />
+            <div className='mt-5 space-y-3 border-t border-border/60 pt-4'>
+              {[1, 2, 3, 4].map((detailSkeletonId) => (
+                <div
+                  key={`plan-detail-skeleton-${detailSkeletonId}`}
+                  className='flex items-center justify-between gap-4'
+                >
+                  <Skeleton className='h-3 w-20 bg-muted' />
+                  <Skeleton className='h-3 w-24' />
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className='rounded-2xl border border-panel-border bg-panel p-5'>
+            <Skeleton className='h-5 w-20' />
+            <Skeleton className='mt-4 h-20 w-full rounded-lg bg-muted' />
+          </div>
+        </aside>
+      </div>
     </>
   );
 }

@@ -106,7 +106,7 @@ export function FreeAccessPlanSelector({
                   value={candidate.id}
                   checked={planId === candidate.id}
                   onChange={() => setPlanId(candidate.id)}
-                  className='mt-1 size-4 accent-primary'
+                  className='mt-[4px] size-[20px] shrink-0 accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background'
                 />
                 <span className='min-w-0'>
                   <span className='block truncate font-medium'>

@@ -1,9 +1,6 @@
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
-  MAX_JOB_RETRIES,
-  MAX_PROVIDER_RETRIES,
-  MAX_TOTAL_AI_CALLS_PER_JOB,
 } from '@/shared/constants/retry-policy';
 import { decideJobRetry, getJobRetryDelayMs } from '@/shared/retry-policy';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -170,19 +167,6 @@ describe('shared retry-policy', () => {
       for (let attempt = 1; attempt <= 50; attempt++) {
         expect(getJobRetryDelayMs(attempt)).toBeLessThanOrEqual(ceiling);
       }
-    });
-  });
-
-  describe('constant invariants', () => {
-    it('MAX_TOTAL_AI_CALLS_PER_JOB = MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1)', () => {
-      expect(MAX_TOTAL_AI_CALLS_PER_JOB).toBe(
-        MAX_JOB_RETRIES * (MAX_PROVIDER_RETRIES + 1),
-      );
-    });
-
-    it('MAX_JOB_RETRIES is a reasonable bound (not 100)', () => {
-      expect(MAX_JOB_RETRIES).toBeLessThanOrEqual(10);
-      expect(MAX_JOB_RETRIES).toBeGreaterThanOrEqual(1);
     });
   });
 });

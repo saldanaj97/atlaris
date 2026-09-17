@@ -36,18 +36,18 @@ Ops delivery runbook: [email-notification-delivery-runbook.md](./email-notificat
 
 ## Settings ledger UI
 
-`/settings` is a single page (`SettingsLedgerPage`) with hash sections (`settings-section-ids.ts`):
+`/settings` redirects to `/settings/profile`. Each section is its own route (`settings-section-ids.ts`):
 
-| Hash             | Section                                      |
-| ---------------- | -------------------------------------------- |
-| `#profile`       | Profile form                                 |
-| `#billing`       | Plan & billing (DB snapshot + checkout sync) |
-| `#usage`         | Billing meters (not learning analytics)      |
-| `#ai`            | AI model preference                          |
-| `#integrations`  | Integrations                                 |
-| `#notifications` | Email notification preferences               |
+| Route                      | Section                                      |
+| -------------------------- | -------------------------------------------- |
+| `/settings/profile`        | Profile form                                 |
+| `/settings/billing`        | Plan & billing (DB snapshot + checkout sync) |
+| `/settings/usage`          | Billing meters (not learning analytics)      |
+| `/settings/ai`             | AI model preference                          |
+| `/settings/integrations`   | Integrations                                 |
+| `/settings/notifications`  | Email notification preferences               |
 
-Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=...#billing`. Scroll targeting: `SettingsScrollTarget`.
+Deep links: `/settings/notifications`, `/settings/billing?checkout=1&checkoutBaseline=...`. Nav: `SettingsSectionNavigation` from the pathname.
 
 ## API contracts
 
@@ -58,7 +58,7 @@ Deep links: `/settings#notifications`, `/settings?checkout=1&checkoutBaseline=..
 | `GET`   | `/api/v1/user/preferences` | Raw saved slots (`preferredAiModel`, `preferredRegenerationAiModel`, `preferredLessonAiModel`, each nullable, including out-of-tier IDs) plus `effectivePreferredAiModel` / `effectivePreferredRegenerationAiModel` / `effectivePreferredLessonAiModel` (resolved for the current tier × operation, never written) and `availableModels` (persistable outline picker list; Free is `[]`). Does not return timezone or email prefs |
 | `PATCH` | `/api/v1/user/preferences` | One or more of `{ preferredAiModel, preferredRegenerationAiModel, preferredLessonAiModel }` as `string \| null`. Validated against the current tier × operation policy, not the PostgreSQL enum. `null` clears that slot. Free rejects any non-null save (`403 MODEL_NOT_ALLOWED_FOR_TIER`). Starter may save only the outline slot. Pro may save all three independently                                                         |
 
-UI: Settings `#ai` → `ModelSelectionCard` → `ModelPreferencesSelector` → `useModelPreferenceSave` → PATCH, then `router.refresh()`. Free has no picker and does not PATCH on render.
+UI: Settings `/settings/ai` → `ModelSelectionCard` → `ModelPreferencesSelector` → `useModelPreferenceSave` → PATCH, then `router.refresh()`. Free has no picker and does not PATCH on render.
 
 ### Email notification preferences
 
@@ -66,7 +66,7 @@ UI: Settings `#ai` → `ModelSelectionCard` → `ModelPreferencesSelector` → `
 | ------- | ---------------------------------------- | -------------------------------------------------------------------------------- |
 | `PATCH` | `/api/v1/user/preferences/notifications` | `{ unsubscribeAllOptionalEmails, weeklySummary, dailyReminder, streakReminder }` |
 
-No public GET route; Settings `#notifications` loads prefs server-side via `getEmailNotificationPreferences`. Saving upserts the settings row and all three category rows; disabling a previously enabled category sets `unsubscribed_at`.
+No public GET route; Settings `/settings/notifications` loads prefs server-side via `getEmailNotificationPreferences`. Saving upserts the settings row and all three category rows; disabling a previously enabled category sets `unsubscribed_at`.
 
 ### Analytics timezone
 
@@ -101,7 +101,7 @@ Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback
 ## Pitfalls
 
 1. Do not write preference columns on `users` — they were dropped; use `user_preferences`.
-2. Settings `#usage` is **billing** meters; learning analytics live at `/analytics/usage`.
+2. Settings `/settings/usage` is **billing** meters; learning analytics live at `/analytics/usage`.
 3. Master “unsubscribe from optional emails” disables category switches in the UI without rewriting stored category booleans until save.
 4. Actor load joins preferences — apply preference migrations before app code that requires the join ([deploy.md](../development/deploy.md)).
 

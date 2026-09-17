@@ -7,7 +7,6 @@ import { ValidationError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { learningPlans, usageMetrics } from '@supabase/schema';
-import { db as serviceRoleDb } from '@supabase/service-role';
 import { and, eq, sql } from 'drizzle-orm';
 
 // Usage type for incrementing counters
@@ -60,67 +59,6 @@ async function selectUsageMetricsForMonth(
     .limit(1);
 
   return metrics ?? null;
-}
-
-/**
- * Get or create usage metrics for current month
- */
-async function getOrCreateUsageMetrics(
-  userId: string,
-  month: string,
-  dbClient: DbClient,
-) {
-  const [created] = await serviceRoleDb
-    .insert(usageMetrics)
-    .values({
-      userId,
-      month,
-      plansGenerated: 0,
-      regenerationsUsed: 0,
-      exportsUsed: 0,
-      lessonModulesGenerated: 0,
-    })
-    .onConflictDoNothing({
-      target: [usageMetrics.userId, usageMetrics.month],
-    })
-    .returning();
-
-  if (created) {
-    return created;
-  }
-
-  const existing = await selectUsageMetricsForMonth(userId, month, dbClient);
-
-  if (!existing) {
-    throw new UsageMetricsLoadError(userId, month);
-  }
-
-  return existing;
-}
-
-/**
- * Increment usage counter for the current month
- */
-export async function incrementUsage(
-  userId: string,
-  type: UsageType,
-  dbClient: DbClient,
-): Promise<void> {
-  const month = getCurrentMonth();
-
-  // Ensure metrics exist for this month
-  await getOrCreateUsageMetrics(userId, month, dbClient);
-
-  const updateObj = getUsageCounterUpdate(type);
-
-  // Increment the counter
-  await dbClient
-    .update(usageMetrics)
-    .set({
-      ...updateObj,
-      updatedAt: new Date(),
-    })
-    .where(and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)));
 }
 
 /**

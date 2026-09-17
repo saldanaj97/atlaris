@@ -52,10 +52,10 @@ describe('CheckoutSubscriptionSync', () => {
     Object.defineProperty(window, 'location', {
       configurable: true,
       value: {
-        href: 'http://localhost:3000/settings?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0#billing',
-        pathname: '/settings',
+        href: 'http://localhost:3000/settings/billing?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0',
+        pathname: '/settings/billing',
         search: '?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0',
-        hash: '#billing',
+        hash: '',
       },
     });
   });
@@ -112,7 +112,7 @@ describe('CheckoutSubscriptionSync', () => {
 
     expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2);
     expect(mocks.refreshMock).toHaveBeenCalled();
-    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings#billing');
+    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings/billing');
   });
 
   it('finishes immediately when the webhook projected before settings rendered', async () => {
@@ -139,7 +139,7 @@ describe('CheckoutSubscriptionSync', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(mocks.refreshMock).toHaveBeenCalled();
-    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings#billing');
+    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings/billing');
   });
 
   it('shows timeout copy without claiming payment failed', async () => {
@@ -163,7 +163,7 @@ describe('CheckoutSubscriptionSync', () => {
     expect(CHECKOUT_SYNC_TIMEOUT_MESSAGE.toLowerCase()).not.toMatch(
       /payment failed|declined|unsuccessful payment/,
     );
-    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings#billing');
+    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings/billing');
   });
 
   it('times out and aborts a hung subscription request', async () => {
@@ -190,7 +190,7 @@ describe('CheckoutSubscriptionSync', () => {
     });
 
     expect((requestSignal as AbortSignal | null)?.aborted).toBe(true);
-    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings#billing');
+    expect(mocks.replaceMock).toHaveBeenCalledWith('/settings/billing');
   });
 
   it('aborts an in-flight request when unmounted', async () => {

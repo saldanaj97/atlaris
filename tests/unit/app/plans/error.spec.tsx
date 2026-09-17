@@ -10,7 +10,7 @@ describe('PlansError', () => {
       screen.queryByRole('link', { name: /new plan/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Try Again' }),
+      screen.getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
   });
 });

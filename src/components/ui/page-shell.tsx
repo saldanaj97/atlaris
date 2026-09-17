@@ -1,6 +1,5 @@
 import {
   APP_SHELL_COLUMN,
-  APP_SHELL_CONTENT_INSET,
   APP_SHELL_GUTTER,
 } from '@/components/layout/app-shell-width';
 import { cn } from '@/lib/utils';
@@ -29,15 +28,7 @@ function PageShell({
       )}
       {...props}
     >
-      <div
-        className={cn(
-          APP_SHELL_COLUMN,
-          APP_SHELL_CONTENT_INSET,
-          'py-5 sm:py-6',
-        )}
-      >
-        {children}
-      </div>
+      <div className={cn(APP_SHELL_COLUMN, 'py-5 sm:py-6')}>{children}</div>
     </div>
   );
 }

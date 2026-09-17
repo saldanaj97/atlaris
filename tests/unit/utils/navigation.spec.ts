@@ -14,22 +14,13 @@ describe('Navigation', () => {
       expect(dashboardItem?.href).toBe('/dashboard');
     });
 
-    it('should contain Analytics nav item with dropdown', () => {
+    it('should contain Analytics nav item without a submenu', () => {
       const analyticsItem = authenticatedNavItems.find(
         (item) => item.label === 'Analytics',
       );
       expect(analyticsItem).toBeDefined();
       expect(analyticsItem?.href).toBe('/analytics');
-      expect(analyticsItem?.dropdown).toBeDefined();
-      expect(analyticsItem?.dropdown?.length).toBe(2);
-      expect(analyticsItem?.dropdown?.[0]).toEqual({
-        label: 'Usage',
-        href: '/analytics/usage',
-      });
-      expect(analyticsItem?.dropdown?.[1]).toEqual({
-        label: 'Achievements',
-        href: '/analytics/achievements',
-      });
+      expect(analyticsItem?.dropdown).toBeUndefined();
     });
 
     it('should contain Settings nav item without dropdown', () => {
@@ -55,20 +46,15 @@ describe('Navigation', () => {
 
     it('should only contain expected properties on items', () => {
       authenticatedNavItems.forEach((item) => {
-        const expectedKeys =
-          item.label === 'Analytics'
-            ? ['dropdown', 'href', 'label']
-            : ['href', 'label'];
-        expect(Object.keys(item).sort()).toEqual(expectedKeys);
+        expect(Object.keys(item).sort()).toEqual(['href', 'label']);
       });
     });
 
-    it('should have dropdown only on Analytics item', () => {
+    it('should not expose a dropdown on any authenticated item', () => {
       const dropdownItems = authenticatedNavItems.filter(
         (item) => item.dropdown,
       );
-      expect(dropdownItems.length).toBe(1);
-      expect(dropdownItems.map((item) => item.label)).toContain('Analytics');
+      expect(dropdownItems).toHaveLength(0);
     });
 
     it('should have valid href for all items', () => {

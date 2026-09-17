@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
 /**
- * Empty-state hero when there is no active plan — same panel plate as the
- * resume hero, quiet ruled note instead of a nested box.
+ * Empty-state card when there is no active plan to resume.
  */
 export function StartTonightCard({
   canCreatePlan,
@@ -12,35 +12,34 @@ export function StartTonightCard({
   canCreatePlan?: boolean;
 }) {
   return (
-    <article className='rounded-2xl border border-panel-border bg-panel p-6 text-panel-foreground shadow-sm animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-7'>
-      <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-        Tonight&apos;s table
-      </p>
-
-      <h2 className='mt-3 text-2xl font-semibold text-balance text-foreground'>
-        Your next plan is waiting
+    <Card
+      as='article'
+      className='p-5 animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-6'
+    >
+      <h2 className='text-lg font-semibold text-foreground sm:text-xl'>
+        Start learning
       </h2>
+
+      <h3 className='mt-4 text-xl font-semibold text-balance text-foreground'>
+        Your next plan is waiting
+      </h3>
 
       <p className='mt-2 max-w-xl text-sm text-muted-foreground'>
         Create a learning map and pick up whenever the night is quiet.
       </p>
 
-      <div className='mt-6 flex flex-wrap items-center gap-2'>
+      <div className='mt-6 flex flex-wrap items-center gap-2.5'>
         {canCreatePlan !== undefined ? (
-          <Button asChild>
+          <Button asChild size='sm'>
             <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
               {canCreatePlan ? 'Begin tonight' : 'Upgrade'}
             </Link>
           </Button>
         ) : null}
-        <Button asChild variant='ghost'>
+        <Button asChild size='sm' variant='outline'>
           <Link href={ROUTES.PLANS.ROOT}>Browse plans</Link>
         </Button>
       </div>
-
-      <p className='mt-6 border-t border-border/50 pt-4 text-xs text-muted-foreground'>
-        Start with a topic you care about — Atlaris will chart the path.
-      </p>
-    </article>
+    </Card>
   );
 }

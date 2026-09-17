@@ -1,0 +1,271 @@
+'use client';
+
+import type { NavItem } from '@/features/navigation';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { AccountAvatar } from '@/components/shared/AccountAvatar';
+import BrandLogo from '@/components/shared/BrandLogo';
+import {
+  DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID,
+  DESKTOP_SIDEBAR_COLLAPSE_LABEL,
+} from '@/components/shared/nav/desktop-sidebar-state';
+import { isNavItemActive } from '@/components/shared/nav/nav-active';
+import { ThemeToggle } from '@/components/shared/ThemeToggle';
+import { UpgradeBanner } from '@/components/ui/upgrade-banner';
+import { ROUTES } from '@/features/navigation';
+import { cn } from '@/lib/utils';
+import { UserButton } from '@clerk/nextjs';
+import {
+  BarChart3,
+  BookOpen,
+  ChevronDown,
+  ChevronRight,
+  LayoutDashboard,
+  PanelLeftClose,
+  Settings,
+} from 'lucide-react';
+import Link from 'next/link';
+import { useId, useState } from 'react';
+
+interface AppSidebarProps {
+  pathname: string;
+  navItems: NavItem[];
+  tier?: SubscriptionTier;
+  userName?: string;
+  userImageUrl?: string | null;
+  showClerkUserButton?: boolean;
+  navigationLabel?: string;
+  className?: string;
+  id?: string;
+  onNavigate?: () => void;
+  onDesktopCollapse?: () => void;
+}
+
+function NavIcon({ href }: { href: string }) {
+  const Icon =
+    href === ROUTES.DASHBOARD
+      ? LayoutDashboard
+      : href === ROUTES.PLANS.ROOT
+        ? BookOpen
+        : href === ROUTES.ANALYTICS.ROOT
+          ? BarChart3
+          : Settings;
+
+  return (
+    <Icon
+      aria-hidden='true'
+      className='size-(--at-primitive-size-icon-default,1.25rem) shrink-0'
+    />
+  );
+}
+
+function tierLabel(tier?: SubscriptionTier): string {
+  if (!tier) return 'Account settings';
+  return `${tier[0]!.toUpperCase()}${tier.slice(1)} Plan`;
+}
+
+function isCurrentPath(pathname: string, item: NavItem): boolean {
+  return item.dropdown
+    ? pathname === item.href
+    : isNavItemActive(pathname, item);
+}
+
+export default function AppSidebar({
+  pathname,
+  navItems,
+  tier,
+  userName,
+  userImageUrl,
+  showClerkUserButton = false,
+  navigationLabel = 'Application navigation',
+  className,
+  id,
+  onNavigate,
+  onDesktopCollapse,
+}: AppSidebarProps) {
+  const [expandedItems, setExpandedItems] = useState<Record<string, boolean>>(
+    {},
+  );
+  const idPrefix = useId();
+
+  return (
+    <aside
+      id={id}
+      aria-label='Application sidebar'
+      className={cn(
+        'flex min-h-full w-full flex-col bg-sidebar text-sidebar-foreground',
+        className,
+      )}
+    >
+      <div className='flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center gap-2 px-(--at-primitive-space-4,1rem) pt-[env(safe-area-inset-top,0px)]'>
+        <div className='min-w-0 flex-1'>
+          <BrandLogo size='sm' onClick={onNavigate} />
+        </div>
+        {onDesktopCollapse ? (
+          <button
+            id={DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID}
+            type='button'
+            aria-controls={id}
+            aria-expanded='true'
+            aria-label={DESKTOP_SIDEBAR_COLLAPSE_LABEL}
+            className='flex size-(--at-semantic-size-control-touch,2.75rem) shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+            onClick={onDesktopCollapse}
+          >
+            <PanelLeftClose aria-hidden='true' className='size-4' />
+          </button>
+        ) : null}
+      </div>
+
+      <nav
+        aria-label={navigationLabel}
+        className='flex min-h-0 flex-1 flex-col gap-(--at-primitive-space-1,0.25rem) overflow-y-auto px-(--at-primitive-space-4,1rem) py-(--at-primitive-space-6,1.5rem)'
+      >
+        {navItems.map((item) => {
+          const isActive = isNavItemActive(pathname, item);
+          const isCurrent = isCurrentPath(pathname, item);
+          const isExpanded =
+            expandedItems[item.href] ?? (isActive && Boolean(item.dropdown));
+          const subnavId = `${idPrefix}-${item.href.replaceAll('/', '-')}-subnav`;
+
+          return (
+            <div key={item.href} className='flex flex-col'>
+              <div className='flex items-center gap-1'>
+                <Link
+                  href={item.href}
+                  onClick={onNavigate}
+                  aria-current={isCurrent ? 'page' : undefined}
+                  className={cn(
+                    'group relative flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                    'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
+                    isActive
+                      ? 'bg-action-soft text-sidebar-foreground'
+                      : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
+                  )}
+                >
+                  {isActive ? (
+                    <span
+                      aria-hidden='true'
+                      className='absolute inset-y-1 left-0.5 w-0.5 rounded-full bg-sidebar-primary'
+                    />
+                  ) : null}
+                  <NavIcon href={item.href} />
+                  <span className='min-w-0 wrap-anywhere'>{item.label}</span>
+                </Link>
+
+                {item.dropdown ? (
+                  <button
+                    type='button'
+                    aria-controls={subnavId}
+                    aria-expanded={isExpanded}
+                    aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${item.label}`}
+                    className='flex size-(--at-semantic-size-control-touch,2.75rem) shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+                    onClick={() =>
+                      setExpandedItems((current) => ({
+                        ...current,
+                        [item.href]: !isExpanded,
+                      }))
+                    }
+                  >
+                    <ChevronDown
+                      aria-hidden='true'
+                      className={cn(
+                        'size-4 transition-transform motion-reduce:transition-none',
+                        isExpanded && 'rotate-180',
+                      )}
+                    />
+                  </button>
+                ) : null}
+              </div>
+
+              {item.dropdown && isExpanded ? (
+                <div
+                  id={subnavId}
+                  className='ml-7 flex flex-col gap-1 border-l border-sidebar-border pl-2'
+                >
+                  {item.dropdown.map((subItem) => {
+                    const isSubActive = isNavItemActive(pathname, subItem);
+                    return (
+                      <Link
+                        key={subItem.href}
+                        href={subItem.href}
+                        onClick={onNavigate}
+                        aria-current={isSubActive ? 'page' : undefined}
+                        className={cn(
+                          'flex min-h-(--at-component-navigation-item-height,2.75rem) items-center rounded-lg px-3 py-2 text-sm transition-colors',
+                          'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none',
+                          isSubActive
+                            ? 'bg-action-soft text-sidebar-foreground'
+                            : 'text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground',
+                        )}
+                      >
+                        {subItem.label}
+                      </Link>
+                    );
+                  })}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </nav>
+
+      <div className='mt-auto shrink-0 space-y-2 border-sidebar-border px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]'>
+        {tier && tier !== 'pro' ? (
+          <UpgradeBanner onNavigate={onNavigate} />
+        ) : null}
+
+        <div className='flex items-center gap-1'>
+          {onDesktopCollapse ? (
+            <ThemeToggle
+              withTooltip
+              tooltipSide='top'
+              className='shrink-0 text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-foreground'
+            />
+          ) : null}
+          {showClerkUserButton ? (
+            <div className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm'>
+              <UserButton
+                appearance={{
+                  elements: {
+                    avatarBox: 'size-9',
+                    userButtonTrigger:
+                      'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar [@media(pointer:coarse)]:size-11',
+                  },
+                }}
+              />
+              <span className='min-w-0 flex-1'>
+                <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
+                  {userName || 'Account'}
+                </span>
+                <span className='block text-xs wrap-anywhere text-muted-foreground'>
+                  {tierLabel(tier)}
+                </span>
+              </span>
+            </div>
+          ) : (
+            <Link
+              href={ROUTES.SETTINGS.PROFILE}
+              onClick={onNavigate}
+              aria-label='Account settings'
+              className='flex min-h-(--at-component-navigation-item-height,2.75rem) min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2 text-sm transition-colors hover:bg-sidebar-accent focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-sidebar focus-visible:outline-none'
+            >
+              <AccountAvatar userName={userName} userImageUrl={userImageUrl} />
+              <span className='min-w-0 flex-1'>
+                <span className='block font-medium wrap-anywhere text-sidebar-foreground'>
+                  {userName || 'Account'}
+                </span>
+                <span className='block text-xs wrap-anywhere text-muted-foreground'>
+                  {tierLabel(tier)}
+                </span>
+              </span>
+              <ChevronRight
+                aria-hidden='true'
+                className='size-4 shrink-0 text-muted-foreground'
+              />
+            </Link>
+          )}
+        </div>
+      </div>
+    </aside>
+  );
+}

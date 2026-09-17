@@ -1,10 +1,5 @@
 /**
- * Private metered reservation core for billing usage counters.
- *
- * Owns the lock/check/increment transaction and the symmetric month-bound
- * compensation. Reserve and compensate exchange a `MeteredReservationToken`
- * so rollback is always tied to the exact bucket that was reserved (no
- * drift across midnight or month boundaries between the two phases).
+ * Private regeneration quota reservation core.
  *
  * Public callers should not import this module directly. Use
  * `regeneration-quota-boundary.ts`; do not import this file from routes.
@@ -19,12 +14,9 @@ import {
   getCurrentMonth,
   incrementExistingUsageInTx,
 } from './usage-metrics';
-import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { usageMetrics, users } from '@supabase/schema';
-import { and, eq, sql } from 'drizzle-orm';
-
-export type MeterKind = 'regeneration';
+import { and, eq } from 'drizzle-orm';
 
 /**
  * Drizzle's `db.transaction` callback receives a transaction-scoped client.
@@ -34,57 +26,8 @@ export type MeterKind = 'regeneration';
  */
 export type BillingTx = Parameters<Parameters<DbClient['transaction']>[0]>[0];
 
-type MeterColumn = 'regenerationsUsed';
-
-type MeterConfig = {
-  column: MeterColumn;
-  resolveLimit: (tier: SubscriptionTier) => number;
-  incrementInTx: (
-    tx: BillingTx,
-    userId: string,
-    month: string,
-  ) => Promise<void>;
-  readColumn: (metrics: UsageMetricsRow) => number;
-  decrementSql: () => ReturnType<typeof sql>;
-};
-
-const METER_CONFIG: Record<MeterKind, MeterConfig> = {
-  regeneration: {
-    column: 'regenerationsUsed',
-    resolveLimit: (tier) => TIER_LIMITS[tier].monthlyRegenerations,
-    incrementInTx: (tx, userId, month) =>
-      incrementExistingUsageInTx(tx, userId, month, 'regeneration'),
-    readColumn: (metrics) => metrics.regenerationsUsed,
-    decrementSql: () => sql`GREATEST(0, ${usageMetrics.regenerationsUsed} - 1)`,
-  },
-};
-
-type UsageMetricsRow = Awaited<ReturnType<typeof lockUsageMetricsForMonth>>;
-
-/**
- * Snapshot of a successful reservation. Pass back to
- * `compensateMeteredReservation` to release the slot in the same month
- * bucket without any clock drift.
- *
- * Single-use contract: each token represents exactly one reserved slot.
- * Callers must compensate with a token at most once; reusing a token
- * would silently double-decrement the same row. Tokens are also
- * process-internal and must not be persisted or JSON-serialized.
- *
- * Note: `limit` may be `Infinity` for unlimited tiers. If a future
- * caller does need to cross a JSON boundary, swap to `number | null` or
- * add an `unlimited` flag here.
- */
-export type MeteredReservationToken = {
-  userId: string;
-  month: string;
-  meter: MeterKind;
-  limit: number;
-  newCount: number;
-};
-
 export type ReserveMeteredResult =
-  | { ok: true; token: MeteredReservationToken }
+  | { ok: true }
   | { ok: false; currentCount: number; limit: number };
 
 export async function selectUserSubscriptionTierForUpdate(
@@ -124,134 +67,25 @@ async function lockUsageMetricsForMonth(
 type ReserveMeteredUsageOptions = {
   /** Override the current-month resolver (testing or cross-midnight scenarios). */
   now?: () => Date;
-  /** Optional log hook fired inside the reservation transaction. */
-  onResult?: (event: ReserveLogEvent) => void;
 };
-
-type ReserveLogEvent =
-  | {
-      kind: 'allowed';
-      userId: string;
-      month: string;
-      meter: MeterKind;
-      newCount: number;
-      limit: number;
-      unlimited: boolean;
-    }
-  | {
-      kind: 'denied';
-      userId: string;
-      month: string;
-      meter: MeterKind;
-      currentCount: number;
-      limit: number;
-    };
 
 export async function reserveMeteredUsageInTx(
   tx: BillingTx,
-  params: { userId: string; meter: MeterKind },
+  userId: string,
   options: ReserveMeteredUsageOptions = {},
 ): Promise<ReserveMeteredResult> {
-  const { userId, meter } = params;
-  const config = METER_CONFIG[meter];
-
   const user = await selectUserSubscriptionTierForUpdate(tx, userId);
-  const limit = config.resolveLimit(user.subscriptionTier);
+  const limit = TIER_LIMITS[user.subscriptionTier].monthlyRegenerations;
   const month = getCurrentMonth(options.now?.());
 
   const metrics = await lockUsageMetricsForMonth(tx, userId, month);
-  const currentCount = config.readColumn(metrics);
+  const currentCount = metrics.regenerationsUsed;
 
   if (limit !== Infinity && currentCount >= limit) {
-    options.onResult?.({
-      kind: 'denied',
-      userId,
-      month,
-      meter,
-      currentCount,
-      limit,
-    });
     return { ok: false, currentCount, limit };
   }
 
-  await config.incrementInTx(tx, userId, month);
-  const newCount = currentCount + 1;
+  await incrementExistingUsageInTx(tx, userId, month, 'regeneration');
 
-  options.onResult?.({
-    kind: 'allowed',
-    userId,
-    month,
-    meter,
-    newCount,
-    limit,
-    unlimited: limit === Infinity,
-  });
-
-  return {
-    ok: true,
-    token: { userId, month, meter, limit, newCount },
-  };
-}
-
-export async function reserveMeteredUsage(
-  params: { userId: string; meter: MeterKind },
-  dbClient: DbClient,
-  options: ReserveMeteredUsageOptions = {},
-): Promise<ReserveMeteredResult> {
-  return dbClient.transaction((tx) =>
-    reserveMeteredUsageInTx(tx, params, options),
-  );
-}
-
-/**
- * Release a previously reserved slot using the original month bucket.
- * Always clamps at zero. Logs a warning if the row is missing (no throw).
- *
- * Single-use: callers must invoke this at most once per token. There is
- * no idempotency guard at the row level, so a second call would double
- * decrement (clamped at zero) and create a usage drift.
- */
-export async function compensateMeteredReservation(
-  token: MeteredReservationToken,
-  dbClient: DbClient,
-): Promise<void> {
-  const config = METER_CONFIG[token.meter];
-
-  const [updated] = await dbClient
-    .update(usageMetrics)
-    .set({
-      [config.column]: config.decrementSql(),
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(usageMetrics.userId, token.userId),
-        eq(usageMetrics.month, token.month),
-      ),
-    )
-    .returning({ value: usageMetrics[config.column] });
-
-  if (!updated) {
-    logger.warn(
-      {
-        userId: token.userId,
-        month: token.month,
-        meter: token.meter,
-        action: 'compensateMeteredReservation',
-      },
-      'No usage metrics found to decrement',
-    );
-    return;
-  }
-
-  logger.info(
-    {
-      userId: token.userId,
-      month: token.month,
-      meter: token.meter,
-      action: 'compensateMeteredReservation',
-      newCount: updated.value,
-    },
-    'Metered usage reservation compensated',
-  );
+  return { ok: true };
 }

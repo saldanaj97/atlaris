@@ -81,13 +81,13 @@ This separation between external auth identity and internal app user row is not 
 
 ### Database layer
 
-| File                             | Responsibility                                 |
-| -------------------------------- | ---------------------------------------------- |
-| `src/lib/db/queries/attempts.ts` | Reserve/finalize attempts atomically           |
-| `src/lib/db/queries/plans.ts`    | Plan CRUD and access helpers                   |
-| `supabase/runtime.ts`            | Request-scoped DB accessor                     |
-| `supabase/rls.ts`                | RLS client construction and session state      |
-| `supabase/service-role.ts`       | Service-role database client for tests/workers |
+| File                             | Responsibility                                                        |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `src/lib/db/queries/attempts.ts` | Reserve attempts and expose transaction-scoped persistence primitives |
+| `src/lib/db/queries/plans.ts`    | Plan CRUD and access helpers                                          |
+| `supabase/runtime.ts`            | Request-scoped DB accessor                                            |
+| `supabase/rls.ts`                | RLS client construction and session state                             |
+| `supabase/service-role.ts`       | Service-role database client for tests/workers                        |
 
 ## Lifecycle
 
@@ -147,7 +147,7 @@ Lifecycle settlement owns the single transactional finalize after this returns. 
 - **retryable:** no usage writes (same domain rule as before)
 - **permanent with usage:** usage event + metric increment in the same transaction
 
-Low-level `finalizeAttemptSuccess` / `finalizeAttemptFailure` remain **attempt-only** helpers; they do not move the plan row or record usage. Integration tests (`attempts-atomic-observability`) still assert attempt-only success leaves plan `generating` until lifecycle finalization runs.
+The lifecycle finalization store owns the success and failure transactions. The database layer exposes `reserveAttemptSlot`, `persistSuccessfulAttemptInTx`, and `persistFailedAttemptInTx` as transaction-scoped primitives; integration tests exercise the lifecycle commit so attempt, plan, module/task, and usage state settle together.
 
 ## Stream contract
 

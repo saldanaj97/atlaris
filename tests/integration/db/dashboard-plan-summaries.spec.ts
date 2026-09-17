@@ -170,4 +170,55 @@ describe('dashboard plan summaries', () => {
 
     expect(resumePlan?.plan.id).toBe(selectedPlan.id);
   });
+
+  it('aggregates overall progress across every plan, not the recent-20 window', async () => {
+    const userId = await createUser('progress-uncapped');
+    const now = Date.now();
+
+    await Promise.all(
+      Array.from({ length: 20 }, async (_, index) => {
+        const plan = await createTestPlan({
+          userId,
+          topic: `Recent dashboard plan ${index + 1}`,
+          generationStatus: 'ready',
+          updatedAt: new Date(now - index * 60_000),
+        });
+        const module = await createTestModule({ planId: plan.id });
+        await createTestTask({ moduleId: module.id });
+        return plan;
+      }),
+    );
+
+    await Promise.all(
+      Array.from({ length: 5 }, async (_, index) => {
+        const plan = await createTestPlan({
+          userId,
+          topic: `Older completed plan ${index + 1}`,
+          generationStatus: 'ready',
+          updatedAt: new Date(now - (21 + index) * 60_000),
+        });
+        const module = await createTestModule({ planId: plan.id });
+        const task = await createTestTask({ moduleId: module.id });
+        await db.insert(taskProgress).values({
+          taskId: task.id,
+          userId,
+          status: 'completed',
+        });
+        return plan;
+      }),
+    );
+
+    const { summaries, progress } = await getDashboardPlanData({
+      userId,
+      dbClient: db,
+    });
+
+    expect(summaries).toHaveLength(20);
+    expect(progress.planCount).toBe(25);
+    expect(progress.completedTasks).toBe(5);
+    expect(progress.totalTasks).toBe(25);
+    expect(progress.percent).toBe(20);
+    expect(progress.completedModules).toBe(5);
+    expect(progress.totalModules).toBe(25);
+  });
 });

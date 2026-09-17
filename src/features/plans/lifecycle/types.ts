@@ -52,7 +52,7 @@ export type DurationCapResult = {
   readonly upgradeUrl?: string;
 };
 
-/** Normalized plan duration after tier-based adjustments. */
+/** Normalized plan duration after date normalization. */
 export type NormalizedDuration = {
   readonly startDate: string | null;
   readonly deadlineDate: string | null;

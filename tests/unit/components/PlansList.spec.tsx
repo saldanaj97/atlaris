@@ -6,8 +6,14 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type React from 'react';
 
-import { PlansList } from '@/app/(app)/plans/components/PlansList';
-import { PLAN_LIST_PAGE_SIZE } from '@/features/plans/read-projection/types';
+import {
+  PlansLibraryToolbar,
+  PlansList,
+} from '@/app/(app)/plans/components/PlansList';
+import {
+  PLAN_LIST_PAGE_SIZE,
+  PLAN_LIST_SORTS,
+} from '@/features/plans/read-projection/types';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -75,6 +81,18 @@ describe('PlansList', () => {
     totalTasks: 20,
   };
 
+  const lockedPlan: PlanListItem = {
+    id: 'plan-locked',
+    topic: 'Locked Research',
+    createdAt: '2024-01-15T00:00:00.000Z',
+    updatedAt: '2024-05-15T00:00:00.000Z',
+    status: 'active',
+    completion: 0.4,
+    completedTasks: 8,
+    totalTasks: 20,
+    access: 'locked',
+  };
+
   function buildQuery(overrides: Partial<PlanListQuery> = {}): PlanListQuery {
     return {
       page: 1,
@@ -107,11 +125,13 @@ describe('PlansList', () => {
       query?: Partial<PlanListQuery>;
     } = {},
   ) {
+    const page = buildPage(params.page);
+    const query = buildQuery(params.query);
     render(
-      <PlansList
-        page={buildPage(params.page)}
-        query={buildQuery(params.query)}
-      />,
+      <>
+        <PlansLibraryToolbar page={page} query={query} />
+        <PlansList page={page} query={query} />
+      </>,
     );
   }
 
@@ -175,29 +195,78 @@ describe('PlansList', () => {
   it('renders correct link for each plan', () => {
     renderPlansList();
 
-    const planLinks = screen
-      .getAllByRole('link')
-      .filter((link) => link.getAttribute('href')?.startsWith('/plans/plan-'));
+    const planLinks = [
+      within(
+        screen.getByRole('heading', { name: 'Master React Hooks' }),
+      ).getByRole('link'),
+      within(
+        screen.getByRole('heading', { name: 'Learn TypeScript' }),
+      ).getByRole('link'),
+    ];
     expect(planLinks).toHaveLength(2);
     expect(planLinks[0]).toHaveAttribute('href', '/plans/plan-1');
     expect(planLinks[1]).toHaveAttribute('href', '/plans/plan-2');
   });
 
-  it('renders plans in a table without the status tab rail', () => {
+  it('renders plans as cards with the status filter rail', () => {
     renderPlansList();
 
     expect(
-      screen.getByRole('table', { name: 'Learning plans' }),
+      screen.getByRole('list', { name: 'Learning plans' }),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('tablist')).not.toBeInTheDocument();
-    for (const heading of ['Plan', 'Progress', 'Status', 'Updated']) {
+    expect(
+      screen.getAllByRole('navigation', { name: 'Plan status filters' }),
+    ).toHaveLength(1);
+    const filters = screen.getByRole('navigation', {
+      name: 'Plan status filters',
+    });
+    for (const heading of [
+      'All plans',
+      'Active',
+      'Completed',
+      'Generating',
+      'Failed',
+    ]) {
       expect(
-        screen.getByRole('columnheader', { name: new RegExp(heading) }),
+        within(filters).getByRole('link', { name: new RegExp(heading) }),
       ).toBeInTheDocument();
     }
+    expect(
+      within(filters).queryByRole('link', { name: /Not started/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(filters).queryByRole('link', { name: /Inactive/ }),
+    ).not.toBeInTheDocument();
+    expect(within(filters).getAllByRole('link')).toHaveLength(5);
+    expect(
+      screen.queryByRole('heading', { name: 'Chart another learning path.' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('builds server-backed heading sort links and exposes sort direction', () => {
+  it('renders plan cards without cover artwork', () => {
+    renderPlansList();
+
+    expect(document.querySelector('img')).toBeNull();
+    expect(
+      screen.getByRole('heading', { name: activePlan.topic }),
+    ).toBeInTheDocument();
+  });
+
+  it('keeps search and sort query-backed in the library chrome', () => {
+    renderPlansList({
+      query: { search: 'hooks', status: 'active', sort: 'newest' },
+    });
+
+    expect(
+      screen.getByRole('searchbox', { name: 'Search learning plans' }),
+    ).toHaveValue('hooks');
+    expect(
+      screen.getByRole('button', { name: 'Sort: Newest' }),
+    ).toBeInTheDocument();
+  });
+
+  it('builds server-backed sort links in the sort menu', async () => {
+    const user = userEvent.setup();
     renderPlansList({
       query: {
         search: 'react hooks',
@@ -206,26 +275,131 @@ describe('PlansList', () => {
       },
     });
 
-    expect(screen.getByRole('columnheader', { name: /Plan/ })).toHaveAttribute(
-      'aria-sort',
-      'ascending',
+    await user.click(screen.getByRole('button', { name: /Sort:/i }));
+    const menuItems = within(screen.getByRole('menu')).getAllByRole('menuitem');
+    const menuSorts = menuItems.map((item) => {
+      const href = item.getAttribute('href');
+      return (
+        new URL(href ?? '', 'http://localhost').searchParams.get('sort') ??
+        'recommended'
+      );
+    });
+    expect(new Set(menuSorts)).toEqual(new Set(PLAN_LIST_SORTS));
+    expect(menuSorts).toHaveLength(PLAN_LIST_SORTS.length);
+    expect(screen.getByRole('menuitem', { name: 'Name A–Z' })).toHaveAttribute(
+      'aria-current',
+      'page',
     );
-    expect(screen.getByRole('link', { name: /Sort by plan/i })).toHaveAttribute(
+    expect(screen.getByRole('menuitem', { name: 'Name Z–A' })).toHaveAttribute(
       'href',
       '/plans?search=react+hooks&status=active&sort=topic_desc',
     );
     expect(
-      screen.getByRole('link', { name: /Sort by progress/i }),
+      screen.getByRole('menuitem', { name: 'Progress high to low' }),
     ).toHaveAttribute(
       'href',
       '/plans?search=react+hooks&status=active&sort=progress_desc',
     );
     expect(
-      screen.getByRole('link', { name: /Sort by updated/i }),
+      screen.getByRole('menuitem', { name: 'Recently updated' }),
     ).toHaveAttribute(
       'href',
       '/plans?search=react+hooks&status=active&sort=recently_updated',
     );
+  });
+
+  it.each([
+    ['status_desc', 'Status descending'],
+    ['updated_asc', 'Oldest updated'],
+  ] as const)('shows the active label for %s', async (sort, label) => {
+    const user = userEvent.setup();
+    renderPlansList({ query: { sort } });
+
+    const sortButton = screen.getByRole('button', { name: new RegExp(label) });
+    expect(sortButton).toBeInTheDocument();
+    await user.click(sortButton);
+    expect(screen.getByRole('menuitem', { name: label })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+  });
+
+  it('uses the filtered total for the grid summary and search total for All plans', () => {
+    renderPlansList({
+      page: {
+        items: [activePlan],
+        totalItems: 1,
+        totalSearchResults: 2,
+      },
+      query: { status: 'active' },
+    });
+
+    expect(screen.getByText('1 plan')).toBeInTheDocument();
+    expect(
+      within(
+        screen.getByRole('navigation', { name: 'Plan status filters' }),
+      ).getByRole('link', { name: /All plans\s*2/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('labels a locked plan timestamp as Updated and uses updatedAt', () => {
+    renderPlansList({
+      page: {
+        items: [lockedPlan],
+        totalItems: 1,
+        totalSearchResults: 1,
+      },
+    });
+
+    const card = screen
+      .getByRole('heading', { name: 'Locked Research' })
+      .closest('li');
+    expect(card).not.toBeNull();
+    expect(within(card!).getByText('Updated')).toBeInTheDocument();
+    expect(within(card!).queryByText('Added')).not.toBeInTheDocument();
+    expect(card!.querySelector('time')).toHaveAttribute(
+      'dateTime',
+      lockedPlan.updatedAt!,
+    );
+  });
+
+  it('keeps a locked plan title as text and sends the action to pricing', () => {
+    renderPlansList({
+      page: {
+        items: [lockedPlan],
+        totalItems: 1,
+        totalSearchResults: 1,
+      },
+    });
+
+    const heading = screen.getByRole('heading', { name: 'Locked Research' });
+    expect(within(heading).queryByRole('link')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to unlock' }),
+    ).toHaveAttribute('href', '/pricing');
+    expect(
+      screen.queryByRole('link', { name: 'Locked Research' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('honors a retired status query without adding a tab', () => {
+    renderPlansList({
+      query: { search: 'hooks', status: 'not_started' },
+    });
+
+    const filters = screen.getByRole('navigation', {
+      name: 'Plan status filters',
+    });
+    expect(
+      within(filters).queryByRole('link', { name: /Not started/ }),
+    ).not.toBeInTheDocument();
+    expect(within(filters).getAllByRole('link')).toHaveLength(5);
+    expect(
+      within(filters).queryByRole('link', { current: 'page' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Clear not started filter' }),
+    ).toHaveAttribute('href', '/plans?search=hooks');
   });
 
   it('retains status in searches and exposes a clear-filter link', () => {
@@ -260,14 +434,15 @@ describe('PlansList', () => {
     renderPlansList();
 
     expect(
-      screen
-        .getAllByRole('link')
-        .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
-    ).toHaveLength(2);
+      within(
+        screen.getByRole('heading', { name: 'Master React Hooks' }),
+      ).getByRole('link'),
+    ).toHaveAttribute('href', '/plans/plan-1');
 
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select Master React Hooks' }),
-    );
+    const rowCheckbox = screen.getByRole('checkbox', {
+      name: 'Select Master React Hooks',
+    });
+    await user.click(rowCheckbox.closest('label')!);
 
     expect(
       screen.getByRole('group', { name: 'Bulk plan actions' }),
@@ -279,10 +454,10 @@ describe('PlansList', () => {
       screen.getByRole('checkbox', { name: 'Select Learn TypeScript' }),
     ).toBeInTheDocument();
     expect(
-      screen
-        .getAllByRole('link')
-        .filter((link) => link.getAttribute('href')?.startsWith('/plans/')),
-    ).toHaveLength(2);
+      within(
+        screen.getByRole('heading', { name: 'Learn TypeScript' }),
+      ).getByRole('link'),
+    ).toHaveAttribute('href', '/plans/plan-2');
   });
 
   it('disables selection for generating plans', () => {
@@ -307,13 +482,97 @@ describe('PlansList', () => {
     ).toBeDisabled();
   });
 
+  it('keeps generating and failed cards honest without fabricated copy', () => {
+    renderPlansList({
+      page: {
+        items: [
+          {
+            ...completedPlan,
+            id: 'plan-generating',
+            topic: 'Generating Plan',
+            status: 'generating',
+            completion: 0,
+            completedTasks: 0,
+            totalTasks: 0,
+          },
+          {
+            ...completedPlan,
+            id: 'plan-failed',
+            topic: 'Failed Plan',
+            status: 'failed',
+            completion: 0,
+            completedTasks: 0,
+            totalTasks: 0,
+          },
+        ],
+        totalItems: 2,
+        totalSearchResults: 2,
+      },
+    });
+
+    const list = screen.getByRole('list', { name: 'Learning plans' });
+    const generatingCard = screen
+      .getByRole('heading', { name: 'Generating Plan' })
+      .closest('li');
+    const failedCard = screen
+      .getByRole('heading', { name: 'Failed Plan' })
+      .closest('li');
+
+    expect(generatingCard).not.toBeNull();
+    expect(failedCard).not.toBeNull();
+    expect(list.contains(generatingCard)).toBe(true);
+    expect(list.contains(failedCard)).toBe(true);
+    expect(generatingCard).toHaveTextContent(
+      'Your learning path is being prepared.',
+    );
+    expect(
+      within(generatingCard!).getByRole('link', { name: /View progress/ }),
+    ).toHaveAttribute('href', '/plans/plan-generating');
+    expect(failedCard).toHaveTextContent("We couldn't generate this plan.");
+    expect(
+      within(failedCard!).getByRole('link', { name: /View plan/ }),
+    ).toHaveAttribute('href', '/plans/plan-failed');
+    expect(list).not.toHaveTextContent('No credits were used');
+    expect(list).not.toHaveTextContent('1-2 minutes');
+    expect(list).not.toHaveTextContent('Browse templates');
+  });
+
+  it('exposes table-equivalent fields from one card list', () => {
+    renderPlansList();
+
+    expect(
+      screen.getAllByRole('list', { name: 'Learning plans' }),
+    ).toHaveLength(1);
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+
+    const card = screen
+      .getByRole('heading', { name: 'Master React Hooks' })
+      .closest('li');
+    expect(card).not.toBeNull();
+    expect(within(card!).getByText('Active')).toBeInTheDocument();
+    expect(within(card!).getByText('Progress')).toBeInTheDocument();
+    expect(within(card!).getByText('40%')).toBeInTheDocument();
+    expect(within(card!).getByText('Tasks')).toBeInTheDocument();
+    expect(within(card!).getByText('8 / 20')).toBeInTheDocument();
+    expect(within(card!).getByText('Updated')).toBeInTheDocument();
+    expect(
+      within(card!).getByRole('link', { name: /Continue learning/ }),
+    ).toHaveAttribute('href', '/plans/plan-1');
+    expect(
+      within(card!).getByRole('button', {
+        name: 'Actions for Master React Hooks',
+      }),
+    ).toBeInTheDocument();
+  });
+
   it('selects all deletable plans on the current page', async () => {
     const user = userEvent.setup();
     renderPlansList();
 
-    await user.click(
-      screen.getByRole('checkbox', { name: 'Select all plans on page' }),
-    );
+    const selectAllCheckbox = screen.getByRole('checkbox', {
+      name: 'Select all plans on page',
+    });
+    await user.click(selectAllCheckbox.closest('label')!);
 
     expect(screen.getByLabelText('Bulk plan actions')).toHaveTextContent(
       '2 selected',
@@ -559,9 +818,10 @@ describe('PlansList', () => {
     expect(
       await screen.findByRole('button', { name: 'Delete 2 plans' }),
     ).toBeEnabled();
-    expect(toast.error).toHaveBeenCalledWith(
+    expect(screen.getByRole('alert')).toHaveTextContent(
       'Plans cannot be deleted right now.',
     );
+    expect(toast.error).not.toHaveBeenCalled();
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 

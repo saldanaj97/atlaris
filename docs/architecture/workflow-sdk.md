@@ -9,6 +9,8 @@ Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe o
 
 Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin in `tsconfig.json`, and `/.well-known/workflow/` handled by an early proxy auth branch (see [Callback security](#callback-security)).
 
+Temporary Next.js 16.3.2 workaround: `next.config.ts` skips `withWorkflow()` only when the process entrypoint is Next's `telemetry/detached-flush.js`. That uploader reloads development config during shutdown; initializing Workflow there can leave an orphaned watcher and bundler service. Normal dev, build, and start commands retain Workflow. Remove the guard after upgrading to a release containing [Next.js #97718](https://github.com/vercel/next.js/pull/97718). Regression coverage lives in `tests/unit/config/next-config.spec.ts`.
+
 ## Callback security
 
 Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK runtime, not from end users.

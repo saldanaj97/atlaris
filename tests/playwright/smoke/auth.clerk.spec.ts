@@ -31,7 +31,7 @@ test.describe('Clerk auth parity', () => {
 
     await expect(page).toHaveURL(/\/dashboard$/);
     await expect(
-      page.getByRole('heading', { name: 'Dashboard' }),
+      page.getByRole('heading', { name: /Welcome back/ }),
     ).toBeVisible();
   });
 });

@@ -180,10 +180,10 @@ export type GenerationAttemptRecord = InferSelectModel<
 
 Inferred from the `generationAttempts` schema table — represents a row returned from the database.
 
-#### FinalizeSuccessPersistenceParams
+#### FinalizeSuccessPersistenceInTxParams
 
 ```typescript
-export interface FinalizeSuccessPersistenceParams {
+export interface FinalizeSuccessPersistenceInTxParams {
   attemptId: string;
   planId: string;
   preparation: AttemptReservation;
@@ -194,7 +194,6 @@ export interface FinalizeSuccessPersistenceParams {
   durationMs: number;
   metadata: AttemptMetadata;
   finishedAt: Date;
-  dbClient: AttemptsDbClient;
 }
 ```
 
@@ -383,31 +382,28 @@ export function isAttemptsDbClient(db: unknown): db is AttemptsDbClient {
 #### Transaction Usage
 
 ```typescript
-export async function persistSuccessfulAttempt(
-  params: FinalizeSuccessPersistenceParams,
+export async function persistSuccessfulAttemptInTx(
+  tx: DbTransaction,
+  params: FinalizeSuccessPersistenceInTxParams,
 ): Promise<GenerationAttemptRecord> {
-  return dbClient.transaction(async (tx) => {
-    await tx.delete(modules).where(eq(modules.planId, planId));
+  await tx.delete(modules).where(eq(modules.planId, params.planId));
 
-    const insertedModuleRows = await tx
-      .insert(modules)
-      .values(moduleValues)
-      .returning({ id: modules.id });
+  const insertedModuleRows = await tx
+    .insert(modules)
+    .values(moduleValues)
+    .returning({ id: modules.id });
 
-    const [attempt] = await tx
-      .update(generationAttempts)
-      .set({
-        /* ... */
-      })
-      .where(/* ... */)
-      .returning();
+  const [attempt] = await tx
+    .update(generationAttempts)
+    .set({/* ... */})
+    .where(/* ... */)
+    .returning();
 
-    return attempt;
-  });
+  return attempt;
 }
 ```
 
-All DB operations inside a transaction use `tx`, not the outer `dbClient`.
+The lifecycle caller owns the transaction and any request JWT claim replay. All DB operations inside that transaction use `tx`.
 
 ---
 

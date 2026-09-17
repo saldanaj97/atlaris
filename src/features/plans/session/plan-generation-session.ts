@@ -87,7 +87,6 @@ async function run(
     requestId: command.requestId,
     authUserId: command.authUserId,
     dbClient: serviceRoleDb,
-    cleanup: async () => {},
     prepared,
     processGeneration,
     responseHeaders: command.responseHeaders,

@@ -14,13 +14,10 @@ export const DEFAULT_GENERATION_EXTENSION_MS = DEFAULT_CONFIG.extensionMs;
 
 type AdaptiveTimeoutController = {
   readonly signal: AbortSignal;
-  readonly startedAt: number;
-  readonly deadline: number;
   readonly didExtend: boolean;
   readonly timedOut: boolean;
   notifyFirstModule(): void;
   cancel(): void;
-  elapsed(): number;
 };
 
 export function createAdaptiveTimeout(
@@ -34,7 +31,6 @@ export function createAdaptiveTimeout(
   const controller = new AbortController();
   const startedAt = now();
 
-  let deadline = startedAt + merged.baseMs;
   let didExtend = false;
   let timedOut = false;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -61,7 +57,6 @@ export function createAdaptiveTimeout(
     if (elapsed <= merged.extensionThresholdMs) {
       didExtend = true;
       const totalBudget = merged.baseMs + merged.extensionMs;
-      deadline = startedAt + totalBudget;
       const remaining = totalBudget - elapsed;
       schedule(remaining);
     }
@@ -78,12 +73,6 @@ export function createAdaptiveTimeout(
     get signal() {
       return controller.signal;
     },
-    get startedAt() {
-      return startedAt;
-    },
-    get deadline() {
-      return deadline;
-    },
     get didExtend() {
       return didExtend;
     },
@@ -92,8 +81,5 @@ export function createAdaptiveTimeout(
     },
     notifyFirstModule,
     cancel,
-    elapsed() {
-      return now() - startedAt;
-    },
   };
 }

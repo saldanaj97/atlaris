@@ -6,6 +6,7 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
+import { PlanSummaryRail } from '@/app/(app)/plans/[id]/components/PlanSummaryRail';
 import { PlanTimeline } from '@/app/(app)/plans/[id]/components/PlanTimeline';
 import { useOptimisticTaskStatusUpdates } from '@/app/(app)/plans/[id]/hooks/useOptimisticTaskStatusUpdates';
 import { logTaskStatusError } from '@/app/(app)/plans/[id]/log-task-status-error';
@@ -13,8 +14,10 @@ import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog'
 import { Button } from '@/components/ui/button';
 import {
   buildTaskStatusMap as getStatusesFromModules,
+  deriveActiveModuleId,
   derivePlanOverviewStats as computeOverviewStats,
 } from '@/features/plans/task-progress/client';
+import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { ArrowLeft, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import posthog from 'posthog-js';
@@ -45,12 +48,14 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
     if (result?.revalidateFailed) {
       toast.message('Progress saved. Refresh if the page looks stale.');
     }
-    for (const update of updates) {
-      posthog.capture('task_status_changed', {
-        task_id: update.taskId,
-        new_status: update.status,
-        variant: 'timeline',
-      });
+    if (isPostHogEnabledInCurrentEnvironment()) {
+      for (const update of updates) {
+        posthog.capture('task_status_changed', {
+          task_id: update.taskId,
+          new_status: update.status,
+          variant: 'timeline',
+        });
+      }
     }
   }
 
@@ -62,6 +67,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
   });
 
   const overviewStats = computeOverviewStats(plan, statuses);
+  const activeModuleId = deriveActiveModuleId(modules, statuses);
 
   const isGenerating =
     plan.status === 'pending' || plan.status === 'processing';
@@ -101,16 +107,25 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
         <PlanPendingState plan={plan} />
       ) : (
         <>
-          {/* Plan Overview */}
-          <PlanOverviewHeader plan={plan} stats={overviewStats} />
-
-          {/* Module Timeline */}
-          <PlanTimeline
-            planId={plan.id}
-            modules={modules}
-            statuses={statuses}
-            onStatusChange={handleStatusChange}
+          <PlanOverviewHeader
+            plan={plan}
+            stats={overviewStats}
+            activeModuleId={activeModuleId}
           />
+
+          <div className='mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
+            <PlanTimeline
+              planId={plan.id}
+              modules={modules}
+              statuses={statuses}
+              onStatusChange={handleStatusChange}
+            />
+            <PlanSummaryRail
+              plan={plan}
+              stats={overviewStats}
+              activeModuleId={activeModuleId}
+            />
+          </div>
         </>
       )}
     </div>

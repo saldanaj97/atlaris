@@ -67,7 +67,6 @@ export interface PlanLifecycleQuota {
     this: void,
     params: {
       tier: SubscriptionTier;
-      weeklyHours: number;
       totalWeeks: number;
     },
   ): DurationCapResult;
@@ -75,8 +74,6 @@ export interface PlanLifecycleQuota {
   normalizePlanDuration(
     this: void,
     params: {
-      tier: SubscriptionTier;
-      weeklyHours: number;
       startDate?: string | null;
       deadlineDate?: string | null;
       today?: Date;
@@ -212,7 +209,7 @@ export class PlanLifecycleService {
    * @returns A discriminated union result — never throws for lifecycle outcomes.
    */
   async createPlan(input: CreateAiPlanInput): Promise<CreatePlanResult> {
-    const { userId, weeklyHours } = input;
+    const { userId } = input;
     const startDate = input.startDate ?? null;
     const deadlineDate = input.deadlineDate ?? null;
 
@@ -239,7 +236,6 @@ export class PlanLifecycleService {
     });
     const requestedCap = this.ports.quota.checkDurationCap({
       tier,
-      weeklyHours,
       totalWeeks: requestedWeeks,
     });
     if (!requestedCap.allowed) {
@@ -255,15 +251,12 @@ export class PlanLifecycleService {
     }
 
     const duration = this.ports.quota.normalizePlanDuration({
-      tier,
-      weeklyHours,
       startDate,
       deadlineDate,
     });
 
     const durationCap = this.ports.quota.checkDurationCap({
       tier,
-      weeklyHours,
       totalWeeks: duration.totalWeeks,
     });
     if (!durationCap.allowed) {

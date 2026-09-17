@@ -87,23 +87,6 @@ function isNonProductionRuntimeEnv(env: EnvSource): boolean {
 }
 
 /**
- * Zod schema: string that parses to a finite number via `Number()`; `NaN` and
- * infinities fail parse
- * (callers fall back to optional defaults).
- */
-const parseableNumericEnvString = z.string().transform((s, ctx) => {
-  const n = Number(s);
-  if (!Number.isFinite(n)) {
-    ctx.addIssue({
-      code: z.ZodIssueCode.custom,
-      message: 'Not a valid finite number',
-    });
-    return z.NEVER;
-  }
-  return n;
-});
-
-/**
  * Parses optional env string into a finite number. Invalid values map to the
  * fallback or `undefined`.
  */
@@ -119,11 +102,8 @@ export function parseEnvNumber(
   if (value === undefined) {
     return fallback;
   }
-  const parsed = parseableNumericEnvString.safeParse(value);
-  if (!parsed.success) {
-    return fallback;
-  }
-  return parsed.data;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }
 
 /**

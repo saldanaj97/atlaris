@@ -8,8 +8,11 @@ import {
   formatUsageLimitLabel,
   getUsagePercent,
 } from '@/app/_shared/usage-formatting';
-import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { ROUTES } from '@/features/navigation/routes';
+import { Briefcase } from 'lucide-react';
+import Link from 'next/link';
 
 type UsageMeterRowProps = {
   label: string;
@@ -49,6 +52,10 @@ function formatNextBilling(
   });
 }
 
+function formatPlanTierName(tier: string): string {
+  return `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
+}
+
 /**
  * Plan & billing rows for the Ledger settings surface.
  */
@@ -67,20 +74,40 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
     );
   }
 
+  const tierName = formatPlanTierName(snapshot.tier);
+
   return (
-    <>
-      <LedgerRow label='Current plan'>
-        <Badge variant='product'>{snapshot.tier.toUpperCase()}</Badge>
-      </LedgerRow>
-      <LedgerRow label='Status'>
-        <span className='text-foreground'>
-          {snapshot.subscriptionStatus ?? '—'}
-        </span>
-      </LedgerRow>
-      <LedgerRow label='Next billing date'>
-        <span className='text-foreground'>{nextBilling}</span>
-      </LedgerRow>
-    </>
+    <div className='space-y-4'>
+      <p className='text-sm text-muted-foreground'>
+        You're currently on the {tierName} plan.
+      </p>
+      <div className='flex flex-col gap-3 rounded-lg border border-panel-border bg-panel/70 p-4 sm:flex-row sm:items-center sm:justify-between'>
+        <div className='flex min-w-0 items-center gap-3'>
+          <span
+            aria-hidden='true'
+            className='flex size-10 shrink-0 items-center justify-center rounded-lg border border-panel-border bg-panel-muted text-primary'
+          >
+            <Briefcase className='size-4' />
+          </span>
+          <p className='text-sm font-semibold text-foreground'>
+            {tierName} Plan
+          </p>
+        </div>
+        <Button asChild variant='outline' size='sm'>
+          <Link href={ROUTES.PRICING}>View plans</Link>
+        </Button>
+      </div>
+      <div className='divide-y divide-border/40 dark:divide-border/30'>
+        <LedgerRow label='Status'>
+          <span className='text-foreground'>
+            {snapshot.subscriptionStatus ?? '—'}
+          </span>
+        </LedgerRow>
+        <LedgerRow label='Next billing date'>
+          <span className='text-foreground'>{nextBilling}</span>
+        </LedgerRow>
+      </div>
+    </div>
   );
 }
 

@@ -1,5 +1,5 @@
 /**
- * Multi-series plan chart palette — After Hours chart tokens (peach → plum).
+ * Multi-series plan chart palette — semantic chart tokens.
  * Prefer CSS vars so series follow light/dark theme swaps.
  */
 export const PLAN_CHART_COLORS = [

@@ -3,10 +3,10 @@ import type { MockInstance } from 'vitest';
 import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+  commitPlanGenerationFailure,
+  commitPlanGenerationSuccess,
+} from '@/features/plans/lifecycle/generation-finalization/store';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import {
   generationAttempts,
   learningPlans,
@@ -14,6 +14,7 @@ import {
   tasks,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import { asc, eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -91,7 +92,7 @@ describe('Atomic attempt observability', () => {
     expect(plan?.generationStatus).toBe('generating');
   });
 
-  it('emits success log event after attempt finalization', async () => {
+  it('emits success log event after lifecycle finalization', async () => {
     const startedAt = new Date('2026-01-01T10:00:00.000Z');
     const finishedAt = new Date('2026-01-01T10:00:01.250Z');
 
@@ -107,9 +108,10 @@ describe('Atomic attempt observability', () => {
       throw new Error(`Expected reservation, got ${reservation.reason}`);
     }
 
-    const attempt = await finalizeAttemptSuccess({
+    const attempt = await commitPlanGenerationSuccess(db, {
       attemptId: reservation.attemptId,
       planId,
+      userId,
       preparation: reservation,
       modules: [
         {
@@ -125,9 +127,12 @@ describe('Atomic attempt observability', () => {
           ],
         },
       ],
+      providerMetadata: { provider: 'mock', model: 'mock-model' },
+      usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
       durationMs: 9_999,
       extendedTimeout: false,
-      dbClient: db,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
       now: () => finishedAt,
     });
 
@@ -178,9 +183,10 @@ describe('Atomic attempt observability', () => {
       throw new Error(`Expected reservation, got ${reservation.reason}`);
     }
 
-    const attempt = await finalizeAttemptSuccess({
+    const attempt = await commitPlanGenerationSuccess(db, {
       attemptId: reservation.attemptId,
       planId,
+      userId,
       preparation: reservation,
       modules: [
         {
@@ -213,9 +219,12 @@ describe('Atomic attempt observability', () => {
           ],
         },
       ],
+      providerMetadata: { provider: 'mock', model: 'mock-model' },
+      usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
       durationMs: 321,
       extendedTimeout: false,
-      dbClient: db,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
       now: () => new Date('2026-01-03T08:00:03.000Z'),
     });
 
@@ -247,7 +256,7 @@ describe('Atomic attempt observability', () => {
       modulesCount: 2,
       tasksCount: 3,
     });
-    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.generationStatus).toBe('ready');
     expect(persistedModules).toHaveLength(2);
     expect(persistedModules.map((module) => module.title)).toEqual([
       'Fresh Module 1',
@@ -267,7 +276,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('does not mutate plan status during retryable attempt finalization and emits failure log event', async () => {
+  it('restores the plan after retryable failure and emits a failure log event', async () => {
     const startedAt = new Date('2026-01-02T10:00:00.000Z');
     const finishedAt = new Date('2026-01-02T10:00:02.000Z');
 
@@ -283,23 +292,31 @@ describe('Atomic attempt observability', () => {
       throw new Error(`Expected reservation, got ${reservation.reason}`);
     }
 
-    const attempt = await finalizeAttemptFailure({
+    const attempt = await commitPlanGenerationFailure(db, {
+      variant: 'reserved_attempt',
       attemptId: reservation.attemptId,
       planId,
+      userId,
       preparation: reservation,
       classification: 'timeout',
+      error: new Error('timed out'),
       durationMs: 123,
       timedOut: true,
       extendedTimeout: true,
-      dbClient: db,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
+      retryable: true,
       now: () => finishedAt,
     });
+    if (!attempt) {
+      throw new Error('Expected reserved-attempt failure to return an attempt');
+    }
 
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });
 
-    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.generationStatus).toBe('ready');
 
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',
@@ -313,7 +330,7 @@ describe('Atomic attempt observability', () => {
     );
   });
 
-  it('does not mutate plan status during terminal attempt finalization', async () => {
+  it('restores the plan after terminal failure', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -325,20 +342,27 @@ describe('Atomic attempt observability', () => {
       throw new Error(`Expected reservation, got ${reservation.reason}`);
     }
 
-    await finalizeAttemptFailure({
+    await commitPlanGenerationFailure(db, {
+      variant: 'reserved_attempt',
       attemptId: reservation.attemptId,
       planId,
+      userId,
       preparation: reservation,
       classification: 'validation',
+      error: new Error('validation failed'),
       durationMs: 500,
-      dbClient: db,
+      timedOut: false,
+      extendedTimeout: false,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
+      retryable: false,
     });
 
     const plan = await db.query.learningPlans.findFirst({
       where: eq(learningPlans.id, planId),
     });
 
-    expect(plan?.generationStatus).toBe('generating');
+    expect(plan?.generationStatus).toBe('ready');
     expect(plan?.isQuotaEligible).toBe(true);
     expect(consoleInfoSpy).toHaveBeenCalledWith(
       '[attempts] failure',

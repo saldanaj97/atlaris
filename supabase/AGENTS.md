@@ -2,7 +2,7 @@
 
 **Parent:** [Root AGENTS.md](../AGENTS.md)
 
-This directory owns local Supabase configuration, SQL migrations, and Drizzle schema definitions. Keep this file short; put durable architecture detail in `docs/architecture/` and task notes under `.agents/recaps/MM-DD-YYYY/plans/`.
+This directory owns local Supabase configuration, SQL migrations, and Drizzle schema definitions. Keep this file short; put durable architecture detail in `docs/architecture/`.
 
 ## Client Boundaries
 

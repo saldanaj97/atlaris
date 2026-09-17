@@ -7,19 +7,10 @@ import {
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
-import {
-  compensateMeteredReservation,
-  reserveMeteredUsage,
-} from '@/features/billing/metered-reservation';
-import {
-  getCurrentMonth,
-  incrementUsage,
-} from '@/features/billing/usage-metrics';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
-import { and, eq, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 function hasConstraintViolation(err: unknown, constraintName: string): boolean {
@@ -185,110 +176,5 @@ describe('usage_metrics lesson_modules_generated', () => {
       `),
       'lesson_modules_generated_nonneg',
     );
-  });
-
-  it('does not increment leftover lesson meter via incrementUsage', async () => {
-    const authUserId = buildTestAuthUserId('usage-metrics-lesson-inc');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
-
-    await incrementUsage(userId, 'regeneration', db);
-
-    const [row] = await db
-      .select()
-      .from(usageMetrics)
-      .where(eq(usageMetrics.userId, userId));
-
-    expect(row?.regenerationsUsed).toBe(1);
-    expect(row?.lessonModulesGenerated).toBe(0);
-  });
-});
-
-describe('metered usage reservations', () => {
-  it('creates an absent current-month row and increments once', async () => {
-    const authUserId = buildTestAuthUserId('usage-reserve-missing');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'starter',
-    });
-    const month = getCurrentMonth();
-
-    const result = await reserveMeteredUsage(
-      { userId, meter: 'regeneration' },
-      db,
-    );
-
-    expect(result.ok).toBe(true);
-
-    const [row] = await db
-      .select()
-      .from(usageMetrics)
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
-      );
-    expect(row?.regenerationsUsed).toBe(1);
-  });
-
-  it('does not increment denied reservations', async () => {
-    const authUserId = buildTestAuthUserId('usage-reserve-denied');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
-    const month = getCurrentMonth();
-    const limit = TIER_LIMITS.free.monthlyRegenerations;
-
-    await db.insert(usageMetrics).values({
-      userId,
-      month,
-      regenerationsUsed: limit,
-    });
-
-    const result = await reserveMeteredUsage(
-      { userId, meter: 'regeneration' },
-      db,
-    );
-
-    expect(result).toEqual({ ok: false, currentCount: limit, limit });
-
-    const [row] = await db
-      .select()
-      .from(usageMetrics)
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
-      );
-    expect(row?.regenerationsUsed).toBe(limit);
-  });
-
-  it('compensates a successful reservation back to zero', async () => {
-    const authUserId = buildTestAuthUserId('usage-reserve-compensate');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-      subscriptionTier: 'starter',
-    });
-    const month = getCurrentMonth();
-
-    const result = await reserveMeteredUsage(
-      { userId, meter: 'regeneration' },
-      db,
-    );
-    expect(result.ok).toBe(true);
-    if (!result.ok) {
-      throw new Error('expected reservation to succeed');
-    }
-
-    await compensateMeteredReservation(result.token, db);
-
-    const [row] = await db
-      .select()
-      .from(usageMetrics)
-      .where(
-        and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
-      );
-    expect(row?.regenerationsUsed).toBe(0);
   });
 });

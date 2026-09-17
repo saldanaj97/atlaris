@@ -11,7 +11,7 @@ Delivery is **opt-in per category**. Defaults are all categories off (`DEFAULT_E
 | Layer | Location |
 | --- | --- |
 | Master switch + categories | `user_email_notification_settings` / `user_email_notification_preferences` (`supabase/schema/tables/user-preferences.ts`) |
-| Settings UI | `/settings#notifications` → `NotificationsSection` / `NotificationPreferencesForm` |
+| Settings UI | `/settings/notifications` → `NotificationsSection` / `NotificationPreferencesForm` |
 | Save API | `PATCH /api/v1/user/preferences/notifications` (`mutation` rate limit) |
 | Effective prefs | `resolveEffectiveEmailPreferences()` — when `unsubscribeAllOptionalEmails` is true, every category is treated as off |
 | Scheduler send path | `src/features/notifications/email/delivery-service.ts` reads prefs via `getEmailNotificationPreferences` |

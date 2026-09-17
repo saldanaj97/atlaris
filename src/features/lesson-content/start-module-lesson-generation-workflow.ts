@@ -21,7 +21,6 @@ export type StartModuleLessonGenerationParams = {
   readonly planId: string;
   readonly moduleId: string;
   readonly modelOverride?: string;
-  readonly signal?: AbortSignal;
   readonly correlationId: string;
 };
 

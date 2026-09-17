@@ -1,18 +1,8 @@
-import type { FinalizeSuccessPersistenceParams } from '@/lib/db/queries/types/attempts.types';
-import type { DbClient } from '@/lib/db/types';
+import type { FinalizeSuccessPersistenceInTxParams } from '@/lib/db/queries/types/attempts.types';
 
-import { persistSuccessfulAttempt } from '@/lib/db/queries/helpers/attempts-persistence-success';
-import * as rlsJwtClaims from '@/lib/db/queries/helpers/rls-jwt-claims';
+import { persistSuccessfulAttemptInTx } from '@/lib/db/queries/helpers/attempts-persistence-success';
 import { generationAttempts, modules, tasks } from '@supabase/schema';
-import { db } from '@supabase/service-role';
-import {
-  beforeEach,
-  describe,
-  expect,
-  it,
-  type MockedFunction,
-  vi,
-} from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Minimal mock attempt record returned by the generationAttempts update
 const mockAttemptRecord = {
@@ -33,8 +23,8 @@ const mockAttemptRecord = {
 };
 
 function createBaseParams(
-  overrides?: Partial<FinalizeSuccessPersistenceParams>,
-): FinalizeSuccessPersistenceParams {
+  overrides?: Partial<FinalizeSuccessPersistenceInTxParams>,
+): FinalizeSuccessPersistenceInTxParams {
   return {
     attemptId: 'attempt-1',
     planId: 'plan-1',
@@ -65,9 +55,8 @@ function createBaseParams(
     durationMs: 1000,
     metadata: {},
     finishedAt: new Date(),
-    dbClient: db,
     ...overrides,
-  } as FinalizeSuccessPersistenceParams;
+  } as FinalizeSuccessPersistenceInTxParams;
 }
 
 type MockTxInsert = (table: unknown) => {
@@ -149,73 +138,46 @@ function createMockTx(options?: {
   };
 }
 
-/** Wire db.transaction to invoke the callback with the given mock tx. */
-function useMockTransaction(mockTx: ReturnType<typeof createMockTx>): void {
-  const transactionMock = vi.mocked(db).transaction as MockedFunction<
-    DbClient['transaction']
-  >;
-
-  transactionMock.mockImplementation(
-    // Drizzle's transaction callback type is wider than the chain this test
-    // stubs, but the helper only exercises execute/delete/insert/update.
-    (fn) => fn(mockTx as never),
-  );
-}
-
-describe('persistSuccessfulAttempt', () => {
+describe('persistSuccessfulAttemptInTx', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
   it('throws when task insertion returns fewer rows than expected', async () => {
     const mockTx = createMockTx({ taskReturnRows: [] });
-    useMockTransaction(mockTx); // 0 rows returned but 1 task expected
 
-    await expect(persistSuccessfulAttempt(createBaseParams())).rejects.toThrow(
-      'Failed to insert generated tasks for attempt',
-    );
+    await expect(
+      persistSuccessfulAttemptInTx(mockTx as never, createBaseParams()),
+    ).rejects.toThrow('Failed to insert generated tasks for attempt');
     expect(mockTx.update).not.toHaveBeenCalled();
   });
 
   it('returns the attempt record when all operations succeed', async () => {
     const mockTx = createMockTx();
-    useMockTransaction(mockTx);
 
-    const result = await persistSuccessfulAttempt(createBaseParams());
+    const result = await persistSuccessfulAttemptInTx(
+      mockTx as never,
+      createBaseParams(),
+    );
     expect(result).toEqual(mockAttemptRecord);
     expect(mockTx.update).toHaveBeenCalledTimes(1);
     expect(mockTx.update).toHaveBeenCalledWith(generationAttempts);
   });
 
-  it('reapplies RLS context before deleting and replacing persisted rows', async () => {
+  it('persists normalized effort before replacing persisted rows', async () => {
     const mockTx = createMockTx({
       attemptReturnRow: {
         ...mockAttemptRecord,
         normalizedEffort: true,
       },
     });
-    useMockTransaction(mockTx);
-
-    const rlsContext = {
-      requiresJwtClaimReplay: true,
-      requestJwtClaims: '{"sub":"auth-user-1"}',
-    };
-    const prepareSpy = vi
-      .spyOn(rlsJwtClaims, 'prepareRlsTransactionContext')
-      .mockResolvedValue(rlsContext);
-    const reapplySpy = vi
-      .spyOn(rlsJwtClaims, 'reapplyJwtClaimsInTransaction')
-      .mockResolvedValue(undefined);
-
     const params = createBaseParams({
       normalizationFlags: { modulesClamped: true, tasksClamped: false },
     });
 
-    const result = await persistSuccessfulAttempt(params);
+    const result = await persistSuccessfulAttemptInTx(mockTx as never, params);
 
     expect(result.normalizedEffort).toBe(true);
-    expect(prepareSpy).toHaveBeenCalledWith(params.dbClient);
-    expect(reapplySpy).toHaveBeenCalledWith(mockTx, rlsContext);
     expect(mockTx.spies.attemptSet).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'success',
@@ -241,11 +203,10 @@ describe('persistSuccessfulAttempt', () => {
         }),
       }),
     });
-    useMockTransaction(mockTx);
 
-    await expect(persistSuccessfulAttempt(createBaseParams())).rejects.toThrow(
-      'active child module lesson generation is in progress',
-    );
+    await expect(
+      persistSuccessfulAttemptInTx(mockTx as never, createBaseParams()),
+    ).rejects.toThrow('active child module lesson generation is in progress');
     expect(mockTx.delete).not.toHaveBeenCalled();
   });
 });

@@ -41,7 +41,12 @@ import { currentUser } from '@clerk/nextjs/server';
  *   actual nav links with their specific interaction patterns (dropdowns vs sheets).
  *
  */
-export default async function SiteHeader() {
+export default async function SiteHeader({
+  loadAccountProfile = true,
+}: {
+  /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
+  loadAccountProfile?: boolean;
+} = {}) {
   const { session } = await getSessionSafe();
   const authUserId = getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;
@@ -65,52 +70,59 @@ export default async function SiteHeader() {
   let userName: string | undefined;
   let userImageUrl: string | undefined;
   if (authUserId) {
-    try {
-      const result = await requestBoundary.component(({ actor }) => ({
+    const entitlementPromise = requestBoundary
+      .component(({ actor }) => ({
         tier: actor.subscriptionTier,
         canCreatePlan: canCreatePlanOnCurrentTier(actor),
-      }));
-      tier = result?.tier;
-      canCreatePlan = result?.canCreatePlan;
-    } catch (err) {
-      // Non-critical for shell render: tier badge omitted; log for ops visibility.
-      logger.warn(
-        {
-          err,
-          authUserId,
-          source: 'SiteHeader.subscriptionTier',
-        },
-        'Subscription tier fetch failed; header renders without tier badge',
-      );
-    }
+      }))
+      .then((result) => {
+        tier = result?.tier;
+        canCreatePlan = result?.canCreatePlan;
+      })
+      .catch((err: unknown) => {
+        // Non-critical for shell render: tier badge omitted; log for ops visibility.
+        logger.warn(
+          {
+            err,
+            authUserId,
+            source: 'SiteHeader.subscriptionTier',
+          },
+          'Subscription tier fetch failed; header renders without tier badge',
+        );
+      });
 
-    // Avatar fallback only — Clerk UserButton owns production avatars.
-    if (!showClerkUserButton) {
-      if (isLocalProductTestingAuthEnabled()) {
-        userName = devAuthEnv.name;
-      } else {
-        try {
-          const user = await currentUser();
-          if (user) {
-            const composedName = [user.firstName, user.lastName]
-              .filter(Boolean)
-              .join(' ');
-            userName =
-              (user.fullName ?? composedName) || user.username || undefined;
-            userImageUrl = user.imageUrl;
-          }
-        } catch (err) {
-          logger.warn(
-            {
-              err,
-              authUserId,
-              source: 'SiteHeader.currentUser',
-            },
-            'Clerk user fetch failed; header avatar falls back to initials',
-          );
-        }
-      }
-    }
+    // App-shell account chrome needs live name/avatar. Marketing routes skip
+    // this Clerk lookup because they never render those fields.
+    const profilePromise = !loadAccountProfile
+      ? Promise.resolve()
+      : isLocalProductTestingAuthEnabled()
+        ? Promise.resolve().then(() => {
+            userName = devAuthEnv.name;
+          })
+        : currentUser()
+            .then((user) => {
+              if (!user) {
+                return;
+              }
+              const composedName = [user.firstName, user.lastName]
+                .filter(Boolean)
+                .join(' ');
+              userName =
+                (user.fullName ?? composedName) || user.username || undefined;
+              userImageUrl = user.imageUrl;
+            })
+            .catch((err: unknown) => {
+              logger.warn(
+                {
+                  err,
+                  authUserId,
+                  source: 'SiteHeader.currentUser',
+                },
+                'Clerk user fetch failed; account chrome falls back to initials',
+              );
+            });
+
+    await Promise.all([entitlementPromise, profilePromise]);
   }
 
   return (

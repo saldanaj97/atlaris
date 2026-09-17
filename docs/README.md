@@ -95,12 +95,11 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Brand direction and UI style reference.
+Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
 
 | File | Description |
 |------|-------------|
-| [after-hours-direction.md](./styles/after-hours-direction.md) | Approved After Hours product direction |
-| [style-guide.md](./styles/style-guide.md) | Colors, tokens, typography, layout, components |
+| [design-system.md](./styles/design-system.md) | Canonical detailed design specification; proposals, historical provenance, and remaining acceptance gaps remain explicit |
 
 ## `testing/`
 
@@ -168,8 +167,7 @@ docs/
 │   ├── security-audit-checklist.md
 │   └── supply-chain-policy.md
 ├── styles/
-│   ├── after-hours-direction.md
-│   └── style-guide.md
+│   └── design-system.md
 ├── testing/
 │   ├── db-test-patterns.md
 │   ├── playwright-local-smoke.md

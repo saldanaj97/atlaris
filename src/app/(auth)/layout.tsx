@@ -9,7 +9,11 @@ export default function AuthLayout({
   return (
     <>
       <SiteHeader />
-      <main id='main-content' className={`flex-1 ${APP_SHELL_MAIN_OFFSET}`}>
+      <main
+        id='main-content'
+        className={`flex-1 ${APP_SHELL_MAIN_OFFSET}`}
+        tabIndex={-1}
+      >
         {children}
       </main>
     </>

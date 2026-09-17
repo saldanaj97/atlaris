@@ -281,14 +281,6 @@ export async function upsertUserModelPreferences(
   return row ? mapPreferenceRow(row) : undefined;
 }
 
-export async function upsertUserPreferredAiModel(
-  userId: string,
-  preferredAiModel: string | null,
-  dbClient: Pick<DbClient, 'execute'>,
-): Promise<UserPreferenceValues | undefined> {
-  return upsertUserModelPreferences(userId, { preferredAiModel }, dbClient);
-}
-
 export async function upsertUserAnalyticsTimezone(
   userId: string,
   analyticsTimezone: string,

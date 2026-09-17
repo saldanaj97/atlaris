@@ -87,7 +87,6 @@ export function buildPersistedRegenerationInput(
  */
 export function resolveRegenerationPolicyDenial(params: {
   readonly tier: SubscriptionTier;
-  readonly weeklyHours: number;
   readonly startDate?: string | null;
   readonly deadlineDate?: string | null;
 }): RegenerationPolicyDenial | null {
@@ -124,7 +123,6 @@ export function resolveRegenerationPolicyDenial(params: {
   });
   const cap = checkPlanDurationCap({
     tier: params.tier,
-    weeklyHours: params.weeklyHours,
     totalWeeks,
   });
   if (!cap.allowed) {

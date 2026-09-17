@@ -6,10 +6,10 @@ import { createPlan } from '../../fixtures/plans';
 import { ensureUser } from '../../helpers/db/users';
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import {
-  finalizeAttemptFailure,
-  finalizeAttemptSuccess,
-  reserveAttemptSlot,
-} from '@/lib/db/queries/attempts';
+  commitPlanGenerationFailure,
+  commitPlanGenerationSuccess,
+} from '@/features/plans/lifecycle/generation-finalization/store';
+import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import {
   generationAttempts,
   learningPlans,
@@ -17,6 +17,7 @@ import {
   users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import { eq } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it } from 'vitest';
@@ -239,7 +240,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
   });
 
   it('allows new reservation after previous attempt is finalized', async () => {
-    // Reserve and finalize first attempt
+    // Reserve and commit the first attempt through the lifecycle owner.
     const first = await reserveAttemptSlot({
       planId,
       userId,
@@ -255,15 +256,20 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     expect(first.reserved).toBe(true);
 
     if (first.reserved) {
-      await finalizeAttemptFailure({
+      await commitPlanGenerationFailure(db, {
+        variant: 'reserved_attempt',
         attemptId: first.attemptId,
         planId,
+        userId,
         preparation: first,
         classification: 'timeout',
+        error: new Error('timed out'),
         durationMs: 5000,
         timedOut: true,
         extendedTimeout: false,
-        dbClient: db,
+        usageKind: 'plan',
+        generationPurpose: 'initial',
+        retryable: true,
       });
     }
 
@@ -287,7 +293,7 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     }
   });
 
-  it('requires in-progress status to finalize success', async () => {
+  it('requires in-progress status to commit success', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -315,9 +321,10 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
       .where(eq(generationAttempts.id, reservation.attemptId));
 
     await expect(
-      finalizeAttemptSuccess({
+      commitPlanGenerationSuccess(db, {
         attemptId: reservation.attemptId,
         planId,
+        userId,
         preparation: reservation,
         modules: [
           {
@@ -333,14 +340,17 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
             ],
           },
         ],
+        providerMetadata: { provider: 'mock', model: 'mock-model' },
+        usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
         durationMs: 3000,
         extendedTimeout: false,
-        dbClient: db,
+        usageKind: 'plan',
+        generationPurpose: 'initial',
       }),
     ).rejects.toThrow(/Failed to finalize successful generation attempt/);
   });
 
-  it('requires matching plan to finalize failure', async () => {
+  it('requires matching plan to commit failure', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -370,22 +380,27 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     });
 
     await expect(
-      finalizeAttemptFailure({
+      commitPlanGenerationFailure(db, {
+        variant: 'reserved_attempt',
         attemptId: reservation.attemptId,
         planId: otherPlan.id,
+        userId,
         preparation: reservation,
         classification: 'timeout',
+        error: new Error('timed out'),
         durationMs: 5000,
         timedOut: true,
         extendedTimeout: false,
-        dbClient: db,
+        usageKind: 'plan',
+        generationPurpose: 'initial',
+        retryable: true,
       }),
     ).rejects.toThrow(
       /^Failed to finalize generation attempt .+ for plan .+ as timeout failure\.$/,
     );
   });
 
-  it('finalizes success correctly', async () => {
+  it('commits success correctly', async () => {
     const reservation = await reserveAttemptSlot({
       planId,
       userId,
@@ -401,9 +416,10 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     expect(reservation.reserved).toBe(true);
 
     if (reservation.reserved) {
-      const attempt = await finalizeAttemptSuccess({
+      const attempt = await commitPlanGenerationSuccess(db, {
         attemptId: reservation.attemptId,
         planId,
+        userId,
         preparation: reservation,
         modules: [
           {
@@ -419,9 +435,12 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
             ],
           },
         ],
+        providerMetadata: { provider: 'mock', model: 'mock-model' },
+        usage: makeCanonicalUsage({ provider: 'mock', model: 'mock-model' }),
         durationMs: 3000,
         extendedTimeout: false,
-        dbClient: db,
+        usageKind: 'plan',
+        generationPurpose: 'initial',
       });
 
       expect(attempt.status).toBe('success');

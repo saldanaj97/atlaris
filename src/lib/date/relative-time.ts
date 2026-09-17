@@ -1,13 +1,3 @@
-const SCHEDULED_EVENT_TIME_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  hour: 'numeric',
-  minute: '2-digit',
-});
-
-const SCHEDULED_EVENT_DATE_FORMATTER = new Intl.DateTimeFormat(undefined, {
-  month: 'short',
-  day: 'numeric',
-});
-
 type ValidDateInput = Date | string | null | undefined;
 
 const MS_PER_MINUTE = 60 * 1000;
@@ -109,67 +99,4 @@ export function formatRelativePast(
   return options.style === 'compact'
     ? formatCompactPastDelta(delta)
     : formatVerbosePastDelta(delta);
-}
-
-/**
- * Dashboard scheduled-event style (future relative to reference).
- */
-export function formatScheduledEventRelative(
-  date: Date,
-  referenceDate: Date,
-): string {
-  const targetDate = toValidDate(date);
-  const reference = toValidDate(referenceDate);
-  if (!targetDate || !reference) return 'Recently';
-
-  const comparison = Math.sign(targetDate.getTime() - reference.getTime());
-
-  if (comparison < 0) {
-    return formatRelativePast(targetDate, {
-      referenceDate: reference,
-      style: 'verbose',
-    });
-  }
-
-  if (comparison === 0) {
-    return 'Now';
-  }
-
-  const diffCalendarDays = calendarDayDifference(targetDate, reference);
-
-  if (diffCalendarDays === 0) {
-    const diffMs = targetDate.getTime() - reference.getTime();
-    const diffHours = Math.trunc(diffMs / MS_PER_HOUR);
-    if (diffHours >= 1) {
-      return `In ${diffHours}h`;
-    }
-
-    const diffMinutes = Math.trunc(diffMs / MS_PER_MINUTE);
-    if (diffMinutes === 0) {
-      return 'Now';
-    }
-
-    return `In ${diffMinutes} min`;
-  }
-
-  if (diffCalendarDays === 1) {
-    return `Tomorrow at ${SCHEDULED_EVENT_TIME_FORMATTER.format(targetDate)}`;
-  }
-
-  if (diffCalendarDays < 7) {
-    return `In ${diffCalendarDays} days`;
-  }
-
-  return SCHEDULED_EVENT_DATE_FORMATTER.format(targetDate);
-}
-
-function calendarDayDifference(date: Date, referenceDate: Date): number {
-  const dateDay = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  const referenceDay = Date.UTC(
-    referenceDate.getFullYear(),
-    referenceDate.getMonth(),
-    referenceDate.getDate(),
-  );
-
-  return Math.round((dateDay - referenceDay) / MS_PER_DAY);
 }

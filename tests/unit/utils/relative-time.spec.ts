@@ -1,9 +1,5 @@
 import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
-import {
-  formatRelativePast,
-  formatScheduledEventRelative,
-  toValidDate,
-} from '@/lib/date/relative-time';
+import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 import { describe, expect, it } from 'vitest';
 
 describe('relative-time', () => {
@@ -56,36 +52,7 @@ describe('relative-time', () => {
     ).toBe('Recently');
   });
 
-  it.each([
-    ['2025-06-15T12:30:00.000Z', 'In 30 min'],
-    ['2025-06-15T15:00:00.000Z', 'In 3h'],
-    ['2025-06-15T12:00:30.000Z', 'Now'],
-    ['2025-06-15T11:30:00.000Z', '30 minutes ago'],
-    ['2025-06-15T12:00:00.000Z', 'Now'],
-    ['2025-06-18T12:00:00.000Z', 'In 3 days'],
-  ])('formatScheduledEventRelative returns %s -> %s', (input, expected) => {
-    expect(formatScheduledEventRelative(new Date(input), ref)).toBe(expected);
-  });
-
-  it('formatScheduledEventRelative matches dashboard scheduled-event phrasing', () => {
-    const tomorrow = new Date('2025-06-16T14:30:00.000Z');
-    expect(formatScheduledEventRelative(tomorrow, ref)).toMatch(
-      /^Tomorrow at /,
-    );
-    expect(
-      formatScheduledEventRelative(new Date('2025-06-23T12:00:00.000Z'), ref),
-    ).toBe(
-      new Intl.DateTimeFormat(undefined, {
-        month: 'short',
-        day: 'numeric',
-      }).format(new Date('2025-06-23T12:00:00.000Z')),
-    );
-  });
-
-  it('supports deterministic now injection in scheduled-event and plan helpers', () => {
-    expect(
-      formatScheduledEventRelative(new Date('2025-06-15T12:30:00.000Z'), ref),
-    ).toBe('In 30 min');
+  it('supports deterministic now injection in plan helpers', () => {
     expect(
       getPlanLastActivityRelative(
         '2025-06-15T11:55:00.000Z',
