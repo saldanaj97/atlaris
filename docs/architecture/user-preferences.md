@@ -93,7 +93,7 @@ Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** f
 | Flag key                      | Default               | Role                                                             |
 | ----------------------------- | --------------------- | ---------------------------------------------------------------- |
 | `email-notification-delivery` | `false` (fail-closed) | Cron / maintenance / workflow must not send when off             |
-| `maintenance-mode`            | fallback `false`      | Proxy routes app traffic to maintenance                          |
+| `maintenance-mode`            | fallback `false`      | Proxy routes app traffic to maintenance. Local development still allows opening `/maintenance` for preview. |
 | `module-lesson-generation`    | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle |
 
 Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback — email delivery and lesson generation stay off until enabled in a Vercel environment with Flags configured.

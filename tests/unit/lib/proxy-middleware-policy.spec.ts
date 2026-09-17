@@ -114,6 +114,24 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
   });
 
+  it('lets local development preview /maintenance while the site stays available', () => {
+    expect(
+      resolveMaintenanceRedirectPath(false, '/maintenance', {
+        allowMaintenancePreview: true,
+      }),
+    ).toBe(null);
+    expect(
+      resolveMaintenanceRedirectPath(false, '/maintenance', {
+        allowMaintenancePreview: false,
+      }),
+    ).toBe('/');
+    expect(
+      resolveMaintenanceRedirectPath(true, '/dashboard', {
+        allowMaintenancePreview: true,
+      }),
+    ).toBe('/maintenance');
+  });
+
   it('allows the exact regeneration drain through maintenance redirects', () => {
     expect(
       resolveMaintenanceRedirectPath(

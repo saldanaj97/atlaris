@@ -16,14 +16,9 @@ interface SiteFooterProps {
 export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
   if (variant === 'maintenance') {
     return (
-      <footer className='border-t border-border px-4 py-6 sm:px-6 lg:px-8'>
-        <div className='mx-auto flex max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row sm:items-end'>
-          <div className='text-center sm:text-left'>
-            <BrandLogo linked={false} size='sm' />
-            <p className='mt-2 text-xs text-muted-foreground'>
-              Learn. Build. Go further.
-            </p>
-          </div>
+      <footer className='relative z-10 px-4 py-6 sm:px-6 lg:px-8'>
+        <div className='mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row sm:items-center'>
+          <BrandLogo linked={false} size='sm' />
           <div className='flex flex-col items-center gap-2 text-xs text-muted-foreground sm:items-end'>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
