@@ -25,10 +25,19 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 
 ## Getting started
 
-Install dependencies and run the development server:
+`pnpm install` installs project dependencies only. `pnpm dev` always goes through the mandatory launcher, which fails before Next starts unless these machine-local tools are already present:
+
+1. A global **Portless** executable on `PATH`. Install and PATH notes: [`docs/third-party-services/portless-overview.md`](docs/third-party-services/portless-overview.md#install). First machine also needs `portless trust`.
+2. A trusted **1Password CLI** (`op` on `PATH` outside this repository and `node_modules`), or `OP_EXECUTABLE` set to an absolute wrapper.
+3. A nonempty **`OP_ENVIRONMENT_ID`** in ignored `.dev-env.local.sh` (copy [`.dev-env.example.sh`](.dev-env.example.sh)) or your shell.
 
 ```bash
+npm install -g portless
+export PATH="$(npm prefix -g)/bin:$PATH"
+cp .dev-env.example.sh .dev-env.local.sh
+# Set OP_ENVIRONMENT_ID to the development Environment assigned to your local app.
 pnpm install
+pnpm dev doctor   # confirm Portless, 1Password, and OP_ENVIRONMENT_ID
 pnpm dev
 ```
 
@@ -132,6 +141,7 @@ Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and corr
 
 - `AGENTS.md`
 - `docs/architecture/workflow-sdk.md`
+- `docs/third-party-services/portless-overview.md`
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/architecture/plan-generation-architecture.md`
 - `docs/architecture/internal-worker-routes.md`
