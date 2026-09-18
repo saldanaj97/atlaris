@@ -37,8 +37,8 @@ describe('SiteFooter', () => {
       within(footer).getByRole('link', { name: 'support@atlaris.app' }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
     expect(
-      within(footer).getByText('Learn. Build. Go further.'),
-    ).toBeInTheDocument();
+      within(footer).queryByText('Learn. Build. Go further.'),
+    ).not.toBeInTheDocument();
     expect(
       within(footer).queryByRole('navigation', { name: 'Footer' }),
     ).not.toBeInTheDocument();

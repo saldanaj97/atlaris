@@ -69,7 +69,7 @@ flowchart LR
 - `requestBoundary.*` --> `src/lib/api/auth.ts`: establish Clerk auth and ensure the internal app user before RLS work.
 - `src/lib/api/auth.ts` --> `src/lib/api/context.ts`: creates request context used by RLS-aware DB access.
 - `src/lib/api/context.ts` --> `supabase/runtime.ts` --> `supabase/rls.ts`: DB runtime and RLS context wiring.
-- `src/app/(app|marketing|auth)` --> `src/components`, `src/hooks`, `src/features`: route groups compose UI and feature boundaries.
+- `src/app/(app|landing|auth)` --> `src/components`, `src/hooks`, `src/features`: route groups compose UI and feature boundaries.
 - Client islands --> `src/app/_shared/client-api.ts`: use typed client API helpers for browser calls.
 - Plan UI/SSE hooks --> `src/app/api/v1/plans/stream`: generation session entrypoint.
 - `/api/v1/plans/stream` --> `src/features/plans/session/plan-generation-session.ts`: session orchestration behind `requestBoundary.route`.
@@ -120,5 +120,5 @@ flowchart LR
 - Lesson content: `src/features/lesson-content/run-module-lesson-generation-work.ts`, `start-module-lesson-generation-workflow.ts`, `generate-module-lessons.ts`
 - Notifications: `src/features/notifications/email/`, `src/lib/db/queries/email-*.ts`
 - Jobs/workers: `src/app/api/internal/**`, `src/lib/api/internal/internal-worker-access.ts`, `src/lib/api/internal/maintenance-route.ts`, `src/features/jobs/`
-- UI/client API: `src/app/(app)`, `src/app/(marketing)`, `src/app/(auth)`, `src/app/_shared/client-api.ts`, `src/components`, `src/hooks`
+- UI/client API: `src/app/(app)`, `src/app/(landing)`, `src/app/(auth)`, `src/app/_shared/client-api.ts`, `src/components`, `src/hooks`
 - Observability: `src/instrumentation.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`, `src/lib/logging/request-context.ts`, `src/lib/observability/metrics.ts`

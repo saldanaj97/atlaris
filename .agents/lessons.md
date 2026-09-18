@@ -8,13 +8,13 @@
 
 **Impact:** Without the full audit, ESLint enforcement (#271) would have failed after completing all 9 original issues because 13 violations would still exist.
 
-## 2026-04-05: Planning path drift from `prds/` / stale `.plans/` to canonical recap layout
+## 2026-04-05: Planning path drift from `prds/` / stale `.plans/` to retired recap folders
 
-**Context:** A planning task initially created a new workspace under `prds/` because older learnings and docs still referenced that path, while `AGENTS.md` had moved the canonical writable location to **`.agents/plans/`** (historically some docs said `.plans/`).
+**Context:** A planning task initially created a new workspace under `prds/` because older learnings and docs still referenced that path. Later guidance pointed at `.agents/plans/`, then at dated `.agents/recaps/` folders. Root `AGENTS.md` no longer uses those locations.
 
-**Rule (updated 2026-06-16):** Before creating or updating planning artifacts, verify the canonical directory in live root **`AGENTS.md`**. Writable repo planning and handoffs live under **`.agents/recaps/MM-DD-YYYY/plans/`** and **`.agents/recaps/MM-DD-YYYY/handoffs/`** for the current local calendar day — not `prds/`, not legacy `.plans/`, not flat `.agents/plans/` or `.agents/handoffs/`. **`.cursor/plans/`** stays Cursor-native / read-only for attached exports.
+**Rule (updated 2026-09-09):** Do not create or update planning or handoff artifacts under `.agents/recaps/`, `.agents/handoffs/`, flat `.agents/plans/`, `prds/`, legacy `.plans/`, or `.cursor/plans/`. Follow live root `AGENTS.md`. Durable cross-session notes belong in `.agents/lessons.md` only when they are actual lessons.
 
-**Impact:** Following stale path references creates duplicate planning trees, confuses future updates, and undermines the workflow the repo is explicitly trying to standardize.
+**Impact:** Following stale path references creates duplicate planning trees and undoes the current no-recap / no-handoff workflow.
 
 ## 2026-04-05: Verify active surface area before planning around it
 
@@ -126,4 +126,12 @@
 
 **Rule:** `export DOCKER_HOST=unix:///Users/juansaldana/.orbstack/run/docker.sock` before `launch`, `doctor`, and `cleanup`. For marketing pages, `clerk env pull --instance dev --file /tmp/<run>.env`, then `set -a; source /tmp/<run>.env; set +a` in the launch shell and delete the file afterward. Do not write the keys into repo env files.
 
-**Impact:** Without the socket Testcontainers never starts Postgres; without the keys every `(marketing)` route 500s and the live pass is impossible.
+**Impact:** Without the socket Testcontainers never starts Postgres; without the keys every `(landing)` route 500s and the live pass is impossible.
+
+## 2026-09-08: No gradients unless the user explicitly asks
+
+**Context:** Settings hero styled the word "yours." with a CSS-module linear-gradient (`background-clip: text`). The user selected that span in the browser and asked to remove the gradient completely so the heading is solid `text-foreground`.
+
+**Rule:** Do not add gradients (CSS `linear-gradient` / text-fill, Tailwind gradient utilities, or token-clipped accent text) unless the user explicitly requests one. Prefer solid heading color that matches the surrounding text.
+
+**Impact:** Decorative gradient accents get shipped as "polish" and then have to be ripped out; treating them as opt-in avoids that churn.

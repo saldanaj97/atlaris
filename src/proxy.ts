@@ -131,6 +131,7 @@ async function handleProxyRequest(
   const maintenanceTarget = resolveMaintenanceRedirectPath(
     effectiveMaintenanceMode,
     pathname,
+    { allowMaintenancePreview: appEnv.isDevelopment },
   );
 
   if (maintenanceTarget !== null) {

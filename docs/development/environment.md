@@ -51,6 +51,8 @@ Declared flags:
 
 **Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery, lesson generation, and maintenance stay off. `MAINTENANCE_MODE` is not a local override — it applies only if flag evaluation throws.
 
+**Local maintenance page preview:** in development, `/maintenance` stays reachable while the flag is off so the page can be designed and checked without taking the rest of the app down. Hosted Preview/Production still redirect `/maintenance` home when the flag is off. Turning the Vercel flag on still sends the whole site to `/maintenance`.
+
 **Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
 Hosted templates list `FLAGS` / `FLAGS_SECRET` in `.env.preview.example` and `.env.production.example`. Production also documents `MAINTENANCE_MODE`.
