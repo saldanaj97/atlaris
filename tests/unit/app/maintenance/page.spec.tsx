@@ -23,17 +23,10 @@ describe('MaintenancePage', () => {
     expect(
       within(main).getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
-    const status = within(main).getByRole('region', {
-      name: 'System improvements in progress',
-    });
     expect(
-      within(status).getByRole('heading', {
-        level: 2,
-        name: 'System improvements in progress',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      within(status).getByText(/Please try again in a few minutes\./),
+      within(main).getByText(
+        /Atlaris is temporarily unavailable while maintenance is in progress/,
+      ),
     ).toBeInTheDocument();
     expect(main.nextElementSibling).toBe(footer);
     expect(
@@ -46,5 +39,27 @@ describe('MaintenancePage', () => {
       within(footer).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).not.toBeInTheDocument();
     expect(within(footer).getByLabelText('Atlaris')).toBeInTheDocument();
+    expect(
+      screen.queryByText(/A brighter future takes a little patience/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('Learn. Build. Go further.'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('renders the decorative mountain-lake backdrop artwork', () => {
+    const { container } = render(<MaintenancePage />);
+
+    const backdrop = container.querySelector(
+      '[data-slot="responsive-backdrop"]',
+    );
+    expect(backdrop).not.toBeNull();
+    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+    expect(
+      container.querySelector('img[src*="maintenance-backdrop-desktop.jpg"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('img[src*="maintenance-backdrop-mobile.jpg"]'),
+    ).not.toBeNull();
   });
 });

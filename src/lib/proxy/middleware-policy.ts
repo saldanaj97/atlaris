@@ -73,6 +73,7 @@ export function isProtectedRoute(pathname: string): boolean {
 export function resolveMaintenanceRedirectPath(
   maintenanceMode: boolean,
   pathname: string,
+  options?: { allowMaintenancePreview?: boolean },
 ): '/maintenance' | '/' | null {
   const path = stripTrailingSlash(pathname);
   if (
@@ -88,7 +89,7 @@ export function resolveMaintenanceRedirectPath(
     return '/maintenance';
   }
   if (!maintenanceMode && path === '/maintenance') {
-    return '/';
+    return options?.allowMaintenancePreview === true ? null : '/';
   }
   return null;
 }

@@ -3,10 +3,8 @@ import type { Metadata } from 'next';
 import { MaintenanceRecheckButton } from './MaintenanceRecheckButton';
 import BrandLogo from '@/components/shared/BrandLogo';
 import SiteFooter from '@/components/shared/SiteFooter';
-import { Card } from '@/components/ui/card';
 import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
-import { Settings2 } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Maintenance | Atlaris',
@@ -23,29 +21,36 @@ export const metadata: Metadata = {
 
 export default function MaintenancePage() {
   return (
-    <div className='flex min-h-screen flex-col bg-background'>
+    <div
+      className='dark relative isolate flex min-h-screen flex-col bg-background'
+      data-atlaris-theme='dark'
+    >
+      <ResponsiveBackdrop
+        desktop={{
+          src: '/artwork/maintenance-backdrop-desktop.jpg',
+          objectPosition: '50% 50%',
+        }}
+        mobile={{
+          src: '/artwork/maintenance-backdrop-mobile.jpg',
+          objectPosition: '70% 50%',
+        }}
+        overlay='vignette'
+        className='block'
+        priority
+      />
+
       <main
         id='main-content'
-        className='relative isolate flex flex-1 flex-col overflow-hidden'
+        className='relative z-10 flex flex-1 flex-col overflow-hidden'
         tabIndex={-1}
       >
-        <ResponsiveBackdrop
-          desktop={{
-            src: '/artwork/maintenance-backdrop-desktop.jpg',
-            objectPosition: '50% 50%',
-          }}
-          mobile={{
-            src: '/artwork/maintenance-backdrop-mobile.jpg',
-            objectPosition: '70% 50%',
-          }}
-          overlay='background'
-        />
-
-        <div className='relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-5 sm:px-6'>
-          <header className='flex items-center py-5'>
+        <header className='px-4 py-5 sm:px-6 lg:px-8'>
+          <div className='mx-auto flex w-full max-w-7xl items-center'>
             <BrandLogo linked={false} size='sm' />
-          </header>
+          </div>
+        </header>
 
+        <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6'>
           <div className='flex flex-1 flex-col items-center justify-center py-12 sm:py-16'>
             <div className='w-full max-w-2xl text-center'>
               <p className='mx-auto inline-flex rounded-full border border-primary/35 bg-panel px-4 py-2 text-[11px] leading-none font-medium tracking-[0.22em] text-primary uppercase'>
@@ -56,43 +61,14 @@ export default function MaintenancePage() {
                 We’ll be back <span className='text-primary'>soon.</span>
               </h1>
 
-              <p className='mx-auto mt-5 max-w-[34rem] text-base leading-relaxed text-muted-foreground sm:text-lg'>
+              <p className='mx-auto mt-5 max-w-136 text-base leading-relaxed text-muted-foreground sm:text-lg'>
                 Atlaris is temporarily unavailable while maintenance is in
                 progress. Please try again in a few minutes.
               </p>
 
-              <Card
-                as='section'
-                aria-labelledby='maintenance-status-heading'
-                className='mx-auto mt-8 max-w-[28rem] gap-0 p-5 text-left sm:p-6'
-              >
-                <div className='flex items-start gap-4'>
-                  <span className='grid size-12 shrink-0 place-items-center rounded-full bg-primary/15 text-primary'>
-                    <Settings2 className='size-6' aria-hidden='true' />
-                  </span>
-                  <div className='min-w-0'>
-                    <h2
-                      id='maintenance-status-heading'
-                      className='text-base font-medium text-foreground'
-                    >
-                      System improvements in progress
-                    </h2>
-                    <p className='mt-1 text-sm leading-relaxed text-muted-foreground'>
-                      Please try again in a few minutes. Thank you for your
-                      patience.
-                    </p>
-                  </div>
-                </div>
-              </Card>
-
               <MaintenanceRecheckButton />
             </div>
           </div>
-
-          <p className='mx-auto max-w-md pb-8 text-center text-[11px] leading-relaxed tracking-[0.18em] text-muted-foreground uppercase'>
-            “A brighter future takes a little patience.”
-            <span className='mt-1 block'>— Atlaris</span>
-          </p>
         </div>
       </main>
       <SiteFooter variant='maintenance' />

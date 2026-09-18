@@ -12,7 +12,7 @@ export type ResponsiveBackdropSource = {
 export interface ResponsiveBackdropProps {
   desktop: ResponsiveBackdropSource;
   mobile: ResponsiveBackdropSource;
-  overlay?: 'panel' | 'background';
+  overlay?: 'panel' | 'background' | 'vignette';
   sizes?: ImageProps['sizes'];
   className?: string;
   slot?: string;
@@ -27,6 +27,8 @@ const overlayClassNames: Record<
   panel: 'bg-linear-to-r from-panel via-panel/90 to-panel/20',
   background:
     'bg-linear-to-r from-background via-background/90 to-background/15',
+  vignette:
+    'bg-linear-to-b from-background/70 via-background/25 to-background/65',
 };
 
 const DESKTOP_MEDIA = '(min-width: 768px)';
