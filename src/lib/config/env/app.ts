@@ -32,8 +32,8 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
   const normalizeUrl = (requireHttps: boolean): string => {
     const raw = requireHttps
       ? access.getServerRequired('APP_URL')
-      : (access.getServerOptional('APP_URL') ??
-        access.getServerOptional('PORTLESS_URL') ??
+      : (access.getServerOptional('PORTLESS_URL') ??
+        access.getServerOptional('APP_URL') ??
         'http://localhost:3000');
     const parsed = APP_URL_SCHEMA.safeParse(raw);
     if (!parsed.success) {

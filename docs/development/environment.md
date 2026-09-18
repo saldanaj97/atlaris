@@ -177,7 +177,7 @@ Canonical table (env vars, fail-open/closed behavior, and local fallback): [Verc
 | `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
-Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
+Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm db fixture --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
 
 **Fixture mode does not exercise checkout or webhooks.** It only updates the Postgres entitlement projection for local product testing.
 
@@ -191,7 +191,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 
 | Mode                                | Env contract                                                                                                                                                      | What it proves                                                                                                                                               |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
+| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm db fixture --user-id <users.auth_user_id> --plan <starter|pro>`, followed by `pnpm dev`. **Does not** test Clerk checkout or webhooks. |
 | **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota.                                                                                              |
 
 **Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders plan cards with the existing page composition through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
@@ -233,7 +233,7 @@ Record evidence without secrets: environment name, Clerk Development instance na
 
 ### Local Supabase database
 
-Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
+Use `pnpm db start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
 
 | Variable                               | Local default / source                                                   |
 | -------------------------------------- | ------------------------------------------------------------------------ |
@@ -243,6 +243,12 @@ Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current
 | `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
 
 Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
+
+### Local laptop (1Password Environments)
+
+`pnpm dev` authenticates `op` with a keychain-backed service account and still
+needs `OP_ENVIRONMENT_ID` in `~/.config/atlaris/dev.sh` or the shell. Setup:
+[1Password local development](../third-party-services/1password-local-dev.md).
 
 ### Cloud agents (1Password Environments)
 

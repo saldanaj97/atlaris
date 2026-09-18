@@ -1718,15 +1718,15 @@ python3 scripts/check-handbook.py
 **In the application repository, after an implementation change:** the following existing script names were verified, not executed here. Use the project's setup and required environment. [G02]
 
 ```bash
-pnpm check:lint
-pnpm check:type
-pnpm design:lint
-pnpm test:unit
+pnpm lint
+pnpm typecheck
+pnpm exec designmd lint DESIGN.md
+pnpm test unit
 ```
 
-Run relevant integration/workflow/security tests when the changed composition touches those contracts; their existing scripts are `test:integration`, `test:workflow`, `test:security`. Build and smoke checks are existing `build` and `test:smoke` scripts. Do not treat `test:e2e` as a synonym for Playwright: at this baseline it invokes Vitest. The local-first sequence should catch obvious failures before a CI push; no new CI job or cloud deployment is part of this package.
+Run relevant integration/workflow/security tests when the changed composition touches those contracts; use `pnpm test integration`, `pnpm test workflow`, and `pnpm test security`. Build and smoke checks are `pnpm build` and `pnpm test smoke`. Do not treat `pnpm test e2e` as a synonym for Playwright: at this baseline it invokes Vitest. The local-first sequence should catch obvious failures before a CI push; no new CI job or cloud deployment is part of this package.
 
-The existing `pnpm ui:capture-baseline` script supports supplied anonymous/authenticated server bases or its default disposable-Postgres and local-server setup. Its inspected default routes omit dynamic plan/module pages, About and Maintenance; its three viewport presets do not replace the full accessibility stress matrix. Extend a real review deliberately rather than assume the script already covers every state. The default setup starts infrastructure and seeds a disposable database; do not point test tooling at production. [G06, inspected lines 1–200]
+The former UI baseline capture script is no longer part of the public command surface. Use the committed browser smoke lane for launch-blocker confidence, and record any separate visual review with deliberate route, theme, viewport, browser and accessibility evidence rather than treating a canned capture as comprehensive. The historical capture details remain in G06 as provenance only; do not point any test tooling at production.
 
 ### 27.7 Acceptance record
 
