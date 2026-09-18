@@ -28,26 +28,26 @@ POSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:5432/postgres
 POSTGRES_URL_NON_POOLING=postgresql://postgres:postgres@127.0.0.1:5432/postgres
 ```
 
-With `SKIP_TESTCONTAINERS=true`, no Testcontainers container is started. The existing global setup still waits for Postgres, then runs the shared bootstrap, `pnpm db:migrate`, RLS grants, runtime fixups, and template-database creation. It writes process-scoped runtime state (`TESTCONTAINERS_ENV_FILE`). Each Vitest worker clones `atlaris_test_wN` from that template.
+With `SKIP_TESTCONTAINERS=true`, no Testcontainers container is started. The existing global setup still waits for Postgres, then runs the shared bootstrap, `pnpm db migrate`, RLS grants, runtime fixups, and template-database creation. It writes process-scoped runtime state (`TESTCONTAINERS_ENV_FILE`). Each Vitest worker clones `atlaris_test_wN` from that template.
 
 `SKIP_TESTCONTAINERS=true` requires `POSTGRES_URL` and/or `POSTGRES_URL_NON_POOLING` and refuses non-local hosts. Do not point tests at hosted databases.
 
 ### Cursor Cloud Agent database
 
-Cursor installs native PostgreSQL 17 while creating the environment Build, then runs `pnpm db:agent:up` each time an agent starts. The fixed target is `127.0.0.1:55432`, database and role `atlaris_agent`. Each Cloud Agent VM has an isolated loopback interface, so concurrent agents can use the same URL string without sharing data.
+Cursor installs native PostgreSQL 17 while creating the environment Build, then runs `pnpm db agent up` each time an agent starts. The fixed target is `127.0.0.1:55432`, database and role `atlaris_agent`. Each Cloud Agent VM has an isolated loopback interface, so concurrent agents can use the same URL string without sharing data.
 
 The cloud lifecycle has no hosted database or Supabase credentials. It uses the repository-installed Supabase CLI with an explicit loopback `--db-url` to apply every committed SQL file in `supabase/migrations/`, including migrations that are absent from the Drizzle journal. It then reuses `supabase/seed.sql` and the existing RLS compatibility bootstrap. The retention migration already tolerates `pg_cron` being unavailable.
 
-`pnpm db:agent:up` creates a clearly marked `.env.local` when the file is absent. For an existing safe file that is missing either managed database URL, it preserves the other values and adds the exact loopback URLs; hosted database references, hosted credentials, duplicate protected assignments, and unexpected database URLs still fail closed. The reset command has no arbitrary URL or hosted-target override.
+`pnpm db agent up` creates a clearly marked `.env.local` when the file is absent. For an existing safe file that is missing either managed database URL, it preserves the other values and adds the exact loopback URLs; hosted database references, hosted credentials, duplicate protected assignments, and unexpected database URLs still fail closed. The reset command has no arbitrary URL or hosted-target override.
 
 | Command                   | Behavior                                                                                 |
 | ------------------------- | ---------------------------------------------------------------------------------------- |
-| `pnpm db:agent:preflight` | Read-only Ubuntu, toolchain, port, credential-boundary, and target checks                |
-| `pnpm db:agent:up`        | Idempotently starts PostgreSQL, applies migrations and grants, seeds, and verifies state |
-| `pnpm db:agent:status`    | Read-only readiness, migration, role, extension, RLS shim, and seed report               |
-| `pnpm db:agent:reset`     | Drops and recreates only the exact managed loopback database, then fully reprovisions it |
+| `pnpm db agent preflight` | Read-only Ubuntu, toolchain, port, credential-boundary, and target checks                |
+| `pnpm db agent up`        | Idempotently starts PostgreSQL, applies migrations and grants, seeds, and verifies state |
+| `pnpm db agent status`    | Read-only readiness, migration, role, extension, RLS shim, and seed report               |
+| `pnpm db agent reset`     | Drops and recreates only the exact managed loopback database, then fully reprovisions it |
 
-If status reports a missing binary, rerun the Cursor environment Build so `scripts/agents/install-postgres-17.sh` runs. A connection or readiness failure should be diagnosed with `pnpm db:agent:status`; do not add a hosted URL to make it pass.
+If status reports a missing binary, rerun the Cursor environment Build so `scripts/agents/install-postgres-17.sh` runs. A connection or readiness failure should be diagnosed with `pnpm db agent status`; do not add a hosted URL to make it pass.
 
 Vercel Preview cannot reach a database inside a Cloud Agent VM. A remotely reachable disposable database would be a separate future requirement, not part of this workflow.
 
@@ -60,16 +60,16 @@ LOCAL_PRODUCT_TESTING=true
 DEV_AUTH_USER_ID=00000000-0000-4000-8000-000000000001
 ```
 
-That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`. Use `pnpm db:dev:seed` only when you need to re-run the seed without resetting the database.
+That value matches `localProductTestingEnv.seed.authUserId` in `@/lib/config/env`. Use `pnpm db seed` only when you need to re-run the seed without resetting the database.
 
 ## Manual smoke checklist
 
-1. `pnpm db:dev:start`
-2. `pnpm db:dev:reset`
+1. `pnpm db start`
+2. `pnpm db reset`
 3. Copy local Supabase URL and keys from `supabase status` into `.env.local`.
 4. Set local product-testing flags as needed: `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seed auth id.
 5. `pnpm dev` — open protected routes such as dashboard; header should show authenticated nav for the seeded user.
-6. Billing fixtures: run `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to update local subscription state through the Clerk Billing projection path.
+6. Billing fixtures: run `pnpm db fixture --user-id <users.auth_user_id> --plan pro` to update local subscription state through the Clerk Billing projection path.
    Run it after a local DB reset/reseed or when changing the test plan/status; the fixture persists in the local `users` row and does not need to run before every `pnpm dev`.
 7. AI: use the mock provider for local-safe plan-generation flows.
 8. Real Clerk sessions, real third-party OAuth, and hosted payment processing remain staging/production concerns. For fixture vs real Clerk development checkout env contracts and the opt-in payment verification checklist, see [Clerk development checkout](./environment.md#clerk-development-checkout-fixture-vs-real-payment-flow).
@@ -99,13 +99,13 @@ CircleCI database-backed jobs use the sidecar at `127.0.0.1:5432` inside the job
 2. Start Supabase local:
 
    ```bash
-   pnpm db:dev:start
+   pnpm db start
    ```
 
 3. Reset the local DB from migrations and seed:
 
    ```bash
-   pnpm db:dev:reset
+   pnpm db reset
    ```
 
 4. Configure local app env from `supabase status`:
@@ -128,7 +128,7 @@ CircleCI database-backed jobs use the sidecar at `127.0.0.1:5432` inside the job
 ## Clean slate
 
 ```bash
-pnpm db:dev:reset
+pnpm db reset
 ```
 
 `supabase db reset` recreates the local database from `supabase/migrations` and then applies `supabase/seed.sql`.
@@ -149,13 +149,13 @@ supabase db reset
 
 | Script                      | Command                                                                   |
 | --------------------------- | ------------------------------------------------------------------------- |
-| Start Supabase              | `pnpm db:dev:start`                                                       |
-| Stop Supabase               | `pnpm db:dev:stop`                                                        |
-| Reset DB + seed             | `pnpm db:dev:reset`                                                       |
-| Re-run seed only            | `pnpm db:dev:seed`                                                        |
-| Apply Clerk Billing fixture | `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` |
+| Start Supabase              | `pnpm db start`                                                           |
+| Stop Supabase               | `pnpm db stop`                                                            |
+| Reset DB + seed             | `pnpm db reset`                                                           |
+| Re-run seed only            | `pnpm db seed`                                                            |
+| Apply Clerk Billing fixture | `pnpm db fixture --user-id <users.auth_user_id> --plan pro`              |
 
-`pnpm db:dev:seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
+`pnpm db seed` refuses non-localhost database hosts so it cannot accidentally write to hosted databases.
 
 ## Hosted Supabase migrations
 
@@ -167,6 +167,6 @@ Hosted deployment and migration workflows are separate from the local-dev stack.
 
 - **Supabase CLI not found** — Run `pnpm install`; the project keeps `supabase` as a dev dependency.
 - **Port conflict** — Stop the process using the relevant Supabase local port, or adjust `supabase/config.toml`.
-- **Connection refused** — Run `pnpm db:dev:start`; confirm `supabase status` reports Postgres on `127.0.0.1:54322`.
-- **Missing seed user** — Run `pnpm db:dev:seed` or `pnpm db:dev:reset`.
+- **Connection refused** — Run `pnpm db start`; confirm `supabase status` reports Postgres on `127.0.0.1:54322`.
+- **Missing seed user** — Run `pnpm db seed` or `pnpm db reset`.
 - **Integration tests should not use Supabase local or hosted databases** — Leave Testcontainers enabled locally. CircleCI sets `SKIP_TESTCONTAINERS=true` against the job sidecar. Do not use hosted URLs.

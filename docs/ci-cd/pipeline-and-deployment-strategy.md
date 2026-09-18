@@ -66,7 +66,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
 - On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
-- Browser smoke is a supported local command (`pnpm test:smoke`), not a hosted CI gate
+- Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
 Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
 

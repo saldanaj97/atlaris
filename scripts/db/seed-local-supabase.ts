@@ -9,7 +9,7 @@ import { existsSync } from 'node:fs';
  * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
  *
  * `supabase db reset` also applies `supabase/seed.sql`; this helper exists for
- * explicit reseeding via `pnpm db:dev:seed`.
+ * explicit reseeding via `pnpm db seed`.
  */
 import postgres from 'postgres';
 

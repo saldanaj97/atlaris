@@ -1,8 +1,10 @@
 import { spawn } from 'node:child_process';
+import { pathToFileURL } from 'node:url';
 
-type PhaseResult = { label: string; exitCode: number };
+export type PhaseResult = { label: string; exitCode: number };
+export type PhaseRunner = (phase: string) => Promise<number>;
 
-function runPnpmScript(script: string): Promise<number> {
+export function runPnpmScript(script: string): Promise<number> {
   return new Promise((resolve) => {
     const child = spawn('pnpm', ['run', script], {
       stdio: 'inherit',
@@ -19,21 +21,22 @@ function runPnpmScript(script: string): Promise<number> {
   });
 }
 
-async function main(): Promise<void> {
-  const scripts = process.argv.slice(2);
-
-  if (scripts.length === 0) {
-    console.error('Usage: tsx scripts/tests/run-phases.ts <pnpm-script> [...]');
-    process.exitCode = 1;
-    return;
-  }
-
+/**
+ * Run every phase and retain each exit code so later phases still execute.
+ *
+ * A few callers use this for independent validation/test phases where the
+ * aggregate result matters more than short-circuiting after the first failure.
+ */
+export async function runPhases(
+  phases: readonly string[],
+  runPhase: PhaseRunner = runPnpmScript,
+): Promise<PhaseResult[]> {
   const results: PhaseResult[] = [];
 
-  for (const script of scripts) {
-    console.log(`\n>>> Running ${script}...\n`);
-    const exitCode = await runPnpmScript(script);
-    results.push({ label: script, exitCode });
+  for (const phase of phases) {
+    console.log(`\n>>> Running ${phase}...\n`);
+    const exitCode = await runPhase(phase);
+    results.push({ label: phase, exitCode });
   }
 
   const passed = results
@@ -51,8 +54,36 @@ async function main(): Promise<void> {
 
   if (failed.length > 0) {
     console.log(`Failed: ${failed.join(' ')}`);
-    process.exitCode = 1;
   }
+
+  return results;
 }
 
-main();
+export function aggregateExitCode(results: readonly PhaseResult[]): number {
+  return results.some((result) => result.exitCode !== 0) ? 1 : 0;
+}
+
+async function main(): Promise<void> {
+  const phases = process.argv.slice(2);
+
+  if (phases.length === 0) {
+    console.error('Usage: tsx scripts/tests/run-phases.ts <pnpm-script> [...]');
+    process.exitCode = 1;
+    return;
+  }
+
+  const results = await runPhases(phases);
+  process.exitCode = aggregateExitCode(results);
+}
+
+function isDirectExecution(): boolean {
+  const entrypoint = process.argv[1];
+  return (
+    entrypoint !== undefined &&
+    import.meta.url === pathToFileURL(entrypoint).href
+  );
+}
+
+if (isDirectExecution()) {
+  void main();
+}

@@ -114,7 +114,7 @@ Vercel's required GitHub status is the authoritative Next.js build and deploymen
 - Integration tests (full suite)
 - RLS security tests
 
-**Purpose:** Comprehensive validation after merge. Browser smoke (`pnpm test:smoke`) is supported locally but is not a hosted CI gate.
+**Purpose:** Comprehensive validation after merge. Browser smoke (`pnpm test smoke`) is supported locally but is not a hosted CI gate.
 
 **Known gaps:** CircleCI has no `merge_group` trigger. Codecov upload is still absent (workflow status is the gate). Jobs use a CircleCI Postgres sidecar, not Testcontainers.
 

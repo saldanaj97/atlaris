@@ -4,7 +4,7 @@
 
 This repo’s committed browser smoke lane exists to prove the launch-blocker flows against a disposable local runtime:
 
-- one ephemeral Postgres container per `pnpm test:smoke` run
+- one ephemeral Postgres container per `pnpm test smoke` run
 - Playwright-managed Chromium (`workers: 1`, no project-level parallelism)
 - separate anonymous and authenticated app **modes** (different env, ports, and `distDir`s)
 - at most **one** `next dev --turbopack` process alive at a time during normal runs (see [Memory and local resources](#memory-and-local-resources))
@@ -12,15 +12,13 @@ This repo’s committed browser smoke lane exists to prove the launch-blocker fl
 
 Use it for narrow, high-signal browser confidence. Do not turn it into a broad matrix suite.
 
-For **UI audit / marketing vs product screenshot baselines**, use [UI baseline capture](./ui-baseline-capture.md) instead (`pnpm ui:capture-baseline`).
-
 ## Command Surface
 
 ```bash
-pnpm test:smoke
-pnpm test:smoke -- --project smoke-anon
-pnpm test:smoke -- --project smoke-auth
-pnpm test:smoke -- --project smoke-clerk
+pnpm test smoke
+pnpm test smoke -- --project smoke-anon
+pnpm test smoke -- --project smoke-auth
+pnpm test smoke -- --project smoke-clerk
 ```
 
 For day-to-day iteration on a machine with limited RAM, prefer a single `--project` (see [Memory and local resources](#memory-and-local-resources)). `smoke-anon` is the lightest path (API `request` checks only, anon server).
@@ -84,7 +82,7 @@ server and skips unless a real Clerk test user is configured. Prefer a
 `+clerk_test` email address, then run:
 
 ```bash
-CLERK_E2E_USER_EMAIL='e2e+clerk_test@example.com' pnpm test:smoke -- --project smoke-clerk
+CLERK_E2E_USER_EMAIL='e2e+clerk_test@example.com' pnpm test smoke -- --project smoke-clerk
 ```
 
 The helper path is `clerk.signIn({ page, emailAddress })`, which uses Clerk’s Backend API token flow when `CLERK_SECRET_KEY` is available and bypasses verification/MFA prompts.
@@ -101,24 +99,22 @@ Smoke is intentionally small (three specs, one browser worker, `video: 'off'`), 
 | Docker Postgres (Testcontainers) | Moderate | One `postgres:17-alpine` container per run |
 | Chromium + Node orchestration | Small | Single worker; traces/screenshots only on failure |
 
-Historically, a full `pnpm test:smoke` started **two** Turbopack dev servers at once (anon on `:3100`, auth on `:3101`) even though tests run serially. That could push total usage into swap on 16–24 GB machines. The lane now mitigates that without changing coverage:
+Historically, a full `pnpm test smoke` started **two** Turbopack dev servers at once (anon on `:3100`, auth on `:3101`) even though tests run serially. That could push total usage into swap on 16–24 GB machines. The lane now mitigates that without changing coverage:
 
-1. **Single-project runs** — `pnpm test:smoke -- --project <name>` starts only the server that project needs (`playwright.config.ts` resolves `webServer` from `--project`).
+1. **Single-project runs** — `pnpm test smoke -- --project <name>` starts only the server that project needs (`playwright.config.ts` resolves `webServer` from `--project`).
 2. **Full runs** — `scripts/tests/smoke/run.ts` runs Playwright twice in sequence: first `smoke-anon` + `smoke-clerk` (anon server only), then `smoke-auth` (auth server only). Postgres stays up for the whole run; only the Next process swaps.
 3. **Smoke-only Turbopack cache** — dev filesystem cache is off when `SMOKE_NEXT_DIST_DIR` is set; `.test-dist/next-smoke-*` is cleared before each run.
 
 **Recommended iteration commands (lowest RAM first):**
 
 ```bash
-pnpm test:smoke -- --project smoke-anon    # anon server only; no browser page work
-pnpm test:smoke -- --project smoke-auth    # auth server only; heaviest browser journey
-pnpm test:smoke -- --project smoke-clerk   # anon server only; needs Clerk env when not skipped
-pnpm test:smoke                            # full lane; two sequential Playwright invocations
+pnpm test smoke -- --project smoke-anon    # anon server only; no browser page work
+pnpm test smoke -- --project smoke-auth    # auth server only; heaviest browser journey
+pnpm test smoke -- --project smoke-clerk   # anon server only; needs Clerk env when not skipped
+pnpm test smoke                            # full lane; two sequential Playwright invocations
 ```
 
 **Reports on a full run:** both invocations write to the same HTML report folder (`tests/test-results/playwright/playwright-report`). The second invocation’s HTML report replaces the first’s on disk. Console output from the `list` reporter is complete for both; failure traces and screenshots remain under `tests/test-results/playwright/artifacts`.
-
-**Not covered by these mitigations:** `pnpm ui:capture-baseline` still starts both dev servers by design (see [UI baseline capture](./ui-baseline-capture.md)).
 
 Do not re-enable concurrent dual dev servers or project-level Playwright parallelism without measuring RAM and documenting why. `workers: 1` and serial auth specs stay the default for stability.
 
@@ -156,9 +152,9 @@ Do not re-enable concurrent dual dev servers or project-level Playwright paralle
 
 ## Debugging
 
-- Prefer `pnpm test:smoke -- --project smoke-anon` for redirect and anonymous-access coverage (lowest RAM; single anon server).
-- Use `pnpm test:smoke -- --project smoke-auth` when iterating on authenticated flows (single auth server; expect higher compile/RAM use during plan generation).
-- Use a full `pnpm test:smoke` only when you need all projects; it runs sequentially with one Turbopack server at a time (slower wall clock, lower peak RAM than the old dual-server default).
+- Prefer `pnpm test smoke -- --project smoke-anon` for redirect and anonymous-access coverage (lowest RAM; single anon server).
+- Use `pnpm test smoke -- --project smoke-auth` when iterating on authenticated flows (single auth server; expect higher compile/RAM use during plan generation).
+- Use a full `pnpm test smoke` only when you need all projects; it runs sequentially with one Turbopack server at a time (slower wall clock, lower peak RAM than the old dual-server default).
 - Use `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db` when you only need to prove the disposable Postgres lifecycle, migrations, grants, and smoke seeding.
 - Use Playwright traces and failure screenshots before touching selectors.
 - Use `scripts/tests/smoke/start-app.ts` directly only when debugging launcher behavior and only with a valid `SMOKE_STATE_FILE` from the smoke wrapper.
