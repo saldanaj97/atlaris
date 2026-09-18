@@ -35,12 +35,12 @@ pnpm dev
 If you want to bring up the Supabase local stack and app together:
 
 ```bash
-pnpm dev:full
+pnpm dev --db
 ```
 
-Use `pnpm db:dev:start` and `pnpm db:dev:stop` to control the Supabase local stack, and `pnpm db:dev:reset` to recreate the local Supabase database from committed migrations and seed data.
+Use `pnpm db start` and `pnpm db stop` to control the Supabase local stack, and `pnpm db reset` to recreate the local Supabase database from committed migrations and seed data. `pnpm dev` always runs through Portless at `https://atlaris.localhost` (or the worktree-specific Portless hostname).
 
-Open `http://localhost:3000` in your browser.
+Open `https://atlaris.localhost` in your browser.
 
 ## Common commands
 
@@ -48,16 +48,18 @@ Quickstart:
 
 ```bash
 pnpm install
-pnpm dev              # Webpack + Workflow SDK (plan/lesson/regen capable)
-pnpm dev:turbopack    # Turbopack UI-only (no local workflow callbacks)
-pnpm dev:full         # local DB + pnpm dev
-pnpm check:full       # lint + type-check (runs check:lint + check:type)
+pnpm dev              # Portless + Webpack + Workflow SDK
+pnpm dev --ui         # Portless + Turbopack UI-only mode
+pnpm dev --db         # Start Supabase, then Portless + Webpack
+pnpm dev doctor       # Diagnose the local toolchain and Portless/1Password setup
+pnpm check            # lint + typecheck
 pnpm test             # lightweight changed unit + integration-class bundle
+pnpm db fixture pro   # intentionally set the local product-testing plan
 ```
 
 Full script reference — flags, scoped test runners, database helpers: [`docs/development/commands.md`](docs/development/commands.md).
 
-On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged files only). Pre-push runs **`pnpm check:full`** (full Oxlint + typecheck).
+On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged files only). Pre-push runs **`pnpm check`** (full Oxlint + typecheck).
 
 ## Project structure
 
@@ -100,16 +102,18 @@ Use the explicit scoped commands for day-to-day work, and prefer targeted integr
 
 ```bash
 pnpm test
-pnpm test:unit:changed
-pnpm test:integration:changed
-pnpm test:workflow
+pnpm test unit --changed
+pnpm test integration --changed
+pnpm test workflow
+pnpm test smoke
+pnpm test all
 ```
 
 For direct file targeting:
 
 ```bash
-pnpm test:unit:changed
-pnpm test:integration:changed
+pnpm test unit --changed
+pnpm test integration --changed
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```

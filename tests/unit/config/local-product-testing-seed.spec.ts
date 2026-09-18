@@ -26,6 +26,6 @@ describe('local product-testing seed contract', () => {
     expect(envExample).toContain(
       `DEV_AUTH_USER_ID=${LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID}`,
     );
-    expect(envExample).toContain('created by `pnpm db:dev:reset`');
+    expect(envExample).toContain('created by `pnpm db reset`');
   });
 });

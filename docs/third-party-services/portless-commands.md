@@ -2,7 +2,19 @@
 
 Official Docs Link: [https://portless.sh/commands](https://portless.sh/commands)
 
+## Atlaris policy
+
+Use `pnpm dev`, `pnpm dev --ui`, `pnpm dev --db`, or `pnpm dev doctor` for
+Atlaris local development. `scripts/dev/start.sh` parses those modes, injects
+the local 1Password Environment, and invokes Portless around Next.js. Do not
+wrap `pnpm dev` in another Portless command. `PORTLESS=0` is unsupported and
+causes the launcher to fail; Portless is mandatory on the canonical path.
+
 ## Zero-arg mode
+
+The zero-arg examples below describe generic Portless projects. Atlaris uses
+the `pnpm dev` launcher above so mode parsing and 1Password injection remain
+under project control.
 
 ```bash
 portless
@@ -211,13 +223,10 @@ portless hosts clean    # remove portless entries from /etc/hosts
 
 Auto-sync is on by default. Set `PORTLESS_SYNC_HOSTS=0` to disable.
 
-## Bypass portless
+## Bypass Portless
 
-```bash
-PORTLESS=0 pnpm dev
-```
-
-Runs the command directly without the proxy.
+Generic projects may have a bypass policy. Atlaris has no bypass: setting
+`PORTLESS=0` makes `pnpm dev` fail with a remediation message.
 
 ## Info
 

@@ -33,7 +33,7 @@ Put DB-related numeric limits, string length caps, and shared constraint values 
 - Use committed SQL migrations under `supabase/migrations/`.
 - Prefer `pnpm exec supabase migration new <name>` for new migrations.
 - Use `pnpm exec supabase db diff -f <name>` only after verifying the local DB state represents the intended schema.
-- Use `pnpm db:dev:reset` to rebuild local Supabase from migrations and seed data.
+- Use `pnpm db reset` to rebuild local Supabase from migrations and seed data.
 
 ## Retention Cleanup
 

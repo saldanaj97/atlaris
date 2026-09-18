@@ -103,7 +103,7 @@ Canonical design specification. Shared foundations and JCS-65 implementation sli
 
 ## `testing/`
 
-Test standards, smoke tests, and UI baselines.
+Test standards and smoke tests.
 
 | File | Description |
 |------|-------------|
@@ -111,7 +111,6 @@ Test standards, smoke tests, and UI baselines.
 | [playwright-local-smoke.md](./testing/playwright-local-smoke.md) | Current Playwright local smoke lane |
 | [smoke-test-results-2026-04-01.md](./testing/smoke-test-results-2026-04-01.md) | Smoke results snapshot (2026-04-01) |
 | [test-standards.md](./testing/test-standards.md) | Vitest + Testing Library guidelines |
-| [ui-baseline-capture.md](./testing/ui-baseline-capture.md) | Marketing/product UI baseline screenshots |
 
 ## `third-party-services/`
 
@@ -172,8 +171,7 @@ docs/
 │   ├── db-test-patterns.md
 │   ├── playwright-local-smoke.md
 │   ├── smoke-test-results-2026-04-01.md
-│   ├── test-standards.md
-│   └── ui-baseline-capture.md
+│   └── test-standards.md
 └── third-party-services/
     ├── 1password-agents-setup.md
     ├── clerk-cli-docs.md

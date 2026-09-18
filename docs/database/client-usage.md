@@ -84,7 +84,7 @@ describe('Plan creation', () => {
 For RLS policy tests, use RLS clients and run (Docker required for Testcontainers):
 
 ```bash
-pnpm test:security
+pnpm test security
 # or: pnpm vitest run --project security tests/security/
 ```
 

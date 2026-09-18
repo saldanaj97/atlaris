@@ -17,10 +17,10 @@ function usage(): never {
   console.error(
     [
       'Usage:',
-      '  pnpm clerk:user:reconcile',
-      '  pnpm clerk:user:reconcile -- --apply',
-      '  pnpm clerk:user:reconcile -- --allow-non-local true',
-      '  pnpm clerk:user:reconcile -- --apply --allow-non-local true',
+      '  pnpm db reconcile-clerk',
+      '  pnpm db reconcile-clerk --apply',
+      '  pnpm db reconcile-clerk --allow-non-local true',
+      '  pnpm db reconcile-clerk --apply --allow-non-local true',
       '',
       'The default is dry-run. Non-local targets require --allow-non-local true.',
     ].join('\n'),
@@ -89,7 +89,7 @@ async function main(): Promise<void> {
     args.allowNonLocal,
   );
   const mode = args.apply ? 'APPLY' : 'DRY RUN';
-  console.log(`[clerk:user:reconcile] ${mode}; database host: ${hostname}`);
+  console.log(`[db reconcile-clerk] ${mode}; database host: ${hostname}`);
 
   const clerkClient = await getClerkClient();
   const logger = createLogger({ script: 'reconcile-clerk-users', mode });

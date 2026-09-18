@@ -92,12 +92,12 @@ For a deliberate one-shot repair after enabling lifecycle subscriptions, the com
 
 ```bash
 # Local preview / apply
-pnpm clerk:user:reconcile
-pnpm clerk:user:reconcile -- --apply
+pnpm db reconcile-clerk
+pnpm db reconcile-clerk --apply
 
 # Hosted preview / apply (both explicit gates are required to mutate)
-pnpm clerk:user:reconcile -- --allow-non-local true
-pnpm clerk:user:reconcile -- --apply --allow-non-local true
+pnpm db reconcile-clerk --allow-non-local true
+pnpm db reconcile-clerk --apply --allow-non-local true
 ```
 
 It pages local `auth_user_id` values, obtains the current Clerk user, applies the same verified-primary projection, tombstones Clerk 404s, and exits nonzero if transient retrieval failures remain. Before an apply run, verify that `CLERK_SECRET_KEY` and `POSTGRES_URL` belong to the same target environment and review the dry-run `wouldTombstone` count. It is not a scheduler.
@@ -160,10 +160,10 @@ Monthly regeneration settlement is owned by `reserveRegenerationQuotaAtProviderS
 
 | Command                                                             | Purpose                                                                                         |
 | ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `pnpm billing:clerk:fixture -- --user-id <auth_user_id> --plan pro` | Apply projection for a local user (localhost Postgres only unless `--allow-non-local true`)     |
-| `pnpm clerk:user:reconcile -- --apply`                              | One-shot lifecycle projection repair; run only with the intended target environment credentials |
-| `pnpm dev:local:starter`                                            | Start DB, seed, fixture starter, `pnpm dev`                                                     |
-| `pnpm dev:local:pro`                                                | Same for pro                                                                                    |
+| `pnpm db fixture --user-id <auth_user_id> --plan pro`               | Apply projection for a local user (localhost Postgres only unless `--allow-non-local true`)     |
+| `pnpm db reconcile-clerk --apply`                                   | One-shot lifecycle projection repair; run only with the intended target environment credentials |
+| `pnpm db fixture starter`                                           | Set the deterministic local starter fixture (run intentionally)                                  |
+| `pnpm db fixture pro`                                               | Set the deterministic local pro fixture (run intentionally)                                      |
 
 ### Pitfalls
 

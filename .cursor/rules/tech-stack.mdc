@@ -11,10 +11,10 @@ Use this as concise project context. Do not treat hosted service versions as kno
 
 - Node.js: `>=24 <25` from `package.json` `engines`.
 - Package manager: `pnpm@11.9.0`; repo constraint is `pnpm >=11 <12`.
-- Next.js: `16.3.2`; default `dev` uses Webpack; `dev:turbopack` and `build` use Turbopack (`dev:workflow` uses Webpack).
+- Next.js: `16.3.3`; `pnpm dev` uses Portless + Webpack by default; `pnpm dev --ui` uses Portless + Turbopack for UI-only work; `build` uses Turbopack.
 - React: `19.2.8`; React DOM: `19.2.8`.
 - React Compiler: enabled in `next.config.ts`; `babel-plugin-react-compiler` package `1.0.0`.
-- TypeScript: `6.0.3`; typecheck runs via `tsc --noEmit` (`pnpm check:type`).
+- TypeScript: `6.0.3`; typecheck runs via `tsc --noEmit` (`pnpm typecheck`).
 
 ## Data and Backend
 

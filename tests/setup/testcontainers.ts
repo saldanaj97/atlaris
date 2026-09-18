@@ -7,7 +7,7 @@
  *   - Creates a test database with extensions and RLS roles
  *   - Sets POSTGRES_URL / POSTGRES_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
- *   - Applies `supabase/migrations` via `pnpm db:migrate` (migration chain matches production)
+ *   - Applies `supabase/migrations` via `pnpm db migrate` (migration chain matches production)
  *
  * To skip Testcontainers (e.g. in CI where a sidecar DB already exists)
  * set SKIP_TESTCONTAINERS=true and provide POSTGRES_URL and/or
@@ -70,10 +70,10 @@ type WaitForPostgresOptions = {
 /**
  * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
  * updates after column renames). `drizzle-kit push` alone can leave policy drift
- * relative to `pnpm db:migrate` / production.
+ * relative to `pnpm db migrate` / production.
  */
 function applySchema(connectionUrl: string): void {
-  execSync('pnpm db:migrate', {
+  execSync('pnpm db migrate', {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -158,7 +158,7 @@ async function provisionSharedTestDatabase(
 
   await bootstrapDatabase(baseConnectionUrl);
 
-  console.log('[Testcontainers] Applying migrations via pnpm db:migrate…');
+  console.log('[Testcontainers] Applying migrations via pnpm db migrate…');
 
   applySchema(baseConnectionUrl);
 
