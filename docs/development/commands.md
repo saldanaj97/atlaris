@@ -23,11 +23,13 @@ pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environm
 
 `pnpm install` does not install Portless or 1Password. Before the first
 `pnpm dev`, install Portless globally
-([portless-overview.md](../third-party-services/portless-overview.md#install)),
-keep a trusted `op` CLI (or an `OP_EXECUTABLE` wrapper) outside the repository
-and `node_modules`, and set `OP_ENVIRONMENT_ID` in `.dev-env.local.sh` (copy
-`.dev-env.example.sh`) or your shell. `pnpm dev doctor` checks those
-prerequisites. `PORTLESS=0` is rejected by the launcher.
+([portless-overview.md](../third-party-services/portless-overview.md#install))
+and run `scripts/dev/install-local-op.sh` so `OP_EXECUTABLE` points at the
+keychain-backed wrapper and `OP_ENVIRONMENT_ID` lives in
+`~/.config/atlaris/dev.sh`. Setup:
+[1password-local-dev.md](../third-party-services/1password-local-dev.md).
+`pnpm dev doctor` checks those prerequisites. `PORTLESS=0` is rejected by the
+launcher.
 
 `pnpm dev` is the canonical local development path and always uses Portless. The
 default URL is `https://atlaris.localhost`; linked worktrees receive Portless's

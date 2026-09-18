@@ -5,9 +5,22 @@ set +x
 
 DEV_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)
 cd "$DEV_ROOT"
+# Shell exports win. User-level config wins over a leftover checkout file so
+# worktrees share one Environment ID and wrapper path.
+_shell_op_environment_id=${OP_ENVIRONMENT_ID-}
+_shell_op_executable=${OP_EXECUTABLE-}
 if [[ -f "$DEV_ROOT/.dev-env.local.sh" ]]; then
+  # shellcheck source=/dev/null
   source "$DEV_ROOT/.dev-env.local.sh"
 fi
+ATLARIS_DEV_CONFIG="${ATLARIS_DEV_CONFIG:-${XDG_CONFIG_HOME:-${HOME}/.config}/atlaris/dev.sh}"
+if [[ -f "$ATLARIS_DEV_CONFIG" ]]; then
+  # shellcheck source=/dev/null
+  source "$ATLARIS_DEV_CONFIG"
+fi
+[[ -n "$_shell_op_environment_id" ]] && OP_ENVIRONMENT_ID=$_shell_op_environment_id
+[[ -n "$_shell_op_executable" ]] && OP_EXECUTABLE=$_shell_op_executable
+unset _shell_op_environment_id _shell_op_executable
 unset OP_CONNECT_HOST OP_CONNECT_TOKEN
 
 dev_error() { printf 'FAIL %s\n' "$*" >&2; }
@@ -86,7 +99,7 @@ resolve_op() {
     fi
   fi
   if [[ -z "${OP_ENVIRONMENT_ID:-}" ]]; then
-    dev_error 'Set OP_ENVIRONMENT_ID in .dev-env.local.sh or your shell (see .dev-env.example.sh).'
+    dev_error 'Set OP_ENVIRONMENT_ID in ~/.config/atlaris/dev.sh or your shell (see scripts/dev/dev.sh.example).'
     return 1
   fi
 }

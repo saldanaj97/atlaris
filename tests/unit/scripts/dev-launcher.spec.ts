@@ -148,7 +148,14 @@ function createFixture(): Fixture {
       'fi',
       '[[ "${1-}" == run ]] || exit 42',
       'shift',
-      'while [[ $# -gt 0 && "$1" != -- ]]; do shift; done',
+      'while [[ $# -gt 0 && "$1" != -- ]]; do',
+      '  if [[ "$1" == --environment && $# -ge 2 ]]; then',
+      '    printf \'environment=%s\\n\' "$2" >> "$FAKE_OP_LOG"',
+      '    shift 2',
+      '    continue',
+      '  fi',
+      '  shift',
+      'done',
       '[[ $# -gt 0 ]] || exit 43',
       'shift',
       'if [[ "${FAKE_OP_ENV_ACCESS:-ok}" != ok ]]; then exit 44; fi',
@@ -196,7 +203,7 @@ function runLauncher(
   fixture: Fixture,
   args: string[],
   overrides: Record<string, string> = {},
-  options: { includePortless?: boolean } = {},
+  options: { includePortless?: boolean; omitEnvironmentId?: boolean } = {},
 ): CommandResult {
   const env = { ...process.env };
   for (const key of [
@@ -205,6 +212,8 @@ function runLauncher(
     'OP_SERVICE_ACCOUNT_TOKEN',
     'OP_CONNECT_HOST',
     'OP_CONNECT_TOKEN',
+    'ATLARIS_DEV_CONFIG',
+    'XDG_CONFIG_HOME',
     'PORTLESS',
     'PORTLESS_URL',
     'FAKE_OP_AUTH',
@@ -218,6 +227,7 @@ function runLauncher(
   Object.assign(env, {
     PATH: pathFor(fixture, options.includePortless ?? true),
     HOME: home,
+    XDG_CONFIG_HOME: join(home, '.config'),
     OP_ENVIRONMENT_ID: 'test-environment',
     FAKE_OP_LOG: fixture.opLog,
     FAKE_NEXT_LOG: fixture.nextLog,
@@ -226,6 +236,9 @@ function runLauncher(
     ...overrides,
   });
   mkdirSync(home, { recursive: true });
+  if (options.omitEnvironmentId) {
+    delete env.OP_ENVIRONMENT_ID;
+  }
 
   const result = spawnSync(
     'bash',
@@ -348,6 +361,71 @@ describe('local development launcher', () => {
     expect(output).not.toContain('injected-service-token');
     expect(output).not.toContain('inherited-connect-token');
     expect(output).not.toContain('injected-connect-token');
+  });
+
+  it('loads OP_ENVIRONMENT_ID from user-level config when the shell is unset', () => {
+    const fixture = createFixture();
+    const configPath = join(
+      fixture.root,
+      'home',
+      '.config',
+      'atlaris',
+      'dev.sh',
+    );
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, ': "${OP_ENVIRONMENT_ID:=config-environment}"\n');
+
+    const result = runLauncher(fixture, [], {}, { omitEnvironmentId: true });
+
+    expect(result.status).toBe(0);
+    expect(readLog(fixture.opLog)).toContain('environment=config-environment');
+    expect(countLines(readLog(fixture.portlessLog), 'mode=run')).toBe(1);
+  });
+
+  it('prefers user-level config over checkout .dev-env.local.sh', () => {
+    const fixture = createFixture();
+    writeFileSync(
+      join(fixture.root, '.dev-env.local.sh'),
+      'OP_ENVIRONMENT_ID=repo-environment\n',
+    );
+    const configPath = join(
+      fixture.root,
+      'home',
+      '.config',
+      'atlaris',
+      'dev.sh',
+    );
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, 'OP_ENVIRONMENT_ID=config-environment\n');
+
+    const result = runLauncher(fixture, [], {}, { omitEnvironmentId: true });
+
+    expect(result.status).toBe(0);
+    expect(readLog(fixture.opLog)).toContain('environment=config-environment');
+    expect(readLog(fixture.opLog)).not.toContain(
+      'environment=repo-environment',
+    );
+  });
+
+  it('prefers the shell OP_ENVIRONMENT_ID over user-level config', () => {
+    const fixture = createFixture();
+    const configPath = join(
+      fixture.root,
+      'home',
+      '.config',
+      'atlaris',
+      'dev.sh',
+    );
+    mkdirSync(dirname(configPath), { recursive: true });
+    writeFileSync(configPath, 'OP_ENVIRONMENT_ID=config-environment\n');
+
+    const result = runLauncher(fixture, []);
+
+    expect(result.status).toBe(0);
+    expect(readLog(fixture.opLog)).toContain('environment=test-environment');
+    expect(readLog(fixture.opLog)).not.toContain(
+      'environment=config-environment',
+    );
   });
 
   it('rejects PORTLESS=0 before starting the app', () => {

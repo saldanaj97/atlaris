@@ -37,11 +37,7 @@ link_from_main() {
 link_from_main "clerk.env"
 link_from_main "vercel.env"
 link_from_main ".env.local"
-# Local dev configuration contains only Environment IDs and executable paths.
-# Preserve worktree-specific configuration and share the main file by symlink.
-if [[ ! -e "$WORKTREE_ROOT/.dev-env.local.sh" && ! -L "$WORKTREE_ROOT/.dev-env.local.sh" ]]; then
-  link_from_main ".dev-env.local.sh"
-fi
+# Launcher config lives in ~/.config/atlaris/dev.sh and is shared by worktrees.
 link_from_main ".vercel"
 link_from_main ".agents"
 link_from_main ".cursor"

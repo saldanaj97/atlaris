@@ -244,6 +244,12 @@ Use `pnpm db start` to start the Supabase local stack, then copy the current loc
 
 Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
 
+### Local laptop (1Password Environments)
+
+`pnpm dev` authenticates `op` with a keychain-backed service account and still
+needs `OP_ENVIRONMENT_ID` in `~/.config/atlaris/dev.sh` or the shell. Setup:
+[1Password local development](../third-party-services/1password-local-dev.md).
+
 ### Cloud agents (1Password Environments)
 
 Codex / Cursor cloud agents can materialize `.env.local` from a 1Password Environment via `scripts/agents/codex-1password-env.sh`. Required cloud secrets: `OP_ENVIRONMENT_ID`, `OP_SERVICE_ACCOUNT_TOKEN`. This path is separate from Vercel hosted env templates. Full steps and overwrite rules: [1Password agents setup](../third-party-services/1password-agents-setup.md). Seeded shape reference: `.env.agents.example`.

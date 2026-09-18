@@ -1,0 +1,6 @@
+# Machine-local Atlaris launcher config. Copy to:
+#   ${XDG_CONFIG_HOME:-$HOME/.config}/atlaris/dev.sh
+# Keep only non-secret values here. The service-account token stays in the keychain.
+
+: "${OP_EXECUTABLE:=$HOME/.local/bin/op-atlaris}"
+: "${OP_ENVIRONMENT_ID:=}"
