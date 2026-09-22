@@ -1,5 +1,6 @@
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
+import type { CSSProperties } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
@@ -67,8 +68,12 @@ export function PlanOverviewHeader({
         className='absolute right-0 bottom-0 left-0 h-1 bg-border/50'
       >
         <div
-          className='h-full bg-action-primary transition-[width] duration-500 motion-reduce:transition-none'
-          style={{ width: `${stats.completionPercentage}%` }}
+          className='h-full w-(--plan-progress-width) bg-action-primary transition-[width] duration-500 motion-reduce:transition-none'
+          style={
+            {
+              '--plan-progress-width': `${stats.completionPercentage}%`,
+            } as CSSProperties
+          }
         />
       </div>
     </PageHero>

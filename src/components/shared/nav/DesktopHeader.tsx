@@ -123,6 +123,7 @@ function DesktopMarketingActions({
         withTooltip
         className='rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
       />
+      {/* oxlint-disable shadcn/require-static-classes -- The marketing CTA class is a complete shared recipe. */}
       <Button asChild size='sm' className={marketingHeaderPrimaryCtaClassName}>
         <Link href={primaryCtaHref}>
           {primaryCtaLabel}
@@ -132,6 +133,7 @@ function DesktopMarketingActions({
           />
         </Link>
       </Button>
+      {/* oxlint-enable shadcn/require-static-classes */}
     </>
   );
 }

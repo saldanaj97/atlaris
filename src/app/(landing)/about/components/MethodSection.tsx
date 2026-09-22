@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from '@/components/ui/section-overline';
 
@@ -28,13 +30,15 @@ export function MethodSection() {
       <RevealAnimation>
         <div className='grid gap-6 md:grid-cols-2 md:items-end md:gap-14'>
           <div>
+            {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}
             <SectionOverline className={styles.revealItem}>
               The method
             </SectionOverline>
+            {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-method-heading'
               className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-              style={{ ['--i' as string]: 1 }}
+              style={{ '--i': 1 } as CSSProperties}
             >
               What the AI does.
               <span className='block font-medium text-muted-foreground italic'>
@@ -44,7 +48,7 @@ export function MethodSection() {
           </div>
           <p
             className={`max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
-            style={{ ['--i' as string]: 2 }}
+            style={{ '--i': 2 } as CSSProperties}
           >
             You give Atlaris a goal, your level, the hours you have each week,
             and how you like to learn. An AI model drafts a week-by-week route
@@ -59,13 +63,13 @@ export function MethodSection() {
         <div className='mt-10 grid gap-4 md:grid-cols-2'>
           <div
             className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
-            style={{ ['--i' as string]: 0 }}
+            style={{ '--i': 0 } as CSSProperties}
           >
             <MethodList title='It does' items={IT_DOES} />
           </div>
           <div
             className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
-            style={{ ['--i' as string]: 1 }}
+            style={{ '--i': 1 } as CSSProperties}
           >
             <MethodList title='It does not' items={IT_DOES_NOT} />
           </div>

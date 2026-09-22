@@ -56,6 +56,7 @@ export function InstrumentsSection() {
                 </li>
               ))}
             </ul>
+            {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
             <Button
               asChild
               className={`mt-8 ${marketingPrimaryCtaClassName} ${styles.ctaMotion}`}
@@ -68,6 +69,7 @@ export function InstrumentsSection() {
                 />
               </Link>
             </Button>
+            {/* oxlint-enable shadcn/require-static-classes */}
           </div>
         </div>
       </RevealAnimation>

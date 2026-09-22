@@ -52,9 +52,11 @@ export function HeroSection() {
 
       <div className='relative z-10 mx-auto grid min-h-[35rem] max-w-7xl items-center gap-8 px-4 py-14 sm:min-h-[38rem] sm:px-6 sm:py-16 md:grid-cols-[minmax(0,0.96fr)_minmax(20rem,1.04fr)] md:px-8 md:py-20 lg:min-h-[40rem]'>
         <div className='max-w-xl text-left'>
+          {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}
           <SectionOverline className={styles.heroOverline}>
             Learn with direction
           </SectionOverline>
+          {/* oxlint-enable shadcn/require-static-classes */}
           <h1
             id='landing-hero-heading'
             className='mt-5 max-w-[13ch] font-serif text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl md:text-[3.75rem] lg:text-[4rem]'
@@ -78,6 +80,7 @@ export function HeroSection() {
           <div
             className={`mt-9 flex flex-wrap items-center gap-3 ${styles.heroActions}`}
           >
+            {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
             <Button
               asChild
               className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
@@ -90,6 +93,7 @@ export function HeroSection() {
                 />
               </Link>
             </Button>
+            {/* oxlint-enable shadcn/require-static-classes */}
             <Link
               href={ROUTES.PRICING}
               className={cn(
@@ -147,7 +151,12 @@ function LearningRoute() {
           <li
             key={stop.label}
             className={styles.heroRouteLabel}
-            style={{ top: stop.top, left: stop.left } as CSSProperties}
+            style={
+              {
+                '--route-top': stop.top,
+                '--route-left': stop.left,
+              } as CSSProperties
+            }
           >
             {stop.label}
           </li>

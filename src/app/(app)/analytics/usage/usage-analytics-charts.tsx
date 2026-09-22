@@ -18,6 +18,7 @@ import {
   useRef,
   useState,
   type ComponentProps,
+  type CSSProperties,
   type ReactElement,
   type ReactNode,
 } from 'react';
@@ -26,7 +27,6 @@ const MIN_VISIBLE_PLAN_COUNT = 1;
 const LEGEND_ITEM_WIDTH = 180;
 const LEGEND_COLUMN_GAP = 16;
 const LINE_ENTER_ANIMATION_MS = 650;
-const LABEL_ENTER_ANIMATION_MS = 140;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
 
@@ -525,14 +525,6 @@ export function WeeklyLineChart({
 
   return (
     <div data-testid='eight-week-pulse'>
-      <style>
-        {`
-          @keyframes usage-analytics-point-label-in {
-            from { opacity: 0; }
-            to { opacity: 1; }
-          }
-        `}
-      </style>
       <div className='flex gap-2'>
         <div className='flex h-80 w-11 shrink-0 items-center justify-center'>
           <p className='-rotate-90 text-sm whitespace-nowrap text-muted-foreground'>
@@ -640,8 +632,8 @@ export function WeeklyLineChart({
               className='flex w-45 shrink-0 items-center gap-2 text-xs text-muted-foreground'
             >
               <span
-                className='size-2.5 shrink-0 rounded-full'
-                style={{ backgroundColor: color }}
+                className='size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
+                style={{ '--plan-chart-color': color } as CSSProperties}
               />
               <span className='min-w-0 truncate'>{plan.topic}</span>
             </div>
@@ -686,11 +678,9 @@ function AnimatedPointLabel({
       x={labelX}
       y={labelY - 10}
       textAnchor='middle'
-      className='fill-foreground'
+      className='animate-usage-analytics-point-label-in fill-foreground'
       fontSize={12}
-      style={{
-        animation: `usage-analytics-point-label-in ${LABEL_ENTER_ANIMATION_MS}ms ease-out ${delay}ms both`,
-      }}
+      style={{ '--point-label-delay': `${delay}ms` } as CSSProperties}
     >
       {value}
     </text>

@@ -96,6 +96,7 @@ function MobileSheetPrimaryAction({
   if (isMarketing) {
     return (
       <>
+        {/* oxlint-disable shadcn/require-static-classes -- The marketing CTA class is a complete shared recipe. */}
         <Button
           asChild
           variant='default'
@@ -112,6 +113,7 @@ function MobileSheetPrimaryAction({
             />
           </Link>
         </Button>
+        {/* oxlint-enable shadcn/require-static-classes */}
         {!isAuthenticated ? (
           <Button
             asChild

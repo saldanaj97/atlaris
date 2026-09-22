@@ -4,12 +4,12 @@ import { describe, expect, it } from 'vitest';
 
 describe('Progress', () => {
   it.each([
-    { value: 4, expectedNow: '4', expectedTransform: 'translateX(-60%)' },
-    { value: 15, expectedNow: '10', expectedTransform: 'translateX(-0%)' },
-    { value: -2, expectedNow: '0', expectedTransform: 'translateX(-100%)' },
+    { value: 4, expectedNow: '4', expectedOffset: '-60%' },
+    { value: 15, expectedNow: '10', expectedOffset: '-0%' },
+    { value: -2, expectedNow: '0', expectedOffset: '-100%' },
   ])(
     'normalizes value $value against a custom max',
-    ({ value, expectedNow, expectedTransform }) => {
+    ({ value, expectedNow, expectedOffset }) => {
       render(<Progress value={value} max={10} aria-label='Lesson progress' />);
 
       const progress = screen.getByRole('progressbar', {
@@ -21,7 +21,8 @@ describe('Progress', () => {
 
       expect(progress).toHaveAttribute('aria-valuemax', '10');
       expect(progress).toHaveAttribute('aria-valuenow', expectedNow);
-      expect(indicator).toHaveStyle({ transform: expectedTransform });
+      expect(indicator).toHaveClass('progress-indicator-determinate');
+      expect(indicator).toHaveStyle({ '--progress-offset': expectedOffset });
     },
   );
 
@@ -51,6 +52,8 @@ describe('Progress', () => {
       expect(progress).toHaveAttribute('data-state', 'indeterminate');
       expect(progress).not.toHaveAttribute('aria-valuenow');
       expect(indicator).toHaveAttribute('data-state', 'indeterminate');
+      expect(indicator).not.toHaveClass('progress-indicator-determinate');
+      expect(indicator).not.toHaveAttribute('style');
     },
   );
 });

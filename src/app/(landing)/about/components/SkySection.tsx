@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from '@/components/ui/section-overline';
 import Image from 'next/image';
@@ -44,13 +46,15 @@ export function SkySection() {
       <RevealAnimation>
         <div className='grid items-center gap-10 md:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] md:gap-14'>
           <div>
+            {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}
             <SectionOverline className={styles.revealItem}>
               The night sky
             </SectionOverline>
+            {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-sky-heading'
               className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-              style={{ ['--i' as string]: 1 }}
+              style={{ '--i': 1 } as CSSProperties}
             >
               Why a night sky,
               <span className='block font-medium text-muted-foreground italic'>
@@ -59,7 +63,7 @@ export function SkySection() {
             </h2>
             <p
               className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
-              style={{ ['--i' as string]: 2 }}
+              style={{ '--i': 2 } as CSSProperties}
             >
               Most learning happens after the day is spent. Nine to eleven, a
               lamp on, the house quiet. Atlaris is designed for that hour, so it
@@ -70,7 +74,7 @@ export function SkySection() {
           </div>
           <figure
             className={`overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm ${styles.revealFromRight}`}
-            style={{ ['--i' as string]: 1 }}
+            style={{ '--i': 1 } as CSSProperties}
           >
             <Image
               src='/artwork/mountain-explorer.webp'
@@ -90,7 +94,7 @@ export function SkySection() {
             <div
               key={item.term}
               className={`rounded-[12px] border border-panel-border bg-panel p-5 ${styles.revealItem}`}
-              style={{ ['--i' as string]: index }}
+              style={{ '--i': index } as CSSProperties}
             >
               <dt className='font-serif text-base font-semibold text-foreground'>
                 {item.term}

@@ -102,6 +102,7 @@ export default function MobileHeader({
             <div className='shrink-0'>
               <ThemeToggle size='icon-sm' withTooltip />
             </div>
+            {/* oxlint-disable shadcn/require-static-classes -- The marketing CTA class is a complete shared recipe. */}
             <Button
               asChild
               size='sm'
@@ -118,6 +119,7 @@ export default function MobileHeader({
                 />
               </Link>
             </Button>
+            {/* oxlint-enable shadcn/require-static-classes */}
             <div className='shrink-0'>{menu}</div>
           </>
         ) : (

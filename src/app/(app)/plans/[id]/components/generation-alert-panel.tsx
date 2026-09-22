@@ -2,21 +2,11 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Surface } from '@/components/ui/surface';
-import { cn } from '@/lib/utils';
 
-const PANEL_VARIANT_CLASSES = {
-  info: {
-    surface: 'muted' as const,
-    badge: 'border-link/40 bg-action-soft text-link hover:bg-action-soft',
-  },
-  warning: {
-    surface: 'muted' as const,
-    badge: 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/10',
-  },
-  destructive: {
-    surface: 'inset' as const,
-    badge: undefined,
-  },
+const PANEL_SURFACE_VARIANTS = {
+  info: 'muted',
+  warning: 'muted',
+  destructive: 'inset',
 } as const;
 
 export function GenerationAlertPanel({
@@ -34,11 +24,9 @@ export function GenerationAlertPanel({
   meta?: ReactNode;
   footer?: ReactNode;
 }) {
-  const classes = PANEL_VARIANT_CLASSES[variant];
-
   return (
     <Surface
-      variant={classes.surface}
+      variant={PANEL_SURFACE_VARIANTS[variant]}
       padding='compact'
       className='flex flex-col gap-4'
     >
@@ -53,7 +41,13 @@ export function GenerationAlertPanel({
       {badge ? (
         <Badge
           variant={variant === 'destructive' ? 'destructive' : 'outline'}
-          className={cn(classes.badge)}
+          className={
+            variant === 'info'
+              ? 'border-link/40 bg-action-soft text-link hover:bg-action-soft'
+              : variant === 'warning'
+                ? 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/10'
+                : undefined
+          }
         >
           {badge}
         </Badge>

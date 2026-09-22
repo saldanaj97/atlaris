@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import { marketingSecondaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { SectionOverline } from '@/components/ui/section-overline';
@@ -11,13 +13,15 @@ export function ContactSection() {
       aria-labelledby='about-contact-heading'
     >
       <RevealAnimation>
+        {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}
         <SectionOverline className={`justify-center ${styles.revealItem}`}>
           A line back
         </SectionOverline>
+        {/* oxlint-enable shadcn/require-static-classes */}
         <h2
           id='about-contact-heading'
           className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-          style={{ ['--i' as string]: 1 }}
+          style={{ '--i': 1 } as CSSProperties}
         >
           If the map is wrong,
           <span className='block font-medium text-muted-foreground italic'>
@@ -26,14 +30,14 @@ export function ContactSection() {
         </h2>
         <p
           className={`mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
-          style={{ ['--i' as string]: 2 }}
+          style={{ '--i': 2 } as CSSProperties}
         >
           A question, a bug, a resource that should not be there, or a plan that
           missed the point. Write in through the address below.
         </p>
         <div
           className={`mt-8 ${styles.revealItem}`}
-          style={{ ['--i' as string]: 3 }}
+          style={{ '--i': 3 } as CSSProperties}
         >
           <a
             href='mailto:support@atlaris.app'
