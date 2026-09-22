@@ -605,7 +605,6 @@ export function WeeklyLineChart({
                     {series.map(({ plan }) => (
                       <Line
                         key={plan.id}
-                        className='analytics-plan-line'
                         data-testid='plan-series'
                         dataKey={plan.id}
                         name={plan.topic}
@@ -687,7 +686,7 @@ function AnimatedPointLabel({
       x={labelX}
       y={labelY - 10}
       textAnchor='middle'
-      className='analytics-point-label fill-foreground'
+      className='fill-foreground'
       fontSize={12}
       style={{
         animation: `usage-analytics-point-label-in ${LABEL_ENTER_ANIMATION_MS}ms ease-out ${delay}ms both`,

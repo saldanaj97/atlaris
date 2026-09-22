@@ -100,22 +100,14 @@
       }
     },
     {
-      "files": [
-        "src/app/(app)/analytics/usage/usage-analytics-charts.tsx"
-      ],
+      "files": ["tests/**/*.{ts,tsx}"],
       "rules": {
-        "shadcn/no-unknown-classes": [
-          "error",
-          {
-            "allow": ["analytics-plan-line", "analytics-point-label"]
-          }
-        ]
+        "typescript/no-explicit-any": "off"
       }
     },
     {
-      "files": ["tests/**/*.{ts,tsx}"],
+      "files": ["tests/unit/utils/utils.spec.ts"],
       "rules": {
-        "typescript/no-explicit-any": "off",
         "shadcn/no-raw-colors": "off",
         "shadcn/no-unknown-classes": "off"
       }
