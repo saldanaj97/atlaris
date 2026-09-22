@@ -59,7 +59,7 @@ export function HeroSection() {
           {/* oxlint-enable shadcn/require-static-classes */}
           <h1
             id='landing-hero-heading'
-            className='mt-5 max-w-[13ch] font-serif text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl md:text-[3.75rem] lg:text-[4rem]'
+            className='mt-5 max-w-[13ch] font-serif text-[2.75rem] leading-[1.04] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl md:text-6xl lg:text-[4rem]'
           >
             <span className={`block ${styles.heroLead}`}>
               {copy.headlineLead}

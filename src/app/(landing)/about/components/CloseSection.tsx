@@ -30,7 +30,7 @@ export function CloseSection() {
           </SectionOverline>
           <h2
             id='about-close-heading'
-            className={`mt-4 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            className={`mt-4 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
           >
             You already know the goal.
             <span className='block font-medium text-muted-foreground italic'>

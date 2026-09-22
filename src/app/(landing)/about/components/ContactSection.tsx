@@ -20,7 +20,7 @@ export function ContactSection() {
         {/* oxlint-enable shadcn/require-static-classes */}
         <h2
           id='about-contact-heading'
-          className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+          className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
           style={{ '--i': 1 } as CSSProperties}
         >
           If the map is wrong,

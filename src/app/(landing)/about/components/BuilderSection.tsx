@@ -16,7 +16,7 @@ export function BuilderSection() {
       <RevealAnimation>
         <div className='grid items-center gap-10 md:grid-cols-2 md:gap-14'>
           <figure
-            className={`overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm ${styles.revealFromLeft}`}
+            className={`overflow-hidden rounded-lg border border-panel-border bg-panel shadow-sm ${styles.revealFromLeft}`}
             style={{ '--i': 0 } as CSSProperties}
           >
             <Image
@@ -36,7 +36,7 @@ export function BuilderSection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-builder-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               Built for the hours you have.

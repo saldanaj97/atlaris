@@ -52,9 +52,92 @@
     "shadcn/no-unknown-classes": "error",
     "shadcn/no-inline-styles": "error",
     "shadcn/require-static-classes": "error",
+    "shadcn/no-arbitrary-values": [
+      "error",
+      {
+        // Existing exact design values and explicit transition lists. Spacing
+        // suggestions assume 0.25rem, but this app still uses 0.2rem.
+        "allow": [
+          "layout",
+          "[animation-delay:120ms]",
+          "[animation-delay:170ms]",
+          "[animation-delay:80ms]",
+          "border-[3px]",
+          "gap-[12px]",
+          "gap-[16px]",
+          "gap-[24px]",
+          "gap-[32px]",
+          "gap-[6px]",
+          "gap-[8px]",
+          "leading-[1.04]",
+          "leading-[1.05]",
+          "leading-[1.08]",
+          "leading-[1.1]",
+          "leading-[1.125]",
+          "leading-[1.15]",
+          "leading-[18px]",
+          "leading-[20px]",
+          "leading-[22px]",
+          "leading-[24px]",
+          "leading-[26px]",
+          "leading-[28px]",
+          "leading-[36px]",
+          "leading-[40px]",
+          "p-[16px]",
+          "p-[8px]",
+          "pb-[16px]",
+          "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "pl-[12px]",
+          "pl-[36px]",
+          "pl-[env(safe-area-inset-left,0px)]",
+          "pr-[16px]",
+          "pr-[36px]",
+          "pr-[env(safe-area-inset-right,0px)]",
+          "pt-[16px]",
+          "pt-[24px]",
+          "pt-[env(safe-area-inset-top,0px)]",
+          "px-[12px]",
+          "py-[8px]",
+          "rounded-[10px]",
+          "rounded-[4px]",
+          "rounded-[8px]",
+          "rounded-[inherit]",
+          "space-y-[24px]",
+          "space-y-[8px]",
+          "text-[10px]",
+          "text-[11px]",
+          "text-[2.75rem]",
+          "text-[28px]",
+          "text-[3.25rem]",
+          "text-[32px]",
+          "text-[40px]",
+          "text-[42px]",
+          "text-[4rem]",
+          "tracking-[-0.01em]",
+          "tracking-[-0.02em]",
+          "tracking-[-0.035em]",
+          "tracking-[-0.03em]",
+          "tracking-[-0.04em]",
+          "tracking-[0.08em]",
+          "tracking-[0.12em]",
+          "tracking-[0.14em]",
+          "tracking-[0.16em]",
+          "tracking-[0.18em]",
+          "tracking-[0.22em]",
+          "transition-[background-color,border-color,box-shadow]",
+          "transition-[background-color,border-color,color,box-shadow]",
+          "transition-[background-color,color,border-color,box-shadow]",
+          "transition-[background-color]",
+          "transition-[border-color,background-color,box-shadow]",
+          "transition-[border-color,background-color]",
+          "transition-[border-color,box-shadow,transform]",
+          "transition-[border-color,box-shadow]",
+          "transition-[width]"
+        ]
+      }
+    ],
     // Intentionally deferred until the design-system rollout:
     // "shadcn/no-restyle": "off",
-    // "shadcn/no-arbitrary-values": "off",
     "vitest/expect-expect": [
       "error",
       {
@@ -116,7 +199,8 @@
     {
       "files": ["src/components/ui/**/*.{ts,tsx}"],
       "rules": {
-        "shadcn/require-static-classes": "off"
+        "shadcn/require-static-classes": "off",
+        "shadcn/no-arbitrary-values": "off"
       }
     }
   ]

@@ -37,7 +37,7 @@ export function MethodSection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-method-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               What the AI does.
@@ -62,13 +62,13 @@ export function MethodSection() {
       <RevealAnimation>
         <div className='mt-10 grid gap-4 md:grid-cols-2'>
           <div
-            className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 0 } as CSSProperties}
           >
             <MethodList title='It does' items={IT_DOES} />
           </div>
           <div
-            className={`rounded-[12px] border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             <MethodList title='It does not' items={IT_DOES_NOT} />

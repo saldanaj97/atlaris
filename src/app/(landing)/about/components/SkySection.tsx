@@ -53,7 +53,7 @@ export function SkySection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-sky-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               Why a night sky,
@@ -73,7 +73,7 @@ export function SkySection() {
             </p>
           </div>
           <figure
-            className={`overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm ${styles.revealFromRight}`}
+            className={`overflow-hidden rounded-lg border border-panel-border bg-panel shadow-sm ${styles.revealFromRight}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             <Image
@@ -93,7 +93,7 @@ export function SkySection() {
           {METAPHORS.map((item, index) => (
             <div
               key={item.term}
-              className={`rounded-[12px] border border-panel-border bg-panel p-5 ${styles.revealItem}`}
+              className={`rounded-lg border border-panel-border bg-panel p-5 ${styles.revealItem}`}
               style={{ '--i': index } as CSSProperties}
             >
               <dt className='font-serif text-base font-semibold text-foreground'>

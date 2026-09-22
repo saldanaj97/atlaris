@@ -43,7 +43,7 @@ export function PlansContentSkeleton() {
 
 function PlanCardSkeleton() {
   return (
-    <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel'>
+    <div className='overflow-hidden rounded-lg border border-panel-border bg-panel'>
       <div className='space-y-4 p-4 sm:p-5'>
         <div className='flex items-center justify-between gap-2'>
           <Skeleton className='h-6 w-20' />

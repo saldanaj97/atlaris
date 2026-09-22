@@ -328,7 +328,7 @@ export function UsageAnalyticsContentSkeleton() {
         </div>
       </div>
 
-      <div className='rounded-[12px] border border-panel-border bg-panel p-5 sm:p-6'>
+      <div className='rounded-lg border border-panel-border bg-panel p-5 sm:p-6'>
         <Skeleton className='h-3 w-16 bg-muted' />
         <Skeleton className='mt-2 h-6 w-44' />
         <Skeleton className='mt-2 h-4 w-56 bg-muted' />
@@ -340,7 +340,7 @@ export function UsageAnalyticsContentSkeleton() {
 
 function MetricTileSkeleton() {
   return (
-    <div className='min-h-44 rounded-[12px] border border-panel-border bg-panel p-5 sm:p-6'>
+    <div className='min-h-44 rounded-lg border border-panel-border bg-panel p-5 sm:p-6'>
       <Skeleton className='size-11 rounded-full bg-secondary' />
       <Skeleton className='mt-5 h-4 w-28 bg-muted' />
       <Skeleton className='mt-2 h-8 w-24' />
