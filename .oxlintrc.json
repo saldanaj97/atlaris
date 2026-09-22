@@ -5,6 +5,7 @@
     "suspicious": "error"
   },
   "plugins": ["import", "react", "jsx-a11y", "nextjs", "vitest"],
+  "jsPlugins": ["@shadcn/lint"],
   "options": {
     "typeAware": true,
     "typeCheck": true
@@ -42,6 +43,18 @@
     "nextjs/no-assign-module-variable": "off",
     "oxc/no-map-spread": "off",
     "react/react-in-jsx-scope": "off",
+    "shadcn/no-raw-colors": [
+      "error",
+      {
+        "allow": ["fill-mode-both"]
+      }
+    ],
+    "shadcn/no-unknown-classes": "error",
+    // Intentionally deferred until the design-system rollout:
+    // "shadcn/no-restyle": "off",
+    // "shadcn/no-arbitrary-values": "off",
+    // "shadcn/no-inline-styles": "off",
+    // "shadcn/require-static-classes": "off",
     "vitest/expect-expect": [
       "error",
       {
@@ -87,9 +100,24 @@
       }
     },
     {
+      "files": [
+        "src/app/(app)/analytics/usage/usage-analytics-charts.tsx"
+      ],
+      "rules": {
+        "shadcn/no-unknown-classes": [
+          "error",
+          {
+            "allow": ["analytics-plan-line", "analytics-point-label"]
+          }
+        ]
+      }
+    },
+    {
       "files": ["tests/**/*.{ts,tsx}"],
       "rules": {
-        "typescript/no-explicit-any": "off"
+        "typescript/no-explicit-any": "off",
+        "shadcn/no-raw-colors": "off",
+        "shadcn/no-unknown-classes": "off"
       }
     }
   ]
