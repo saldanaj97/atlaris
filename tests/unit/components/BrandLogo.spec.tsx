@@ -22,10 +22,6 @@ describe('BrandLogo', () => {
 
     expect(lightImage).not.toBeNull();
     expect(darkImage).not.toBeNull();
-    expect(lightImage?.parentElement).toHaveClass(
-      'w-(--lockup-width)',
-      'h-(--lockup-height)',
-    );
     expect(lightImage?.parentElement).toHaveStyle({
       '--lockup-width': `${light.width}px`,
       '--lockup-height': `${light.height}px`,

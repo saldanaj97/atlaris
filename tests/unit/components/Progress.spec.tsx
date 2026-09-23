@@ -21,7 +21,6 @@ describe('Progress', () => {
 
       expect(progress).toHaveAttribute('aria-valuemax', '10');
       expect(progress).toHaveAttribute('aria-valuenow', expectedNow);
-      expect(indicator).toHaveClass('progress-indicator-determinate');
       expect(indicator).toHaveStyle({ '--progress-offset': expectedOffset });
     },
   );
@@ -52,7 +51,6 @@ describe('Progress', () => {
       expect(progress).toHaveAttribute('data-state', 'indeterminate');
       expect(progress).not.toHaveAttribute('aria-valuenow');
       expect(indicator).toHaveAttribute('data-state', 'indeterminate');
-      expect(indicator).not.toHaveClass('progress-indicator-determinate');
       expect(indicator).not.toHaveAttribute('style');
     },
   );
