@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import {
   marketingPrimaryCtaClassName,
@@ -15,6 +17,7 @@ import styles from './about.module.css';
 
 export function CloseSection() {
   return (
+    /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
     <CtaBanner
       artwork='mountain'
       aria-labelledby='about-close-heading'
@@ -27,7 +30,7 @@ export function CloseSection() {
           </SectionOverline>
           <h2
             id='about-close-heading'
-            className={`mt-4 font-serif text-3xl font-semibold tracking-[-0.025em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            className={`mt-4 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
           >
             You already know the goal.
             <span className='block font-medium text-muted-foreground italic'>
@@ -36,14 +39,14 @@ export function CloseSection() {
           </h2>
           <p
             className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
-            style={{ ['--i' as string]: 1 }}
+            style={{ '--i': 1 } as CSSProperties}
           >
             One name, about two minutes, and tonight&apos;s first task is laid
             out.
           </p>
           <div
             className={`mt-9 flex w-full flex-col items-start gap-3 sm:flex-row sm:items-center ${styles.revealItem}`}
-            style={{ ['--i' as string]: 2 }}
+            style={{ '--i': 2 } as CSSProperties}
           >
             <Button
               asChild
@@ -71,5 +74,6 @@ export function CloseSection() {
         </div>
       </RevealAnimation>
     </CtaBanner>
+    /* oxlint-enable shadcn/require-static-classes */
   );
 }

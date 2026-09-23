@@ -7,7 +7,6 @@ import { Toaster as Sonner } from 'sonner';
 
 const toasterStyle = {
   '--width': 'min(24rem, calc(100vw - 2rem))',
-  zIndex: 60,
 } as CSSProperties;
 
 export function Toaster() {
@@ -15,6 +14,7 @@ export function Toaster() {
 
   return (
     <Sonner
+      className='atlaris-toaster'
       closeButton
       mobileOffset={{
         bottom: 'max(1rem, env(safe-area-inset-bottom))',

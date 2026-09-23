@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
@@ -22,6 +24,7 @@ export function CtaSection() {
   return (
     <section className='px-4 pb-20 sm:px-6 md:px-8 md:pb-28'>
       <RevealAnimation>
+        {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='landing-cta-heading'
           artwork='horizon'
@@ -35,21 +38,21 @@ export function CtaSection() {
             <h2
               id='landing-cta-heading'
               className={`mt-5 font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-              style={{ ['--i' as string]: 1 }}
+              style={{ '--i': 1 } as CSSProperties}
             >
               {copy.headline}
             </h2>
 
             <p
               className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed text-muted-foreground ${styles.revealItem}`}
-              style={{ ['--i' as string]: 2 }}
+              style={{ '--i': 2 } as CSSProperties}
             >
               {copy.subheadline}
             </p>
 
             <div
               className={`relative mt-9 flex flex-col items-center justify-center ${styles.revealItem}`}
-              style={{ ['--i' as string]: 3 }}
+              style={{ '--i': 3 } as CSSProperties}
             >
               <Button
                 asChild
@@ -66,6 +69,7 @@ export function CtaSection() {
             </div>
           </div>
         </CtaBanner>
+        {/* oxlint-enable shadcn/require-static-classes */}
       </RevealAnimation>
     </section>
   );

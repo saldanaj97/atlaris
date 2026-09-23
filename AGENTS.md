@@ -98,6 +98,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
 - Report the checks actually run and their outcomes. A skipped check is not a pass.
 
+## PR review comments
+
+- After reviewing a PR review comment, reply to its thread and resolve it, whether you applied a fix or not. The reply names the fixing commit, or explains why no change was needed.
+- Do not leave reviewed threads unanswered or unresolved.
+
 
 
 ## Cursor Cloud database

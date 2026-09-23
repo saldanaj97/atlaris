@@ -26,13 +26,16 @@ function Progress({
     >
       <ProgressPrimitive.Indicator
         data-slot='progress-indicator'
-        className='h-full w-full flex-1 bg-action-primary transition-[transform] data-[state=indeterminate]:w-1/2 data-[state=indeterminate]:translate-x-0 data-[state=indeterminate]:animate-pulse motion-reduce:animate-none motion-reduce:transition-none'
+        className={cn(
+          'h-full w-full flex-1 bg-action-primary transition-[transform] data-[state=indeterminate]:w-1/2 data-[state=indeterminate]:translate-x-0 data-[state=indeterminate]:animate-pulse motion-reduce:animate-none motion-reduce:transition-none',
+          normalizedValue !== null && 'progress-indicator-determinate',
+        )}
         style={
           normalizedValue === null
             ? undefined
-            : {
-                transform: `translateX(-${100 - (normalizedValue / normalizedMax) * 100}%)`,
-              }
+            : ({
+                '--progress-offset': `-${100 - (normalizedValue / normalizedMax) * 100}%`,
+              } as React.CSSProperties)
         }
       />
     </ProgressPrimitive.Root>

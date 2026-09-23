@@ -34,7 +34,6 @@ import { type RefObject, useRef, useState } from 'react';
 interface PlanRowProps {
   plan: PlanListItem;
   referenceTimestamp: string;
-  index?: number;
   selected?: boolean;
   selectable?: boolean;
   onSelectionChange?: (planId: string, selected: boolean) => void;
@@ -119,7 +118,6 @@ function PlanProgress({
 export function PlanRow({
   plan,
   referenceTimestamp,
-  index = 0,
   selected = false,
   selectable = true,
   onSelectionChange,
@@ -143,10 +141,9 @@ export function PlanRow({
     <li
       data-state={selected ? 'selected' : undefined}
       className={cn(
-        'group flex min-w-0 flex-col overflow-hidden rounded-[12px] border border-panel-border bg-panel text-panel-foreground shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none',
+        'group flex min-w-0 flex-col overflow-hidden rounded-lg border border-panel-border bg-panel text-panel-foreground shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none',
         selected && 'border-primary/70 ring-2 ring-primary/20',
       )}
-      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
     >
       <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='flex items-start justify-between gap-2'>
@@ -164,9 +161,10 @@ export function PlanRow({
                 onChange={(event) =>
                   onSelectionChange?.(plan.id, event.currentTarget.checked)
                 }
-                className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+                className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
               />
             </label>
+            {/* oxlint-disable shadcn/require-static-classes -- This imported status recipe contains complete static classes for each plan state. */}
             <Badge
               variant='outline'
               className={getPlanStatusBadgeClassName(plan.status)}
@@ -180,6 +178,7 @@ export function PlanRow({
               />
               {PLAN_STATUS_LABELS[plan.status]}
             </Badge>
+            {/* oxlint-enable shadcn/require-static-classes */}
           </div>
 
           <div>

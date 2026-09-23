@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from '@/components/ui/section-overline';
 import { BarChart3, BookOpen, Check, Route, Wrench } from 'lucide-react';
@@ -41,14 +43,14 @@ export function RouteSection() {
           <h2
             id='landing-route-heading'
             className={`mt-5 font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
-            style={{ ['--i' as string]: 1 }}
+            style={{ '--i': 1 } as CSSProperties}
           >
             Everything you need to{' '}
             <span className='text-primary italic'>stay on track.</span>
           </h2>
           <p
             className={`mx-auto mt-5 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
-            style={{ ['--i' as string]: 2 }}
+            style={{ '--i': 2 } as CSSProperties}
           >
             From guided learning plans to practical projects, Atlaris gives you
             the tools to turn knowledge into real skills.
@@ -62,7 +64,7 @@ export function RouteSection() {
             <article
               key={title}
               className={`rounded-2xl border border-border/60 bg-card/70 p-5 shadow-sm ${styles.revealItem}`}
-              style={{ ['--i' as string]: index }}
+              style={{ '--i': index } as CSSProperties}
             >
               <span className='grid size-10 place-items-center rounded-xl border border-border/60 bg-panel-muted text-primary'>
                 <Icon className='size-5' aria-hidden='true' />

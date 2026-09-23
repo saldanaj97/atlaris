@@ -114,15 +114,16 @@ function DesktopMarketingActions({
           asChild
           variant='ghost'
           size='sm'
-          className='text-sm text-muted-foreground hover:text-foreground'
+          className='text-muted-foreground hover:text-foreground'
         >
           <Link href={ROUTES.AUTH.SIGN_IN}>Sign in</Link>
         </Button>
       ) : null}
       <ThemeToggle
         withTooltip
-        className='rounded-full border border-transparent text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
+        className='rounded-full text-muted-foreground hover:border-border/70 hover:bg-card/70 hover:text-primary'
       />
+      {/* oxlint-disable shadcn/require-static-classes -- The marketing CTA class is a complete shared recipe. */}
       <Button asChild size='sm' className={marketingHeaderPrimaryCtaClassName}>
         <Link href={primaryCtaHref}>
           {primaryCtaLabel}
@@ -132,6 +133,7 @@ function DesktopMarketingActions({
           />
         </Link>
       </Button>
+      {/* oxlint-enable shadcn/require-static-classes */}
     </>
   );
 }

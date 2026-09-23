@@ -293,9 +293,9 @@ describe('UsageAnalyticsContent', () => {
       screen.getByLabelText('2 more plans not shown at this width'),
     ).toHaveTextContent('+2 more');
     await waitFor(() => {
-      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
-        2,
-      );
+      expect(
+        container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(2);
     });
     expect(
       container.querySelector('.recharts-line-dots'),
@@ -303,7 +303,7 @@ describe('UsageAnalyticsContent', () => {
 
     const linePath = await waitFor(() => {
       const renderedLinePath = container.querySelector(
-        '.analytics-plan-line .recharts-line-curve',
+        '[data-testid="plan-series"].recharts-line-curve',
       );
 
       expect(renderedLinePath).not.toBeNull();
@@ -317,9 +317,9 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
     expect(screen.queryByText('+2 more')).not.toBeInTheDocument();
     await waitFor(() => {
-      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
-        4,
-      );
+      expect(
+        container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(4);
     });
   });
 
@@ -344,9 +344,9 @@ describe('UsageAnalyticsContent', () => {
       screen.getByLabelText('1 more plan not shown at this width'),
     ).toHaveTextContent('+1 more');
     await waitFor(() => {
-      expect(container.querySelectorAll('.analytics-plan-line')).toHaveLength(
-        5,
-      );
+      expect(
+        container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(5);
     });
   });
 });

@@ -1,4 +1,5 @@
 import type { ImageProps } from 'next/image';
+import type { CSSProperties } from 'react';
 
 import { cn } from '@/lib/utils';
 import Image, { getImageProps } from 'next/image';
@@ -116,10 +117,12 @@ export function ResponsiveBackdrop({
           alt=''
           fill
           sizes={sizes}
-          className='absolute inset-0 size-full object-cover'
+          className='absolute inset-0 size-full object-cover object-(--backdrop-position)'
           style={
             desktop.objectPosition
-              ? { objectPosition: desktop.objectPosition }
+              ? ({
+                  '--backdrop-position': desktop.objectPosition,
+                } as CSSProperties)
               : undefined
           }
         />
@@ -135,10 +138,12 @@ export function ResponsiveBackdrop({
           alt=''
           fill
           sizes={sizes}
-          className='absolute inset-0 size-full object-cover'
+          className='absolute inset-0 size-full object-cover object-(--backdrop-position)'
           style={
             mobile.objectPosition
-              ? { objectPosition: mobile.objectPosition }
+              ? ({
+                  '--backdrop-position': mobile.objectPosition,
+                } as CSSProperties)
               : undefined
           }
         />

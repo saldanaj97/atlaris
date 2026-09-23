@@ -33,6 +33,7 @@ export function PricingShell({ children }: { children: ReactNode }) {
         >
           {children}
         </section>
+        {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='pricing-cta-heading'
           artwork='horizon'
@@ -58,6 +59,7 @@ export function PricingShell({ children }: { children: ReactNode }) {
             </Button>
           </div>
         </CtaBanner>
+        {/* oxlint-enable shadcn/require-static-classes */}
       </div>
     </div>
   );
@@ -67,6 +69,7 @@ function Hero() {
   const words = copy.headline.split(' ');
 
   return (
+    /* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */
     <PageHero
       className={styles.hero}
       aria-labelledby='pricing-hero-heading'
@@ -97,5 +100,6 @@ function Hero() {
         <p className={styles.heroSubline}>{copy.subheadline}</p>
       </div>
     </PageHero>
+    /* oxlint-enable shadcn/require-static-classes */
   );
 }
