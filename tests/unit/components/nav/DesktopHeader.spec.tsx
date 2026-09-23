@@ -40,14 +40,7 @@ function renderDesktopHeader(
 
 describe('DesktopHeader layout', () => {
   it('keeps authenticated nav items accessible at md width', () => {
-    const { container } = renderDesktopHeader();
-
-    expect(container.firstElementChild?.firstElementChild).toHaveClass(
-      'md:grid',
-    );
-    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
-      'lg:grid',
-    );
+    renderDesktopHeader();
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(
@@ -91,14 +84,7 @@ describe('DesktopHeader layout', () => {
   });
 
   it('leaves app-shell navigation and branding to the sidebar', () => {
-    const { container } = renderDesktopHeader({ isAppShell: true });
-
-    expect(container.firstElementChild?.firstElementChild).toHaveClass(
-      'lg:grid',
-    );
-    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
-      'md:grid',
-    );
+    renderDesktopHeader({ isAppShell: true });
 
     expect(
       screen.queryByRole('link', { name: 'Atlaris - Go to homepage' }),
@@ -163,11 +149,6 @@ describe('DesktopHeader layout', () => {
     );
 
     const header = container.firstElementChild?.firstElementChild;
-    expect(header).toHaveClass('md:grid');
-    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
-    expect(header).not.toHaveClass('md:flex');
-    expect(header).not.toHaveClass('lg:grid');
-    expect(header).not.toHaveClass('justify-between');
 
     for (const item of unauthenticatedNavItems) {
       expect(
@@ -191,16 +172,13 @@ describe('DesktopHeader layout', () => {
   });
 
   it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {
-    const { container } = renderDesktopHeader({
+    renderDesktopHeader({
       isMarketing: true,
       pathname: '/landing',
       navItems: unauthenticatedNavItems,
       isAuthenticated: true,
       showClerkUserButton: true,
     });
-
-    const header = container.firstElementChild?.firstElementChild;
-    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
 
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',

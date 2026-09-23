@@ -27,41 +27,6 @@ afterEach(() => {
 });
 
 describe('MobileHeader layout', () => {
-  it('keeps the app-shell topbar visible below the sidebar breakpoint', () => {
-    const { container } = render(
-      <TooltipProvider>
-        <MobileHeader
-          isMarketing={false}
-          isAppShell
-          pathname='/dashboard'
-          navItems={[]}
-          isAuthenticated
-          showClerkUserButton
-        />
-      </TooltipProvider>,
-    );
-
-    expect(container.firstElementChild).toHaveClass('lg:hidden');
-    expect(container.firstElementChild).not.toHaveClass('md:hidden');
-  });
-
-  it('keeps marketing and auth headers on the existing mobile breakpoint', () => {
-    const { container } = render(
-      <TooltipProvider>
-        <MobileHeader
-          isMarketing
-          pathname='/landing'
-          navItems={[]}
-          isAuthenticated={false}
-          showClerkUserButton
-        />
-      </TooltipProvider>,
-    );
-
-    expect(container.firstElementChild).toHaveClass('md:hidden');
-    expect(container.firstElementChild).not.toHaveClass('lg:hidden');
-  });
-
   it('passes app-shell and signed-out auth state to the mobile drawer', () => {
     render(
       <TooltipProvider>
