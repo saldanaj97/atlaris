@@ -419,6 +419,27 @@
   transform: translateX(var(--progress-offset));
 }
 
+@keyframes plan-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-plan-card-enter {
+  animation-name: plan-card-enter;
+  animation-duration: var(--motion-duration-reveal);
+  animation-delay: var(--plan-card-delay, 0ms);
+  animation-timing-function: var(--motion-easing-enter);
+  /* Backwards only: hide during the stagger delay, then release transform so hover lift still applies. */
+  animation-fill-mode: backwards;
+}
+
 @keyframes usage-analytics-point-label-in {
   from {
     opacity: 0;
@@ -499,7 +520,8 @@
 
   .animate-dashboard-unfold,
   .animate-dashboard-trace,
-  .animate-dashboard-ledger-row {
+  .animate-dashboard-ledger-row,
+  .animate-plan-card-enter {
     animation-name: none;
   }
 }

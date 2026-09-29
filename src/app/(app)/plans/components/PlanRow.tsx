@@ -23,10 +23,12 @@ import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight, MoreVertical, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type RefObject, useRef, useState } from 'react';
+import { type CSSProperties, type RefObject, useRef, useState } from 'react';
 
 interface PlanRowProps {
   plan: PlanListItem;
+  /** Position in the rendered page; staggers the entry animation. */
+  index?: number;
   referenceTimestamp: string;
   selected?: boolean;
   selectable?: boolean;
@@ -117,6 +119,7 @@ function PlanProgress({
 
 export function PlanRow({
   plan,
+  index = 0,
   referenceTimestamp,
   selected = false,
   selectable = true,
@@ -142,7 +145,12 @@ export function PlanRow({
       as='li'
       variant='interactive'
       data-state={selected ? 'selected' : undefined}
-      className='group gap-0 overflow-hidden py-0'
+      style={
+        {
+          '--plan-card-delay': `${Math.min(index, 8) * 40}ms`,
+        } as CSSProperties
+      }
+      className='group gap-0 overflow-hidden py-0 animate-plan-card-enter'
     >
       <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='flex items-start justify-between gap-2'>
