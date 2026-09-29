@@ -36,12 +36,6 @@ export function PlansHero({
         ) : null
       }
     >
-      <p
-        aria-hidden='true'
-        className='pointer-events-none absolute top-8 right-5 hidden text-[10px] font-semibold tracking-[0.22em] text-muted-foreground uppercase [writing-mode:vertical-rl] sm:top-10 lg:right-8 lg:block'
-      >
-        Discipline today. Opportunity tomorrow.
-      </p>
       {chrome ? (
         <div className='relative z-10 mt-auto pt-10'>{chrome}</div>
       ) : null}

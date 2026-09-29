@@ -19,9 +19,6 @@ describe('PlansHero', () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText('Discipline today. Opportunity tomorrow.'),
-    ).toHaveAttribute('aria-hidden', 'true');
-    expect(
       screen.queryByRole('link', { name: /browse templates/i }),
     ).not.toBeInTheDocument();
   });
