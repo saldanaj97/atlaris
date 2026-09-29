@@ -159,6 +159,7 @@
               "[animation-delay:80ms]",
               "animate-dashboard-unfold",
               "animate-none",
+              "animate-plan-card-enter",
               "gap-[24px]",
               "gap-0",
               "gap-4",
