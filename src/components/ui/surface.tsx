@@ -7,11 +7,11 @@ const surfaceVariants = cva(
   {
     variants: {
       variant: {
-        default: 'border-border bg-panel shadow-sm',
-        muted: 'border-border bg-panel-muted shadow-sm',
+        default: 'border-panel-border bg-panel shadow-sm',
+        muted: 'border-panel-border bg-panel-muted shadow-sm',
         interactive:
-          'border-border bg-panel shadow-sm hover:border-input hover:bg-panel-muted hover:shadow-md',
-        inset: 'border-border bg-background shadow-none',
+          'border-panel-border bg-panel shadow-sm hover:border-input hover:bg-panel-muted hover:shadow-md',
+        inset: 'border-panel-border bg-background shadow-none',
       },
       padding: {
         none: '',
