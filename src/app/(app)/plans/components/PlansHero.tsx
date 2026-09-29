@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 
 import { PageHero } from '@/components/ui/page-hero';
-import { Sparkles } from 'lucide-react';
 
 /** Route-local introduction for the plan library. */
 export function PlansHero({
@@ -16,28 +15,25 @@ export function PlansHero({
       artwork='mountain-overlook'
       dissolve
       className='mb-6'
-      contentClassName='relative flex min-h-[22rem] flex-col px-0 pt-8 pb-5 sm:min-h-[26rem] sm:pt-10 sm:pb-6'
-      overline='Your plans'
-      overlineIcon={<Sparkles aria-hidden='true' className='size-4' />}
+      contentClassName='relative flex min-h-[14rem] flex-col px-0 pt-6 pb-4 sm:min-h-[16rem] sm:pt-8 sm:pb-5'
       title={
         <>
-          Keep building your{' '}
-          <span className='gradient-text'>brighter future.</span>
+          Your <span className='gradient-text'>Plans</span>
         </>
       }
-      titleClassName='font-heading mt-3 max-w-xl text-[32px] leading-[1.1] tracking-[-0.03em] text-balance text-foreground sm:text-[42px]'
+      titleClassName='font-heading mt-3 max-w-xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
       description='Your learning plans turn big goals into real progress. Start a new plan, pick up where you left off, or find the next step in your library.'
-      descriptionClassName='mt-4 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
       actions={
         children ? (
-          <div className='mt-6 flex flex-wrap items-center gap-3'>
+          <div className='mt-5 flex flex-wrap items-center gap-3'>
             {children}
           </div>
         ) : null
       }
     >
       {chrome ? (
-        <div className='relative z-10 mt-auto pt-10'>{chrome}</div>
+        <div className='relative z-10 mt-auto pt-6'>{chrome}</div>
       ) : null}
     </PageHero>
   );

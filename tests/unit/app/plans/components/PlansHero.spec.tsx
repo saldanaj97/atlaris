@@ -10,7 +10,7 @@ describe('PlansHero', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: 'Keep building your brighter future.',
+        name: 'Your Plans',
       }),
     ).toBeInTheDocument();
     expect(
