@@ -355,8 +355,9 @@ describe('PlansList', () => {
       .getByRole('heading', { name: 'Locked Research' })
       .closest('li');
     expect(card).not.toBeNull();
-    expect(within(card!).getByText('Updated')).toBeInTheDocument();
-    expect(within(card!).queryByText('Added')).not.toBeInTheDocument();
+    expect(card).toHaveTextContent(/Updated/);
+    expect(card).not.toHaveTextContent(/Added/);
+    expect(card).not.toHaveTextContent(/tasks|%/);
     expect(card!.querySelector('time')).toHaveAttribute(
       'dateTime',
       lockedPlan.updatedAt!,
@@ -550,11 +551,12 @@ describe('PlansList', () => {
       .closest('li');
     expect(card).not.toBeNull();
     expect(within(card!).getByText('Active')).toBeInTheDocument();
-    expect(within(card!).getByText('Progress')).toBeInTheDocument();
     expect(within(card!).getByText('40%')).toBeInTheDocument();
-    expect(within(card!).getByText('Tasks')).toBeInTheDocument();
-    expect(within(card!).getByText('8 / 20')).toBeInTheDocument();
-    expect(within(card!).getByText('Updated')).toBeInTheDocument();
+    expect(within(card!).getByText('8 of 20 tasks')).toBeInTheDocument();
+    expect(
+      within(card!).getByRole('progressbar', { name: '40% complete' }),
+    ).toBeInTheDocument();
+    expect(card).toHaveTextContent(/Updated/);
     expect(
       within(card!).getByRole('link', { name: /Continue learning/ }),
     ).toHaveAttribute('href', '/plans/plan-1');

@@ -44,22 +44,26 @@ export function PlansContentSkeleton() {
 function PlanCardSkeleton() {
   return (
     <div className='overflow-hidden rounded-lg border border-panel-border bg-panel'>
-      <div className='space-y-4 p-4 sm:p-5'>
-        <div className='flex items-center justify-between gap-2'>
-          <Skeleton className='h-6 w-20' />
+      <div className='p-4 sm:p-5'>
+        <div className='flex items-start justify-between gap-2'>
+          <Skeleton className='h-6 w-3/4' />
           <Skeleton className='size-8 rounded-[8px]' />
         </div>
-        <div className='space-y-2'>
-          <Skeleton className='h-5 w-3/4' />
-          <Skeleton className='h-4 w-full' />
-          <Skeleton className='h-4 w-2/3' />
+        <div className='mt-2 flex items-center gap-2'>
+          <Skeleton className='h-5 w-16 rounded-full' />
+          <Skeleton className='h-4 w-24' />
         </div>
-        <Skeleton className='h-2 w-full' />
-        <div className='grid grid-cols-2 gap-4 border-t border-border/70 pt-4'>
+        <div className='mt-5 space-y-2'>
+          <div className='flex items-center justify-between'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-4 w-8' />
+          </div>
+          <Skeleton className='h-2 w-full' />
+        </div>
+        <div className='mt-5 flex items-center justify-between border-t border-border/70 pt-3'>
           <Skeleton className='h-8 w-20' />
-          <Skeleton className='h-8 w-24' />
+          <Skeleton className='h-8 w-32' />
         </div>
-        <Skeleton className='h-10 w-full rounded-[8px]' />
       </div>
     </div>
   );
