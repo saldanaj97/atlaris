@@ -92,6 +92,7 @@ export function useDesktopSidebarOpen(enabled: boolean): {
     }
 
     writeStoredOpen(next);
+    document.documentElement.setAttribute('data-sidebar-motion', '');
     applyDesktopSidebarOffset(next);
     emitSidebarOpenChange();
   };
