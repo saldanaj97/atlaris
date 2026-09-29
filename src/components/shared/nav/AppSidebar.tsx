@@ -98,7 +98,7 @@ export default function AppSidebar({
       )}
     >
       <div className='flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center gap-2 px-(--at-primitive-space-4,1rem) pt-[env(safe-area-inset-top,0px)]'>
-        <div className='min-w-0 flex-1'>
+        <div className='flex min-w-0 flex-1 items-center'>
           <BrandLogo size='sm' onClick={onNavigate} />
         </div>
         {onDesktopCollapse ? (
