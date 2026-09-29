@@ -37,6 +37,8 @@ interface AppSidebarProps {
   navigationLabel?: string;
   className?: string;
   id?: string;
+  /** Visually slid away; hidden from assistive tech and focus. */
+  closed?: boolean;
   onNavigate?: () => void;
   onDesktopCollapse?: () => void;
 }
@@ -80,6 +82,7 @@ export default function AppSidebar({
   navigationLabel = 'Application navigation',
   className,
   id,
+  closed = false,
   onNavigate,
   onDesktopCollapse,
 }: AppSidebarProps) {
@@ -92,6 +95,8 @@ export default function AppSidebar({
     <aside
       id={id}
       aria-label='Application sidebar'
+      aria-hidden={closed || undefined}
+      inert={closed}
       className={cn(
         'flex min-h-full w-full flex-col bg-sidebar text-sidebar-foreground',
         className,

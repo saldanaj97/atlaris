@@ -92,10 +92,15 @@ export default function SiteHeaderChrome({
     <>
       <div aria-hidden='true' className='absolute inset-0 z-0 bg-background' />
 
-      {isAppShell && desktopSidebarOpen ? (
+      {isAppShell ? (
         <AppSidebar
           id={DESKTOP_SIDEBAR_ID}
-          className='fixed inset-y-0 left-0 z-40 hidden w-[var(--at-semantic-layout-sidebar,14rem)] border-r border-sidebar-border lg:flex'
+          closed={!desktopSidebarOpen}
+          className={cn(
+            'fixed inset-y-0 left-0 z-40 hidden w-[var(--at-semantic-layout-sidebar,14rem)] border-r border-sidebar-border lg:flex',
+            'in-data-[sidebar-motion]:transition-all in-data-[sidebar-motion]:duration-(--motion-duration-overlay) in-data-[sidebar-motion]:ease-out motion-reduce:transition-none',
+            !desktopSidebarOpen && 'invisible -translate-x-full',
+          )}
           pathname={pathname}
           navItems={resolvedNavItems}
           tier={tier}
