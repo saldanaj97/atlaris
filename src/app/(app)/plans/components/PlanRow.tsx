@@ -23,7 +23,13 @@ import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight, MoreVertical, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type CSSProperties, type RefObject, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 interface PlanRowProps {
   plan: PlanListItem;
@@ -52,6 +58,46 @@ function planActionLabel(status: PlanListItem['status']): string {
       return exhaustive;
     }
   }
+}
+
+type PlanCardRevealState = 'pending' | 'visible' | undefined;
+
+/**
+ * Cards already on screen at load keep the load stagger (state stays
+ * undefined). Cards below the fold are hidden until they scroll into view.
+ */
+function usePlanCardReveal(ref: RefObject<HTMLElement | null>) {
+  const [revealState, setRevealState] = useState<PlanCardRevealState>();
+
+  useEffect(() => {
+    const element = ref.current;
+    if (
+      !element ||
+      typeof IntersectionObserver === 'undefined' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+
+    let isFirstCallback = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry) return;
+      const wasFirstCallback = isFirstCallback;
+      isFirstCallback = false;
+
+      if (entry.isIntersecting) {
+        if (!wasFirstCallback) setRevealState('visible');
+        observer.disconnect();
+      } else if (wasFirstCallback) {
+        setRevealState('pending');
+      }
+    });
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return revealState;
 }
 
 function PlanProgress({
@@ -137,14 +183,18 @@ export function PlanRow({
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const actionsTriggerRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const revealState = usePlanCardReveal(cardRef);
   const planHref = `${ROUTES.PLANS.ROOT}/${plan.id}`;
   const isLocked = plan.access === 'locked';
 
   return (
     <Card
       as='li'
+      ref={cardRef}
       variant='interactive'
       data-state={selected ? 'selected' : undefined}
+      data-reveal={revealState}
       style={
         {
           '--plan-card-delay': `${Math.min(index, 8) * 40}ms`,

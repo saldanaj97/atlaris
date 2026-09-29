@@ -440,6 +440,15 @@
   animation-fill-mode: backwards;
 }
 
+.animate-plan-card-enter[data-reveal='pending'] {
+  opacity: 0;
+  animation-name: none;
+}
+
+.animate-plan-card-enter[data-reveal='visible'] {
+  animation-delay: 0ms;
+}
+
 @keyframes usage-analytics-point-label-in {
   from {
     opacity: 0;
@@ -523,5 +532,9 @@
   .animate-dashboard-ledger-row,
   .animate-plan-card-enter {
     animation-name: none;
+  }
+
+  .animate-plan-card-enter[data-reveal='pending'] {
+    opacity: 1;
   }
 }
