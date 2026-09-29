@@ -887,9 +887,9 @@ Surface is a presentational wrapper around a div, with existing variants `defaul
 
 | Role                | Draft treatment                                                               | Interaction rule                                                        |
 | ------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Default surface     | Opaque surface, subtle border, 12px radius                                    | No hover affordance unless a real action exists.                        |
+| Default surface     | Opaque surface, quiet `panel-border` frame, 12px radius                       | No hover affordance unless a real action exists.                        |
 | Muted surface       | Raised fill, restrained boundary                                              | Supplemental content, not disabled content.                             |
-| Inset               | Canvas-family fill, subtle border                                             | Nested detail, code or supporting values.                               |
+| Inset               | Canvas-family fill, quiet `panel-border` frame                                | Nested detail, code or supporting values.                               |
 | Interactive surface | Surface → raised hover; control-strength boundary when it identifies a target | Real link/button semantics; do not make a div clickable by style alone. |
 
 A card with a primary link and an actions menu must not become one giant link containing a nested button. Keep title link, selection control and action menu independently reachable. Whole-card link overlays must not intercept those controls. No hover-only reveal for critical actions on touch.
