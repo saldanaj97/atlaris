@@ -29,7 +29,7 @@ export function PlanOverviewHeader({
   return (
     <PageHero className='rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
       <div className='relative z-10 max-w-3xl'>
-        <h1 className='font-heading max-w-2xl text-(length:--at-fluid-title-lg,clamp(2rem,1.3rem+3vw,2.5rem)) leading-[1.15] tracking-[-0.03em] text-balance wrap-break-word text-foreground'>
+        <h1 className='max-w-2xl type-title-hero text-balance wrap-break-word text-foreground'>
           {plan.topic}
         </h1>
         <p className='mt-3 max-w-xl text-sm leading-relaxed wrap-break-word text-muted-foreground sm:text-base'>

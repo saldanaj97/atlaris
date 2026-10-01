@@ -58,7 +58,7 @@ export function ModuleHeader({
       >
         <div className='relative p-5 sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>
-            <h1 className='flex min-w-0 flex-wrap items-center gap-2 text-[32px] leading-10 font-semibold tracking-[-0.02em] text-foreground'>
+            <h1 className='flex min-w-0 flex-wrap items-center gap-2 type-title text-foreground'>
               <span className='min-w-0 wrap-break-word'>{module.title}</span>
               {!previousModulesComplete && (
                 <Lock
@@ -87,12 +87,12 @@ export function ModuleHeader({
             </div>
           </div>
           {module.description ? (
-            <p className='mt-3 max-w-[70ch] text-base leading-[26px] wrap-break-word text-muted-foreground'>
+            <p className='mt-3 max-w-[70ch] type-reading wrap-break-word text-muted-foreground'>
               {module.description}
             </p>
           ) : null}
 
-          <dl className='mt-4 flex min-w-0 flex-wrap gap-x-5 gap-y-2 text-xs leading-[18px] text-muted-foreground'>
+          <dl className='mt-4 flex min-w-0 flex-wrap gap-x-5 gap-y-2 type-meta text-muted-foreground'>
             <div className='inline-flex items-center gap-2'>
               <Clock3 aria-hidden='true' className='size-4 shrink-0' />
               <dt className='sr-only'>Estimated time</dt>

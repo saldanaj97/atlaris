@@ -15,9 +15,7 @@ export function StatCell({
 }) {
   return (
     <div className={cn('min-w-0', className)}>
-      <dt className='text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
-        {label}
-      </dt>
+      <dt className='type-eyebrow text-muted-foreground'>{label}</dt>
       <dd className='mt-1'>
         <span
           className={cn(

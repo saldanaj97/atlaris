@@ -34,9 +34,7 @@ export function GenerationAlertPanel({
         <h3 className='text-xl leading-7 font-semibold text-foreground'>
           {title}
         </h3>
-        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
-          {body}
-        </p>
+        <p className='mt-2 type-body text-muted-foreground'>{body}</p>
       </div>
       {badge ? (
         <Badge

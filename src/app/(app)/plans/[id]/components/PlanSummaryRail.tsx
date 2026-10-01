@@ -171,7 +171,7 @@ export function PlanSummaryRail({
               className='group mt-4 flex items-start justify-between gap-4 rounded-lg border border-border/70 bg-panel-muted/50 p-3 transition-[border-color,background-color] outline-none hover:border-primary/30 hover:bg-panel-muted focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/50'
             >
               <span className='min-w-0'>
-                <span className='block text-[11px] font-medium tracking-[0.12em] text-primary uppercase'>
+                <span className='block type-eyebrow text-primary'>
                   Week {activeModule.order}
                 </span>
                 <span className='mt-1 block font-medium wrap-break-word text-foreground'>

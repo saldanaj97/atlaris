@@ -90,9 +90,7 @@ export function PlanTimeline({
       <section id='learning-path' className={APP_SHELL_SCROLL_MARGIN}>
         <Surface padding='none' className='overflow-hidden'>
           <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
-            <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-              Route
-            </p>
+            <p className='type-eyebrow text-muted-foreground'>Route</p>
             <h2 className='mt-1 text-xl font-semibold text-foreground'>
               Your learning path
             </h2>
@@ -110,9 +108,7 @@ export function PlanTimeline({
       <Surface padding='none' className='overflow-hidden'>
         <div className='flex flex-col gap-3 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6'>
           <div className='min-w-0'>
-            <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-              Route
-            </p>
+            <p className='type-eyebrow text-muted-foreground'>Route</p>
             <h2 className='mt-1 text-xl font-semibold text-foreground'>
               Your learning path
             </h2>

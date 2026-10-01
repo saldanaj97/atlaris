@@ -26,23 +26,23 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
   switch (block.type) {
     case 'heading':
       return (
-        <h3 className='mt-6 mb-3 text-2xl leading-8 font-semibold tracking-[-0.01em] break-words text-foreground first:mt-0'>
+        <h3 className='mt-6 mb-3 type-section break-words text-foreground first:mt-0'>
           {block.text}
         </h3>
       );
     case 'paragraph':
       return (
-        <p className='mb-4 text-base leading-[26px] break-words text-foreground'>
+        <p className='mb-4 type-reading break-words text-foreground'>
           {block.text}
         </p>
       );
     case 'example':
       return (
         <section className='my-5 min-w-0 rounded-[8px] border border-input bg-panel-muted px-3 py-2.5'>
-          <h4 className='mb-2 text-xs leading-[18px] font-medium break-words text-muted-foreground'>
+          <h4 className='mb-2 type-meta font-medium break-words text-muted-foreground'>
             {block.title}
           </h4>
-          <p className='font-mono text-xs leading-[18px] break-words text-foreground'>
+          <p className='type-meta font-mono break-words text-foreground'>
             {block.text}
           </p>
         </section>
@@ -53,7 +53,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
           <h4 className='mb-2 text-sm font-semibold break-words text-foreground'>
             Practice
           </h4>
-          <p className='text-base leading-[26px] break-words text-foreground'>
+          <p className='type-reading break-words text-foreground'>
             {block.text}
           </p>
         </section>
@@ -62,7 +62,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
       return (
         <section className='my-5 rounded-[8px] border border-link/40 bg-action-soft p-3'>
           <h4 className='mb-2 text-sm font-medium text-link'>Key takeaways</h4>
-          <ul className='list-disc space-y-2 pl-5 text-sm leading-[22px] break-words text-foreground'>
+          <ul className='list-disc space-y-2 pl-5 type-body break-words text-foreground'>
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (
                 <li key={key}>{item}</li>
