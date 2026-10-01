@@ -105,7 +105,7 @@ export async function ProfilePlanCard({
     return (
       <Card as='section' className='gap-[24px] shadow-none'>
         <CardHeader>
-          <CardTitle as='h3' className='text-xl leading-[28px]'>
+          <CardTitle as='h3' className='type-card'>
             Plan
           </CardTitle>
         </CardHeader>
@@ -140,7 +140,7 @@ export async function ProfilePlanCard({
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
       <CardHeader>
-        <CardTitle as='h3' className='text-xl leading-[28px]'>
+        <CardTitle as='h3' className='type-card'>
           Plan
         </CardTitle>
         <CardDescription>
@@ -158,10 +158,8 @@ export async function ProfilePlanCard({
                 <Crown className='size-[22px]' />
               </span>
               <div className='min-w-0'>
-                <p className='text-xl leading-[28px] font-semibold text-foreground'>
-                  {tierName} Plan
-                </p>
-                <p className='text-sm leading-[22px] text-muted-foreground'>
+                <p className='type-card text-foreground'>{tierName} Plan</p>
+                <p className='type-body text-muted-foreground'>
                   {PLAN_BLURBS[snapshot.tier]}
                 </p>
               </div>
@@ -180,18 +178,14 @@ export async function ProfilePlanCard({
           </div>
           <dl className='grid gap-[12px] border-t border-border pt-[16px]'>
             <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
-              <dt className='text-sm leading-[22px] text-foreground'>Status</dt>
-              <dd className='text-sm leading-[22px] text-muted-foreground'>
+              <dt className='type-body text-foreground'>Status</dt>
+              <dd className='type-body text-muted-foreground'>
                 {subscriptionStatus}
               </dd>
             </div>
             <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
-              <dt className='text-sm leading-[22px] text-foreground'>
-                {periodLabel}
-              </dt>
-              <dd className='text-sm leading-[22px] text-muted-foreground'>
-                {periodValue}
-              </dd>
+              <dt className='type-body text-foreground'>{periodLabel}</dt>
+              <dd className='type-body text-muted-foreground'>{periodValue}</dd>
             </div>
           </dl>
           {showRenewalNotice ? (
@@ -208,7 +202,7 @@ export async function ProfilePlanCard({
                 >
                   <Check className='size-[14px]' />
                 </span>
-                <span className='text-sm leading-[22px] text-muted-foreground'>
+                <span className='type-body text-muted-foreground'>
                   {feature}
                 </span>
               </li>
