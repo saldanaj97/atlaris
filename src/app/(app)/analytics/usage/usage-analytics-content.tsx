@@ -15,7 +15,6 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { PageHero } from '@/components/ui/page-hero';
 import { Progress } from '@/components/ui/progress';
-import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import {
@@ -63,7 +62,6 @@ export function UsageAnalyticsContent({
 
       <section aria-labelledby='usage-completion-heading' className='space-y-4'>
         <SectionHeading
-          eyebrow='Overview'
           id='usage-completion-heading'
           title='Current completion'
           description='Progress across plans you can access, based on the tasks and modules you have completed.'
@@ -82,7 +80,6 @@ export function UsageAnalyticsContent({
 
       <section aria-labelledby='usage-activity-heading' className='space-y-4'>
         <SectionHeading
-          eyebrow='Activity'
           id='usage-activity-heading'
           title='Learning activity'
           description='Recorded progress changes and streaks in your analytics timezone.'
@@ -159,15 +156,13 @@ function AnalyticsHero() {
   return (
     <PageHero
       dissolve
-      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col justify-center px-0 py-8 sm:min-h-[14rem] sm:py-10'
-      overline='Analytics'
-      overlineClassName='tracking-[0.14em] text-muted-foreground'
+      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col px-0 pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'
       title={
         <>
           Learning <span className='text-primary'>analytics</span>
         </>
       }
-      titleClassName='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      titleClassName='font-heading text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
       descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
     />
@@ -175,13 +170,11 @@ function AnalyticsHero() {
 }
 
 function SectionHeading({
-  eyebrow,
   id,
   title,
   description,
   aside,
 }: {
-  eyebrow: string;
   id: string;
   title: string;
   description: string;
@@ -190,10 +183,7 @@ function SectionHeading({
   return (
     <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
       <div className='min-w-0'>
-        <SectionOverline className='tracking-[0.14em] text-muted-foreground'>
-          {eyebrow}
-        </SectionOverline>
-        <h2 id={id} className='mt-1 text-xl font-semibold text-foreground'>
+        <h2 id={id} className='text-xl font-semibold text-foreground'>
           {title}
         </h2>
         <p className='mt-1 max-w-2xl text-sm text-muted-foreground'>

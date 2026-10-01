@@ -12,7 +12,6 @@ import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightC
 import { WeeklyPaceCard } from '@/app/(app)/dashboard/components/WeeklyPaceCard';
 import { YourProgressCard } from '@/app/(app)/dashboard/components/YourProgressCard';
 import { Card } from '@/components/ui/card';
-import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
@@ -31,9 +30,8 @@ function DashboardHero({
   description: ReactNode;
 }) {
   return (
-    <header>
-      <SectionOverline>Current focus</SectionOverline>
-      <h1 className='font-heading mt-2 max-w-3xl text-[28px] leading-[1.15] tracking-[-0.02em] text-balance text-foreground sm:text-[32px]'>
+    <header className='mb-8 pt-6 pb-4 sm:pt-8 sm:pb-5'>
+      <h1 className='font-heading max-w-3xl text-[28px] leading-[1.15] tracking-[-0.02em] text-balance text-foreground sm:text-[32px]'>
         {title}
       </h1>
       {typeof description === 'string' ? (

@@ -4,10 +4,9 @@ import type { CSSProperties } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
-import { SectionOverline } from '@/components/ui/section-overline';
 import { planDetailPath } from '@/features/navigation/routes';
-import { formatMinutes, formatSkillLevel } from '@/features/plans/formatters';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { formatMinutes } from '@/features/plans/formatters';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface PlanOverviewProps {
@@ -30,12 +29,7 @@ export function PlanOverviewHeader({
   return (
     <PageHero className='rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'>
       <div className='relative z-10 max-w-3xl'>
-        <SectionOverline
-          icon={<Sparkles aria-hidden='true' className='size-4' />}
-        >
-          Learning plan · {formatSkillLevel(plan.skillLevel)}
-        </SectionOverline>
-        <h1 className='font-heading mt-3 max-w-2xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance wrap-break-word text-foreground sm:text-[40px]'>
+        <h1 className='font-heading max-w-2xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance wrap-break-word text-foreground sm:text-[40px]'>
           {plan.topic}
         </h1>
         <p className='mt-3 max-w-xl text-sm leading-relaxed wrap-break-word text-muted-foreground sm:text-base'>
