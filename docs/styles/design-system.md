@@ -350,6 +350,8 @@ All nominal pixel sizes assume a 16px root. The authoring file uses rem sizes an
 | --------------- | ----------- | ------------------- | ------ | -------- | ------------------------- |
 | display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.        |
 | display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts. |
+| display-section | Sora        | 30–36 / ×1.08       | 600    | −0.035em | Marketing section heading. |
+| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.    |
 | title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.        |
 | title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title. |
 | section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.     |
@@ -367,6 +369,8 @@ Keep headings semantic: an h2 does not become an h1 to obtain a larger visual si
 Use a **70ch default reading measure**, within the audit’s 65–75ch range. Long titles wrap; numbers use tabular figures where alignment matters. Do not truncate a user’s essential task or action label. Code can scroll inside its own region; ordinary prose must reflow. [A01 §5; W09]
 
 ### Repository binding
+
+Each role ships as a `type-<role>` utility in `src/app/globals.css` (for example `type-body`, `type-title`). One class sets family, size, line height, weight and tracking; `type-eyebrow` also sets uppercase. Use the role instead of combining `text-*`, `leading-*`, `tracking-*` and `font-*` values. Single-property modifiers such as `font-medium` or `font-mono` may follow a role, and `cn()` drops type classes that precede a role. Display and title roles scale fluidly between 375px and 1280px viewports: `type-display` 40–64px, `type-display-section` 30–36px, `type-title-hero` 32–40px, `type-title` 28–32px. The one documented exception is the 10px tier badge on the account avatar, where a 12px role would cover the avatar.
 
 When integrating with `next/font`, bind the UI and display family tokens to the existing `--font-work-sans` and `--font-sora` variables on the same theme-owning element. Literal family names may not select Next’s generated font faces. Keep the current font loader; do not introduce client-side Google requests to the production app just because the standalone specimen has an optional comparison loader.
 
