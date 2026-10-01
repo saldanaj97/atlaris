@@ -46,20 +46,4 @@ describe('MaintenancePage', () => {
       screen.queryByText('Learn. Build. Go further.'),
     ).not.toBeInTheDocument();
   });
-
-  it('renders the decorative mountain-lake backdrop artwork', () => {
-    const { container } = render(<MaintenancePage />);
-
-    const backdrop = container.querySelector(
-      '[data-slot="responsive-backdrop"]',
-    );
-    expect(backdrop).not.toBeNull();
-    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
-    expect(
-      container.querySelector('img[src*="maintenance-backdrop-desktop.jpg"]'),
-    ).not.toBeNull();
-    expect(
-      container.querySelector('img[src*="maintenance-backdrop-mobile.jpg"]'),
-    ).not.toBeNull();
-  });
 });

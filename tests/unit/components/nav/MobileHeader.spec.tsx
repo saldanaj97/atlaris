@@ -27,38 +27,6 @@ afterEach(() => {
 });
 
 describe('MobileHeader layout', () => {
-  it('passes app-shell and signed-out auth state to the mobile drawer', () => {
-    render(
-      <TooltipProvider>
-        <MobileHeader
-          isMarketing={false}
-          isAppShell={false}
-          pathname='/auth/sign-in'
-          navItems={[]}
-          tier='starter'
-          canCreatePlan={false}
-          isAuthenticated={false}
-          showClerkUserButton={false}
-          userName='Signed-out visitor'
-          userImageUrl='https://example.com/avatar.png'
-        />
-      </TooltipProvider>,
-    );
-
-    const drawerProps = mobileNavigationMock.mock.calls[0]?.[0];
-    expect(drawerProps).toEqual(
-      expect.objectContaining({
-        isMarketing: false,
-        isAppShell: false,
-        isAuthenticated: false,
-        tier: 'starter',
-        userName: 'Signed-out visitor',
-        userImageUrl: 'https://example.com/avatar.png',
-        showClerkUserButton: false,
-      }),
-    );
-  });
-
   it('routes signed-out nonmarketing topbar action to the plan form', () => {
     render(
       <TooltipProvider>

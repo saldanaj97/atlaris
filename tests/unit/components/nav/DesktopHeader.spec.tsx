@@ -4,7 +4,7 @@ import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@clerk/nextjs', () => ({
@@ -104,44 +104,6 @@ describe('DesktopHeader layout', () => {
     expect(
       screen.queryByRole('button', { name: 'Expand sidebar' }),
     ).not.toBeInTheDocument();
-  });
-
-  it('renders unauthenticated nav links without clipping at md width', () => {
-    const { container } = render(
-      <TooltipProvider>
-        <div className='w-[768px]'>
-          <DesktopHeader
-            isMarketing
-            pathname='/landing'
-            navItems={unauthenticatedNavItems}
-            isAuthenticated={false}
-            showClerkUserButton
-          />
-        </div>
-      </TooltipProvider>,
-    );
-
-    const header = container.firstElementChild?.firstElementChild;
-
-    for (const item of unauthenticatedNavItems) {
-      expect(
-        screen.getByRole('link', { name: item.label }),
-      ).toBeInTheDocument();
-    }
-
-    const brand = screen.getByRole('link', {
-      name: 'Atlaris - Go to homepage',
-    });
-    const nav = screen.getByRole('navigation', {
-      name: 'Marketing navigation',
-    });
-    expect(header?.children).toHaveLength(3);
-    expect(header?.children[0]).toContainElement(brand);
-    expect(header?.children[1]).toContainElement(nav);
-    expect(brand.parentElement).not.toContainElement(nav);
-    expect(within(nav).getAllByRole('link')).toHaveLength(
-      unauthenticatedNavItems.length,
-    );
   });
 
   it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {

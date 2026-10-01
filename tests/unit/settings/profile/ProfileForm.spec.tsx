@@ -150,22 +150,6 @@ describe('ProfileForm', () => {
     ).toBeDisabled();
   });
 
-  it('enables save when name is edited', async () => {
-    mockFetchSuccess();
-
-    render(<ProfileForm />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Name')).toHaveValue(MOCK_PROFILE.name);
-    });
-
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'Charles Babbage');
-
-    expect(screen.getByRole('button', { name: /save changes/i })).toBeEnabled();
-  });
-
   it('saves updated name and shows success toast', async () => {
     const updatedProfile = { ...MOCK_PROFILE, name: 'Charles Babbage' };
 

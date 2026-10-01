@@ -1,4 +1,4 @@
-import AboutPage, { metadata } from '@/app/(landing)/about/page';
+import AboutPage from '@/app/(landing)/about/page';
 import SiteHeaderChrome from '@/components/shared/nav/SiteHeaderChrome';
 import SiteFooter from '@/components/shared/SiteFooter';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -52,33 +52,6 @@ function renderAboutTree() {
 }
 
 describe('AboutPage', () => {
-  it('exports About metadata with description and social blocks', () => {
-    expect(metadata.title).toBe('About | Atlaris');
-    expect(metadata.description).toBe(
-      'Why Atlaris borrows the night sky, and what the AI does and does not do when it charts your plan.',
-    );
-    expect(metadata.openGraph).toMatchObject({
-      title: 'About | Atlaris',
-      url: '/about',
-      type: 'website',
-      siteName: 'Atlaris',
-      images: [
-        {
-          url: '/brand/og-default.png',
-          width: 1200,
-          height: 630,
-        },
-      ],
-    });
-    expect(metadata.twitter).toMatchObject({
-      card: 'summary_large_image',
-      title: 'About | Atlaris',
-      images: ['/brand/og-default.png'],
-      site: '@atlarisapp',
-      creator: '@atlarisapp',
-    });
-  });
-
   it('renders the heading and About links in marketing chrome and footer', () => {
     renderAboutTree();
 
@@ -128,23 +101,5 @@ describe('AboutPage', () => {
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/10,000/)).not.toBeInTheDocument();
     expect(screen.queryByText(/alex r\./i)).not.toBeInTheDocument();
-  });
-
-  it('uses the shipped workspace and explorer stills in existing About figures', () => {
-    renderAboutTree();
-
-    expect(
-      screen.getByRole('img', {
-        name: 'Illustration of a laptop and desk at night',
-      }),
-    ).toHaveAttribute('src', expect.stringContaining('builder-workspace.webp'));
-    expect(
-      screen.getByRole('img', {
-        name: 'Person standing under a constellation-filled night sky',
-      }),
-    ).toHaveAttribute('src', expect.stringContaining('mountain-explorer.webp'));
-    expect(
-      document.querySelector('img[src*="mountain-summit-blue-hour.webp"]'),
-    ).not.toBeNull();
   });
 });

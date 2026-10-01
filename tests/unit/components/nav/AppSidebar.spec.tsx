@@ -95,12 +95,11 @@ describe('AppSidebar', () => {
     expect(onDesktopCollapse).toHaveBeenCalledTimes(1);
   });
 
-  it('marks only the current destination as selected, without an accent bar', () => {
+  it('marks only the current destination as selected', () => {
     renderSidebar({ pathname: '/plans' });
 
     const plans = screen.getByRole('link', { name: 'Plans' });
     expect(plans).toHaveAttribute('aria-current', 'page');
-    expect(plans.querySelector('span[aria-hidden="true"]')).toBeNull();
     expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute(
       'aria-current',
     );

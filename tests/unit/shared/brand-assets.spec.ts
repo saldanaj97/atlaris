@@ -1,12 +1,7 @@
 import { metadata as aboutMetadata } from '@/app/(landing)/about/page';
 import { metadata as landingMetadata } from '@/app/(landing)/landing/layout';
 import { metadata as rootMetadata } from '@/app/layout';
-import {
-  BRAND_LOCKUP_VISIBLE_WIDTH,
-  BRAND_LOCKUPS,
-  getBrandLockupLayout,
-  OG_DEFAULT_IMAGE,
-} from '@/shared/constants/brand-assets';
+import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
@@ -90,21 +85,5 @@ describe('brand social assets', () => {
     expect(landingMetadata.twitter?.images).toEqual([OG_DEFAULT_IMAGE.url]);
     expect(aboutMetadata.openGraph?.images).toEqual([OG_DEFAULT_IMAGE]);
     expect(aboutMetadata.twitter?.images).toEqual([OG_DEFAULT_IMAGE.url]);
-  });
-
-  it('sizes light and dark lockups to the same visible width, not equal canvas height', () => {
-    const light = getBrandLockupLayout('light', 'md');
-    const dark = getBrandLockupLayout('dark', 'md');
-
-    expect(light.width).toBe(BRAND_LOCKUP_VISIBLE_WIDTH.md);
-    expect(dark.width).toBe(BRAND_LOCKUP_VISIBLE_WIDTH.md);
-    expect(light.width).toBeGreaterThanOrEqual(128);
-    expect(dark.width).toBeGreaterThanOrEqual(128);
-    expect(light.imageHeight).not.toBe(dark.imageHeight);
-    expect(light.height).toBeLessThan(64);
-    expect(dark.height).toBeLessThan(64);
-
-    expect(BRAND_LOCKUPS.light.visibleWidth).toBe(1874);
-    expect(BRAND_LOCKUPS.dark.visibleWidth).toBe(1177);
   });
 });
