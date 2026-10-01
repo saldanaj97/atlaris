@@ -38,7 +38,7 @@ export function AboutHero() {
           </SectionOverline>
           <h1
             id='about-hero-heading'
-            className='mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'
+            className='mt-5 type-display text-balance text-foreground'
           >
             <span className={`block ${styles.heroLead}`}>
               {copy.headlineLead}
