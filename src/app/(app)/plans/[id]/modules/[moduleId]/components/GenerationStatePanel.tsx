@@ -3,7 +3,6 @@ import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
-import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 function getGenerationStatusLabel(
@@ -43,9 +42,7 @@ function GenerationDescription({
 
   return (
     <div className='min-w-0'>
-      <h3 className='text-xl leading-7 font-semibold text-foreground'>
-        Detailed lesson content
-      </h3>
+      <h3 className='type-card text-foreground'>Detailed lesson content</h3>
       {isFailed ? (
         <p className='mt-2 type-body text-muted-foreground'>
           Generation failed. Retry to create fresh lesson content for this
@@ -58,15 +55,7 @@ function GenerationDescription({
         </p>
       )}
       <div className='mt-4 flex flex-wrap items-center gap-2'>
-        <Badge
-          variant={isFailed ? 'destructive' : 'outline'}
-          className={cn(
-            !isFailed &&
-              'border-link/40 bg-action-soft text-link hover:bg-action-soft',
-          )}
-        >
-          {badge}
-        </Badge>
+        <Badge variant={isFailed ? 'destructive' : 'info'}>{badge}</Badge>
         {generationTakingLong && !isFailed ? (
           <p className='text-sm font-medium text-warning'>
             Generation taking longer than expected

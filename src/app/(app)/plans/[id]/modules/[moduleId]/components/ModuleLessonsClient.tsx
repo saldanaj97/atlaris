@@ -89,10 +89,7 @@ function LessonProgressPanel({
     <aside aria-labelledby={headingId} className='min-w-0 xl:sticky xl:top-24'>
       <div className='overflow-hidden rounded-lg border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
         <div className='min-w-0 px-4 py-4 max-xl:sr-only sm:px-5'>
-          <h2
-            id={headingId}
-            className='text-xl leading-7 font-semibold text-foreground'
-          >
+          <h2 id={headingId} className='type-card text-foreground'>
             Lesson progress
           </h2>
           <p className='mt-2 type-body text-muted-foreground tabular-nums'>

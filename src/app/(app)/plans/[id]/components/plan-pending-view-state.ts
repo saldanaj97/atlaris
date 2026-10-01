@@ -36,13 +36,18 @@ export interface PlanPendingViewState {
 
 export function getStatusBadgeVariant(
   viewState: PlanPendingViewState,
-): 'destructive' | 'default' | 'secondary' {
+): 'destructive' | 'info' | 'warning' | 'secondary' {
   const { panelKind, isRetrying, retryInterrupted } = viewState;
-  if (panelKind === 'failure' && retryInterrupted && !isRetrying) {
-    return 'secondary';
+  if (panelKind === 'connection') return 'warning';
+  if (
+    isRetrying ||
+    panelKind === 'pending' ||
+    panelKind === 'processing' ||
+    panelKind === 'ready'
+  ) {
+    return 'info';
   }
-  if (panelKind === 'failure' && !isRetrying) return 'destructive';
-  if (panelKind === 'processing' || isRetrying) return 'default';
+  if (panelKind === 'failure' && !retryInterrupted) return 'destructive';
   return 'secondary';
 }
 

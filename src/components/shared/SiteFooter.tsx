@@ -17,6 +17,9 @@ interface SiteFooterProps {
   variant?: 'marketing' | 'maintenance';
 }
 
+const FOOTER_LINK_CLASS =
+  'inline-flex items-center justify-center type-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11';
+
 export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
   // oxlint-disable-next-line react/purity -- Server component; the copyright year is read once per render.
   const year = new Date().getFullYear();
@@ -62,10 +65,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
               <ul className='mt-2 space-y-1.5 pointer-coarse:space-y-1'>
                 {marketingLinks.map((item) => (
                   <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className='inline-flex items-center justify-center type-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
-                    >
+                    <Link href={item.href} className={FOOTER_LINK_CLASS}>
                       {item.label}
                     </Link>
                   </li>
@@ -93,7 +93,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
                 <li>
                   <a
                     href={`mailto:${SUPPORT_EMAIL}`}
-                    className='inline-flex items-center justify-center type-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
+                    className={FOOTER_LINK_CLASS}
                   >
                     {SUPPORT_EMAIL}
                   </a>

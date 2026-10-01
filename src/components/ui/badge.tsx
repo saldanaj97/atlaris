@@ -16,6 +16,9 @@ const badgeVariants = cva(
           'border-danger bg-danger-subtle text-danger [a&]:hover:bg-danger-subtle/80 focus-visible:ring-danger',
         outline:
           'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        /** In-progress or informational status, such as generation running. */
+        info: 'border-link/40 bg-action-soft text-link',
+        warning: 'border-warning/40 bg-warning/10 text-warning',
         /** Product app: opaque surface. Prefer for dashboard/settings. */
         product:
           'border border-panel-border bg-panel text-panel-foreground [a&]:hover:bg-panel-muted/90',

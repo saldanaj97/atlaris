@@ -3,7 +3,10 @@
 import type { NavItem } from '@/features/navigation';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { AccountAvatar } from '@/components/shared/AccountAvatar';
+import {
+  ACCOUNT_USER_BUTTON_APPEARANCE,
+  AccountAvatar,
+} from '@/components/shared/AccountAvatar';
 import BrandLogo from '@/components/shared/BrandLogo';
 import {
   isCurrentPath,
@@ -297,15 +300,7 @@ export default function AppSidebar({
             <div className='flex items-center gap-(--at-primitive-space-1,0.25rem)'>
               {showClerkUserButton ? (
                 <div className='flex h-[44px] min-w-0 flex-1 items-center gap-(--at-primitive-space-1-5,0.375rem) px-(--at-primitive-space-1-5,0.375rem)'>
-                  <UserButton
-                    appearance={{
-                      elements: {
-                        avatarBox: 'size-9',
-                        userButtonTrigger:
-                          'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:size-11',
-                      },
-                    }}
-                  />
+                  <UserButton appearance={ACCOUNT_USER_BUTTON_APPEARANCE} />
                   <span className='min-w-0 flex-1 truncate type-label text-foreground'>
                     {userName || 'Account'}
                   </span>

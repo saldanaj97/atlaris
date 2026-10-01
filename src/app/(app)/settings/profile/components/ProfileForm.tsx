@@ -158,9 +158,7 @@ function ProfileCard({ children }: { children: ReactNode }): ReactElement {
     >
       {/* oxlint-enable shadcn/require-static-classes */}
       <CardHeader>
-        <CardTitle as='h2' className='type-card'>
-          Profile
-        </CardTitle>
+        <CardTitle as='h2'>Profile</CardTitle>
       </CardHeader>
       <CardContent className='@container'>{children}</CardContent>
     </Card>
