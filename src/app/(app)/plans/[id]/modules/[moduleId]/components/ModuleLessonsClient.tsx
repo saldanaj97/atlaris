@@ -95,7 +95,7 @@ function LessonProgressPanel({
           >
             Lesson progress
           </h2>
-          <p className='mt-2 text-sm leading-[22px] text-muted-foreground tabular-nums'>
+          <p className='mt-2 type-body text-muted-foreground tabular-nums'>
             {totalLessons > 0
               ? `${completedLessons} of ${totalLessons} lesson${totalLessons === 1 ? '' : 's'}${
                   completionPercent !== null ? ` · ${completionPercent}%` : ''
@@ -302,7 +302,7 @@ export function ModuleLessonsClient({
           <div className='mb-6 flex min-w-0 items-baseline justify-between gap-4 border-b border-border pb-2'>
             <h2
               id='lessons-heading'
-              className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'
+              className='type-eyebrow text-muted-foreground'
             >
               Lessons
             </h2>

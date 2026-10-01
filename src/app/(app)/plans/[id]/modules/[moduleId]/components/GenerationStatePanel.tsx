@@ -47,12 +47,12 @@ function GenerationDescription({
         Detailed lesson content
       </h3>
       {isFailed ? (
-        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+        <p className='mt-2 type-body text-muted-foreground'>
           Generation failed. Retry to create fresh lesson content for this
           module.
         </p>
       ) : (
-        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+        <p className='mt-2 type-body text-muted-foreground'>
           Generation is running for the full module. You can keep reviewing
           lessons, resources, and progress while content is prepared.
         </p>

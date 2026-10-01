@@ -29,9 +29,9 @@ export function CreatePlanPageClient({
             What do you want to <span className='text-primary'>learn?</span>
           </>
         }
-        titleClassName='font-heading max-w-xl text-[32px] leading-10 tracking-[-0.02em] text-balance text-foreground'
+        titleClassName='type-title max-w-xl text-balance text-foreground'
         description='Name the goal, your level, and the time you actually have. Atlaris charts the route.'
-        descriptionClassName='mt-2.5 max-w-xl text-base leading-[26px] text-muted-foreground'
+        descriptionClassName='mt-2.5 max-w-xl type-reading text-muted-foreground'
       />
 
       <div className='grid items-start gap-4 lg:grid-cols-[minmax(0,40rem)_minmax(16rem,18rem)]'>

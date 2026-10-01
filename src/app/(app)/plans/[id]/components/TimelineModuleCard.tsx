@@ -62,7 +62,7 @@ export function TimelineModuleCard({
           className='h-auto w-full cursor-pointer justify-start gap-4 rounded-[inherit] p-4 text-left whitespace-normal'
         >
           <div className='min-w-0 flex-1'>
-            <p className='mb-2 text-[11px] font-medium tracking-[0.12em] text-muted-foreground uppercase'>
+            <p className='mb-2 type-eyebrow text-muted-foreground'>
               <span
                 className={
                   module.status === 'active' ? 'text-primary' : undefined
