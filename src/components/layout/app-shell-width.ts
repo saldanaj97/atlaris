@@ -6,8 +6,9 @@ export const APP_SHELL_MAIN_OFFSET =
   'pt-[calc(4rem+env(safe-area-inset-top,0px))]' as const;
 
 /**
- * Authenticated app rail offset. Defaults to the 224px desktop sidebar and
- * collapses to 0 when `--at-app-sidebar-offset` is set by desktop chrome.
+ * Authenticated app sidebar offset. Defaults to the 224px desktop sidebar and
+ * shrinks to the 4rem icon rail when `--at-app-sidebar-offset` is set by
+ * desktop chrome.
  * Animates only after a user toggle (`data-sidebar-motion` on `<html>`), so
  * the persisted state doesn't slide on first paint.
  */

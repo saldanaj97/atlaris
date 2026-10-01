@@ -43,6 +43,7 @@ interface MobileNavigationProps {
 }
 
 function MobileAppSheetBody({
+  canCreatePlan,
   navItems,
   onNavigate,
   pathname,
@@ -51,6 +52,7 @@ function MobileAppSheetBody({
   userName,
   showClerkUserButton,
 }: {
+  canCreatePlan?: boolean;
   navItems: NavItem[];
   onNavigate: () => void;
   pathname: string;
@@ -68,6 +70,7 @@ function MobileAppSheetBody({
         pathname={pathname}
         navItems={navItems}
         tier={tier}
+        canCreatePlan={canCreatePlan}
         userName={userName}
         userImageUrl={userImageUrl}
         showClerkUserButton={showClerkUserButton}
@@ -361,6 +364,7 @@ export default function MobileNavigation({
       >
         {isAppShell ? (
           <MobileAppSheetBody
+            canCreatePlan={canCreatePlan}
             navItems={navItems}
             onNavigate={handleNavigation}
             pathname={pathname}

@@ -95,19 +95,24 @@ export default function SiteHeaderChrome({
       {isAppShell ? (
         <AppSidebar
           id={DESKTOP_SIDEBAR_ID}
-          closed={!desktopSidebarOpen}
+          collapsed={!desktopSidebarOpen}
           className={cn(
-            'fixed inset-y-0 left-0 z-40 hidden w-[var(--at-semantic-layout-sidebar,14rem)] border-r border-sidebar-border lg:flex',
-            'in-data-[sidebar-motion]:transition-all in-data-[sidebar-motion]:duration-(--motion-duration-overlay) in-data-[sidebar-motion]:ease-out motion-reduce:transition-none',
-            !desktopSidebarOpen && 'invisible -translate-x-full',
+            'fixed inset-y-0 left-0 z-40 hidden overflow-hidden border-r border-border lg:flex',
+            // Collapsed width must match DESKTOP_SIDEBAR_RAIL_WIDTH.
+            desktopSidebarOpen
+              ? 'w-[var(--at-semantic-layout-sidebar,14rem)]'
+              : 'w-[4rem]',
+            'in-data-[sidebar-motion]:transition-[width] in-data-[sidebar-motion]:duration-(--motion-duration-overlay) in-data-[sidebar-motion]:ease-(--motion-easing-enter) motion-reduce:transition-none',
           )}
           pathname={pathname}
           navItems={resolvedNavItems}
           tier={tier}
+          canCreatePlan={canCreatePlan}
           userName={userName}
           userImageUrl={userImageUrl}
           showClerkUserButton={showClerkUserButton}
           onDesktopCollapse={() => setSidebarOpen(false)}
+          onDesktopExpand={() => setSidebarOpen(true)}
         />
       ) : null}
 
@@ -139,8 +144,6 @@ export default function SiteHeaderChrome({
               showClerkUserButton={showClerkUserButton}
               userName={userName}
               userImageUrl={userImageUrl}
-              sidebarOpen={desktopSidebarOpen}
-              onSidebarOpenChange={setSidebarOpen}
             />
           </div>
         </div>

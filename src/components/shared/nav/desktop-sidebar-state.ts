@@ -12,8 +12,11 @@ export const DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID =
   'app-desktop-sidebar-collapse';
 export const DESKTOP_SIDEBAR_EXPAND_CONTROL_ID = 'app-desktop-sidebar-expand';
 
+/** Width of the collapsed desktop icon rail; content offset follows it. */
+export const DESKTOP_SIDEBAR_RAIL_WIDTH = '4rem';
+
 const OPEN_OFFSET = 'var(--at-semantic-layout-sidebar,14rem)';
-const CLOSED_OFFSET = '0px';
+const CLOSED_OFFSET = DESKTOP_SIDEBAR_RAIL_WIDTH;
 
 const sidebarOpenListeners = new Set<() => void>();
 

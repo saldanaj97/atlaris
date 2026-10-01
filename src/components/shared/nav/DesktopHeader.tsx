@@ -5,18 +5,13 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import AuthControls from '@/components/shared/AuthControls';
 import BrandLogo from '@/components/shared/BrandLogo';
-import {
-  DESKTOP_SIDEBAR_EXPAND_CONTROL_ID,
-  DESKTOP_SIDEBAR_EXPAND_LABEL,
-  DESKTOP_SIDEBAR_ID,
-} from '@/components/shared/nav/desktop-sidebar-state';
 import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
 import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { ArrowRight, PanelLeft, Plus } from 'lucide-react';
+import { ArrowRight, Plus } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
@@ -31,38 +26,13 @@ interface DesktopHeaderProps {
   showClerkUserButton: boolean;
   userName?: string;
   userImageUrl?: string | null;
-  sidebarOpen?: boolean;
-  onSidebarOpenChange?: (open: boolean) => void;
 }
 
 function DesktopHeaderStart({
-  appShellCollapsed,
-  onSidebarOpenChange,
   showAppShellChrome,
 }: {
-  appShellCollapsed: boolean;
-  onSidebarOpenChange?: (open: boolean) => void;
   showAppShellChrome: boolean;
 }) {
-  if (appShellCollapsed) {
-    return (
-      <div className='relative z-10 flex items-center justify-self-start'>
-        <Button
-          id={DESKTOP_SIDEBAR_EXPAND_CONTROL_ID}
-          type='button'
-          variant='ghost'
-          size='icon'
-          aria-controls={DESKTOP_SIDEBAR_ID}
-          aria-expanded={false}
-          aria-label={DESKTOP_SIDEBAR_EXPAND_LABEL}
-          onClick={() => onSidebarOpenChange?.(true)}
-        >
-          <PanelLeft aria-hidden='true' className='size-5' />
-        </Button>
-      </div>
-    );
-  }
-
   if (!showAppShellChrome) {
     return (
       <div className='relative z-10 flex min-w-0 items-center justify-self-start'>
@@ -210,12 +180,9 @@ export default function DesktopHeader({
   showClerkUserButton,
   userName,
   userImageUrl,
-  sidebarOpen = true,
-  onSidebarOpenChange,
 }: DesktopHeaderProps) {
   const showAppShellChrome = isAppShell && !isMarketing;
-  const appShellCollapsed = showAppShellChrome && sidebarOpen === false;
-  const showHeaderAccountChrome = !showAppShellChrome || appShellCollapsed;
+  const showHeaderAccountChrome = !showAppShellChrome;
   const showMarketingChrome = isMarketing && !showAppShellChrome;
   const primaryCtaHref = isAuthenticated
     ? ROUTES.DASHBOARD
@@ -228,17 +195,11 @@ export default function DesktopHeader({
         'relative hidden h-[64px] w-full items-center',
         isAppShell ? 'lg:grid' : 'md:grid',
         showAppShellChrome
-          ? appShellCollapsed
-            ? 'grid-cols-[auto_minmax(0,1fr)]'
-            : 'grid-cols-[minmax(0,1fr)_auto]'
+          ? 'grid-cols-[minmax(0,1fr)_auto]'
           : 'grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]',
       )}
     >
-      <DesktopHeaderStart
-        appShellCollapsed={appShellCollapsed}
-        onSidebarOpenChange={onSidebarOpenChange}
-        showAppShellChrome={showAppShellChrome}
-      />
+      <DesktopHeaderStart showAppShellChrome={showAppShellChrome} />
       <DesktopHeaderCenter
         navItems={navItems}
         pathname={pathname}
@@ -248,7 +209,7 @@ export default function DesktopHeader({
       <div
         className={cn(
           'relative z-10 flex min-w-0 items-center justify-end gap-2 justify-self-end',
-          showAppShellChrome && !appShellCollapsed && 'col-start-2',
+          showAppShellChrome && 'col-start-2',
         )}
       >
         {isMarketing ? (
