@@ -85,18 +85,20 @@ export default function MobileHeader({
     <div
       className={cn(
         'relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2',
+        // From 400px up the side groups fit, so equal columns center the logo.
+        !isMarketing && 'min-[25rem]:grid-cols-[1fr_auto_1fr]',
         isAppShell ? 'lg:hidden' : 'md:hidden',
       )}
     >
-      <div className='relative z-10 flex min-w-0 shrink-0 items-center'>
+      <div className='relative z-10 flex min-w-0 shrink-0 items-center justify-self-start'>
         {isMarketing ? <BrandLogo size='sm' /> : menu}
       </div>
 
       <div className='relative z-10 flex min-w-0 items-center justify-center overflow-hidden'>
-        {isMarketing ? null : <BrandLogo size='sm' />}
+        {isMarketing ? null : <BrandLogo size='sm' href={ROUTES.DASHBOARD} />}
       </div>
 
-      <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1'>
+      <div className='relative z-10 flex min-w-0 shrink-0 items-center gap-1 justify-self-end'>
         {isMarketing ? (
           <>
             <div className='shrink-0'>

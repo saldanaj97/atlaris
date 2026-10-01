@@ -15,6 +15,8 @@ interface BrandLogoProps {
   size?: BrandLogoSize;
   /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
+  /** Destination for linked lockups. Defaults to the marketing landing page. */
+  href?: string;
   /**
    * When false, render the lockup without a destination.
    * Maintenance must not link home while that route redirects back here.
@@ -69,13 +71,15 @@ function LockupImage({
 }
 
 /**
- * Shared brand logo used in chrome. Linked lockups go to `/landing`
- * because `/` sends signed-in users to dashboard. Unlinked lockups
+ * Shared brand logo used in chrome. Linked lockups go to `/landing` by
+ * default because `/` sends signed-in users to dashboard; app chrome passes
+ * `href` to stay inside the app. Unlinked lockups
  * keep the same visible crop without a destination.
  */
 export default function BrandLogo({
   size = 'md',
   onClick,
+  href = ROUTES.LANDING,
   linked = true,
 }: BrandLogoProps) {
   const lockups = (
@@ -98,7 +102,7 @@ export default function BrandLogo({
 
   return (
     <Link
-      href={ROUTES.LANDING}
+      href={href}
       onClick={onClick}
       className='inline-flex min-h-11 shrink-0 items-center px-1'
       aria-label='Atlaris - Go to homepage'

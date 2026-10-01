@@ -8,6 +8,14 @@ function lockupImage(name: 'logo-on-light.png' | 'logo-on-dark.png') {
 }
 
 describe('BrandLogo', () => {
+  it('links to a custom destination when href is provided', () => {
+    render(<BrandLogo href='/dashboard' />);
+
+    expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/dashboard');
+  });
+
   it('links home and crops both lockups to the shared visible width', () => {
     render(<BrandLogo />);
 

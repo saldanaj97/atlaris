@@ -112,12 +112,16 @@ export default function AppSidebar({
         <>
           <div
             className={cn(
-              'flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center gap-2 pt-[env(safe-area-inset-top,0px)] pr-(--at-primitive-space-3,0.75rem) pl-(--at-primitive-space-4-5,1.125rem)',
+              'flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center gap-2 pt-[env(safe-area-inset-top,0px)] pr-(--at-primitive-space-3,0.75rem) pl-(--at-primitive-space-5,1.25rem)',
               expandedMinWidth,
             )}
           >
             <div className='flex min-w-0 flex-1 items-center'>
-              <BrandLogo size='sm' onClick={onNavigate} />
+              <BrandLogo
+                size='sm'
+                href={ROUTES.DASHBOARD}
+                onClick={onNavigate}
+              />
             </div>
             {onDesktopCollapse ? (
               <button
