@@ -182,7 +182,10 @@
             "pattern": "^CardHeader$",
             "allow": ["layout", "spacing", "border-b", "border-border"]
           },
-          { "pattern": "^CardTitle$", "allow": ["layout", "typography"] },
+          {
+            "pattern": "^CardTitle$",
+            "allow": ["layout", "typography", "type-*"]
+          },
           { "pattern": "^CtaBanner$", "allow": ["layout", "border-0"] },
           {
             "pattern": "^DropdownMenuTrigger$",
@@ -222,13 +225,14 @@
               "pl-[36px]"
             ]
           },
-          { "pattern": "^Label$", "allow": ["layout", "typography"] },
+          { "pattern": "^Label$", "allow": ["layout", "typography", "type-*"] },
           {
             "pattern": "^PageHero$",
             "allow": [
               "layout",
               "spacing",
               "typography",
+              "type-*",
               "color",
               "shape",
               "effects"
@@ -257,13 +261,7 @@
           { "pattern": "^RouteErrorState$", "allow": ["layout", "color"] },
           {
             "pattern": "^SectionOverline$",
-            "allow": [
-              "layout",
-              "text-muted-foreground",
-              "text-primary",
-              "tracking-[0.14em]",
-              "tracking-[0.16em]"
-            ]
+            "allow": ["layout", "text-muted-foreground", "text-primary"]
           },
           {
             "pattern": "^SheetContent$",
@@ -295,7 +293,10 @@
             ]
           },
           { "pattern": "^Surface$", "allow": ["layout", "spacing"] },
-          { "pattern": "^Textarea$", "allow": ["layout", "typography"] }
+          {
+            "pattern": "^Textarea$",
+            "allow": ["layout", "typography", "type-*"]
+          }
         ]
       }
     ],
@@ -316,20 +317,6 @@
           "gap-[32px]",
           "gap-[6px]",
           "gap-[8px]",
-          "leading-[1.04]",
-          "leading-[1.05]",
-          "leading-[1.08]",
-          "leading-[1.1]",
-          "leading-[1.125]",
-          "leading-[1.15]",
-          "leading-[18px]",
-          "leading-[20px]",
-          "leading-[22px]",
-          "leading-[24px]",
-          "leading-[26px]",
-          "leading-[28px]",
-          "leading-[36px]",
-          "leading-[40px]",
           "p-[16px]",
           "p-[8px]",
           "pb-[16px]",
@@ -352,25 +339,6 @@
           "space-y-[24px]",
           "space-y-[8px]",
           "text-[10px]",
-          "text-[11px]",
-          "text-[2.75rem]",
-          "text-[28px]",
-          "text-[3.25rem]",
-          "text-[32px]",
-          "text-[40px]",
-          "text-[42px]",
-          "text-[4rem]",
-          "tracking-[-0.01em]",
-          "tracking-[-0.02em]",
-          "tracking-[-0.035em]",
-          "tracking-[-0.03em]",
-          "tracking-[-0.04em]",
-          "tracking-[0.08em]",
-          "tracking-[0.12em]",
-          "tracking-[0.14em]",
-          "tracking-[0.16em]",
-          "tracking-[0.18em]",
-          "tracking-[0.22em]",
           "transition-[background-color,border-color,box-shadow]",
           "transition-[background-color,border-color,color,box-shadow]",
           "transition-[background-color,color,border-color,box-shadow]",
@@ -445,7 +413,6 @@
       "files": ["src/components/ui/**/*.{ts,tsx}"],
       "rules": {
         "shadcn/require-static-classes": "off",
-        "shadcn/no-restyle": "off",
         "shadcn/no-arbitrary-values": "off"
       }
     }
