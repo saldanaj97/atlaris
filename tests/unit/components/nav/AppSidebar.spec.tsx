@@ -35,6 +35,14 @@ function renderSidebar(props: Partial<Parameters<typeof AppSidebar>[0]> = {}) {
 }
 
 describe('AppSidebar', () => {
+  it('links the brand logo to the dashboard instead of leaving the app', () => {
+    renderSidebar();
+
+    expect(
+      screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/dashboard');
+  });
+
   it('marks Analytics as a single destination without a submenu', () => {
     renderSidebar({
       pathname: '/analytics/usage',

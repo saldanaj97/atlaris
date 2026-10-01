@@ -73,7 +73,7 @@ describe('MobileNavigation', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
-    ).toHaveAttribute('href', '/landing');
+    ).toHaveAttribute('href', '/dashboard');
     expect(
       screen.queryByRole('link', { name: 'Create New Plan' }),
     ).not.toBeInTheDocument();
