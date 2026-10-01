@@ -21,7 +21,7 @@ export function PlansHero({
           Your <span className='gradient-text'>Plans</span>
         </>
       }
-      titleClassName='font-heading max-w-xl text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      titleClassName='font-heading max-w-xl text-(length:--at-fluid-title-lg,clamp(2rem,1.3rem+3vw,2.5rem)) leading-[1.15] tracking-[-0.03em] text-balance text-foreground'
       description='Your learning plans turn big goals into real progress. Start a new plan, pick up where you left off, or find the next step in your library.'
       descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
       actions={

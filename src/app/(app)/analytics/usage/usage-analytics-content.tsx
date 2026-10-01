@@ -162,7 +162,7 @@ function AnalyticsHero() {
           Learning <span className='text-primary'>analytics</span>
         </>
       }
-      titleClassName='font-heading text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      titleClassName='font-heading text-(length:--at-fluid-title-lg,clamp(2rem,1.3rem+3vw,2.5rem)) leading-[1.15] tracking-[-0.03em] text-balance text-foreground'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
       descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
     />
