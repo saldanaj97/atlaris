@@ -57,7 +57,7 @@ export function ActivityCard({
       </span>
 
       <div className='min-w-0'>
-        <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+        <p className='type-eyebrow text-muted-foreground'>
           {presentation.label}
         </p>
         <p className='mt-0.5 truncate text-sm font-medium text-foreground'>
