@@ -46,7 +46,7 @@ interface AppSidebarProps {
 
 /** Row geometry shared by nav destinations and their sub-items. */
 const NAV_ROW =
-  'min-h-[36px] rounded-sm px-[12px] text-sm leading-[20px] transition-colors motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)';
+  'min-h-[36px] rounded-sm px-[12px] type-label transition-colors motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)';
 const NAV_ROW_IDLE =
   'text-muted-foreground hover:bg-secondary hover:text-foreground';
 const NAV_ROW_SELECTED = 'bg-action-soft text-foreground';
@@ -275,20 +275,17 @@ export default function AppSidebar({
                 aria-labelledby={tierTitleId}
                 className='flex flex-col items-start gap-(--at-primitive-space-1,0.25rem) rounded-md border border-border bg-card p-(--at-primitive-space-3,0.75rem)'
               >
-                <h2
-                  id={tierTitleId}
-                  className='text-sm leading-[20px] font-medium text-foreground'
-                >
+                <h2 id={tierTitleId} className='type-label text-foreground'>
                   {tierLabel(tier)}
                 </h2>
-                <p className='text-xs leading-[18px] text-muted-foreground'>
+                <p className='type-meta text-muted-foreground'>
                   Pro unlocks more learning plans and features.
                 </p>
                 <Link
                   href={ROUTES.PRICING}
                   onClick={onNavigate}
                   className={cn(
-                    'mt-(--at-primitive-space-1,0.25rem) inline-flex items-center rounded-sm text-sm leading-[20px] font-medium text-link underline underline-offset-3 transition-colors hover:text-link-hover motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)',
+                    'mt-(--at-primitive-space-1,0.25rem) inline-flex items-center rounded-sm type-label text-link underline underline-offset-3 transition-colors hover:text-link-hover motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)',
                     SIDEBAR_FOCUS_RING,
                   )}
                 >
@@ -309,7 +306,7 @@ export default function AppSidebar({
                       },
                     }}
                   />
-                  <span className='min-w-0 flex-1 truncate text-sm leading-[20px] font-medium text-foreground'>
+                  <span className='min-w-0 flex-1 truncate type-label text-foreground'>
                     {userName || 'Account'}
                   </span>
                 </div>
@@ -328,7 +325,7 @@ export default function AppSidebar({
                     userImageUrl={userImageUrl}
                     className='size-[28px]'
                   />
-                  <span className='min-w-0 flex-1 truncate leading-[20px] font-medium text-foreground'>
+                  <span className='min-w-0 flex-1 truncate type-label text-foreground'>
                     {userName || 'Account'}
                   </span>
                 </Link>

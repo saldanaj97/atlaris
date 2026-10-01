@@ -59,10 +59,7 @@ function CardTitle({
   return (
     <TitleTag
       data-slot='card-title'
-      className={cn(
-        'min-w-0 text-xl leading-[28px] font-semibold [overflow-wrap:anywhere]',
-        className,
-      )}
+      className={cn('min-w-0 type-card [overflow-wrap:anywhere]', className)}
       {...props}
     />
   );
@@ -72,7 +69,7 @@ function CardDescription({ className, ...props }: React.ComponentProps<'div'>) {
   return (
     <div
       data-slot='card-description'
-      className={cn('text-sm leading-[22px] text-muted-foreground', className)}
+      className={cn('type-body text-muted-foreground', className)}
       {...props}
     />
   );
