@@ -59,9 +59,7 @@ export function LedgerSectionBlock({
       )}
     >
       <div className='min-w-0'>
-        {showTitle ? (
-          <h2 className='font-heading text-lg tracking-[-0.02em]'>{label}</h2>
-        ) : null}
+        {showTitle ? <h2 className='type-card'>{label}</h2> : null}
         {description ? (
           <p className='mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground'>
             {description}

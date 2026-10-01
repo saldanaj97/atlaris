@@ -116,7 +116,7 @@ export function SettingsContentHeading(): ReactElement {
     <div data-testid='settings-content-heading'>
       <h2
         id='settings-content-heading'
-        className='font-heading text-(length:--at-fluid-title-lg,clamp(2rem,1.3rem+3vw,2.5rem)) leading-[1.15] tracking-[-0.02em] text-foreground'
+        className='type-title-hero text-foreground'
       >
         {heading.title}
       </h2>
