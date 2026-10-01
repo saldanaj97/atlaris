@@ -37,7 +37,7 @@ export function DriftSection() {
             </SectionOverline>
             <h2
               id='landing-drift-heading'
-              className='mt-5 max-w-[14ch] font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl'
+              className='mt-5 max-w-[14ch] type-display-section text-balance text-foreground'
             >
               A clearer way to learn{' '}
               <span className='text-primary italic'>and grow.</span>

@@ -83,7 +83,7 @@ function Hero() {
         <h1
           id='pricing-hero-heading'
           aria-label={copy.headline}
-          className='mt-5 font-serif text-[2.75rem] leading-[1.08] font-semibold tracking-[-0.03em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'
+          className='mt-5 type-display text-balance text-foreground'
         >
           {words.map((word, index) => (
             <span key={`${word}-${index}`}>
