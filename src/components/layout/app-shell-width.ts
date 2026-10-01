@@ -1,5 +1,5 @@
 /** Horizontal gutters outside the max-width column (SiteHeader + PageShell). */
-export const APP_SHELL_GUTTER = 'px-[16px] md:px-[24px] xl:px-[32px]' as const;
+export const APP_SHELL_GUTTER = 'px-[clamp(1rem,0.5rem+2vw,2rem)]' as const;
 
 /** Header-aware main offset, including notch safe area. */
 export const APP_SHELL_MAIN_OFFSET =

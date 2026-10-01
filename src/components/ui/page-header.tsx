@@ -37,7 +37,7 @@ function PageHeader({
       {...props}
     >
       <div className={cn('min-w-0 flex-1', isCentered && 'w-full')}>
-        <TitleTag className='font-heading text-[28px] leading-[36px] tracking-[-0.02em] text-balance text-foreground sm:text-[32px] sm:leading-[40px]'>
+        <TitleTag className='font-heading text-(length:--at-fluid-title-sm,clamp(1.75rem,1.4rem+1.5vw,2rem)) leading-[1.15] tracking-[-0.02em] text-balance text-foreground'>
           {title}
         </TitleTag>
         {subtitle != null ? (
