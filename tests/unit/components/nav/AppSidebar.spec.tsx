@@ -87,43 +87,85 @@ describe('AppSidebar', () => {
     expect(onDesktopCollapse).toHaveBeenCalledTimes(1);
   });
 
-  it('omits a create-plan action and still shows the upgrade banner for non-pro tiers', () => {
-    const { rerender } = renderSidebar({
-      tier: 'starter',
-    });
+  it('marks only the current destination as selected, without an accent bar', () => {
+    renderSidebar({ pathname: '/plans' });
 
+    const plans = screen.getByRole('link', { name: 'Plans' });
+    expect(plans).toHaveAttribute('aria-current', 'page');
+    expect(plans.querySelector('span[aria-hidden="true"]')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Dashboard' })).not.toHaveAttribute(
+      'aria-current',
+    );
+  });
+
+  it('follows the canCreatePlan contract for the Create plan action', () => {
+    const { rerender } = renderSidebar({ canCreatePlan: true });
+
+    expect(screen.getByRole('link', { name: 'Create plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
+
+    const renderWith = (canCreatePlan?: boolean) =>
+      rerender(
+        <TooltipProvider>
+          <AppSidebar
+            pathname='/dashboard'
+            navItems={authenticatedNavItems}
+            tier='pro'
+            canCreatePlan={canCreatePlan}
+          />
+        </TooltipProvider>,
+      );
+
+    renderWith(false);
     expect(
-      screen.queryByRole('link', { name: 'Create New Plan' }),
+      screen.queryByRole('link', { name: 'Create plan' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('Upgrade to Pro')).toBeInTheDocument();
-    expect(
-      screen.getByText('Unlock more learning paths, projects, and features.'),
-    ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
       'href',
       '/pricing',
     );
+
+    renderWith(undefined);
+    expect(
+      screen.queryByRole('link', { name: 'Create plan' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the plan and upgrade row for non-pro tiers only', () => {
+    const { rerender } = renderSidebar({ tier: 'free' });
+
+    expect(
+      screen.getByRole('heading', { name: 'Free plan' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText('Pro unlocks more learning plans and features.'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Upgrade to Pro' }),
+    ).toHaveAttribute('href', '/pricing');
 
     rerender(
       <TooltipProvider>
         <AppSidebar
           pathname='/dashboard'
           navItems={authenticatedNavItems}
-          tier='free'
+          tier='pro'
         />
       </TooltipProvider>,
     );
 
+    expect(screen.queryByRole('heading')).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'Create New Plan' }),
+      screen.queryByText('Pro unlocks more learning plans and features.'),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'Upgrade' }),
+      screen.queryByRole('link', { name: 'Upgrade to Pro' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
-      'href',
-      '/pricing',
-    );
   });
 
   it('invokes the close callback on navigation', async () => {
@@ -155,8 +197,9 @@ describe('AppSidebar', () => {
     expect(theme.parentElement).toContainElement(account);
     expect(account).toHaveAttribute('href', '/settings/profile');
     expect(account).toHaveTextContent('Dev User');
-    expect(account).toHaveTextContent('Starter Plan');
+    expect(account).not.toHaveTextContent('Starter');
     expect(account).toHaveTextContent('DU');
+    expect(screen.getByText('Starter plan')).toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Account' }),
     ).not.toBeInTheDocument();
@@ -173,5 +216,103 @@ describe('AppSidebar', () => {
       screen.queryByRole('link', { name: 'Account settings' }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('Ada Lovelace')).toBeInTheDocument();
+  });
+
+  describe('collapsed rail', () => {
+    it('keeps every control reachable with an accessible name', async () => {
+      const user = userEvent.setup();
+      const onDesktopExpand = vi.fn();
+      const onNavigate = vi.fn();
+
+      renderSidebar({
+        id: 'app-desktop-sidebar',
+        collapsed: true,
+        canCreatePlan: true,
+        tier: 'free',
+        userName: 'Dev User',
+        onDesktopCollapse: vi.fn(),
+        onDesktopExpand,
+        onNavigate,
+      });
+
+      const sidebar = screen.getByRole('complementary', {
+        name: 'Application sidebar',
+      });
+      expect(sidebar).not.toHaveAttribute('aria-hidden');
+      expect(sidebar).not.toHaveAttribute('inert');
+
+      for (const item of authenticatedNavItems) {
+        expect(
+          within(sidebar).getByRole('link', { name: item.label }),
+        ).toHaveAttribute('href', item.href);
+      }
+      expect(
+        within(sidebar).getByRole('link', { name: 'Atlaris home' }),
+      ).toHaveAttribute('href', '/dashboard');
+      expect(
+        within(sidebar).getByRole('link', { name: 'Create plan' }),
+      ).toHaveAttribute('href', '/plans/new');
+      expect(
+        within(sidebar).queryByRole('link', { name: 'Upgrade to Pro' }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(sidebar).getByRole('button', {
+          name: /Switch to (light|dark) mode|Toggle theme/,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(sidebar).getByRole('link', { name: 'Account settings' }),
+      ).toHaveAttribute('href', '/settings/profile');
+      expect(
+        within(sidebar).queryByRole('button', { name: 'Collapse sidebar' }),
+      ).not.toBeInTheDocument();
+      expect(within(sidebar).queryByText('Free plan')).not.toBeInTheDocument();
+
+      const expand = within(sidebar).getByRole('button', {
+        name: 'Expand sidebar',
+      });
+      expect(expand).toHaveAttribute('id', 'app-desktop-sidebar-expand');
+      expect(expand).toHaveAttribute('aria-controls', 'app-desktop-sidebar');
+      expect(expand).toHaveAttribute('aria-expanded', 'false');
+
+      expand.focus();
+      await user.keyboard('{Enter}');
+      expect(onDesktopExpand).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks the current destination', () => {
+      renderSidebar({
+        collapsed: true,
+        pathname: '/analytics',
+        tier: 'pro',
+        canCreatePlan: true,
+      });
+
+      expect(screen.getByRole('link', { name: 'Analytics' })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
+    });
+
+    it('routes the create action to pricing when creation is blocked', () => {
+      renderSidebar({ collapsed: true, tier: 'free', canCreatePlan: false });
+
+      expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+        'href',
+        '/pricing',
+      );
+      expect(
+        screen.queryByRole('link', { name: 'Create plan' }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('keeps the Clerk account menu in the rail', () => {
+      renderSidebar({ collapsed: true, showClerkUserButton: true });
+
+      expect(screen.getByTestId('user-button')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Account settings' }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

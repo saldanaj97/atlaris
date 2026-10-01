@@ -5,7 +5,6 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { cleanup, render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@clerk/nextjs', () => ({
@@ -105,32 +104,6 @@ describe('DesktopHeader layout', () => {
     expect(
       screen.queryByRole('button', { name: 'Expand sidebar' }),
     ).not.toBeInTheDocument();
-  });
-
-  it('reopens the desktop sidebar from the header when the rail is closed', async () => {
-    const user = userEvent.setup();
-    const onSidebarOpenChange = vi.fn();
-
-    renderDesktopHeader({
-      isAppShell: true,
-      sidebarOpen: false,
-      onSidebarOpenChange,
-    });
-
-    const expand = screen.getByRole('button', { name: 'Expand sidebar' });
-    expect(expand).toHaveAttribute('aria-expanded', 'false');
-    expect(expand).toHaveAttribute('aria-controls', 'app-desktop-sidebar');
-
-    expand.focus();
-    expect(expand).toHaveFocus();
-    await user.keyboard('{Enter}');
-    expect(onSidebarOpenChange).toHaveBeenCalledWith(true);
-    expect(
-      screen.getByRole('button', {
-        name: /Switch to (light|dark) mode|Toggle theme/,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('user-button')).toBeInTheDocument();
   });
 
   it('renders unauthenticated nav links without clipping at md width', () => {
