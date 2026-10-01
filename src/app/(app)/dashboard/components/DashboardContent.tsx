@@ -29,20 +29,17 @@ function DashboardHero({
   title: ReactNode;
   description: ReactNode;
 }) {
+  // A string fits in a paragraph; other nodes may contain block content.
+  const Description = typeof description === 'string' ? 'p' : 'div';
+
   return (
     <header className='mb-8 pt-6 pb-4 sm:pt-8 sm:pb-5'>
       <h1 className='max-w-3xl type-title text-balance text-foreground'>
         {title}
       </h1>
-      {typeof description === 'string' ? (
-        <p className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
-          {description}
-        </p>
-      ) : (
-        <div className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
-          {description}
-        </div>
-      )}
+      <Description className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
+        {description}
+      </Description>
     </header>
   );
 }

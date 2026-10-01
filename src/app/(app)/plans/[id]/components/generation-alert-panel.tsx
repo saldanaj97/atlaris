@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 
 import { Badge } from '@/components/ui/badge';
 import { Surface } from '@/components/ui/surface';
+import { Loader2 } from 'lucide-react';
 
 const PANEL_SURFACE_VARIANTS = {
   info: 'muted',
@@ -14,6 +15,7 @@ export function GenerationAlertPanel({
   title,
   body,
   badge,
+  busy = false,
   meta,
   footer,
 }: {
@@ -21,6 +23,8 @@ export function GenerationAlertPanel({
   title: string;
   body: ReactNode;
   badge?: string;
+  /** Shows a spinner beside the badge while work is still running. */
+  busy?: boolean;
   meta?: ReactNode;
   footer?: ReactNode;
 }) {
@@ -31,24 +35,19 @@ export function GenerationAlertPanel({
       className='flex flex-col gap-4'
     >
       <div>
-        <h3 className='text-xl leading-7 font-semibold text-foreground'>
-          {title}
-        </h3>
+        <h3 className='type-card text-foreground'>{title}</h3>
         <p className='mt-2 type-body text-muted-foreground'>{body}</p>
       </div>
       {badge ? (
-        <Badge
-          variant={variant === 'destructive' ? 'destructive' : 'outline'}
-          className={
-            variant === 'info'
-              ? 'border-link/40 bg-action-soft text-link hover:bg-action-soft'
-              : variant === 'warning'
-                ? 'border-warning/40 bg-warning/10 text-warning hover:bg-warning/10'
-                : undefined
-          }
-        >
-          {badge}
-        </Badge>
+        <div className='flex flex-wrap items-center gap-2'>
+          <Badge variant={variant}>{badge}</Badge>
+          {busy ? (
+            <Loader2
+              aria-hidden='true'
+              className='size-4 animate-spin text-link motion-reduce:animate-none'
+            />
+          ) : null}
+        </div>
       ) : null}
       {meta}
       {footer}

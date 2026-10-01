@@ -99,9 +99,7 @@ export async function ProfilePlanCard({
     return (
       <Card as='section' className='gap-[24px] shadow-none'>
         <CardHeader>
-          <CardTitle as='h3' className='type-card'>
-            Plan
-          </CardTitle>
+          <CardTitle as='h3'>Plan</CardTitle>
         </CardHeader>
         <CardContent className='@container'>
           <p className='text-sm text-muted-foreground'>
@@ -129,9 +127,7 @@ export async function ProfilePlanCard({
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
       <CardHeader>
-        <CardTitle as='h3' className='type-card'>
-          Plan
-        </CardTitle>
+        <CardTitle as='h3'>Plan</CardTitle>
         <CardDescription>
           You're currently on the {tierName} plan.
         </CardDescription>

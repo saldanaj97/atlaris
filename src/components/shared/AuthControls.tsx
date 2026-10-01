@@ -3,7 +3,10 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ReactElement } from 'react';
 
-import { AccountAvatar } from '@/components/shared/AccountAvatar';
+import {
+  ACCOUNT_USER_BUTTON_APPEARANCE,
+  AccountAvatar,
+} from '@/components/shared/AccountAvatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -55,15 +58,7 @@ export default function AuthControls({
         <Tooltip>
           <TooltipTrigger asChild>
             <div className='relative inline-flex'>
-              <UserButton
-                appearance={{
-                  elements: {
-                    avatarBox: 'size-9',
-                    userButtonTrigger:
-                      'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:size-11',
-                  },
-                }}
-              />
+              <UserButton appearance={ACCOUNT_USER_BUTTON_APPEARANCE} />
               {tierBadge}
             </div>
           </TooltipTrigger>

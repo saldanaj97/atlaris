@@ -4,10 +4,8 @@ import {
   RetryAction,
 } from './generation-retry-actions';
 import { type PlanPendingViewState } from './plan-pending-view-state';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Surface } from '@/components/ui/surface';
-import { Loader2, RefreshCw } from 'lucide-react';
+import { RefreshCw } from 'lucide-react';
 
 function WaitingStatusPanel({
   title,
@@ -21,27 +19,16 @@ function WaitingStatusPanel({
   meta?: string;
 }) {
   return (
-    <Surface variant='muted' padding='compact' className='flex flex-col gap-4'>
-      <div>
-        <h3 className='text-xl leading-7 font-semibold text-foreground'>
-          {title}
-        </h3>
-        <p className='mt-2 type-body text-muted-foreground'>{body}</p>
-      </div>
-      <div className='flex flex-wrap items-center gap-2'>
-        <Badge
-          variant='outline'
-          className='border-link/40 bg-action-soft text-link hover:bg-action-soft'
-        >
-          {badge}
-        </Badge>
-        <Loader2
-          aria-hidden='true'
-          className='size-4 animate-spin text-link motion-reduce:animate-none'
-        />
-      </div>
-      {meta ? <p className='text-sm text-muted-foreground'>{meta}</p> : null}
-    </Surface>
+    <GenerationAlertPanel
+      variant='info'
+      title={title}
+      body={body}
+      badge={badge}
+      busy
+      meta={
+        meta ? <p className='text-sm text-muted-foreground'>{meta}</p> : null
+      }
+    />
   );
 }
 

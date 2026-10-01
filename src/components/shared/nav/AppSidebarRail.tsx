@@ -2,7 +2,10 @@
 
 import type { CreatePlanCta, NavItem } from '@/features/navigation';
 
-import { AccountAvatar } from '@/components/shared/AccountAvatar';
+import {
+  ACCOUNT_USER_BUTTON_APPEARANCE,
+  AccountAvatar,
+} from '@/components/shared/AccountAvatar';
 import {
   isCurrentPath,
   NavIcon,
@@ -184,15 +187,7 @@ export default function AppSidebarRail({
 
         {showClerkUserButton ? (
           <div className={RAIL_FOOTER_ITEM}>
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: 'size-9',
-                  userButtonTrigger:
-                    'size-9 rounded-full focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background [@media(pointer:coarse)]:size-11',
-                },
-              }}
-            />
+            <UserButton appearance={ACCOUNT_USER_BUTTON_APPEARANCE} />
           </div>
         ) : (
           <Tooltip>
