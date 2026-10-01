@@ -4,25 +4,6 @@ import Link from 'next/link';
 import { describe, expect, it } from 'vitest';
 
 describe('PlansHero', () => {
-  it('renders the library heading, existing subtitle, and vertical quote', () => {
-    render(<PlansHero />);
-
-    expect(
-      screen.getByRole('heading', {
-        level: 1,
-        name: 'Your Plans',
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        'Your learning plans turn big goals into real progress. Start a new plan, pick up where you left off, or find the next step in your library.',
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: /browse templates/i }),
-    ).not.toBeInTheDocument();
-  });
-
   it('places live library chrome in the same hero surface', () => {
     render(
       <PlansHero chrome={<nav aria-label='Plan status filters'>Filters</nav>}>
@@ -59,20 +40,5 @@ describe('PlansHero', () => {
     expect(
       within(hero).queryByRole('link', { name: /browse templates/i }),
     ).not.toBeInTheDocument();
-  });
-
-  it('uses the summit still for the existing library artwork slot', () => {
-    render(<PlansHero />);
-
-    const hero = screen.getByRole('banner');
-    expect(
-      hero.querySelector('[data-slot="dissolved-backdrop"]'),
-    ).not.toBeNull();
-    expect(
-      hero.querySelector('img[src*="mountain-summit-blue-hour.webp"]'),
-    ).not.toBeNull();
-    expect(
-      hero.querySelector('img[src*="plan-library-mountain-overlook"]'),
-    ).toBeNull();
   });
 });

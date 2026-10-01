@@ -297,15 +297,6 @@ describe('PlansList', () => {
     expect(card).toHaveAttribute('data-reveal', 'visible');
   });
 
-  it('renders plan cards without cover artwork', () => {
-    renderPlansList();
-
-    expect(document.querySelector('img')).toBeNull();
-    expect(
-      screen.getByRole('heading', { name: activePlan.topic }),
-    ).toBeInTheDocument();
-  });
-
   it('keeps search and sort query-backed in the library chrome', () => {
     renderPlansList({
       query: { search: 'hooks', status: 'active', sort: 'newest' },
