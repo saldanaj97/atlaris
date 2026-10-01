@@ -44,9 +44,6 @@ export function PlanStatusHeader({
     <CardHeader className='gap-3 px-6 pt-6'>
       <div className='flex items-start justify-between gap-3'>
         <div className='min-w-0 space-y-2'>
-          <p className='text-[11px] font-medium tracking-[0.18em] text-primary uppercase'>
-            Generation status
-          </p>
           <CardTitle as='h2' className='text-xl leading-7'>
             {plan.topic}
           </CardTitle>

@@ -7,7 +7,6 @@ import type { ProgressStatus } from '@/shared/types/db.types';
 import { ModuleBreadcrumbNav } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleBreadcrumbNav';
 import { ModuleRoundNavLink } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleRoundNavLink';
 import { PageHero } from '@/components/ui/page-hero';
-import { SectionOverline } from '@/components/ui/section-overline';
 import { formatMinutes } from '@/features/plans/formatters';
 import { deriveModuleCompletionSummary } from '@/features/plans/task-progress/client';
 import { CheckCircle2, Clock3, ListChecks, Lock } from 'lucide-react';
@@ -16,7 +15,6 @@ interface ModuleHeaderProps {
   module: ModuleDetailModule;
   planId: string;
   planTopic: string;
-  totalModules: number;
   previousModuleId: string | null;
   nextModuleId: string | null;
   statuses: Record<string, ProgressStatus>;
@@ -29,7 +27,6 @@ export function ModuleHeader({
   module,
   planId,
   planTopic,
-  totalModules,
   previousModuleId,
   nextModuleId,
   statuses,
@@ -61,9 +58,21 @@ export function ModuleHeader({
       >
         <div className='relative p-5 sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>
-            <SectionOverline className='min-w-0 tracking-[0.16em]'>
-              Module {module.order} of {totalModules}
-            </SectionOverline>
+            <h1 className='flex min-w-0 flex-wrap items-center gap-2 text-[32px] leading-10 font-semibold tracking-[-0.02em] text-foreground'>
+              <span className='min-w-0 wrap-break-word'>{module.title}</span>
+              {!previousModulesComplete && (
+                <Lock
+                  aria-label='Module locked'
+                  className='size-5 shrink-0 text-muted-foreground'
+                />
+              )}
+              {isModuleComplete && (
+                <CheckCircle2
+                  aria-label='Module completed'
+                  className='size-5 shrink-0 text-success'
+                />
+              )}
+            </h1>
             <div className='flex shrink-0 gap-2'>
               <ModuleRoundNavLink
                 planId={planId}
@@ -77,22 +86,6 @@ export function ModuleHeader({
               />
             </div>
           </div>
-
-          <h1 className='mt-3 flex min-w-0 flex-wrap items-center gap-2 text-[32px] leading-10 font-semibold tracking-[-0.02em] text-foreground'>
-            <span className='min-w-0 wrap-break-word'>{module.title}</span>
-            {!previousModulesComplete && (
-              <Lock
-                aria-label='Module locked'
-                className='size-5 shrink-0 text-muted-foreground'
-              />
-            )}
-            {isModuleComplete && (
-              <CheckCircle2
-                aria-label='Module completed'
-                className='size-5 shrink-0 text-success'
-              />
-            )}
-          </h1>
           {module.description ? (
             <p className='mt-3 max-w-[70ch] text-base leading-[26px] wrap-break-word text-muted-foreground'>
               {module.description}

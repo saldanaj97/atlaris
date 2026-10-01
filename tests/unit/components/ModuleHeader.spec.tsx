@@ -59,7 +59,6 @@ describe('ModuleHeader', () => {
         module={module}
         planId={createId('plan')}
         planTopic='Plan'
-        totalModules={3}
         previousModuleId={siblingId}
         nextModuleId={null}
         statuses={{}}
