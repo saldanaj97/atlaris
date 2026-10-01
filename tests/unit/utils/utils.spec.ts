@@ -99,4 +99,16 @@ describe('cn (className utility)', () => {
     expect(result).not.toMatch(/^\s/);
     expect(result).not.toMatch(/\s$/);
   });
+
+  it('should let a later type role replace earlier type classes', () => {
+    expect(cn('text-sm leading-6 font-medium tracking-wide', 'type-body')).toBe(
+      'type-body',
+    );
+    expect(cn('type-body', 'type-label')).toBe('type-label');
+  });
+
+  it('should keep single-property modifiers after a type role', () => {
+    expect(cn('type-meta', 'font-medium')).toBe('type-meta font-medium');
+    expect(cn('type-meta', 'font-mono')).toBe('type-meta font-mono');
+  });
 });
