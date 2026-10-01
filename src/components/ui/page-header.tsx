@@ -2,7 +2,7 @@ import { cn } from '@/lib/utils';
 import * as React from 'react';
 
 const PAGE_HEADER_SUBTITLE_CLASS =
-  'mt-1 text-sm leading-[1.5] tracking-normal text-muted-foreground';
+  'mt-1 text-sm leading-normal tracking-normal text-muted-foreground';
 
 /**
  * Product page title row: centralizes app title/subtitle scale so pages do not improvise typography.
@@ -37,7 +37,7 @@ function PageHeader({
       {...props}
     >
       <div className={cn('min-w-0 flex-1', isCentered && 'w-full')}>
-        <TitleTag className='font-heading text-(length:--at-fluid-title-sm,clamp(1.75rem,1.4rem+1.5vw,2rem)) leading-[1.15] tracking-[-0.02em] text-balance text-foreground'>
+        <TitleTag className='type-title text-balance text-foreground'>
           {title}
         </TitleTag>
         {subtitle != null ? (

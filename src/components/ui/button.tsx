@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const buttonVariants = cva(
-  "inline-flex min-w-0 items-center justify-center gap-[8px] whitespace-normal [overflow-wrap:anywhere] rounded-[8px] border border-transparent text-sm leading-[20px] font-medium transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 disabled:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background aria-invalid:border-danger focus-visible:aria-invalid:border-danger cursor-pointer",
+  "inline-flex min-w-0 items-center justify-center gap-[8px] whitespace-normal [overflow-wrap:anywhere] rounded-[8px] border border-transparent type-label transition-[color,background-color,border-color,box-shadow] motion-reduce:transition-none disabled:pointer-events-none disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 disabled:shadow-none [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-[20px] [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background aria-invalid:border-danger focus-visible:aria-invalid:border-danger cursor-pointer",
   {
     variants: {
       variant: {

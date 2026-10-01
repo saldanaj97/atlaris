@@ -57,7 +57,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
                   <li key={item.href}>
                     <Link
                       href={item.href}
-                      className='inline-flex items-center justify-center text-xs leading-[1.125] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
+                      className='inline-flex items-center justify-center type-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
                     >
                       {item.label}
                     </Link>
@@ -71,7 +71,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
                 <li>
                   <a
                     href={`mailto:${SUPPORT_EMAIL}`}
-                    className='inline-flex items-center justify-center text-xs leading-[1.125] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
+                    className='inline-flex items-center justify-center type-meta text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
                   >
                     {SUPPORT_EMAIL}
                   </a>

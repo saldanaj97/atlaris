@@ -18,7 +18,7 @@ export function SectionOverline({
     <p
       data-slot='section-overline'
       className={cn(
-        'flex items-center gap-2 text-[11px] font-medium tracking-[0.18em] text-primary uppercase',
+        'flex items-center gap-2 type-eyebrow text-primary',
         className,
       )}
       {...props}
