@@ -49,7 +49,7 @@ export function YourProgressCard({
         Across every learning plan.
       </p>
 
-      <p className='font-heading mt-6 text-[32px] leading-10 tracking-[-0.02em] text-foreground tabular-nums'>
+      <p className='mt-6 type-title text-foreground tabular-nums'>
         {progress.percent}%
       </p>
       <p className='mt-1 text-xs text-muted-foreground'>Overall progress</p>

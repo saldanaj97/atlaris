@@ -39,7 +39,7 @@ export default function MaintenancePage() {
         <div className='mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 sm:px-6'>
           <div className='flex flex-1 flex-col items-center justify-center py-12 sm:py-16'>
             <div className='w-full max-w-2xl text-center'>
-              <h1 className='mx-auto max-w-[20ch] font-serif text-[2.75rem] leading-[1.05] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl md:text-[3.25rem]'>
+              <h1 className='mx-auto max-w-[20ch] type-display text-balance text-foreground'>
                 We’ll be back <span className='text-primary'>soon.</span>
               </h1>
 

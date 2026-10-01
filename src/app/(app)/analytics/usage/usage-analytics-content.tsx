@@ -102,9 +102,7 @@ export function UsageAnalyticsContent({
         <Surface padding='none' className='overflow-hidden'>
           <div className='flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6'>
             <div className='min-w-0'>
-              <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-                Trend
-              </p>
+              <p className='type-eyebrow text-muted-foreground'>Trend</p>
               <h2
                 id={EIGHT_WEEK_PULSE_TITLE_ID}
                 className='mt-1 text-xl font-semibold text-foreground'
@@ -162,7 +160,7 @@ function AnalyticsHero() {
           Learning <span className='text-primary'>analytics</span>
         </>
       }
-      titleClassName='font-heading text-(length:--at-fluid-title-lg,clamp(2rem,1.3rem+3vw,2.5rem)) leading-[1.15] tracking-[-0.03em] text-balance text-foreground'
+      titleClassName='type-title-hero text-balance text-foreground'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
       descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
     />

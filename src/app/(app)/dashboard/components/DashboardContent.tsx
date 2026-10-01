@@ -31,7 +31,7 @@ function DashboardHero({
 }) {
   return (
     <header className='mb-8 pt-6 pb-4 sm:pt-8 sm:pb-5'>
-      <h1 className='font-heading max-w-3xl text-(length:--at-fluid-title-sm,clamp(1.75rem,1.4rem+1.5vw,2rem)) leading-[1.15] tracking-[-0.02em] text-balance text-foreground'>
+      <h1 className='max-w-3xl type-title text-balance text-foreground'>
         {title}
       </h1>
       {typeof description === 'string' ? (
