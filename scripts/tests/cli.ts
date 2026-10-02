@@ -32,8 +32,8 @@ function usage(): never {
     [
       'Usage:',
       '  pnpm test',
-      '  pnpm test unit [--changed]',
-      '  pnpm test integration [--changed]',
+      '  pnpm test unit [--changed] [paths...]',
+      '  pnpm test integration [--changed] [paths...]',
       '  pnpm test workflow',
       '  pnpm test security',
       '  pnpm test smoke [options]',
@@ -61,7 +61,12 @@ function changedArgs(): string[] {
   return ['--changed', resolveChangedTestBase()];
 }
 
-function unitPhase(changed: boolean): TestPhase {
+type SuiteOptions = {
+  changed: boolean;
+  paths: string[];
+};
+
+function unitPhase({ changed, paths }: SuiteOptions): TestPhase {
   return {
     label: changed ? 'unit --changed' : 'unit',
     commands: [
@@ -72,7 +77,7 @@ function unitPhase(changed: boolean): TestPhase {
           '--project',
           'unit',
           ...(changed ? changedArgs() : []),
-          'tests/unit',
+          ...(paths.length > 0 ? paths : ['tests/unit']),
         ],
         { SKIP_DB_TEST_SETUP: 'true', NODE_ENV: 'test' },
       ),
@@ -80,7 +85,7 @@ function unitPhase(changed: boolean): TestPhase {
   };
 }
 
-function integrationPhase(changed: boolean): TestPhase {
+function integrationPhase({ changed, paths }: SuiteOptions): TestPhase {
   const commands: TestCommand[] = [
     vitestCommand(
       [
@@ -89,13 +94,14 @@ function integrationPhase(changed: boolean): TestPhase {
         '--project',
         'integration',
         ...(changed ? changedArgs() : []),
-        'tests/integration',
+        ...(paths.length > 0 ? paths : ['tests/integration']),
       ],
       { NODE_ENV: 'test' },
     ),
   ];
 
-  if (changed) {
+  // Explicit paths target only those files, so the workflow phase is skipped.
+  if (changed && paths.length === 0) {
     commands.push(
       vitestCommand(
         [
@@ -115,7 +121,7 @@ function integrationPhase(changed: boolean): TestPhase {
     commands,
     // The old integration-changed package script joined these commands with
     // `&&`; preserve that short-circuit while keeping the phase aggregate.
-    stopOnFailure: changed,
+    stopOnFailure: commands.length > 1,
   };
 }
 
@@ -177,15 +183,18 @@ function checkPhase(): TestPhase {
   };
 }
 
+const CHANGED_ONLY: SuiteOptions = { changed: true, paths: [] };
+const FULL_SUITE: SuiteOptions = { changed: false, paths: [] };
+
 function defaultPlan(): TestPhase[] {
-  return [unitPhase(true), integrationPhase(true)];
+  return [unitPhase(CHANGED_ONLY), integrationPhase(CHANGED_ONLY)];
 }
 
 function allPlan(includeE2e: boolean): TestPhase[] {
   return [
     checkPhase(),
-    unitPhase(false),
-    integrationPhase(false),
+    unitPhase(FULL_SUITE),
+    integrationPhase(FULL_SUITE),
     workflowPhase(),
     securityPhase(),
     ...(includeE2e ? [e2ePhase()] : []),
@@ -196,10 +205,18 @@ function stripArgumentSeparator(argv: readonly string[]): string[] {
   return argv[0] === '--' ? argv.slice(1) : [...argv];
 }
 
-function parseChangedOption(args: readonly string[]): boolean {
-  if (args.length === 0) return false;
-  if (args.length === 1 && args[0] === '--changed') return true;
-  usage();
+function parseSuiteOptions(args: readonly string[]): SuiteOptions {
+  const options: SuiteOptions = { changed: false, paths: [] };
+  for (const arg of args) {
+    if (arg === '--changed' && !options.changed) {
+      options.changed = true;
+    } else if (arg.startsWith('-')) {
+      usage();
+    } else {
+      options.paths.push(arg);
+    }
+  }
+  return options;
 }
 
 /** Build the direct command plan for the public `pnpm test` interface. */
@@ -219,9 +236,9 @@ export function parseTestArgs(argv: readonly string[]): TestPhase[] {
 
   switch (suite) {
     case 'unit':
-      return [unitPhase(parseChangedOption(options))];
+      return [unitPhase(parseSuiteOptions(options))];
     case 'integration':
-      return [integrationPhase(parseChangedOption(options))];
+      return [integrationPhase(parseSuiteOptions(options))];
     case 'workflow':
       if (options.length > 0) usage();
       return [workflowPhase()];

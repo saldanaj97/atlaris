@@ -47,6 +47,29 @@ describe('pnpm test dispatcher', () => {
     expect(integrationChanged.commands[1]?.args.at(-1)).toBe('tests/workflow');
   });
 
+  it('targets explicit paths instead of the whole suite directory', () => {
+    const unit = firstCommand(
+      parseTestArgs(['unit', 'tests/unit/a.spec.ts', 'tests/unit/b'])[0],
+    );
+    expect(unit.args.slice(-2)).toEqual([
+      'tests/unit/a.spec.ts',
+      'tests/unit/b',
+    ]);
+    expect(unit.args).not.toContain('tests/unit');
+    expect(unit.env).toEqual({ SKIP_DB_TEST_SETUP: 'true', NODE_ENV: 'test' });
+
+    const integration = parseTestArgs([
+      'integration',
+      '--changed',
+      'tests/integration/db/plans.spec.ts',
+    ])[0];
+    expect(integration.commands).toHaveLength(1);
+    expect(integration.commands[0]?.args).toContain('--changed');
+    expect(integration.commands[0]?.args.at(-1)).toBe(
+      'tests/integration/db/plans.spec.ts',
+    );
+  });
+
   it('supports the aggregate suite and optional e2e phase', () => {
     expect(parseTestArgs(['all']).map((phase) => phase.label)).toEqual([
       'check',
@@ -86,6 +109,7 @@ describe('pnpm test dispatcher', () => {
       TestCliUsageError,
     );
     expect(() => parseTestArgs(['unknown'])).toThrow(TestCliUsageError);
+    expect(() => parseTestArgs(['unit', '--watch'])).toThrow(TestCliUsageError);
   });
 
   it('short-circuits the changed integration workflow phase', async () => {
