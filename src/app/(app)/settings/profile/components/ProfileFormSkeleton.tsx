@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 import { SETTINGS_SECTIONS } from '@/app/(app)/settings/settings-section-ids';
 import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -17,11 +18,10 @@ export function ProfileFormSkeleton(): ReactElement {
     >
       {/* oxlint-enable shadcn/require-static-classes */}
       <CardHeader>
-        <CardTitle as='h2' className='text-xl leading-7'>
-          Profile
-        </CardTitle>
+        <CardTitle as='h2'>Profile</CardTitle>
       </CardHeader>
       <CardContent className='space-y-4'>
+        <LoadingStatus>Loading profile</LoadingStatus>
         <div className='flex min-w-0 items-center gap-4'>
           <Skeleton className='size-16 shrink-0 rounded-full' />
           <div className='min-w-0 flex-1 space-y-2'>
@@ -44,11 +44,10 @@ export function ProfilePlanCardSkeleton(): ReactElement {
   return (
     <Card as='section' className='gap-4 shadow-none'>
       <CardHeader>
-        <CardTitle as='h3' className='text-xl leading-7'>
-          Plan
-        </CardTitle>
+        <CardTitle as='h3'>Plan</CardTitle>
       </CardHeader>
       <CardContent>
+        <LoadingStatus>Loading plan</LoadingStatus>
         <Skeleton className='h-40 w-full' />
       </CardContent>
     </Card>

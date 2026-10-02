@@ -51,6 +51,7 @@ describe('DashboardContent', () => {
     expect(
       screen.getByRole('region', { name: 'Loading dashboard' }),
     ).toHaveAttribute('aria-busy', 'true');
+    expect(screen.getByRole('status')).toHaveTextContent('Loading dashboard');
   });
 
   it('does not fabricate progress before weekly activity is available', async () => {

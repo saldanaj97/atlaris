@@ -13,6 +13,7 @@ import {
   type UsageAnalyticsMetricTrend,
 } from './usage-analytics-formatters';
 import { Badge } from '@/components/ui/badge';
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { PageHero } from '@/components/ui/page-hero';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -284,17 +285,17 @@ export function UsageAnalyticsContentSkeleton() {
       aria-busy='true'
       className='space-y-8'
     >
-      <div className='min-h-[12rem] py-8 sm:min-h-[14rem] sm:py-10'>
-        <Skeleton className='h-4 w-28 bg-secondary' />
-        <Skeleton className='mt-5 h-10 w-full max-w-md' />
+      <LoadingStatus>Loading usage analytics</LoadingStatus>
+
+      <div className='min-h-[12rem] pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'>
+        <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />
       </div>
 
       <div className='space-y-4'>
         <div>
-          <Skeleton className='h-3 w-20 bg-muted' />
-          <Skeleton className='mt-2 h-6 w-40' />
-          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+          <Skeleton className='h-7 w-40' />
+          <Skeleton className='mt-1 h-5 w-full max-w-lg bg-muted' />
         </div>
         <div className='grid gap-4 md:grid-cols-3'>
           {[1, 2, 3].map((id) => (
@@ -305,9 +306,8 @@ export function UsageAnalyticsContentSkeleton() {
 
       <div className='space-y-4'>
         <div>
-          <Skeleton className='h-3 w-20 bg-muted' />
-          <Skeleton className='mt-2 h-6 w-40' />
-          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+          <Skeleton className='h-7 w-40' />
+          <Skeleton className='mt-1 h-5 w-full max-w-lg bg-muted' />
         </div>
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           {[1, 2, 3, 4].map((id) => (

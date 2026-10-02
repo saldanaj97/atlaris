@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
@@ -31,7 +32,15 @@ export function PlansChromeSkeleton() {
 /** Skeleton for the plan card library below the hero. */
 export function PlansContentSkeleton() {
   return (
-    <div className='space-y-6' aria-busy='true' aria-label='Loading plans'>
+    <div className='space-y-3' aria-busy='true' aria-label='Loading plans'>
+      <LoadingStatus>Loading plans</LoadingStatus>
+      <div className='flex min-h-11 items-center justify-between gap-3'>
+        <div className='flex items-center gap-2'>
+          <Skeleton className='size-5' />
+          <Skeleton className='h-4 w-28' />
+        </div>
+        <Skeleton className='h-4 w-14' />
+      </div>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
         {[1, 2, 3, 4, 5, 6].map((item) => (
           <PlanCardSkeleton key={`plan-card-skeleton-${item}`} />
@@ -60,8 +69,11 @@ function PlanCardSkeleton() {
           </div>
           <Skeleton className='h-2 w-full' />
         </div>
-        <div className='mt-5 flex items-center justify-between border-t border-border/70 pt-3'>
-          <Skeleton className='h-8 w-20' />
+        <div className='mt-5 flex items-center justify-between gap-3 border-t border-border/70 pt-2'>
+          <div className='flex min-h-11 items-center gap-2'>
+            <Skeleton className='size-5' />
+            <Skeleton className='h-4 w-12' />
+          </div>
           <Skeleton className='h-8 w-32' />
         </div>
       </div>
