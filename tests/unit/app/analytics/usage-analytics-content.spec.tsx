@@ -34,6 +34,14 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', (id: number) => {
     animationFrameCallbacks.delete(id);
   });
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  );
 
   /** Records observed elements and callbacks for test-controlled resize events. */
   class TestResizeObserver {

@@ -131,7 +131,6 @@ export default function AppSidebar({
                 id={DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID}
                 type='button'
                 aria-controls={id}
-                aria-expanded='true'
                 aria-label={DESKTOP_SIDEBAR_COLLAPSE_LABEL}
                 className={cn(
                   'flex size-[32px] shrink-0 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground motion-reduce:transition-none pointer-coarse:size-(--at-semantic-size-control-touch,2.75rem)',
@@ -278,9 +277,9 @@ export default function AppSidebar({
                 aria-labelledby={tierTitleId}
                 className='flex flex-col items-start gap-(--at-primitive-space-1,0.25rem) rounded-md border border-border bg-card p-(--at-primitive-space-3,0.75rem)'
               >
-                <h2 id={tierTitleId} className='type-label text-foreground'>
+                <p id={tierTitleId} className='type-label text-foreground'>
                   {tierLabel(tier)}
-                </h2>
+                </p>
                 <p className='type-meta text-muted-foreground'>
                   Pro unlocks more learning plans and features.
                 </p>
@@ -309,7 +308,6 @@ export default function AppSidebar({
                 <Link
                   href={ROUTES.SETTINGS.PROFILE}
                   onClick={onNavigate}
-                  aria-label='Account settings'
                   className={cn(
                     'flex h-[44px] min-w-0 flex-1 items-center gap-(--at-primitive-space-1-5,0.375rem) rounded-sm px-(--at-primitive-space-1-5,0.375rem) text-sm transition-colors hover:bg-secondary motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)',
                     SIDEBAR_FOCUS_RING,
@@ -323,6 +321,7 @@ export default function AppSidebar({
                   <span className='min-w-0 flex-1 truncate type-label text-foreground'>
                     {userName || 'Account'}
                   </span>
+                  <span className='sr-only'>, account settings</span>
                 </Link>
               )}
               {onDesktopCollapse ? (

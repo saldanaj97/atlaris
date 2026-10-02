@@ -185,7 +185,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
           name='search'
           placeholder='Search your plans...'
           aria-label='Search learning plans'
-          className='min-h-10 w-full border-border/70 bg-background/40'
+          className='min-h-10 w-full bg-background/40'
           defaultValue={query.search}
         />
       </form>

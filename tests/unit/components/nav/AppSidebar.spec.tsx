@@ -83,7 +83,7 @@ describe('AppSidebar', () => {
     });
 
     const collapse = screen.getByRole('button', { name: 'Collapse sidebar' });
-    expect(collapse).toHaveAttribute('aria-expanded', 'true');
+    expect(collapse).not.toHaveAttribute('aria-expanded');
     expect(collapse).toHaveAttribute('aria-controls', 'app-desktop-sidebar');
     expect(
       screen.getByRole('complementary', { name: 'Application sidebar' }),
@@ -147,7 +147,7 @@ describe('AppSidebar', () => {
     const { rerender } = renderSidebar({ tier: 'free' });
 
     expect(
-      screen.getByRole('heading', { name: 'Free plan' }),
+      screen.getByRole('region', { name: 'Free plan' }),
     ).toBeInTheDocument();
     expect(
       screen.getByText('Pro unlocks more learning plans and features.'),
@@ -199,7 +199,7 @@ describe('AppSidebar', () => {
       name: /Switch to (light|dark) mode|Toggle theme/,
     });
     const account = within(sidebar).getByRole('link', {
-      name: 'Account settings',
+      name: 'Dev User, account settings',
     });
     expect(theme.parentElement).toContainElement(account);
     expect(account).toHaveAttribute('href', '/settings/profile');
@@ -253,9 +253,10 @@ describe('AppSidebar', () => {
           within(sidebar).getByRole('link', { name: item.label }),
         ).toHaveAttribute('href', item.href);
       }
-      expect(
-        within(sidebar).getByRole('link', { name: 'Atlaris home' }),
-      ).toHaveAttribute('href', '/dashboard');
+      const home = within(sidebar).getByRole('link', { name: 'Atlaris home' });
+      expect(home).toHaveAttribute('href', '/dashboard');
+      // Hidden while the expand control replaces it, so it must not be a tab stop.
+      expect(home).toHaveAttribute('tabindex', '-1');
       expect(
         within(sidebar).getByRole('link', { name: 'Create plan' }),
       ).toHaveAttribute('href', '/plans/new');
@@ -280,7 +281,7 @@ describe('AppSidebar', () => {
       });
       expect(expand).toHaveAttribute('id', 'app-desktop-sidebar-expand');
       expect(expand).toHaveAttribute('aria-controls', 'app-desktop-sidebar');
-      expect(expand).toHaveAttribute('aria-expanded', 'false');
+      expect(expand).not.toHaveAttribute('aria-expanded');
 
       expand.focus();
       await user.keyboard('{Enter}');

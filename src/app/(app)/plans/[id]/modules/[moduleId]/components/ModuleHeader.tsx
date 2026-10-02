@@ -61,16 +61,22 @@ export function ModuleHeader({
             <h1 className='flex min-w-0 flex-wrap items-center gap-2 type-title text-foreground'>
               <span className='min-w-0 wrap-break-word'>{module.title}</span>
               {!previousModulesComplete && (
-                <Lock
-                  aria-label='Module locked'
-                  className='size-5 shrink-0 text-muted-foreground'
-                />
+                <>
+                  <Lock
+                    aria-hidden='true'
+                    className='size-5 shrink-0 text-muted-foreground'
+                  />
+                  <span className='sr-only'>Module locked</span>
+                </>
               )}
               {isModuleComplete && (
-                <CheckCircle2
-                  aria-label='Module completed'
-                  className='size-5 shrink-0 text-success'
-                />
+                <>
+                  <CheckCircle2
+                    aria-hidden='true'
+                    className='size-5 shrink-0 text-success'
+                  />
+                  <span className='sr-only'>Module completed</span>
+                </>
               )}
             </h1>
             <div className='flex shrink-0 gap-2'>

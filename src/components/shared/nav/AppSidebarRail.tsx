@@ -65,14 +65,17 @@ export default function AppSidebarRail({
     <>
       <div className='flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center justify-center pt-[env(safe-area-inset-top,0px)]'>
         {/* The mark and the expand control share one slot; the expand control
-            replaces the mark while the sidebar is hovered or focused. */}
+            replaces the mark while the sidebar is hovered or focused. The mark
+            link stays out of the tab order (Dashboard covers the same
+            destination) so focus never lands on it while it is hidden. */}
         <div className='relative size-[32px] pointer-coarse:size-(--at-semantic-size-control-touch,2.75rem)'>
           <Link
             href={ROUTES.DASHBOARD}
             aria-label='Atlaris home'
+            tabIndex={-1}
             className={cn(
               'absolute inset-0 flex items-center justify-center rounded-sm opacity-100 scale-100 transition-all duration-(--motion-duration-feedback) ease-(--motion-easing-standard) motion-reduce:transition-none',
-              'group-focus-within/sidebar:pointer-events-none group-focus-within/sidebar:scale-85 group-focus-within/sidebar:opacity-0 group-hover/sidebar:pointer-events-none group-hover/sidebar:scale-85 group-hover/sidebar:opacity-0 [@media(hover:none)]:pointer-events-none [@media(hover:none)]:opacity-0',
+              'group-focus-within/sidebar:pointer-events-none group-focus-within/sidebar:invisible group-focus-within/sidebar:scale-85 group-focus-within/sidebar:opacity-0 group-hover/sidebar:pointer-events-none group-hover/sidebar:invisible group-hover/sidebar:scale-85 group-hover/sidebar:opacity-0 [@media(hover:none)]:pointer-events-none [@media(hover:none)]:invisible [@media(hover:none)]:opacity-0',
               SIDEBAR_FOCUS_RING,
             )}
           >
@@ -97,7 +100,6 @@ export default function AppSidebarRail({
             id={DESKTOP_SIDEBAR_EXPAND_CONTROL_ID}
             type='button'
             aria-controls={id}
-            aria-expanded='false'
             aria-label={DESKTOP_SIDEBAR_EXPAND_LABEL}
             className={cn(
               'group/expand pointer-events-none absolute inset-0 flex items-center justify-center rounded-full opacity-0 scale-85 transition-all duration-(--motion-duration-feedback) ease-(--motion-easing-standard) motion-reduce:transition-none',
@@ -135,7 +137,7 @@ export default function AppSidebarRail({
                     RAIL_ITEM,
                     SIDEBAR_FOCUS_RING,
                     isActive
-                      ? 'bg-action-soft text-foreground'
+                      ? 'relative bg-action-soft text-foreground before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-link'
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )}
                 >
