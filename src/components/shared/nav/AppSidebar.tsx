@@ -53,6 +53,9 @@ const NAV_ROW =
 const NAV_ROW_IDLE =
   'text-muted-foreground hover:bg-secondary hover:text-foreground';
 const NAV_ROW_SELECTED = 'bg-action-soft text-foreground';
+/** Left bar on the active top-level destination; matches the collapsed rail. */
+const NAV_ROW_MARKER =
+  'relative before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-link';
 
 function tierLabel(tier: SubscriptionTier): string {
   return `${tier[0]!.toUpperCase()}${tier.slice(1)} plan`;
@@ -172,7 +175,9 @@ export default function AppSidebar({
                         'group flex min-w-0 flex-1 items-center gap-(--at-primitive-space-3,0.75rem) font-medium',
                         NAV_ROW,
                         SIDEBAR_FOCUS_RING,
-                        isActive ? NAV_ROW_SELECTED : NAV_ROW_IDLE,
+                        isActive
+                          ? cn(NAV_ROW_SELECTED, NAV_ROW_MARKER)
+                          : NAV_ROW_IDLE,
                       )}
                     >
                       <NavIcon
