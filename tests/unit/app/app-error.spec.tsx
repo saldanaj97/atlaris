@@ -1,16 +1,16 @@
-import UsageAnalyticsError from '@/app/(app)/analytics/usage/error';
+import AppError from '@/app/(app)/error';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 
-describe('UsageAnalyticsError', () => {
-  it('refreshes analytics data when recovery is selected', async () => {
+describe('AppError', () => {
+  it('shows a recoverable error state and retries on request', async () => {
     const retry = vi.fn();
     const user = userEvent.setup();
 
-    render(
-      <UsageAnalyticsError error={new Error('load failed')} retry={retry} />,
-    );
+    render(<AppError error={new Error('load failed')} retry={retry} />);
+
+    expect(screen.getByRole('alert')).toHaveTextContent('Something went wrong');
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 

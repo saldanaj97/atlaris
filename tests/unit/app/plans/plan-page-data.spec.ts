@@ -36,4 +36,18 @@ describe('loadPlanForPage', () => {
       },
     });
   });
+
+  it('returns NOT_FOUND when the plan is missing or not owned by the user', async () => {
+    requestBoundaryComponentMock.mockImplementationOnce(async (resolver) =>
+      resolver({ actor: { id: 'user-1' }, db: {} }),
+    );
+    getPlanDetailForReadMock.mockResolvedValueOnce(null);
+
+    const result = await loadPlanForPage('plan-other-user');
+
+    expect(result).toMatchObject({
+      success: false,
+      error: { code: 'NOT_FOUND' },
+    });
+  });
 });

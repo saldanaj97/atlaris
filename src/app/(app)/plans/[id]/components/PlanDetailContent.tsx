@@ -4,10 +4,11 @@ import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { Card, CardContent } from '@/components/ui/card';
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 interface PlanDetailContentProps {
   planId: string;
@@ -36,9 +37,8 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
       }
 
       case 'NOT_FOUND':
-        return (
-          <PlanDetailPageError message='This plan does not exist or you do not have access to it.' />
-        );
+        // Missing and not-owned plans share this code; render the plan-scoped not-found UI.
+        return notFound();
 
       case 'FORBIDDEN':
         return (
@@ -85,20 +85,21 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 export function PlanDetailContentSkeleton() {
   return (
     <>
-      <header className='mb-5'>
+      <header className='mb-6'>
         <div className='flex flex-wrap items-center justify-between gap-2'>
           <Skeleton className='h-8 w-40' />
           <Skeleton className='h-8 w-28' />
         </div>
       </header>
 
+      <LoadingStatus>Loading plan</LoadingStatus>
       <section
         aria-label='Learning plan loading'
+        aria-busy='true'
         className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel px-5 py-6 sm:px-7 sm:py-8'
       >
         <div className='max-w-3xl'>
-          <Skeleton className='h-3 w-48 bg-secondary' />
-          <Skeleton className='mt-4 h-10 w-full max-w-2xl' />
+          <Skeleton className='h-12 w-full max-w-2xl' />
           <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />
           <div className='mt-5 flex flex-wrap gap-3'>
             <Skeleton className='h-10 w-36 bg-primary/35' />

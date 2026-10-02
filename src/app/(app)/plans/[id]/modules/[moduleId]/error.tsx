@@ -4,20 +4,20 @@ import { PlanRouteErrorContent } from '@/app/(app)/plans/[id]/components/PlanRou
 
 interface ErrorProps {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
 /**
  * Route-level error boundary for module detail pages.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function ModuleDetailError({ error, reset }: ErrorProps) {
+export default function ModuleDetailError({ error, retry }: ErrorProps) {
   return (
     <PlanRouteErrorContent
       error={error}
-      reset={reset}
+      retry={retry}
       logMessage='Module detail error:'
-      title='Error Loading Module'
+      title='Error loading module'
       message='Something went wrong while loading this module. This could be a temporary issue.'
     />
   );

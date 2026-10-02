@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 
-import { PlanDetailPageError } from '@/app/(app)/plans/[id]/components/Error';
 import {
   PlanDetailContent,
   PlanDetailContentSkeleton,
@@ -29,14 +28,12 @@ export const metadata: Metadata = {
 /**
  * Plan detail page with Suspense boundary for data-dependent content.
  *
- * The page validates the route param and wraps data-dependent content
- * in a Suspense boundary for loading states. Runtime errors are handled
+ * The page wraps data-dependent content in a Suspense boundary for loading
+ * states. Runtime errors are handled
  * by the route-level error.tsx boundary.
  */
 export default async function PlanDetailPage({ params }: PlanPageProps) {
   const { id } = await params;
-  if (!id) return <PlanDetailPageError />;
-
   return (
     <Suspense fallback={<PlanDetailContentSkeleton />}>
       <PlanDetailContent planId={id} />

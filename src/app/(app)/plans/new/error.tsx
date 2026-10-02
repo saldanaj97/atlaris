@@ -1,6 +1,5 @@
 'use client';
 
-import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { clientLogger } from '@/lib/logging/client';
 import { useEffect } from 'react';
@@ -11,12 +10,12 @@ interface ErrorProps {
 }
 
 /**
- * Route-level error boundary for plans list page.
+ * Route-level error boundary for the create-plan page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function PlansError({ error, retry }: ErrorProps) {
+export default function CreatePlanError({ error, retry }: ErrorProps) {
   useEffect(() => {
-    clientLogger.error('Plans list error:', {
+    clientLogger.error('Create plan error:', {
       errorDigest: error.digest,
       message: error.message,
       stack: error.stack,
@@ -24,14 +23,10 @@ export default function PlansError({ error, retry }: ErrorProps) {
   }, [error]);
 
   return (
-    <>
-      <PlansHero />
-
-      <RouteErrorState
-        title='Error loading plans'
-        message="We couldn't load your learning plans. This could be a temporary issue."
-        onRetry={retry}
-      />
-    </>
+    <RouteErrorState
+      title='Error loading plan form'
+      message="We couldn't load the plan form. This could be a temporary issue."
+      onRetry={retry}
+    />
   );
 }

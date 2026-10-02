@@ -510,6 +510,11 @@ export function PlansList({ page, query }: PlansListProps) {
           canCreatePlan={page.canCreatePlan}
           searchQuery={query.search}
           filterStatus={query.status}
+          clearFiltersHref={plansHref({
+            search: '',
+            status: 'all',
+            sort: query.sort,
+          })}
         />
       ) : (
         <PlansGrid

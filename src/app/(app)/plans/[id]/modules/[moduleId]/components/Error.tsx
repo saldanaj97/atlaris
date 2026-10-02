@@ -18,9 +18,9 @@ export function ModuleDetailPageError({
   upgradeHref,
 }: ModuleDetailPageErrorProps) {
   return (
-    <div className='flex min-h-[60vh] flex-col items-center justify-center p-4'>
+    <div className='py-10'>
       <RouteErrorState
-        title='Error Loading Module'
+        title='Error loading module'
         message={
           message ??
           'There was an error loading the module. Please try again later.'
@@ -36,12 +36,12 @@ export function ModuleDetailPageError({
               <Button asChild>
                 <Link href={`/plans/${planId}`}>
                   <ArrowLeft />
-                  Back to Plan
+                  Back to plan
                 </Link>
               </Button>
             ) : null}
             <Button asChild variant='outline'>
-              <Link href='/plans'>View All Plans</Link>
+              <Link href='/plans'>View all plans</Link>
             </Button>
           </div>
         }

@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 describe('PlansError', () => {
   it('omits the create-plan CTA while the plans page is unavailable', () => {
-    render(<PlansError error={new Error('load failed')} reset={vi.fn()} />);
+    render(<PlansError error={new Error('load failed')} retry={vi.fn()} />);
 
     expect(
       screen.queryByRole('link', { name: /new plan/i }),
