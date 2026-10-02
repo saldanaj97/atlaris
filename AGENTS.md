@@ -4,6 +4,17 @@
 
 Before implementing or reviewing code, read ENGINEERING_RULES.md at the repository root and follow its applicable guidance.
 
+## Toolchain
+
+- **Lint:** Oxlint, not ESLint. `pnpm lint`; one file: `pnpm exec oxlint <files> --max-warnings=0`. Includes `@shadcn/lint`; see `docs/development/shadcn-lint.md`.
+- **Format:** oxfmt, not Prettier. `pnpm exec oxfmt <files>` (`--check` to verify).
+- **Typecheck:** `pnpm typecheck` (runs `next typegen`, then `tsc`; ignores dev-server types in `.next/dev`).
+- **Tests:** `pnpm test unit <paths...>` or `pnpm test integration <paths...>`; more in `tests/AGENTS.md`.
+- **Dev server:** `pnpm dev` (Portless). In a linked worktree the URL is `https://<branch>.atlaris.localhost`; `portless get atlaris` prints it.
+- **UI checks:** `pnpm exec tsx scripts/dev/tw-classes.ts <classes>` prints the CSS Tailwind generates; `pnpm exec tsx scripts/dev/screenshot.ts <routes>` screenshots the running dev server at several widths in both themes.
+- **Paths:** `cn` is `@/lib/utils` (`src/lib/utils/index.ts`).
+- **Next.js docs:** read them only when changing Next.js APIs or conventions (routing, data fetching, caching, config). Find a guide by name with `rg --files node_modules/next/dist/docs | rg <topic>`; folders are numbered (`01-app/01-getting-started`, `02-guides`, `03-api-reference`).
+
 ## Project documentation (`docs/`)
 
 **Docs index:** `[docs/README.md](docs/README.md)` is the directory of every folder and file under `docs/`. Use it to find and open relevant project docs for the current request — architecture, API contracts, database, development, security, styles, testing, CI/CD, and third-party service notes under `docs/third-party-services/` (Clerk CLI, Portless, etc.).
@@ -22,7 +33,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md` then the relevant sections of `docs/styles/design-system.md`. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
+**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md`, then only the chapters of `docs/styles/design-system.md` that its "Find the right chapter" table names. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
 
 
 ### 1. Think Before Coding
@@ -124,12 +135,6 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Testing: Apply the central selective-verification policy and relevant engineering rules for behavioral coverage.
 
 
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- BEGIN:nextjs-agent-rules -->
 

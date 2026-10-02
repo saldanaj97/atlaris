@@ -2,6 +2,8 @@
 
 Index of every folder and file under `docs/`. Paths are relative to this file.
 
+**In-flight work is not in `docs/`.** Plans and status for active tickets (`JCS-*`) live in Linear and on the tsk board (`tsk list --json`). Session recaps are local and untracked: `.daily-recap/` (daily notes) and `.agents/recaps/<date>/` (orchestration waves), both linked from the main checkout. Check those before searching the repo for a ticket's plan.
+
 ## Root
 
 | File | Description |
@@ -82,6 +84,7 @@ Local development, env, deploy, and logging.
 | [environment.md](./development/environment.md) | Environment variables and logging guidelines |
 | [local-database.md](./development/local-database.md) | Local Supabase CLI stack setup |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
+| [shadcn-lint.md](./development/shadcn-lint.md) | `@shadcn/lint` rules, `no-restyle` contracts, and what to do when lint blocks a class |
 
 ## `security/`
 
@@ -161,7 +164,8 @@ docs/
 │   ├── deploy.md
 │   ├── environment.md
 │   ├── local-database.md
-│   └── logging.md
+│   ├── logging.md
+│   └── shadcn-lint.md
 ├── security/
 │   ├── codex-scan-verification-2026-08-20.md
 │   ├── security-audit-checklist.md

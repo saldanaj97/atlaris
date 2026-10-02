@@ -34,6 +34,7 @@ Put DB-related numeric limits, string length caps, and shared constraint values 
 - Prefer `pnpm exec supabase migration new <name>` for new migrations.
 - Use `pnpm exec supabase db diff -f <name>` only after verifying the local DB state represents the intended schema.
 - Use `pnpm db reset` to rebuild local Supabase from migrations and seed data.
+- Register every new migration in `scripts/db/run-phased-migrations.sh`: additive changes go in `EXPAND_MIGRATIONS`, destructive or old-binary-breaking changes in `CONTRACT_MIGRATIONS`. `tests/unit/architecture/db-migration-workflows.spec.ts` fails on an unregistered file. Phase rules: `docs/development/deploy.md`.
 
 ## Retention Cleanup
 

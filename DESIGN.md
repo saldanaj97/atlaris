@@ -10,6 +10,26 @@ description: Agent entry point. The canonical detailed specification is docs/sty
 
 Read [the canonical design system](docs/styles/design-system.md) before introducing UI, changing shared components or tokens, modifying responsive behavior or visual states, or creating interface patterns. Consult it for marketing copy and brand usage too. This file is an orientation, not a second token catalog.
 
+## Find the right chapter
+
+The canonical document is long. Read only the chapters your change touches: run `grep -n '^## ' docs/styles/design-system.md` for chapter line numbers, then read that range.
+
+| Change                                         | Chapters                                         |
+| ---------------------------------------------- | ------------------------------------------------ |
+| Colors, type, spacing, radius, motion, tokens  | 03–07, 10–13                                     |
+| Buttons, links, icon buttons                   | 14 Actions                                       |
+| Inputs, selects, validation, form layout       | 15 Forms (component), 22 Forms (pattern)         |
+| App shell, sidebar, tabs, breadcrumbs          | 16 Navigation, 20 Page layouts                   |
+| Cards, badges, tables, progress, charts        | 17 Data display, 21 Cards & content groups       |
+| Toasts, alerts, skeletons, spinners            | 18 Feedback, 23 Loading / empty / error          |
+| Dialogs, sheets, menus, tooltips               | 19 Overlays                                      |
+| Breakpoints and reflow                         | 06 Layout & breakpoints, 24 Responsive behavior  |
+| Focus, keyboard, reduced motion, screen reader | 25 Accessibility                                 |
+| Labels, messages, marketing and brand copy     | 26 Content & copy, 02 Logo & brand marks         |
+| Mapping a design rule to existing code         | 27 Implementation mapping                        |
+
+Skip "Final-stage sources" and "Inherited reference scopes" at the end unless you are auditing provenance.
+
 ## Source of truth
 
 | Question                               | Authority                                                                                                                                                                                     |

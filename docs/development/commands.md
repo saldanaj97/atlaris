@@ -77,7 +77,7 @@ pnpm start            # Start production server
 ```bash
 pnpm lint               # Oxlint: lint source, scripts, Supabase, and tests
 pnpm lint --format=github # Oxlint with GitHub annotations for CI
-pnpm typecheck          # TypeScript type checking only
+pnpm typecheck          # next typegen + tsc; ignores dev-server types in .next/dev
 pnpm check               # Lint and typecheck in parallel
 ```
 
@@ -129,6 +129,8 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 pnpm test                     # Run changed unit + integration-class tests
 pnpm test unit                # Run all unit tests
 pnpm test unit --changed      # Run unit tests for changed files only
+pnpm test unit <paths...>     # Run specific unit test files or directories
+pnpm test integration <paths...> # Run specific integration test files (Testcontainers)
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
 pnpm test integration --changed # Run changed integration + Workflow SDK tests
 pnpm test integration         # Run the full DB/API integration suite (heavier; use sparingly)
@@ -144,12 +146,10 @@ Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-
 
 ### Targeted Vitest commands
 
-Use native Vitest arguments for single-file or watch runs:
+Prefer `pnpm test unit <paths...>` and `pnpm test integration <paths...>` for single-file runs. Use native Vitest arguments for watch mode and Workflow SDK files:
 
 ```bash
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # watch
-NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 NODE_ENV=test pnpm vitest run --config vitest.workflow.config.ts tests/workflow/path/to/file.workflow.spec.ts
 ```
 
