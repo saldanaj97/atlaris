@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 
@@ -8,6 +9,7 @@ import { Surface } from '@/components/ui/surface';
 export function ModuleDetailContentSkeleton() {
   return (
     <section aria-label='Loading module' aria-busy='true' className='space-y-8'>
+      <LoadingStatus>Loading module</LoadingStatus>
       {/* ModuleHeader skeleton */}
       <article className='mb-8'>
         {/* Breadcrumb Navigation skeleton */}
@@ -29,24 +31,19 @@ export function ModuleDetailContentSkeleton() {
         </nav>
 
         {/* Hero Card skeleton */}
-        <div className='relative overflow-hidden rounded-2xl border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
-          <div className='flex flex-col gap-6 sm:flex-row sm:items-stretch sm:justify-between'>
-            <div className='min-w-0 flex-1'>
-              <Skeleton className='mb-4 h-3 w-32 bg-secondary' />
-              <Skeleton className='mb-2 h-8 w-full max-w-md' />
-              <Skeleton className='h-4 w-full max-w-xl bg-muted' />
+        <div className='rounded-lg border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
+          <div className='flex min-w-0 items-start justify-between gap-4'>
+            <Skeleton className='h-9 w-full max-w-md' />
+            <div className='flex shrink-0 gap-2'>
+              <Skeleton className='size-8 rounded-full' />
+              <Skeleton className='size-8 rounded-full' />
             </div>
-
-            <div className='hidden shrink-0 flex-col items-end justify-between gap-6 border-l border-border/50 py-1 pl-7 sm:flex'>
-              <div className='flex gap-2'>
-                <Skeleton className='size-8 rounded-full' />
-                <Skeleton className='size-8 rounded-full' />
-              </div>
-              <div className='space-y-1.5'>
-                <Skeleton className='h-9 w-16' />
-                <Skeleton className='ml-auto h-3 w-14 bg-muted' />
-              </div>
-            </div>
+          </div>
+          <Skeleton className='mt-3 h-6 w-full max-w-xl bg-muted' />
+          <div className='mt-4 flex min-w-0 flex-wrap gap-x-5 gap-y-2'>
+            <Skeleton className='h-4 w-20 bg-muted' />
+            <Skeleton className='h-4 w-20 bg-muted' />
+            <Skeleton className='h-4 w-28 bg-muted' />
           </div>
         </div>
       </article>
