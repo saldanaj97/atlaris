@@ -29,7 +29,7 @@ overrides:
   sharp: ^0.35.0
   '@babel/core': ^7.29.6
   '@opentelemetry/core': ^2.8.0
-  '@xhmikosr/decompress': 11.1.3
+  '@xhmikosr/decompress': ^11.1.4
 
 importers:
 
@@ -3571,8 +3571,8 @@ packages:
     resolution: {integrity: sha512-2MS94QnmXQwjkKN8WyFiu1sU7J3rcWJcMze4kRYsX7tN+CXpUGECgkh4YSOhujpkWPuVlFudIziJHO/TxOqkQQ==}
     engines: {node: '>=20'}
 
-  '@xhmikosr/decompress@11.1.3':
-    resolution: {integrity: sha512-NiyhJq6z7ERsYghcnXZUI6ooDXgZtoB+G9eUsYhfSM4VLp2rKx9UxhKI1NEf1PqosrNPxG3bnSsr2UBVbNurlg==}
+  '@xhmikosr/decompress@11.1.4':
+    resolution: {integrity: sha512-ZbYL7SAfY37/TMpopqBR3mQiuQ76kI/RNpN4q82YHSw/UxktZNy8P4wgiKPSrTImMAWRaUG8UK1pgEa56YdLaw==}
     engines: {node: '>=20'}
 
   '@xhmikosr/downloader@16.3.1':
@@ -6954,6 +6954,7 @@ packages:
 
   workflow@4.8.0:
     resolution: {integrity: sha512-6JGHlgyuoxjw/m+T2DNx33lPHvPjPWUP418cvr4AzMhKmiRDaJV8Vy8dXCMHn7CZ62ixswNrnhKZtyZjgmOvGg==}
+    deprecated: A queue transport bug can cause function timeouts under connection-pool saturation. Upgrade to workflow@4.8.8 or later. See https://github.com/vercel/workflow/pull/4049
     hasBin: true
     peerDependencies:
       '@opentelemetry/api': '1'
@@ -10082,7 +10083,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@xhmikosr/decompress@11.1.3':
+  '@xhmikosr/decompress@11.1.4':
     dependencies:
       '@xhmikosr/decompress-tar': 9.0.2
       '@xhmikosr/decompress-tarbz2': 9.0.2
@@ -10098,7 +10099,7 @@ snapshots:
   '@xhmikosr/downloader@16.3.1':
     dependencies:
       '@xhmikosr/archive-type': 8.1.0
-      '@xhmikosr/decompress': 11.1.3
+      '@xhmikosr/decompress': 11.1.4
       content-disposition: 2.0.1
       ext-name: 5.0.0
       file-type: 21.3.4
