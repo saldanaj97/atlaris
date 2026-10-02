@@ -654,7 +654,8 @@
   .animate-dashboard-unfold,
   .animate-dashboard-trace,
   .animate-dashboard-ledger-row,
-  .animate-plan-card-enter {
+  .animate-plan-card-enter,
+  .animate-usage-analytics-point-label-in {
     animation-name: none;
   }
 

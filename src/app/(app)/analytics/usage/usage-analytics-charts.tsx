@@ -17,6 +17,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type ComponentProps,
   type CSSProperties,
   type ReactElement,
@@ -29,6 +30,7 @@ const LEGEND_COLUMN_GAP = 16;
 const LINE_ENTER_ANIMATION_MS = 650;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
+const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 type RechartsModule = typeof import('recharts');
 type RechartsRendererProps = {
@@ -43,6 +45,20 @@ type PointLabelProps = {
   x?: string | number;
   y?: string | number;
 };
+
+function subscribeReducedMotion(onChange: () => void): () => void {
+  const query = window.matchMedia(REDUCED_MOTION_QUERY);
+  query.addEventListener('change', onChange);
+  return () => query.removeEventListener('change', onChange);
+}
+
+function usePrefersReducedMotion(): boolean {
+  return useSyncExternalStore(
+    subscribeReducedMotion,
+    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
+    () => false,
+  );
+}
 
 const RechartsRenderer = lazy(async () => {
   const recharts = await import('recharts');
@@ -86,6 +102,7 @@ export function RadialTextMetricChart({
   sublabel: string;
   percent: number;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const chartData = [
     {
       value: Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : 0,
@@ -116,6 +133,7 @@ export function RadialTextMetricChart({
                 background={{ fill: 'var(--border)' }}
                 cornerRadius={8}
                 fill='var(--color-value)'
+                isAnimationActive={!prefersReducedMotion}
               />
             </RadialBarChart>
           </ResponsiveChartContainer>
@@ -145,6 +163,7 @@ export function RadialStackedMetricChart({
   value: string;
   sublabel: string;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const safeTotal = Math.max(0, total);
   const completedValue = Math.min(Math.max(0, completed), safeTotal);
   const chartTotal = Math.max(1, safeTotal);
@@ -186,12 +205,14 @@ export function RadialStackedMetricChart({
                 stackId='time'
                 cornerRadius={8}
                 fill='var(--color-completed)'
+                isAnimationActive={!prefersReducedMotion}
               />
               <RadialBar
                 dataKey='remaining'
                 stackId='time'
                 cornerRadius={8}
                 fill='var(--color-remaining)'
+                isAnimationActive={!prefersReducedMotion}
               />
             </RadialBarChart>
           </ResponsiveChartContainer>
@@ -215,6 +236,7 @@ export function ActiveProgressBarChart({
 }: {
   weeks: UsageAnalyticsWeekRow[];
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const chartData = weeks.map((week) => ({
     week: week.label.split('-')[0],
     changes: week.progressChangeCount,
@@ -254,7 +276,12 @@ export function ActiveProgressBarChart({
               cursor={false}
               content={<ChartTooltipContent indicator='dot' />}
             />
-            <Bar dataKey='changes' name='Changes' radius={[4, 4, 0, 0]}>
+            <Bar
+              dataKey='changes'
+              name='Changes'
+              radius={[4, 4, 0, 0]}
+              isAnimationActive={!prefersReducedMotion}
+            >
               {chartData.map((week) => (
                 <Cell
                   key={week.week}
@@ -277,6 +304,7 @@ export function StackedEventsBarChart({
 }: {
   weeks: UsageAnalyticsWeekRow[];
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const chartData = weeks.map((week) => ({
     week: week.label.split('-')[0],
     completed: week.completedEvents,
@@ -325,6 +353,7 @@ export function StackedEventsBarChart({
                 stackId='events'
                 fill='var(--color-other)'
                 radius={[0, 0, 4, 4]}
+                isAnimationActive={!prefersReducedMotion}
               />
               <Bar
                 dataKey='completed'
@@ -332,6 +361,7 @@ export function StackedEventsBarChart({
                 stackId='events'
                 fill='var(--color-completed)'
                 radius={[4, 4, 0, 0]}
+                isAnimationActive={!prefersReducedMotion}
               />
             </BarChart>
           </ResponsiveChartContainer>
@@ -358,6 +388,7 @@ export function StreakStepLineChart({
   current: number;
   longest: number;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const chartData = [
     { label: 'Best', days: longest },
     { label: 'Current', days: current },
@@ -404,6 +435,7 @@ export function StreakStepLineChart({
               strokeWidth={3}
               dot={false}
               activeDot={false}
+              isAnimationActive={!prefersReducedMotion}
             />
           </LineChart>
         </ResponsiveChartContainer>
@@ -423,6 +455,7 @@ export function WeeklyLineChart({
   labelledBy?: string;
   describedBy?: string;
 }) {
+  const prefersReducedMotion = usePrefersReducedMotion();
   const containerRef = useRef<HTMLDivElement>(null);
   const [{ hasMeasuredChart, renderedPlanCount }, setChartLayout] = useState({
     hasMeasuredChart: false,
@@ -605,7 +638,7 @@ export function WeeklyLineChart({
                         strokeWidth={4}
                         dot={false}
                         activeDot={false}
-                        isAnimationActive
+                        isAnimationActive={!prefersReducedMotion}
                         animationDuration={LINE_ENTER_ANIMATION_MS}
                         animationEasing='ease-out'
                       >

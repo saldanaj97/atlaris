@@ -210,7 +210,7 @@ export function PlanRow({
             ) : (
               <Link
                 href={planHref}
-                className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50'
+                className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel'
               >
                 {plan.topic}
               </Link>
@@ -312,6 +312,7 @@ export function PlanRow({
                   <Sparkles aria-hidden='true' />
                 ) : null}
                 {planActionLabel(plan.status)}
+                <span className='sr-only'> {plan.topic}</span>
                 <ArrowRight
                   aria-hidden='true'
                   className='transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
