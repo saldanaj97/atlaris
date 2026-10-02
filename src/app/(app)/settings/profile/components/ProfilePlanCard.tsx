@@ -7,6 +7,7 @@ import {
   AUTO_RENEWAL_NOTICE,
   hasManageableSubscription,
 } from '@/app/(app)/settings/billing/components/subscription-management';
+import { PlanCardRetryButton } from '@/app/(app)/settings/profile/components/PlanCardRetryButton';
 import { PRICING_PLAN_FEATURES } from '@/app/(landing)/pricing/pricing-plan-features';
 import { Button } from '@/components/ui/button';
 import {
@@ -107,10 +108,11 @@ export async function ProfilePlanCard({
         <CardHeader>
           <CardTitle as='h3'>Plan</CardTitle>
         </CardHeader>
-        <CardContent className='@container'>
+        <CardContent className='flex flex-col items-start gap-[12px]'>
           <p className='type-body text-muted-foreground'>
-            Unavailable right now.
+            We couldn't load your plan details. This could be a temporary issue.
           </p>
+          <PlanCardRetryButton />
         </CardContent>
       </Card>
     );

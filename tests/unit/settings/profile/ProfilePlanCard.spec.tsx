@@ -1,11 +1,16 @@
 import { PRICING_PLAN_FEATURES } from '@/app/(landing)/pricing/pricing-plan-features';
 import { ROUTES } from '@/features/navigation/routes';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   loadBillingSnapshotMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(),
+  refreshMock: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mocks.refreshMock }),
 }));
 
 vi.mock(
@@ -80,12 +85,16 @@ describe('ProfilePlanCard', () => {
     expect(screen.queryByText('Custom projects')).not.toBeInTheDocument();
   });
 
-  it('shows an unavailable state when the snapshot is missing', async () => {
+  it('shows a retryable unavailable state when the snapshot is missing', async () => {
     mocks.loadBillingSnapshotMock.mockResolvedValueOnce(null);
 
     await renderPlanCard();
 
-    expect(screen.getByText('Unavailable right now.')).toBeVisible();
+    expect(
+      screen.getByText(/We couldn't load your plan details/),
+    ).toBeVisible();
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(mocks.refreshMock).toHaveBeenCalledOnce();
     expect(
       screen.queryByRole('link', { name: /View plans/ }),
     ).not.toBeInTheDocument();
