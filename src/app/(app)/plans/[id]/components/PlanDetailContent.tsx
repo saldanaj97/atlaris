@@ -38,6 +38,9 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
 
       case 'NOT_FOUND':
         // Missing and not-owned plans share this code; render the plan-scoped not-found UI.
+        // This runs after streaming starts, so the response stays 200 with a noindex
+        // tag (a soft 404). Accepted because these pages sit behind auth; a real 404
+        // would need a pre-stream check in proxy.
         return notFound();
 
       case 'FORBIDDEN':
