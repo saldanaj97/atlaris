@@ -48,7 +48,7 @@ function getNavItemClass(
   }
 
   return cn(
-    'inline-flex h-auto shrink-0 items-center gap-1 whitespace-nowrap px-1 py-0 text-sm font-medium transition',
+    'inline-flex h-auto shrink-0 items-center gap-1 whitespace-nowrap px-1 py-0 type-label transition',
     'hover:text-primary dark:hover:text-primary',
     'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
     isActive ? 'text-primary dark:text-primary' : 'text-muted-foreground',

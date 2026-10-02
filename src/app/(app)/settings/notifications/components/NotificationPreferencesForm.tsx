@@ -129,12 +129,12 @@ export function NotificationPreferencesForm({
               <Label
                 id={`${idPrefix}-unsubscribe-label`}
                 htmlFor={`${idPrefix}-unsubscribe`}
-                className='text-base font-semibold'
+                className='type-reading font-semibold'
               >
                 Unsubscribe from optional emails
               </Label>
             </div>
-            <p className='text-sm text-muted-foreground'>
+            <p className='type-body text-muted-foreground'>
               This overrides the category choices below without changing them.
               Account, security, and billing emails still send when required.
             </p>
@@ -173,18 +173,18 @@ export function NotificationPreferencesForm({
                   <Label
                     id={`${inputId}-label`}
                     htmlFor={inputId}
-                    className='text-base font-semibold'
+                    className='type-reading font-semibold'
                   >
                     {copy.label}
                   </Label>
                   <p
                     id={descriptionId}
-                    className='text-sm text-muted-foreground'
+                    className='type-body text-muted-foreground'
                   >
                     {copy.description}
                   </p>
                   {unsubscribeOverrideActive && (
-                    <p className='text-xs text-muted-foreground'>
+                    <p className='type-meta text-muted-foreground'>
                       Unsubscribe-all is currently overriding this preference.
                     </p>
                   )}
@@ -204,7 +204,7 @@ export function NotificationPreferencesForm({
       </div>
 
       <div className='flex flex-col gap-3 border-t border-panel-border pt-5 sm:flex-row sm:items-center sm:justify-between'>
-        <div className='flex items-center gap-2 text-sm text-muted-foreground'>
+        <div className='flex items-center gap-2 type-body text-muted-foreground'>
           <CheckCircle2 aria-hidden className='size-4' />
           Optional emails are off until you enable them.
         </div>

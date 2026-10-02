@@ -8,10 +8,10 @@ import { formatSkillLevel } from '@/features/plans/formatters';
 export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
   return (
     <section className='border-t pt-4' aria-labelledby='plan-details-heading'>
-      <h3 id='plan-details-heading' className='mb-3 text-sm font-semibold'>
+      <h3 id='plan-details-heading' className='mb-3 type-label font-semibold'>
         Plan Details
       </h3>
-      <dl className='grid grid-cols-1 gap-3 text-sm sm:grid-cols-2'>
+      <dl className='grid grid-cols-1 gap-3 type-body sm:grid-cols-2'>
         <div>
           <dt className='text-muted-foreground'>Skill Level</dt>
           <dd className='mt-0.5 text-foreground'>

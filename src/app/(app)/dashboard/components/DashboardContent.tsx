@@ -38,7 +38,7 @@ function DashboardHero({
       <h1 className='max-w-3xl type-title text-balance text-foreground'>
         {title}
       </h1>
-      <Description className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
+      <Description className='mt-2 max-w-3xl type-body text-muted-foreground sm:type-reading'>
         {description}
       </Description>
     </header>

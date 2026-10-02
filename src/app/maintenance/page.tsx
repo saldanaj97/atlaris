@@ -61,7 +61,7 @@ export default function MaintenancePage() {
                 We’ll be back <span className='text-primary'>soon.</span>
               </h1>
 
-              <p className='mx-auto mt-5 max-w-136 text-base leading-relaxed text-muted-foreground sm:text-lg'>
+              <p className='mx-auto mt-5 max-w-136 type-reading text-muted-foreground'>
                 Atlaris is temporarily unavailable while maintenance is in
                 progress. Please try again in a few minutes.
               </p>

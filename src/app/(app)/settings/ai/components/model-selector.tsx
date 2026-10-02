@@ -107,7 +107,7 @@ const ModelDropdown = ({
             <div className='flex items-start justify-between'>
               <div>
                 <h3 className='font-semibold'>{selectedModelData.name}</h3>
-                <p className='text-sm text-muted-foreground'>
+                <p className='type-body text-muted-foreground'>
                   by {selectedModelData.provider}
                 </p>
               </div>
@@ -120,18 +120,20 @@ const ModelDropdown = ({
               </Badge>
             </div>
 
-            <p className='text-sm'>{selectedModelData.description}</p>
+            <p className='type-body'>{selectedModelData.description}</p>
 
             <div className='grid grid-cols-4 gap-4 pt-2'>
               <div>
-                <p className='text-xs text-muted-foreground'>Context Window</p>
-                <p className='text-sm font-medium'>
+                <p className='type-meta text-muted-foreground'>
+                  Context Window
+                </p>
+                <p className='type-label'>
                   {(selectedModelData.contextWindow / 1000).toFixed(0)}K tokens
                 </p>
               </div>
               <div>
-                <p className='text-xs text-muted-foreground'>Max Output</p>
-                <p className='text-sm font-medium'>
+                <p className='type-meta text-muted-foreground'>Max Output</p>
+                <p className='type-label'>
                   {(
                     (selectedModelData.maxOutputTokens ??
                       selectedModelData.contextWindow / 2) / 1000
@@ -140,16 +142,16 @@ const ModelDropdown = ({
                 </p>
               </div>
               <div>
-                <p className='text-xs text-muted-foreground'>Input Cost</p>
-                <p className='text-sm font-medium'>
+                <p className='type-meta text-muted-foreground'>Input Cost</p>
+                <p className='type-label'>
                   {selectedModelData.inputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.inputCostPerMillion}/M`}
                 </p>
               </div>
               <div>
-                <p className='text-xs text-muted-foreground'>Output Cost</p>
-                <p className='text-sm font-medium'>
+                <p className='type-meta text-muted-foreground'>Output Cost</p>
+                <p className='type-label'>
                   {selectedModelData.outputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.outputCostPerMillion}/M`}
@@ -163,7 +165,7 @@ const ModelDropdown = ({
       {saveStatus === 'error' && (
         <p
           aria-live='assertive'
-          className='rounded-lg border-2 border-destructive bg-destructive/10 p-3 text-sm text-destructive'
+          className='rounded-lg border-2 border-destructive bg-destructive/10 p-3 type-body text-destructive'
         >
           Failed to save preferences. Please try again.
         </p>
@@ -172,7 +174,7 @@ const ModelDropdown = ({
       {saveStatus === 'success' && (
         <output
           aria-live='polite'
-          className='rounded-lg border-2 border-success bg-success/10 p-3 text-sm text-success dark:text-success-foreground'
+          className='rounded-lg border-2 border-success bg-success/10 p-3 type-body text-success dark:text-success-foreground'
         >
           Preferences saved successfully!
         </output>
@@ -202,7 +204,7 @@ const ModelDropdown = ({
       {showUpgradeCta && userTier !== 'pro' && (
         <div className='rounded-lg border-2 border-border bg-muted p-4'>
           <h4 className='mb-2 font-semibold'>Unlock Premium Models</h4>
-          <p className='mb-3 text-sm text-muted-foreground'>
+          <p className='mb-3 type-body text-muted-foreground'>
             Upgrade to Pro to access advanced models like Claude Sonnet 4.5,
             GPT-5.2, and more with larger context windows and better
             performance.

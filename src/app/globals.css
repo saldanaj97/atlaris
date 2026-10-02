@@ -201,6 +201,8 @@
 }
 
 @theme inline {
+  /* Font sizes come from the type-* role utilities; drop Tailwind's text-xs..9xl scale. */
+  --text-*: initial;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);

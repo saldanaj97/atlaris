@@ -25,7 +25,7 @@ type UsageMeterRowProps = {
 function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
   return (
     <LedgerStackedRow label={label}>
-      <div className='flex items-center justify-between text-sm'>
+      <div className='flex items-center justify-between type-body'>
         <span className='text-muted-foreground tabular-nums'>
           {used}/{formatCompactUsageLimit(limit)}
         </span>
@@ -75,7 +75,7 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
 
   return (
     <div className='space-y-4'>
-      <p className='text-sm text-muted-foreground'>
+      <p className='type-body text-muted-foreground'>
         You're currently on the {tierName} plan.
       </p>
       <div className='flex flex-col gap-3 rounded-lg border border-panel-border bg-panel/70 p-4 sm:flex-row sm:items-center sm:justify-between'>
@@ -86,7 +86,7 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
           >
             <Briefcase className='size-4' />
           </span>
-          <p className='text-sm font-semibold text-foreground'>
+          <p className='type-label font-semibold text-foreground'>
             {tierName} Plan
           </p>
         </div>

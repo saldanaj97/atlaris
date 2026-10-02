@@ -102,7 +102,7 @@ export async function ProfilePlanCard({
           <CardTitle as='h3'>Plan</CardTitle>
         </CardHeader>
         <CardContent className='@container'>
-          <p className='text-sm text-muted-foreground'>
+          <p className='type-body text-muted-foreground'>
             Unavailable right now.
           </p>
         </CardContent>

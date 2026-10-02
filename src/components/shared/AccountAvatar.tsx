@@ -24,7 +24,7 @@ export function AccountAvatar({
     <span
       aria-hidden='true'
       className={cn(
-        'inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-xs font-semibold text-foreground ring-1 ring-border',
+        'inline-flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted type-meta font-semibold text-foreground ring-1 ring-border',
         className,
       )}
     >

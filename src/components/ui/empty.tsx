@@ -65,7 +65,7 @@ function EmptyTitle({
   return (
     <h2
       data-slot='empty-title'
-      className={cn('text-xl font-semibold tracking-normal', className)}
+      className={cn('type-card', className)}
       {...props}
     >
       {children}
@@ -78,7 +78,7 @@ function EmptyDescription({ className, ...props }: React.ComponentProps<'p'>) {
     <p
       data-slot='empty-description'
       className={cn(
-        'text-sm/relaxed text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
+        'type-body text-muted-foreground [&>a]:underline [&>a]:underline-offset-4 [&>a:hover]:text-primary',
         className,
       )}
       {...props}
@@ -91,7 +91,7 @@ function EmptyContent({ className, ...props }: React.ComponentProps<'div'>) {
     <div
       data-slot='empty-content'
       className={cn(
-        'flex w-full max-w-sm min-w-0 flex-col items-center gap-4 text-sm text-balance',
+        'flex w-full max-w-sm min-w-0 flex-col items-center gap-4 type-body text-balance',
         className,
       )}
       {...props}

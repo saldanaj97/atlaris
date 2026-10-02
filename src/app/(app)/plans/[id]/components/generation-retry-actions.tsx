@@ -31,7 +31,7 @@ export function RetryAction({
 export function ExhaustedRetriesMessage() {
   return (
     <div className='rounded-lg bg-muted p-4 text-center'>
-      <p className='text-sm text-muted-foreground'>
+      <p className='type-body text-muted-foreground'>
         Maximum retry attempts reached. Return to your plans to try again.
       </p>
     </div>

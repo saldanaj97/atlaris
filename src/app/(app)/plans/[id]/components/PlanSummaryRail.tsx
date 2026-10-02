@@ -59,12 +59,12 @@ export function PlanSummaryRail({
                 >
                   Your progress
                 </h2>
-                <p className='mt-1 text-xs text-muted-foreground'>
+                <p className='mt-1 type-meta text-muted-foreground'>
                   Overall plan progress
                 </p>
               </div>
             </div>
-            <span className='text-2xl font-semibold text-foreground tabular-nums'>
+            <span className='type-section text-foreground tabular-nums'>
               {stats.completionPercentage}%
             </span>
           </div>
@@ -109,7 +109,7 @@ export function PlanSummaryRail({
               >
                 Plan details
               </h2>
-              <p className='mt-1 text-xs text-muted-foreground'>
+              <p className='mt-1 type-meta text-muted-foreground'>
                 Your current learning setup
               </p>
             </div>
@@ -177,7 +177,7 @@ export function PlanSummaryRail({
                 <span className='mt-1 block font-medium wrap-break-word text-foreground'>
                   {activeModule.title}
                 </span>
-                <span className='mt-1 block text-xs text-muted-foreground'>
+                <span className='mt-1 block type-meta text-muted-foreground'>
                   {formatMinutes(activeModule.estimatedMinutes)} ·{' '}
                   {activeModule.tasks.length} task
                   {activeModule.tasks.length === 1 ? '' : 's'}
@@ -190,8 +190,8 @@ export function PlanSummaryRail({
             </Link>
           ) : isPlanComplete ? (
             <div className='mt-4 rounded-lg border border-success/30 bg-success/5 p-3 dark:bg-success/10'>
-              <p className='text-sm font-medium text-success'>Plan complete</p>
-              <p className='mt-1 text-xs text-muted-foreground'>
+              <p className='type-label text-success'>Plan complete</p>
+              <p className='mt-1 type-meta text-muted-foreground'>
                 Review the route to revisit any module.
               </p>
               <Button asChild variant='soft-primary' size='sm' className='mt-3'>
@@ -200,10 +200,10 @@ export function PlanSummaryRail({
             </div>
           ) : (
             <div className='mt-4 rounded-lg border border-border/70 bg-panel-muted/50 p-3'>
-              <p className='text-sm font-medium text-foreground'>
+              <p className='type-label text-foreground'>
                 No next module available.
               </p>
-              <p className='mt-1 text-xs text-muted-foreground'>
+              <p className='mt-1 type-meta text-muted-foreground'>
                 Review the route to revisit any module.
               </p>
               <Button asChild variant='soft-primary' size='sm' className='mt-3'>
@@ -219,7 +219,7 @@ export function PlanSummaryRail({
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className='flex items-baseline justify-between gap-4 text-sm'>
+    <div className='flex items-baseline justify-between gap-4 type-body'>
       <dt className='text-muted-foreground'>{label}</dt>
       <dd className='text-right font-medium text-foreground'>{value}</dd>
     </div>

@@ -58,9 +58,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
       className='relative h-full overflow-hidden p-5 animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-6'
     >
       <div className='flex h-full flex-col'>
-        <h2 className='text-lg font-semibold text-foreground sm:text-xl'>
-          Resume learning
-        </h2>
+        <h2 className='type-card text-foreground'>Resume learning</h2>
 
         <Badge
           variant='outline'
@@ -76,18 +74,18 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           {badgeLabel}
         </Badge>
 
-        <h3 className='mt-4 text-xl font-semibold text-balance text-foreground'>
+        <h3 className='mt-4 type-card text-balance text-foreground'>
           {plan.plan.topic}
         </h3>
-        <p className='mt-2 text-sm text-muted-foreground'>{moduleMeta}</p>
+        <p className='mt-2 type-body text-muted-foreground'>{moduleMeta}</p>
         {resumeModule?.description ? (
-          <p className='mt-3 text-sm text-muted-foreground'>
+          <p className='mt-3 type-body text-muted-foreground'>
             {resumeModule.description}
           </p>
         ) : null}
 
         <div className='mt-5'>
-          <div className='flex items-center justify-between gap-3 text-xs text-muted-foreground tabular-nums'>
+          <div className='flex items-center justify-between gap-3 type-meta text-muted-foreground tabular-nums'>
             <p>
               {plan.completedTasks} of {plan.totalTasks} tasks
             </p>

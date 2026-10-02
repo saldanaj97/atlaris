@@ -44,12 +44,12 @@ export function RouteErrorState({
       >
         <AlertTriangle className='size-5' />
       </div>
-      <h2 id={titleId} className='mb-2 text-xl font-semibold text-foreground'>
+      <h2 id={titleId} className='mb-2 type-card text-foreground'>
         {title}
       </h2>
       <p
         id={messageId}
-        className='mb-5 max-w-md text-sm leading-relaxed text-muted-foreground'
+        className='mb-5 max-w-md type-body text-muted-foreground'
       >
         {message}
       </p>

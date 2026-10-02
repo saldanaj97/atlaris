@@ -42,7 +42,7 @@ export function DriftSection() {
               A clearer way to learn{' '}
               <span className='text-primary italic'>and grow.</span>
             </h2>
-            <p className='mt-6 max-w-md font-sans text-base leading-relaxed text-muted-foreground'>
+            <p className='mt-6 max-w-md type-reading text-muted-foreground'>
               You&apos;ve started before. The course, the book, the
               certification. Atlaris holds the route with structured learning
               paths, curated resources, and progress tracking.
@@ -55,10 +55,10 @@ export function DriftSection() {
                       <Icon className='size-4' aria-hidden='true' />
                     </span>
                     <span>
-                      <span className='block font-serif text-sm font-semibold text-foreground'>
+                      <span className='block type-label font-serif font-semibold text-foreground'>
                         {title}
                       </span>
-                      <span className='mt-1 block text-sm leading-relaxed text-muted-foreground'>
+                      <span className='mt-1 block type-body text-muted-foreground'>
                         {pointCopy}
                       </span>
                     </span>

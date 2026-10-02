@@ -36,10 +36,8 @@ function LockedContentOverlay() {
               <Lock className='size-8 text-muted-foreground/50' />
             </div>
           </div>
-          <h3 className='mb-2 text-lg font-semibold text-foreground'>
-            Lesson Locked
-          </h3>
-          <p className='mx-auto max-w-xs text-sm break-words text-muted-foreground'>
+          <h3 className='mb-2 type-card text-foreground'>Lesson Locked</h3>
+          <p className='mx-auto max-w-xs type-body break-words text-muted-foreground'>
             Complete the previous lessons to unlock this content.
           </p>
         </div>

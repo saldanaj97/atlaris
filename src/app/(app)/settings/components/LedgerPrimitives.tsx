@@ -61,7 +61,7 @@ export function LedgerSectionBlock({
       <div className='min-w-0'>
         {showTitle ? <h2 className='type-card'>{label}</h2> : null}
         {description ? (
-          <p className='mt-1 max-w-xl text-sm leading-relaxed text-muted-foreground'>
+          <p className='mt-1 max-w-xl type-body text-muted-foreground'>
             {description}
           </p>
         ) : null}
@@ -98,12 +98,12 @@ export function LedgerRow({
       )}
     >
       <div className='min-w-0'>
-        <p className='text-sm text-foreground'>{label}</p>
+        <p className='type-label text-foreground'>{label}</p>
         {hint ? (
-          <p className='mt-0.5 text-xs text-muted-foreground'>{hint}</p>
+          <p className='mt-0.5 type-meta text-muted-foreground'>{hint}</p>
         ) : null}
       </div>
-      <div className='flex max-w-full min-w-0 flex-wrap items-center gap-2 text-sm [overflow-wrap:anywhere] text-muted-foreground sm:justify-end sm:text-right'>
+      <div className='flex max-w-full min-w-0 flex-wrap items-center gap-2 type-body [overflow-wrap:anywhere] text-muted-foreground sm:justify-end sm:text-right'>
         {children}
       </div>
     </div>
@@ -121,11 +121,11 @@ export function LedgerStackedRow({
 }): ReactElement {
   return (
     <div className='py-3.5 first:pt-0 last:pb-0'>
-      <div className='mb-1.5 flex items-center justify-between gap-4 text-sm'>
+      <div className='mb-1.5 flex items-center justify-between gap-4 type-body'>
         <div className='min-w-0'>
-          <span className='text-foreground'>{label}</span>
+          <span className='type-label text-foreground'>{label}</span>
           {hint ? (
-            <p className='mt-0.5 text-xs text-muted-foreground'>{hint}</p>
+            <p className='mt-0.5 type-meta text-muted-foreground'>{hint}</p>
           ) : null}
         </div>
       </div>

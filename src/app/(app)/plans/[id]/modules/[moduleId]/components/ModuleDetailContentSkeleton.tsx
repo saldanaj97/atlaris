@@ -14,7 +14,7 @@ export function ModuleDetailContentSkeleton() {
       <article className='mb-8'>
         {/* Breadcrumb Navigation skeleton */}
         <nav className='mb-6 min-w-0' aria-hidden='true'>
-          <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 text-sm'>
+          <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 type-body'>
             <li className='max-w-full min-w-0'>
               <div className='flex items-center gap-1.5 rounded-lg px-2.5 py-1.5'>
                 <Skeleton className='size-3.5' />

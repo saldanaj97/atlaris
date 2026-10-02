@@ -49,7 +49,7 @@ export function RouteSection() {
             <span className='text-primary italic'>stay on track.</span>
           </h2>
           <p
-            className={`mx-auto mt-5 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+            className={`mx-auto mt-5 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
             style={{ '--i': 2 } as CSSProperties}
           >
             From guided learning plans to practical projects, Atlaris gives you
@@ -72,9 +72,7 @@ export function RouteSection() {
               <h3 className='mt-6 type-card font-serif text-foreground'>
                 {title}
               </h3>
-              <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
-                {copy}
-              </p>
+              <p className='mt-2 type-body text-muted-foreground'>{copy}</p>
             </article>
           ))}
         </div>
@@ -82,7 +80,7 @@ export function RouteSection() {
 
       <RevealAnimation>
         <ul
-          className={`mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground ${styles.revealItem}`}
+          className={`mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-3 type-body text-muted-foreground ${styles.revealItem}`}
         >
           {[
             'Step-by-step guidance',

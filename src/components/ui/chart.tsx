@@ -36,7 +36,7 @@ export function ChartContainer({
     <div
       data-chart
       className={cn(
-        'flex aspect-video justify-center text-xs text-muted-foreground [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/70 [&_.recharts-tooltip-cursor]:stroke-border',
+        'flex aspect-video justify-center type-meta text-muted-foreground [&_.recharts-cartesian-axis-tick_text]:fill-muted-foreground [&_.recharts-cartesian-grid_line]:stroke-border/70 [&_.recharts-tooltip-cursor]:stroke-border',
         className,
       )}
       style={{ ...chartVars, ...style }}
@@ -78,7 +78,7 @@ export function ChartTooltipContent({
   return (
     <div
       className={cn(
-        'grid min-w-40 gap-2 rounded-lg border border-panel-border bg-panel px-3 py-2 text-xs text-panel-foreground shadow-md',
+        'grid min-w-40 gap-2 rounded-lg border border-panel-border bg-panel px-3 py-2 type-meta text-panel-foreground shadow-md',
         className,
       )}
     >

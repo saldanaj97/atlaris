@@ -22,7 +22,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
       <footer className='relative z-10 px-4 py-6 sm:px-6 lg:px-8'>
         <div className='mx-auto flex w-full max-w-7xl flex-col items-center justify-between gap-4 sm:flex-row sm:items-center'>
           <BrandLogo linked={false} size='sm' />
-          <div className='flex flex-col items-center gap-2 text-xs text-muted-foreground sm:items-end'>
+          <div className='flex flex-col items-center gap-2 type-meta text-muted-foreground sm:items-end'>
             <a
               href={`mailto:${SUPPORT_EMAIL}`}
               className='inline-flex items-center justify-center text-link transition-colors hover:text-link-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
@@ -44,7 +44,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
         <div className='grid gap-10 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]'>
           <div>
             <BrandLogo size='sm' />
-            <p className='mt-3 max-w-xs text-sm leading-snug text-muted-foreground'>
+            <p className='mt-3 max-w-xs type-body text-muted-foreground'>
               Learn. Build. Go further.
             </p>
           </div>
@@ -54,7 +54,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
             className='grid grid-cols-2 gap-8 sm:col-span-2 sm:grid-cols-2'
           >
             <div>
-              <p className='text-xs font-medium text-foreground'>Explore</p>
+              <p className='type-meta font-medium text-foreground'>Explore</p>
               <ul className='mt-2 space-y-1.5 pointer-coarse:space-y-1'>
                 {marketingLinks.map((item) => (
                   <li key={item.href}>
@@ -66,7 +66,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
               </ul>
             </div>
             <div>
-              <p className='text-xs font-medium text-foreground'>Support</p>
+              <p className='type-meta font-medium text-foreground'>Support</p>
               <ul className='mt-2 space-y-1.5 pointer-coarse:space-y-1'>
                 <li>
                   <a
@@ -81,7 +81,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
           </nav>
         </div>
 
-        <p className='text-xs text-muted-foreground' suppressHydrationWarning>
+        <p className='type-meta text-muted-foreground' suppressHydrationWarning>
           © {new Date().getFullYear()} Atlaris. All rights reserved.
         </p>
       </div>

@@ -38,7 +38,7 @@ function LearningResourceCard({
           </span>
           <ExternalLink className='size-3 shrink-0 opacity-50' />
         </div>
-        <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+        <div className='flex items-center gap-2 type-meta text-muted-foreground'>
           {/* oxlint-disable shadcn/require-static-classes -- Resource badge classes come from the shared, finite resource-type recipe. */}
           <Badge
             className={cn(
@@ -54,7 +54,9 @@ function LearningResourceCard({
           ) : null}
         </div>
         {resource.notes ? (
-          <p className='mt-2 text-xs text-muted-foreground'>{resource.notes}</p>
+          <p className='mt-2 type-meta text-muted-foreground'>
+            {resource.notes}
+          </p>
         ) : null}
       </div>
     </a>
@@ -72,7 +74,7 @@ export function LessonResourceList({
 
   return (
     <div className='mb-6'>
-      <h4 className='mb-3 text-sm font-semibold text-foreground'>
+      <h4 className='mb-3 type-label font-semibold text-foreground'>
         Learning resources
       </h4>
       <div className='grid gap-3 sm:grid-cols-2'>

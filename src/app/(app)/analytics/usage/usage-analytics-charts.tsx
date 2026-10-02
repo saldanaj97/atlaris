@@ -141,10 +141,10 @@ export function RadialTextMetricChart({
             aria-hidden='true'
             className='pointer-events-none absolute inset-0 flex flex-col items-center justify-center'
           >
-            <span className='text-2xl font-semibold text-foreground tabular-nums'>
+            <span className='type-section text-foreground tabular-nums'>
               {value}
             </span>
-            <span className='text-xs text-muted-foreground'>{sublabel}</span>
+            <span className='type-meta text-muted-foreground'>{sublabel}</span>
           </div>
         </div>
       )}
@@ -220,10 +220,10 @@ export function RadialStackedMetricChart({
             aria-hidden='true'
             className='pointer-events-none absolute inset-x-0 bottom-1 flex flex-col items-center'
           >
-            <span className='text-2xl font-semibold text-foreground tabular-nums'>
+            <span className='type-section text-foreground tabular-nums'>
               {value}
             </span>
-            <span className='text-xs text-muted-foreground'>{sublabel}</span>
+            <span className='type-meta text-muted-foreground'>{sublabel}</span>
           </div>
         </div>
       )}
@@ -365,7 +365,7 @@ export function StackedEventsBarChart({
               />
             </BarChart>
           </ResponsiveChartContainer>
-          <div className='mt-2 flex justify-center gap-4 text-xs text-muted-foreground'>
+          <div className='mt-2 flex justify-center gap-4 type-meta text-muted-foreground'>
             <span className='flex items-center gap-1.5'>
               <span className='size-2 rounded-full bg-chart-2' />
               Completed
@@ -560,7 +560,7 @@ export function WeeklyLineChart({
     <div data-testid='eight-week-pulse'>
       <div className='flex gap-2'>
         <div className='flex h-80 w-11 shrink-0 items-center justify-center'>
-          <p className='-rotate-90 text-sm whitespace-nowrap text-muted-foreground'>
+          <p className='-rotate-90 type-body whitespace-nowrap text-muted-foreground'>
             Progress changes
           </p>
         </div>
@@ -662,7 +662,7 @@ export function WeeklyLineChart({
           series.map(({ plan, color }) => (
             <div
               key={plan.id}
-              className='flex w-45 shrink-0 items-center gap-2 text-xs text-muted-foreground'
+              className='flex w-45 shrink-0 items-center gap-2 type-meta text-muted-foreground'
             >
               <span
                 className='size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
@@ -672,12 +672,12 @@ export function WeeklyLineChart({
             </div>
           ))
         ) : hasMeasuredChart ? (
-          <p className='text-xs text-muted-foreground'>No plans yet</p>
+          <p className='type-meta text-muted-foreground'>No plans yet</p>
         ) : null}
         {hiddenPlanCount > 0 ? (
           <div
             aria-label={`${hiddenPlanCount} more ${hiddenPlanCount === 1 ? 'plan' : 'plans'} not shown at this width`}
-            className='flex w-45 shrink-0 items-center text-xs font-medium text-muted-foreground'
+            className='flex w-45 shrink-0 items-center type-meta font-medium text-muted-foreground'
           >
             +{hiddenPlanCount} more
           </div>

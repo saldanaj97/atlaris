@@ -45,7 +45,7 @@ export function LocalPricingPreview() {
 
   return (
     <div className='space-y-4'>
-      <p className='text-center text-sm text-muted-foreground'>
+      <p className='text-center type-body text-muted-foreground'>
         Local pricing preview — representative prices; checkout is disabled.
       </p>
       <PricingCards

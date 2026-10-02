@@ -162,12 +162,12 @@ export function UnifiedPlanInput({
 
         <CardContent className='space-y-6 px-5 py-5 sm:px-6'>
           <div>
-            <Label htmlFor={topicInputId} className='text-sm leading-5'>
+            <Label htmlFor={topicInputId} className='type-label'>
               What do you want to learn?
             </Label>
             <p
               id={topicHelpId}
-              className='mt-2 text-sm leading-5 text-muted-foreground'
+              className='mt-2 type-body text-muted-foreground'
             >
               Describe the outcome you want to work toward.
             </p>
@@ -181,7 +181,7 @@ export function UnifiedPlanInput({
               placeholder='e.g. TypeScript for React apps, conversational Spanish, product design fundamentals…'
               aria-describedby={topicHelpId}
               aria-required='true'
-              className='mt-3 min-h-24 w-full min-w-0 resize-y text-base leading-6 sm:min-h-24'
+              className='mt-3 min-h-24 w-full min-w-0 resize-y type-input sm:min-h-24'
               rows={4}
               disabled={isSubmitting || disabled}
             />
@@ -196,10 +196,7 @@ export function UnifiedPlanInput({
         </CardContent>
 
         <CardFooter className='flex-col items-stretch gap-4 border-t border-border px-5 py-5 sm:flex-row sm:items-center sm:justify-between sm:px-6'>
-          <p
-            id={requirementsId}
-            className='text-sm leading-5 text-muted-foreground'
-          >
+          <p id={requirementsId} className='type-body text-muted-foreground'>
             {requirementsMessage}
           </p>
           <Button

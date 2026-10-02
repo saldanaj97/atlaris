@@ -72,7 +72,7 @@ export function HeroSection() {
           </h1>
 
           <p
-            className={`mt-6 max-w-[31rem] font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.heroCopy}`}
+            className={`mt-6 max-w-[31rem] type-reading text-muted-foreground ${styles.heroCopy}`}
           >
             {copy.subheadline}
           </p>

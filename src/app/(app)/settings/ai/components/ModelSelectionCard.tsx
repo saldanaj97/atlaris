@@ -69,11 +69,11 @@ export async function ModelSelectionCard() {
 
       return (
         <div className='py-3.5 first:pt-0 last:pb-0'>
-          <p className='mb-4 text-xs text-muted-foreground'>
+          <p className='mb-4 type-meta text-muted-foreground'>
             {currentModel !== null ? (
               <>
                 New plan generations and regenerations use this saved choice. A
-                one-off <code className='font-mono text-xs'>?model=</code>{' '}
+                one-off <code className='type-meta font-mono'>?model=</code>{' '}
                 request can still override a single run.
               </>
             ) : (
@@ -119,7 +119,7 @@ export async function ModelSelectionCard() {
 
       return (
         <div className='space-y-8 py-3.5 first:pt-0 last:pb-0'>
-          <p className='text-xs text-muted-foreground'>
+          <p className='type-meta text-muted-foreground'>
             Save a default for outline generation, full-plan regeneration, and
             detailed lessons. Restore default clears only that slot.
           </p>

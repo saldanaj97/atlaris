@@ -30,13 +30,10 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
       aria-labelledby={TITLE_ID}
       className='h-full p-5 animate-dashboard-unfold [animation-delay:120ms] motion-reduce:animate-none sm:p-6'
     >
-      <h2
-        id={TITLE_ID}
-        className='text-lg font-semibold text-foreground sm:text-xl'
-      >
+      <h2 id={TITLE_ID} className='type-card text-foreground'>
         Your learning route
       </h2>
-      <p className='mt-2 text-sm text-muted-foreground'>
+      <p className='mt-2 type-body text-muted-foreground'>
         {plan.plan.topic} · {plan.completedModules} of {modules.length} modules
       </p>
 
@@ -52,7 +49,7 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
             <li key={module.id} className='min-w-0 text-center'>
               <span
                 className={cn(
-                  'mx-auto flex size-7 items-center justify-center rounded-full border text-xs font-medium tabular-nums',
+                  'mx-auto flex size-7 items-center justify-center rounded-full border type-meta font-medium tabular-nums',
                   isComplete &&
                     'border-action-primary bg-action-primary text-action-primary-foreground',
                   isCurrent &&
@@ -65,7 +62,7 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
               >
                 {module.order}
               </span>
-              <span className='mt-2 block truncate text-xs text-muted-foreground'>
+              <span className='mt-2 block truncate type-meta text-muted-foreground'>
                 {module.title}
               </span>
             </li>

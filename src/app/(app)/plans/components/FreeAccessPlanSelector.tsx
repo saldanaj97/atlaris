@@ -84,7 +84,7 @@ export function FreeAccessPlanSelector({
         <CardTitle>Choose the plan to keep on Free</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className='mb-4 text-sm text-muted-foreground'>
+        <p className='mb-4 type-body text-muted-foreground'>
           Your Free account includes one learning plan. This choice is
           permanent. Other plans stay in your library but stay locked until you
           upgrade.
@@ -112,7 +112,7 @@ export function FreeAccessPlanSelector({
                   <span className='block truncate font-medium'>
                     {candidate.topic}
                   </span>
-                  <span className='mt-1 block text-xs text-muted-foreground'>
+                  <span className='mt-1 block type-meta text-muted-foreground'>
                     {generationStatusLabel(candidate.generationStatus)} ·{' '}
                     {new Date(candidate.createdAt).toLocaleDateString('en-US', {
                       timeZone: 'UTC',
@@ -123,7 +123,7 @@ export function FreeAccessPlanSelector({
             ))}
           </fieldset>
           {error ? (
-            <p className='text-sm text-destructive' role='alert'>
+            <p className='type-body text-destructive' role='alert'>
               {error}
             </p>
           ) : null}

@@ -20,7 +20,7 @@ export function ContactSection() {
         {/* oxlint-enable shadcn/require-static-classes */}
         <h2
           id='about-contact-heading'
-          className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+          className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
           style={{ '--i': 1 } as CSSProperties}
         >
           If the map is wrong,
@@ -29,7 +29,7 @@ export function ContactSection() {
           </span>
         </h2>
         <p
-          className={`mx-auto mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+          className={`mx-auto mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
           style={{ '--i': 2 } as CSSProperties}
         >
           A question, a bug, a resource that should not be there, or a plan that
