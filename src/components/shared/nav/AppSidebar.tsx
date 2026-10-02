@@ -309,7 +309,7 @@ export default function AppSidebar({
                   href={ROUTES.SETTINGS.PROFILE}
                   onClick={onNavigate}
                   className={cn(
-                    'flex h-[44px] min-w-0 flex-1 items-center gap-(--at-primitive-space-1-5,0.375rem) rounded-sm px-(--at-primitive-space-1-5,0.375rem) text-sm transition-colors hover:bg-secondary motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)',
+                    'flex h-[44px] min-w-0 flex-1 items-center gap-(--at-primitive-space-1-5,0.375rem) rounded-sm px-(--at-primitive-space-1-5,0.375rem) type-body transition-colors hover:bg-secondary motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)',
                     SIDEBAR_FOCUS_RING,
                   )}
                 >

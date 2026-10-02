@@ -94,7 +94,7 @@ function SelectLabel({
     <SelectPrimitive.Label
       data-slot='select-label'
       className={cn(
-        'px-[8px] py-[4px] text-xs text-muted-foreground',
+        'px-[8px] py-[4px] type-meta text-muted-foreground',
         className,
       )}
       {...props}
@@ -111,7 +111,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot='select-item'
       className={cn(
-        "relative flex min-h-[40px] w-full cursor-default items-center gap-[8px] rounded-[8px] py-[8px] pr-[32px] pl-[8px] text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[8px]",
+        "relative flex min-h-[40px] w-full cursor-default items-center gap-[8px] rounded-[8px] py-[8px] pr-[32px] pl-[8px] type-body outline-none select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[8px]",
         className,
       )}
       {...props}

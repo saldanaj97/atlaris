@@ -44,7 +44,7 @@ export function CtaSection() {
             </h2>
 
             <p
-              className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed text-muted-foreground ${styles.revealItem}`}
+              className={`relative mx-auto mt-5 max-w-lg type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 2 } as CSSProperties}
             >
               {copy.subheadline}

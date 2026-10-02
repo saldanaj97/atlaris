@@ -27,7 +27,7 @@ export function TimelinePlanFooter({
           aria-hidden='true'
         />
       </div>
-      <p className='flex-1 py-3 text-xs text-muted-foreground'>
+      <p className='flex-1 py-3 type-meta text-muted-foreground'>
         {isPlanComplete
           ? `Route complete · ${moduleLabel} finished`
           : `End of route · ${moduleLabel} charted`}

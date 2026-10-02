@@ -50,7 +50,7 @@ export function AboutHero() {
             </span>
           </h1>
           <p
-            className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.heroCopy}`}
+            className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.heroCopy}`}
           >
             {copy.subline}
           </p>

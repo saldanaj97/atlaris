@@ -41,7 +41,7 @@ export function InstrumentsSection() {
               Make progress{' '}
               <span className='text-primary italic'>with purpose.</span>
             </h2>
-            <p className='mt-5 max-w-md font-sans text-base leading-relaxed text-muted-foreground'>
+            <p className='mt-5 max-w-md type-reading text-muted-foreground'>
               Follow a clear learning path, complete hands-on projects, and
               build skills that actually move you forward.
             </p>
@@ -49,7 +49,7 @@ export function InstrumentsSection() {
               {PROGRESS_POINTS.map((point) => (
                 <li
                   key={point}
-                  className='inline-flex w-full items-center gap-2 font-sans text-sm text-foreground'
+                  className='inline-flex w-full items-center gap-2 type-body text-foreground'
                 >
                   <Check className='size-4 text-primary' aria-hidden='true' />
                   {point}

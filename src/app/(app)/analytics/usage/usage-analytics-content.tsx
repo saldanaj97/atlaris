@@ -106,13 +106,13 @@ export function UsageAnalyticsContent({
               <p className='type-eyebrow text-muted-foreground'>Trend</p>
               <h2
                 id={EIGHT_WEEK_PULSE_TITLE_ID}
-                className='mt-1 text-xl font-semibold text-foreground'
+                className='mt-1 type-card text-foreground'
               >
                 Eight-week pulse
               </h2>
               <p
                 id={EIGHT_WEEK_PULSE_DESCRIPTION_ID}
-                className='mt-1 text-sm text-muted-foreground'
+                className='mt-1 type-body text-muted-foreground'
               >
                 Progress changes by plan and week.
               </p>
@@ -136,7 +136,7 @@ export function UsageAnalyticsContent({
           </div>
 
           <div className='px-5 pb-5 sm:px-6'>
-            <p className='border-t border-border/60 pt-4 text-sm text-muted-foreground'>
+            <p className='border-t border-border/60 pt-4 type-body text-muted-foreground'>
               {!model.plans.length
                 ? 'No plans yet. The pulse will appear when a plan records progress.'
                 : !model.history.hasActivity
@@ -163,7 +163,7 @@ function AnalyticsHero() {
       }
       titleClassName='type-title-hero text-balance text-foreground'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
-      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+      descriptionClassName='mt-3 max-w-xl type-body text-muted-foreground sm:type-reading'
     />
   );
 }
@@ -182,15 +182,15 @@ function SectionHeading({
   return (
     <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
       <div className='min-w-0'>
-        <h2 id={id} className='text-xl font-semibold text-foreground'>
+        <h2 id={id} className='type-card text-foreground'>
           {title}
         </h2>
-        <p className='mt-1 max-w-2xl text-sm text-muted-foreground'>
+        <p className='mt-1 max-w-2xl type-body text-muted-foreground'>
           {description}
         </p>
       </div>
       {typeof aside === 'string' ? (
-        <p className='shrink-0 text-sm text-muted-foreground'>{aside}</p>
+        <p className='shrink-0 type-body text-muted-foreground'>{aside}</p>
       ) : (
         aside
       )}
@@ -234,11 +234,9 @@ function MetricTile({
         ) : null}
       </div>
 
-      <p className='mt-5 text-sm text-muted-foreground'>{label}</p>
-      <p className='mt-1 text-3xl font-semibold text-foreground tabular-nums'>
-        {value}
-      </p>
-      <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
+      <p className='mt-5 type-body text-muted-foreground'>{label}</p>
+      <p className='mt-1 type-title text-foreground tabular-nums'>{value}</p>
+      <p className='mt-2 type-body text-muted-foreground'>{detail}</p>
 
       {progress !== undefined ? (
         <Progress
@@ -249,7 +247,9 @@ function MetricTile({
         />
       ) : null}
 
-      <p className='mt-auto pt-4 text-xs text-muted-foreground'>{comparison}</p>
+      <p className='mt-auto pt-4 type-meta text-muted-foreground'>
+        {comparison}
+      </p>
     </Surface>
   );
 }

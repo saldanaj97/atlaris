@@ -91,7 +91,7 @@ export function TimelineModuleCard({
             </h3>
             {module.description && (
               <div className='mt-1 line-clamp-1 group-data-[state=open]/accordion:line-clamp-none'>
-                <p className='text-sm text-muted-foreground'>
+                <p className='type-body text-muted-foreground'>
                   {module.description}
                 </p>
               </div>

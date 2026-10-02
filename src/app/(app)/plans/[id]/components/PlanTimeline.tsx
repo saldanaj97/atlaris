@@ -91,7 +91,7 @@ export function PlanTimeline({
         <Surface padding='none' className='overflow-hidden'>
           <div className='border-b border-border/60 px-5 py-5 sm:px-6'>
             <p className='type-eyebrow text-muted-foreground'>Route</p>
-            <h2 className='mt-1 text-xl font-semibold text-foreground'>
+            <h2 className='mt-1 type-card text-foreground'>
               Your learning path
             </h2>
           </div>
@@ -109,15 +109,15 @@ export function PlanTimeline({
         <div className='flex flex-col gap-3 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-end sm:justify-between sm:px-6'>
           <div className='min-w-0'>
             <p className='type-eyebrow text-muted-foreground'>Route</p>
-            <h2 className='mt-1 text-xl font-semibold text-foreground'>
+            <h2 className='mt-1 type-card text-foreground'>
               Your learning path
             </h2>
-            <p className='mt-1 text-sm text-muted-foreground'>
+            <p className='mt-1 type-body text-muted-foreground'>
               {modules.length} module{modules.length !== 1 ? 's' : ''} ·{' '}
               {formatMinutes(estimatedMinutes)} estimated
             </p>
           </div>
-          <span className='shrink-0 text-xs text-muted-foreground'>
+          <span className='shrink-0 type-meta text-muted-foreground'>
             {isPlanComplete ? 'Route complete' : 'Keep moving at your pace'}
           </span>
         </div>

@@ -28,18 +28,15 @@ export function YourProgressCard({
       aria-labelledby={TITLE_ID}
       className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
     >
-      <h2
-        id={TITLE_ID}
-        className='text-lg font-semibold text-foreground sm:text-xl'
-      >
+      <h2 id={TITLE_ID} className='type-card text-foreground'>
         Your progress
       </h2>
-      <p className='mt-2 text-sm text-muted-foreground'>
+      <p className='mt-2 type-body text-muted-foreground'>
         Across every learning plan.
       </p>
 
       {progress.planCount === 0 ? (
-        <p className='mt-6 text-sm text-muted-foreground'>
+        <p className='mt-6 type-body text-muted-foreground'>
           Progress will appear here once you have a plan.
         </p>
       ) : (
@@ -47,7 +44,9 @@ export function YourProgressCard({
           <p className='mt-6 type-title text-foreground tabular-nums'>
             {progress.percent}%
           </p>
-          <p className='mt-1 text-xs text-muted-foreground'>Overall progress</p>
+          <p className='mt-1 type-meta text-muted-foreground'>
+            Overall progress
+          </p>
 
           <Progress
             value={progress.percent}
@@ -59,8 +58,10 @@ export function YourProgressCard({
           <dl className='mt-4 grid grid-cols-3 gap-3'>
             {stats.map((stat) => (
               <div key={stat.label}>
-                <dt className='text-xs text-muted-foreground'>{stat.label}</dt>
-                <dd className='mt-0.5 text-lg font-semibold text-foreground tabular-nums'>
+                <dt className='type-meta text-muted-foreground'>
+                  {stat.label}
+                </dt>
+                <dd className='mt-0.5 type-card text-foreground tabular-nums'>
                   {stat.value}
                 </dd>
               </div>

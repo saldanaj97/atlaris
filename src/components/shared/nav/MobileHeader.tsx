@@ -110,7 +110,7 @@ export default function MobileHeader({
               size='sm'
               className={cn(
                 marketingHeaderPrimaryCtaClassName,
-                'hidden px-3 py-1.5 text-xs min-[24.375rem]:inline-flex',
+                'hidden px-3 py-1.5 min-[24.375rem]:inline-flex',
               )}
             >
               <Link href={primaryCtaHref}>

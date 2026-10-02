@@ -16,15 +16,13 @@ export function StartTonightCard({
       as='article'
       className='p-5 animate-dashboard-unfold [--dashboard-entry-x:-0.75rem] motion-reduce:animate-none sm:p-6'
     >
-      <h2 className='text-lg font-semibold text-foreground sm:text-xl'>
-        Start learning
-      </h2>
+      <h2 className='type-card text-foreground'>Start learning</h2>
 
-      <h3 className='mt-4 text-xl font-semibold text-balance text-foreground'>
+      <h3 className='mt-4 type-card text-balance text-foreground'>
         Your next plan is waiting
       </h3>
 
-      <p className='mt-2 max-w-xl text-sm text-muted-foreground'>
+      <p className='mt-2 max-w-xl type-body text-muted-foreground'>
         Create a learning map and pick up whenever the night is quiet.
       </p>
 

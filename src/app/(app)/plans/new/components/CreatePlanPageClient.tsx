@@ -50,7 +50,7 @@ export function CreatePlanPageClient({
               The route stays grounded in the constraints you choose.
             </CardDescription>
           </div>
-          <ul className='space-y-3 text-sm text-foreground'>
+          <ul className='space-y-3 type-body text-foreground'>
             {PLAN_CONSTRAINTS.map((item) => (
               <li key={item} className='flex items-start gap-2'>
                 <span

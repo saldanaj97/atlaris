@@ -48,7 +48,7 @@ function ModuleSwitcherMenuItem({
         )}
         aria-label={item.isComplete ? `${item.title}, completed` : undefined}
       >
-        <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/20 text-xs font-medium text-primary'>
+        <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/20 type-meta font-medium text-primary'>
           {item.order}
         </span>
         <span className='truncate'>{item.title}</span>
@@ -80,7 +80,7 @@ export function ModuleBreadcrumbNav({
 }) {
   return (
     <nav aria-label='Breadcrumb' className='mb-4 min-w-0'>
-      <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 text-sm'>
+      <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 type-body'>
         <li className='max-w-full min-w-0'>
           <Link
             href={`/plans/${planId}`}

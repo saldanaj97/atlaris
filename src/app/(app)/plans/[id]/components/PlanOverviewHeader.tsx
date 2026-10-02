@@ -32,7 +32,7 @@ export function PlanOverviewHeader({
         <h1 className='max-w-2xl type-title-hero text-balance wrap-break-word text-foreground'>
           {plan.topic}
         </h1>
-        <p className='mt-3 max-w-xl text-sm leading-relaxed wrap-break-word text-muted-foreground sm:text-base'>
+        <p className='mt-3 max-w-xl type-body wrap-break-word text-muted-foreground sm:type-reading'>
           A structured path for learning {plan.topic}, paced around your
           available time.
         </p>
@@ -47,7 +47,7 @@ export function PlanOverviewHeader({
           <Button asChild variant='outline'>
             <a href='#learning-path'>View roadmap</a>
           </Button>
-          <span className='text-xs text-muted-foreground tabular-nums'>
+          <span className='type-meta text-muted-foreground tabular-nums'>
             {stats.completionPercentage}% complete ·{' '}
             {formatMinutes(stats.totalMinutes)} planned
             {stats.totalModules > 0

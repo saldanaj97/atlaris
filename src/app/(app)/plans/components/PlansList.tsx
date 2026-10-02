@@ -134,15 +134,15 @@ function PlansStatusRail({
                     sort: query.sort,
                   })}
                   aria-current={isCurrent ? 'page' : undefined}
-                  className={`flex min-h-[40px] items-center gap-2 border-b-2 px-3 text-sm whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
+                  className={`flex min-h-[40px] items-center gap-2 border-b-2 px-3 type-label whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
                     isCurrent
-                      ? 'border-primary font-medium text-foreground'
+                      ? 'border-primary text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {option.label}
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
+                    className={`rounded-full px-1.5 py-0.5 type-meta tabular-nums ${
                       isCurrent
                         ? 'bg-background/70 text-foreground'
                         : 'bg-background/40 text-muted-foreground'
@@ -196,7 +196,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
             status: 'all',
             sort: query.sort,
           })}
-          className='shrink-0 self-start text-sm font-medium text-link hover:text-link-hover hover:underline sm:self-auto'
+          className='shrink-0 self-start type-label text-link hover:text-link-hover hover:underline sm:self-auto'
         >
           Clear {plansLibraryFilterLabel(query.status).toLowerCase()} filter
         </Link>
@@ -285,7 +285,7 @@ function BulkPlanActionsToolbar({
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
-          <p className='text-sm font-medium text-foreground'>
+          <p className='type-label text-foreground'>
             <span
               key={selectedCount}
               className='inline-block animate-in tabular-nums animation-duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
@@ -295,7 +295,7 @@ function BulkPlanActionsToolbar({
             selected
           </p>
           {toolbarMessage ? (
-            <p aria-live='polite' className='text-sm text-destructive'>
+            <p aria-live='polite' className='type-body text-destructive'>
               {toolbarMessage}
             </p>
           ) : null}
@@ -347,7 +347,7 @@ function PlansGrid({
   return (
     <div className='space-y-3'>
       <div className='flex items-center justify-between gap-3'>
-        <label className='inline-flex min-h-11 items-center gap-2 text-sm text-muted-foreground'>
+        <label className='inline-flex min-h-11 items-center gap-2 type-label text-muted-foreground'>
           <input
             type='checkbox'
             checked={allSelected}
@@ -367,7 +367,7 @@ function PlansGrid({
           />
           Select all on page
         </label>
-        <p className='text-xs text-muted-foreground'>
+        <p className='type-meta text-muted-foreground'>
           {page.totalItems} {page.totalItems === 1 ? 'plan' : 'plans'}
         </p>
       </div>
@@ -531,7 +531,7 @@ export function PlansList({ page, query }: PlansListProps) {
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className='flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
+          className='flex flex-col gap-3 type-meta text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
         >
           <span className='tabular-nums'>
             Page {page.page} of {page.totalPages}

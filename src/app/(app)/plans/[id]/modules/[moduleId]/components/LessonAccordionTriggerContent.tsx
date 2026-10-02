@@ -44,7 +44,7 @@ function LessonMarker({
       ) : isCompleted ? (
         <CheckCircle2 className='size-5' aria-hidden />
       ) : (
-        <span className='text-sm font-semibold' aria-hidden='true'>
+        <span className='type-label font-semibold' aria-hidden='true'>
           {lesson.order}
         </span>
       )}
@@ -66,7 +66,7 @@ function ResourceSummary({
   return (
     <div
       className={cn(
-        'mb-3 ml-11 flex min-w-0 flex-wrap items-center gap-4 text-sm',
+        'mb-3 ml-11 flex min-w-0 flex-wrap items-center gap-4 type-body',
         getLessonMutedTextClassName(isLocked),
       )}
     >
@@ -100,7 +100,7 @@ export function LessonAccordionTriggerContent({
           />
           <h3
             className={cn(
-              'min-w-0 flex-1 break-words text-base font-semibold sm:text-lg',
+              'min-w-0 flex-1 break-words type-reading font-semibold',
               getLessonTitleClassName(isLocked, isCompleted),
             )}
           >
@@ -112,7 +112,7 @@ export function LessonAccordionTriggerContent({
         {lesson.description ? (
           <p
             className={cn(
-              'mb-3 ml-11 min-w-0 break-words text-sm leading-relaxed',
+              'mb-3 ml-11 min-w-0 break-words type-body',
               getLessonMutedTextClassName(isLocked),
             )}
           >
@@ -125,7 +125,7 @@ export function LessonAccordionTriggerContent({
 
       <span
         className={cn(
-          'flex shrink-0 items-center text-sm',
+          'flex shrink-0 items-center type-body',
           getLessonMutedTextClassName(isLocked),
         )}
       >

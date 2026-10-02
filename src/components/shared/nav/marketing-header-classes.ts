@@ -5,7 +5,7 @@
  * approved marketing chrome specimen (not a new Button variant).
  */
 export const marketingHeaderPrimaryCtaClassName =
-  'group inline-flex h-9 min-h-9 items-center rounded-[8px] bg-foreground px-4 py-2 font-sans text-xs font-medium text-background shadow-none transition-[background-color,transform] hover:bg-foreground/90 motion-reduce:transform-none motion-reduce:transition-none [@media(pointer:coarse)]:min-h-11';
+  'group inline-flex h-9 min-h-9 items-center rounded-[8px] bg-foreground px-4 py-2 type-meta font-medium text-background shadow-none transition-[background-color,transform] hover:bg-foreground/90 motion-reduce:transform-none motion-reduce:transition-none [@media(pointer:coarse)]:min-h-11';
 
 /**
  * Quiet text nav with an animated primary underline that draws in from the left.

@@ -57,7 +57,7 @@ function GenerationDescription({
       <div className='mt-4 flex flex-wrap items-center gap-2'>
         <Badge variant={isFailed ? 'destructive' : 'info'}>{badge}</Badge>
         {generationTakingLong && !isFailed ? (
-          <p className='text-sm font-medium text-warning'>
+          <p className='type-label text-warning'>
             Generation taking longer than expected
           </p>
         ) : null}
@@ -88,7 +88,7 @@ function GenerationAction({
   }
 
   return (
-    <div className='flex items-center gap-2 text-sm font-medium text-primary'>
+    <div className='flex items-center gap-2 type-label text-primary'>
       <span className='animate-spin motion-reduce:animate-none'>
         <Loader2 className='size-4' />
       </span>

@@ -19,7 +19,7 @@ export function StatCell({
       <dd className='mt-1'>
         <span
           className={cn(
-            'block text-lg font-semibold text-foreground tabular-nums',
+            'block type-card text-foreground tabular-nums',
             truncate && 'truncate',
           )}
         >
@@ -27,7 +27,7 @@ export function StatCell({
         </span>
         <span
           className={cn(
-            'mt-0.5 block text-xs text-muted-foreground',
+            'mt-0.5 block type-meta text-muted-foreground',
             truncate && 'truncate',
           )}
         >

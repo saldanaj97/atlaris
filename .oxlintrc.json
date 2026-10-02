@@ -144,11 +144,10 @@
               "text-muted-foreground",
               "text-primary-foreground",
               "text-secondary-foreground",
-              "text-sm",
               "text-success-foreground",
-              "text-xs",
               "transition-[background-color,color,border-color,box-shadow]",
-              "transition-colors"
+              "transition-colors",
+              "type-*"
             ]
           },
           {

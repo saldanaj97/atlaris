@@ -26,7 +26,7 @@ function WaitingStatusPanel({
       badge={badge}
       busy
       meta={
-        meta ? <p className='text-sm text-muted-foreground'>{meta}</p> : null
+        meta ? <p className='type-body text-muted-foreground'>{meta}</p> : null
       }
     />
   );
@@ -56,7 +56,7 @@ export function FailurePanel({
       badge={isInterruptedWithoutError ? undefined : 'Failed'}
       meta={
         viewState.attempts > 0 ? (
-          <p className='text-sm text-muted-foreground'>
+          <p className='type-body text-muted-foreground'>
             Attempt {viewState.attempts} of {viewState.attemptCap}
           </p>
         ) : null

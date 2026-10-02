@@ -23,7 +23,7 @@ export function PlansHero({
       }
       titleClassName='type-title-hero max-w-xl text-balance text-foreground'
       description='Your learning plans turn big goals into real progress. Start a new plan, pick up where you left off, or find the next step in your library.'
-      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+      descriptionClassName='mt-3 max-w-xl type-body text-muted-foreground sm:type-reading'
       actions={
         children ? (
           <div className='mt-5 flex flex-wrap items-center gap-3'>

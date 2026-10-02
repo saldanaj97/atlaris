@@ -88,12 +88,17 @@ export default function AuthControls({
           <Button
             variant='ghost'
             size='sm'
-            className='hidden text-xs text-muted-foreground hover:text-foreground sm:inline-flex'
+            className='hidden type-meta font-medium text-muted-foreground hover:text-foreground sm:inline-flex'
             asChild
           >
             <Link href='/auth/sign-in'>Sign In</Link>
           </Button>
-          <Button variant='default' size='sm' className='text-xs' asChild>
+          <Button
+            variant='default'
+            size='sm'
+            className='type-meta font-medium'
+            asChild
+          >
             <Link href='/auth/sign-up'>Sign Up</Link>
           </Button>
         </>

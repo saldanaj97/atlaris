@@ -109,7 +109,7 @@ function PlanProgress({
 }) {
   if (plan.access === 'locked') {
     return (
-      <p className='text-sm leading-relaxed text-muted-foreground'>
+      <p className='type-body text-muted-foreground'>
         This plan is locked for your current access level.
       </p>
     );
@@ -119,7 +119,7 @@ function PlanProgress({
     if (plan.status === 'generating') {
       return (
         <div className='rounded-[8px] border border-border bg-panel-muted/60 p-3'>
-          <p className='text-sm text-muted-foreground'>
+          <p className='type-body text-muted-foreground'>
             Your learning path is being prepared.
           </p>
         </div>
@@ -129,7 +129,7 @@ function PlanProgress({
     if (plan.status === 'failed') {
       return (
         <div className='rounded-[8px] border border-danger/30 bg-danger-subtle p-3'>
-          <p className='text-sm text-danger'>
+          <p className='type-body text-danger'>
             We couldn&apos;t generate this plan.
           </p>
         </div>
@@ -137,7 +137,7 @@ function PlanProgress({
     }
 
     return (
-      <p className='text-sm text-muted-foreground'>
+      <p className='type-body text-muted-foreground'>
         Progress will appear when tasks are ready.
       </p>
     );
@@ -145,7 +145,7 @@ function PlanProgress({
 
   return (
     <div className='space-y-2'>
-      <div className='flex items-center justify-between gap-3 text-sm'>
+      <div className='flex items-center justify-between gap-3 type-body'>
         <span className='text-muted-foreground tabular-nums'>
           {plan.completedTasks} of {plan.totalTasks} tasks
         </span>
@@ -204,7 +204,7 @@ export function PlanRow({
     >
       <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='flex items-start justify-between gap-2'>
-          <h2 className='min-w-0 text-lg leading-6 font-semibold wrap-break-word text-foreground'>
+          <h2 className='min-w-0 type-card wrap-break-word text-foreground'>
             {isLocked ? (
               plan.topic
             ) : (
@@ -253,7 +253,7 @@ export function PlanRow({
           </div>
         </div>
 
-        <div className='mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground'>
+        <div className='mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-muted-foreground'>
           {/* oxlint-disable shadcn/require-static-classes -- This imported status recipe contains complete static classes for each plan state. */}
           <Badge
             variant='outline'
@@ -280,7 +280,7 @@ export function PlanRow({
         </div>
 
         <div className='mt-auto flex items-center justify-between gap-3 border-t border-border/70 pt-2'>
-          <label className='-ml-3 inline-flex min-h-[44px] items-center gap-2 px-3 text-sm text-muted-foreground has-disabled:cursor-not-allowed has-disabled:opacity-60'>
+          <label className='-ml-3 inline-flex min-h-[44px] items-center gap-2 px-3 type-label text-muted-foreground has-disabled:cursor-not-allowed has-disabled:opacity-60'>
             <input
               type='checkbox'
               checked={selected}

@@ -1,8 +1,7 @@
 import { cn } from '@/lib/utils';
 import * as React from 'react';
 
-const PAGE_HEADER_SUBTITLE_CLASS =
-  'mt-1 text-sm leading-normal tracking-normal text-muted-foreground';
+const PAGE_HEADER_SUBTITLE_CLASS = 'mt-1 type-body text-muted-foreground';
 
 /**
  * Product page title row: centralizes app title/subtitle scale so pages do not improvise typography.

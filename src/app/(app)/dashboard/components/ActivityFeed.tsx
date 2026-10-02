@@ -17,13 +17,10 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
       className='gap-0 overflow-hidden p-0'
     >
       <header className='px-5 pt-5 pb-1 sm:px-6 sm:pt-6'>
-        <h2
-          id='activity-feed-heading'
-          className='text-lg font-semibold text-foreground sm:text-xl'
-        >
+        <h2 id='activity-feed-heading' className='type-card text-foreground'>
           Activity feed
         </h2>
-        <p className='mt-1 text-sm text-muted-foreground'>
+        <p className='mt-1 type-body text-muted-foreground'>
           Plans generated, progress made, and routes completed.
         </p>
       </header>

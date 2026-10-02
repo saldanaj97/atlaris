@@ -120,7 +120,7 @@ export function SettingsContentHeading(): ReactElement {
       >
         {heading.title}
       </h2>
-      <p className='mt-1.5 max-w-xl text-sm leading-5.5 text-muted-foreground'>
+      <p className='mt-1.5 max-w-xl type-body text-muted-foreground'>
         {heading.description}
       </p>
     </div>
@@ -162,10 +162,10 @@ export function SettingsSectionNavigation(): ReactElement {
                   )}
                 />
                 <span className='min-w-0'>
-                  <span className='block text-sm font-medium wrap-anywhere'>
+                  <span className='block type-label wrap-anywhere'>
                     {item.label}
                   </span>
-                  <span className='mt-0.5 block text-xs leading-4.5 wrap-anywhere text-muted-foreground'>
+                  <span className='mt-0.5 block type-meta wrap-anywhere text-muted-foreground'>
                     {item.description}
                   </span>
                 </span>

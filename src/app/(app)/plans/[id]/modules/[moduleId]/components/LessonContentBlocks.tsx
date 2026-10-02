@@ -50,7 +50,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
     case 'practice':
       return (
         <section className='my-5 min-w-0 rounded-[8px] border border-accent/20 bg-accent/10 p-3'>
-          <h4 className='mb-2 text-sm font-semibold break-words text-foreground'>
+          <h4 className='mb-2 type-label font-semibold break-words text-foreground'>
             Practice
           </h4>
           <p className='type-reading break-words text-foreground'>
@@ -61,7 +61,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
     case 'takeaways':
       return (
         <section className='my-5 rounded-[8px] border border-link/40 bg-action-soft p-3'>
-          <h4 className='mb-2 text-sm font-medium text-link'>Key takeaways</h4>
+          <h4 className='mb-2 type-label text-link'>Key takeaways</h4>
           <ul className='list-disc space-y-2 pl-5 type-body break-words text-foreground'>
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (
@@ -74,7 +74,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
     case 'completion_criteria':
       return (
         <section className='my-5'>
-          <h4 className='mb-2 text-sm font-semibold text-foreground'>
+          <h4 className='mb-2 type-label font-semibold text-foreground'>
             Completion criteria
           </h4>
           <ul className='space-y-2 text-muted-foreground'>
@@ -117,10 +117,10 @@ function GeneratedContentPanel({
 function MissingLessonContentPanel() {
   return (
     <div className='min-w-0 rounded-xl border border-dashed border-primary/25 bg-primary/5 p-4 text-center sm:p-6'>
-      <h4 className='mb-2 text-base font-semibold text-foreground'>
+      <h4 className='mb-2 type-reading font-semibold text-foreground'>
         Lesson content not generated yet
       </h4>
-      <p className='mx-auto max-w-xl text-sm break-words text-muted-foreground'>
+      <p className='mx-auto max-w-xl type-body break-words text-muted-foreground'>
         Use the module-level generate action to create and cache detailed
         learning material for every lesson in this module.
       </p>
