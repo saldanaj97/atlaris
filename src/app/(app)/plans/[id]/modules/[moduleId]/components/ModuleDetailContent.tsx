@@ -9,7 +9,7 @@ import { loadModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/mod
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export { ModuleDetailContentSkeleton };
 
@@ -47,12 +47,8 @@ export async function ModuleDetailContent({
       }
 
       case 'NOT_FOUND':
-        return (
-          <ModuleDetailPageError
-            message='This module does not exist or you do not have access to it.'
-            planId={planId}
-          />
-        );
+        // Missing and not-owned modules share this code; render the module-scoped not-found UI.
+        return notFound();
 
       case 'FORBIDDEN':
         return (

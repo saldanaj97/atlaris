@@ -1,3 +1,4 @@
+import { BillingUnavailable } from '@/app/(app)/settings/billing/components/BillingUnavailable';
 import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
 import { ManageSubscriptionButton } from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
 import {
@@ -73,11 +74,7 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
   );
 
   if (!snapshot) {
-    return (
-      <LedgerRow label='Billing'>
-        <span>Unavailable right now.</span>
-      </LedgerRow>
-    );
+    return <BillingUnavailable subject='billing' />;
   }
 
   const tierName = formatPlanTierName(snapshot.tier);
@@ -134,11 +131,7 @@ export async function UsageRows() {
   const snapshot = await loadBillingSnapshot();
 
   if (!snapshot) {
-    return (
-      <LedgerRow label='Usage'>
-        <span>Unavailable right now.</span>
-      </LedgerRow>
-    );
+    return <BillingUnavailable subject='usage' />;
   }
 
   return (
