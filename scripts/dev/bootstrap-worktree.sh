@@ -44,4 +44,9 @@ link_from_main ".cursor"
 link_from_main ".daily-recap"
 link_from_main "screenshots"
 
+# Worktrees link .agents (which holds the skill-source submodules) from the main
+# checkout, and git refuses to recurse into submodules behind a symlink. Without
+# this, `git fetch` fails in every worktree. This setting is repository-wide.
+git config fetch.recurseSubmodules false
+
 pnpm install --frozen-lockfile

@@ -1,0 +1,11 @@
+{
+  "extends": "./tsconfig.json",
+  "exclude": [
+    "node_modules",
+    ".next/dev",
+    ".next-smoke-anon/dev",
+    ".next-smoke-auth/dev",
+    ".test-dist/next-smoke-anon/dev",
+    ".test-dist/next-smoke-auth/dev"
+  ]
+}
