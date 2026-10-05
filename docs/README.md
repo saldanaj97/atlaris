@@ -35,6 +35,8 @@ System design, pipelines, and operational runbooks.
 |------|-------------|
 | [auth-and-data-layer.md](./architecture/auth-and-data-layer.md) | Auth, authorization, RLS / tenant isolation |
 | [clerk-billing-architecture.md](./architecture/clerk-billing-architecture.md) | Clerk Billing and identity webhooks, projections, quotas, checkout sync |
+| [cloudflare-b1-checklist.md](./architecture/cloudflare-b1-checklist.md) | User-executed Cloudflare setup checklist for JCS-120 B1 (Hyperdrive, Queues, Workers, secrets) |
+| [cloudflare-jobs-runtime.md](./architecture/cloudflare-jobs-runtime.md) | Cloudflare Workers job runtime design (JCS-126): layout, Hyperdrive, config, app ↔ Worker contract, cutover, CPU gate |
 | [email-notification-delivery-runbook.md](./architecture/email-notification-delivery-runbook.md) | Email notification scheduler runbook |
 | [internal-worker-routes.md](./architecture/internal-worker-routes.md) | Internal `/api/internal/` workers and token auth |
 | [plan-cleanup-runbook.md](./architecture/plan-cleanup-runbook.md) | Stuck-plan and orphaned-attempt maintenance |
@@ -139,6 +141,8 @@ docs/
 ├── architecture/
 │   ├── auth-and-data-layer.md
 │   ├── clerk-billing-architecture.md
+│   ├── cloudflare-b1-checklist.md
+│   ├── cloudflare-jobs-runtime.md
 │   ├── email-notification-delivery-runbook.md
 │   ├── internal-worker-routes.md
 │   ├── plan-cleanup-runbook.md
