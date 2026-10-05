@@ -2,7 +2,7 @@
 
 **Audience:** Developers and the orchestrator implementing Track B (JCS-120) phases B1–B7.
 **Last Updated:** October 2026
-**Status:** Accepted design for JCS-126 (B0); review decisions recorded 2026-10-05. Two questions remain open (see the end). No Worker code, Wrangler configuration, or Cloudflare resources exist yet.
+**Status:** Accepted design for JCS-126 (B0); review decisions recorded 2026-10-05. One question remains open (see the end). No Worker code, Wrangler configuration, or Cloudflare resources exist yet.
 
 This note fixes how the `workers/jobs` Worker is laid out, reaches Supabase, loads configuration, receives work from the Next.js app, reports problems, deploys, and takes over each background job. The user-executed setup that follows from it is in [cloudflare-b1-checklist.md](./cloudflare-b1-checklist.md).
 
@@ -13,9 +13,9 @@ Already decided (not reopened here): all background execution moves to Cloudflar
 | # | Topic | Decision |
 | --- | --- | --- |
 | 1 | Repo layout | `workers/jobs/` with its own `wrangler.jsonc` and `tsconfig.json`; Wrangler's esbuild bundles root `@/` and `@supabase/` imports; Next/Vercel-only modules are replaced with Wrangler `alias`; the Worker talks to Postgres with node-postgres + Drizzle through Hyperdrive, one pool per invocation |
-| 2 | Environments | `staging` → Worker `atlaris-jobs-staging` + Supabase `atlaris-dev`, deployed from the Track B parent branch until Track B first merges into `develop`, then from `develop`; `production` → `atlaris-jobs-production` + `atlaris-prod` from `main`; Hyperdrive connects as `postgres`; the top level is local-only |
+| 2 | Environments | `staging` → Worker `atlaris-jobs-staging` + Supabase `atlaris-dev`, deployed from the Track B parent branch until Track B first merges into `develop`, then from `develop`; `production` → `atlaris-jobs-production` + `atlaris-prod` from `main`; Workers served on custom domains `workers-staging.atlaris.app` and `workers.atlaris.app` after the `atlaris.app` zone moves to Cloudflare; Hyperdrive connects as `postgres`; the top level is local-only |
 | 3 | Config | Worker variables and secrets reuse the app's env names; `process.env` is filled from them automatically, so `src/lib/config/env/*` validates them unchanged; one Worker-only module validates bindings and switches |
-| 4 | App ↔ Worker | App sends HMAC-signed HTTPS commands to the Worker (`POST /v1/<command>`); the Worker uses its own Queue and Workflow bindings; the app reads status from Postgres only |
+| 4 | App ↔ Worker | App sends HMAC-signed HTTPS commands to the Worker's custom domain (`POST /v1/<command>`), behind one zone rate-limiting rule; the Worker uses its own Queue and Workflow bindings; the app reads status from Postgres only |
 | 5 | Observability | `@sentry/cloudflare` in a separate Sentry project, `atlaris-jobs`, with release = commit SHA so it matches the app's release; Workers Logs; the Workflows dashboard replaces Vercel workflow observability; the existing cron monitor slugs move to the new project |
 | 6 | Deploy order | Expand migration → Worker → app, as separate merges → contract migration. The Worker accepts old and new command shapes during a change |
 | 7 | Cutover | One owner per job at all times, with fixed observation windows. Worker job switches are dashboard-managed variables that default to off, plus a global `JOBS_PAUSED`. The Worker does not follow the app's `MAINTENANCE_MODE`. B4's production cutover follows B5's CPU gate |
@@ -128,11 +128,19 @@ workers/jobs/
 | Regeneration queue (binding `REGENERATION_QUEUE`) | emulated by `wrangler dev` | `atlaris-regeneration-staging` | `atlaris-regeneration-production` |
 | Workflows | local | `atlaris-email-delivery-staging`, `atlaris-module-lessons-staging`, `atlaris-plan-generation-staging` | same names with `-production` |
 | Worker Cron Triggers | none | `*/15 * * * *`, `0 3 * * *` | `*/15 * * * *`, `0 3 * * *` |
-| `APP_URL` | local app URL | Proposed `https://atlaris-git-develop-juan-saldana-projects.vercel.app` (pending confirmation, open question 2) | `https://atlaris.app` |
+| Public hostname (`JOBS_WORKER_URL` in the app) | `http://127.0.0.1:<port>` | `https://workers-staging.atlaris.app` | `https://workers.atlaris.app` |
+| `workers.dev` | — | disabled (`workers_dev: false`) | disabled (`workers_dev: false`) |
+| `APP_URL` | local app URL | Proposed `https://atlaris-git-develop-juan-saldana-projects.vercel.app` (pending confirmation, open question 1) | `https://atlaris.app` |
 | Sentry environment | `development` | `staging` | `production` |
 
 - **Staging deploy branch (decided 2026-10-05).** Track B PRs merge into the parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers`, and Workers Builds deploys only from the configured production branch [builds-branch]. The staging Worker's production branch is therefore the Track B parent branch until Track B first merges into `develop`; the user then switches it to `develop` under **Settings** → **Build** → **Branch control**.
 - **Database role (decided 2026-10-05).** Both Hyperdrive configurations connect as `postgres`, matching the service-role client the jobs use today (`supabase/service-role.ts:52-55`). A least-privilege job role is a possible follow-up outside Track B: it needs a migration and a privilege audit, because retention calls a `SECURITY DEFINER` function revoked from `anon` and `authenticated` (`supabase/migrations/20260522223908_schedule_retention_cleanup.sql:34-35`).
+- **Public endpoint (decided 2026-10-05).** Each Worker is served on a Workers Custom Domain in the `atlaris.app` zone: `workers-staging.atlaris.app` → `atlaris-jobs-staging`, and `workers.atlaris.app` → `atlaris-jobs-production`. `workers.dev` is off on both (`workers_dev: false`).
+  - **Why the whole zone moves.** A Custom Domain needs an active Cloudflare zone; Cloudflare then creates the DNS record and certificate itself, and it refuses a hostname that already has a CNAME record or sits in a zone you do not own [custom-domains]. A CNAME from Vercel DNS to `workers.dev` is therefore not an option. Cloudflare's subdomain setup (a zone for `jobs.atlaris.app` alone) is Enterprise-only [dns-subdomain]. So the entire `atlaris.app` zone moves to Cloudflare on the Free plan; a full setup is the only one Free supports [dns-full-setup].
+  - **What changes and what does not.** Only the nameservers change at the registrar (Squarespace; today `ns1.vercel-dns.com` and `ns2.vercel-dns.com`). Vercel keeps hosting the app. Every record that points at Vercel stays **DNS only** (grey cloud), so app traffic is not proxied through Cloudflare [dns-full-setup].
+  - **Side benefit.** The zone's single Free rate-limiting rule can protect `/v1/*` on the Worker hostnames (Decision 4).
+  - **Order.** The zone move is checklist Part A0 and must be active before B2's first deploy.
+- **B2 sequencing.** `wrangler.jsonc` ships with `"workers_dev": false` and one custom-domain route per environment (`{ "pattern": "<host>", "custom_domain": true }` [custom-domains]). Wrangler treats its routes as the source of truth and overrides dashboard route edits on the next deploy [wrangler-config], so the deploy attaches the domain. The checklist only verifies it, or attaches it by hand if the token lacks permission. Every `/healthz` check uses the custom hostnames. B2's first deploy needs the `atlaris.app` zone **Active** in Cloudflare (checklist A0) and no existing `workers` or `workers-staging` records.
 - Supabase project names come from Track A's environment table (`docs/development/local-database.md` on `feature/jcs-119-…`): staging is `atlaris-dev`, production is `atlaris-prod`. Staging is the `develop` Vercel Preview with non-production services (`docs/ci-cd/pipeline-and-deployment-strategy.md:36`).
 - Bindings, variables, queues, Workflows, and `secrets` are non-inheritable and are written out per environment; `triggers` is inheritable, so the top level declares no crons [wrangler-config].
 - Workflow names are account-wide, so each carries the environment suffix (max 64 characters [wf-limits]).
@@ -150,12 +158,13 @@ Illustrative `wrangler.jsonc` shape (B2 owns the real file):
   "compatibility_date": "2026-10-05",
   "tsconfig": "./tsconfig.json",
   "keep_vars": true,
-  "workers_dev": true,
+  "workers_dev": false,
   "preview_urls": false,
   "observability": { "enabled": true, "head_sampling_rate": 1 },
   "alias": { "@sentry/nextjs": "@sentry/cloudflare" /* plus the runtime/ targets B2 verifies */ },
   "env": {
     "staging": {
+      "routes": [{ "pattern": "workers-staging.atlaris.app", "custom_domain": true }],
       "vars": { "NODE_ENV": "production", "WORKER_ENV": "staging", "APP_URL": "<staging app URL>", "SENTRY_DSN": "<atlaris-jobs DSN>", "LOG_LEVEL": "info" },
       "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<staging Hyperdrive ID>" }],
       "queues": {
@@ -171,7 +180,8 @@ Illustrative `wrangler.jsonc` shape (B2 owns the real file):
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
       "secrets": { "required": ["JOBS_SIGNING_SECRET"] }
     },
-    "production": { /* same keys with -production names and the production Hyperdrive ID */ }
+    "production": { /* same keys with -production names, the production Hyperdrive ID, and
+                       "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }] */ }
   }
 }
 ```
@@ -198,6 +208,11 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 
 - Supabase Free direct connections (`db.<ref>.supabase.co:5432`) are IPv6-only; the shared session pooler (port 5432 on the pooler host) is IPv4 [supabase-connect]. Cloudflare's Supabase guide says to use the direct string [hd-supabase] but does not say whether Hyperdrive reaches IPv6-only origins. Hyperdrive tests the connection when the config is created, so B1 tries direct first and falls back to the session pooler.
 - Hyperdrive caches eligible reads for 60 seconds by default and does not invalidate on writes [hd-caching]. Job claims and status reads must be fresh, so both configs are created with caching disabled.
+- **The DNS move is outward-facing.** The Cloudflare quick scan is not guaranteed to find every record [dns-full-setup], so a missed record breaks the app, email, or a verification. Checklist A0 compares the full Vercel record list before the nameserver change.
+- **Wildcard records.** On 2026-10-05, Vercel's authoritative nameserver answered an arbitrary name (`zz-random-123.atlaris.app`) with the same Vercel IPs as the apex, which points to a wildcard record or a `*.atlaris.app` project domain.
+  - If a project uses a wildcard domain, Vercel needs DNS challenges to renew its certificate. With DNS elsewhere, that means delegating `_acme-challenge` to `ns1.vercel-dns.com` and `ns2.vercel-dns.com` [vercel-domains].
+  - A0 checks for this before the switch.
+- **DNSSEC.** On 2026-10-05 no DS record was published for `atlaris.app`. DNSSEC must be off at the registrar before nameservers change [dns-full-setup]; A0 re-checks.
 
 ## Decision 3: Configuration loading
 
@@ -227,7 +242,7 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 
 ### Decision
 
-- **Transport.** The app calls `POST {JOBS_WORKER_URL}/v1/<command>` over HTTPS with a JSON body `{ "v": 1, …payload }`. `JOBS_WORKER_URL` is the Worker's `workers.dev` URL for that environment.
+- **Transport.** The app calls `POST {JOBS_WORKER_URL}/v1/<command>` over HTTPS with a JSON body `{ "v": 1, …payload }`. `JOBS_WORKER_URL` is the Worker's custom domain for that environment: `https://workers-staging.atlaris.app` (Vercel Preview, `develop` only) or `https://workers.atlaris.app` (Production). See Decision 2.
 - **Signature.** Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature: v1=<hex>`, where `<hex>` is HMAC-SHA256 with `JOBS_SIGNING_SECRET` over `<timestamp>.<METHOD>.<path>.<hex SHA-256 of body>`.
 - **Verification.** The Worker rejects timestamps more than 300 seconds off, compares in constant time (same digest-compare approach as `workflowCallbackTokensMatch`, `src/lib/proxy/workflow-callback-auth.ts:81-99`), accepts an optional `JOBS_SIGNING_SECRET_PREVIOUS` during rotation, and returns `401` with no detail on failure. Both runtimes have Web Crypto.
 - **Commands.**
@@ -259,7 +274,13 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 
 ### Open risks
 
-- The `workers.dev` URL is public. Unauthenticated requests are rejected but still count toward the Free limit of 100,000 requests per day, which Workflow executions share [workers-limits][wf-limits]. A flood could stop every job until midnight UTC. The endpoint plan is open question 1: B2 ships on `workers.dev`, and the choice is made with the Workers Paid decision after B5. Switching endpoints is Wrangler configuration, DNS, and the app's `JOBS_WORKER_URL`, not code.
+- **Public endpoint.** The Worker hostnames are public. Unauthenticated requests are rejected but still count toward the Free limit of 100,000 requests per day, which Workflow executions share [workers-limits][wf-limits], so a flood could stop every job until midnight UTC.
+  - **Mitigation (decided 2026-10-05).** Serve the Workers only on their custom domains, with `workers.dev` off, and add the zone's one Free-plan rate-limiting rule on paths starting with `/v1/`.
+  - **What Free allows** [waf-rl]: 1 rule; path and verified-bot fields only; per-IP counting; a 10-second counting period; a 10-second mitigation.
+  - **Proposed rule:** `jobs-worker-v1`, URI path starts with `/v1/`, more than 100 requests in 10 seconds per IP → Block for 10 seconds. The threshold stays high because every legitimate command comes from Vercel's shared egress IPs.
+  - **Scope.** The Free rule cannot match on host, so it covers `/v1/` on every proxied hostname in the zone, which means both Worker hostnames. App hostnames are DNS-only and never pass through it.
+  - **Residual risk.** On Free the rule mitigates but does not eliminate a distributed flood: many IPs each staying under the threshold still reach the Worker. Workers Paid (no daily request cap) removes the exposure; revisit at the post-B5 Paid decision.
+  - Switching endpoints later is Wrangler configuration, DNS, and the app's `JOBS_WORKER_URL`, not code.
 - Clock skew over 300 seconds between Vercel and Cloudflare would reject commands (unlikely).
 
 ## Decision 5: Observability
@@ -487,6 +508,7 @@ In-code timing cannot replace these numbers: `Date.now()` and `performance.now()
 | Workflows | 100 concurrent instances; 3-day state; 1 MiB per step result; 1,024 steps | Lessons and plan generation use a handful of steps | [wf-limits] |
 | Workers Logs | 200,000 events per day; 3-day retention | Both environments | [workers-logs] |
 | Workers Builds | 3,000 minutes per month; 1 concurrent build | One build per push to `develop` or `main` | [builds-limits] |
+| WAF rate-limiting rules | 1 per zone; path and verified-bot fields; 10 s period and mitigation | 1 (`jobs-worker-v1`) | [waf-rl] |
 
 ## Exact Cloudflare resources for B1
 
@@ -496,12 +518,14 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 
 | Resource | Name | Environment | Dashboard page | Settings | Copy back |
 | --- | --- | --- | --- | --- | --- |
+| DNS zone | `atlaris.app` (Free plan, full setup) | both | Domains → Onboard a domain; nameservers changed at Squarespace | Records copied from Vercel DNS; every Vercel-pointing record DNS only; no `workers` or `workers-staging` records | Zone status (Active); assigned nameservers; "all records present" |
 | Hyperdrive configuration | `atlaris-jobs-db-staging` | staging | Hyperdrive → Create configuration | Supabase `atlaris-dev` direct connection (fallback: session pooler, port 5432), user `postgres`; caching disabled | Hyperdrive ID; which connection type worked |
 | Hyperdrive configuration | `atlaris-jobs-db-production` | production | Hyperdrive → Create configuration | Supabase `atlaris-prod`, same rules | Hyperdrive ID; connection type |
 | Queue | `atlaris-regeneration-staging` | staging | Queues → Create queue | Defaults (Free retention is fixed at 24 hours) | Name confirmation |
 | Queue | `atlaris-regeneration-production` | production | Queues → Create queue | Defaults | Name confirmation |
-| Worker, Git-connected | `atlaris-jobs-staging` | staging | Workers & Pages → Create application → Import a repository | Repo `saldanaj97/atlaris`; root directory `workers/jobs`; production branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`, then `develop`; deploy command with `--env staging`; preview builds off | `workers.dev` URL; first build ID and result |
-| Worker, Git-connected | `atlaris-jobs-production` | production | Same | Root `workers/jobs`; branch `main`; deploy command with `--env production`; preview builds off | `workers.dev` URL; first build ID and result |
+| Worker, Git-connected | `atlaris-jobs-staging` | staging | Workers & Pages → Create application → Import a repository | Repo `saldanaj97/atlaris`; root directory `workers/jobs`; production branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`, then `develop`; deploy command with `--env staging`; preview builds off; custom domain `workers-staging.atlaris.app` (attached by deploy, verified in Domains & Routes); `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
+| Worker, Git-connected | `atlaris-jobs-production` | production | Same | Root `workers/jobs`; branch `main`; deploy command with `--env production`; preview builds off; custom domain `workers.atlaris.app`; `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
+| Rate-limiting rule | `jobs-worker-v1` | both (zone-wide) | `atlaris.app` zone → Security rules → Create rule → Rate limiting rules | URI path starts with `/v1/`; per IP; more than 100 requests in 10 s → Block for 10 s [waf-rl-create] | Rule deployed yes/no; burst-test result |
 | Worker secrets | `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` | each Worker | Worker → Settings → Variables and Secrets → Add → Secret | Values from the table below | Names only |
 | Build variables | `PNPM_VERSION=11.9.0`, `NODE_VERSION=24`, `SKIP_DEPENDENCY_INSTALL=true`; build secret `SENTRY_AUTH_TOKEN` | each Worker | Worker → Settings → Build → Build variables and secrets | `package.json:5-8` requires pnpm 11 and Node 24; the build image defaults to pnpm 10.11.1 [build-image] | Names only |
 
@@ -527,7 +551,7 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 
 | Variable | Preview (`develop` only) | Production |
 | --- | --- | --- |
-| `JOBS_WORKER_URL` | `https://atlaris-jobs-staging.<subdomain>.workers.dev` | `https://atlaris-jobs-production.<subdomain>.workers.dev` |
+| `JOBS_WORKER_URL` | `https://workers-staging.atlaris.app` | `https://workers.atlaris.app` |
 | `JOBS_SIGNING_SECRET` | Staging Worker's value | Production Worker's value |
 
 ### Created by deploy (for reference; not B1)
@@ -540,16 +564,12 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 | Workflow | `atlaris-module-lessons-<env>` (`MODULE_LESSONS_WORKFLOW`, `ModuleLessonsWorkflow`) | B5 |
 | Workflow | `atlaris-plan-generation-<env>` (`PLAN_GENERATION_WORKFLOW`, `PlanGenerationWorkflow`) | B6 |
 | Bindings | `HYPERDRIVE`, `CF_VERSION_METADATA` | B2 |
+| Custom domains and their DNS records and certificates | `workers-staging.atlaris.app`, `workers.atlaris.app` (from `routes` with `custom_domain: true`) | B2 |
 | Switch variables | `JOBS_PAUSED`, `JOB_*_ENABLED` (dashboard, at each cutover) | B3a–B6 |
 
 ## Open questions for the user
 
-1. **Public endpoint (deferred to the Workers Paid decision after B5).** B2 ships on `workers.dev`. Plan:
-   - **If the account moves to Workers Paid:** keep `workers.dev`. Paid has no daily request cap, so a flood of rejected requests cannot stop jobs [workers-limits].
-   - **If it stays on Free:** serve the Worker from `jobs.atlaris.app` and add the one rate-limiting rule Free allows. That rule matches only on path and verified-bot fields, counts per IP over 10 seconds, and mitigates for 10 seconds [waf-rl].
-   - **Constraint found while recording this plan.** `atlaris.app` DNS is on Vercel (`ns1.vercel-dns.com`, `ns2.vercel-dns.com`). Workers Custom Domains need an active Cloudflare zone [custom-domains], and Cloudflare documents subdomain setup (a zone for `jobs.atlaris.app` alone) as Enterprise-only, including when the parent domain is at another DNS provider [dns-subdomain]. On Free, the custom-domain path therefore means moving the whole `atlaris.app` zone to Cloudflare nameservers and recreating Vercel's records there, or using another domain. Decide that with this question.
-   - Either way, switching is Wrangler configuration, DNS, and `JOBS_WORKER_URL`, not code.
-2. **Staging `APP_URL` (confirmation pending).** Proposed: `https://atlaris-git-develop-juan-saldana-projects.vercel.app`, the `develop` branch URL. It goes into email links sent from staging.
+1. **Staging `APP_URL` (confirmation pending).** Proposed: `https://atlaris-git-develop-juan-saldana-projects.vercel.app`, the `develop` branch URL. It goes into email links sent from staging.
 
 ### Decisions recorded after review (2026-10-05)
 
@@ -561,6 +581,7 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 | B4 vs B5 ordering | B4's production cutover follows B5's CPU gate | Orchestrator | Decisions 7 and 9 |
 | Observation windows | Plan cleanup 7 days; retention 7 daily runs; email 14 days; regeneration, lessons, plan generation 7 days and at least 20 production jobs each | Orchestrator | Decision 7 |
 | Hyperdrive role | `postgres`, matching the service-role client; a least-privilege role is a possible follow-up outside Track B | Orchestrator | Decision 2 |
+| Public endpoint | Custom domains `workers-staging.atlaris.app` and `workers.atlaris.app`; the whole `atlaris.app` zone moves from Vercel DNS to Cloudflare Free (nameservers only; registrar stays Squarespace; Vercel records DNS-only); `workers.dev` disabled; one rate-limiting rule on `/v1/` | User | Decisions 2 and 4; checklist A0, B5, B6 |
 
 ## Sources
 
@@ -620,7 +641,10 @@ All pages read on 2026-10-05 as Markdown (`index.md`) from developers.cloudflare
 | [sentry-workflows] | https://docs.sentry.io/platforms/javascript/guides/cloudflare/features/workflows/ |
 | [sentry-crons] | https://docs.sentry.io/platforms/javascript/guides/cloudflare/crons/ |
 | [supabase-connect] | https://supabase.com/docs/guides/database/connecting-to-postgres |
-| [custom-domains] | https://developers.cloudflare.com/workers/configuration/routing/custom-domains/ |
+| [custom-domains] | https://developers.cloudflare.com/workers/configuration/routing/custom-domains/ (updated Sep 29, 2026) |
+| [dns-full-setup] | https://developers.cloudflare.com/dns/zone-setups/full-setup/setup/ (updated Jul 29, 2026) |
+| [waf-rl-create] | https://developers.cloudflare.com/waf/rate-limiting-rules/create-zone-dashboard/ (updated Aug 3, 2026) |
+| [vercel-domains] | https://vercel.com/docs/domains/working-with-domains/add-a-domain (wildcard domains with an external DNS provider) |
 | [dns-subdomain] | https://developers.cloudflare.com/dns/zone-setups/subdomain-setup/ (updated Aug 14, 2026) and https://developers.cloudflare.com/dns/zone-setups/subdomain-setup/setup/ |
 | [waf-rl] | https://developers.cloudflare.com/waf/rate-limiting-rules/ |
 
