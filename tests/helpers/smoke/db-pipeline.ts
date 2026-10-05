@@ -1,6 +1,7 @@
 import {
   bootstrapDatabase,
   grantRlsPermissions,
+  withUnschedulablePgCronHidden,
 } from '@tests/helpers/db/bootstrap';
 import {
   seedLocalProductTestingBillingFixture,
@@ -51,7 +52,9 @@ export async function prepareSmokeDatabase(
   await bootstrapDatabase(connectionUrl);
 
   console.log('[smoke] Applying migrations (drizzle-kit migrate)…');
-  applySmokeMigrations(connectionUrl);
+  await withUnschedulablePgCronHidden(connectionUrl, () => {
+    applySmokeMigrations(connectionUrl);
+  });
 
   console.log('[smoke] Granting RLS permissions…');
   await grantRlsPermissions(connectionUrl);

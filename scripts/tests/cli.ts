@@ -1,3 +1,7 @@
+import {
+  NATIVE_TEST_DB,
+  TEST_DB_ENV,
+} from '../../tests/setup/native-test-stack';
 import { resolveChangedTestBase } from './changed-base';
 import { aggregateExitCode, runPhases } from './run-phases';
 import { spawn } from 'node:child_process';
@@ -5,6 +9,7 @@ import { pathToFileURL } from 'node:url';
 
 const VITEST_CONFIG = 'vitest.config.ts';
 const WORKFLOW_VITEST_CONFIG = 'vitest.workflow.config.ts';
+const NATIVE_DB_FLAG = '--native-db';
 
 type EnvironmentOverrides = Partial<NodeJS.ProcessEnv>;
 
@@ -39,6 +44,9 @@ function usage(): never {
       '  pnpm test smoke [options]',
       '  pnpm test e2e',
       '  pnpm test all [--e2e]',
+      '',
+      `Add ${NATIVE_DB_FLAG} to any suite to use the native Supabase "test" stack`,
+      `instead of Testcontainers (same as ${TEST_DB_ENV}=${NATIVE_TEST_DB}).`,
     ].join('\n'),
   );
 }
@@ -202,9 +210,40 @@ function parseChangedOption(args: readonly string[]): boolean {
   usage();
 }
 
+/** Remove `--native-db` from the runner's own options (not Playwright's). */
+function extractNativeDbFlag(args: readonly string[]): {
+  args: string[];
+  nativeDb: boolean;
+} {
+  const separator = args.indexOf('--');
+  const own = separator === -1 ? args : args.slice(0, separator);
+  const forwarded = separator === -1 ? [] : args.slice(separator);
+  const kept = own.filter((arg) => arg !== NATIVE_DB_FLAG);
+
+  return {
+    args: [...kept, ...forwarded],
+    nativeDb: kept.length !== own.length,
+  };
+}
+
+function withNativeTestDb(plan: readonly TestPhase[]): TestPhase[] {
+  return plan.map((phase) => ({
+    ...phase,
+    commands: phase.commands.map((command) => ({
+      ...command,
+      env: { ...command.env, [TEST_DB_ENV]: NATIVE_TEST_DB },
+    })),
+  }));
+}
+
 /** Build the direct command plan for the public `pnpm test` interface. */
 export function parseTestArgs(argv: readonly string[]): TestPhase[] {
-  const args = stripArgumentSeparator(argv);
+  const { args, nativeDb } = extractNativeDbFlag(stripArgumentSeparator(argv));
+  const plan = parseSuitePlan(args);
+  return nativeDb ? withNativeTestDb(plan) : plan;
+}
+
+function parseSuitePlan(args: readonly string[]): TestPhase[] {
   const suite = args[0];
   const options = args.slice(1);
 

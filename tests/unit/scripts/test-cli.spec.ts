@@ -78,6 +78,52 @@ describe('pnpm test dispatcher', () => {
     expect(separatedSmoke.args).toEqual(smoke.args);
   });
 
+  it('leaves the database choice to the environment by default', () => {
+    const commands = parseTestArgs(['all', '--e2e']).flatMap(
+      (phase) => phase.commands,
+    );
+
+    for (const command of commands) {
+      expect(command.env?.ATLARIS_TEST_DB).toBeUndefined();
+    }
+  });
+
+  it('selects the native test database for every command with --native-db', () => {
+    const plan = parseTestArgs(['integration', '--native-db', '--changed']);
+
+    expect(plan.map((phase) => phase.label)).toEqual(['integration --changed']);
+    for (const command of plan.flatMap((phase) => phase.commands)) {
+      expect(command.args).not.toContain('--native-db');
+      expect(command.env).toMatchObject({
+        ATLARIS_TEST_DB: 'native',
+        NODE_ENV: 'test',
+      });
+    }
+
+    expect(
+      firstCommand(parseTestArgs(['--native-db'])[1]).env?.ATLARIS_TEST_DB,
+    ).toBe('native');
+  });
+
+  it('consumes --native-db before smoke forwarding but not after the separator', () => {
+    const smoke = firstCommand(
+      parseTestArgs(['smoke', '--native-db', '--smoke-step=db'])[0],
+    );
+    expect(smoke.args).toEqual([
+      'exec',
+      'tsx',
+      'scripts/tests/smoke/run.ts',
+      '--smoke-step=db',
+    ]);
+    expect(smoke.env?.ATLARIS_TEST_DB).toBe('native');
+
+    const forwarded = firstCommand(
+      parseTestArgs(['smoke', '--', '--native-db'])[0],
+    );
+    expect(forwarded.args.at(-1)).toBe('--native-db');
+    expect(forwarded.env?.ATLARIS_TEST_DB).toBeUndefined();
+  });
+
   it('rejects unsupported suite options', () => {
     expect(() => parseTestArgs(['workflow', '--changed'])).toThrow(
       TestCliUsageError,
