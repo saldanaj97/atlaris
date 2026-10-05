@@ -1,5 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 
+import { executeRows } from '@/lib/db/execute-rows';
 import {
   learningActivityEvents,
   learningPlans,
@@ -31,7 +32,9 @@ export async function listEmailActivityDayKeysForUser(args: {
   endDateKeyExclusive: string;
   dbClient: ContentDb;
 }): Promise<string[]> {
-  const rows = (await args.dbClient.execute(sql`
+  const rows = await executeRows<{ day_key: string }>(
+    args.dbClient,
+    sql`
     SELECT DISTINCT to_char(
       (${learningActivityEvents.occurredAt} AT TIME ZONE ${args.timeZone}),
       'YYYY-MM-DD'
@@ -45,7 +48,8 @@ export async function listEmailActivityDayKeysForUser(args: {
         (${args.endDateKeyExclusive}::timestamp AT TIME ZONE ${args.timeZone})
       )
     ORDER BY 1 ASC
-  `)) as Array<{ day_key: string }>;
+  `,
+  );
 
   return rows.map((row) => row.day_key);
 }
