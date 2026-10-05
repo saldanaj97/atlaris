@@ -34,9 +34,23 @@ link_from_main() {
   ln -s "$source" "$destination"
 }
 
+copy_from_main() {
+  local relative_path=$1
+  local source="$MAIN_ROOT/$relative_path"
+  local destination="$WORKTREE_ROOT/$relative_path"
+
+  if [[ ! -f "$source" || "$source" == "$destination" ]]; then
+    return
+  fi
+
+  # Per-worktree file: pnpm db start rewrites its database URLs.
+  rm -f "$destination"
+  cp "$source" "$destination"
+}
+
 link_from_main "clerk.env"
 link_from_main "vercel.env"
-link_from_main ".env.local"
+copy_from_main ".env.local"
 # Launcher config lives in ~/.config/atlaris/dev.sh and is shared by worktrees.
 link_from_main ".vercel"
 link_from_main ".agents"
