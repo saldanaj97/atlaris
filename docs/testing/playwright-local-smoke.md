@@ -96,7 +96,7 @@ Smoke is intentionally small (three specs, one browser worker, `video: 'off'`), 
 | Component | Typical impact | Notes |
 | --- | --- | --- |
 | `next dev --turbopack` | Largest | One Next 16 dev server with React Compiler + Workflow plugin; on-demand compilation during auth journeys can spike further |
-| Docker Postgres (Testcontainers) | Moderate | One `postgres:17-alpine` container per run |
+| Docker Postgres (Testcontainers) | Moderate | One `postgres:17-alpine` container per run; with `--native-db` the native `test` stack (about 339 MB idle) replaces it and needs no Docker |
 | Chromium + Node orchestration | Small | Single worker; traces/screenshots only on failure |
 
 Historically, a full `pnpm test smoke` started **two** Turbopack dev servers at once (anon on `:3100`, auth on `:3101`) even though tests run serially. That could push total usage into swap on 16–24 GB machines. The lane now mitigates that without changing coverage:
@@ -158,7 +158,7 @@ Do not re-enable concurrent dual dev servers or project-level Playwright paralle
 - Use `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db` when you only need to prove the disposable Postgres lifecycle, migrations, grants, and smoke seeding.
 - Use Playwright traces and failure screenshots before touching selectors.
 - Use `scripts/tests/smoke/start-app.ts` directly only when debugging launcher behavior and only with a valid `SMOKE_STATE_FILE` from the smoke wrapper.
-- If startup fails, verify Docker is running and Playwright Chromium is installed:
+- If startup fails, verify Docker is running (or pass `--native-db` to use the native Supabase `test` stack instead) and Playwright Chromium is installed:
 
 ```bash
 pnpm exec playwright install chromium
