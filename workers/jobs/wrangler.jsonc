@@ -39,13 +39,13 @@
         "WORKER_ENV": "staging",
         // Pending user confirmation (design note, open question 1).
         "APP_URL": "https://atlaris-git-develop-juan-saldana-projects.vercel.app",
-        // Placeholder: the atlaris-jobs Sentry DSN, from B1 A7.
-        "SENTRY_DSN": "",
+        // atlaris-jobs Sentry project (not a secret).
+        "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
         "LOG_LEVEL": "info"
       },
-      // Placeholder: B1 supplies the real atlaris-jobs-db-staging ID.
+      // atlaris-jobs-db-staging (Supabase atlaris-dev, direct connection).
       "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000001" }
+        { "binding": "HYPERDRIVE", "id": "3d880a7719be417eb9fbabc44380cf9c" }
       ],
       "triggers": { "crons": ["*/15 * * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
@@ -57,13 +57,13 @@
         "NODE_ENV": "production",
         "WORKER_ENV": "production",
         "APP_URL": "https://atlaris.app",
-        // Placeholder: the atlaris-jobs Sentry DSN, from B1 A7.
-        "SENTRY_DSN": "",
+        // atlaris-jobs Sentry project (not a secret).
+        "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
         "LOG_LEVEL": "info"
       },
-      // Placeholder: B1 supplies the real atlaris-jobs-db-production ID.
+      // atlaris-jobs-db-production (Supabase atlaris-prod, direct connection).
       "hyperdrive": [
-        { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000002" }
+        { "binding": "HYPERDRIVE", "id": "d655ad23c1624151b787d53cf3188056" }
       ],
       "triggers": { "crons": ["*/15 * * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
