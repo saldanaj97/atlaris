@@ -127,17 +127,21 @@ export async function ensurePgCronBackgroundWorkers(
   supabase(['stack', 'restart']);
 }
 
-/** Post-start/reset hook: env file + pg_cron. No-op on non-native runtimes. */
-export async function finishNativeStack(
+/**
+ * Post-start/reset hook. Start writes `.env.local` on any runtime (the stack
+ * port is dynamic either way); the pg_cron workaround is native-only.
+ */
+export async function finishLocalStack(
   options: { writeEnv: boolean } = { writeEnv: false },
 ): Promise<void> {
   const { runtime, dbUrl } = readStackStatus();
-  if (runtime !== 'native') return;
+  const native = runtime === 'native';
+  if (!options.writeEnv && !native) return;
   if (!dbUrl) {
     throw new Error('supabase status did not report env.DB_URL.');
   }
   if (options.writeEnv) writeStackEnvLocal(dbUrl);
-  await ensurePgCronBackgroundWorkers(dbUrl);
+  if (native) await ensurePgCronBackgroundWorkers(dbUrl);
 }
 
 export const SAVED_PORT_ERROR = 'endpoints.sql.port cannot change';

@@ -7,11 +7,12 @@ describe('pnpm db dispatcher', () => {
     expect(parseDbArgs(['start'])).toEqual({
       executable: 'pnpm',
       args: ['exec', 'supabase', 'start', '--runtime', 'native'],
-      nativeStack: 'start',
+      afterRun: 'start',
     });
     expect(parseDbArgs(['start', '--runtime', 'docker'])).toEqual({
       executable: 'pnpm',
       args: ['exec', 'supabase', 'start', '--runtime', 'docker'],
+      afterRun: 'start',
     });
     expect(parseDbArgs(['stop'])).toEqual({
       executable: 'pnpm',
@@ -20,7 +21,7 @@ describe('pnpm db dispatcher', () => {
     expect(parseDbArgs(['reset'])).toEqual({
       executable: 'pnpm',
       args: ['exec', 'supabase', 'db', 'reset'],
-      nativeStack: 'reset',
+      afterRun: 'reset',
     });
     expect(parseDbArgs(['seed'])).toEqual({
       executable: 'pnpm',

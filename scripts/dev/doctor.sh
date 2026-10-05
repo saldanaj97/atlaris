@@ -63,7 +63,11 @@ if [[ -x "$DEV_ROOT/node_modules/.bin/supabase" ]]; then
   ' 2>/dev/null) || stack_summary=''
   if [[ -n "$stack_summary" ]]; then
     read -r stack_runtime stack_readiness stack_port <<< "$stack_summary"
-    printf 'OK   Supabase %s stack %s (database port %s)\n' "$stack_runtime" "$stack_readiness" "$stack_port"
+    if [[ "$stack_readiness" == ready ]]; then
+      printf 'OK   Supabase %s stack %s (database port %s)\n' "$stack_runtime" "$stack_readiness" "$stack_port"
+    else
+      printf 'WARN Supabase %s stack %s. For DB work, run: pnpm db start\n' "$stack_runtime" "$stack_readiness"
+    fi
   else
     printf 'WARN Supabase local stack is stopped or unavailable. For DB work, run: pnpm db start\n'
   fi

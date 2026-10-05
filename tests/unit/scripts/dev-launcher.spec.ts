@@ -92,7 +92,7 @@ function createFixture(): Fixture {
       'set -eu',
       'if [[ "${1-}" == status ]]; then',
       '  [[ "${FAKE_SUPABASE_STATUS:-1}" == 0 ]] || exit 1',
-      '  printf \'{"runtime":"native","readiness":"ready","endpoints":{"database.sql":{"port":23456}}}\\n\'',
+      '  printf \'{"runtime":"native","readiness":"%s","endpoints":{"database.sql":{"port":23456}}}\\n\' "${FAKE_SUPABASE_READINESS:-ready}"',
       'fi',
     ].join('\n'),
   );
@@ -536,6 +536,19 @@ describe('development doctor', () => {
     expect(result.stdout).toContain(
       'OK   Supabase native stack ready (database port 23456)',
     );
+  });
+
+  it('warns instead of OK when the stack exists but is not ready', () => {
+    const fixture = createFixture();
+    const result = runLauncher(fixture, ['doctor'], {
+      FAKE_SUPABASE_STATUS: '0',
+      FAKE_SUPABASE_READINESS: 'unavailable',
+    });
+
+    expect(result.stdout).toContain(
+      'WARN Supabase native stack unavailable. For DB work, run: pnpm db start',
+    );
+    expect(result.stdout).not.toContain('OK   Supabase');
   });
 
   it('warns when the worktree stack is not running', () => {

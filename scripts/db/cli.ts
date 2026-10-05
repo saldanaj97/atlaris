@@ -2,7 +2,7 @@ import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '../../src/lib/config/lo
 import {
   SAVED_PORT_ERROR,
   SAVED_PORT_FIX,
-  finishNativeStack,
+  finishLocalStack,
 } from './native-stack';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -13,8 +13,8 @@ const FIXTURE_SCRIPT = 'scripts/db/apply-clerk-billing-fixture.ts';
 export type DbCommand = {
   executable: string;
   args: string[];
-  /** Native-stack follow-up to run after the command succeeds. */
-  nativeStack?: 'start' | 'reset';
+  /** Local-stack follow-up to run after the command succeeds. */
+  afterRun?: 'start' | 'reset';
 };
 
 export class DbCliUsageError extends Error {
@@ -130,7 +130,7 @@ export function parseDbArgs(argv: readonly string[]): DbCommand {
       const runtime = startRuntime(options);
       return {
         ...pnpmCommand(['exec', 'supabase', 'start', '--runtime', runtime]),
-        ...(runtime === 'native' && { nativeStack: 'start' as const }),
+        afterRun: 'start',
       };
     }
     case 'stop':
@@ -140,7 +140,7 @@ export function parseDbArgs(argv: readonly string[]): DbCommand {
       requireNoArgs(options);
       return {
         ...pnpmCommand(['exec', 'supabase', 'db', 'reset']),
-        nativeStack: 'reset',
+        afterRun: 'reset',
       };
     case 'seed':
       requireNoArgs(options);
@@ -206,14 +206,14 @@ function spawnCommand(
 export async function runDbCommand(command: DbCommand): Promise<number> {
   const { code, stderr } = await spawnCommand(
     command,
-    command.nativeStack === 'start',
+    command.afterRun === 'start',
   );
   if (code !== 0) {
     if (stderr.includes(SAVED_PORT_ERROR)) console.error(SAVED_PORT_FIX);
     return code;
   }
-  if (command.nativeStack) {
-    await finishNativeStack({ writeEnv: command.nativeStack === 'start' });
+  if (command.afterRun) {
+    await finishLocalStack({ writeEnv: command.afterRun === 'start' });
   }
   return 0;
 }
