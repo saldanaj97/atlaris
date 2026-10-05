@@ -11,6 +11,18 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-arm64-msvc@16.2.11"
   - "@next/swc-win32-x64-msvc@16.2.11"
   - next@16.2.11
+  # JCS-122: supabase 2.119.0 clears minimumReleaseAge on 2026-10-07; remove then
+  - "supabase@2.119.0"
+  - "@supabase/cli-darwin-arm64@2.119.0"
+  - "@supabase/cli-darwin-x64@2.119.0"
+  - "@supabase/cli-linux-arm64-musl@2.119.0"
+  - "@supabase/cli-linux-arm64@2.119.0"
+  - "@supabase/cli-linux-x64-musl@2.119.0"
+  - "@supabase/cli-linux-x64@2.119.0"
+  - "@supabase/cli-windows-arm64@2.119.0"
+  - "@supabase/cli-windows-x64@2.119.0"
+  # JCS-122: http-cache-semantics 4.3.0 patches GHSA-ch52-4w7c-c8xp; clears minimumReleaseAge ~2026-10-11; remove then
+  - http-cache-semantics@4.3.0
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
@@ -53,6 +65,7 @@ overrides:
   "@babel/core": ^7.29.6
   "@opentelemetry/core": ^2.8.0
   "@xhmikosr/decompress": ^11.1.4
+  http-cache-semantics: ^4.3.0
   tmp: ^0.2.6
 allowBuilds:
   "@openrouter/sdk": true
