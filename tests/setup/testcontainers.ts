@@ -36,6 +36,7 @@ import {
 import {
   bootstrapDatabase,
   grantRlsPermissions,
+  withUnschedulablePgCronHidden,
 } from '@tests/helpers/db/bootstrap';
 import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
 import { execSync } from 'node:child_process';
@@ -160,7 +161,9 @@ async function provisionSharedTestDatabase(
 
   console.log('[Testcontainers] Applying migrations via pnpm db migrate…');
 
-  applySchema(baseConnectionUrl);
+  await withUnschedulablePgCronHidden(baseConnectionUrl, () => {
+    applySchema(baseConnectionUrl);
+  });
 
   console.log('[Testcontainers] Granting RLS permissions…');
 
