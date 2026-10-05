@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { ROUTES } from '@/features/navigation';
 import {
   type BrandLockupVariant,
@@ -35,10 +37,15 @@ function LockupImage({
     <span
       className={
         variant === 'light'
-          ? 'relative block overflow-hidden dark:hidden'
-          : 'relative hidden overflow-hidden dark:block'
+          ? 'relative block h-(--lockup-height) w-(--lockup-width) overflow-hidden dark:hidden'
+          : 'relative hidden h-(--lockup-height) w-(--lockup-width) overflow-hidden dark:block'
       }
-      style={{ width, height }}
+      style={
+        {
+          '--lockup-width': `${width}px`,
+          '--lockup-height': `${height}px`,
+        } as CSSProperties
+      }
     >
       <Image
         src={lockup.src}
@@ -47,13 +54,15 @@ function LockupImage({
         width={lockup.canvasWidth}
         height={lockup.canvasHeight}
         sizes={`${imageWidth}px`}
-        className='absolute max-w-none'
-        style={{
-          width: imageWidth,
-          height: imageHeight,
-          left: offsetX,
-          top: offsetY,
-        }}
+        className='absolute top-(--lockup-offset-y) left-(--lockup-offset-x) h-(--lockup-image-height) w-(--lockup-image-width) max-w-none'
+        style={
+          {
+            '--lockup-image-width': `${imageWidth}px`,
+            '--lockup-image-height': `${imageHeight}px`,
+            '--lockup-offset-x': `${offsetX}px`,
+            '--lockup-offset-y': `${offsetY}px`,
+          } as CSSProperties
+        }
       />
     </span>
   );

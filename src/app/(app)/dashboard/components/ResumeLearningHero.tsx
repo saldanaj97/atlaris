@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { planDetailPath } from '@/features/navigation/routes';
+import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
@@ -13,32 +14,18 @@ interface ResumeLearningHeroProps {
   plan: PlanSummary;
 }
 
-function resumeBadge(
+function resumeBadgeLabel(
   status: GenerationStatus,
   isComplete: boolean,
-): { label: string; className: string } {
+): string {
   switch (status) {
     case 'ready':
-      return isComplete
-        ? {
-            label: 'Complete',
-            className: 'border-success/40 bg-success/10 text-success',
-          }
-        : {
-            label: 'Active',
-            className: 'border-success/40 bg-success/10 text-success',
-          };
+      return isComplete ? 'Complete' : 'Active';
     case 'generating':
     case 'pending_retry':
-      return {
-        label: 'Generating',
-        className: 'border-panel-border bg-panel-muted text-muted-foreground',
-      };
+      return 'Generating';
     case 'failed':
-      return {
-        label: 'Failed',
-        className: 'border-danger/40 bg-danger-subtle text-danger',
-      };
+      return 'Failed';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -54,7 +41,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const progressPercent = Math.round(clampedCompletion * 100);
   const resumeModule = getResumeModule(plan);
   const isComplete = progressPercent >= 100;
-  const badge = resumeBadge(plan.plan.generationStatus, isComplete);
+  const badgeLabel = resumeBadgeLabel(plan.plan.generationStatus, isComplete);
   const planHref = planDetailPath(plan.plan.id);
   const moduleHref = resumeModule
     ? `${planHref}/modules/${resumeModule.id}`
@@ -75,8 +62,18 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
           Resume learning
         </h2>
 
-        <Badge variant='outline' className={`mt-4 ${badge.className}`}>
-          {badge.label}
+        <Badge
+          variant='outline'
+          className={cn(
+            'mt-4',
+            plan.plan.generationStatus === 'ready'
+              ? 'border-success/40 bg-success/10 text-success'
+              : plan.plan.generationStatus === 'failed'
+                ? 'border-danger/40 bg-danger-subtle text-danger'
+                : 'border-panel-border bg-panel-muted text-muted-foreground',
+          )}
+        >
+          {badgeLabel}
         </Badge>
 
         <h3 className='mt-4 text-xl font-semibold text-balance text-foreground'>

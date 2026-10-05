@@ -1,4 +1,5 @@
 import type { ActivityItem } from '../types';
+import type { CSSProperties } from 'react';
 
 import { cn } from '@/lib/utils';
 import { ArrowUpRight, Check, Sparkles } from 'lucide-react';
@@ -39,7 +40,11 @@ export function ActivityCard({
     <Link
       href={`/plans/${activity.planId}`}
       className='group grid min-h-14 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-4 px-5 py-3.5 transition-colors duration-150 animate-dashboard-ledger-row hover:bg-panel-muted focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset motion-reduce:animate-none motion-reduce:transition-none sm:px-6'
-      style={{ animationDelay: `${360 + Math.min(index, 8) * 55}ms` }}
+      style={
+        {
+          '--activity-delay': `${360 + Math.min(index, 8) * 55}ms`,
+        } as CSSProperties
+      }
     >
       <span
         className={cn(

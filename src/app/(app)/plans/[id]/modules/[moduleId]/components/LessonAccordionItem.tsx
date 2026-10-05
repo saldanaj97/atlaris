@@ -86,6 +86,7 @@ export function LessonAccordionItem({
   const resources = lesson.resources ?? [];
 
   return (
+    /* oxlint-disable shadcn/require-static-classes -- Scroll offset and lesson-state classes are complete recipes from shared modules. */
     <AccordionItem
       value={lesson.id}
       disabled={isLocked}
@@ -99,6 +100,7 @@ export function LessonAccordionItem({
         getLessonCardClassName(isLocked, isCompleted),
       )}
     >
+      {/* oxlint-enable shadcn/require-static-classes */}
       <AccordionTrigger
         hideChevron={false}
         className={cn(

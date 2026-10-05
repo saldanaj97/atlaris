@@ -22,6 +22,7 @@ const copy = {
 
 export function AboutHero() {
   return (
+    /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
     <PageHero
       className={styles.hero}
       aria-labelledby='about-hero-heading'
@@ -80,5 +81,6 @@ export function AboutHero() {
         </div>
       </div>
     </PageHero>
+    /* oxlint-enable shadcn/require-static-classes */
   );
 }

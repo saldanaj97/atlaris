@@ -96,6 +96,7 @@ function MobileSheetPrimaryAction({
   if (isMarketing) {
     return (
       <>
+        {/* oxlint-disable shadcn/require-static-classes -- The marketing CTA class is a complete shared recipe. */}
         <Button
           asChild
           variant='default'
@@ -112,12 +113,13 @@ function MobileSheetPrimaryAction({
             />
           </Link>
         </Button>
+        {/* oxlint-enable shadcn/require-static-classes */}
         {!isAuthenticated ? (
           <Button
             asChild
             variant='ghost'
             size='sm'
-            className='text-sm text-muted-foreground hover:text-foreground'
+            className='text-muted-foreground hover:text-foreground'
           >
             <Link href={ROUTES.AUTH.SIGN_IN} onClick={onNavigate}>
               Sign in
@@ -310,7 +312,7 @@ export default function MobileNavigation({
             onClick={() => setOpen(true)}
             className={
               isMarketing
-                ? 'gap-2 rounded-[10px] border-border px-2.5 py-2 font-sans text-sm font-medium text-foreground sm:px-3.5 sm:py-3 pointer-coarse:min-h-11'
+                ? 'gap-2 rounded-[10px] border-border px-2.5 py-2 font-sans text-foreground sm:px-3.5 sm:py-3 pointer-coarse:min-h-11'
                 : 'rounded-xl bg-muted text-muted-foreground shadow-sm transition-colors hover:bg-muted/80'
             }
             aria-label='Open menu'

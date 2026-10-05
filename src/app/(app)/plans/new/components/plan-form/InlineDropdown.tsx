@@ -76,7 +76,7 @@ export function InlineDropdown<TValue extends string>({
           className={cn(
             'inline-flex min-h-[40px] w-full items-center justify-between gap-[6px] overflow-hidden rounded-[8px] border px-[12px] py-[8px] text-sm font-medium leading-5 whitespace-nowrap shadow-sm outline-none hover:border-foreground focus-visible:border-ring [@media(pointer:coarse)]:min-h-[44px]',
             'transition-[background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
-            'focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             isPlaceholder
               ? 'border-input bg-card text-muted-foreground hover:border-foreground data-[state=open]:border-ring data-[state=open]:bg-muted'
               : styles.pill,
@@ -95,7 +95,7 @@ export function InlineDropdown<TValue extends string>({
             sideOffset={8}
             align='start'
             className={cn(
-              'z-50 min-w-[12rem] w-[var(--radix-select-trigger-width)] max-w-[20rem] overflow-hidden rounded-[16px] border border-input bg-popover p-[8px] shadow-xl',
+              'z-50 min-w-[12rem] w-[var(--radix-select-trigger-width)] max-w-[20rem] overflow-hidden rounded-2xl border border-input bg-popover p-[8px] shadow-xl',
               'data-[state=closed]:animate-out data-[state=open]:animate-in',
               'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
               'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',

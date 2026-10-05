@@ -22,7 +22,7 @@ export function CreatePlanPageClient({
   return (
     <div className='flex w-full flex-col gap-4 sm:gap-6'>
       <PageHero
-        className='rounded-[12px] border border-panel-border bg-panel px-5 py-6 sm:px-8 sm:py-5'
+        className='rounded-lg border border-panel-border bg-panel px-5 py-6 sm:px-8 sm:py-5'
         contentClassName='max-w-3xl'
         overline='Create your plan'
         title={

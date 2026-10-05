@@ -5,6 +5,7 @@
     "suspicious": "error"
   },
   "plugins": ["import", "react", "jsx-a11y", "nextjs", "vitest"],
+  "jsPlugins": ["@shadcn/lint"],
   "options": {
     "typeAware": true,
     "typeCheck": true
@@ -42,6 +43,345 @@
     "nextjs/no-assign-module-variable": "off",
     "oxc/no-map-spread": "off",
     "react/react-in-jsx-scope": "off",
+    "shadcn/no-raw-colors": [
+      "error",
+      {
+        "allow": ["fill-mode-both"]
+      }
+    ],
+    "shadcn/no-unknown-classes": "error",
+    "shadcn/no-inline-styles": "error",
+    "shadcn/require-static-classes": "error",
+    "shadcn/no-restyle": [
+      "error",
+      {
+        "allow": ["layout"],
+        // Existing component extension points and exact visual recipes. Keep
+        // Button, Card, and Skeleton exceptions specific to their current uses.
+        "contracts": [
+          { "pattern": "^Accordion$", "allow": ["layout", "spacing"] },
+          { "pattern": "^AccordionContent$", "allow": ["layout", "spacing"] },
+          {
+            "pattern": "^AccordionItem$",
+            "allow": [
+              "layout",
+              "border",
+              "duration-300",
+              "last:border-b",
+              "rounded-2xl",
+              "transition-[border-color,background-color,box-shadow]"
+            ]
+          },
+          {
+            "pattern": "^AccordionTrigger$",
+            "allow": ["layout", "spacing", "no-underline"]
+          },
+          {
+            "pattern": "^Badge$",
+            "allow": [
+              "layout",
+              "color",
+              "capitalize",
+              "leading-tight",
+              "px-1",
+              "px-1.5",
+              "py-0",
+              "rounded",
+              "text-[10px]"
+            ]
+          },
+          {
+            "pattern": "^Button$",
+            "allow": [
+              "bg-accent",
+              "bg-background/40",
+              "bg-muted",
+              "bg-muted/80",
+              "bg-primary-dark",
+              "bg-secondary",
+              "bg-success",
+              "bg-success/90",
+              "bg-transparent",
+              "border",
+              "border-border",
+              "border-border/70",
+              "border-success",
+              "dark:bg-success",
+              "dark:border-success",
+              "dark:hover:bg-success/90",
+              "dark:hover:bg-transparent",
+              "font-medium",
+              "font-sans",
+              "gap-1.5",
+              "gap-2",
+              "gap-4",
+              "hover:bg-card/70",
+              "hover:bg-sidebar-accent",
+              "hover:text-primary",
+              "hover:text-sidebar-foreground",
+              "layout",
+              "p-4",
+              "px-2.5",
+              "px-3",
+              "px-3.5",
+              "px-4",
+              "px-6",
+              "py-1.5",
+              "py-2",
+              "py-3",
+              "rounded-[10px]",
+              "rounded-[inherit]",
+              "rounded-full",
+              "rounded-lg",
+              "rounded-md",
+              "rounded-xl",
+              "shadow-lg",
+              "shadow-md",
+              "shadow-sm",
+              "text-accent-foreground",
+              "text-destructive",
+              "text-foreground",
+              "text-muted-foreground",
+              "text-primary-foreground",
+              "text-secondary-foreground",
+              "text-sm",
+              "text-success-foreground",
+              "text-xs",
+              "transition-[background-color,color,border-color,box-shadow]",
+              "transition-colors"
+            ]
+          },
+          {
+            "pattern": "^Card$",
+            "allow": [
+              "layout",
+              "[animation-delay:120ms]",
+              "[animation-delay:80ms]",
+              "animate-dashboard-unfold",
+              "animate-none",
+              "gap-[24px]",
+              "gap-0",
+              "gap-4",
+              "p-0",
+              "p-4",
+              "p-5",
+              "p-6",
+              "py-0",
+              "rounded-xl",
+              "shadow-none"
+            ]
+          },
+          { "pattern": "^CardContent$", "allow": ["layout", "spacing"] },
+          { "pattern": "^CardDescription$", "allow": ["layout", "px-6"] },
+          {
+            "pattern": "^CardFooter$",
+            "allow": ["layout", "spacing", "border-border", "border-t"]
+          },
+          {
+            "pattern": "^CardHeader$",
+            "allow": ["layout", "spacing", "border-b", "border-border"]
+          },
+          { "pattern": "^CardTitle$", "allow": ["layout", "typography"] },
+          { "pattern": "^CtaBanner$", "allow": ["layout", "border-0"] },
+          {
+            "pattern": "^DropdownMenuTrigger$",
+            "allow": [
+              "layout",
+              "bg-primary/10",
+              "bg-primary/20",
+              "bg-success/15",
+              "bg-success/25",
+              "dark:bg-primary/20",
+              "dark:bg-success/25",
+              "dark:hover:bg-primary/30",
+              "dark:hover:bg-success/30",
+              "dark:text-primary",
+              "dark:text-success-foreground",
+              "font-medium",
+              "gap-1.5",
+              "outline-none",
+              "px-2.5",
+              "py-1.5",
+              "ring-2",
+              "ring-offset-2",
+              "ring-offset-background",
+              "ring-ring",
+              "rounded-md",
+              "text-primary",
+              "text-success",
+              "transition-colors"
+            ]
+          },
+          {
+            "pattern": "^Input$",
+            "allow": [
+              "layout",
+              "bg-background/40",
+              "border-border/70",
+              "pl-[36px]"
+            ]
+          },
+          { "pattern": "^Label$", "allow": ["layout", "typography"] },
+          {
+            "pattern": "^PageHero$",
+            "allow": [
+              "layout",
+              "spacing",
+              "typography",
+              "color",
+              "shape",
+              "effects"
+            ]
+          },
+          { "pattern": "^PageShell$", "allow": ["layout", "spacing"] },
+          { "pattern": "^Progress$", "allow": ["layout", "bg-panel-muted"] },
+          {
+            "pattern": "^RouteEmptyState$",
+            "allow": [
+              "layout",
+              "animate-in",
+              "animate-none",
+              "bg-panel/40",
+              "border",
+              "border-border",
+              "border-dashed",
+              "duration-500",
+              "fade-in",
+              "fill-mode-both",
+              "px-6",
+              "py-12",
+              "rounded-xl"
+            ]
+          },
+          { "pattern": "^RouteErrorState$", "allow": ["layout", "color"] },
+          {
+            "pattern": "^SectionOverline$",
+            "allow": [
+              "layout",
+              "text-muted-foreground",
+              "text-primary",
+              "tracking-[0.14em]",
+              "tracking-[0.16em]"
+            ]
+          },
+          {
+            "pattern": "^SheetContent$",
+            "allow": [
+              "layout",
+              "bg-card",
+              "bg-sidebar",
+              "border-border",
+              "border-r",
+              "border-sidebar-border",
+              "p-0",
+              "shadow-lg"
+            ]
+          },
+          { "pattern": "^SheetHeader$", "allow": ["layout", "spacing"] },
+          {
+            "pattern": "^Skeleton$",
+            "allow": [
+              "layout",
+              "bg-muted",
+              "bg-primary/35",
+              "bg-primary/40",
+              "bg-secondary",
+              "rounded-[8px]",
+              "rounded-full",
+              "rounded-lg",
+              "rounded-md",
+              "rounded-xl"
+            ]
+          },
+          { "pattern": "^Surface$", "allow": ["layout", "spacing"] },
+          { "pattern": "^Textarea$", "allow": ["layout", "typography"] }
+        ]
+      }
+    ],
+    "shadcn/no-arbitrary-values": [
+      "error",
+      {
+        // Existing exact design values and explicit transition lists. Spacing
+        // suggestions assume 0.25rem, but this app still uses 0.2rem.
+        "allow": [
+          "layout",
+          "[animation-delay:120ms]",
+          "[animation-delay:170ms]",
+          "[animation-delay:80ms]",
+          "border-[3px]",
+          "gap-[12px]",
+          "gap-[16px]",
+          "gap-[24px]",
+          "gap-[32px]",
+          "gap-[6px]",
+          "gap-[8px]",
+          "leading-[1.04]",
+          "leading-[1.05]",
+          "leading-[1.08]",
+          "leading-[1.1]",
+          "leading-[1.125]",
+          "leading-[1.15]",
+          "leading-[18px]",
+          "leading-[20px]",
+          "leading-[22px]",
+          "leading-[24px]",
+          "leading-[26px]",
+          "leading-[28px]",
+          "leading-[36px]",
+          "leading-[40px]",
+          "p-[16px]",
+          "p-[8px]",
+          "pb-[16px]",
+          "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
+          "pl-[12px]",
+          "pl-[36px]",
+          "pl-[env(safe-area-inset-left,0px)]",
+          "pr-[16px]",
+          "pr-[36px]",
+          "pr-[env(safe-area-inset-right,0px)]",
+          "pt-[16px]",
+          "pt-[24px]",
+          "pt-[env(safe-area-inset-top,0px)]",
+          "px-[12px]",
+          "py-[8px]",
+          "rounded-[10px]",
+          "rounded-[4px]",
+          "rounded-[8px]",
+          "rounded-[inherit]",
+          "space-y-[24px]",
+          "space-y-[8px]",
+          "text-[10px]",
+          "text-[11px]",
+          "text-[2.75rem]",
+          "text-[28px]",
+          "text-[3.25rem]",
+          "text-[32px]",
+          "text-[40px]",
+          "text-[42px]",
+          "text-[4rem]",
+          "tracking-[-0.01em]",
+          "tracking-[-0.02em]",
+          "tracking-[-0.035em]",
+          "tracking-[-0.03em]",
+          "tracking-[-0.04em]",
+          "tracking-[0.08em]",
+          "tracking-[0.12em]",
+          "tracking-[0.14em]",
+          "tracking-[0.16em]",
+          "tracking-[0.18em]",
+          "tracking-[0.22em]",
+          "transition-[background-color,border-color,box-shadow]",
+          "transition-[background-color,border-color,color,box-shadow]",
+          "transition-[background-color,color,border-color,box-shadow]",
+          "transition-[background-color]",
+          "transition-[border-color,background-color,box-shadow]",
+          "transition-[border-color,background-color]",
+          "transition-[border-color,box-shadow,transform]",
+          "transition-[border-color,box-shadow]",
+          "transition-[width]"
+        ]
+      }
+    ],
     "vitest/expect-expect": [
       "error",
       {
@@ -90,6 +430,22 @@
       "files": ["tests/**/*.{ts,tsx}"],
       "rules": {
         "typescript/no-explicit-any": "off"
+      }
+    },
+    {
+      "files": ["tests/unit/utils/utils.spec.ts"],
+      "rules": {
+        "shadcn/no-raw-colors": "off",
+        "shadcn/no-unknown-classes": "off"
+      }
+    },
+    // UI implementations forward class props and compose variants internally.
+    {
+      "files": ["src/components/ui/**/*.{ts,tsx}"],
+      "rules": {
+        "shadcn/require-static-classes": "off",
+        "shadcn/no-restyle": "off",
+        "shadcn/no-arbitrary-values": "off"
       }
     }
   ]

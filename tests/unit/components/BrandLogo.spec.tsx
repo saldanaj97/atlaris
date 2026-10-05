@@ -23,12 +23,18 @@ describe('BrandLogo', () => {
     expect(lightImage).not.toBeNull();
     expect(darkImage).not.toBeNull();
     expect(lightImage?.parentElement).toHaveStyle({
-      width: `${light.width}px`,
-      height: `${light.height}px`,
+      '--lockup-width': `${light.width}px`,
+      '--lockup-height': `${light.height}px`,
     });
     expect(darkImage?.parentElement).toHaveStyle({
-      width: `${dark.width}px`,
-      height: `${dark.height}px`,
+      '--lockup-width': `${dark.width}px`,
+      '--lockup-height': `${dark.height}px`,
+    });
+    expect(lightImage).toHaveStyle({
+      '--lockup-image-width': `${light.imageWidth}px`,
+      '--lockup-image-height': `${light.imageHeight}px`,
+      '--lockup-offset-x': `${light.offsetX}px`,
+      '--lockup-offset-y': `${light.offsetY}px`,
     });
   });
 
@@ -46,8 +52,8 @@ describe('BrandLogo', () => {
 
     const compact = getBrandLockupLayout('light', 'sm');
     expect(lockupImage('logo-on-light.png')?.parentElement).toHaveStyle({
-      width: `${compact.width}px`,
-      height: `${compact.height}px`,
+      '--lockup-width': `${compact.width}px`,
+      '--lockup-height': `${compact.height}px`,
     });
     expect(compact.width).toBe(128);
   });

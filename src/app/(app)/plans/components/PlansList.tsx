@@ -279,7 +279,7 @@ function BulkPlanActionsToolbar({
 }) {
   return (
     <fieldset
-      className='m-0 min-w-0 space-y-3 rounded-[12px] border border-panel-border bg-panel px-4 py-3'
+      className='m-0 min-w-0 space-y-3 rounded-lg border border-panel-border bg-panel px-4 py-3'
       aria-label='Bulk plan actions'
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
@@ -362,7 +362,7 @@ function PlansGrid({
               }
               onDeselectAll();
             }}
-            className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+            className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
           />
           Select all on page
         </label>
@@ -374,11 +374,10 @@ function PlansGrid({
         aria-label='Learning plans'
         className='grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'
       >
-        {page.items.map((plan, index) => (
+        {page.items.map((plan) => (
           <PlanRow
             key={plan.id}
             plan={plan}
-            index={index}
             referenceTimestamp={page.referenceTimestamp}
             selected={selectedPlanIds.has(plan.id)}
             selectable={isPlanBulkDeletable(plan)}

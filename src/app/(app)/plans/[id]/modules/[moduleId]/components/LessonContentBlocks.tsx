@@ -102,7 +102,7 @@ function GeneratedContentPanel({
   lessonContent: NonNullable<ModuleDetailTask['lessonContent']>;
 }) {
   return (
-    <div className='max-w-full min-w-0 overflow-hidden rounded-[12px] border border-panel-border bg-panel p-4 shadow-sm sm:p-6'>
+    <div className='max-w-full min-w-0 overflow-hidden rounded-lg border border-panel-border bg-panel p-4 shadow-sm sm:p-6'>
       <div className='max-w-[70ch] min-w-0'>
         {getStableEntries(lessonContent.blocks, getLessonBlockKey).map(
           ({ key, item }) => (

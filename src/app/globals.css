@@ -410,8 +410,32 @@
 @utility animate-dashboard-ledger-row {
   animation-name: dashboard-ledger-row;
   animation-duration: var(--motion-duration-feedback);
+  animation-delay: var(--activity-delay, 0ms);
   animation-timing-function: var(--motion-easing-standard);
   animation-fill-mode: both;
+}
+
+@utility progress-indicator-determinate {
+  transform: translateX(var(--progress-offset));
+}
+
+@keyframes usage-analytics-point-label-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@utility animate-usage-analytics-point-label-in {
+  animation: usage-analytics-point-label-in 140ms ease-out
+    var(--point-label-delay, 0ms) both;
+}
+
+/* Sonner's unlayered [data-sonner-toaster] rule sets a large z-index. */
+[data-sonner-toaster].atlaris-toaster {
+  z-index: 60;
 }
 
 @layer utilities {

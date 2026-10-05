@@ -106,11 +106,7 @@ export function LessonAccordionTriggerContent({
           >
             {lesson.title}
           </h3>
-          {isLocked ? (
-            <Badge variant='secondary' className='border-transparent'>
-              Locked
-            </Badge>
-          ) : null}
+          {isLocked ? <Badge variant='secondary'>Locked</Badge> : null}
         </div>
 
         {lesson.description ? (

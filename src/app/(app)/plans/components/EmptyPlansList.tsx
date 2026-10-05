@@ -32,7 +32,7 @@ export function EmptyPlansList({
       icon={FileText}
       title={title}
       description={description}
-      className='flex min-h-72 animate-in flex-col items-center justify-center rounded-xl border border-dashed border-border bg-panel/40 px-6 py-12 text-center animation-duration-500 fill-mode-both fade-in motion-reduce:animate-none'
+      className='flex min-h-72 animate-in flex-col items-center justify-center rounded-xl border border-dashed border-border bg-panel/40 px-6 py-12 text-center duration-500 fill-mode-both fade-in motion-reduce:animate-none'
       action={
         canCreatePlan === undefined ? null : (
           <Button asChild>

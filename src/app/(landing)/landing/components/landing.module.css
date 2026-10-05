@@ -131,6 +131,8 @@
 
 .heroRouteLabel {
   position: absolute;
+  top: var(--route-top);
+  left: var(--route-left);
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;

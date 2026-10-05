@@ -64,10 +64,12 @@ export function PlanStatusHeader({
           />
         ) : null}
       </div>
+      {/* oxlint-disable shadcn/require-static-classes -- The status helper selects complete classes from a finite view-state theme. */}
       <Badge
         variant={getStatusBadgeVariant(viewState)}
         className={cn(statusBadgeClassName(viewState))}
       >
+        {/* oxlint-enable shadcn/require-static-classes */}
         {statusLabel}
       </Badge>
     </CardHeader>

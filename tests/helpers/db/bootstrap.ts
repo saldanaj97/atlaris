@@ -11,7 +11,8 @@ import {
 import { USERS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/users-authenticated-update-columns';
 import { AUTH_JWT_BOOTSTRAP_SQL } from '../sql/auth-jwt-bootstrap';
 /**
- * Shared Supabase-like bootstrap for isolated Testcontainers Postgres.
+ * Shared Supabase-like bootstrap for isolated Testcontainers Postgres and
+ * the opt-in native Supabase test stack.
  * Keep in sync with migration + privilege rules.
  */
 import postgres from 'postgres';
@@ -37,6 +38,105 @@ export async function bootstrapDatabase(connectionUrl: string): Promise<void> {
 
     await sql`GRANT USAGE ON SCHEMA public TO authenticated, anon`;
     await sql`GRANT USAGE ON SCHEMA auth TO authenticated, anon`;
+  } finally {
+    await sql.end();
+  }
+}
+
+const PG_CRON_SHADOW_SCHEMA = 'atlaris_test_pg_cron_shadow';
+
+/**
+ * Run `applyMigrations` with pg_cron hidden from `pg_available_extensions`
+ * when pg_cron is available but cannot be created in this database.
+ *
+ * Supabase images (Docker and native) make pg_cron available but only
+ * creatable in `cron.database_name` (`postgres`). The retention migration
+ * creates it whenever it is available, so it fails in `atlaris_test_*`
+ * databases (JCS-124 F6). For the migration only, this database's
+ * search_path for the connecting role puts a filtered view ahead of
+ * pg_catalog, so the migration skips scheduling exactly as it does on
+ * postgres:17-alpine, where pg_cron is unavailable and this is a no-op.
+ * The stack's own `postgres` database keeps pg_cron.
+ */
+export async function withUnschedulablePgCronHidden(
+  connectionUrl: string,
+  applyMigrations: () => void | Promise<void>,
+): Promise<void> {
+  if (!(await isPgCronUnschedulableHere(connectionUrl))) {
+    await applyMigrations();
+    return;
+  }
+
+  // A run that died before the finally block leaves the shim behind; clear
+  // it first so setup is idempotent.
+  await runStatements(
+    connectionUrl,
+    `
+    DO $$ BEGIN
+      EXECUTE format(
+        'ALTER ROLE CURRENT_USER IN DATABASE %I RESET search_path',
+        current_database()
+      );
+    END $$;
+    DROP SCHEMA IF EXISTS ${PG_CRON_SHADOW_SCHEMA} CASCADE;
+    CREATE SCHEMA ${PG_CRON_SHADOW_SCHEMA};
+    CREATE VIEW ${PG_CRON_SHADOW_SCHEMA}.pg_available_extensions AS
+      SELECT * FROM pg_catalog.pg_available_extensions WHERE name <> 'pg_cron';
+    DO $$ BEGIN
+      EXECUTE format(
+        'ALTER ROLE CURRENT_USER IN DATABASE %I SET search_path = "$user", public, ${PG_CRON_SHADOW_SCHEMA}, pg_catalog, extensions',
+        current_database()
+      );
+    END $$;
+  `,
+  );
+
+  try {
+    await applyMigrations();
+  } finally {
+    await runStatements(
+      connectionUrl,
+      `
+      DO $$ BEGIN
+        EXECUTE format(
+          'ALTER ROLE CURRENT_USER IN DATABASE %I RESET search_path',
+          current_database()
+        );
+      END $$;
+      DROP VIEW ${PG_CRON_SHADOW_SCHEMA}.pg_available_extensions;
+      DROP SCHEMA ${PG_CRON_SHADOW_SCHEMA};
+    `,
+    );
+  }
+}
+
+async function isPgCronUnschedulableHere(
+  connectionUrl: string,
+): Promise<boolean> {
+  const sql = postgres(connectionUrl, { max: 1 });
+
+  try {
+    const rows = await sql<{ unschedulable: boolean }[]>`
+      select exists (
+          select 1 from pg_catalog.pg_available_extensions where name = 'pg_cron'
+        )
+        and current_database() is distinct from
+          current_setting('cron.database_name', true) as unschedulable
+    `;
+    return rows[0]?.unschedulable ?? false;
+  } finally {
+    await sql.end();
+  }
+}
+
+async function runStatements(
+  connectionUrl: string,
+  statements: string,
+): Promise<void> {
+  const sql = postgres(connectionUrl, { max: 1 });
+
+  try {
+    await sql.unsafe(statements);
   } finally {
     await sql.end();
   }
@@ -162,7 +262,14 @@ export async function grantRlsPermissions(
         GRANT USAGE, SELECT ON SEQUENCES TO authenticated, anon
     `;
 
-    await sql`ALTER ROLE postgres BYPASSRLS`;
+    // postgres:17-alpine needs this. Supabase images already grant BYPASSRLS
+    // to their non-superuser postgres role and refuse to alter it (JCS-124 F7).
+    const postgresRole = await sql<{ rolbypassrls: boolean }[]>`
+      select rolbypassrls from pg_roles where rolname = 'postgres'
+    `;
+    if (!postgresRole[0]?.rolbypassrls) {
+      await sql`ALTER ROLE postgres BYPASSRLS`;
+    }
   } finally {
     await sql.end();
   }

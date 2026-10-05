@@ -93,14 +93,14 @@ export function LandingPreview({
 }) {
   return (
     <figure
-      className={`relative aspect-[4/3] w-full overflow-hidden rounded-[1.5rem] border border-border/60 bg-card/80 p-2 shadow-xl shadow-black/10 sm:p-3 ${styles.previewFrame} ${className ?? ''}`}
+      className={`relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border/60 bg-card/80 p-2 shadow-xl shadow-black/10 sm:p-3 ${styles.previewFrame} ${className ?? ''}`}
     >
       <Image
         src={src}
         alt={alt}
         fill
         sizes='(max-width: 767px) 100vw, 60vw'
-        className='rounded-[1rem] object-contain'
+        className='rounded-2xl object-contain'
         unoptimized
       />
       <figcaption className='sr-only'>{caption}</figcaption>

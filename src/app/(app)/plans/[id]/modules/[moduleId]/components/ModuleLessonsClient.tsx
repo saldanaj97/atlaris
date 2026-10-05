@@ -87,7 +87,7 @@ function LessonProgressPanel({
 
   return (
     <aside aria-labelledby={headingId} className='min-w-0 xl:sticky xl:top-24'>
-      <div className='overflow-hidden rounded-[12px] border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
+      <div className='overflow-hidden rounded-lg border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
         <div className='min-w-0 px-4 py-4 max-xl:sr-only sm:px-5'>
           <h2
             id={headingId}
@@ -264,7 +264,7 @@ export function ModuleLessonsClient({
             setOutlineOpen(event.currentTarget.open);
           }}
         >
-          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-[12px] border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
+          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
             <span className='font-semibold'>Lesson progress</span>
             {totalLessons > 0 ? (
               <span className='text-muted-foreground tabular-nums'>

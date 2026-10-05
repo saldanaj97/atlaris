@@ -44,6 +44,7 @@ export function TimelineModuleCard({
         <TimelineModuleMarker status={module.status} />
       </div>
 
+      {/* oxlint-disable shadcn/require-static-classes -- Module-state classes come from the finite plan timeline theme. */}
       <AccordionItem
         value={module.id}
         className={cn(
@@ -51,6 +52,7 @@ export function TimelineModuleCard({
           getTimelineCardClassName(module.status),
         )}
       >
+        {/* oxlint-enable shadcn/require-static-classes */}
         <Button
           type='button'
           variant='ghost'

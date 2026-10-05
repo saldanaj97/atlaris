@@ -55,7 +55,7 @@ export function ModuleHeader({
 
       <PageHero
         as='div'
-        className='min-w-0 rounded-[12px] border border-panel-border bg-panel shadow-sm'
+        className='min-w-0 rounded-lg border border-panel-border bg-panel shadow-sm'
         desktop={{ className: 'opacity-80 sm:block' }}
         mobile={{ className: 'opacity-75 sm:hidden' }}
       >
