@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["esnext"],
+    "types": ["./worker-configuration.d.ts", "node"],
+    "plugins": [],
+    "incremental": false,
+    "rootDir": "../..",
+    "paths": {
+      "@/*": ["../../src/*"],
+      "@supabase/*": ["../../supabase/*"]
+    }
+  },
+  "include": [
+    "worker-configuration.d.ts",
+    "src/**/*.ts"
+  ],
+  "exclude": []
+}

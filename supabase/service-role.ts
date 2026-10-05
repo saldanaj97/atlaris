@@ -42,9 +42,12 @@
  * If you're seeing an ESLint error, you're using the wrong client!
  */
 
+import type { DbClient } from '@/lib/db/types';
+
 import * as schema from './schema';
 import { databaseEnv } from '@/lib/config/env';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import postgres, { type Sql } from 'postgres';
 
 type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
@@ -57,6 +60,10 @@ type ServiceRoleDb = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
 //
 // Lazy init: postgres client + drizzle are constructed on first access so Next.js
 // build-time imports of API routes don't require POSTGRES_URL to be present.
+//
+// Scoped provider: the jobs Worker cannot share I/O across invocations, so it
+// runs each invocation inside runWithServiceRoleDb() with its own client, and
+// `db` resolves to that client there. Outside a scope `db` is the singleton.
 
 let _client: Sql | null = null;
 let _db: ServiceRoleDb | null = null;
@@ -94,11 +101,18 @@ function initializeDb(): ServiceRoleDb {
   return _db;
 }
 
-function getLazyProxyProperty<T extends object>(
-  initialize: () => T,
-  prop: string | symbol,
-): unknown {
-  return Reflect.get(initialize(), prop);
+const scopedServiceRoleDb = new AsyncLocalStorage<DbClient>();
+
+/**
+ * Runs `fn` with `db` resolving to `client` (the jobs Worker's per-invocation
+ * service-role client) for every call made inside it.
+ */
+export function runWithServiceRoleDb<T>(client: DbClient, fn: () => T): T {
+  return scopedServiceRoleDb.run(client, fn);
+}
+
+function resolveServiceRoleDb(): DbClient {
+  return scopedServiceRoleDb.getStore() ?? initializeDb();
 }
 
 /** Recognized by RLS helpers so `=== serviceDb` is not the only bypass signal. */
@@ -117,22 +131,23 @@ export function isServiceRoleDbClient(client: unknown): boolean {
 }
 
 /**
- * Service role database client - BYPASSES RLS (lazily initialized).
+ * Service role database client - BYPASSES RLS (lazily initialized, or the
+ * scoped client inside runWithServiceRoleDb()).
  * Prefer getDb() in route/action layers; pass this client only through
  * feature-owned server write boundaries for server-owned tables.
  */
-export const db: ServiceRoleDb = new Proxy(
+export const db: DbClient = new Proxy(
   serviceRoleProxyTarget,
   {
     get(target, prop: string | symbol, receiver): unknown {
       if (prop === SERVICE_ROLE_DB_MARKER) {
         return Reflect.get(target, prop, receiver);
       }
-      return getLazyProxyProperty(initializeDb, prop);
+      return Reflect.get(resolveServiceRoleDb(), prop);
     },
   },
-  // Cast the proxy to the concrete Drizzle client type
-) as unknown as ServiceRoleDb;
+  // Cast the proxy to the driver-neutral Drizzle client type
+) as unknown as DbClient;
 
 /**
  * Check if the database client has been initialized.

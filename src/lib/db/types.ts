@@ -1,7 +1,11 @@
 import type * as schema from '@supabase/schema';
-import type { drizzle } from 'drizzle-orm/postgres-js';
+import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
-export type DbClient = Awaited<ReturnType<typeof drizzle<typeof schema>>>;
+/**
+ * Driver-neutral Drizzle client: the app uses postgres.js, the jobs Worker
+ * uses node-postgres. Read `execute()` results through `executeRows`.
+ */
+export type DbClient = PgDatabase<PgQueryResultHKT, typeof schema>;
 
 /** Drizzle transaction callback argument type for `dbClient.transaction(...)`. */
 export type DbTransaction = Parameters<

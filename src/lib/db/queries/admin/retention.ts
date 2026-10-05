@@ -1,5 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 
+import { executeRows } from '@/lib/db/execute-rows';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { sql } from 'drizzle-orm';
 
@@ -15,15 +16,18 @@ export async function cleanupRetainedDbRows({
   oldClerkWebhookEvents: number;
   oldJobQueueRows: number;
 }> {
-  const [deleted] = (await dbClient.execute(sql`
-    select *
-    from "private"."cleanup_retained_db_rows"(${now.toISOString()}::timestamptz)
-  `)) as Array<{
+  const [deleted] = await executeRows<{
     expired_oauth_state_tokens: number;
     expired_clerk_webhook_event_claims: number;
     old_clerk_webhook_events: number;
     old_job_queue_rows: number;
-  }>;
+  }>(
+    dbClient,
+    sql`
+    select *
+    from "private"."cleanup_retained_db_rows"(${now.toISOString()}::timestamptz)
+  `,
+  );
 
   return {
     expiredOauthStateTokens: deleted?.expired_oauth_state_tokens ?? 0,

@@ -83,3 +83,4 @@ allowBuilds:
   supabase: true
   bufferutil: true
   utf-8-validate: true
+  workerd: false

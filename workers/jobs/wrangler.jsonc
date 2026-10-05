@@ -1,0 +1,73 @@
+// atlaris-jobs: background jobs Worker. Layout and environments:
+// docs/architecture/cloudflare-jobs-runtime.md (Decisions 1, 2, 5).
+// The top level is local-only (`pnpm workers dev`) and is never deployed.
+// Bindings, vars, and secrets are non-inheritable, so each env lists its own.
+// Job switches (JOBS_PAUSED, JOB_*_ENABLED) are dashboard-managed variables
+// and never live here; keep_vars keeps them across Git deploys.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "atlaris-jobs",
+  "main": "src/index.ts",
+  // nodejs_compat is on by default from compatibility date 2026-08-04.
+  "compatibility_date": "2026-09-26",
+  "tsconfig": "./tsconfig.json",
+  "keep_vars": true,
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  // Local only: `pnpm workers dev` sets
+  // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE to this
+  // worktree's native Supabase stack, which takes precedence over this ID.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }
+  ],
+  "vars": {
+    "NODE_ENV": "development",
+    "WORKER_ENV": "development",
+    "APP_URL": "http://localhost:3000",
+    "SENTRY_DSN": "",
+    "LOG_LEVEL": "debug"
+  },
+  "env": {
+    "staging": {
+      "routes": [
+        { "pattern": "workers-staging.atlaris.app", "custom_domain": true }
+      ],
+      "vars": {
+        "NODE_ENV": "production",
+        "WORKER_ENV": "staging",
+        // Pending user confirmation (design note, open question 1).
+        "APP_URL": "https://atlaris-git-develop-juan-saldana-projects.vercel.app",
+        // Placeholder: the atlaris-jobs Sentry DSN, from B1 A7.
+        "SENTRY_DSN": "",
+        "LOG_LEVEL": "info"
+      },
+      // Placeholder: B1 supplies the real atlaris-jobs-db-staging ID.
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000001" }
+      ],
+      "triggers": { "crons": ["*/15 * * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "secrets": { "required": [] }
+    },
+    "production": {
+      "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }],
+      "vars": {
+        "NODE_ENV": "production",
+        "WORKER_ENV": "production",
+        "APP_URL": "https://atlaris.app",
+        // Placeholder: the atlaris-jobs Sentry DSN, from B1 A7.
+        "SENTRY_DSN": "",
+        "LOG_LEVEL": "info"
+      },
+      // Placeholder: B1 supplies the real atlaris-jobs-db-production ID.
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000002" }
+      ],
+      "triggers": { "crons": ["*/15 * * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "secrets": { "required": [] }
+    }
+  }
+}

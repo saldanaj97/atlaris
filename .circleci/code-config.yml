@@ -226,6 +226,12 @@ jobs:
               --prefix-colors blue,magenta \
               "$lint_command" \
               "pnpm typecheck"
+      - run:
+          name: Worker bundle gate
+          no_output_timeout: 5m
+          command: |
+            pnpm workers check
+            cd workers/jobs && pnpm exec wrangler types --strict-vars=false --check
 
   vulnerability-scan:
     executor: node
