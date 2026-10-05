@@ -6,7 +6,13 @@ describe('pnpm db dispatcher', () => {
   it('maps local Supabase lifecycle commands to the checked-in CLI', () => {
     expect(parseDbArgs(['start'])).toEqual({
       executable: 'pnpm',
-      args: ['exec', 'supabase', 'start'],
+      args: ['exec', 'supabase', 'start', '--runtime', 'native'],
+      afterRun: 'start',
+    });
+    expect(parseDbArgs(['start', '--runtime', 'docker'])).toEqual({
+      executable: 'pnpm',
+      args: ['exec', 'supabase', 'start', '--runtime', 'docker'],
+      afterRun: 'start',
     });
     expect(parseDbArgs(['stop'])).toEqual({
       executable: 'pnpm',
@@ -15,6 +21,7 @@ describe('pnpm db dispatcher', () => {
     expect(parseDbArgs(['reset'])).toEqual({
       executable: 'pnpm',
       args: ['exec', 'supabase', 'db', 'reset'],
+      afterRun: 'reset',
     });
     expect(parseDbArgs(['seed'])).toEqual({
       executable: 'pnpm',
@@ -84,6 +91,9 @@ describe('pnpm db dispatcher', () => {
   });
 
   it('rejects unsupported top-level commands and ambiguous fixture plans', () => {
+    expect(() => parseDbArgs(['start', '--runtime', 'podman'])).toThrow(
+      DbCliUsageError,
+    );
     expect(() => parseDbArgs(['push'])).toThrow(DbCliUsageError);
     expect(() => parseDbArgs(['fixture', 'starter', '--plan', 'pro'])).toThrow(
       DbCliUsageError,

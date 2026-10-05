@@ -6,6 +6,11 @@ const TEST_DB_PREFIX = 'atlaris_test';
 const ADMIN_DB_NAME = 'postgres';
 const PROVISIONING_LOCK_KEY_1 = 418_001;
 const PROVISIONING_LOCK_KEY_2 = 11;
+const RUN_LOCK_KEY_2 = 12;
+const RUN_LOCK_HOLDER = Symbol.for('atlaris.testDbRunLock');
+const RUN_DATABASE_PATTERN = new RegExp(
+  `^${TEST_DB_PREFIX}_(base|template|w\\d+)$`,
+);
 const DEFAULT_TESTCONTAINERS_ENV_FILE = join(
   __dirname,
   '..',
@@ -130,6 +135,101 @@ export async function workerDatabaseExists(
   return await withProvisioningLock(adminConnectionUrl, async (sql) => {
     return await databaseExists(sql, workerDbName);
   });
+}
+
+/** Create `dbName` empty, dropping any previous copy first. */
+export async function recreateDatabase(
+  adminConnectionUrl: string,
+  dbName: string,
+): Promise<void> {
+  await withProvisioningLock(adminConnectionUrl, async (sql) => {
+    await dropDatabaseIfExistsWithClient(sql, dbName);
+    await sql.unsafe(`CREATE DATABASE ${quoteIdentifier(dbName)}`);
+  });
+}
+
+export async function dropDatabase(
+  adminConnectionUrl: string,
+  dbName: string,
+): Promise<void> {
+  await withProvisioningLock(adminConnectionUrl, async (sql) => {
+    await dropDatabaseIfExistsWithClient(sql, dbName);
+  });
+}
+
+/**
+ * Drop the base, template, and worker databases a previous run left in a
+ * persistent database server, so this run starts from the current migrations
+ * and never reuses a stale `atlaris_test_wN` clone.
+ */
+export async function dropPreviousRunDatabases(
+  adminConnectionUrl: string,
+): Promise<void> {
+  await withProvisioningLock(adminConnectionUrl, async (sql) => {
+    const rows = await sql<{ datname: string }[]>`
+      SELECT datname FROM pg_database
+    `;
+
+    for (const { datname } of rows) {
+      if (isPreviousRunDatabase(datname)) {
+        await dropDatabaseIfExistsWithClient(sql, datname);
+      }
+    }
+  });
+}
+
+export function isPreviousRunDatabase(dbName: string): boolean {
+  return RUN_DATABASE_PATTERN.test(dbName);
+}
+
+type RunLockHolder = { sql: Sql; holders: number };
+
+type RunLockGlobal = typeof globalThis & {
+  [RUN_LOCK_HOLDER]?: RunLockHolder;
+};
+
+/**
+ * Hold a session advisory lock for the whole run so a second DB-backed run
+ * against the same persistent server fails fast instead of dropping this
+ * run's databases. Vitest loads a globalSetup module once per project, so
+ * projects in one process share the holder through `globalThis`.
+ */
+export async function acquireTestRunLock(
+  adminConnectionUrl: string,
+): Promise<void> {
+  const state = globalThis as RunLockGlobal;
+  const existing = state[RUN_LOCK_HOLDER];
+  if (existing) {
+    existing.holders += 1;
+    return;
+  }
+
+  const sql = postgres(adminConnectionUrl, { max: 1 });
+  const rows = await sql<{ locked: boolean }[]>`
+    SELECT pg_try_advisory_lock(${PROVISIONING_LOCK_KEY_1}, ${RUN_LOCK_KEY_2}) AS locked
+  `;
+
+  if (!rows[0]?.locked) {
+    await sql.end();
+    throw new Error(
+      'Another DB-backed test run is using this test database server. Wait for it to finish: runs against one server share the atlaris_test_* databases.',
+    );
+  }
+
+  state[RUN_LOCK_HOLDER] = { sql, holders: 1 };
+}
+
+export async function releaseTestRunLock(): Promise<void> {
+  const state = globalThis as RunLockGlobal;
+  const holder = state[RUN_LOCK_HOLDER];
+  if (!holder) return;
+
+  holder.holders -= 1;
+  if (holder.holders > 0) return;
+
+  Reflect.deleteProperty(state, RUN_LOCK_HOLDER);
+  // Closing the session releases the advisory lock.
+  await holder.sql.end();
 }
 
 export function shouldLogTestDbDebug(): boolean {

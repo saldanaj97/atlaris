@@ -5,6 +5,7 @@ import {
   getTemplateDbName,
   getTestcontainersEnvFile,
   getWorkerDbName,
+  isPreviousRunDatabase,
   normalizeWorkerId,
 } from '@tests/setup/db-provisioning';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -35,6 +36,26 @@ describe('db provisioning helpers', () => {
     expect(createAdminDatabaseUrl(containerUrl)).toBe(
       'postgresql://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable',
     );
+  });
+
+  it('selects only base, template, and worker databases for the pre-run drop', () => {
+    expect(
+      [
+        'atlaris_test_base',
+        'atlaris_test_template',
+        'atlaris_test_w1',
+        'atlaris_test_w12',
+        'atlaris_test_smoke',
+        'atlaris_test_wx',
+        'atlaris_test_base_old',
+        'postgres',
+      ].filter(isPreviousRunDatabase),
+    ).toEqual([
+      'atlaris_test_base',
+      'atlaris_test_template',
+      'atlaris_test_w1',
+      'atlaris_test_w12',
+    ]);
   });
 
   it('uses a per-run runtime-state file when configured', () => {

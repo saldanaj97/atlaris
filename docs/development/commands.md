@@ -98,7 +98,7 @@ Migration authoring and deployment use the committed Supabase migration chain. `
 See [local-database.md](./local-database.md) for ports, env vars, and local vs hosted Supabase.
 
 ```bash
-pnpm db start          # Start Supabase local stack
+pnpm db start          # Start the native Supabase stack and write .env.local (--runtime docker for the fallback)
 pnpm db stop           # Stop Supabase local stack
 pnpm db reset          # Recreate local Supabase DB from migrations + seed.sql
 pnpm db seed           # Re-seed the deterministic local product-testing user
@@ -108,15 +108,15 @@ pnpm db fixture pro     # Set the local pro billing fixture
 pnpm db reconcile-clerk # Reconcile Clerk users against the local DB
 ```
 
-### Cursor Cloud Agent database
+### Cloud agent database
 
-These commands operate only on the fixed, task-local PostgreSQL 17 target documented in [local-database.md](./local-database.md). They reject hosted credentials and arbitrary database URLs.
+Codex and Cursor Cloud agents use these commands. They run the native Supabase stack by default; `ATLARIS_AGENT_DB=postgres` selects the legacy PostgreSQL 17 path (see [local-database.md](./local-database.md#cloud-agent-database)). They reject hosted credentials and arbitrary database URLs.
 
 ```bash
 pnpm db agent preflight # Read-only runtime and safety checks
-pnpm db agent up        # Idempotent start, migrate, grant, seed, and verify
+pnpm db agent up        # Idempotent start, apply pending migrations, verify (seed runs on first start; reset reapplies), and write .env.local
 pnpm db agent status    # Read-only database status
-pnpm db agent reset     # Recreate only the managed agent database
+pnpm db agent reset     # Reset only the managed local agent database
 ```
 
 ## Testing
@@ -132,13 +132,16 @@ pnpm test unit --changed      # Run unit tests for changed files only
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
 pnpm test integration --changed # Run changed integration + Workflow SDK tests
 pnpm test integration         # Run the full DB/API integration suite (heavier; use sparingly)
-pnpm test workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers)
+pnpm test workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers by default)
 pnpm test security            # Run RLS policy tests
 pnpm test smoke               # Run Playwright smoke coverage
 pnpm test e2e                 # Run the E2E Vitest project
 pnpm test all                 # Run lint, typecheck, unit, integration, workflow, and security suites
 pnpm test all --e2e           # Full suite plus E2E tests
+pnpm test integration --native-db # Any DB-backed suite on the native Supabase `test` stack (no Docker); same as ATLARIS_TEST_DB=native
 ```
+
+DB-backed suites use Testcontainers unless `--native-db` / `ATLARIS_TEST_DB=native` is set. See [local-database.md](./local-database.md#automated-test-databases).
 
 Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-sdk.md#testing) · [tests/AGENTS.md](../../tests/AGENTS.md#workflow-sdk-tests).
 

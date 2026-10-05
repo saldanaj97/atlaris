@@ -233,16 +233,14 @@ Record evidence without secrets: environment name, Clerk Development instance na
 
 ### Local Supabase database
 
-Use `pnpm db start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
+Use `pnpm db start` to start the native Supabase stack. It writes the stack's URL into this worktree's `.env.local`; the port is assigned by the CLI (20000–32767), so there is no fixed value to copy. See [local-database.md](./local-database.md).
 
-| Variable                               | Local default / source                                                   |
-| -------------------------------------- | ------------------------------------------------------------------------ |
-| `POSTGRES_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
-| `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321`                                                 |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key from `supabase status`                            |
-| `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
+| Variable                   | Local source                                                         |
+| -------------------------- | -------------------------------------------------------------------- |
+| `POSTGRES_URL`             | Written by `pnpm db start` / `pnpm db agent up` (`env.DB_URL`)       |
+| `POSTGRES_URL_NON_POOLING` | Written by the same commands, same value as `POSTGRES_URL`           |
 
-Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
+The native stack runs no REST API, so the local app needs no Supabase URL or API keys.
 
 ### Local laptop (1Password Environments)
 
