@@ -79,14 +79,31 @@ Create one 1Password item per environment, for example `Atlaris jobs Worker – 
    - `OPENROUTER_API_KEY`
    - `RESEND_API_KEY`
    - `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`. This must be **exactly** the app's value for that environment; the app verifies unsubscribe tokens the Worker signs.
-   - Staging uses the `develop` Preview's values unless you decide on separate staging keys (design note, open question 6).
-3. **Sentry auth token.** In Sentry, open **Settings** → **Organization Tokens** → **Create New Token**, name it `cloudflare-workers-builds`, and store it in 1Password as `SENTRY_AUTH_TOKEN`. One token serves both Workers.
+   - Staging reuses the `develop` Preview's OpenRouter and Resend keys (decided 2026-10-05); production uses the app's Production values.
 
-**Verify:** each 1Password item holds `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and the Sentry token item exists.
+**Verify:** each 1Password item holds `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
 
 **Copy back:** "secrets stored" (no values).
 
-### A7. Vercel environment variables
+### A7. Sentry project and auth token
+
+The Worker reports to its own Sentry project, separate from the app's `atlaris` project (decided 2026-10-05).
+
+1. In Sentry org `jcs-software`, open **Projects** → **Create Project**.
+2. Choose platform **Cloudflare Workers** and name the project `atlaris-jobs`. Do not add alert rules now; cron monitors are created by the Worker's first check-ins.
+3. Open the new project → **Settings** → **Client Keys (DSN)** and copy the DSN. A DSN is not a secret; it goes into `wrangler.jsonc` as `SENTRY_DSN` for both environments.
+4. Create the build token:
+   - Open **Settings** → **Organization Tokens** → **Create New Token**.
+   - Name it `cloudflare-workers-builds`.
+   - Store it in 1Password as `SENTRY_AUTH_TOKEN`. One token serves both Workers.
+   - The token must be able to create releases and upload source maps for `atlaris-jobs`. Organization tokens are not limited to one project.
+   - If you use a different token type, give it release write access to `atlaris-jobs`.
+
+**Verify:** the `atlaris-jobs` project is listed in `jcs-software`, its Client Keys page shows a DSN, and the token is listed under **Organization Tokens**.
+
+**Copy back:** the project slug and the DSN; "token created" (no value).
+
+### A8. Vercel environment variables
 
 Vercel → project `atlaris` → **Settings** → **Environment Variables** → **Add**:
 
@@ -105,7 +122,7 @@ No redeploy is needed now; the app does not read these until B4.
 
 ## Part B: Staging Worker (run when the orchestrator says B2's Worker code is on the staging branch)
 
-The staging branch is `develop`, or the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` if you choose that in open question 1 of the design note. Use the exact build and deploy commands from B2's receipt; the expected values are shown below.
+The staging branch is the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`; after that merge it becomes `develop` (decided 2026-10-05). Use the exact build and deploy commands from B2's receipt; the expected values are shown below.
 
 ### B1. Create the Worker from the repository
 
@@ -126,7 +143,10 @@ The staging branch is `develop`, or the Track B parent branch `feature/jcs-120-m
 
 On the Worker, open **Settings** → **Build**:
 
-1. **Branch control:** set the production branch to the staging branch named above, and **uncheck Enable Preview Builds**.
+1. **Branch control:**
+   - Set the production branch to `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers`.
+   - **Uncheck Enable Preview Builds.**
+   - When the orchestrator reports that Track B has first merged into `develop`, return here, change the production branch to `develop`, and copy back the time of the change.
 2. **Build variables and secrets:**
 
    | Name | Type | Value |
@@ -134,7 +154,7 @@ On the Worker, open **Settings** → **Build**:
    | `PNPM_VERSION` | Variable | `11.9.0` |
    | `NODE_VERSION` | Variable | `24` |
    | `SKIP_DEPENDENCY_INSTALL` | Variable | `true` |
-   | `SENTRY_AUTH_TOKEN` | Secret | From A6 |
+   | `SENTRY_AUTH_TOKEN` | Secret | From A7 |
 
 3. **Build watch paths:**
    - Include: `workers/*`, `src/*`, `supabase/*`, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, `tsconfig.json`
@@ -172,7 +192,7 @@ Do not add any `JOB_*_ENABLED` or `JOBS_PAUSED` variables now. Each later phase 
 3. `curl -sS https://atlaris-jobs-staging.<subdomain>.workers.dev/healthz` returns `{"ok":true,…}`.
 4. **Settings** → **Bindings** shows `HYPERDRIVE` → `atlaris-jobs-db-staging`.
 5. **Settings** → **Triggers** lists the Cron Triggers B2 ships (`*/15 * * * *`). New triggers can take up to 15 minutes to propagate.
-6. **Observability** shows at least one cron invocation within 30 minutes, and the Sentry check B2's receipt describes passes.
+6. **Observability** shows at least one cron invocation within 30 minutes, and the Sentry check B2's receipt describes passes in the `atlaris-jobs` project.
 
 **Copy back:** the Worker URL, the build ID and result, and pass/fail for each verification item.
 
@@ -204,7 +224,9 @@ Production Cron Triggers start firing as soon as this deploys. Every job stays a
 | Production Hyperdrive ID and connection type | A4 | `ef01…`, session pooler |
 | Queues created | A5 | yes |
 | Secrets stored in 1Password (names only) | A6 | yes |
-| Vercel variables set | A7 | yes |
+| Sentry project slug and DSN; token created | A7 | `atlaris-jobs`, `https://…@….ingest.us.sentry.io/…` |
+| Vercel variables set | A8 | yes |
+| Time the staging branch switched to `develop` | B2 (later) | — |
 | Staging Worker URL, build ID, verification results | B4 | — |
 | Production Worker URL, build ID, verification results | C | — |
 
