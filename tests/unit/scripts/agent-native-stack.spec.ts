@@ -15,7 +15,7 @@ import {
   parsePasswd,
   parseStackStatus,
   unsupportedPlatformReason,
-} from '../../../scripts/agents/native-stack';
+} from '../../../scripts/agents/agent-native-stack';
 import { describe, expect, it } from 'vitest';
 
 const STACK_URL = 'postgresql://postgres:postgres@127.0.0.1:28711/postgres';

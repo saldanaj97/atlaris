@@ -37,7 +37,7 @@ export async function loadAgentCommands(
 ): Promise<AgentCommands> {
   return backend === 'postgres'
     ? (await import('./legacy-postgres')).COMMANDS
-    : (await import('./native-stack')).COMMANDS;
+    : (await import('./agent-native-stack')).COMMANDS;
 }
 
 async function main(): Promise<void> {
