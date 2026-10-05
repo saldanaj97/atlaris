@@ -4,6 +4,7 @@ import {
 } from './local-postgres-host';
 import { execFileSync } from 'node:child_process';
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   lstatSync,
@@ -55,19 +56,23 @@ function assertLocalUrl(url: string, label: string): void {
   }
 }
 
-function readEnvValue(content: string, key: string): string | undefined {
-  const line = content.split('\n').find((entry) => entry.startsWith(`${key}=`));
-  if (line === undefined) return undefined;
+function assignedKey(line: string): string | undefined {
+  const match = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(line);
+  return match?.[1];
+}
+
+function assignedValue(line: string): string {
   return line
-    .slice(key.length + 1)
+    .slice(line.indexOf('=') + 1)
     .trim()
     .replace(/^(['"])(.*)\1$/, '$2');
 }
 
 /**
- * Points `.env.local` at this worktree's stack. Preserves every other line,
- * refuses hosted URLs, and detaches a symlinked file (worktree bootstrap) so
- * the main checkout's file is never modified.
+ * Points `.env.local` at this worktree's stack. Replaces every assignment of
+ * the managed keys with one line each, preserves every other line, refuses
+ * hosted URLs, writes the file owner-only (0600), and detaches a symlinked
+ * file (worktree bootstrap) so the main checkout's file is never modified.
  */
 export function writeStackEnvLocal(dbUrl: string, envFile = ENV_FILE): void {
   assertLocalUrl(dbUrl, 'the stack URL');
@@ -75,27 +80,30 @@ export function writeStackEnvLocal(dbUrl: string, envFile = ENV_FILE): void {
   const isLink = existsSync(envFile) && lstatSync(envFile).isSymbolicLink();
   const content = existsSync(envFile) ? readFileSync(envFile, 'utf8') : '';
 
-  for (const key of ENV_KEYS) {
-    const existing = readEnvValue(content, key);
+  const lines = content === '' ? [] : content.replace(/\n$/, '').split('\n');
+  const managed = new Set<string>(ENV_KEYS);
+  for (const line of lines) {
+    const key = assignedKey(line);
+    if (key === undefined || !managed.has(key)) continue;
+    const existing = assignedValue(line);
     if (existing && existing !== dbUrl) {
       assertLocalUrl(existing, `existing ${key} in ${envFile}`);
     }
   }
 
-  const lines = content === '' ? [] : content.replace(/\n$/, '').split('\n');
-  for (const key of ENV_KEYS) {
-    const next = `${key}=${dbUrl}`;
-    const index = lines.findIndex((line) => line.startsWith(`${key}=`));
-    if (index === -1) lines.push(next);
-    else lines[index] = next;
-  }
+  const kept = lines.filter((line) => {
+    const key = assignedKey(line);
+    return key === undefined || !managed.has(key);
+  });
+  for (const key of ENV_KEYS) kept.push(`${key}=${dbUrl}`);
 
   if (isLink) {
     const target = realpathSync(envFile);
     rmSync(envFile);
     copyFileSync(target, envFile);
   }
-  writeFileSync(envFile, `${lines.join('\n')}\n`);
+  writeFileSync(envFile, `${kept.join('\n')}\n`, { mode: 0o600 });
+  chmodSync(envFile, 0o600);
   console.log(`[db] ${envFile} now points at this worktree's stack.`);
 }
 
