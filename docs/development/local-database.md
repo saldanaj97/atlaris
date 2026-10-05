@@ -47,7 +47,7 @@ No automated test lane uses the long-lived dev stack or a hosted Supabase/stagin
 
 The CLI assigns each stack a free port in 20000–32767 and reports it in `supabase status --output-format json` as `env.DB_URL`. Nothing is fixed, so two worktrees can run stacks side by side.
 
-`pnpm db start` (on either runtime) and `pnpm db agent up` write that URL into the worktree's `.env.local` as `POSTGRES_URL` and `POSTGRES_URL_NON_POOLING`, preserving every other line. They refuse non-local hosts, and a symlinked `.env.local` (worktree bootstrap) is replaced by a copy so the main checkout's file is never modified.
+`pnpm db start` (on either runtime) and `pnpm db agent up` write that URL into the worktree's `.env.local` as `POSTGRES_URL` and `POSTGRES_URL_NON_POOLING`, preserving every other line. They refuse non-local hosts. `pnpm db start` replaces a symlinked `.env.local` with a copy so the main checkout's file is never modified; `pnpm db agent up` writes through a symlink, so it expects a real file (worktree bootstrap now copies `.env.local`; this only matters for worktrees bootstrapped before that change).
 
 ### Stack identity and branch switches
 
@@ -73,11 +73,11 @@ If the native runtime does not work on your machine, run the Docker (OrbStack) s
 pnpm db start --runtime docker
 ```
 
-This needs OrbStack or Docker Desktop running. It also writes `.env.local`, but pg_cron's background-worker workaround is native-only. Keep OrbStack's memory in mind (about 2.3 GB idle). Stop it with `pnpm db stop`.
+A worktree's stack records its runtime when created, so `--runtime docker` is rejected where a native stack already exists (and vice versa). To switch runtime in an existing worktree, first run `pnpm exec supabase stack destroy --yes` (deletes that stack's local data), then `pnpm db start --runtime docker`. Do the same to switch back to native. This needs OrbStack or Docker Desktop running. It also writes `.env.local`, but pg_cron's background-worker workaround is native-only. Keep OrbStack's memory in mind (about 2.3 GB idle). Stop it with `pnpm db stop`.
 
 ## Cloud agent database
 
-Codex and Cursor Cloud agents run `pnpm db agent up` before database work. It starts the same native stack on the agent VM, applies migrations and the seed, and writes `.env.local` with the loopback URL. The native path was verified on Linux arm64 (Debian 12, glibc 2.36) as a non-root user.
+Codex and Cursor Cloud agents run `pnpm db agent up` before database work. It starts the same native stack on the agent VM, applies pending migrations, and writes `.env.local` with the loopback URL. The seed runs only on the stack's first start and on `reset`; `up` verifies the seed user and fails if it is missing, so repair that with `pnpm db agent reset`. The native path was verified on Linux arm64 (Debian 12, glibc 2.36) as a non-root user.
 
 - The first start downloads about 483 MB from GitHub, so the VM needs outbound access to github.com.
 - As root, set `SUPABASE_NATIVE_POSTGRES_USER` to an existing non-root OS user; the native runtime will not run Postgres as root.
@@ -87,7 +87,7 @@ Codex and Cursor Cloud agents run `pnpm db agent up` before database work. It st
 | Command                   | Behavior                                                                      |
 | ------------------------- | ----------------------------------------------------------------------------- |
 | `pnpm db agent preflight` | Read-only host, toolchain, and credential-boundary checks                     |
-| `pnpm db agent up`        | Idempotently starts the stack, applies migrations, seeds, and verifies state  |
+| `pnpm db agent up`        | Idempotently starts the stack, applies pending migrations, and verifies state (seed runs on first start; `reset` reapplies it) |
 | `pnpm db agent status`    | Read-only readiness report                                                    |
 | `pnpm db agent reset`     | Resets only the managed local database and reprovisions it                    |
 
@@ -180,6 +180,7 @@ Hosted deployment and migration workflows are separate from the local-dev stack.
 
 - **Supabase CLI not found** — Run `pnpm install`; the project keeps `supabase` as a dev dependency.
 - **`endpoints.sql.port cannot change`** — The stack predates dynamic ports. Run `pnpm exec supabase stack destroy --yes`, then `pnpm db start`.
+- **Runtime mismatch error on `pnpm db start --runtime ...`** — The existing stack was created with the other runtime. Run `pnpm exec supabase stack destroy --yes` (deletes its local data), then start again with the runtime you want.
 - **Connection refused** — Run `pnpm db start`; the URL in `.env.local` is the stack's current `env.DB_URL` (`pnpm exec supabase status --output-format json`). Start again after switching branches.
 - **Wrong or empty database after switching branches** — Each branch has its own stack. Run `pnpm db start` and `pnpm db reset`.
 - **Missing seed user** — Run `pnpm db seed` or `pnpm db reset`.

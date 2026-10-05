@@ -114,7 +114,7 @@ Codex and Cursor Cloud agents use these commands. They run the native Supabase s
 
 ```bash
 pnpm db agent preflight # Read-only runtime and safety checks
-pnpm db agent up        # Idempotent start, migrate, grant, seed, verify, and write .env.local
+pnpm db agent up        # Idempotent start, apply pending migrations, verify (seed runs on first start; reset reapplies), and write .env.local
 pnpm db agent status    # Read-only database status
 pnpm db agent reset     # Reset only the managed local agent database
 ```
