@@ -53,6 +53,12 @@ jobs:
           ref: ${{ github.sha }}
           persist-credentials: false
 
+      - name: Keep hosted CLI off the experimental local stack
+        run: |
+          awk '!/^[[:space:]]*stack[[:space:]]*=/' supabase/config.toml \
+            > supabase/config.toml.hosted
+          mv supabase/config.toml.hosted supabase/config.toml
+
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@3c2f5e2ae34c34e428e8e206e2c4d21fa2d20fbf # v2.1.1
         with:

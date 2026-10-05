@@ -143,6 +143,25 @@ describe('Supabase migration workflows', () => {
     },
   );
 
+  it.each(migrationWorkflows)(
+    '$fileName drops experimental.stack before hosted CLI commands',
+    ({ fileName }) => {
+      const workflow = readWorkflow(fileName);
+      const checkoutIndex = workflow.indexOf('actions/checkout@');
+      const stripIndex = workflow.indexOf(
+        "awk '!/^[[:space:]]*stack[[:space:]]*=/' supabase/config.toml",
+      );
+      const linkIndex = workflow.indexOf('supabase link --project-ref');
+
+      expect(checkoutIndex).toBeGreaterThan(-1);
+      expect(stripIndex).toBeGreaterThan(checkoutIndex);
+      expect(linkIndex).toBeGreaterThan(stripIndex);
+      expect(workflow).toContain(
+        'Keep hosted CLI off the experimental local stack',
+      );
+    },
+  );
+
   it('applies each expand migration and its history record atomically', () => {
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     const expandMigrations = script.match(
@@ -597,6 +616,11 @@ if [[ "\${1:-}" == "migration" && "\${2:-}" == "up" ]]; then
   for file in "$workdir/supabase/migrations"/*.sql; do
     printf 'WORKSPACE %s\\n' "\${file##*/}" >> "$FAKE_SUPABASE_LOG"
   done
+  if [[ -f "$workdir/supabase/config.toml" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+      printf 'WORKSPACE_CONFIG %s\\n' "$line" >> "$FAKE_SUPABASE_LOG"
+    done < "$workdir/supabase/config.toml"
+  fi
 fi
 exit 0
 `;
@@ -905,5 +929,35 @@ describe('phased migration runner execution', () => {
       '20260101000000_applied.sql',
       '20260102000000_expand.sql',
     ]);
+  });
+
+  it('keeps experimental.stack out of the hosted migration workspace', () => {
+    const fixture = createRunnerFixture({
+      contract: ['20260103000000_contract.sql'],
+      expand: ['20260102000000_expand.sql'],
+      files: ['20260102000000_expand.sql', '20260103000000_contract.sql'],
+    });
+    writeFileSync(
+      join(fixture.repoRoot, 'supabase', 'config.toml'),
+      [
+        'project_id = "test"',
+        '[experimental]',
+        'stack = true',
+        'orioledb_version = ""',
+        '',
+      ].join('\n'),
+    );
+
+    const result = runPhase(fixture, 'expand');
+    const log = readLog(fixture);
+
+    expect(result.status).toBe(0);
+    expect(log).toContain('WORKSPACE_CONFIG project_id = "test"');
+    expect(log).toContain('WORKSPACE_CONFIG [experimental]');
+    expect(log).toContain('WORKSPACE_CONFIG orioledb_version = ""');
+    expect(log).not.toContain('WORKSPACE_CONFIG stack = true');
+    expect(
+      readFileSync(join(fixture.repoRoot, 'supabase', 'config.toml'), 'utf8'),
+    ).toContain('stack = true');
   });
 });

@@ -224,7 +224,10 @@ apply_phase_workspace() {
   trap "rm -rf -- '$migration_workspace'" EXIT
   migrations_dir="$migration_workspace/supabase/migrations"
   mkdir -p "$migrations_dir"
-  cp supabase/config.toml "$migration_workspace/supabase/config.toml"
+  # Hosted CLI 2.98.1 UnmarshalExact-rejects unknown keys; keep local-only
+  # experimental.stack out of `link` / `migration up --linked`.
+  awk '!/^[[:space:]]*stack[[:space:]]*=/' supabase/config.toml \
+    > "$migration_workspace/supabase/config.toml"
 
   shopt -s nullglob
   for version in "${!APPLIED_VERSIONS[@]}"; do
