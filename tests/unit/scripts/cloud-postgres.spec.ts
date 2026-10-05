@@ -1,21 +1,72 @@
 import {
+  assertSafeDatabaseEnvironment as assertSafeEnvironmentFor,
+  inspectAgentEnvFile as inspectEnvFileFor,
+  listCommittedMigrationVersions,
+  mergeManagedDatabaseUrls as mergeUrlsFor,
+  unexpectedMigrationVersions,
+} from '../../../scripts/agents/agent-db-common';
+import {
+  assertNoTargetArguments,
+  loadAgentCommands,
+  selectAgentBackend,
+} from '../../../scripts/agents/cloud-postgres';
+import {
   AGENT_DATABASE_URL,
   AGENT_ENV_FILE_CONTENT,
   COMMANDS,
   RLS_ROLE_NORMALIZATION_SQL,
   assertManagedAgentDatabaseUrl,
-  assertNoTargetArguments,
-  assertSafeDatabaseEnvironment,
-  inspectAgentEnvFile,
-  listCommittedMigrationVersions,
-  mergeManagedDatabaseUrls,
   migrationOrderIsSafe,
-  unexpectedMigrationVersions,
-} from '../../../scripts/agents/cloud-postgres';
+} from '../../../scripts/agents/legacy-postgres';
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 
-describe('Cursor Cloud PostgreSQL safety boundary', () => {
+const assertSafeDatabaseEnvironment = (
+  environment: Parameters<typeof assertSafeEnvironmentFor>[0],
+) => assertSafeEnvironmentFor(environment, assertManagedAgentDatabaseUrl);
+const inspectAgentEnvFile = (content: string | null) =>
+  inspectEnvFileFor(content, assertManagedAgentDatabaseUrl);
+const mergeManagedDatabaseUrls = (content: string) =>
+  mergeUrlsFor(content, AGENT_DATABASE_URL);
+
+describe('cloud agent database backend selection', () => {
+  it('defaults to the native Supabase stack', () => {
+    expect(selectAgentBackend({})).toBe('native');
+    expect(selectAgentBackend({ ATLARIS_AGENT_DB: '' })).toBe('native');
+    expect(selectAgentBackend({ ATLARIS_AGENT_DB: 'native' })).toBe('native');
+  });
+
+  it('selects the legacy PostgreSQL 17 path only when explicitly requested', () => {
+    expect(selectAgentBackend({ ATLARIS_AGENT_DB: 'postgres' })).toBe(
+      'postgres',
+    );
+  });
+
+  it('rejects unknown backend values instead of falling back', () => {
+    expect(() => selectAgentBackend({ ATLARIS_AGENT_DB: 'docker' })).toThrow(
+      /ATLARIS_AGENT_DB must be "native" \(default\) or "postgres"/,
+    );
+  });
+
+  it('loads each backend with the four lifecycle commands', async () => {
+    for (const backend of ['native', 'postgres'] as const) {
+      const commands = await loadAgentCommands(backend);
+      expect(Object.keys(commands).sort()).toEqual([
+        'preflight',
+        'reset',
+        'status',
+        'up',
+      ]);
+      expect(commands.status.readOnly).toBe(true);
+      expect(commands.preflight.readOnly).toBe(true);
+      expect(commands.up.readOnly).toBe(false);
+      expect(commands.reset.readOnly).toBe(false);
+    }
+    expect(await loadAgentCommands('postgres')).toBe(COMMANDS);
+  });
+});
+
+describe('legacy Cursor Cloud PostgreSQL safety boundary', () => {
   it.each([
     AGENT_DATABASE_URL,
     'postgresql://atlaris_agent@localhost:55432/atlaris_agent?sslmode=disable',
@@ -79,13 +130,6 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     ).toThrow(/assigned more than once/);
   });
 
-  it('models status and preflight as read-only commands', () => {
-    expect(COMMANDS.status.readOnly).toBe(true);
-    expect(COMMANDS.preflight.readOnly).toBe(true);
-    expect(COMMANDS.up.readOnly).toBe(false);
-    expect(COMMANDS.reset.readOnly).toBe(false);
-  });
-
   it('does not allow reset or other commands to accept a target URL', () => {
     expect(() => assertNoTargetArguments([])).not.toThrow();
     expect(() =>
@@ -137,7 +181,8 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
   });
 
   it('checks effective column grants, all application RLS, and canonical seed identity', async () => {
-    const source = await readFile('scripts/agents/cloud-postgres.ts', 'utf8');
+    const source = await readFile('scripts/agents/legacy-postgres.ts', 'utf8');
+    const common = await readFile('scripts/agents/agent-db-common.ts', 'utf8');
 
     expect(source).toContain('has_column_privilege');
     expect(source).toContain('has_table_privilege');
@@ -146,11 +191,11 @@ describe('Cursor Cloud PostgreSQL safety boundary', () => {
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_EMAIL');
     expect(source).toContain('LOCAL_PRODUCT_TESTING_SEED_NAME');
-    expect(source).toContain("code !== 'EEXIST'");
+    expect(common).toContain("code !== 'EEXIST'");
   });
 
   it('checks managed data-directory ownership before preflight readiness', async () => {
-    const source = await readFile('scripts/agents/cloud-postgres.ts', 'utf8');
+    const source = await readFile('scripts/agents/legacy-postgres.ts', 'utf8');
     const preflight = source.slice(
       source.indexOf('async function runPreflight'),
     );

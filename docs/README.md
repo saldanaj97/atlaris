@@ -82,7 +82,8 @@ Local development, env, deploy, and logging.
 | [commands.md](./development/commands.md) | Common `pnpm` and dev commands |
 | [deploy.md](./development/deploy.md) | Staged Production pointer + migration cutover notes |
 | [environment.md](./development/environment.md) | Environment variables and logging guidelines |
-| [local-database.md](./development/local-database.md) | Local Supabase CLI stack setup |
+| [local-database.md](./development/local-database.md) | Native Supabase local stack: dev, cloud agents, test stack, Docker fallback |
+| [supabase-native-spike.md](./development/supabase-native-spike.md) | JCS-121 spike: Supabase native (Docker-free) local stack evidence and go/no-go |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
 
 ## `security/`
@@ -165,6 +166,7 @@ docs/
 │   ├── deploy.md
 │   ├── environment.md
 │   ├── local-database.md
+│   ├── supabase-native-spike.md
 │   └── logging.md
 ├── security/
 │   ├── codex-scan-verification-2026-08-20.md
