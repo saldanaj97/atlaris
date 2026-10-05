@@ -1,4 +1,9 @@
 import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '../../src/lib/config/local-product-testing';
+import {
+  SAVED_PORT_ERROR,
+  SAVED_PORT_FIX,
+  finishNativeStack,
+} from './native-stack';
 import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
@@ -8,6 +13,8 @@ const FIXTURE_SCRIPT = 'scripts/db/apply-clerk-billing-fixture.ts';
 export type DbCommand = {
   executable: string;
   args: string[];
+  /** Native-stack follow-up to run after the command succeeds. */
+  nativeStack?: 'start' | 'reset';
 };
 
 export class DbCliUsageError extends Error {
@@ -21,7 +28,7 @@ function usage(): never {
   throw new DbCliUsageError(
     [
       'Usage:',
-      '  pnpm db start',
+      '  pnpm db start [--runtime <native|docker>]',
       '  pnpm db stop',
       '  pnpm db reset',
       '  pnpm db seed',
@@ -40,6 +47,19 @@ function pnpmCommand(args: string[]): DbCommand {
 
 function requireNoArgs(args: readonly string[]): void {
   if (args.length > 0) usage();
+}
+
+function startRuntime(args: readonly string[]): 'native' | 'docker' {
+  if (args.length === 0) return 'native';
+  const [flag, value, ...rest] = args;
+  if (
+    flag !== '--runtime' ||
+    (value !== 'native' && value !== 'docker') ||
+    rest.length > 0
+  ) {
+    usage();
+  }
+  return value;
 }
 
 function fixtureCommand(args: readonly string[]): DbCommand {
@@ -106,15 +126,22 @@ export function parseDbArgs(argv: readonly string[]): DbCommand {
   if (!command) usage();
 
   switch (command) {
-    case 'start':
-      requireNoArgs(options);
-      return pnpmCommand(['exec', 'supabase', 'start']);
+    case 'start': {
+      const runtime = startRuntime(options);
+      return {
+        ...pnpmCommand(['exec', 'supabase', 'start', '--runtime', runtime]),
+        ...(runtime === 'native' && { nativeStack: 'start' as const }),
+      };
+    }
     case 'stop':
       requireNoArgs(options);
       return pnpmCommand(['exec', 'supabase', 'stop']);
     case 'reset':
       requireNoArgs(options);
-      return pnpmCommand(['exec', 'supabase', 'db', 'reset']);
+      return {
+        ...pnpmCommand(['exec', 'supabase', 'db', 'reset']),
+        nativeStack: 'reset',
+      };
     case 'seed':
       requireNoArgs(options);
       return pnpmCommand(['exec', 'tsx', 'scripts/db/seed-local-supabase.ts']);
@@ -151,21 +178,44 @@ export function parseDbArgs(argv: readonly string[]): DbCommand {
   usage();
 }
 
-export function runDbCommand(command: DbCommand): Promise<number> {
+function spawnCommand(
+  command: DbCommand,
+  captureStderr: boolean,
+): Promise<{ code: number; stderr: string }> {
   return new Promise((resolve) => {
     const child = spawn(command.executable, command.args, {
-      stdio: 'inherit',
+      stdio: ['inherit', 'inherit', captureStderr ? 'pipe' : 'inherit'],
       env: process.env,
+    });
+    let stderr = '';
+    child.stderr?.on('data', (chunk: Buffer) => {
+      stderr += chunk.toString();
+      process.stderr.write(chunk);
     });
 
     child.on('close', (code) => {
-      resolve(code ?? 1);
+      resolve({ code: code ?? 1, stderr });
     });
 
     child.on('error', () => {
-      resolve(1);
+      resolve({ code: 1, stderr });
     });
   });
+}
+
+export async function runDbCommand(command: DbCommand): Promise<number> {
+  const { code, stderr } = await spawnCommand(
+    command,
+    command.nativeStack === 'start',
+  );
+  if (code !== 0) {
+    if (stderr.includes(SAVED_PORT_ERROR)) console.error(SAVED_PORT_FIX);
+    return code;
+  }
+  if (command.nativeStack) {
+    await finishNativeStack({ writeEnv: command.nativeStack === 'start' });
+  }
+  return 0;
 }
 
 function isDirectExecution(): boolean {

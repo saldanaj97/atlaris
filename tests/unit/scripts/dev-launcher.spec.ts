@@ -90,7 +90,10 @@ function createFixture(): Fixture {
     [
       '#!/usr/bin/env bash',
       'set -eu',
-      'if [[ "${1-}" == status ]]; then exit "${FAKE_SUPABASE_STATUS:-1}"; fi',
+      'if [[ "${1-}" == status ]]; then',
+      '  [[ "${FAKE_SUPABASE_STATUS:-1}" == 0 ]] || exit 1',
+      '  printf \'{"runtime":"native","readiness":"ready","endpoints":{"database.sql":{"port":23456}}}\\n\'',
+      'fi',
     ].join('\n'),
   );
 
@@ -522,6 +525,24 @@ describe('development doctor', () => {
     expect(output).toContain('portless trust');
     expect(readLog(fixture.portlessLog)).toContain('mode=doctor');
     expect(output).not.toContain('portless-secret');
+  });
+
+  it('reports the native stack from supabase status without needing Docker', () => {
+    const fixture = createFixture();
+    const result = runLauncher(fixture, ['doctor'], {
+      FAKE_SUPABASE_STATUS: '0',
+    });
+
+    expect(result.stdout).toContain(
+      'OK   Supabase native stack ready (database port 23456)',
+    );
+  });
+
+  it('warns when the worktree stack is not running', () => {
+    const fixture = createFixture();
+    const result = runLauncher(fixture, ['doctor']);
+
+    expect(result.stdout).toContain('Supabase local stack is stopped');
   });
 
   it('fails clearly when Portless is unavailable', () => {

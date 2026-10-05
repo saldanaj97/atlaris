@@ -48,14 +48,29 @@ if [[ -x "$DEV_ROOT/node_modules/.bin/supabase" ]]; then
 else
   printf 'WARN Supabase CLI missing (needed for pnpm dev --db). Run: pnpm install --frozen-lockfile\n'
 fi
-if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
-  printf 'OK   container runtime reachable (local DB and DB-backed tests)\n'
-  if [[ -x "$DEV_ROOT/node_modules/.bin/supabase" ]] && "$DEV_ROOT/node_modules/.bin/supabase" status >/dev/null 2>&1; then
-    printf 'OK   Supabase local stack running\n'
+if [[ -x "$DEV_ROOT/node_modules/.bin/supabase" ]]; then
+  stack_json=$("$DEV_ROOT/node_modules/.bin/supabase" status --output-format json 2>/dev/null) || stack_json=''
+  stack_summary=$(printf '%s' "$stack_json" | node -e '
+    let input = "";
+    process.stdin.on("data", (chunk) => (input += chunk));
+    process.stdin.on("end", () => {
+      try {
+        const s = JSON.parse(input);
+        const port = s.endpoints?.["database.sql"]?.port ?? "unknown";
+        console.log(`${s.runtime ?? "unknown"} ${s.readiness ?? "unknown"} ${port}`);
+      } catch { process.exit(1); }
+    });
+  ' 2>/dev/null) || stack_summary=''
+  if [[ -n "$stack_summary" ]]; then
+    read -r stack_runtime stack_readiness stack_port <<< "$stack_summary"
+    printf 'OK   Supabase %s stack %s (database port %s)\n' "$stack_runtime" "$stack_readiness" "$stack_port"
   else
     printf 'WARN Supabase local stack is stopped or unavailable. For DB work, run: pnpm db start\n'
   fi
+fi
+if command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+  printf 'INFO container runtime reachable (only needed for --runtime docker)\n'
 else
-  printf 'WARN container runtime unavailable. Start OrbStack/Docker for pnpm dev --db or DB-backed tests.\n'
+  printf 'INFO container runtime not running (not needed for the native stack)\n'
 fi
 exit "$status"
