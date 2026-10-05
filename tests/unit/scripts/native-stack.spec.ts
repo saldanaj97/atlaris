@@ -1,10 +1,12 @@
 import { writeStackEnvLocal } from '../../../scripts/db/native-stack';
 import {
+  chmodSync,
   existsSync,
   lstatSync,
   mkdtempSync,
   readFileSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from 'node:fs';
@@ -13,6 +15,8 @@ import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const URL_A = 'postgresql://postgres:postgres@127.0.0.1:23456/postgres';
+const URL_OLD = 'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
+const HOSTED = 'postgresql://u:p@db.example.com:5432/postgres';
 const dirs: string[] = [];
 
 function tempEnvFile(content?: string): { dir: string; file: string } {
@@ -32,16 +36,62 @@ afterEach(() => {
 describe('writeStackEnvLocal', () => {
   it('sets both URLs and preserves every other line', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { file } = tempEnvFile(`FOO=bar\nPOSTGRES_URL=${URL_OLD}\n# note\n`);
+
+    writeStackEnvLocal(URL_A, file);
+
+    expect(readFileSync(file, 'utf8')).toBe(
+      `FOO=bar\n# note\nPOSTGRES_URL=${URL_A}\nPOSTGRES_URL_NON_POOLING=${URL_A}\n`,
+    );
+  });
+
+  it('collapses duplicate local assignments, including export lines, to one each', () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
     const { file } = tempEnvFile(
-      `FOO=bar\nPOSTGRES_URL=postgresql://postgres:postgres@127.0.0.1:54322/postgres\n# note\n`,
+      `POSTGRES_URL=${URL_OLD}\nFOO=bar\nexport POSTGRES_URL=${URL_OLD}\nPOSTGRES_URL_NON_POOLING=${URL_OLD}\n`,
     );
 
     writeStackEnvLocal(URL_A, file);
 
     expect(readFileSync(file, 'utf8')).toBe(
-      `FOO=bar\nPOSTGRES_URL=${URL_A}\n# note\nPOSTGRES_URL_NON_POOLING=${URL_A}\n`,
+      `FOO=bar\nPOSTGRES_URL=${URL_A}\nPOSTGRES_URL_NON_POOLING=${URL_A}\n`,
     );
   });
+
+  it('refuses a hosted duplicate that follows a local assignment', () => {
+    const original = `POSTGRES_URL=${URL_OLD}\nPOSTGRES_URL=${HOSTED}\n`;
+    const { file } = tempEnvFile(original);
+
+    expect(() => writeStackEnvLocal(URL_A, file)).toThrow(/non-local/);
+    expect(readFileSync(file, 'utf8')).toBe(original);
+  });
+
+  it('leaves commented assignments untouched', () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const { file } = tempEnvFile(`# POSTGRES_URL=${HOSTED}\nFOO=bar\n`);
+
+    writeStackEnvLocal(URL_A, file);
+
+    expect(readFileSync(file, 'utf8')).toBe(
+      `# POSTGRES_URL=${HOSTED}\nFOO=bar\nPOSTGRES_URL=${URL_A}\nPOSTGRES_URL_NON_POOLING=${URL_A}\n`,
+    );
+  });
+
+  it.skipIf(process.platform === 'win32')(
+    'writes the file owner-only, new or existing',
+    () => {
+      vi.spyOn(console, 'log').mockImplementation(() => {});
+      const created = tempEnvFile();
+      const existing = tempEnvFile('FOO=bar\n');
+      chmodSync(existing.file, 0o644);
+
+      writeStackEnvLocal(URL_A, created.file);
+      writeStackEnvLocal(URL_A, existing.file);
+
+      expect(statSync(created.file).mode & 0o777).toBe(0o600);
+      expect(statSync(existing.file).mode & 0o777).toBe(0o600);
+    },
+  );
 
   it('creates the file when missing', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -64,12 +114,11 @@ describe('writeStackEnvLocal', () => {
   });
 
   it('refuses a file holding a hosted value for either key', () => {
-    const hosted = 'postgresql://u:p@db.example.com:5432/postgres';
-    const { file } = tempEnvFile(`POSTGRES_URL_NON_POOLING=${hosted}\n`);
+    const { file } = tempEnvFile(`POSTGRES_URL_NON_POOLING=${HOSTED}\n`);
 
     expect(() => writeStackEnvLocal(URL_A, file)).toThrow(/non-local/);
     expect(readFileSync(file, 'utf8')).toBe(
-      `POSTGRES_URL_NON_POOLING=${hosted}\n`,
+      `POSTGRES_URL_NON_POOLING=${HOSTED}\n`,
     );
   });
 
