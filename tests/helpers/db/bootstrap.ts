@@ -67,9 +67,18 @@ export async function withUnschedulablePgCronHidden(
     return;
   }
 
+  // A run that died before the finally block leaves the shim behind; clear
+  // it first so setup is idempotent.
   await runStatements(
     connectionUrl,
     `
+    DO $$ BEGIN
+      EXECUTE format(
+        'ALTER ROLE CURRENT_USER IN DATABASE %I RESET search_path',
+        current_database()
+      );
+    END $$;
+    DROP SCHEMA IF EXISTS ${PG_CRON_SHADOW_SCHEMA} CASCADE;
     CREATE SCHEMA ${PG_CRON_SHADOW_SCHEMA};
     CREATE VIEW ${PG_CRON_SHADOW_SCHEMA}.pg_available_extensions AS
       SELECT * FROM pg_catalog.pg_available_extensions WHERE name <> 'pg_cron';
