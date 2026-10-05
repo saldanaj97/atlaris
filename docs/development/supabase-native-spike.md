@@ -2,6 +2,16 @@
 
 **Decision: go with blockers.** The native (Docker-free) Supabase runtime runs every Atlaris migration, the seed, the app, and the full integration suite, using about a seventh of OrbStack's memory. Before it can replace OrbStack, three blockers need fixes: pg_cron needs a workaround that `db reset` erases (upstream [supabase/cli#6977](https://github.com/supabase/cli/issues/6977)), the test bootstrap fails on any Supabase Postgres image, and the 1Password Environment shadows a per-worktree `POSTGRES_URL`.
 
+## Status
+
+Follow-up work has landed since this spike:
+
+- F6 and F7 are handled in the test bootstrap ([#677](https://github.com/saldanaj97/atlaris/pull/677), JCS-124).
+- B1 (pg_cron) is automated in the `pnpm db` wrappers ([#674](https://github.com/saldanaj97/atlaris/pull/674), [#675](https://github.com/saldanaj97/atlaris/pull/675) for local dev, [#676](https://github.com/saldanaj97/atlaris/pull/676) for cloud agents).
+- B3 is resolved: the 1Password variables that shadowed `POSTGRES_URL` were removed.
+
+The sections below record the original evidence. See [local-database.md](./local-database.md) for the current workflow.
+
 Spike date: 2026-10-04. Host: Apple silicon, macOS 27.0.1, Node 24.18, pnpm 11.9, OrbStack 29.4.0 (Docker engine). Branch base: `14e2b6539`. Supabase CLI 2.119.0, native Postgres `17.11.0.002-r0`. Docker image: `public.ecr.aws/supabase/postgres:17.11.0.002`.
 
 None of the spike edits below are committed. A1 owns the real CLI and config changes.
