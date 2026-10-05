@@ -190,7 +190,7 @@ No redeploy is needed now; the app does not read these until B4. The hostnames c
 
 ## Part B: Staging Worker (run when the orchestrator says B2's Worker code is on the staging branch and A0 is Active)
 
-The staging branch is the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`; after that merge it becomes `develop` (decided 2026-10-05). Use the exact build and deploy commands from B2's receipt; the expected values are shown below.
+The staging branch is the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`; after that merge it becomes `develop` (decided 2026-10-05). The build and deploy commands below were confirmed by B2 (`pnpm workers check` runs the same `wrangler deploy --dry-run` from `workers/jobs`).
 
 B2's `wrangler.jsonc` declares the custom domain `workers-staging.atlaris.app` and `workers_dev: false`. The deploy attaches the domain; B5 verifies it.
 
@@ -204,8 +204,8 @@ B2's `wrangler.jsonc` declares the custom domain `workers-staging.atlaris.app` a
    | --- | --- |
    | Project (Worker) name | `atlaris-jobs-staging` |
    | Root directory | `workers/jobs` |
-   | Build command | `cd ../.. && pnpm install --frozen-lockfile` (expected; confirm with B2's receipt) |
-   | Deploy command | `npx wrangler deploy --env staging --var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` (expected; confirm with B2's receipt) |
+   | Build command | `cd ../.. && pnpm install --frozen-lockfile` |
+   | Deploy command | `npx wrangler deploy --env staging --var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` |
 
 4. Select **Save and Deploy**. A first build can start right away and fail until steps B2–B4 are done. That is expected.
 
