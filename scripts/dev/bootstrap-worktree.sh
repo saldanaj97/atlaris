@@ -35,6 +35,7 @@ link_from_main() {
 }
 
 link_from_main ".env.local"
+link_from_main "workers.env"
 link_from_main ".vercel"
 link_from_main ".agents"
 link_from_main ".cursor"
