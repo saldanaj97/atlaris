@@ -1,8 +1,14 @@
+import type { RegenerationQueueMessage } from './jobs/regeneration-shared';
 import type { DbClient } from '@/lib/db/types';
 
 import { withInvocationDb } from './db';
 import { parseWorkerEnv, type WorkerEnv } from './env';
+import {
+  EMAIL_DELIVERY_RUNS_PATH,
+  handleEmailDeliveryRunsCommand,
+} from './http/email-delivery-runs';
 import { handleFetch } from './http/router';
+import { unauthorizedResponse, verifySignedRequest } from './http/signature';
 import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
 import { runPlanCleanup } from './jobs/plan-cleanup';
 import {
@@ -10,13 +16,13 @@ import {
   handleRegenerationBatch,
 } from './jobs/regeneration-consumer';
 import { handleRegenerationEnqueue } from './jobs/regeneration-enqueue';
-import type { RegenerationQueueMessage } from './jobs/regeneration-shared';
 import { runRegenerationSweep } from './jobs/regeneration-sweep';
 import {
   RETENTION_CLEANUP_CRON,
   runRetentionCleanup,
 } from './jobs/retention-cleanup';
 import { isJobEnabled, isJobsPaused } from './switches';
+import { EmailDeliveryWorkflowEntrypoint } from './workflows/email-delivery';
 import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
@@ -39,98 +45,121 @@ async function runIndependently(jobs: Array<() => Promise<unknown>>) {
   }
 }
 
-export default Sentry.withSentry<WorkerEnv>(
-  (env) => ({
-    // Empty until B1 supplies the atlaris-jobs DSN; Sentry stays disabled.
-    dsn: env.SENTRY_DSN || undefined,
-    environment: env.WORKER_ENV,
-    // Workers Builds deploys with --var SENTRY_RELEASE:<commit SHA>.
-    release: env.SENTRY_RELEASE ?? env.CF_VERSION_METADATA.id,
-    sendDefaultPii: false,
-    beforeSend: beforeSendSentryEvent,
-    initialScope: { tags: { runtime: 'cloudflare-worker' } },
-  }),
-  {
-    fetch(request, env) {
-      const workerEnv = parseWorkerEnv(env);
-      const { pathname } = new URL(request.url);
+const sentryOptions = (env: WorkerEnv) => ({
+  // Empty until B1 supplies the atlaris-jobs DSN; Sentry stays disabled.
+  dsn: env.SENTRY_DSN || undefined,
+  environment: env.WORKER_ENV,
+  // Workers Builds deploys with --var SENTRY_RELEASE:<commit SHA>.
+  release: env.SENTRY_RELEASE ?? env.CF_VERSION_METADATA.id,
+  sendDefaultPii: false,
+  beforeSend: beforeSendSentryEvent,
+  initialScope: { tags: { runtime: 'cloudflare-worker' } },
+});
 
-      if (
-        request.method === 'POST' &&
-        pathname === JOBS_COMMAND_PATHS.regenerationEnqueue
-      ) {
-        return handleRegenerationEnqueue(request, {
-          env: workerEnv,
-          queue: workerEnv.REGENERATION_QUEUE,
+export const EmailDeliveryWorkflow = Sentry.instrumentWorkflowWithSentry(
+  sentryOptions,
+  EmailDeliveryWorkflowEntrypoint,
+);
+
+export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
+  async fetch(request, env, ctx) {
+    const workerEnv = parseWorkerEnv(env);
+    const { pathname } = new URL(request.url);
+
+    if (
+      request.method === 'POST' &&
+      pathname === JOBS_COMMAND_PATHS.regenerationEnqueue
+    ) {
+      return handleRegenerationEnqueue(request, {
+        env: workerEnv,
+        queue: workerEnv.REGENERATION_QUEUE,
+        logger,
+        captureException: Sentry.captureException,
+      });
+    }
+
+    if (request.method === 'POST' && pathname === EMAIL_DELIVERY_RUNS_PATH) {
+      const verification = await verifySignedRequest(request, workerEnv);
+      if (!verification.ok) {
+        return unauthorizedResponse();
+      }
+      // The verifier consumed the body; hand the handler the signed bytes.
+      const verified = new Request(request.url, {
+        method: request.method,
+        headers: request.headers,
+        body: verification.body,
+      });
+      return handleEmailDeliveryRunsCommand(verified, {
+        switches: workerEnv,
+        withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
+        workflow: workerEnv.EMAIL_DELIVERY_WORKFLOW,
+        logger,
+      });
+    }
+
+    return handleFetch(request, workerEnv);
+  },
+
+  async scheduled(controller, env, ctx) {
+    const workerEnv = parseWorkerEnv(env);
+    const withDb: WithDb = (fn) =>
+      withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn);
+
+    switch (controller.cron) {
+      // Every */15 job runs independently; one failure does not skip the others.
+      case HEARTBEAT_CRON:
+        await runIndependently([
+          () =>
+            runHeartbeat({
+              paused: isJobsPaused(workerEnv),
+              logger,
+              withDb,
+              withMonitor: Sentry.withMonitor,
+            }),
+          () =>
+            runPlanCleanup({
+              enabled: isJobEnabled(workerEnv, 'PLAN_CLEANUP'),
+              logger,
+              withDb,
+              captureException: Sentry.captureException,
+            }),
+          () =>
+            runRegenerationSweep({
+              env: workerEnv,
+              logger,
+              captureException: Sentry.captureException,
+              withDb,
+              queue: workerEnv.REGENERATION_QUEUE,
+            }),
+        ]);
+        return;
+      case RETENTION_CLEANUP_CRON:
+        await runRetentionCleanup({
+          enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
           logger,
+          withDb,
           captureException: Sentry.captureException,
         });
-      }
+        return;
+      default:
+        logger.warn({ cron: controller.cron }, 'No job for this cron');
+    }
+  },
 
-      return handleFetch(request, workerEnv);
-    },
+  async queue(batch, env, ctx) {
+    const workerEnv = parseWorkerEnv(env);
 
-    async scheduled(controller, env, ctx) {
-      const workerEnv = parseWorkerEnv(env);
-      const withDb: WithDb = (fn) =>
-        withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn);
-
-      switch (controller.cron) {
-        // Every */15 job runs independently; one failure does not skip the others.
-        case HEARTBEAT_CRON:
-          await runIndependently([
-            () =>
-              runHeartbeat({
-                paused: isJobsPaused(workerEnv),
-                logger,
-                withDb,
-                withMonitor: Sentry.withMonitor,
-              }),
-            () =>
-              runPlanCleanup({
-                enabled: isJobEnabled(workerEnv, 'PLAN_CLEANUP'),
-                logger,
-                withDb,
-                captureException: Sentry.captureException,
-              }),
-            () =>
-              runRegenerationSweep({
-                env: workerEnv,
-                logger,
-                captureException: Sentry.captureException,
-                withDb,
-                queue: workerEnv.REGENERATION_QUEUE,
-              }),
-          ]);
-          return;
-        case RETENTION_CLEANUP_CRON:
-          await runRetentionCleanup({
-            enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
-            logger,
-            withDb,
-            captureException: Sentry.captureException,
-          });
-          return;
-        default:
-          logger.warn({ cron: controller.cron }, 'No job for this cron');
-      }
-    },
-
-    async queue(batch, env, ctx) {
-      const workerEnv = parseWorkerEnv(env);
-
-      await handleRegenerationBatch(
-        batch as MessageBatch<RegenerationQueueMessage>,
-        {
-          env: workerEnv,
-          logger,
-          captureException: Sentry.captureException,
-          withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
-          run: runPlanRegeneration,
-          terminalize: terminalizeAbandonedRegenerationRun,
-          startModuleLessons: createSkippingModuleLessonStarter(logger),
-        },
-      );
-    },
-  } satisfies ExportedHandler<WorkerEnv>,
-);
+    await handleRegenerationBatch(
+      batch as MessageBatch<RegenerationQueueMessage>,
+      {
+        env: workerEnv,
+        logger,
+        captureException: Sentry.captureException,
+        withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
+        run: runPlanRegeneration,
+        terminalize: terminalizeAbandonedRegenerationRun,
+        startModuleLessons: createSkippingModuleLessonStarter(logger),
+      },
+    );
+  },
+} satisfies ExportedHandler<WorkerEnv>);
