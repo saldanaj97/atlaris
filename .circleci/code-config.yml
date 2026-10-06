@@ -66,12 +66,19 @@ commands:
               circleci-agent step halt
             fi
 
+  # Restore-only: the pnpm store cache is saved by warm-pnpm-cache on trunk,
+  # so PR and parallel jobs never upload their own copy.
   install-pnpm-deps:
     steps:
       - node/install-pnpm:
           version: '11.9.0'
-      - node/install-packages:
-          pkg-manager: pnpm
+      - restore_cache:
+          keys:
+            - pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+            - pnpm-store-v1-{{ arch }}-
+      - run:
+          name: Install dependencies
+          command: pnpm install --frozen-lockfile --prefer-offline --store-dir ~/.pnpm-store
 
   install-node-and-deps:
     steps:
@@ -126,6 +133,26 @@ commands:
                 destination: << parameters.coverage-destination >>
 
 jobs:
+  # Sole writer of the pnpm store cache. Exact-key restore only, so a miss
+  # fetches a clean store for the current lockfile instead of growing an old one.
+  warm-pnpm-cache:
+    executor: node
+    resource_class: medium
+    steps:
+      - checkout
+      - node/install-pnpm:
+          version: '11.9.0'
+      - restore_cache:
+          keys:
+            - pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+      - run:
+          name: Fetch lockfile packages into store
+          command: pnpm fetch --frozen-lockfile --store-dir ~/.pnpm-store
+      - save_cache:
+          key: pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.pnpm-store
+
   detect-changes:
     executor: node
     resource_class: small
@@ -669,6 +696,10 @@ workflows:
         equal: [pull_request, << pipeline.event.name >>]
     jobs:
       - detect-changes:
+          filters:
+            branches:
+              only: [main, develop]
+      - warm-pnpm-cache:
           filters:
             branches:
               only: [main, develop]
