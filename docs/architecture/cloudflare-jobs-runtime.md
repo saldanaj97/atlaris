@@ -130,7 +130,7 @@ workers/jobs/
 | Worker Cron Triggers | none | `*/15 * * * *`, `0 3 * * *` | `*/15 * * * *`, `0 3 * * *` |
 | Public hostname (`JOBS_WORKER_URL` in the app) | `http://127.0.0.1:<port>` | `https://workers-staging.atlaris.app` | `https://workers.atlaris.app` |
 | `workers.dev` | — | disabled (`workers_dev: false`) | disabled (`workers_dev: false`) |
-| `APP_URL` | local app URL | Proposed `https://atlaris-git-develop-juan-saldana-projects.vercel.app` (pending confirmation, open question 1) | `https://atlaris.app` |
+| `APP_URL` | local app URL | `https://staging.atlaris.app` | `https://atlaris.app` |
 | Sentry environment | `development` | `staging` | `production` |
 
 - **Staging deploy branch (decided 2026-10-05).** Track B PRs merge into the parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers`, and Workers Builds deploys only from the configured production branch [builds-branch]. The staging Worker's production branch is therefore the Track B parent branch until Track B first merges into `develop`; the user then switches it to `develop` under **Settings** → **Build** → **Branch control**.
@@ -569,7 +569,7 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 
 ## Open questions for the user
 
-1. **Staging `APP_URL` (confirmation pending).** Proposed: `https://atlaris-git-develop-juan-saldana-projects.vercel.app`, the `develop` branch URL. It goes into email links sent from staging.
+1. **Staging `APP_URL` (resolved 2026-10-06).** `https://staging.atlaris.app`, the `develop` deployment's custom domain. It goes into email links sent from staging. The domain is behind Vercel Deployment Protection; the Worker makes no HTTP calls to the app, so no bypass secret is needed.
 
 ### Decisions recorded after review (2026-10-05)
 

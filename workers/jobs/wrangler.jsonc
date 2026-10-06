@@ -37,8 +37,8 @@
       "vars": {
         "NODE_ENV": "production",
         "WORKER_ENV": "staging",
-        // Pending user confirmation (design note, open question 1).
-        "APP_URL": "https://atlaris-git-develop-juan-saldana-projects.vercel.app",
+        // The develop deployment's custom domain (design note, open question 1, resolved 2026-10-06).
+        "APP_URL": "https://staging.atlaris.app",
         // atlaris-jobs Sentry project (not a secret).
         "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
         "LOG_LEVEL": "info"
