@@ -15,8 +15,6 @@ const TEST_SUITES = readFileSync(
   join(REPO_ROOT, '.circleci', 'test-suites.yml'),
   'utf8',
 );
-const CANDIDATE_COUNT =
-  "COUNT=$(printf '%s\\n' \"${FILES}\" | awk 'NF { count += 1 } END { print count + 0 }')";
 const [CI_PR_WORKFLOW] = CODE_CONFIG.split(/\n  ci-trunk:\n/);
 const DRAFT_GATE =
   'equal: [false, << pipeline.event.github.pull_request.draft >>]';
@@ -76,12 +74,7 @@ const selectContinuation = (paths: string[]): ContinuationSelection => {
   };
 };
 
-describe('PR CI candidate file counting', () => {
-  it('treats an empty filtered integration file list as zero candidates', () => {
-    expect(CODE_CONFIG.split(CANDIDATE_COUNT)).toHaveLength(2);
-    expect(CODE_CONFIG).not.toContain('echo "${FILES}" | wc -l');
-  });
-
+describe('CircleCI Smarter Testing selection', () => {
   it('routes unit selection, splitting, and impact refresh through Smarter Testing', () => {
     expect(CODE_CONFIG).toContain('circleci testsuite run "unit tests"');
     expect(CODE_CONFIG).toContain('--analyze-tests=impacted --run-tests=none');
@@ -89,10 +82,17 @@ describe('PR CI candidate file counting', () => {
     expect(TEST_SUITES).toContain('dynamic-test-splitting: true');
   });
 
-  it('allows related mode to pass when no integration tests match', () => {
-    const relatedMode = CODE_CONFIG.match(/related\)([\s\S]*?)\n\s*;;/)?.[1];
+  it('selects PR integration tests by impact and refreshes impact data on develop', () => {
+    const integrationLight = CODE_CONFIG.match(
+      /\n  integration-light:\n([\s\S]*?)\n  security-tests:/,
+    )?.[1];
 
-    expect(relatedMode).toContain('--passWithNoTests');
+    expect(integrationLight).toContain(
+      'circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted',
+    );
+    expect(CODE_CONFIG).toContain(
+      'circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none',
+    );
   });
 });
 
@@ -109,7 +109,6 @@ describe('CircleCI test result collection', () => {
     expect(CODE_CONFIG).toContain('</testsuite></testsuites>');
 
     for (const path of [
-      'test-results/integration-light/junit.xml',
       'test-results/security/junit.xml',
       'test-results/workflow/node.xml',
       'test-results/workflow/vitest.xml',
