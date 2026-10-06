@@ -386,90 +386,17 @@ jobs:
               })
             "
       - run:
-          name: Integration tests (related/full/light)
+          name: Integration tests (impacted)
           no_output_timeout: 20m
           command: |
-            set -e
-            echo "Base ref: ${BASE_REF}"
-
-            CHANGED_FILES=""
-            DIFF_OK=0
-            if git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
-              if CHANGED_LISTING=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
-                CHANGED_FILES=$(printf '%s\n' "${CHANGED_LISTING}" | tr '\n' ' ')
-                DIFF_OK=1
-              else
-                echo "git diff failed; running full integration suite."
-              fi
+            mkdir -p test-results/integration
+            if [ "${BASE_REF}" = "main" ]; then
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=all
             else
-              echo "origin/${BASE_REF} missing; running full integration suite."
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
             fi
-
-            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
-            COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
-            echo "Changed candidate files: ${COUNT}"
-            mkdir -p test-results/integration-light
-
-            GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock\.yaml|drizzle(.*)\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?)$' || true)
-
-            MODE="light"
-            if [ "${DIFF_OK}" -eq 0 ]; then
-              MODE="full"
-              echo "Integration mode: full (missing base or failed diff)"
-            elif [ -n "${GLOBAL_TRIGGER}" ]; then
-              MODE="full"
-              echo "Integration mode: full (global trigger detected)"
-            elif [ "${COUNT}" -gt 50 ]; then
-              MODE="full"
-              echo "Integration mode: full (${COUNT} candidate TypeScript files)"
-            elif [ "${COUNT}" -gt 0 ]; then
-              MODE="related"
-              echo "Integration mode: related (${COUNT} candidate TypeScript files)"
-            else
-              echo "Integration mode: light (no suitable source candidates)"
-            fi
-
-            case "${MODE}" in
-              related)
-                pnpm vitest related --project integration --run --coverage \
-                  --passWithNoTests \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml \
-                  ${FILES}
-                ;;
-              full)
-                pnpm vitest run --project integration tests/integration \
-                  --coverage \
-                  --coverage.thresholds.lines=0 \
-                  --coverage.thresholds.functions=0 \
-                  --coverage.thresholds.branches=0 \
-                  --coverage.thresholds.statements=0 \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml
-                ;;
-              light)
-                mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name '*.test.ts' -o -name '*.spec.ts' -o -name '*.test.tsx' -o -name '*.spec.tsx' \))
-                if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
-                  echo "No light integration tests found; skipping."
-                  exit 0
-                fi
-                pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
-                  --coverage \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml
-                ;;
-            esac
-      - store-test-outputs:
-          results-file: test-results/integration-light/results.json
+      - summarize-vitest:
+          results-file: test-results/integration/results.json
 
   security-tests:
     docker:
