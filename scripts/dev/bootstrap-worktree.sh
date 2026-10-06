@@ -50,6 +50,7 @@ copy_from_main() {
 
 link_from_main "clerk.env"
 link_from_main "vercel.env"
+link_from_main "workers.env"
 copy_from_main ".env.local"
 # Launcher config lives in ~/.config/atlaris/dev.sh and is shared by worktrees.
 link_from_main ".vercel"
