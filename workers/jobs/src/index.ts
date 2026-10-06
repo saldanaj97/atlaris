@@ -4,6 +4,7 @@ import { withInvocationDb } from './db';
 import { parseWorkerEnv, type WorkerEnv } from './env';
 import { handleFetch } from './http/router';
 import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
+import { runPlanCleanup } from './jobs/plan-cleanup';
 import {
   createSkippingModuleLessonStarter,
   handleRegenerationBatch,
@@ -11,7 +12,11 @@ import {
 import { handleRegenerationEnqueue } from './jobs/regeneration-enqueue';
 import type { RegenerationQueueMessage } from './jobs/regeneration-shared';
 import { runRegenerationSweep } from './jobs/regeneration-sweep';
-import { isJobsPaused } from './switches';
+import {
+  RETENTION_CLEANUP_CRON,
+  runRetentionCleanup,
+} from './jobs/retention-cleanup';
+import { isJobEnabled, isJobsPaused } from './switches';
 import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
@@ -82,6 +87,13 @@ export default Sentry.withSentry<WorkerEnv>(
                 withMonitor: Sentry.withMonitor,
               }),
             () =>
+              runPlanCleanup({
+                enabled: isJobEnabled(workerEnv, 'PLAN_CLEANUP'),
+                logger,
+                withDb,
+                captureException: Sentry.captureException,
+              }),
+            () =>
               runRegenerationSweep({
                 env: workerEnv,
                 logger,
@@ -90,6 +102,14 @@ export default Sentry.withSentry<WorkerEnv>(
                 queue: workerEnv.REGENERATION_QUEUE,
               }),
           ]);
+          return;
+        case RETENTION_CLEANUP_CRON:
+          await runRetentionCleanup({
+            enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
+            logger,
+            withDb,
+            captureException: Sentry.captureException,
+          });
           return;
         default:
           logger.warn({ cron: controller.cron }, 'No job for this cron');
