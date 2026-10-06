@@ -75,6 +75,9 @@
         "APP_URL": "https://staging.atlaris.app",
         // atlaris-jobs Sentry project (not a secret).
         "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
+        // Resend sender for staging email (B3b); the domain must be verified in Resend.
+        "RESEND_FROM": "Atlaris Staging <notifications@staging-mail.atlaris.app>",
+        "RESEND_REPLY_TO": "support@atlaris.app",
         "LOG_LEVEL": "info"
       },
       // atlaris-jobs-db-staging (Supabase atlaris-dev, direct connection).
