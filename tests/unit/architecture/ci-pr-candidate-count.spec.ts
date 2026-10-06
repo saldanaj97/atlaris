@@ -102,6 +102,7 @@ describe('CircleCI test result collection', () => {
       '- store_test_results:\n          path: test-results',
     );
     expect(TEST_SUITES).toContain('junit: test-results/unit/junit.xml');
+    expect(TEST_SUITES).toContain('junit: test-results/integration/junit.xml');
     expect(CODE_CONFIG).toContain(
       '<testsuites><testsuite name="dependency-remediation">',
     );
@@ -109,7 +110,6 @@ describe('CircleCI test result collection', () => {
 
     for (const path of [
       'test-results/integration-light/junit.xml',
-      'test-results/integration/junit.xml',
       'test-results/security/junit.xml',
       'test-results/workflow/node.xml',
       'test-results/workflow/vitest.xml',
