@@ -11,6 +11,7 @@ function makeEnv(overrides: Record<string, unknown> = {}): WorkerEnv {
       connectionString: 'postgres://u:secret-pw@127.0.0.1:5432/db',
     },
     CF_VERSION_METADATA: { id: 'version-1', tag: '', timestamp: '' },
+    REGENERATION_QUEUE: { send: async () => {}, sendBatch: async () => {} },
     NODE_ENV: 'production',
     WORKER_ENV: 'staging',
     APP_URL: 'https://example.test',

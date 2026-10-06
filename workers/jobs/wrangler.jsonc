@@ -22,6 +22,31 @@
   "hyperdrive": [
     { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }
   ],
+  // Worker replacements for Next/Vercel-only modules on job paths
+  // (design note, "Runtime compatibility audit").
+  "alias": {
+    "@sentry/nextjs": "@sentry/cloudflare",
+    "flags/next": "./src/runtime/flags-next.ts",
+    "@flags-sdk/vercel": "./src/runtime/flags-sdk-vercel.ts",
+    "workflow": "./src/runtime/workflow.ts",
+    "workflow/api": "./src/runtime/workflow-api.ts"
+  },
+  // Plan regeneration (B4): no dead-letter queue; job_queue stays the record
+  // and the */15 sweep re-sends lost work (design note, Decision 8).
+  "queues": {
+    "producers": [
+      { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-local" }
+    ],
+    "consumers": [
+      {
+        "queue": "atlaris-regeneration-local",
+        "max_batch_size": 1,
+        "max_batch_timeout": 0,
+        "max_retries": 3,
+        "max_concurrency": 2
+      }
+    ]
+  },
   "vars": {
     "NODE_ENV": "development",
     "WORKER_ENV": "development",
@@ -47,9 +72,23 @@
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "3d880a7719be417eb9fbabc44380cf9c" }
       ],
+      "queues": {
+        "producers": [
+          { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-staging" }
+        ],
+        "consumers": [
+          {
+            "queue": "atlaris-regeneration-staging",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 3,
+            "max_concurrency": 2
+          }
+        ]
+      },
       "triggers": { "crons": ["*/15 * * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
-      "secrets": { "required": [] }
+      "secrets": { "required": ["JOBS_SIGNING_SECRET", "OPENROUTER_API_KEY"] }
     },
     "production": {
       "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }],
@@ -65,9 +104,23 @@
       "hyperdrive": [
         { "binding": "HYPERDRIVE", "id": "d655ad23c1624151b787d53cf3188056" }
       ],
+      "queues": {
+        "producers": [
+          { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-production" }
+        ],
+        "consumers": [
+          {
+            "queue": "atlaris-regeneration-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 3,
+            "max_concurrency": 2
+          }
+        ]
+      },
       "triggers": { "crons": ["*/15 * * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
-      "secrets": { "required": [] }
+      "secrets": { "required": ["JOBS_SIGNING_SECRET", "OPENROUTER_API_KEY"] }
     }
   }
 }
