@@ -9,7 +9,12 @@ export type JobSwitchVars = {
  * Bindings and vars from `wrangler.jsonc`, plus the deploy-time
  * `SENTRY_RELEASE` and the dashboard-managed job switches.
  */
-export type WorkerEnv = Env & JobSwitchVars & { SENTRY_RELEASE?: string };
+export type WorkerEnv = Env &
+  JobSwitchVars & {
+    SENTRY_RELEASE?: string;
+    /** Accepted during signing-secret rotation (design note, Decision 4). */
+    JOBS_SIGNING_SECRET_PREVIOUS?: string;
+  };
 
 const optionalString = z.string().optional();
 
@@ -24,6 +29,11 @@ const workerEnvSchema = z.object({
   WORKER_ENV: z.enum(['development', 'staging', 'production']),
   SENTRY_DSN: z.string(),
   SENTRY_RELEASE: optionalString,
+  REGENERATION_QUEUE: z.custom<Queue>(
+    (value) => typeof value === 'object' && value !== null && 'send' in value,
+  ),
+  JOBS_SIGNING_SECRET: optionalString,
+  JOBS_SIGNING_SECRET_PREVIOUS: optionalString,
   JOBS_PAUSED: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),

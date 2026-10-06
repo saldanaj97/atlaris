@@ -599,4 +599,60 @@ describe('requestPlanRegeneration', () => {
       );
     });
   });
+
+  describe('jobs Worker dispatch (REGENERATION_RUNTIME=cloudflare)', () => {
+    beforeEach(() => {
+      startPlanRegenerationWorkflowMock.mockReset();
+    });
+
+    it('hands the inserted job to dispatch instead of starting a workflow', async () => {
+      const dispatch = vi.fn(async () => undefined);
+      const deps = { ...buildDeps(), dispatch };
+
+      const result = await requestPlanRegeneration(
+        { userId: 'user-1', planId: ownedPlan.id },
+        deps,
+      );
+
+      expect(result).toMatchObject({
+        kind: 'enqueued',
+        jobId: 'job-1',
+        status: 'pending',
+      });
+      expect(dispatch).toHaveBeenCalledWith({
+        jobId: 'job-1',
+        planId: ownedPlan.id,
+        userId: 'user-1',
+      });
+      expect(startPlanRegenerationWorkflowMock).not.toHaveBeenCalled();
+      expect(deps.queue.updateRegenerationJobPayload).not.toHaveBeenCalled();
+      expect(deps.queue.failJob).not.toHaveBeenCalled();
+    });
+
+    it('does not dispatch a deduplicated job', async () => {
+      const dispatch = vi.fn(async () => undefined);
+      const deps = {
+        ...buildDeps({
+          queue: {
+            enqueueWithResult: vi.fn(async () => ({
+              id: 'dup-job',
+              deduplicated: true,
+            })),
+          },
+        }),
+        dispatch,
+      };
+
+      await expect(
+        requestPlanRegeneration(
+          { userId: 'user-1', planId: ownedPlan.id },
+          deps,
+        ),
+      ).resolves.toEqual({
+        kind: 'queue-dedupe-conflict',
+        existingJobId: 'dup-job',
+      });
+      expect(dispatch).not.toHaveBeenCalled();
+    });
+  });
 });

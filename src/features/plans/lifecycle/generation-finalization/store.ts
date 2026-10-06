@@ -148,12 +148,15 @@ export async function commitPlanGenerationSuccess(
   });
 
   try {
-    await enqueueFirstProgressiveModuleLessons({
-      dbClient,
-      userId: input.userId,
-      planId: input.planId,
-      correlationId: getCorrelationId() ?? attempt.id,
-    });
+    await enqueueFirstProgressiveModuleLessons(
+      {
+        dbClient,
+        userId: input.userId,
+        planId: input.planId,
+        correlationId: getCorrelationId() ?? attempt.id,
+      },
+      deps.startModuleLessons ? { start: deps.startModuleLessons } : {},
+    );
   } catch (error) {
     logger.warn(
       {
