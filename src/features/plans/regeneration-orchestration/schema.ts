@@ -1,5 +1,5 @@
 import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
-import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
+import { JobRunMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
 /**
  * Zod schema for `job_queue` payloads of type `plan_regeneration`.
  * Consumed by orchestration (`process.ts`) when a worker dequeues a job; allowed
@@ -16,7 +16,7 @@ const jobErrorHistoryEntrySchema = z.strictObject({
 
 export const planRegenerationJobPayloadSchema = z.strictObject({
   planId: z.uuid(),
-  workflow: WorkflowSdkMetadataSchema.optional(),
+  workflow: JobRunMetadataSchema.optional(),
   overrides: planRegenerationOverridesSchema.optional(),
   quota: z
     .strictObject({

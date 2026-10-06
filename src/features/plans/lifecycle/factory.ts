@@ -15,6 +15,7 @@
  *   - Reads and pre-write access checks: request-scoped RLS via getDb()
  */
 
+import type { GenerationFinalizationStoreDeps } from './generation-finalization/types';
 import type { DbClient } from '@/lib/db/types';
 
 import { createPlanLifecycleGeneration } from './generation';
@@ -37,8 +38,10 @@ import {
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;
+  /** Overrides how finalization starts module lessons (the jobs Worker skips them until B5). */
+  startModuleLessons?: GenerationFinalizationStoreDeps['startModuleLessons'];
 }): PlanLifecycleService {
-  const { dbClient } = params;
+  const { dbClient, startModuleLessons } = params;
 
   return new PlanLifecycleService({
     planPersistence: {
@@ -60,7 +63,12 @@ export function createPlanLifecycleService(params: {
     // Intended owner: these store functions implement the lifecycle port.
     // Production callers settle through PlanLifecycleService, not these imports.
     generationFinalization: {
-      finalizeSuccess: (input) => commitPlanGenerationSuccess(dbClient, input),
+      finalizeSuccess: (input) =>
+        commitPlanGenerationSuccess(
+          dbClient,
+          input,
+          startModuleLessons ? { startModuleLessons } : {},
+        ),
       finalizeFailure: (input) => commitPlanGenerationFailure(dbClient, input),
     },
   });

@@ -2,6 +2,7 @@
  * Types for lifecycle generation finalization (single-transaction settlement).
  */
 
+import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
 import type {
   AttemptReservation,
   AttemptWorkflowMetadata,
@@ -18,6 +19,8 @@ import type { GenerationPurpose } from '@/shared/types/generation-purpose';
  */
 export type GenerationFinalizationStoreDeps = {
   readonly afterSuccessfulAttemptPersist?: () => void | Promise<void>;
+  /** Starts lessons for the first modules; defaults to the Vercel workflow starter. */
+  readonly startModuleLessons?: EnqueueModuleLessonGenerationsDeps['start'];
 };
 
 /** Settles success attempt + modules/tasks + plan ready + usage in one DB transaction. */

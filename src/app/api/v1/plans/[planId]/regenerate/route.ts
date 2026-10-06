@@ -3,6 +3,7 @@ import type { PlainHandler } from '@/lib/api/auth';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { validateModelForTier } from '@/features/ai/model-resolver';
+import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { throwPlanEntitlementRequired } from '@/features/plans/entitlement/errors';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
@@ -13,6 +14,7 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { jobsWorkerEnv } from '@/lib/config/env/jobs-worker';
 import { captureAfterResponse } from '@/lib/posthog-server';
 import {
   API_ERROR_CODES,
@@ -93,13 +95,16 @@ export const POST: PlainHandler = requestBoundary.route(
 
     assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
 
+    const deps = createDefaultRegenerationOrchestrationDeps(db);
     const result = await requestPlanRegeneration(
       {
         userId: actor.id,
         planId,
         overrides,
       },
-      createDefaultRegenerationOrchestrationDeps(db),
+      jobsWorkerEnv.regenerationRuntime === 'cloudflare'
+        ? { ...deps, dispatch: dispatchRegenerationToWorker }
+        : deps,
     );
 
     switch (result.kind) {

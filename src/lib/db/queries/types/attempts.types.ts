@@ -109,7 +109,8 @@ interface AttemptMetadataFailure {
 }
 
 export interface AttemptWorkflowMetadata {
-  provider: 'workflow-sdk';
+  /** `cloudflare-queue`: reserved by the jobs Worker's regeneration consumer. */
+  provider: 'workflow-sdk' | 'cloudflare-queue';
   runId: string;
   /** Stable logical operation key used to recover a workflow reservation replay. */
   idempotencyKey?: string;

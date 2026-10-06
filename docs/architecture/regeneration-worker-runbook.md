@@ -1,7 +1,7 @@
 # Regeneration Worker Runbook
 
 **Audience:** Developers and operators running queued plan regeneration.  
-**Last Updated:** August 2026
+**Last Updated:** October 2026
 
 ## Overview
 
@@ -55,6 +55,71 @@ Also:
 - The workflow claim step (`claimPlanRegenerationJobStep`) can adopt a processing job that still lacks a `runId` via the same CAS writer.
 
 Correlate failures using `job_queue.payload.workflow.runId` and logs tagged with `workflowRunId`. See [Workflow SDK](./workflow-sdk.md) (correlation metadata and Preview testing). Preview workflow testing: [development commands](../development/commands.md) (`pnpm deploy:preview`).
+
+## Cloudflare jobs Worker (opt-in, B4)
+
+Track B moves regeneration to the `atlaris-jobs` Cloudflare Worker ([design note](./cloudflare-jobs-runtime.md), Decisions 4, 7, 8). The Vercel workflow path above stays the default until cutover.
+
+### Flow
+
+1. `POST /api/v1/plans/:planId/regenerate` runs the same admission (rate limit, tier, duration, content access, non-settling quota peek) and inserts the `job_queue` row.
+2. With `REGENERATION_RUNTIME=cloudflare`, the route sends a signed `POST {JOBS_WORKER_URL}/v1/regeneration/enqueue { v: 1, jobId }` (`dispatchRegenerationToWorker`, `src/features/jobs/regeneration-dispatch.ts`) instead of attaching a Vercel workflow. It always answers `202 pending`. Any non-2xx response, timeout (10 s, no retry), or missing configuration is logged and leaves the row `pending` for the sweep.
+3. The Worker verifies the HMAC signature (`workers/jobs/src/http/signature.ts`), then puts `{ v: 1, jobId }` on `atlaris-regeneration-<env>`.
+4. The queue consumer (`workers/jobs/src/jobs/regeneration-consumer.ts`; `max_batch_size: 1`, `max_batch_timeout: 0`, `max_retries: 3`, `max_concurrency: 2`) runs the job inline with `runPlanRegeneration` (`src/features/jobs/regeneration-run.ts`): claim (CAS) → reserve attempt → process → finalize, the same steps as `planRegenerationWorkflow`.
+5. Every `*/15` tick, the sweep (`workers/jobs/src/jobs/regeneration-sweep.ts`) re-sends `pending` regeneration rows that are due (`scheduled_for <= now()`) and untouched for 10 minutes (`updated_at`), at most 50 per tick, and bumps their `updated_at` so the next tick does not re-send them. `job_queue` stays the durable record; there is no dead-letter queue.
+
+`REGENERATION_QUEUE_ENABLED` still gates the route on the app. `runPlanRegeneration` duplicates `plan-regeneration.steps.ts` without the Workflow SDK; keep the two in sync until B7 removes the Vercel path.
+
+### Correlation
+
+`job_queue.payload.workflow` and the attempt's `generation_attempts.metadata.workflow` carry `provider: "cloudflare-queue"` and the queue message ID as `runId` (Vercel runs carry `provider: "workflow-sdk"`). Worker logs for a run include `jobId`, `runId`, `deliveryAttempt`, `outcome`, and `wallMs`; Workers Logs invocation records carry the CPU time to compare against (Decision 9).
+
+### Claim and retry semantics
+
+| Situation                                                                             | Consumer result                                               | Message                                                                                                       |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Pending job                                                                           | CAS claim with this message's `runId`, then run               | ack when terminal                                                                                             |
+| Job owned by another `runId` (duplicate send, sweep re-send)                          | `in-flight`, no work                                          | ack                                                                                                           |
+| Redelivery of the same message                                                        | Resumes its own claim; reservation replays by idempotency key | —                                                                                                             |
+| Completed, failed, missing, or invalid job                                            | No work                                                       | ack                                                                                                           |
+| Retryable failure with retries left (reservation blocked, provider retryable failure) | `failJob(retryable)` reschedules the row                      | `retry({ delaySeconds })` until `scheduled_for`, capped at 24 h                                               |
+| Unexpected error (database or provider outage)                                        | Reported to Sentry                                            | `retry({ delaySeconds: 60 })`; on the last delivery the run fails the job only if it still owns it, then acks |
+| `JOBS_PAUSED=true` or `JOB_REGENERATION_ENABLED` not `true`                           | No work                                                       | `retryAll({ delaySeconds: 900 })`; exhausted messages drop and the sweep re-sends after resume                |
+
+Quota follows the existing boundary (`reserveRegenerationQuotaAtProviderStart`): failures before the provider starts do not consume a regeneration; once the provider has started, the regeneration stays consumed. A consumer that dies after the provider call repeats that call on redelivery but not the quota slot.
+
+The consumer relies on Cloudflare keeping a message's ID across redeliveries; staging confirms it (a changed ID would leave the job `processing` for plan cleanup instead of resuming).
+
+### Module lessons gap (until B5)
+
+Regeneration finalization normally starts lesson generation for the first two modules. On the Worker, the injected starter skips and logs (`Module lesson start skipped on the jobs Worker…`) because the lessons Workflow ships in B5. This is acceptable on staging only; production cutover waits for B5 (design note, Decision 7).
+
+### Signed commands
+
+Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature: v1=<hex>`, where `<hex>` is HMAC-SHA256 with `JOBS_SIGNING_SECRET` over `<timestamp>.<METHOD>.<path>.<hex sha256(body)>` (`src/lib/jobs-worker/contract.ts`). The Worker rejects timestamps more than 300 s off and answers `401` with no body; during rotation it also accepts `JOBS_SIGNING_SECRET_PREVIOUS`. Responses: `202 { accepted, jobId }`, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `500` queue send failure.
+
+### Settings
+
+| Where                          | Name                           | Purpose                                                                              |
+| ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------ |
+| App (Vercel)                   | `REGENERATION_RUNTIME`         | `vercel` (default) or `cloudflare`; any other value fails the request                |
+| App (Vercel)                   | `JOBS_WORKER_URL`              | Worker origin (`https://workers-staging.atlaris.app`, `https://workers.atlaris.app`) |
+| App (Vercel) and Worker secret | `JOBS_SIGNING_SECRET`          | Shared HMAC key per environment                                                      |
+| Worker secret (optional)       | `JOBS_SIGNING_SECRET_PREVIOUS` | Old key during rotation                                                              |
+| Worker variable (dashboard)    | `JOB_REGENERATION_ENABLED`     | Consumer, sweep, and enqueue command on/off (absent = off)                           |
+| Worker variable (dashboard)    | `JOBS_PAUSED`                  | Pauses every job                                                                     |
+| Worker secret                  | `OPENROUTER_API_KEY`           | Provider calls from the consumer                                                     |
+
+### Cutover (staging first; production waits for B5)
+
+1. Merge with `JOB_REGENERATION_ENABLED` absent and `REGENERATION_RUNTIME` unset: nothing changes.
+2. Set the Worker secrets and the app's `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET` for the environment.
+3. Set `JOB_REGENERATION_ENABLED=true` on the Worker.
+4. Disable the old drain: GitHub repository variable `REGENERATION_QUEUE_ENABLED=false`.
+5. Set `REGENERATION_RUNTIME=cloudflare` on the app and redeploy.
+6. Watch the first regenerations: `job_queue.payload.workflow.provider = 'cloudflare-queue'`, consumer logs, and Workers Logs CPU per invocation. Run at least 20 real-provider regenerations across plan sizes for the Decision 9 CPU gate.
+
+Rollback: unset `REGENERATION_RUNTIME` (or Vercel Instant Rollback), set `JOB_REGENERATION_ENABLED` off, and re-enable the GitHub drain. Rows the Worker left `pending` are picked up by the drain; CAS claims prevent double processing.
 
 ## Triggering the Worker
 
