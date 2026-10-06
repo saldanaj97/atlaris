@@ -14,6 +14,8 @@ export type WorkerEnv = Env &
     SENTRY_RELEASE?: string;
     /** Accepted during signing-secret rotation (design note, Decision 4). */
     JOBS_SIGNING_SECRET_PREVIOUS?: string;
+    /** Dashboard-managed; outside production only these addresses get email. */
+    EMAIL_TEST_RECIPIENT_ALLOWLIST?: string;
   };
 
 const optionalString = z.string().optional();
@@ -34,6 +36,10 @@ const workerEnvSchema = z.object({
   ),
   JOBS_SIGNING_SECRET: optionalString,
   JOBS_SIGNING_SECRET_PREVIOUS: optionalString,
+  EMAIL_DELIVERY_WORKFLOW: z.custom<Workflow>(
+    (value) => typeof value === 'object' && value !== null && 'create' in value,
+  ),
+  EMAIL_TEST_RECIPIENT_ALLOWLIST: optionalString,
   JOBS_PAUSED: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),

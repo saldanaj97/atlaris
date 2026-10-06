@@ -110,6 +110,11 @@ export type RunEmailNotificationDeliveryDeps = {
   deliveryNow?: Date;
   /** Deterministic logical reference time for content and eligibility. */
   now?: Date;
+  /**
+   * Optional recipient gate (the jobs Worker's non-production allowlist).
+   * A rejected recipient is skipped before any ledger claim or send.
+   */
+  canDeliverTo?: (email: string) => boolean;
 };
 
 function emptyCounts(): EmailDeliveryRunResult {
@@ -743,6 +748,13 @@ export async function runEmailNotificationDelivery(
 
   recipients: for (const recipient of recipients) {
     counts.examined += 1;
+    if (deps.canDeliverTo && !deps.canDeliverTo(recipient.email)) {
+      counts.skipped += 1;
+      countMetric('atlaris.email.notification.skipped', 1, {
+        attributes: { reason: 'recipient_not_allowlisted' },
+      });
+      continue;
+    }
     try {
       const contents = await buildRecipientEmailContents(recipient, context);
       let streakSentThisPass = false;

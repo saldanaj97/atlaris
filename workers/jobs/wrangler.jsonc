@@ -47,6 +47,15 @@
       }
     ]
   },
+  // Email delivery (B3b). Deployed envs start it from Workflow `schedules`
+  // (design note, Decision 8); locally it runs only from the manual command.
+  "workflows": [
+    {
+      "name": "atlaris-email-delivery",
+      "binding": "EMAIL_DELIVERY_WORKFLOW",
+      "class_name": "EmailDeliveryWorkflow"
+    }
+  ],
   "vars": {
     "NODE_ENV": "development",
     "WORKER_ENV": "development",
@@ -86,9 +95,25 @@
           }
         ]
       },
+      "workflows": [
+        {
+          "name": "atlaris-email-delivery-staging",
+          "binding": "EMAIL_DELIVERY_WORKFLOW",
+          "class_name": "EmailDeliveryWorkflow",
+          // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
+          "schedules": ["0 14 * * *", "30 14 * * MON"]
+        }
+      ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
-      "secrets": { "required": ["JOBS_SIGNING_SECRET", "OPENROUTER_API_KEY"] }
+      "secrets": {
+        "required": [
+          "JOBS_SIGNING_SECRET",
+          "OPENROUTER_API_KEY",
+          "RESEND_API_KEY",
+          "EMAIL_UNSUBSCRIBE_TOKEN_SECRET"
+        ]
+      }
     },
     "production": {
       "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }],
@@ -118,9 +143,25 @@
           }
         ]
       },
+      "workflows": [
+        {
+          "name": "atlaris-email-delivery-production",
+          "binding": "EMAIL_DELIVERY_WORKFLOW",
+          "class_name": "EmailDeliveryWorkflow",
+          // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
+          "schedules": ["0 14 * * *", "30 14 * * MON"]
+        }
+      ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
       "version_metadata": { "binding": "CF_VERSION_METADATA" },
-      "secrets": { "required": ["JOBS_SIGNING_SECRET", "OPENROUTER_API_KEY"] }
+      "secrets": {
+        "required": [
+          "JOBS_SIGNING_SECRET",
+          "OPENROUTER_API_KEY",
+          "RESEND_API_KEY",
+          "EMAIL_UNSUBSCRIBE_TOKEN_SECRET"
+        ]
+      }
     }
   }
 }
