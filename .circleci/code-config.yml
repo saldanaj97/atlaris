@@ -138,6 +138,8 @@ jobs:
   warm-pnpm-cache:
     executor: node
     resource_class: medium
+    retention:
+      caches: 7d
     steps:
       - checkout
       - node/install-pnpm:
