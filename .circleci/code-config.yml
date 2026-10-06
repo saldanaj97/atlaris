@@ -520,6 +520,7 @@ jobs:
       - skip-unless-integration
       - checkout
       - init-env
+      - fetch-base
       - install-pnpm-deps
       - run:
           name: Wait for PostgreSQL
@@ -539,33 +540,37 @@ jobs:
           no_output_timeout: 25m
           command: |
             mkdir -p test-results/integration
-            TESTFILES=$(circleci tests glob "tests/integration/**/*.{test,spec}.{ts,tsx}")
-            if [ -z "${TESTFILES}" ]; then
-              echo "No integration test files found; skipping."
-              circleci-agent step halt
-              exit 0
+            if [ "${CIRCLE_BRANCH}" = "develop" ]; then
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
+            else
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=all
             fi
-            echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
-            if [ ! -s files.txt ]; then
-              echo "No tests assigned to this node; skipping."
-              circleci-agent step halt
-              exit 0
-            fi
-            # ponytail: word-split files.txt; circleci tests run already selected this node's files
-            pnpm vitest run --project integration \
-              --coverage \
-              --coverage.thresholds.lines=0 \
-              --coverage.thresholds.functions=0 \
-              --coverage.thresholds.branches=0 \
-              --coverage.thresholds.statements=0 \
-              --reporter=default \
-              --reporter=json \
-              --reporter=junit \
-              --outputFile.json=test-results/integration/results.json \
-              --outputFile.junit=test-results/integration/junit.xml \
-              $(cat files.txt)
-      - store-test-outputs:
+      - summarize-vitest:
           results-file: test-results/integration/results.json
+
+  integration-impact-analysis:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    environment:
+      NODE_ENV: test
+      ENABLE_CURATION: 'false'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - skip-unless-integration
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Refresh integration test impact data
+          no_output_timeout: 30m
+          command: circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none
 
   workflow-tests:
     docker:
@@ -684,6 +689,12 @@ workflows:
           filters:
             branches:
               only: [main, develop]
+      - integration-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
       - security-tests:
           skip_unless: integration
           requires:

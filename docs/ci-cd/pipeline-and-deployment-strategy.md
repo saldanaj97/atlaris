@@ -60,12 +60,13 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
 
 - Trigger: **All pushes** that are not `pull_request` events, with jobs filtered to `develop` and `main`. Keep the CircleCI GitHub App **All pushes** trigger so this workflow still starts on trunk.
-- Runs: full integration tests (`integration-tests`) and RLS security tests (`security-tests`) after merge
+- Runs: integration tests (`integration-tests`: impacted tests on `develop`, all tests on `main`, via the `integration tests` Smarter Testing suite) and RLS security tests (`security-tests`) after merge
 - There is no CircleCI `merge_group` trigger. Do not treat merge-queue SHAs as gated here.
 - Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
 - Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
 - On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
+- On `develop`, `integration-impact-analysis` does the same for the `integration tests` suite. Its analysis command takes a lock so atoms run one at a time, because each integration run rebuilds one shared template database.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
 Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
