@@ -1,8 +1,12 @@
-import { verifySignedRequest } from '../../../../workers/jobs/src/http/signature';
 import {
   JOBS_WORKER_TIMEOUT_MS,
   sendJobsWorkerCommand,
 } from '@/lib/jobs-worker/client';
+import {
+  computeJobsSignature,
+  JOBS_SIGNATURE_HEADER,
+  JOBS_TIMESTAMP_HEADER,
+} from '@/lib/jobs-worker/contract';
 import { describe, expect, it, vi } from 'vitest';
 
 const SECRET = 'current-secret-0123456789abcdef0123456789';
@@ -18,7 +22,7 @@ function fetchReturning(response: Response) {
 }
 
 describe('sendJobsWorkerCommand', () => {
-  it('sends a request the Worker verifier accepts', async () => {
+  it('signs the request with the shared contract', async () => {
     const fetchMock = fetchReturning(
       Response.json({ accepted: true }, { status: 202 }),
     );
@@ -39,10 +43,20 @@ describe('sendJobsWorkerCommand', () => {
       'https://workers-staging.atlaris.app/v1/regeneration/enqueue',
     );
     expect(init?.method).toBe('POST');
-    const request = new Request(url, init);
-    await expect(
-      verifySignedRequest(request, { JOBS_SIGNING_SECRET: SECRET }, NOW_MS),
-    ).resolves.toEqual({ ok: true, body: JSON.stringify(payload) });
+    // Worker-side acceptance of these headers: tests/unit/workers/jobs/signature.spec.ts.
+    const headers = new Headers(init?.headers);
+    const body = JSON.stringify(payload);
+    expect(init?.body).toBe(body);
+    expect(headers.get(JOBS_TIMESTAMP_HEADER)).toBe(String(NOW_MS / 1000));
+    expect(headers.get(JOBS_SIGNATURE_HEADER)).toBe(
+      `v1=${await computeJobsSignature({
+        secret: SECRET,
+        timestamp: String(NOW_MS / 1000),
+        method: 'POST',
+        path: '/v1/regeneration/enqueue',
+        body,
+      })}`,
+    );
   });
 
   it('sets a 10 second timeout signal', async () => {

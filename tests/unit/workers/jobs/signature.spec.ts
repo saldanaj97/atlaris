@@ -1,10 +1,11 @@
 import { verifySignedRequest } from '../../../../workers/jobs/src/http/signature';
+import { sendJobsWorkerCommand } from '@/lib/jobs-worker/client';
 import {
   computeJobsSignature,
   JOBS_SIGNATURE_HEADER,
   JOBS_TIMESTAMP_HEADER,
 } from '@/lib/jobs-worker/contract';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 const SECRET = 'current-secret-0123456789abcdef0123456789';
 const PREVIOUS = 'previous-secret-0123456789abcdef012345678';
@@ -171,5 +172,25 @@ describe('verifySignedRequest', () => {
     ).resolves.toEqual({
       ok: false,
     });
+  });
+
+  it('accepts a request sent by the app client', async () => {
+    const fetchMock = vi.fn<typeof fetch>(
+      async () => new Response(null, { status: 202 }),
+    );
+    await sendJobsWorkerCommand(
+      PATH,
+      { v: 1, jobId: '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c' },
+      {
+        config: { url: URL_BASE, signingSecret: SECRET },
+        fetch: fetchMock,
+        now: () => NOW_MS,
+      },
+    );
+    const [url, init] = fetchMock.mock.calls[0]!;
+
+    await expect(
+      verifySignedRequest(new Request(url, init), secrets, NOW_MS),
+    ).resolves.toEqual({ ok: true, body: BODY });
   });
 });

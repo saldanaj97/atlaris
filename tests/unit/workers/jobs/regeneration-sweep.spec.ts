@@ -1,10 +1,10 @@
 import type { DbClient } from '@/lib/db/types';
 
 import {
-  claimRegenerationSweepJobIds,
   runRegenerationSweep,
   type RegenerationSweepDeps,
 } from '../../../../workers/jobs/src/jobs/regeneration-sweep';
+import { claimRegenerationSweepJobIds } from '@/features/jobs/regeneration-sweep-query';
 import * as schema from '@supabase/schema';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { describe, expect, it, vi } from 'vitest';

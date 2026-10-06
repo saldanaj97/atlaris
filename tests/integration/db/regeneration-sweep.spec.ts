@@ -1,4 +1,4 @@
-import { claimRegenerationSweepJobIds } from '../../../workers/jobs/src/jobs/regeneration-sweep';
+import { claimRegenerationSweepJobIds } from '@/features/jobs/regeneration-sweep-query';
 import { JOB_TYPES } from '@/features/jobs/types';
 import { jobQueue, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
