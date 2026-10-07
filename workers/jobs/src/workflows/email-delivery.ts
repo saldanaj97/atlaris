@@ -1,4 +1,4 @@
-import { withInvocationDb } from '../db';
+import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
 import { isJobEnabled } from '../switches';
 import { resolveEmailRecipientGuard } from './email-delivery/recipient-allowlist';
@@ -39,7 +39,7 @@ export class EmailDeliveryWorkflowEntrypoint extends WorkflowEntrypoint<
     return runEmailDeliveryWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'EMAIL_DELIVERY'),
       recipientGuard: resolveEmailRecipientGuard(env),
-      withDb: (fn) => withInvocationDb(env.HYPERDRIVE, this.ctx, fn),
+      withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       createSender: createConfiguredEmailSender,
       logger,
       captureException: (error, context) => {

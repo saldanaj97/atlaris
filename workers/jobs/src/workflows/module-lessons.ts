@@ -1,4 +1,4 @@
-import { withInvocationDb } from '../db';
+import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
 import { isJobEnabled } from '../switches';
 import {
@@ -32,7 +32,7 @@ export class ModuleLessonsWorkflowEntrypoint extends WorkflowEntrypoint<
     const env = this.env;
     return runModuleLessonsWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'MODULE_LESSONS'),
-      withDb: (fn) => withInvocationDb(env.HYPERDRIVE, this.ctx, fn),
+      withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       logger,
       nonRetryable: (message) => new NonRetryableError(message),
     });

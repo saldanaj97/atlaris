@@ -30,3 +30,26 @@ export async function withInvocationDb<T>(
     ctx.waitUntil(pool.end());
   }
 }
+
+/**
+ * For Workflow steps: like `withInvocationDb`, but closes the pool before the
+ * step returns instead of handing the close to `waitUntil`. An instance runs
+ * several steps in one invocation, so no pool I/O may outlive its step.
+ */
+export async function withStepDb<T>(
+  hyperdrive: Pick<Hyperdrive, 'connectionString'>,
+  fn: (db: DbClient) => Promise<T>,
+): Promise<T> {
+  const pool = new Pool({
+    connectionString: hyperdrive.connectionString,
+    max: POOL_MAX,
+  });
+  const db = drizzle(pool, { schema });
+
+  try {
+    return await runWithServiceRoleDb(db, () => fn(db));
+  } finally {
+    // A failed close must not fail (and so re-run) a step whose work is done.
+    await pool.end().catch(() => undefined);
+  }
+}

@@ -351,7 +351,9 @@ describe('runModuleLessonsWorkflow', () => {
   });
 
   it('treats a parse failure as non-retryable and records the module failed', async () => {
-    const { deps } = makeDeps({ provider: providerReturning('not json') });
+    const { deps, logger } = makeDeps({
+      provider: providerReturning('not json'),
+    });
     const { step, calls } = createStep();
 
     await expect(
@@ -367,6 +369,15 @@ describe('runModuleLessonsWorkflow', () => {
     expect(queries.commitSuccess).not.toHaveBeenCalled();
     expect(queries.commitFailure).toHaveBeenCalledOnce();
     expect(moduleRow.status).toBe('failed');
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        step: 'parse-commit',
+        outcome: 'parse_failed',
+        errorKind: 'invalid_json',
+        errorMessage: 'Module lesson batch response was not valid JSON.',
+      }),
+      'Module lessons workflow step finished',
+    );
   });
 
   it('does not commit twice when a retry finds its own commit already landed', async () => {
