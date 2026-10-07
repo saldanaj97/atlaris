@@ -6,7 +6,6 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
-import { maintenanceMode } from '@/flags';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import {
   getShellAuthUserId,
@@ -14,9 +13,9 @@ import {
   shouldUseClerkUi,
 } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
-import { appEnv, devAuthEnv } from '@/lib/config/env';
+import { devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
+import { resolveSiteGate } from '@/lib/proxy/site-gate';
 import { currentUser } from '@clerk/nextjs/server';
 
 /**
@@ -49,15 +48,13 @@ export default async function SiteHeader({
   /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
   loadAccountProfile?: boolean;
 } = {}) {
-  const [{ session }, maintenance] = await Promise.all([
+  const [{ session }, siteGate] = await Promise.all([
     getSessionSafe(),
-    resolveEffectiveMaintenanceMode(appEnv.maintenanceMode, {
-      resolveMaintenanceFlag: maintenanceMode,
-    }),
+    resolveSiteGate(),
   ]);
-  // Marketing pages stay live during maintenance. Render them signed out so
-  // Clerk's account menu can't open a path around the maintenance redirect.
-  const authUserId = maintenance
+  // Marketing pages stay live while a site gate is on. Render them signed out
+  // so Clerk's account menu can't open a path around the gate redirect.
+  const authUserId = siteGate
     ? undefined
     : getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;

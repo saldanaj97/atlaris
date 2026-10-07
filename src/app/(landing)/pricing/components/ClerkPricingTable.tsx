@@ -47,8 +47,8 @@ type ClerkBillingAppearance = NonNullable<
 type ClerkPricingTableProps = {
   appearance: ClerkBillingAppearance;
   newSubscriptionRedirectUrl: string;
-  /** Maintenance keeps plans visible but sends every CTA through the proxy instead of Clerk modals. */
-  maintenance?: boolean;
+  /** Maintenance or launch waitlist: plans stay visible but every CTA goes through the proxy instead of Clerk modals. */
+  appClosed?: boolean;
 };
 
 const PLAN_NAME_BY_SLUG: Record<string, string> = {
@@ -156,7 +156,7 @@ function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
 export function ClerkPricingTable({
   appearance,
   newSubscriptionRedirectUrl,
-  maintenance = false,
+  appClosed = false,
 }: ClerkPricingTableProps) {
   const { billing, loaded } = useClerk();
   const { isLoaded, userId } = useAuth();
@@ -287,7 +287,7 @@ export function ClerkPricingTable({
       renderAction={(plan, planPeriod, actionClassName) => {
         const label =
           PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Begin with this plan';
-        if (maintenance) {
+        if (appClosed) {
           return (
             <Link className={actionClassName} href={ROUTES.AUTH.SIGN_IN}>
               {label}

@@ -100,14 +100,14 @@ const PRO_PLAN = {
 };
 
 async function renderPricingTable(
-  options: { maintenance?: boolean } = {},
+  options: { appClosed?: boolean } = {},
 ): Promise<void> {
   const { ClerkPricingTable } =
     await import('@/app/(landing)/pricing/components/ClerkPricingTable');
   render(
     <ClerkPricingTable
       appearance={{}}
-      maintenance={options.maintenance}
+      appClosed={options.appClosed}
       newSubscriptionRedirectUrl='/settings/billing'
     />,
   );
@@ -184,14 +184,14 @@ describe('ClerkPricingTable', () => {
     { label: 'signed out', userId: null },
     { label: 'signed in', userId: 'user_123' },
   ])(
-    'routes every plan CTA to sign-in during maintenance when $label',
+    'routes every plan CTA to sign-in while the app is closed when $label',
     async ({ userId }) => {
       mocks.useAuth.mockReturnValue({ isLoaded: true, userId });
       mocks.getPlans.mockResolvedValue({
         data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
       });
 
-      await renderPricingTable({ maintenance: true });
+      await renderPricingTable({ appClosed: true });
 
       expect(
         await screen.findByRole('link', { name: 'Begin with Starter' }),

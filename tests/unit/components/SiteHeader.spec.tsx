@@ -10,11 +10,11 @@ const mocks = vi.hoisted(() => ({
   isLocalProductTestingAuthEnabled: vi.fn(),
   requestBoundaryComponent: vi.fn(),
   currentUser: vi.fn(),
-  maintenanceMode: vi.fn(),
+  resolveSiteGate: vi.fn(),
 }));
 
-vi.mock('@/flags', () => ({
-  maintenanceMode: mocks.maintenanceMode,
+vi.mock('@/lib/proxy/site-gate', () => ({
+  resolveSiteGate: mocks.resolveSiteGate,
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -63,7 +63,7 @@ describe('SiteHeader', () => {
     mocks.getShellAuthUserId.mockReturnValue('user_1');
     mocks.shouldUseClerkUi.mockReturnValue(true);
     mocks.isLocalProductTestingAuthEnabled.mockReturnValue(false);
-    mocks.maintenanceMode.mockResolvedValue(false);
+    mocks.resolveSiteGate.mockResolvedValue(null);
   });
 
   it('starts the Clerk profile lookup without waiting for entitlement', async () => {
@@ -118,16 +118,19 @@ describe('SiteHeader', () => {
     expect(screen.getByTestId('site-header-chrome')).toHaveTextContent(':pro');
   });
 
-  it('renders signed-in visitors as signed out during maintenance', async () => {
-    mocks.maintenanceMode.mockResolvedValue(true);
+  it.each(['maintenance', 'waitlist'] as const)(
+    'renders signed-in visitors as signed out behind the %s gate',
+    async (gate) => {
+      mocks.resolveSiteGate.mockResolvedValue(gate);
 
-    render(await SiteHeader({ loadAccountProfile: false }));
+      render(await SiteHeader({ loadAccountProfile: false }));
 
-    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
-      'data-authenticated',
-      'false',
-    );
-    expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
-    expect(mocks.currentUser).not.toHaveBeenCalled();
-  });
+      expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+        'data-authenticated',
+        'false',
+      );
+      expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
+      expect(mocks.currentUser).not.toHaveBeenCalled();
+    },
+  );
 });

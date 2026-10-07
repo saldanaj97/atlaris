@@ -8,10 +8,8 @@ import { PricingShell } from '@/app/(landing)/pricing/components/PricingShell';
 import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-return';
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
-import { maintenanceMode } from '@/flags';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
-import { appEnv } from '@/lib/config/env';
-import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
+import { resolveSiteGate } from '@/lib/proxy/site-gate';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -38,13 +36,10 @@ const pricingAppearance = {
 
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
-  // The proxy keeps /pricing live during maintenance; skip the account DB read.
-  const maintenance = await resolveEffectiveMaintenanceMode(
-    appEnv.maintenanceMode,
-    { resolveMaintenanceFlag: maintenanceMode },
-  );
+  // The proxy keeps /pricing live while a site gate is on; skip the account DB read.
+  const appClosed = (await resolveSiteGate()) !== null;
   const checkoutBaseline =
-    showClerkBilling && !maintenance
+    showClerkBilling && !appClosed
       ? await getOptionalCheckoutBillingSignature()
       : null;
   const checkoutReturnUrl = buildCheckoutReturnRedirectUrl(
@@ -58,7 +53,7 @@ export default async function PricingPage(): Promise<ReactElement> {
         {showClerkBilling ? (
           <ClerkPricingTable
             appearance={pricingAppearance}
-            maintenance={maintenance}
+            appClosed={appClosed}
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
         ) : (

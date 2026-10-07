@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   clerkPricingTableMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
-  maintenanceModeMock: vi.fn(),
+  resolveSiteGateMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
@@ -31,8 +31,8 @@ vi.mock('@/features/billing/checkout-return-server', () => ({
     mocks.getOptionalCheckoutBillingSignatureMock,
 }));
 
-vi.mock('@/flags', () => ({
-  maintenanceMode: mocks.maintenanceModeMock,
+vi.mock('@/lib/proxy/site-gate', () => ({
+  resolveSiteGate: mocks.resolveSiteGateMock,
 }));
 
 vi.mock('@/lib/auth/local-identity', () => ({
@@ -59,7 +59,7 @@ describe('PricingPage', () => {
       'free|active||0',
     );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
-    mocks.maintenanceModeMock.mockResolvedValue(false);
+    mocks.resolveSiteGateMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -88,25 +88,28 @@ describe('PricingPage', () => {
     );
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
-        maintenance: false,
+        appClosed: false,
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
       }),
     );
   });
 
-  it('keeps pricing visible in maintenance without reading account billing state', async () => {
-    mocks.maintenanceModeMock.mockResolvedValue(true);
+  it.each(['maintenance', 'waitlist'] as const)(
+    'keeps pricing visible behind the %s gate without reading account billing state',
+    async (gate) => {
+      mocks.resolveSiteGateMock.mockResolvedValue(gate);
 
-    await renderPricingPage();
+      await renderPricingPage();
 
-    expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
-    expect(
-      mocks.getOptionalCheckoutBillingSignatureMock,
-    ).not.toHaveBeenCalled();
-    expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
-      expect.objectContaining({ maintenance: true }),
-    );
-  });
+      expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
+      expect(
+        mocks.getOptionalCheckoutBillingSignatureMock,
+      ).not.toHaveBeenCalled();
+      expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
+        expect.objectContaining({ appClosed: true }),
+      );
+    },
+  );
 
   it('renders local pricing fixtures instead of Clerk when Clerk UI is disabled', async () => {
     mocks.shouldUseClerkUiMock.mockReturnValue(false);

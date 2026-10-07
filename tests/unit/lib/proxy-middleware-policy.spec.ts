@@ -1,7 +1,8 @@
 import {
   isProviderWebhookRoute,
   isProtectedRoute,
-  resolveMaintenanceRedirectPath,
+  resolveSiteGateRedirectPath,
+  resolveSiteGateRedirectSource,
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
@@ -55,74 +56,87 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/dashboard/')).toBe(true);
   });
 
-  it('resolveMaintenanceRedirectPath', () => {
-    expect(resolveMaintenanceRedirectPath(true, '/x')).toBe('/maintenance');
-    expect(resolveMaintenanceRedirectPath(true, '/maintenance')).toBe(null);
-    expect(
-      resolveMaintenanceRedirectPath(true, '/.well-known/vercel/flags'),
-    ).toBe(null);
-    expect(
-      resolveMaintenanceRedirectPath(true, '/.well-known/workflow/v1/flow'),
-    ).toBe(null);
-    expect(resolveMaintenanceRedirectPath(true, '/api/health/worker')).toBe(
-      null,
+  it('resolveSiteGateRedirectPath', () => {
+    expect(resolveSiteGateRedirectPath('maintenance', '/x')).toBe(
+      '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(true, '/api/health/worker/')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/maintenance')).toBe(
       null,
     );
     expect(
-      resolveMaintenanceRedirectPath(true, '/api/cron/notifications/email'),
+      resolveSiteGateRedirectPath('maintenance', '/.well-known/vercel/flags'),
     ).toBe(null);
     expect(
-      resolveMaintenanceRedirectPath(true, '/api/cron/notifications/email/'),
+      resolveSiteGateRedirectPath(
+        'maintenance',
+        '/.well-known/workflow/v1/flow',
+      ),
     ).toBe(null);
     expect(
-      resolveMaintenanceRedirectPath(
-        true,
+      resolveSiteGateRedirectPath('maintenance', '/api/health/worker'),
+    ).toBe(null);
+    expect(
+      resolveSiteGateRedirectPath('maintenance', '/api/health/worker/'),
+    ).toBe(null);
+    expect(
+      resolveSiteGateRedirectPath(
+        'maintenance',
+        '/api/cron/notifications/email',
+      ),
+    ).toBe(null);
+    expect(
+      resolveSiteGateRedirectPath(
+        'maintenance',
+        '/api/cron/notifications/email/',
+      ),
+    ).toBe(null);
+    expect(
+      resolveSiteGateRedirectPath(
+        'maintenance',
         '/api/v1/notifications/email/unsubscribe',
       ),
     ).toBe(null);
     expect(
-      resolveMaintenanceRedirectPath(
-        true,
+      resolveSiteGateRedirectPath(
+        'maintenance',
         '/api/v1/notifications/email/unsubscribe/',
       ),
     ).toBe(null);
     // Matcher excludes /ingest; policy is not the ingest gate.
-    expect(resolveMaintenanceRedirectPath(true, '/ingest')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/ingest')).toBe(
       '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/ingest/')).toBe(
       '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/e')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/ingest/e')).toBe(
       '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/e/')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/ingest/e/')).toBe(
       '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(true, '/ingest/flags')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/ingest/flags')).toBe(
       '/maintenance',
     );
     expect(
-      resolveMaintenanceRedirectPath(true, '/ingest/static/array.js'),
+      resolveSiteGateRedirectPath('maintenance', '/ingest/static/array.js'),
     ).toBe('/maintenance');
-    expect(resolveMaintenanceRedirectPath(true, '/api/plans')).toBe(
+    expect(resolveSiteGateRedirectPath('maintenance', '/api/plans')).toBe(
       '/maintenance',
     );
-    expect(resolveMaintenanceRedirectPath(false, '/maintenance')).toBe('/');
-    expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
+    expect(resolveSiteGateRedirectPath(null, '/maintenance')).toBe('/');
+    expect(resolveSiteGateRedirectPath(null, '/')).toBe(null);
   });
 
   it.each(['/landing', '/landing/', '/pricing', '/pricing/', '/about'])(
     'keeps marketing page %s live during maintenance',
     (pathname) => {
-      expect(resolveMaintenanceRedirectPath(true, pathname)).toBe(null);
+      expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(null);
     },
   );
 
   it('sends / to the landing page during maintenance', () => {
-    expect(resolveMaintenanceRedirectPath(true, '/')).toBe('/landing');
+    expect(resolveSiteGateRedirectPath('maintenance', '/')).toBe('/landing');
   });
 
   it.each([
@@ -136,37 +150,81 @@ describe('middleware policy', () => {
     '/pricing/extra',
     '/landing-other',
   ])('redirects app and auth path %s to /maintenance', (pathname) => {
-    expect(resolveMaintenanceRedirectPath(true, pathname)).toBe('/maintenance');
+    expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(
+      '/maintenance',
+    );
+  });
+
+  it.each(['/landing', '/pricing', '/about', '/waitlist'])(
+    'keeps %s live while the launch waitlist is on',
+    (pathname) => {
+      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
+    },
+  );
+
+  it.each(['/auth/sign-in', '/auth/sign-up', '/dashboard', '/maintenance'])(
+    'redirects %s to /waitlist while the launch waitlist is on',
+    (pathname) => {
+      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(
+        '/waitlist',
+      );
+    },
+  );
+
+  it('sends the waitlist page to /maintenance while maintenance is on', () => {
+    expect(resolveSiteGateRedirectPath('maintenance', '/waitlist')).toBe(
+      '/maintenance',
+    );
+  });
+
+  it('sends gate pages home when no gate is on, except in local preview', () => {
+    expect(resolveSiteGateRedirectPath(null, '/waitlist')).toBe('/');
+    expect(
+      resolveSiteGateRedirectPath(null, '/waitlist', {
+        allowGatePagePreview: true,
+      }),
+    ).toBe(null);
+  });
+
+  it.each([
+    ['/auth/sign-in', 'sign-in'],
+    ['/auth/sign-in/factor-one', 'sign-in'],
+    ['/auth/sign-up/', 'sign-up'],
+    ['/auth/sign-up/verify', 'sign-up'],
+    ['/auth/sign-in-other', null],
+    ['/plans/new', null],
+  ] as const)('resolves redirect source for %s as %s', (pathname, source) => {
+    expect(resolveSiteGateRedirectSource(pathname)).toBe(source);
   });
 
   it('lets local development preview /maintenance while the site stays available', () => {
     expect(
-      resolveMaintenanceRedirectPath(false, '/maintenance', {
-        allowMaintenancePreview: true,
+      resolveSiteGateRedirectPath(null, '/maintenance', {
+        allowGatePagePreview: true,
       }),
     ).toBe(null);
     expect(
-      resolveMaintenanceRedirectPath(false, '/maintenance', {
-        allowMaintenancePreview: false,
+      resolveSiteGateRedirectPath(null, '/maintenance', {
+        allowGatePagePreview: false,
       }),
     ).toBe('/');
     expect(
-      resolveMaintenanceRedirectPath(true, '/dashboard', {
-        allowMaintenancePreview: true,
+      resolveSiteGateRedirectPath('maintenance', '/dashboard', {
+        allowGatePagePreview: true,
       }),
     ).toBe('/maintenance');
   });
 
   it('allows the exact regeneration drain through maintenance redirects', () => {
     expect(
-      resolveMaintenanceRedirectPath(
-        true,
+      resolveSiteGateRedirectPath(
+        'maintenance',
         '/api/internal/jobs/regeneration/process',
       ),
     ).toBe(null);
     expect(
-      resolveMaintenanceRedirectPath(
-        true,
+      resolveSiteGateRedirectPath(
+        'maintenance',
         '/api/internal/jobs/regeneration/process/',
       ),
     ).toBe(null);
@@ -180,7 +238,9 @@ describe('middleware policy', () => {
     '/api/internal/jobs/regeneration/process/extra',
     '/api/internal/jobs/regeneration/process-other',
   ])('redirects maintenance-mode non-bypass path %s', (pathname) => {
-    expect(resolveMaintenanceRedirectPath(true, pathname)).toBe('/maintenance');
+    expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(
+      '/maintenance',
+    );
   });
 
   it('shouldBypassClerkMiddleware', () => {
