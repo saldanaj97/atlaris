@@ -105,13 +105,12 @@ export type ParseModuleLessonBatchFromStreamOptions =
   };
 
 /**
- * Accumulates stream chunks to a string, then runs `parseModuleLessonBatchText`.
+ * Accumulates stream chunks to a string, failing past `maxChars`.
  */
-export async function parseModuleLessonBatchFromStream(
+export async function bufferModuleLessonBatchStream(
   stream: AsyncIterable<string> | ReadableStream<string>,
-  expectedOrderedTaskIds: readonly string[],
   options?: ParseModuleLessonBatchFromStreamOptions,
-): Promise<ModuleLessonBatchProviderOutput> {
+): Promise<string> {
   const maxChars = options?.maxChars ?? MAX_RAW_RESPONSE_CHARS;
   let buffer = '';
   const source =
@@ -131,5 +130,17 @@ export async function parseModuleLessonBatchFromStream(
   }
 
   options?.signal?.throwIfAborted();
+  return buffer;
+}
+
+/**
+ * Accumulates stream chunks to a string, then runs `parseModuleLessonBatchText`.
+ */
+export async function parseModuleLessonBatchFromStream(
+  stream: AsyncIterable<string> | ReadableStream<string>,
+  expectedOrderedTaskIds: readonly string[],
+  options?: ParseModuleLessonBatchFromStreamOptions,
+): Promise<ModuleLessonBatchProviderOutput> {
+  const buffer = await bufferModuleLessonBatchStream(stream, options);
   return parseModuleLessonBatchText(buffer, expectedOrderedTaskIds, options);
 }

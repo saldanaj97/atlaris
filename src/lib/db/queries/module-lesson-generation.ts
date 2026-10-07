@@ -145,6 +145,8 @@ export type LessonGenerationClaimResult =
   | { readonly kind: 'not_found' };
 
 type ModuleLessonWorkflowClaimMetadata = {
+  /** Runtime marker stored in `lessonGenerationMetadata.workflow.provider`. */
+  readonly provider: 'workflow-sdk' | 'cloudflare-workflow';
   readonly runId: string;
   readonly startedAt: string;
 };
@@ -358,7 +360,7 @@ export async function claimModuleLessonGenerationOrDescribe(
     ...(options?.workflow
       ? {
           workflow: {
-            provider: 'workflow-sdk',
+            provider: options.workflow.provider,
             runId: options.workflow.runId,
             startedAt: options.workflow.startedAt,
           },

@@ -24,6 +24,21 @@ export type CloudflareQueueRunMetadata = z.infer<
   typeof CloudflareQueueRunMetadataSchema
 >;
 
+/**
+ * Run executed as a Cloudflare Workflow on the jobs Worker. `runId` is the
+ * Workflow instance ID (docs/architecture/cloudflare-jobs-runtime.md, Decision 4).
+ */
+export const CloudflareWorkflowRunMetadataSchema = z.strictObject({
+  provider: z.literal('cloudflare-workflow'),
+  runId: z.string().min(1).max(256),
+  startedAt: z.iso.datetime().optional(),
+  completedAt: z.iso.datetime().optional(),
+});
+
+export type CloudflareWorkflowRunMetadata = z.infer<
+  typeof CloudflareWorkflowRunMetadataSchema
+>;
+
 /** `job_queue.payload.workflow`: which runtime owns the regeneration run. */
 export const JobRunMetadataSchema = z.discriminatedUnion('provider', [
   WorkflowSdkMetadataSchema,
