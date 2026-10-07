@@ -47,6 +47,9 @@ export const MODULE_LESSONS_STEPS = {
 type StepName =
   (typeof MODULE_LESSONS_STEPS)[keyof typeof MODULE_LESSONS_STEPS];
 
+/** Keeps a long schema error readable in logs and the instance error. */
+const PARSE_ERROR_MESSAGE_MAX_CHARS = 1_000;
+
 /** Margin over the AI timeout so the provider abort fires before the step's. */
 const GENERATE_STEP_TIMEOUT_MARGIN_MS = 60_000;
 
@@ -133,7 +136,13 @@ type RunContext = {
 function logStep(
   run: RunContext,
   step: StepName,
-  fields: { taskCount?: number; rawChars?: number; outcome: string },
+  fields: {
+    taskCount?: number;
+    rawChars?: number;
+    outcome: string;
+    errorKind?: string;
+    errorMessage?: string;
+  },
   level: 'info' | 'warn' = 'info',
 ): void {
   run.deps.logger[level](
@@ -319,14 +328,26 @@ async function parseCommitStep(
     });
   } catch (error) {
     if (error instanceof ParserError) {
+      // The parser's message names the failing check or schema path, never
+      // the provider text, so it is safe to log.
+      const errorMessage = error.message.slice(
+        0,
+        PARSE_ERROR_MESSAGE_MAX_CHARS,
+      );
       logStep(
         run,
         'parse-commit',
-        { taskCount, rawChars, outcome: 'parse_failed' },
+        {
+          taskCount,
+          rawChars,
+          outcome: 'parse_failed',
+          errorKind: error.kind,
+          errorMessage,
+        },
         'warn',
       );
       throw run.deps.nonRetryable(
-        `Module lesson batch could not be parsed (${error.kind}).`,
+        `Module lesson batch could not be parsed (${error.kind}): ${errorMessage}`,
       );
     }
     throw error;
