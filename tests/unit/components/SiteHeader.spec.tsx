@@ -10,6 +10,11 @@ const mocks = vi.hoisted(() => ({
   isLocalProductTestingAuthEnabled: vi.fn(),
   requestBoundaryComponent: vi.fn(),
   currentUser: vi.fn(),
+  maintenanceMode: vi.fn(),
+}));
+
+vi.mock('@/flags', () => ({
+  maintenanceMode: mocks.maintenanceMode,
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -33,8 +38,19 @@ vi.mock('@clerk/nextjs/server', () => ({
 }));
 
 vi.mock('@/components/shared/nav/SiteHeaderChrome', () => ({
-  default: ({ userName, tier }: { userName?: string; tier?: string }) => (
-    <div data-testid='site-header-chrome'>{`${userName ?? ''}:${tier ?? ''}`}</div>
+  default: ({
+    userName,
+    tier,
+    isAuthenticated,
+  }: {
+    userName?: string;
+    tier?: string;
+    isAuthenticated: boolean;
+  }) => (
+    <div
+      data-authenticated={String(isAuthenticated)}
+      data-testid='site-header-chrome'
+    >{`${userName ?? ''}:${tier ?? ''}`}</div>
   ),
 }));
 
@@ -47,6 +63,7 @@ describe('SiteHeader', () => {
     mocks.getShellAuthUserId.mockReturnValue('user_1');
     mocks.shouldUseClerkUi.mockReturnValue(true);
     mocks.isLocalProductTestingAuthEnabled.mockReturnValue(false);
+    mocks.maintenanceMode.mockResolvedValue(false);
   });
 
   it('starts the Clerk profile lookup without waiting for entitlement', async () => {
@@ -68,10 +85,10 @@ describe('SiteHeader', () => {
     mocks.currentUser.mockImplementation(() => clerkUser.promise);
 
     const pending = SiteHeader();
-    await Promise.resolve();
-
-    expect(mocks.requestBoundaryComponent).toHaveBeenCalledTimes(1);
-    expect(mocks.currentUser).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(mocks.requestBoundaryComponent).toHaveBeenCalledTimes(1);
+      expect(mocks.currentUser).toHaveBeenCalledTimes(1);
+    });
 
     entitlement.resolve({ tier: 'pro', canCreatePlan: true });
     clerkUser.resolve({
@@ -99,5 +116,18 @@ describe('SiteHeader', () => {
 
     expect(mocks.currentUser).not.toHaveBeenCalled();
     expect(screen.getByTestId('site-header-chrome')).toHaveTextContent(':pro');
+  });
+
+  it('renders signed-in visitors as signed out during maintenance', async () => {
+    mocks.maintenanceMode.mockResolvedValue(true);
+
+    render(await SiteHeader({ loadAccountProfile: false }));
+
+    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+      'data-authenticated',
+      'false',
+    );
+    expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
+    expect(mocks.currentUser).not.toHaveBeenCalled();
   });
 });

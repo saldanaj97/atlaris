@@ -6,6 +6,7 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
+import { maintenanceMode } from '@/flags';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import {
   getShellAuthUserId,
@@ -13,8 +14,9 @@ import {
   shouldUseClerkUi,
 } from '@/lib/auth/local-identity';
 import { getSessionSafe } from '@/lib/auth/server';
-import { devAuthEnv } from '@/lib/config/env';
+import { appEnv, devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import { currentUser } from '@clerk/nextjs/server';
 
 /**
@@ -47,8 +49,17 @@ export default async function SiteHeader({
   /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
   loadAccountProfile?: boolean;
 } = {}) {
-  const { session } = await getSessionSafe();
-  const authUserId = getShellAuthUserId(session?.user?.id);
+  const [{ session }, maintenance] = await Promise.all([
+    getSessionSafe(),
+    resolveEffectiveMaintenanceMode(appEnv.maintenanceMode, {
+      resolveMaintenanceFlag: maintenanceMode,
+    }),
+  ]);
+  // Marketing pages stay live during maintenance. Render them signed out so
+  // Clerk's account menu can't open a path around the maintenance redirect.
+  const authUserId = maintenance
+    ? undefined
+    : getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;
   try {
     // Local product-testing auth has no Clerk session, so it uses the account link fallback.
