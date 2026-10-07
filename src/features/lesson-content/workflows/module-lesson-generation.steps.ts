@@ -51,6 +51,7 @@ export async function claimModuleLessonGenerationStep(
     {
       batchRequestId: input.correlationId,
       workflow: {
+        provider: 'workflow-sdk',
         runId,
         startedAt,
       },

@@ -7,12 +7,13 @@ import {
   EMAIL_DELIVERY_RUNS_PATH,
   handleEmailDeliveryRunsCommand,
 } from './http/email-delivery-runs';
+import { handleModuleLessonsStart } from './http/module-lessons-start';
 import { handleFetch } from './http/router';
 import { unauthorizedResponse, verifySignedRequest } from './http/signature';
 import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
 import { runPlanCleanup } from './jobs/plan-cleanup';
 import {
-  createSkippingModuleLessonStarter,
+  createWorkflowModuleLessonStarter,
   handleRegenerationBatch,
 } from './jobs/regeneration-consumer';
 import { handleRegenerationEnqueue } from './jobs/regeneration-enqueue';
@@ -23,6 +24,7 @@ import {
 } from './jobs/retention-cleanup';
 import { isJobEnabled, isJobsPaused } from './switches';
 import { EmailDeliveryWorkflowEntrypoint } from './workflows/email-delivery';
+import { ModuleLessonsWorkflowEntrypoint } from './workflows/module-lessons';
 import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
@@ -61,6 +63,11 @@ export const EmailDeliveryWorkflow = Sentry.instrumentWorkflowWithSentry(
   EmailDeliveryWorkflowEntrypoint,
 );
 
+export const ModuleLessonsWorkflow = Sentry.instrumentWorkflowWithSentry(
+  sentryOptions,
+  ModuleLessonsWorkflowEntrypoint,
+);
+
 export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
   async fetch(request, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
@@ -75,6 +82,17 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         queue: workerEnv.REGENERATION_QUEUE,
         logger,
         captureException: Sentry.captureException,
+      });
+    }
+
+    if (
+      request.method === 'POST' &&
+      pathname === JOBS_COMMAND_PATHS.moduleLessonsStart
+    ) {
+      return handleModuleLessonsStart(request, {
+        env: workerEnv,
+        workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
+        logger,
       });
     }
 
@@ -158,7 +176,10 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
         run: runPlanRegeneration,
         terminalize: terminalizeAbandonedRegenerationRun,
-        startModuleLessons: createSkippingModuleLessonStarter(logger),
+        startModuleLessons: createWorkflowModuleLessonStarter({
+          workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
+          isEnabled: () => isJobEnabled(workerEnv, 'MODULE_LESSONS'),
+        }),
       },
     );
   },

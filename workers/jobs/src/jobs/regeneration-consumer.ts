@@ -1,4 +1,5 @@
 import type { JobSwitchVars } from '../env';
+import type { ModuleLessonsWorkflowParams } from '../workflows/module-lessons/run';
 import type {
   CaptureException,
   RegenerationQueueMessage,
@@ -12,11 +13,13 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
+import { moduleLessonsInstanceId } from '../workflows/module-lessons/instance-id';
 import {
   readRegenerationSwitch,
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
 } from './regeneration-shared';
+import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { regenerationEnqueueCommandSchema } from '@/lib/jobs-worker/contract';
 
 /** Request these in wrangler.jsonc; the consumer relies on `max_retries`. */
@@ -47,20 +50,41 @@ export type RegenerationConsumerDeps = {
 };
 
 /**
- * B4 has no Worker lesson starter yet (Decision 7): regenerated plans keep
- * their modules, but progressive lessons are skipped and logged. B5 replaces
- * this with the module lessons Workflow.
+ * Starts module lessons from regeneration finalization: the same flag check,
+ * preflight, and provisional claim as `startModuleLessonGeneration`, then
+ * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop). A thrown create
+ * reverts the provisional claim, as a failed Vercel start does.
  */
-export function createSkippingModuleLessonStarter(
-  logger: Pick<Logger, 'info'>,
-): RegenerationRunContext['startModuleLessons'] {
-  return async ({ planId, moduleId, correlationId }) => {
-    logger.info(
-      { job: REGENERATION_JOB_TAG, planId, moduleId, correlationId },
-      'Module lesson start skipped on the jobs Worker until the lessons Workflow ships (B5)',
-    );
-    return { kind: 'disabled' };
-  };
+export function createWorkflowModuleLessonStarter(deps: {
+  readonly workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'create'>;
+  /** `isJobEnabled(env, 'MODULE_LESSONS')`. */
+  readonly isEnabled: () => boolean;
+}): RegenerationRunContext['startModuleLessons'] {
+  return (params) =>
+    startModuleLessonGeneration(params, {
+      dbClient: params.dbClient,
+      isGenerationEnabled: deps.isEnabled,
+      workflowStart: async (_vercelWorkflow, [input]) => {
+        // The start helper claims with `batchRequestId = correlationId`.
+        const command: ModuleLessonsWorkflowParams = {
+          v: 1,
+          planId: input.planId,
+          moduleId: input.moduleId,
+          userId: input.userId,
+          batchRequestId: input.correlationId,
+          correlationId: input.correlationId,
+          ...(input.modelOverride
+            ? { modelOverride: input.modelOverride }
+            : {}),
+        };
+        const id = await moduleLessonsInstanceId(
+          command.moduleId,
+          command.batchRequestId,
+        );
+        await deps.workflow.create({ id, params: command });
+        return { runId: id, returnValue: Promise.resolve() };
+      },
+    });
 }
 
 function delayUntil(scheduledFor: Date, nowMs: number): number {

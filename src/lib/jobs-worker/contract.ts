@@ -14,6 +14,7 @@ export const JOBS_SIGNATURE_MAX_SKEW_SECONDS = 300;
 
 export const JOBS_COMMAND_PATHS = {
   regenerationEnqueue: '/v1/regeneration/enqueue',
+  moduleLessonsStart: '/v1/module-lessons/start',
 } as const;
 
 /** `POST /v1/regeneration/enqueue` body; also the regeneration queue message. */
@@ -24,6 +25,25 @@ export const regenerationEnqueueCommandSchema = z.object({
 
 export type RegenerationEnqueueCommand = z.infer<
   typeof regenerationEnqueueCommandSchema
+>;
+
+/**
+ * `POST /v1/module-lessons/start` body; also the module lessons Workflow
+ * params. `batchRequestId` matches the app's provisional claim, which the
+ * Workflow adopts. `correlationId` may come from a request header.
+ */
+export const moduleLessonsStartCommandSchema = z.strictObject({
+  v: z.literal(1),
+  planId: z.uuid(),
+  moduleId: z.uuid(),
+  userId: z.uuid(),
+  batchRequestId: z.string().min(1).max(128),
+  correlationId: z.string().min(1).max(256),
+  modelOverride: z.string().min(1).max(256).optional(),
+});
+
+export type ModuleLessonsStartCommand = z.infer<
+  typeof moduleLessonsStartCommandSchema
 >;
 
 /** `503` body codes when the Worker refuses a command (Decision 7). */
