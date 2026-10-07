@@ -24,6 +24,23 @@ const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
 
+/** Which closed-app page is active, if any. Maintenance wins over the launch waitlist. */
+export type SiteGate = 'maintenance' | 'waitlist';
+
+const SITE_GATE_PAGES = {
+  maintenance: '/maintenance',
+  waitlist: '/waitlist',
+} as const satisfies Record<SiteGate, string>;
+
+type SiteGatePage = (typeof SITE_GATE_PAGES)[SiteGate];
+
+/** Public marketing pages that stay live while a gate is on; app links on them still hit the redirect. */
+const MAINTENANCE_MODE_MARKETING_PATHS = [
+  '/landing',
+  '/pricing',
+  '/about',
+] as const;
+
 const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
   '/api/v1/clerk/billing/webhook',
 ] as const;
@@ -69,12 +86,16 @@ export function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-/** Target path for maintenance redirect, or null when current route is allowed. */
-export function resolveMaintenanceRedirectPath(
-  maintenanceMode: boolean,
+function isSiteGatePage(path: string): boolean {
+  return (Object.values(SITE_GATE_PAGES) as string[]).includes(path);
+}
+
+/** Redirect target while a site gate is on (or off), or null when the route is allowed. */
+export function resolveSiteGateRedirectPath(
+  gate: SiteGate | null,
   pathname: string,
-  options?: { allowMaintenancePreview?: boolean },
-): '/maintenance' | '/' | null {
+  options?: { allowGatePagePreview?: boolean },
+): SiteGatePage | '/landing' | '/' | null {
   const path = stripTrailingSlash(pathname);
   if (
     MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
@@ -85,11 +106,33 @@ export function resolveMaintenanceRedirectPath(
     return null;
   }
 
-  if (maintenanceMode && path !== '/maintenance') {
-    return '/maintenance';
+  if (gate === null) {
+    if (!isSiteGatePage(path)) return null;
+    return options?.allowGatePagePreview === true ? null : '/';
   }
-  if (!maintenanceMode && path === '/maintenance') {
-    return options?.allowMaintenancePreview === true ? null : '/';
+
+  const target = SITE_GATE_PAGES[gate];
+  if (
+    path === target ||
+    (MAINTENANCE_MODE_MARKETING_PATHS as readonly string[]).includes(path)
+  ) {
+    return null;
+  }
+  // `/` sends signed-in users to the dashboard; keep everyone on the landing page.
+  if (path === '/') {
+    return '/landing';
+  }
+  return target;
+}
+
+/** Auth entry point the visitor was heading to, so the gate page can tailor its copy. */
+export function resolveSiteGateRedirectSource(
+  pathname: string,
+): 'sign-in' | 'sign-up' | null {
+  const path = stripTrailingSlash(pathname);
+  for (const source of ['sign-in', 'sign-up'] as const) {
+    const prefix = `/auth/${source}`;
+    if (path === prefix || path.startsWith(`${prefix}/`)) return source;
   }
   return null;
 }

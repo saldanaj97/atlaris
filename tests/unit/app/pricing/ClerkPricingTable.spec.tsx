@@ -99,12 +99,15 @@ const PRO_PLAN = {
   slug: 'pro_plan',
 };
 
-async function renderPricingTable(): Promise<void> {
+async function renderPricingTable(
+  options: { appClosed?: boolean } = {},
+): Promise<void> {
   const { ClerkPricingTable } =
     await import('@/app/(landing)/pricing/components/ClerkPricingTable');
   render(
     <ClerkPricingTable
       appearance={{}}
+      appClosed={options.appClosed}
       newSubscriptionRedirectUrl='/settings/billing'
     />,
   );
@@ -176,6 +179,36 @@ describe('ClerkPricingTable', () => {
     expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
+
+  it.each([
+    { label: 'signed out', userId: null },
+    { label: 'signed in', userId: 'user_123' },
+  ])(
+    'routes every plan CTA to sign-in while the app is closed when $label',
+    async ({ userId }) => {
+      mocks.useAuth.mockReturnValue({ isLoaded: true, userId });
+      mocks.getPlans.mockResolvedValue({
+        data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
+      });
+
+      await renderPricingTable({ appClosed: true });
+
+      expect(
+        await screen.findByRole('link', { name: 'Begin with Starter' }),
+      ).toHaveAttribute('href', '/auth/sign-in');
+      for (const name of ['Start free tonight', 'Begin with Pro']) {
+        expect(screen.getByRole('link', { name })).toHaveAttribute(
+          'href',
+          '/auth/sign-in',
+        );
+      }
+      expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
+      expect(screen.queryByTestId(/^checkout-/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId('subscription-details'),
+      ).not.toBeInTheDocument();
+    },
+  );
 
   it('tracks pointer position and resets card parallax', async () => {
     mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
