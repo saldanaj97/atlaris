@@ -24,6 +24,13 @@ const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
 
+/** Public marketing pages that stay live during maintenance; app links on them still hit the redirect. */
+const MAINTENANCE_MODE_MARKETING_PATHS = [
+  '/landing',
+  '/pricing',
+  '/about',
+] as const;
+
 const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
   '/api/v1/clerk/billing/webhook',
 ] as const;
@@ -74,7 +81,7 @@ export function resolveMaintenanceRedirectPath(
   maintenanceMode: boolean,
   pathname: string,
   options?: { allowMaintenancePreview?: boolean },
-): '/maintenance' | '/' | null {
+): '/maintenance' | '/landing' | '/' | null {
   const path = stripTrailingSlash(pathname);
   if (
     MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
@@ -85,6 +92,16 @@ export function resolveMaintenanceRedirectPath(
     return null;
   }
 
+  if (
+    maintenanceMode &&
+    (MAINTENANCE_MODE_MARKETING_PATHS as readonly string[]).includes(path)
+  ) {
+    return null;
+  }
+  // `/` sends signed-in users to the dashboard; keep everyone on the landing page.
+  if (maintenanceMode && path === '/') {
+    return '/landing';
+  }
   if (maintenanceMode && path !== '/maintenance') {
     return '/maintenance';
   }

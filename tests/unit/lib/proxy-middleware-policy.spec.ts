@@ -114,6 +114,31 @@ describe('middleware policy', () => {
     expect(resolveMaintenanceRedirectPath(false, '/')).toBe(null);
   });
 
+  it.each(['/landing', '/landing/', '/pricing', '/pricing/', '/about'])(
+    'keeps marketing page %s live during maintenance',
+    (pathname) => {
+      expect(resolveMaintenanceRedirectPath(true, pathname)).toBe(null);
+    },
+  );
+
+  it('sends / to the landing page during maintenance', () => {
+    expect(resolveMaintenanceRedirectPath(true, '/')).toBe('/landing');
+  });
+
+  it.each([
+    '/auth/sign-in',
+    '/auth/sign-up',
+    '/auth/sign-up/verify',
+    '/dashboard',
+    '/plans/new',
+    '/settings/billing',
+    '/analytics',
+    '/pricing/extra',
+    '/landing-other',
+  ])('redirects app and auth path %s to /maintenance', (pathname) => {
+    expect(resolveMaintenanceRedirectPath(true, pathname)).toBe('/maintenance');
+  });
+
   it('lets local development preview /maintenance while the site stays available', () => {
     expect(
       resolveMaintenanceRedirectPath(false, '/maintenance', {

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   clerkPricingTableMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
+  maintenanceModeMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
@@ -28,6 +29,10 @@ vi.mock('@/app/(landing)/pricing/components/Pricing.module.css', () => ({
 vi.mock('@/features/billing/checkout-return-server', () => ({
   getOptionalCheckoutBillingSignature:
     mocks.getOptionalCheckoutBillingSignatureMock,
+}));
+
+vi.mock('@/flags', () => ({
+  maintenanceMode: mocks.maintenanceModeMock,
 }));
 
 vi.mock('@/lib/auth/local-identity', () => ({
@@ -54,6 +59,7 @@ describe('PricingPage', () => {
       'free|active||0',
     );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
+    mocks.maintenanceModeMock.mockResolvedValue(false);
   });
 
   afterEach(() => {
@@ -82,8 +88,23 @@ describe('PricingPage', () => {
     );
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        maintenance: false,
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
       }),
+    );
+  });
+
+  it('keeps pricing visible in maintenance without reading account billing state', async () => {
+    mocks.maintenanceModeMock.mockResolvedValue(true);
+
+    await renderPricingPage();
+
+    expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
+    expect(
+      mocks.getOptionalCheckoutBillingSignatureMock,
+    ).not.toHaveBeenCalled();
+    expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
+      expect.objectContaining({ maintenance: true }),
     );
   });
 
