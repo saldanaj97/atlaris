@@ -10,10 +10,10 @@ describe('MaintenancePage', () => {
     const footer = screen.getByRole('contentinfo');
 
     expect(main).toHaveAttribute('tabindex', '-1');
-    expect(within(main).getByLabelText('Atlaris')).toBeInTheDocument();
+    // Marketing pages stay live during maintenance, so the header logo links back.
     expect(
-      within(main).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
-    ).not.toBeInTheDocument();
+      within(main).getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
     expect(main).toContainElement(
       screen.getByRole('heading', {
         level: 1,

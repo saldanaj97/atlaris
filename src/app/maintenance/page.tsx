@@ -46,7 +46,7 @@ export default function MaintenancePage() {
       >
         <header className='px-4 py-5 sm:px-6 lg:px-8'>
           <div className='mx-auto flex w-full max-w-7xl items-center'>
-            <BrandLogo linked={false} size='sm' />
+            <BrandLogo size='sm' />
           </div>
         </header>
 
