@@ -34,6 +34,40 @@ describe('jobsWorkerEnv', () => {
     ).toThrow(EnvValidationError);
   });
 
+  it('defaults module lessons to the Vercel runtime', () => {
+    expect(createJobsWorkerEnvForTests(base).moduleLessonsRuntime).toBe(
+      'vercel',
+    );
+  });
+
+  it.each([
+    ['cloudflare', 'cloudflare'],
+    [' Cloudflare ', 'cloudflare'],
+    ['vercel', 'vercel'],
+  ])('reads MODULE_LESSONS_RUNTIME=%j', (value, expected) => {
+    expect(
+      createJobsWorkerEnvForTests({ ...base, MODULE_LESSONS_RUNTIME: value })
+        .moduleLessonsRuntime,
+    ).toBe(expected);
+  });
+
+  it('rejects an unknown module lessons runtime', () => {
+    const read = () =>
+      createJobsWorkerEnvForTests({ ...base, MODULE_LESSONS_RUNTIME: 'cf' })
+        .moduleLessonsRuntime;
+    expect(read).toThrow(EnvValidationError);
+    expect(read).toThrow(/^MODULE_LESSONS_RUNTIME must be one of/);
+  });
+
+  it('reads each runtime independently', () => {
+    const env = createJobsWorkerEnvForTests({
+      ...base,
+      MODULE_LESSONS_RUNTIME: 'cloudflare',
+    });
+    expect(env.moduleLessonsRuntime).toBe('cloudflare');
+    expect(env.regenerationRuntime).toBe('vercel');
+  });
+
   it('normalizes JOBS_WORKER_URL to its origin', () => {
     expect(
       createJobsWorkerEnvForTests({

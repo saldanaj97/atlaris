@@ -264,6 +264,28 @@ describe('createWorkflowModuleLessonStarter', () => {
     };
   }
 
+  it('creates the instance directly even when MODULE_LESSONS_RUNTIME=cloudflare', async () => {
+    vi.stubEnv('MODULE_LESSONS_RUNTIME', 'cloudflare');
+    try {
+      const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
+      const start = createWorkflowModuleLessonStarter({
+        workflow,
+        isEnabled: () => true,
+      });
+
+      const result = await start(startParams());
+
+      const instanceId = `lessons-${MODULE_ID}-attempt-1`;
+      expect(result).toEqual({ kind: 'workflow_started', runId: instanceId });
+      expect(workflow.create).toHaveBeenCalledOnce();
+      expect(workflow.create).toHaveBeenCalledWith(
+        expect.objectContaining({ id: instanceId }),
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('claims on the invocation db, then creates the instance directly', async () => {
     const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
     const start = createWorkflowModuleLessonStarter({
