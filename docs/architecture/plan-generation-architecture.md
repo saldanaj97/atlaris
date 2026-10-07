@@ -240,6 +240,33 @@ Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, mod
 
 For correlation and step layout, see [Workflow SDK](./workflow-sdk.md).
 
+### Cloudflare Workflow path (B5, staging first)
+
+The jobs Worker (`workers/jobs`) can run the same generation as the Cloudflare Workflow `ModuleLessonsWorkflow` (`atlaris-module-lessons-<env>`, binding `MODULE_LESSONS_WORKFLOW`). The app still routes every request to Vercel Workflow; switching the app to the Worker (`MODULE_LESSONS_RUNTIME`) is a separate change. Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
+
+**Starts.**
+
+- **Signed command:** `POST /v1/module-lessons/start` with `{ v: 1, planId, moduleId, userId, batchRequestId, correlationId, modelOverride? }` (`moduleLessonsStartCommandSchema`, `src/lib/jobs-worker/contract.ts`), signed like every jobs command. The app makes the provisional claim first; the Workflow adopts it. Responses: `202 { accepted, instanceId }`, `200 { accepted, duplicate: true }` when the instance already exists, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `503 { code: "workflow_start_failed" }`. Handler: `workers/jobs/src/http/module-lessons-start.ts`.
+- **Regeneration consumer:** `createWorkflowModuleLessonStarter` (`workers/jobs/src/jobs/regeneration-consumer.ts`) calls `startModuleLessonGeneration` with the invocation's database client and the Worker switch, and creates the instance instead of `workflow/api.start`. A thrown create reverts the provisional claim, as on Vercel.
+- **Instance ID:** `lessons-<moduleId>-<batchRequestId>`, or `lessons-<moduleId>-<first 32 hex of SHA-256(batchRequestId)>` when the batch ID has other characters or the ID would pass 100 characters (`workers/jobs/src/workflows/module-lessons/instance-id.ts`).
+
+**Steps** (`workers/jobs/src/workflows/module-lessons/run.ts`). Names are final once deployed; never rename, reorder, or remove them.
+
+| Step | Work | Retries |
+| --- | --- | --- |
+| `claim` | Load context; switch off → revert the claim and stop; preflight (`not_found` / `locked` / `already_ready` stop); content access (not full → revert, `failed`); `claimModuleLessonGenerationOrDescribe` with `workflow: { provider: 'cloudflare-workflow', runId: <instanceId>, startedAt }`, which adopts the app's provisional claim. Returns the prompt input. | 3, exponential |
+| `generate` | Switch off → revert and stop; resolve the lesson model; `markModuleLessonProviderStarted`; OpenRouter call; buffer the stream (≤ `MAX_RAW_RESPONSE_CHARS`). Returns `{ rawText, usage }`. Step timeout: AI base + extension timeout plus 60 s. | 0 (never repeats a provider call) |
+| `parse-commit` | `parseModuleLessonBatchText`, then `commitModuleLessonBatchSuccess`. A `ParserError` throws `NonRetryableError`. A retry that finds the module already `ready` under this instance stops without a second write. | 2 (transient DB only) |
+| `fail` | Runs after any thrown step. After `claim`: revert. Later: only while this instance owns the `generating` row, `recordModuleLessonGenerationFailure` (module `failed`; revert instead when that write fails and the provider never started). | 3 |
+
+Each step opens its own database pool (`withInvocationDb`); Worker paths never use the service-role singleton. The domain phases it calls (`checkModuleLessonGenerationGate`, `resolveModuleLessonProvider`, `generateModuleLessonRawBatch`, `persistModuleLessonBatch`, `recordModuleLessonGenerationFailure`) are the same ones `runModuleLessonGenerationWork` composes for the Vercel step.
+
+**Runtime marker.** `modules.lessonGenerationMetadata.workflow.provider` is `workflow-sdk` (Vercel) or `cloudflare-workflow` (Worker); `runId` is the Vercel run ID or the Cloudflare instance ID. The status route returns `runId` as `workflowRunId` either way.
+
+**Settings.** Worker switch `JOB_MODULE_LESSONS_ENABLED` (dashboard variable; off unless `true`) and `JOBS_PAUSED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The app's Vercel Flag `module-lesson-generation` does not reach the Worker.
+
+**Staging cutover.** Set `JOB_MODULE_LESSONS_ENABLED=true` on the staging Worker, deploy the app change that routes lessons to the Worker, then run at least 20 modules of varying task counts with the real provider and record CPU per step from Workers Logs (Decision 9). Production waits for that gate.
+
 ### Client polling (status route)
 
 Workflow-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.

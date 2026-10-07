@@ -77,7 +77,7 @@ export type RegenerationRunInput = {
 export type RegenerationRunContext = {
   /** Queue message ID: stable across redeliveries of one message. */
   readonly runId: string;
-  /** How finalization starts module lessons (B4 injects a skip-and-log starter). */
+  /** How finalization starts module lessons (the Worker injects a Cloudflare Workflow starter). */
   readonly startModuleLessons: NonNullable<
     EnqueueModuleLessonGenerationsDeps['start']
   >;

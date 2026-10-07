@@ -54,6 +54,13 @@
       "name": "atlaris-email-delivery",
       "binding": "EMAIL_DELIVERY_WORKFLOW",
       "class_name": "EmailDeliveryWorkflow"
+    },
+    // Module lesson generation (B5): started by POST /v1/module-lessons/start
+    // or by the regeneration consumer.
+    {
+      "name": "atlaris-module-lessons",
+      "binding": "MODULE_LESSONS_WORKFLOW",
+      "class_name": "ModuleLessonsWorkflow"
     }
   ],
   "vars": {
@@ -105,6 +112,11 @@
           "class_name": "EmailDeliveryWorkflow",
           // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
           "schedules": ["0 14 * * *", "30 14 * * MON"]
+        },
+        {
+          "name": "atlaris-module-lessons-staging",
+          "binding": "MODULE_LESSONS_WORKFLOW",
+          "class_name": "ModuleLessonsWorkflow"
         }
       ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
@@ -153,6 +165,11 @@
           "class_name": "EmailDeliveryWorkflow",
           // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
           "schedules": ["0 14 * * *", "30 14 * * MON"]
+        },
+        {
+          "name": "atlaris-module-lessons-production",
+          "binding": "MODULE_LESSONS_WORKFLOW",
+          "class_name": "ModuleLessonsWorkflow"
         }
       ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },

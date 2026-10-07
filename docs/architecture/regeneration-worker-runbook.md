@@ -90,9 +90,9 @@ Quota follows the existing boundary (`reserveRegenerationQuotaAtProviderStart`):
 
 The consumer relies on Cloudflare keeping a message's ID across redeliveries; staging confirms it (a changed ID would leave the job `processing` for plan cleanup instead of resuming).
 
-### Module lessons gap (until B5)
+### Module lessons
 
-Regeneration finalization normally starts lesson generation for the first two modules. On the Worker, the injected starter skips and logs (`Module lesson start skipped on the jobs Worker…`) because the lessons Workflow ships in B5. This is acceptable on staging only; production cutover waits for B5 (design note, Decision 7).
+Regeneration finalization starts lesson generation for the first two modules. On the Worker, the injected starter (`createWorkflowModuleLessonStarter`) runs the app's flag check (`JOB_MODULE_LESSONS_ENABLED`), preflight, and provisional claim, then creates the module lessons Workflow instance directly. With the lessons switch off it starts nothing and the modules stay `not_generated`. Production cutover still waits for B5's CPU gate (design note, Decision 7).
 
 ### Signed commands
 

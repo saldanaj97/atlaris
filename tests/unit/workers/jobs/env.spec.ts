@@ -13,6 +13,7 @@ function makeEnv(overrides: Record<string, unknown> = {}): WorkerEnv {
     CF_VERSION_METADATA: { id: 'version-1', tag: '', timestamp: '' },
     REGENERATION_QUEUE: { send: async () => {}, sendBatch: async () => {} },
     EMAIL_DELIVERY_WORKFLOW: { create: async () => {}, get: async () => {} },
+    MODULE_LESSONS_WORKFLOW: { create: async () => {}, get: async () => {} },
     NODE_ENV: 'production',
     WORKER_ENV: 'staging',
     APP_URL: 'https://example.test',

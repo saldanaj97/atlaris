@@ -1,12 +1,24 @@
 import type { RegenerationQueueMessage } from '../../../../workers/jobs/src/jobs/regeneration-shared';
 
 import {
-  createSkippingModuleLessonStarter,
+  createWorkflowModuleLessonStarter,
   handleRegenerationBatch,
   type RegenerationConsumerDeps,
 } from '../../../../workers/jobs/src/jobs/regeneration-consumer';
 import { makeDbClient } from '../../../fixtures/db-mocks';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const lessonQueries = vi.hoisted(() => ({
+  load: vi.fn(),
+  claim: vi.fn(),
+  revert: vi.fn(),
+}));
+
+vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
+  loadModuleLessonGenerationContext: lessonQueries.load,
+  claimModuleLessonGenerationOrDescribe: lessonQueries.claim,
+  revertModuleLessonGeneratingToNotGenerated: lessonQueries.revert,
+}));
 
 const JOB_ID = '3f1c2a9e-8b7d-4c6e-9a1b-2d3e4f5a6b7c';
 const NOW_MS = 1_790_000_000_000;
@@ -223,23 +235,116 @@ describe('handleRegenerationBatch', () => {
   });
 });
 
-describe('createSkippingModuleLessonStarter', () => {
-  it('skips lesson generation and logs it', async () => {
-    const logger = { info: vi.fn() };
-    const start = createSkippingModuleLessonStarter(logger);
+describe('createWorkflowModuleLessonStarter', () => {
+  const PLAN_ID = '0b5e2c1d-6f4a-4e3b-9c8d-7a6b5c4d3e2f';
+  const MODULE_ID = '1c6f3d2e-7a5b-4f4c-8d9e-8b7c6d5e4f30';
+  const USER_ID = '2d7a4e3f-8b6c-4a5d-9e0f-9c8d7e6f5a41';
 
-    await expect(
-      start({
-        dbClient: makeDbClient(),
-        userId: 'user-1',
-        planId: 'plan-1',
-        moduleId: 'module-1',
-        correlationId: 'corr-1',
-      }),
-    ).resolves.toEqual({ kind: 'disabled' });
-    expect(logger.info).toHaveBeenCalledWith(
-      expect.objectContaining({ planId: 'plan-1', moduleId: 'module-1' }),
-      expect.stringContaining('skipped'),
+  beforeEach(() => {
+    vi.clearAllMocks();
+    lessonQueries.load.mockResolvedValue({
+      plan: { id: PLAN_ID },
+      module: { lessonGenerationStatus: 'not_generated' },
+      tasks: [],
+      isUnlocked: true,
+    });
+    lessonQueries.claim.mockResolvedValue({
+      kind: 'claimed',
+      workflowStartedAt: null,
+    });
+  });
+
+  function startParams(correlationId = 'attempt-1') {
+    return {
+      dbClient: makeDbClient(),
+      userId: USER_ID,
+      planId: PLAN_ID,
+      moduleId: MODULE_ID,
+      correlationId,
+    };
+  }
+
+  it('claims on the invocation db, then creates the instance directly', async () => {
+    const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
+    const start = createWorkflowModuleLessonStarter({
+      workflow,
+      isEnabled: () => true,
+    });
+    const params = startParams();
+
+    const result = await start(params);
+
+    const instanceId = `lessons-${MODULE_ID}-attempt-1`;
+    expect(result).toEqual({ kind: 'workflow_started', runId: instanceId });
+    expect(lessonQueries.claim).toHaveBeenCalledWith(
+      params.dbClient,
+      PLAN_ID,
+      MODULE_ID,
+      USER_ID,
+      { batchRequestId: 'attempt-1' },
     );
+    expect(workflow.create).toHaveBeenCalledWith({
+      id: instanceId,
+      params: {
+        v: 1,
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        userId: USER_ID,
+        batchRequestId: 'attempt-1',
+        correlationId: 'attempt-1',
+      },
+    });
+    expect(instanceId).toMatch(/^[A-Za-z0-9_][A-Za-z0-9_-]{0,99}$/);
+  });
+
+  it('hashes a correlation ID that is not instance-ID safe', async () => {
+    const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
+    const start = createWorkflowModuleLessonStarter({
+      workflow,
+      isEnabled: () => true,
+    });
+
+    await start(startParams('req:abc/def 123'));
+
+    const [[{ id }]] = workflow.create.mock.calls as unknown as [
+      [{ id: string }],
+    ];
+    expect(id).toMatch(new RegExp(`^lessons-${MODULE_ID}-[0-9a-f]{32}$`));
+    expect(id.length).toBeLessThanOrEqual(100);
+  });
+
+  it('does not claim or create while the lessons switch is off', async () => {
+    const workflow = { create: vi.fn() };
+    const start = createWorkflowModuleLessonStarter({
+      workflow,
+      isEnabled: () => false,
+    });
+
+    await expect(start(startParams())).resolves.toEqual({ kind: 'disabled' });
+    expect(lessonQueries.claim).not.toHaveBeenCalled();
+    expect(workflow.create).not.toHaveBeenCalled();
+  });
+
+  it('reverts the provisional claim when create throws', async () => {
+    const workflow = {
+      create: vi.fn(async () => {
+        throw new Error('create failed');
+      }),
+    };
+    const start = createWorkflowModuleLessonStarter({
+      workflow,
+      isEnabled: () => true,
+    });
+    const params = startParams();
+
+    await expect(start(params)).resolves.toMatchObject({
+      kind: 'workflow_start_failed',
+    });
+    expect(lessonQueries.revert).toHaveBeenCalledWith(params.dbClient, {
+      userId: USER_ID,
+      planId: PLAN_ID,
+      moduleId: MODULE_ID,
+      batchRequestId: 'attempt-1',
+    });
   });
 });

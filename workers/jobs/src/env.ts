@@ -39,6 +39,9 @@ const workerEnvSchema = z.object({
   EMAIL_DELIVERY_WORKFLOW: z.custom<Workflow>(
     (value) => typeof value === 'object' && value !== null && 'create' in value,
   ),
+  MODULE_LESSONS_WORKFLOW: z.custom<Workflow>(
+    (value) => typeof value === 'object' && value !== null && 'create' in value,
+  ),
   EMAIL_TEST_RECIPIENT_ALLOWLIST: optionalString,
   JOBS_PAUSED: optionalString,
   ...Object.fromEntries(
