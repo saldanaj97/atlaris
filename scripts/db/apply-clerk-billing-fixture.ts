@@ -29,7 +29,7 @@ function usage(): never {
   console.error(
     [
       'Usage:',
-      '  pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro',
+      '  pnpm db fixture --user-id <users.auth_user_id> --plan pro',
       '',
       'Options:',
       '  --user-id <auth-user-id>    Required value stored in users.auth_user_id',

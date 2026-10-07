@@ -18,7 +18,7 @@ Workflow queue callbacks hit `/.well-known/workflow/v1/*` from the Workflow SDK 
 | Deployment | Protection |
 | ---------- | ---------- |
 | **Vercel (production/preview)** | Workflow SDK registers handlers with `experimentalTriggers` so only [Vercel Queue](https://vercel.com/docs/queues) can invoke them. Proxy allows these routes through without an app token. |
-| **Local dev (`pnpm dev` / `dev:full` / `dev:local:*`)** | Webpack + `withWorkflow()` so create/retry and related paths can run. Prefer Preview (`pnpm deploy:preview`) when you need Vercel Queue callback semantics. Use `pnpm dev:turbopack` only for UI-only work (no workflow runtime). |
+| **Local dev (`pnpm dev` / `pnpm dev --db`)** | Portless + Webpack + `withWorkflow()` so create/retry and related paths can run. `pnpm dev --db` ensures the local Supabase stack before entering the same path. Prefer Preview (`pnpm deploy:preview`) when you need Vercel Queue callback semantics. Use `pnpm dev --ui` only for UI-only work (Portless + Turbopack; no workflow runtime). |
 | **Self-hosted / non-Vercel production** | Proxy requires `WORKFLOW_CALLBACK_TOKEN` via `Authorization: Bearer` or `x-workflow-callback-token`. Missing token configuration returns `503`. |
 
 Webhook resume routes (`/.well-known/workflow/v1/webhook/:token`) keep the SDK's URL-token auth and bypass the callback token gate.
@@ -75,13 +75,13 @@ The command deploys the current worktree to the linked Vercel project and prints
 
 ## Testing
 
-Workflow SDK tests use a **separate** Vitest config and their own isolated Testcontainers database. The changed integration runner includes a workflow phase, while full workflow coverage is an explicit phase in `pnpm test:all`:
+Workflow SDK tests use a **separate** Vitest config and their own isolated Testcontainers database. The changed integration runner includes a workflow phase, while full workflow coverage is an explicit phase in `pnpm test all`:
 
 | Command                                       | Purpose                                                                                               |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm test:integration`                       | DB/API integration tests only                                                                          |
-| `pnpm test:integration:changed`               | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
-| `pnpm test:workflow`                          | Workflow SDK wiring and production entrypoints against isolated Postgres                              |
+| `pnpm test integration`                       | DB/API integration tests only                                                                          |
+| `pnpm test integration --changed`             | Changed DB/API integration tests, then changed Workflow SDK tests (passes when no workflow tests hit) |
+| `pnpm test workflow`                          | Workflow SDK wiring and production entrypoints against isolated Postgres                              |
 | `pnpm exec vitest run --config vitest.config.ts --project unit tests/unit/...` | Unit tests for workflow helpers, wrappers, and orchestration (no runtime plugin) |
 
 - Config: `vitest.workflow.config.ts`

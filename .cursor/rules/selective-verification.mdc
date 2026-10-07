@@ -15,7 +15,7 @@ This is the repository's single source for verification timing and scope. Skills
 - **CI failures:** inspect the causal failure and run the smallest check that reproduces or validates its fix.
 - **Explicit verification requests and required checks:** complete the requested scope and applicable project checks. Broaden verification when shared contracts or integration risk make focused checks insufficient.
 
-Prefer a specific spec or `pnpm test:unit:changed` over full suites. Run the whole suite only when requested, required by a gate, or justified by unresolved integration risk. Do not repeat tests solely to produce more evidence.
+Prefer a specific spec or `pnpm test unit --changed` over full suites. Run the whole suite only when requested, required by a gate, or justified by unresolved integration risk. Do not repeat tests solely to produce more evidence.
 
 ## Automated reviews and React Doctor
 

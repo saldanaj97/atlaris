@@ -1,4 +1,4 @@
-import { runAnalyticsRootRedirect } from '@/app/(app)/analytics/page';
+import { runAnalyticsRootRedirect } from '@/app/(app)/analytics/analytics-entry-redirect';
 import { ROUTES } from '@/features/navigation/routes';
 import { redirect } from 'next/navigation';
 import { describe, expect, it, vi } from 'vitest';

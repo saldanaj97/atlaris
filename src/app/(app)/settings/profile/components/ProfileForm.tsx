@@ -150,11 +150,13 @@ function getProfileInitials(name: string): string {
 
 function ProfileCard({ children }: { children: ReactNode }): ReactElement {
   return (
+    /* oxlint-disable shadcn/require-static-classes -- The shared header-aware scroll offset is a complete imported utility. */
     <Card
       as='section'
       id={SETTINGS_SECTIONS.profile}
       className={cn(APP_SHELL_SCROLL_MARGIN, 'gap-[24px] shadow-none')}
     >
+      {/* oxlint-enable shadcn/require-static-classes */}
       <CardHeader>
         <CardTitle as='h2' className='text-xl leading-[28px]'>
           Profile

@@ -80,7 +80,8 @@ Local development, env, deploy, and logging.
 | [commands.md](./development/commands.md) | Common `pnpm` and dev commands |
 | [deploy.md](./development/deploy.md) | Staged Production pointer + migration cutover notes |
 | [environment.md](./development/environment.md) | Environment variables and logging guidelines |
-| [local-database.md](./development/local-database.md) | Local Supabase CLI stack setup |
+| [local-database.md](./development/local-database.md) | Native Supabase local stack: dev, cloud agents, test stack, Docker fallback |
+| [supabase-native-spike.md](./development/supabase-native-spike.md) | JCS-121 spike: Supabase native (Docker-free) local stack evidence and go/no-go |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
 
 ## `security/`
@@ -103,7 +104,7 @@ Canonical design specification. Shared foundations and JCS-65 implementation sli
 
 ## `testing/`
 
-Test standards, smoke tests, and UI baselines.
+Test standards and smoke tests.
 
 | File | Description |
 |------|-------------|
@@ -111,7 +112,6 @@ Test standards, smoke tests, and UI baselines.
 | [playwright-local-smoke.md](./testing/playwright-local-smoke.md) | Current Playwright local smoke lane |
 | [smoke-test-results-2026-04-01.md](./testing/smoke-test-results-2026-04-01.md) | Smoke results snapshot (2026-04-01) |
 | [test-standards.md](./testing/test-standards.md) | Vitest + Testing Library guidelines |
-| [ui-baseline-capture.md](./testing/ui-baseline-capture.md) | Marketing/product UI baseline screenshots |
 
 ## `third-party-services/`
 
@@ -120,6 +120,7 @@ External tool and CLI references used in local/dev workflows.
 | File | Description |
 |------|-------------|
 | [1password-agents-setup.md](./third-party-services/1password-agents-setup.md) | 1Password Environments bootstrap for cloud agents |
+| [1password-local-dev.md](./third-party-services/1password-local-dev.md) | Laptop `pnpm dev` service-account wrapper and keychain setup |
 | [clerk-cli-docs.md](./third-party-services/clerk-cli-docs.md) | Clerk CLI install and usage |
 | [portless-commands.md](./third-party-services/portless-commands.md) | Portless CLI commands |
 | [portless-overview.md](./third-party-services/portless-overview.md) | Portless overview (named `.localhost` URLs) |
@@ -161,6 +162,7 @@ docs/
 │   ├── deploy.md
 │   ├── environment.md
 │   ├── local-database.md
+│   ├── supabase-native-spike.md
 │   └── logging.md
 ├── security/
 │   ├── codex-scan-verification-2026-08-20.md
@@ -172,10 +174,10 @@ docs/
 │   ├── db-test-patterns.md
 │   ├── playwright-local-smoke.md
 │   ├── smoke-test-results-2026-04-01.md
-│   ├── test-standards.md
-│   └── ui-baseline-capture.md
+│   └── test-standards.md
 └── third-party-services/
     ├── 1password-agents-setup.md
+    ├── 1password-local-dev.md
     ├── clerk-cli-docs.md
     ├── portless-commands.md
     └── portless-overview.md

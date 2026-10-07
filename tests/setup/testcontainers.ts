@@ -7,12 +7,18 @@
  *   - Creates a test database with extensions and RLS roles
  *   - Sets POSTGRES_URL / POSTGRES_URL_NON_POOLING so the service-role
  *     client and drizzle-kit connect to the ephemeral instance
- *   - Applies `supabase/migrations` via `pnpm db:migrate` (migration chain matches production)
+ *   - Applies `supabase/migrations` via `pnpm db migrate` (migration chain matches production)
  *
  * To skip Testcontainers (e.g. in CI where a sidecar DB already exists)
  * set SKIP_TESTCONTAINERS=true and provide POSTGRES_URL and/or
  * POSTGRES_URL_NON_POOLING. Bootstrap, migrations, grants, fixups,
  * template creation, and process-scoped runtime-state publication still run.
+ *
+ * ATLARIS_TEST_DB=native starts or resumes this worktree's named native
+ * Supabase stack (`--stack test`), exports its URL as POSTGRES_URL and
+ * POSTGRES_URL_NON_POOLING, and sets SKIP_TESTCONTAINERS=true, so the external
+ * path above runs without Docker. Because that stack persists between runs,
+ * the run holds an advisory lock and drops the previous run's databases first.
  */
 
 import {
@@ -20,14 +26,21 @@ import {
   isLocalPostgresHostname,
 } from '../../scripts/db/local-postgres-host';
 import {
+  acquireTestRunLock,
   buildTestDbRuntimeState,
   createAdminDatabaseUrl,
   createDatabaseUrl,
+  dropPreviousRunDatabases,
   ensureDatabaseExists,
   ensureTemplateDatabase,
   getBaseDbName,
   getTemplateDbName,
+  releaseTestRunLock,
 } from './db-provisioning';
+import {
+  isNativeTestDbEnabled,
+  startNativeTestStack,
+} from './native-test-stack';
 import { resetServiceRoleClientForTests } from '@supabase/service-role';
 import {
   PostgreSqlContainer,
@@ -36,6 +49,7 @@ import {
 import {
   bootstrapDatabase,
   grantRlsPermissions,
+  withUnschedulablePgCronHidden,
 } from '@tests/helpers/db/bootstrap';
 import { applyRuntimeDatabaseFixups } from '@tests/helpers/db/runtime-fixups';
 import { execSync } from 'node:child_process';
@@ -70,10 +84,10 @@ type WaitForPostgresOptions = {
 /**
  * Apply migrations so DB policy SQL matches the migration chain (e.g. ALTER POLICY
  * updates after column renames). `drizzle-kit push` alone can leave policy drift
- * relative to `pnpm db:migrate` / production.
+ * relative to `pnpm db migrate` / production.
  */
 function applySchema(connectionUrl: string): void {
-  execSync('pnpm db:migrate', {
+  execSync('pnpm db migrate', {
     stdio: 'pipe',
     env: {
       ...process.env,
@@ -158,9 +172,11 @@ async function provisionSharedTestDatabase(
 
   await bootstrapDatabase(baseConnectionUrl);
 
-  console.log('[Testcontainers] Applying migrations via pnpm db:migrate…');
+  console.log('[Testcontainers] Applying migrations via pnpm db migrate…');
 
-  applySchema(baseConnectionUrl);
+  await withUnschedulablePgCronHidden(baseConnectionUrl, () => {
+    applySchema(baseConnectionUrl);
+  });
 
   console.log('[Testcontainers] Granting RLS permissions…');
 
@@ -187,12 +203,31 @@ async function provisionSharedTestDatabase(
 }
 
 export async function setup(): Promise<void> {
+  const nativeTestDb = isNativeTestDbEnabled();
+
+  if (nativeTestDb) {
+    console.log(
+      '[Testcontainers] ATLARIS_TEST_DB=native — starting the native Supabase stack "test"…',
+    );
+    const stackUrl = startNativeTestStack();
+    process.env.POSTGRES_URL = stackUrl;
+    process.env.POSTGRES_URL_NON_POOLING = stackUrl;
+    process.env.SKIP_TESTCONTAINERS = 'true';
+  }
+
   if (process.env.SKIP_TESTCONTAINERS === 'true') {
     console.log(
       '[Testcontainers] Using external PostgreSQL — SKIP_TESTCONTAINERS=true',
     );
     const connectionUrl = resolveExternalPostgresUrl();
     await waitForPostgres(connectionUrl);
+
+    if (nativeTestDb) {
+      const adminConnectionUrl = createAdminDatabaseUrl(connectionUrl);
+      await acquireTestRunLock(adminConnectionUrl);
+      await dropPreviousRunDatabases(adminConnectionUrl);
+    }
+
     await provisionSharedTestDatabase(connectionUrl);
     return;
   }
@@ -220,6 +255,8 @@ export async function teardown(): Promise<void> {
   }
 
   Reflect.deleteProperty(process.env, 'TESTCONTAINERS_ENV_FILE');
+
+  await releaseTestRunLock();
 
   if (container) {
     console.log('[Testcontainers] Stopping container…');

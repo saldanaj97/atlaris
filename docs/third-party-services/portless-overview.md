@@ -2,6 +2,26 @@
 
 Official Docs Link: [https://portless.sh/](https://portless.sh/)
 
+## Atlaris local-development policy
+
+Atlaris requires Portless for every `pnpm dev` invocation. The launcher owns
+argument parsing and wraps Next.js itself, so use these commands rather than
+calling Portless around `pnpm dev`:
+
+```bash
+pnpm dev              # https://atlaris.localhost, Webpack + Workflow SDK
+pnpm dev --ui         # https://atlaris.localhost, UI-only Turbopack
+pnpm dev --db         # start/ensure Supabase, then normal Webpack dev
+pnpm dev doctor       # read-only local diagnostics
+```
+
+`portless.json` pins the base name to `atlaris`; linked worktrees receive the
+automatic worktree-prefixed hostname. Portless assigns the app port through
+`PORT`. `PORTLESS=0` is unsupported and causes `pnpm dev` to fail. Do not add a
+custom `.test` TLD for this project. Atlaris currently follows Portless's
+global-install convention rather than adding the pre-1.0 CLI to the project
+dependencies.
+
 Portless replaces port numbers with stable, named `.localhost` URLs for local development. For humans and agents.
 
 ```diff
@@ -11,23 +31,31 @@ Portless replaces port numbers with stable, named `.localhost` URLs for local de
 
 ## Install
 
-**Global (recommended):**
+**Global (required for Atlaris):**
 
 ```bash
 npm install -g portless
 ```
 
-**Or as a project dev dependency:**
+**Project dev dependency (upstream alternative; not used by Atlaris):**
 
 ```bash
 npm install -D portless
 ```
 
-> portless is pre-1.0. When installed per-project, different contributors may run different versions. The state directory format may change between releases, which can require re-running `portless trust`.
+> portless is pre-1.0. When installed per-project, different contributors may run different versions. The state directory format may change between releases, which can require re-running `portless trust`. `pnpm dev doctor` reports the exact installation/PATH remediation when the global executable is unavailable.
+
+If the global bin directory is not on `PATH`, use the same remediation shown by
+the doctor:
+
+```bash
+npm install -g portless
+export PATH="$(npm prefix -g)/bin:$PATH"
+```
 
 ## Run your app
 
-Just run `portless`. It reads the `"dev"` script from `package.json` and runs it through the proxy:
+For generic projects, run `portless`. It reads the `"dev"` script from `package.json` and runs it through the proxy:
 
 ```bash
 portless
@@ -36,7 +64,7 @@ portless
 
 The app name is inferred from `package.json`, git root, or directory name. Use a `portless.json` to override (e.g. `{ "name": "myapp" }` for `https://myapp.localhost`).
 
-You can also run with an explicit command:
+You can also run a generic project with an explicit command:
 
 ```bash
 portless myapp next dev
@@ -47,9 +75,9 @@ HTTPS with HTTP/2 is enabled by default. On first run, portless generates a loca
 
 The proxy auto-starts when you run an app. A random port (4000–4999) is assigned via the `PORT` environment variable. Most frameworks (Next.js, Express, Nuxt, etc.) respect this automatically. For frameworks that ignore `PORT` (Vite, Astro, React Router, Angular, Expo, React Native), portless auto-injects the right `--port` flag and, when needed, a matching `--host` flag.
 
-## Use in package.json
+## Use in package.json (generic Portless projects)
 
-Your scripts stay clean:
+Generic projects can let Portless own the package script:
 
 ```json
 {
@@ -59,9 +87,11 @@ Your scripts stay clean:
 }
 ```
 
-Then run `portless` or `portless run` to go through the proxy.
+Atlaris uses `scripts/dev/start.sh` instead because it must parse `--ui`, `--db`,
+and `doctor`, inject the configured 1Password Environment, and reject
+`PORTLESS=0` before launching `portless run` around Next.js.
 
-You can also use portless directly in scripts:
+Generic projects can also use Portless directly in scripts:
 
 ```json
 {

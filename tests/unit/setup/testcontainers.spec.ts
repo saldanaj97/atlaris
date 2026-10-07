@@ -45,6 +45,21 @@ describe('external PostgreSQL setup helpers', () => {
     );
   });
 
+  it('accepts the native test stack URL on its dynamic loopback port', () => {
+    vi.stubEnv(
+      'POSTGRES_URL',
+      'postgresql://postgres:postgres@127.0.0.1:24216/postgres',
+    );
+    vi.stubEnv(
+      'POSTGRES_URL_NON_POOLING',
+      'postgresql://postgres:postgres@127.0.0.1:24216/postgres',
+    );
+
+    expect(resolveExternalPostgresUrl()).toBe(
+      'postgresql://postgres:postgres@127.0.0.1:24216/postgres',
+    );
+  });
+
   it('refuses a hosted PostgreSQL host', () => {
     vi.stubEnv(
       'POSTGRES_URL',

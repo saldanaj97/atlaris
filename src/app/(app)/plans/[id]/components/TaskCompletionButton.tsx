@@ -45,7 +45,7 @@ export function TaskCompletionButton({
       className={cn(
         variant === 'timeline' ? 'rounded-md px-4' : 'rounded-lg px-4',
         variant === 'timeline'
-          ? 'border text-left'
+          ? 'text-left'
           : 'transition-[background-color,color,border-color,box-shadow]',
         isCompleted
           ? variant === 'timeline'
@@ -53,7 +53,7 @@ export function TaskCompletionButton({
             : 'bg-success text-success-foreground hover:bg-success/90'
           : variant === 'timeline'
             ? 'border-border bg-secondary text-secondary-foreground hover:bg-accent hover:text-accent-foreground'
-            : 'border border-border bg-secondary text-secondary-foreground hover:bg-primary-dark hover:text-primary-foreground',
+            : 'border-border bg-secondary text-secondary-foreground hover:bg-primary-dark hover:text-primary-foreground',
       )}
     >
       {isCompleted ? (

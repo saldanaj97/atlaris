@@ -65,6 +65,17 @@ describe('Environment Configuration', () => {
       expect(app.url).toBe('http://localhost:3000');
     });
 
+    it('uses APP_URL when PORTLESS_URL is unset in development', () => {
+      const env = {
+        NODE_ENV: 'development',
+        APP_URL: 'http://localhost:3100/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('http://localhost:3100');
+    });
+
     it('uses PORTLESS_URL when APP_URL is unset outside production', () => {
       const env = {
         NODE_ENV: 'development',
@@ -74,6 +85,53 @@ describe('Environment Configuration', () => {
       const app = createAppEnv(env, access);
 
       expect(app.url).toBe('https://atlaris.localhost');
+    });
+
+    it('prefers PORTLESS_URL over APP_URL in development', () => {
+      const env = {
+        NODE_ENV: 'development',
+        APP_URL: 'http://localhost:3000',
+        PORTLESS_URL: 'https://feature.atlaris.localhost/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('https://feature.atlaris.localhost');
+    });
+
+    it('falls back to localhost when neither URL is configured in development', () => {
+      const env = { NODE_ENV: 'development' } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('http://localhost:3000');
+    });
+
+    it('keeps APP_URL authoritative in production when PORTLESS_URL is also set', () => {
+      vi.stubGlobal('window', undefined);
+      const env = {
+        NODE_ENV: 'production',
+        APP_URL: 'https://app.example.com/',
+        PORTLESS_URL: 'https://feature.atlaris.localhost/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(app.url).toBe('https://app.example.com');
+    });
+
+    it('keeps APP_URL required in production even when PORTLESS_URL is set', () => {
+      vi.stubGlobal('window', undefined);
+      const env = {
+        NODE_ENV: 'production',
+        PORTLESS_URL: 'https://feature.atlaris.localhost/',
+      } as const;
+      const access = createServerEnvAccess(() => env);
+      const app = createAppEnv(env, access);
+
+      expect(() => app.url).toThrow(
+        'Missing required environment variable: APP_URL',
+      );
     });
 
     it('requires https APP_URL in production', () => {

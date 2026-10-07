@@ -39,3 +39,54 @@ options:
     - tests/mocks/**
     - tests/setup/**
     - tests/unit/setup.ts
+---
+name: integration tests
+discover: >-
+  pnpm exec vitest list --config vitest.config.ts --project integration --filesOnly tests/integration
+  | sed -E 's/^\[[^]]+\] //'
+run: >-
+  pnpm exec vitest run --config vitest.config.ts --project integration
+  --coverage
+  --coverage.thresholds.lines=0
+  --coverage.thresholds.functions=0
+  --coverage.thresholds.branches=0
+  --coverage.thresholds.statements=0
+  --reporter=default
+  --reporter=json
+  --reporter=junit
+  --outputFile.json=test-results/integration/results.json
+  --outputFile.junit="<< outputs.junit >>"
+  << test.atoms >>
+# Analysis runs atoms concurrently; the integration global setup rebuilds one
+# shared template database, so serialize runs with a mkdir lock.
+analysis: >-
+  lock=/tmp/atlaris-integration-analysis.lock;
+  until mkdir "${lock}" 2>/dev/null; do sleep 1; done;
+  trap 'rmdir "${lock}"' EXIT;
+  coverage_dir=$(mktemp -d) &&
+  pnpm exec vitest run --config vitest.config.ts --project integration
+  --coverage
+  --coverage.reporter=lcov
+  --coverage.reportsDirectory="${coverage_dir}"
+  << test.atoms >> &&
+  mv "${coverage_dir}/lcov.info" "<< outputs.lcov >>"
+outputs:
+  junit: test-results/integration/junit.xml
+options:
+  test-impact-analysis: true
+  store-test-results: true
+  impact-key: atlaris-integration-tests
+  full-test-run-paths:
+    - .circleci/**
+    - package.json
+    - pnpm-lock.yaml
+    - pnpm-workspace.yaml
+    - tsconfig.json
+    - '*.config.*'
+    - middleware.ts
+    - supabase/**
+    - tests/fixtures/**
+    - tests/integration/**/*-helpers.ts
+    - tests/helpers/**
+    - tests/mocks/**
+    - tests/setup/**

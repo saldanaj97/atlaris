@@ -9,11 +9,13 @@ import { cn } from '@/lib/utils';
 /** Skeleton for the profile identity card and name/email fields. */
 export function ProfileFormSkeleton(): ReactElement {
   return (
+    /* oxlint-disable shadcn/require-static-classes -- The shared header-aware scroll offset is a complete imported utility. */
     <Card
       as='section'
       id={SETTINGS_SECTIONS.profile}
       className={cn(APP_SHELL_SCROLL_MARGIN, 'gap-4 shadow-none')}
     >
+      {/* oxlint-enable shadcn/require-static-classes */}
       <CardHeader>
         <CardTitle as='h2' className='text-xl leading-7'>
           Profile

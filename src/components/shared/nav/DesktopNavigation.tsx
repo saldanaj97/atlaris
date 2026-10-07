@@ -69,6 +69,7 @@ function DropdownNavItem({
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
+        {/* oxlint-disable shadcn/require-static-classes -- Navigation state helpers choose complete static classes. */}
         <Button
           variant='ghost'
           type='button'
@@ -80,6 +81,7 @@ function DropdownNavItem({
               'hover:bg-transparent dark:hover:bg-transparent',
           )}
         >
+          {/* oxlint-enable shadcn/require-static-classes */}
           <span>{item.label}</span>
           <ChevronDown className='size-3.5' />
         </Button>

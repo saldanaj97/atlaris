@@ -7,7 +7,7 @@ description: Drive the Atlaris web app the way a user does — isolated local Ne
 
 Atlaris is a Next.js 16 web app (Clerk auth, local product-testing bypass, Supabase Postgres). The primary surface is the browser. CLI and API are secondary; do not treat `curl` of an internal route as proof of a UI change.
 
-This skill is for **ad-hoc proof while working**. Committed regression coverage is `pnpm test:smoke` (see `docs/testing/playwright-local-smoke.md`). Do not substitute a green smoke suite for driving the mapped feature you just changed.
+This skill is for **ad-hoc proof while working**. Committed regression coverage is `pnpm test smoke` (see `docs/testing/playwright-local-smoke.md`). Do not substitute a green smoke suite for driving the mapped feature you just changed.
 
 Read `features/README.md`, then the matching feature file, before touching the app.
 
@@ -79,4 +79,4 @@ All commands from repo root (`./node_modules/.bin/tsx` avoids a pnpm install pas
 ./node_modules/.bin/tsx scripts/verify-atlaris/control.ts cleanup
 ```
 
-Playwright Chromium is only required for `pnpm test:smoke`, not for this skill.
+Playwright Chromium is only required for `pnpm test smoke`, not for this skill.

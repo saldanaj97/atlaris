@@ -39,12 +39,14 @@ function LearningResourceCard({
           <ExternalLink className='size-3 shrink-0 opacity-50' />
         </div>
         <div className='flex items-center gap-2 text-xs text-muted-foreground'>
+          {/* oxlint-disable shadcn/require-static-classes -- Resource badge classes come from the shared, finite resource-type recipe. */}
           <Badge
             className={cn(
               'rounded border-transparent px-1.5',
               config.badgeClass,
             )}
           >
+            {/* oxlint-enable shadcn/require-static-classes */}
             {config.label}
           </Badge>
           {resource.durationMinutes ? (

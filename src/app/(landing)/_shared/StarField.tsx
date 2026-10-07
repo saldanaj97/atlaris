@@ -1,3 +1,5 @@
+import type { CSSProperties } from 'react';
+
 import { cn } from '@/lib/utils';
 
 import styles from './star-field.module.css';
@@ -54,14 +56,15 @@ export function StarField({ className }: { className?: string }) {
         <span
           key={`${star.top}-${star.left}`}
           className={styles.star}
-          style={{
-            top: star.top,
-            left: star.left,
-            width: star.size,
-            height: star.size,
-            ['--star-delay' as string]: `${star.delay}s`,
-            ['--star-duration' as string]: `${star.duration}s`,
-          }}
+          style={
+            {
+              '--star-top': star.top,
+              '--star-left': star.left,
+              '--star-size': `${star.size}px`,
+              '--star-delay': `${star.delay}s`,
+              '--star-duration': `${star.duration}s`,
+            } as CSSProperties
+          }
         />
       ))}
     </div>

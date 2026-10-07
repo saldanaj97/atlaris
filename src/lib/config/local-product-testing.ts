@@ -15,13 +15,13 @@
  *   an existing user row; use {@link LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID} with bootstrap.
  * - **`AI_PROVIDER`** — AI runtime behavior. It accepts `mock` or `router`
  *   (or unset for the environment default).
- * - **Billing fixtures** — use `pnpm billing:clerk:fixture` to seed local subscription state.
+ * - **Billing fixtures** — use `pnpm db fixture` to seed local subscription state.
  *
  * Prefer reading feature behavior from the grouped configs in `@/lib/config/env` rather than
  * `process.env` directly.
  */
 
-/** Seeded `users.id` (deterministic UUID) created by `pnpm db:dev:seed`. */
+/** Seeded `users.id` (deterministic UUID) created by `pnpm db seed`. */
 export const LOCAL_PRODUCT_TESTING_SEED_USER_ROW_ID =
   '11111111-1111-4111-8111-111111111111' as const;
 

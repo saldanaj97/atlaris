@@ -98,13 +98,20 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
 - Report the checks actually run and their outcomes. A skipped check is not a pass.
 
+## PR review comments
+
+- After reviewing a PR review comment, reply to its thread and resolve it, whether you applied a fix or not. The reply names the fixing commit, or explains why no change was needed.
+- Do not leave reviewed threads unanswered or unresolved.
 
 
-## Cursor Cloud database
 
-- In Cursor Cloud Agents, run `pnpm db:agent:up` before database work and `pnpm db:agent:status` for diagnosis.
-- The agent database is PostgreSQL 17 on task-local loopback only. Never provide it a hosted URL or run `pnpm db:agent:reset` against staging or production.
-- Keep the ordinary local OrbStack/Supabase workflow unchanged. See `docs/development/local-database.md` for the environment boundaries and command contracts.
+## Cloud agent database
+
+- In cloud agents (Codex and Cursor Cloud), run `pnpm db agent up` before database work. `pnpm db agent status` is the diagnosis command; `pnpm db agent preflight` checks the host first.
+- The default backend is the native Supabase stack (`supabase start --runtime native`, this checkout's default stack, loopback only). `up` writes its dynamic `DB_URL` to `.env.local`; `reset` runs `supabase db reset` on that stack only. The first start downloads ~483 MB from GitHub, so it needs outbound access to github.com.
+- As root, set `SUPABASE_NATIVE_POSTGRES_USER` to an existing non-root OS user; the native runtime will not run Postgres as root.
+- The legacy PostgreSQL 17 path stays available with `ATLARIS_AGENT_DB=postgres` as a legacy switch. There is no automatic fallback.
+- Never provide a hosted URL. See `docs/development/local-database.md` for the environment boundaries and command contracts.
 
 
 

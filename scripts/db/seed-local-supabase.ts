@@ -9,16 +9,19 @@ import { existsSync } from 'node:fs';
  * Refuses non-localhost POSTGRES_URL to avoid accidental writes to hosted databases.
  *
  * `supabase db reset` also applies `supabase/seed.sql`; this helper exists for
- * explicit reseeding via `pnpm db:dev:seed`.
+ * explicit reseeding via `pnpm db seed`.
  */
 import postgres from 'postgres';
 
-const DEFAULT_LOCAL_SUPABASE_URL =
-  'postgresql://postgres:postgres@127.0.0.1:54322/postgres';
-
-/** Resolves the Postgres connection URL from env or the local Supabase default. */
+/** Resolves the Postgres connection URL from env (`pnpm db start` writes it to .env.local). */
 function resolveDatabaseUrl(): string {
-  return process.env.POSTGRES_URL?.trim() || DEFAULT_LOCAL_SUPABASE_URL;
+  const url = process.env.POSTGRES_URL?.trim();
+  if (!url) {
+    throw new Error(
+      "POSTGRES_URL is not set. Run `pnpm db start` to point .env.local at this worktree's stack.",
+    );
+  }
+  return url;
 }
 
 /** Throws when the connection URL targets a non-localhost host. */

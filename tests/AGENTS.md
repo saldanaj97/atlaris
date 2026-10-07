@@ -11,7 +11,7 @@ alwaysApply: false
 
 - Make sure to always update the test suite when making changes to the codebase, especially for critical paths like plan generation and billing.
 - Make sure to update the docs when making changes to the test suite, especially if you add new patterns or change existing ones.
-- Always run the relevant tests locally before marking any task as done, and use explicit scoped commands such as `pnpm test:unit:changed` or `pnpm test:integration:changed` to verify you are running the right tests.
+- Always run the relevant tests locally before marking any task as done, and use explicit scoped commands such as `pnpm test unit --changed` or `pnpm test integration --changed` to verify you are running the right tests.
 - After running the tests, update the `tests/results/<test-category>/<date>-results.md` file with the results of the tests.
 
 ### Docs
@@ -63,23 +63,43 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 
 ```bash
 pnpm test                              # Changed unit + integration-class bundle
-pnpm test:unit                         # Unit tests only
-pnpm test:unit:changed                 # Changed unit tests
+pnpm test unit                         # Unit tests only
+pnpm test unit --changed               # Changed unit tests
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Watch unit tests
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts  # Single unit test file
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts  # Single integration file (Testcontainers)
-pnpm test:integration:changed          # Changed integration tests + Workflow SDK changed phase
-pnpm test:integration                  # Full DB/API integration suite
-pnpm test:workflow                     # Workflow SDK wiring + production entrypoints (Testcontainers)
-pnpm test:security                     # RLS policy tests (Testcontainers; requires Docker)
-pnpm test:smoke                        # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
-pnpm test:smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
-pnpm test:smoke -- --project smoke-auth  # Auth-only (single auth server)
+pnpm test integration --changed       # Changed integration tests + Workflow SDK changed phase
+pnpm test integration                 # Full DB/API integration suite
+pnpm test workflow                    # Workflow SDK wiring + production entrypoints (Testcontainers)
+pnpm test security                    # RLS policy tests (Testcontainers; requires Docker)
+pnpm test smoke                       # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
+pnpm test smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
+pnpm test smoke -- --project smoke-auth  # Auth-only (single auth server)
 pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db  # DB-only smoke infra validation
+pnpm test integration --native-db     # Any DB-backed suite on the native Supabase "test" stack (no Docker)
+pnpm test smoke --native-db --smoke-step=db  # DB-only smoke infra validation without Docker
 ```
 
-**Prerequisite for integration and security tests:** Docker must be running (Testcontainers spins up an ephemeral Postgres automatically).
-**Prerequisite for smoke tests:** Docker must be running and Playwright Chromium must be installed (`pnpm exec playwright install chromium`).
+**Prerequisite for integration, workflow, e2e, and security tests:** Docker must be running for the default Testcontainers path, or use the native test database below.
+**Prerequisite for smoke tests:** Docker (or the native test database) and Playwright Chromium (`pnpm exec playwright install chromium`).
+
+## Test Database: Testcontainers (default) or native Supabase stack
+
+Testcontainers is the default and the fallback: with the switch unset, each DB-backed Vitest run and each smoke run starts its own `postgres:17-alpine` container. CircleCI sets `SKIP_TESTCONTAINERS=true` against its sidecar and never uses the switch.
+
+To run without Docker, set `ATLARIS_TEST_DB=native` (or pass `--native-db` to `pnpm test`; it sets the same variable for every command in the plan). The Vitest global setup and `scripts/tests/smoke/run.ts` then:
+
+1. Start or resume this worktree's named native stack: `supabase start --stack test --runtime native`. The stack identity is project root + git branch + `test`, so each worktree (and branch) gets its own data directory under `~/.supabase/stacks/<id>/` and its own dynamic port; two worktrees can run tests at once.
+2. Read `env.DB_URL` from `supabase status --stack test --output-format json`, export it as `POSTGRES_URL` and `POSTGRES_URL_NON_POOLING`, and set `SKIP_TESTCONTAINERS=true`. The local-host guard in `tests/setup/testcontainers.ts` still refuses non-local hosts.
+3. Vitest: drop the previous run's `atlaris_test_base`, `atlaris_test_template`, and `atlaris_test_wN` databases, then build them again as usual (same template and per-worker clones, same `INTEGRATION_MAX_WORKERS`). A run holds an advisory lock on the stack, so a second concurrent DB-backed run in the same worktree fails fast instead of dropping the first run's databases.
+4. Smoke: recreate an empty `atlaris_test_smoke` database, prepare it like the container, and drop it when the run ends.
+
+The stack keeps running after the run so the next one resumes in seconds. Stop it with `pnpm exec supabase stop --stack test`; `pnpm exec supabase stack destroy --stack test --yes` removes its data. Tests never `db reset` this stack.
+
+Supabase images differ from `postgres:17-alpine` in two ways the bootstrap handles (`tests/helpers/db/bootstrap.ts`):
+
+- `postgres` is not a superuser but already has `BYPASSRLS`, so `grantRlsPermissions` only runs `ALTER ROLE postgres BYPASSRLS` when the role lacks it. Tests connect as `postgres` on both paths, so tables and grants follow the real privilege model.
+- pg_cron is available but can only be created in `cron.database_name` (`postgres`), so the retention migration would fail in `atlaris_test_*` databases. `withUnschedulablePgCronHidden` hides pg_cron from `pg_available_extensions` for the migration only, and the migration skips scheduling as it does on `postgres:17-alpine`. While that shim is active, `public` is searched before `pg_catalog`, so column defaults bind to pgcrypto's `public.gen_random_uuid()` (same behavior) instead of the built-in one.
 
 ## Workflow SDK Tests
 
@@ -87,14 +107,13 @@ See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for featur
 
 - Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary against an isolated Testcontainers database.
 - Keep `vitest.workflow.config.ts` separate from DB/API integration tests; its harness owns production workflow discovery and its own Testcontainers lifecycle.
-- Use `pnpm test:integration:changed` for changed DB/API and workflow coverage, or `pnpm test:all` for both complete suites.
-- Use `pnpm test:workflow` for targeted Workflow SDK iteration.
+- Use `pnpm test integration --changed` for changed DB/API and workflow coverage, or `pnpm test all` for both complete suites.
+- Use `pnpm test workflow` for targeted Workflow SDK iteration.
 - Keep unit tests for workflow helpers, wrappers, and orchestration under `tests/unit/**`; reserve `tests/workflow/**` for runtime wiring and SDK behavior.
 
 ## Browser Smoke Ownership
 
-- `pnpm test:smoke` is the only supported entrypoint for committed browser smoke coverage.
-- **UI audit baselines** (`pnpm ui:capture-baseline`): see [UI baseline capture](../docs/testing/ui-baseline-capture.md) — separate from smoke; disposable DB + dual dev servers or `--anon-base` / `--auth-base`.
+- `pnpm test smoke` is the only supported entrypoint for committed browser smoke coverage.
 - `scripts/tests/smoke/run.ts` owns the disposable Postgres lifecycle, clears `.test-dist/next-smoke-*`, and passes `SMOKE_STATE_FILE` to Playwright. A full run invokes Playwright twice (anon+clerk, then auth) so only one Turbopack dev server is alive at a time.
 - Playwright owns app servers via `webServer`; a single `--project` starts only the server that project needs. Do not start smoke servers manually for normal runs.
 - `scripts/tests/smoke/start-app.ts` is the only supported launcher for anon/auth smoke modes.
@@ -103,7 +122,7 @@ See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for featur
 - Use Playwright `request` for redirect/proxy assertions and `page` for user journeys.
 - Keep the auth browser lane deterministic. The local runner stays serial for stability; do not re-enable project-level parallelism or concurrent dual dev servers without documenting RAM impact (see [Playwright local smoke](../docs/testing/playwright-local-smoke.md#memory-and-local-resources)).
 
-To skip Testcontainers and use an existing database (e.g. CI):
+To skip Testcontainers and use an existing local database (e.g. CI):
 
 ```bash
 SKIP_TESTCONTAINERS=true POSTGRES_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
@@ -129,13 +148,13 @@ CI honors the same env var. CircleCI `ci-pr` / `ci-trunk` set `INTEGRATION_MAX_W
 - **Use `findBy*` for async UI** — not `waitFor` unless no specific element to wait on
 - **Use `it.each` for many cases** — table-driven tests keep branching logic coverage clean
 - **Make time/randomness injectable** — pass `now`/`clock`/`idGenerator` into functions
-- **Run only what you changed** — `pnpm test:unit:changed`, `pnpm test:integration:changed`, or a targeted script file
+- **Run only what you changed** — `pnpm test unit --changed`, `pnpm test integration --changed`, or a targeted script file
 - **Verify after changes** — run the most specific changed-scope command before marking any task done
 - **Use `seedFailedAttemptsForDurableWindow()`** for durable generation-window tests (from `tests/fixtures/attempts.ts`)
 
 ### Don't
 
-- **Don't run `pnpm test:all` or the full integration suite locally** — target specific files
+- **Don't run `pnpm test all` or the full integration suite locally** — target specific files
 - **Don't use `vi.mock()` when you can inject** — frequent module mocking signals bad boundaries
 - **Don't hardcode IDs** — always use factories or `createId()`
 - **Don't assert on CSS classes** — no `toHaveClass('flex')`, use roles/labels/attributes instead

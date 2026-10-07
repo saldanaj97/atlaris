@@ -31,6 +31,7 @@ export function ChartContainer({
     }
   }
 
+  /* oxlint-disable shadcn/no-inline-styles -- chart config generates a dynamic set of CSS color variables and this wrapper forwards the caller's style prop. */
   return (
     <div
       data-chart
@@ -44,6 +45,7 @@ export function ChartContainer({
       {children}
     </div>
   );
+  /* oxlint-enable shadcn/no-inline-styles */
 }
 
 type TooltipPayload = {
@@ -97,10 +99,14 @@ export function ChartTooltipContent({
               <div className='flex min-w-0 items-center gap-2'>
                 <span
                   className={cn(
-                    'shrink-0 rounded-full',
+                    'shrink-0 rounded-full bg-(--chart-indicator-color)',
                     indicator === 'line' ? 'h-0.5 w-4' : 'size-2',
                   )}
-                  style={{ backgroundColor: color }}
+                  style={
+                    {
+                      '--chart-indicator-color': color,
+                    } as React.CSSProperties
+                  }
                 />
                 <span className='min-w-0 truncate text-muted-foreground'>
                   {item.name}

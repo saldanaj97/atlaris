@@ -66,12 +66,19 @@ commands:
               circleci-agent step halt
             fi
 
+  # Restore-only: the pnpm store cache is saved by warm-pnpm-cache on trunk,
+  # so PR and parallel jobs never upload their own copy.
   install-pnpm-deps:
     steps:
       - node/install-pnpm:
           version: '11.9.0'
-      - node/install-packages:
-          pkg-manager: pnpm
+      - restore_cache:
+          keys:
+            - pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+            - pnpm-store-v1-{{ arch }}-
+      - run:
+          name: Install dependencies
+          command: pnpm install --frozen-lockfile --prefer-offline --store-dir ~/.pnpm-store
 
   install-node-and-deps:
     steps:
@@ -126,6 +133,28 @@ commands:
                 destination: << parameters.coverage-destination >>
 
 jobs:
+  # Sole writer of the pnpm store cache. Exact-key restore only, so a miss
+  # fetches a clean store for the current lockfile instead of growing an old one.
+  warm-pnpm-cache:
+    executor: node
+    resource_class: medium
+    retention:
+      caches: 7d
+    steps:
+      - checkout
+      - node/install-pnpm:
+          version: '11.9.0'
+      - restore_cache:
+          keys:
+            - pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+      - run:
+          name: Fetch lockfile packages into store
+          command: pnpm fetch --frozen-lockfile --store-dir ~/.pnpm-store
+      - save_cache:
+          key: pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
+          paths:
+            - ~/.pnpm-store
+
   detect-changes:
     executor: node
     resource_class: small
@@ -216,16 +245,16 @@ jobs:
           name: Lint and type check
           no_output_timeout: 5m
           command: |
-            lint_command="pnpm check:lint"
+            lint_command="pnpm lint"
             if [ "$(cat /tmp/.ci-flags/source 2>/dev/null || echo true)" = "true" ]; then
-              lint_command="pnpm check:lint:ci"
+              lint_command="pnpm lint --format=github"
             fi
             pnpm exec concurrently \
               --kill-others-on-fail \
               --names lint,type \
               --prefix-colors blue,magenta \
               "$lint_command" \
-              "pnpm check:type"
+              "pnpm typecheck"
 
   vulnerability-scan:
     executor: node
@@ -359,90 +388,17 @@ jobs:
               })
             "
       - run:
-          name: Integration tests (related/full/light)
+          name: Integration tests (impacted)
           no_output_timeout: 20m
           command: |
-            set -e
-            echo "Base ref: ${BASE_REF}"
-
-            CHANGED_FILES=""
-            DIFF_OK=0
-            if git rev-parse --verify "origin/${BASE_REF}" >/dev/null 2>&1; then
-              if CHANGED_LISTING=$(git diff --name-only "origin/${BASE_REF}...HEAD"); then
-                CHANGED_FILES=$(printf '%s\n' "${CHANGED_LISTING}" | tr '\n' ' ')
-                DIFF_OK=1
-              else
-                echo "git diff failed; running full integration suite."
-              fi
+            mkdir -p test-results/integration
+            if [ "${BASE_REF}" = "main" ]; then
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=all
             else
-              echo "origin/${BASE_REF} missing; running full integration suite."
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
             fi
-
-            FILES=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(src|tests|supabase)/.*\.(ts|tsx)$' || true)
-            COUNT=$(printf '%s\n' "${FILES}" | awk 'NF { count += 1 } END { print count + 0 }')
-            echo "Changed candidate files: ${COUNT}"
-            mkdir -p test-results/integration-light
-
-            GLOBAL_TRIGGER=$(echo "${CHANGED_FILES}" | tr ' ' '\n' | grep -E '^(pnpm-lock\.yaml|drizzle(.*)\.config\.ts|vitest(\.integration)?\.config\.ts|vitest\.config\.ts|tsconfig\.json|package\.json|supabase/(schema|migrations|enums\.ts|config\.toml)(/.*)?)$' || true)
-
-            MODE="light"
-            if [ "${DIFF_OK}" -eq 0 ]; then
-              MODE="full"
-              echo "Integration mode: full (missing base or failed diff)"
-            elif [ -n "${GLOBAL_TRIGGER}" ]; then
-              MODE="full"
-              echo "Integration mode: full (global trigger detected)"
-            elif [ "${COUNT}" -gt 50 ]; then
-              MODE="full"
-              echo "Integration mode: full (${COUNT} candidate TypeScript files)"
-            elif [ "${COUNT}" -gt 0 ]; then
-              MODE="related"
-              echo "Integration mode: related (${COUNT} candidate TypeScript files)"
-            else
-              echo "Integration mode: light (no suitable source candidates)"
-            fi
-
-            case "${MODE}" in
-              related)
-                pnpm vitest related --project integration --run --coverage \
-                  --passWithNoTests \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml \
-                  ${FILES}
-                ;;
-              full)
-                pnpm vitest run --project integration tests/integration \
-                  --coverage \
-                  --coverage.thresholds.lines=0 \
-                  --coverage.thresholds.functions=0 \
-                  --coverage.thresholds.branches=0 \
-                  --coverage.thresholds.statements=0 \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml
-                ;;
-              light)
-                mapfile -t LIGHT_FILES < <(find tests/integration -type f -path '*/light/*' \( -name '*.test.ts' -o -name '*.spec.ts' -o -name '*.test.tsx' -o -name '*.spec.tsx' \))
-                if [ "${#LIGHT_FILES[@]}" -eq 0 ]; then
-                  echo "No light integration tests found; skipping."
-                  exit 0
-                fi
-                pnpm vitest run --project integration "${LIGHT_FILES[@]}" \
-                  --coverage \
-                  --reporter=default \
-                  --reporter=json \
-                  --reporter=junit \
-                  --outputFile.json=test-results/integration-light/results.json \
-                  --outputFile.junit=test-results/integration-light/junit.xml
-                ;;
-            esac
-      - store-test-outputs:
-          results-file: test-results/integration-light/results.json
+      - summarize-vitest:
+          results-file: test-results/integration/results.json
 
   security-tests:
     docker:
@@ -520,6 +476,7 @@ jobs:
       - skip-unless-integration
       - checkout
       - init-env
+      - fetch-base
       - install-pnpm-deps
       - run:
           name: Wait for PostgreSQL
@@ -539,33 +496,37 @@ jobs:
           no_output_timeout: 25m
           command: |
             mkdir -p test-results/integration
-            TESTFILES=$(circleci tests glob "tests/integration/**/*.{test,spec}.{ts,tsx}")
-            if [ -z "${TESTFILES}" ]; then
-              echo "No integration test files found; skipping."
-              circleci-agent step halt
-              exit 0
+            if [ "${CIRCLE_BRANCH}" = "develop" ]; then
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
+            else
+              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=all
             fi
-            echo "${TESTFILES}" | circleci tests run --command=">files.txt xargs echo" --verbose --split-by=timings --timings-type=classname
-            if [ ! -s files.txt ]; then
-              echo "No tests assigned to this node; skipping."
-              circleci-agent step halt
-              exit 0
-            fi
-            # ponytail: word-split files.txt; circleci tests run already selected this node's files
-            pnpm vitest run --project integration \
-              --coverage \
-              --coverage.thresholds.lines=0 \
-              --coverage.thresholds.functions=0 \
-              --coverage.thresholds.branches=0 \
-              --coverage.thresholds.statements=0 \
-              --reporter=default \
-              --reporter=json \
-              --reporter=junit \
-              --outputFile.json=test-results/integration/results.json \
-              --outputFile.junit=test-results/integration/junit.xml \
-              $(cat files.txt)
-      - store-test-outputs:
+      - summarize-vitest:
           results-file: test-results/integration/results.json
+
+  integration-impact-analysis:
+    docker:
+      - image: cimg/node:24.19
+      - image: postgres:17-alpine
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_DB: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+    resource_class: large
+    environment:
+      NODE_ENV: test
+      ENABLE_CURATION: 'false'
+      SKIP_TESTCONTAINERS: 'true'
+      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+    steps:
+      - skip-unless-integration
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Refresh integration test impact data
+          no_output_timeout: 30m
+          command: circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none
 
   workflow-tests:
     docker:
@@ -672,6 +633,10 @@ workflows:
           filters:
             branches:
               only: [main, develop]
+      - warm-pnpm-cache:
+          filters:
+            branches:
+              only: [main, develop]
       - unit-impact-analysis:
           requires:
             - detect-changes
@@ -684,6 +649,12 @@ workflows:
           filters:
             branches:
               only: [main, develop]
+      - integration-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
       - security-tests:
           skip_unless: integration
           requires:

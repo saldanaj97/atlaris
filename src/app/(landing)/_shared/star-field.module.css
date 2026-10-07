@@ -2,6 +2,10 @@
 
 .star {
   position: absolute;
+  top: var(--star-top);
+  left: var(--star-left);
+  width: var(--star-size);
+  height: var(--star-size);
   border-radius: 999px;
   /* currentColor so the field reads on both parchment page and inverted panels */
   background: color-mix(in oklab, currentColor 55%, transparent);

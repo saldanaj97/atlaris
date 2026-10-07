@@ -46,20 +46,23 @@ Declared flags:
 | Flag key                      | Code export                 | Default / failure mode                                                                                                                                               | Combines with                                                                                               |
 | ----------------------------- | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `maintenance-mode`            | `maintenanceMode`           | First production gate. No `defaultValue` on the flag; evaluation errors use the `MAINTENANCE_MODE` fail-safe if env is true, otherwise **fail open** (site stays available) via `resolveEffectiveMaintenanceMode()` in `src/lib/proxy/maintenance-mode.ts` | `MAINTENANCE_MODE` env (`appEnv.maintenanceMode`) — fail-safe only if flag evaluation throws; unused when the flag resolves. Do not set env for normal ops. |
+| `launch-waitlist`             | `launchWaitlist`            | Pre-launch gate. `defaultValue: false`; evaluation errors **fail open** (app stays available) via `resolveSiteGate()` in `src/lib/proxy/site-gate.ts`. `maintenance-mode` wins when both are on | Clerk sign-up mode **Waitlist** (Clerk Dashboard → Restrictions) so `/waitlist` signups are accepted |
 | `email-notification-delivery` | `emailNotificationDelivery` | `defaultValue: false`; evaluation errors **fail closed** via `resolveEmailNotificationDeliveryEnabled()` in `src/features/notifications/email/delivery-flag.ts`      | Resend + production `APP_URL` (see `emailEnv`)                                                              |
 | `module-lesson-generation`    | `moduleLessonGeneration`    | `defaultValue: false`; evaluation errors **fail closed** via `resolveModuleLessonGenerationEnabled()` in `src/features/lesson-content/generation-flag.ts`            | Synchronous and Workflow SDK module lesson generation                                                       |
 
-**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery, lesson generation, and maintenance stay off. `MAINTENANCE_MODE` is not a local override — it applies only if flag evaluation throws.
+**Local without `FLAGS`:** all flags resolve to their fallback (`defaultValue ?? false`), so email delivery, lesson generation, maintenance, and the launch waitlist stay off. `MAINTENANCE_MODE` is not a local override — it applies only if flag evaluation throws.
 
-**Local maintenance page preview:** in development, `/maintenance` stays reachable while the flag is off so the page can be designed and checked without taking the rest of the app down. Hosted Preview/Production still redirect `/maintenance` home when the flag is off. Turning the Vercel flag on still sends the whole site to `/maintenance`.
+**Local maintenance page preview:** in development, `/maintenance` stays reachable while the flag is off so the page can be designed and checked without taking the rest of the app down. Hosted Preview/Production still redirect `/maintenance` home when the flag is off. Turning the Vercel flag on sends the app to `/maintenance` but keeps the marketing pages (`/landing`, `/pricing`, `/about`) live; `/` redirects to `/landing`. App and auth links on those pages (sign in, sign up, plan CTAs, dashboard) still land on `/maintenance`, and pricing CTAs skip Clerk sign-in/checkout modals. The site header renders every visitor as signed out, so Clerk's account menu is hidden.
 
-**Maintenance bypass paths** (still reachable while maintenance is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
+**Launch waitlist:** `launch-waitlist` runs the same gate as maintenance (marketing pages live, header signed out, pricing CTAs through the proxy) but redirects to `/waitlist`, a marketing page with a Clerk waitlist form (`clerk.joinWaitlist`). Redirects from `/auth/sign-in*` and `/auth/sign-up*` carry `?from=sign-in|sign-up` so the page tailors its copy. `/waitlist` follows the same preview rule as `/maintenance`: reachable locally while its flag is off, redirected home on hosted environments. At launch, turn the flag off and switch the Clerk sign-up mode back to Public (or invite from the Clerk waitlist).
+
+**Maintenance bypass paths** (still reachable while maintenance or the launch waitlist is on) are listed in `src/lib/proxy/middleware-policy.ts`, including `GET /api/cron/notifications/email`, `GET /api/health/worker`, and the signed unsubscribe route. Ops for email delivery: [Email notification delivery runbook](../architecture/email-notification-delivery-runbook.md).
 
 Hosted templates list `FLAGS` / `FLAGS_SECRET` in `.env.preview.example` and `.env.production.example`. Production also documents `MAINTENANCE_MODE`.
 
 ### Flag and gate ownership
 
-Operational kill switches stay in Vercel Flags. Deployment, maintenance, privacy, observability, local-test, secret, and capacity controls stay environment configuration. Future user-, cohort-, anonymous-visitor-, percentage-rollout-, and experiment-driven product behavior belongs in PostHog. Do **not** add `@flags-sdk/posthog` or create PostHog flags for the three operational switches in the [Vercel Flags](#vercel-flags) table. No currently active Atlaris flag moves to PostHog.
+Operational kill switches stay in Vercel Flags. Deployment, maintenance, privacy, observability, local-test, secret, and capacity controls stay environment configuration. Future user-, cohort-, anonymous-visitor-, percentage-rollout-, and experiment-driven product behavior belongs in PostHog. Do **not** add `@flags-sdk/posthog` or create PostHog flags for the four operational switches in the [Vercel Flags](#vercel-flags) table. No currently active Atlaris flag moves to PostHog.
 
 `src/flags.ts` is the only Flags SDK declaration file. Flags Explorer discovery is `src/app/.well-known/vercel/flags/route.ts` (`getProviderData` of that module only). Preference Settings opt-ins are not flags — see [user-preferences.md](../architecture/user-preferences.md).
 
@@ -67,7 +70,7 @@ Operational kill switches stay in Vercel Flags. Deployment, maintenance, privacy
 
 #### Deployment and maintenance gates (owner × runtime)
 
-The three Flags above are the only Flags SDK keys. Everything in this table is env, scheduler, or database cron — not a Flags SDK flag and not a PostHog flag.
+The four Flags above are the only Flags SDK keys. Everything in this table is env, scheduler, or database cron — not a Flags SDK flag and not a PostHog flag.
 
 | Control                                                                                          | Owner                                                                                         | Runtime                                                                                                                                                                                                                          |
 | ------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -89,7 +92,7 @@ Code has zero callers of `landing-hero-experiment`. The marketing hero is `src/a
 
 #### PostHog
 
-PostHog is analytics ingest today (`posthog-js`, `posthog-node`, application-owned `/ingest` proxy). Project `551450` had zero active flags when audited on September 2, 2026. Reserve PostHog for future product experiments and cohort rollouts. Do not wire a PostHog Flags adapter for `maintenance-mode`, `email-notification-delivery`, or `module-lesson-generation`.
+PostHog is analytics ingest today (`posthog-js`, `posthog-node`, application-owned `/ingest` proxy). Project `551450` had zero active flags when audited on September 2, 2026. Reserve PostHog for future product experiments and cohort rollouts. Do not wire a PostHog Flags adapter for `maintenance-mode`, `launch-waitlist`, `email-notification-delivery`, or `module-lesson-generation`.
 
 The app initializes PostHog, identifies users, captures browser events, and captures server events only when `NODE_ENV=production` and the deployment is explicitly Vercel Production. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`; a custom target such as `staging`, or the standard `VERCEL_ENV=preview`, disables PostHog even though Vercel sets `NODE_ENV=production` for those deployments. The browser receives the corresponding values as `NEXT_PUBLIC_VERCEL_TARGET_ENV` and `NEXT_PUBLIC_VERCEL_ENV` from `next.config.ts`. Missing deployment markers fail closed. Local development, tests, Preview, and Staging therefore do not initialize the SDK or issue application-owned PostHog captures.
 
@@ -177,7 +180,7 @@ Canonical table (env vars, fail-open/closed behavior, and local fallback): [Verc
 | `LOCAL_PRODUCT_TESTING` | Master flag for the seeded-user + mocks workflow (forbidden in hosted deploys)    |
 | `MOCK_AI_SCENARIO`      | Mock AI: `success`, `timeout`, `provider_error`, `invalid_response`, `rate_limit` |
 
-Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm billing:clerk:fixture -- --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
+Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm db fixture --user-id <users.auth_user_id> --plan pro` to apply a local billing projection through the same service path as Clerk webhooks. Clerk Billing uses Stripe as the payment gateway, but Atlaris reads entitlement state from Clerk events and reconciliation.
 
 **Fixture mode does not exercise checkout or webhooks.** It only updates the Postgres entitlement projection for local product testing.
 
@@ -191,7 +194,7 @@ Startup fails in development when Clerk UI would be enabled while `DEV_AUTH_USER
 
 | Mode                                | Env contract                                                                                                                                                      | What it proves                                                                                                                                               |
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm billing:clerk:fixture`, `pnpm dev:local:starter`, `pnpm dev:local:pro`. **Does not** test Clerk checkout or webhooks. |
+| **Fixture / local product testing** | `LOCAL_PRODUCT_TESTING=true`, `DEV_AUTH_USER_ID` = seeded `users.auth_user_id`                                                                                    | DB entitlements and quota UI via `pnpm db fixture --user-id <users.auth_user_id> --plan <starter|pro>`, followed by `pnpm dev`. **Does not** test Clerk checkout or webhooks. |
 | **Real Clerk development checkout** | `LOCAL_PRODUCT_TESTING=false` (or unset), `DEV_AUTH_USER_ID` unset/empty, Clerk **test** keys for one Development instance, usable `CLERK_WEBHOOK_SIGNING_SECRET` | Checkout → Clerk webhook → Postgres projection → Atlaris quota.                                                                                              |
 
 **Fixture mode and Clerk UI:** When local product testing is on, `shouldUseClerkUi()` in `src/lib/auth/local-identity.ts` returns `false`. Root layout skips `ClerkProvider`, so sign-in modals, UserButton, and Clerk Billing components do not mount. `/pricing` still renders plan cards with the existing page composition through `LocalPricingPreview` (representative prices; every CTA is “Preview only” / disabled). Use real Clerk development checkout mode to exercise live pricing checkout.
@@ -233,16 +236,20 @@ Record evidence without secrets: environment name, Clerk Development instance na
 
 ### Local Supabase database
 
-Use `pnpm db:dev:start` to start the Supabase local stack, then copy the current local URL and keys from `supabase status`.
+Use `pnpm db start` to start the native Supabase stack. It writes the stack's URL into this worktree's `.env.local`; the port is assigned by the CLI (20000–32767), so there is no fixed value to copy. See [local-database.md](./local-database.md).
 
-| Variable                               | Local default / source                                                   |
-| -------------------------------------- | ------------------------------------------------------------------------ |
-| `POSTGRES_URL`                         | `postgresql://postgres:postgres@127.0.0.1:54322/postgres`                |
-| `NEXT_PUBLIC_SUPABASE_URL`             | `http://127.0.0.1:54321`                                                 |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Publishable / anon key from `supabase status`                            |
-| `SUPABASE_SERVICE_ROLE_KEY`            | Service role key from `supabase status`; never expose to browser clients |
+| Variable                   | Local source                                                         |
+| -------------------------- | -------------------------------------------------------------------- |
+| `POSTGRES_URL`             | Written by `pnpm db start` / `pnpm db agent up` (`env.DB_URL`)       |
+| `POSTGRES_URL_NON_POOLING` | Written by the same commands, same value as `POSTGRES_URL`           |
 
-Only add `POSTGRES_URL_NON_POOLING` locally when a command needs a direct/session URL for DDL; set it to the same local `POSTGRES_URL` for Supabase local.
+The native stack runs no REST API, so the local app needs no Supabase URL or API keys.
+
+### Local laptop (1Password Environments)
+
+`pnpm dev` authenticates `op` with a keychain-backed service account and still
+needs `OP_ENVIRONMENT_ID` in `~/.config/atlaris/dev.sh` or the shell. Setup:
+[1Password local development](../third-party-services/1password-local-dev.md).
 
 ### Cloud agents (1Password Environments)
 

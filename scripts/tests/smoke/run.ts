@@ -2,6 +2,10 @@
  * Top-level smoke orchestration: one ephemeral Postgres per invocation,
  * migrations + seed, temp state file, guaranteed teardown.
  *
+ * Postgres comes from a Testcontainers container by default, or from a
+ * disposable database in this worktree's native Supabase stack when
+ * `ATLARIS_TEST_DB=native` (no Docker).
+ *
  * Infra-only: `SMOKE_INFRA_ONLY=1` or `pnpm exec tsx scripts/tests/smoke/run.ts --smoke-step=db`
  * Full: run DB lifecycle, then invoke Playwright with launcher-owned app servers.
  *
@@ -14,6 +18,10 @@ import type { ChildProcess } from 'node:child_process';
 
 import { prepareSmokeDatabase } from '@tests/helpers/smoke/db-pipeline';
 import {
+  createNativeSmokeDatabase,
+  dropNativeSmokeDatabase,
+} from '@tests/helpers/smoke/native-smoke-database';
+import {
   startSmokePostgresContainer,
   stopSmokePostgresContainer,
 } from '@tests/helpers/smoke/postgres-container';
@@ -25,6 +33,7 @@ import {
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
 import { assertSeededSmokeUserPresent } from '@tests/helpers/smoke/verify-seed';
+import { isNativeTestDbEnabled } from '@tests/setup/native-test-stack';
 import { spawn } from 'node:child_process';
 import { rmSync } from 'node:fs';
 
@@ -167,9 +176,11 @@ function awaitPlaywrightExit(child: ChildProcess): Promise<number> {
 
 async function main(): Promise<void> {
   const infraOnly = isInfraOnlyMode();
+  const nativeTestDb = isNativeTestDbEnabled();
   const playwrightArgs = getPlaywrightArgs(process.argv);
   const tempDir = createSmokeStateTempDir();
   let container: StartedPostgreSqlContainer | null = null;
+  let nativeSmokeDbUrl: string | null = null;
   let stateFilePath: string | null = null;
   let interruptedSignal: NodeJS.Signals | null = null;
   let activeChild: ChildProcess | null = null;
@@ -195,9 +206,15 @@ async function main(): Promise<void> {
   });
 
   try {
-    container = await startSmokePostgresContainer();
+    let connectionUrl: string;
+    if (nativeTestDb) {
+      nativeSmokeDbUrl = await createNativeSmokeDatabase();
+      connectionUrl = nativeSmokeDbUrl;
+    } else {
+      container = await startSmokePostgresContainer();
+      connectionUrl = container.getConnectionUri();
+    }
     throwIfInterrupted();
-    const connectionUrl = container.getConnectionUri();
 
     await prepareSmokeDatabase(connectionUrl);
     throwIfInterrupted();
@@ -242,6 +259,7 @@ async function main(): Promise<void> {
   } finally {
     await stopChildProcess(activeChild);
     await stopSmokePostgresContainer(container);
+    await dropNativeSmokeDatabase(nativeSmokeDbUrl);
     if (stateFilePath !== null) {
       cleanupSmokeStateFile(stateFilePath);
     }

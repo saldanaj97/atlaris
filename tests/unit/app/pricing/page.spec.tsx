@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   clerkPricingTableMock: vi.fn(),
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
+  resolveSiteGateMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
 }));
 
@@ -28,6 +29,10 @@ vi.mock('@/app/(landing)/pricing/components/Pricing.module.css', () => ({
 vi.mock('@/features/billing/checkout-return-server', () => ({
   getOptionalCheckoutBillingSignature:
     mocks.getOptionalCheckoutBillingSignatureMock,
+}));
+
+vi.mock('@/lib/proxy/site-gate', () => ({
+  resolveSiteGate: mocks.resolveSiteGateMock,
 }));
 
 vi.mock('@/lib/auth/local-identity', () => ({
@@ -54,6 +59,7 @@ describe('PricingPage', () => {
       'free|active||0',
     );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
+    mocks.resolveSiteGateMock.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -82,10 +88,28 @@ describe('PricingPage', () => {
     );
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
+        appClosed: false,
         newSubscriptionRedirectUrl: `${ROUTES.SETTINGS.BILLING}?checkout=1&checkoutBaseline=free%7Cactive%7C%7C0`,
       }),
     );
   });
+
+  it.each(['maintenance', 'waitlist'] as const)(
+    'keeps pricing visible behind the %s gate without reading account billing state',
+    async (gate) => {
+      mocks.resolveSiteGateMock.mockResolvedValue(gate);
+
+      await renderPricingPage();
+
+      expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
+      expect(
+        mocks.getOptionalCheckoutBillingSignatureMock,
+      ).not.toHaveBeenCalled();
+      expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
+        expect.objectContaining({ appClosed: true }),
+      );
+    },
+  );
 
   it('renders local pricing fixtures instead of Clerk when Clerk UI is disabled', async () => {
     mocks.shouldUseClerkUiMock.mockReturnValue(false);

@@ -81,10 +81,10 @@ describe('Plan creation', () => {
 });
 ```
 
-For RLS policy tests, use RLS clients and run (Docker required for Testcontainers):
+For RLS policy tests, use RLS clients and run (Docker required for Testcontainers; add `--native-db` to use the native Supabase `test` stack instead):
 
 ```bash
-pnpm test:security
+pnpm test security
 # or: pnpm vitest run --project security tests/security/
 ```
 
