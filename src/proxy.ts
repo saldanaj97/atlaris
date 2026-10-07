@@ -35,6 +35,7 @@ function buildProxyRequestContext(request: NextRequest) {
   const contentSecurityPolicy = createContentSecurityPolicy({
     isDevelopment: appEnv.isDevelopment,
     nonce,
+    clerkPublishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   });
   return { correlationId, nonce, contentSecurityPolicy };
 }
