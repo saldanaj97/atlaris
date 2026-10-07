@@ -48,6 +48,22 @@ describe('WaitlistForm', () => {
     );
   });
 
+  it('locks the address and ignores repeat submits while joining', async () => {
+    mocks.joinWaitlist.mockReturnValue(new Promise(() => {}));
+    const user = userEvent.setup();
+    render(<WaitlistForm />);
+
+    const input = screen.getByLabelText('Email address');
+    await user.type(input, 'ada@example.com');
+    await user.click(screen.getByRole('button', { name: 'Join the waitlist' }));
+
+    const pending = screen.getByRole('button', { name: 'Joining…' });
+    expect(pending).toHaveAttribute('aria-disabled', 'true');
+    expect(input).toHaveAttribute('readonly');
+    await user.click(pending);
+    expect(mocks.joinWaitlist).toHaveBeenCalledOnce();
+  });
+
   it('shows a linked error and keeps the form when joining fails', async () => {
     mocks.joinWaitlist.mockRejectedValue(new Error('rate limited'));
     const user = userEvent.setup();

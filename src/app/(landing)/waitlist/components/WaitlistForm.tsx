@@ -7,7 +7,8 @@ import { clientLogger } from '@/lib/logging/client';
 import { useClerk } from '@clerk/nextjs';
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 
-const FINE_PRINT = 'One email when your invite is ready. No spam.';
+const FINE_PRINT =
+  'We’ll only email you about your waitlist spot and invite. No spam.';
 
 type Status = 'idle' | 'submitting' | 'joined' | 'error';
 
@@ -46,13 +47,16 @@ function WaitlistFields({
           placeholder='you@example.com'
           required
           disabled={disabled}
+          // Read-only (not disabled) while joining keeps focus and the submitted address fixed.
+          readOnly={submitting}
           aria-invalid={failed || undefined}
           aria-describedby={failed ? errorId : undefined}
         />
         <Button
           type='submit'
-          className='min-h-11 shrink-0 px-6'
+          className='min-h-11 shrink-0 px-6 aria-disabled:cursor-progress'
           disabled={disabled}
+          // Design system: pending actions keep focus; handleSubmit guards repeat submits.
           aria-disabled={submitting || undefined}
         >
           {submitting ? 'Joining…' : 'Join the waitlist'}
