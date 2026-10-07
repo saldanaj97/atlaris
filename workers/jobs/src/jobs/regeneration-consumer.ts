@@ -64,6 +64,8 @@ export function createWorkflowModuleLessonStarter(deps: {
     startModuleLessonGeneration(params, {
       dbClient: params.dbClient,
       isGenerationEnabled: deps.isEnabled,
+      // 'vercel' means "use the injected workflowStart", never an HTTP hop to this Worker.
+      runtime: () => 'vercel',
       workflowStart: async (_vercelWorkflow, [input]) => {
         // The start helper claims with `batchRequestId = correlationId`.
         const command: ModuleLessonsWorkflowParams = {
