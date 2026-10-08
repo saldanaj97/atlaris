@@ -18,6 +18,11 @@ The script maps targets to Environment **IDs**, so renaming an Environment in 1P
 2. Preview the change: `pnpm secrets:sync <provider> <environment> --dry-run`. It lists each name as `add`, `update`, or `skip` with the reason. Existing values on Vercel are encrypted, so an unchanged value still shows as `update`.
 3. Apply: run the same command without `--dry-run`. Production asks for confirmation; `--yes` skips it.
 
+## How values are written
+
+- **Workers:** `wrangler secret bulk`, with the values as JSON on stdin.
+- **Vercel:** one upsert per variable through `vercel api` (beta) on `POST /v10/projects/<id>/env`, with the value in the request body on stdin. `vercel env add` is not used: it can't target all Preview branches without an interactive prompt, and it exits 0 without writing when that prompt gets no answer. Existing entries keep their type; new ones are `sensitive`. A write counts only when the API response names the variable.
+
 ## When changes take effect
 
 - **Workers:** immediately. `wrangler secret bulk` deploys a new version with the same code; Git deploys keep the secrets.

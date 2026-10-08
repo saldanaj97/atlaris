@@ -299,31 +299,39 @@ async function cloudflareSecretNames(
 
 type VercelEnvEntry = {
   key: string;
+  type?: string;
   target?: string[];
   gitBranch?: string | null;
   configurationId?: string | null;
 };
 
+const VERCEL_ENV_ENDPOINT = `/v10/projects/${VERCEL_LINK.VERCEL_PROJECT_ID}/env`;
+const VERCEL_TEAM_QUERY = `teamId=${VERCEL_LINK.VERCEL_ORG_ID}`;
+
+/**
+ * Reads the project's variables through `vercel api`, which (unlike
+ * `vercel env ls`) needs no linked folder and reports each entry's type.
+ */
 async function vercelEnvState(environment: string, gitBranch?: string) {
-  const result = await run(
-    'vercel',
-    ['env', 'ls', environment, '--format', 'json'],
-    { env: VERCEL_LINK },
-  );
+  const result = await run('vercel', [
+    'api',
+    `${VERCEL_ENV_ENDPOINT}?${VERCEL_TEAM_QUERY}`,
+    '--raw',
+  ]);
   if (result.code !== 0) {
     throw new SecretsSyncUsageError(
-      `vercel env ls failed:\n${result.stderr.trim()}`,
+      `Reading Vercel variables failed:\n${result.stderr.trim()}`,
     );
   }
   const entries = (
     JSON.parse(result.stdout) as { envs: VercelEnvEntry[] }
   ).envs.filter((entry) => entry.target?.includes(environment));
+  const sameScope = entries.filter(
+    (entry) => (entry.gitBranch ?? undefined) === gitBranch,
+  );
   return {
-    existing: new Set(
-      entries
-        .filter((entry) => (entry.gitBranch ?? undefined) === gitBranch)
-        .map((entry) => entry.key),
-    ),
+    existing: new Set(sameScope.map((entry) => entry.key)),
+    types: new Map(sameScope.map((entry) => [entry.key, entry.type])),
     integrationOwned: new Set(
       entries
         .filter((entry) => entry.configurationId)
@@ -364,27 +372,66 @@ async function applyCloudflare(
   return result.code;
 }
 
+/**
+ * Upserts each variable through the REST API (`vercel api`). `vercel env add`
+ * cannot target all Preview branches without an interactive prompt, and it
+ * exits 0 without writing when the prompt gets no answer. The value travels in
+ * the request body on stdin, never on the command line.
+ */
 async function applyVercel(
   options: SyncOptions,
   values: Record<string, string>,
+  types: ReadonlyMap<string, string | undefined>,
 ): Promise<number> {
   for (const [name, value] of Object.entries(values)) {
-    const args = ['env', 'add', name, options.target.environment];
-    if (options.gitBranch) args.push(options.gitBranch);
-    args.push('--force', '--yes');
-    const result = await run('vercel', args, {
-      input: value,
-      env: VERCEL_LINK,
-    });
-    if (result.code !== 0) {
+    const body = {
+      key: name,
+      value,
+      // Keep an existing entry's type; new entries default to sensitive.
+      type: types.get(name) ?? 'sensitive',
+      target: [options.target.environment],
+      ...(options.gitBranch ? { gitBranch: options.gitBranch } : {}),
+    };
+    const result = await run(
+      'vercel',
+      [
+        'api',
+        `${VERCEL_ENV_ENDPOINT}?upsert=true&${VERCEL_TEAM_QUERY}`,
+        '-X',
+        'POST',
+        '--input',
+        '-',
+        '--raw',
+      ],
+      { input: JSON.stringify(body) },
+    );
+    if (result.code !== 0 || !writtenKey(result.stdout, name)) {
       console.error(
-        `[secrets] vercel env add ${name} failed:\n${result.stderr.trim()}`,
+        `[secrets] Writing ${name} to Vercel failed:\n${result.stderr.trim()}`,
       );
-      return result.code;
+      return result.code === 0 ? 1 : result.code;
     }
     console.log(`[secrets] set ${name}`);
   }
   return 0;
+}
+
+/** True when the API response names the variable it created or updated. */
+export function writtenKey(responseBody: string, name: string): boolean {
+  try {
+    const parsed = JSON.parse(responseBody) as {
+      key?: string;
+      created?: { key?: string } | { key?: string }[];
+    };
+    const created = Array.isArray(parsed.created)
+      ? parsed.created
+      : parsed.created
+        ? [parsed.created]
+        : [];
+    return parsed.key === name || created.some((entry) => entry.key === name);
+  } catch {
+    return false;
+  }
 }
 
 async function redeployVercel(options: SyncOptions): Promise<number> {
@@ -427,6 +474,10 @@ export async function runSecretsSync(argv: readonly string[]): Promise<number> {
   );
 
   const source = await readEnvironment(target);
+  const vercelState =
+    target.provider === 'vercel'
+      ? await vercelEnvState(target.environment, options.gitBranch)
+      : undefined;
   const plan =
     target.provider === 'cloudflare'
       ? planSync({
@@ -441,7 +492,8 @@ export async function runSecretsSync(argv: readonly string[]): Promise<number> {
       : planSync({
           provider: 'vercel',
           names: Object.keys(source),
-          ...(await vercelEnvState(target.environment, options.gitBranch)),
+          existing: vercelState!.existing,
+          integrationOwned: vercelState!.integrationOwned,
         });
 
   console.log(formatPlan(plan));
@@ -476,7 +528,7 @@ export async function runSecretsSync(argv: readonly string[]): Promise<number> {
   const code =
     target.provider === 'cloudflare'
       ? await applyCloudflare(target, writes)
-      : await applyVercel(options, writes);
+      : await applyVercel(options, writes, vercelState!.types);
   if (code !== 0) return code;
   console.log(
     target.provider === 'cloudflare'

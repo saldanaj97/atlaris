@@ -6,6 +6,7 @@ import {
   readWranglerVarNames,
   SecretsSyncUsageError,
   SYNC_TARGETS,
+  writtenKey,
 } from '../../../scripts/secrets/sync';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -146,5 +147,20 @@ describe('planSync', () => {
         { name: 'POSTGRES_URL', action: 'skip', reason: 'integration' },
       ]),
     ).toBe('  add    A\n  skip   POSTGRES_URL  (integration)');
+  });
+});
+
+describe('writtenKey', () => {
+  it('accepts a response that created or updated the variable', () => {
+    expect(writtenKey('{"created":{"key":"APP_URL"}}', 'APP_URL')).toBe(true);
+    expect(writtenKey('{"created":[{"key":"APP_URL"}]}', 'APP_URL')).toBe(true);
+  });
+
+  it('rejects failures, other keys, and non-JSON output', () => {
+    expect(
+      writtenKey('{"created":[],"failed":[{"error":{}}]}', 'APP_URL'),
+    ).toBe(false);
+    expect(writtenKey('{"created":{"key":"OTHER"}}', 'APP_URL')).toBe(false);
+    expect(writtenKey('Error: forbidden', 'APP_URL')).toBe(false);
   });
 });
