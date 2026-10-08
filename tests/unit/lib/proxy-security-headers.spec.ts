@@ -1,4 +1,7 @@
-import { createContentSecurityPolicy } from '@/lib/proxy/security-headers';
+import {
+  clerkFrontendApiOrigin,
+  createContentSecurityPolicy,
+} from '@/lib/proxy/security-headers';
 import { describe, expect, it } from 'vitest';
 
 describe('proxy security headers', () => {
@@ -30,6 +33,35 @@ describe('proxy security headers', () => {
     expect(csp).toContain("'unsafe-eval'");
     expect(csp).toContain("'unsafe-inline'");
     expect(csp).toContain('https://*.clerk.accounts.dev');
+  });
+
+  it('allows the production Clerk Frontend API host from the publishable key', () => {
+    const csp = createContentSecurityPolicy({
+      isDevelopment: false,
+      nonce: 'request-nonce',
+      clerkPublishableKey: `pk_live_${btoa('clerk.atlaris.app$')}`,
+    });
+
+    const scriptSrc =
+      csp
+        .split('; ')
+        .find((directive) => directive.startsWith('script-src ')) ?? '';
+
+    expect(scriptSrc).toBe(
+      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://clerk.atlaris.app https://challenges.cloudflare.com https://js.stripe.com",
+    );
+  });
+
+  it.each([
+    ['missing', undefined],
+    ['malformed', 'pk_live_%%%'],
+    ['non-host payload', `pk_live_${btoa("evil.example 'unsafe-inline'$")}`],
+    [
+      'development instance',
+      `pk_test_${btoa('fine-owl-1.clerk.accounts.dev$')}`,
+    ],
+  ])('adds no extra Clerk origin for a %s key', (_label, key) => {
+    expect(clerkFrontendApiOrigin(key)).toBe(null);
   });
 
   it('rejects production CSP without nonce', () => {
