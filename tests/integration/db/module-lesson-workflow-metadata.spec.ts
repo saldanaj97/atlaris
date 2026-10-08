@@ -44,6 +44,7 @@ describe('module lesson workflow metadata (integration)', () => {
       {
         batchRequestId,
         workflow: {
+          provider: 'workflow-sdk',
           runId: `wrun_${authUserId}`,
           startedAt,
         },
@@ -76,6 +77,46 @@ describe('module lesson workflow metadata (integration)', () => {
     });
   });
 
+  it('records the cloudflare-workflow provider when a Worker instance adopts the claim', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-adopt-cf');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId, topic: 'Adopt Worker claim' });
+    const mod = await createTestModule({ planId: plan.id });
+    const batchRequestId = `batch_${authUserId}`;
+    const runId = `lessons-${mod.id}-${batchRequestId}`;
+    const startedAt = new Date().toISOString();
+
+    await claimModuleLessonGenerationOrDescribe(db, plan.id, mod.id, userId, {
+      batchRequestId,
+    });
+    const adopted = await claimModuleLessonGenerationOrDescribe(
+      db,
+      plan.id,
+      mod.id,
+      userId,
+      {
+        batchRequestId,
+        workflow: { provider: 'cloudflare-workflow', runId, startedAt },
+      },
+    );
+    expect(adopted).toEqual({ kind: 'claimed', workflowStartedAt: startedAt });
+
+    const [row] = await db
+      .select({ metadata: modules.lessonGenerationMetadata })
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+
+    expect(row?.metadata).toEqual({
+      version: 1,
+      batchRequestId,
+      workflow: { provider: 'cloudflare-workflow', runId, startedAt },
+    });
+  });
+
   it('leaves a provisional claim untouched when a rival token adopts it', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-rival-batch');
     const userId = await ensureUser({
@@ -105,6 +146,7 @@ describe('module lesson workflow metadata (integration)', () => {
       {
         batchRequestId: rivalBatchRequestId,
         workflow: {
+          provider: 'workflow-sdk',
           runId: `wrun_${authUserId}_rival`,
           startedAt: new Date().toISOString(),
         },
@@ -185,6 +227,7 @@ describe('module lesson workflow metadata (integration)', () => {
       {
         batchRequestId: secondBatchRequestId,
         workflow: {
+          provider: 'workflow-sdk',
           runId: `wrun_${authUserId}_adopted`,
           startedAt,
         },
@@ -234,6 +277,7 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
+          provider: 'workflow-sdk',
           runId,
           startedAt,
         },
@@ -271,6 +315,7 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
+          provider: 'workflow-sdk',
           runId,
           startedAt: replayStartedAt,
         },
@@ -286,6 +331,7 @@ describe('module lesson workflow metadata (integration)', () => {
       userId,
       {
         workflow: {
+          provider: 'workflow-sdk',
           runId: `${runId}_other`,
           startedAt: new Date().toISOString(),
         },
@@ -317,7 +363,13 @@ describe('module lesson workflow metadata (integration)', () => {
       plan.id,
       mod.id,
       userId,
-      { workflow: { runId: runA, startedAt: new Date().toISOString() } },
+      {
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: runA,
+          startedAt: new Date().toISOString(),
+        },
+      },
     );
     expect(claimA.kind).toBe('claimed');
 
@@ -345,7 +397,13 @@ describe('module lesson workflow metadata (integration)', () => {
       plan.id,
       mod.id,
       userId,
-      { workflow: { runId: runB, startedAt: new Date().toISOString() } },
+      {
+        workflow: {
+          provider: 'workflow-sdk',
+          runId: runB,
+          startedAt: new Date().toISOString(),
+        },
+      },
     );
     expect(claimB.kind).toBe('claimed');
 

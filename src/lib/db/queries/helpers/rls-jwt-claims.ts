@@ -1,5 +1,6 @@
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
+import { executeRows } from '@/lib/db/execute-rows';
 import { isServiceRoleDbClient } from '@supabase/service-role';
 import { sql } from 'drizzle-orm';
 
@@ -27,7 +28,8 @@ export async function prepareRlsTransactionContext(
   let requestJwtClaims: string | null = null;
 
   if (requiresJwtClaimReplay) {
-    const claimsRows = await dbClient.execute<{ claims: string | null }>(
+    const claimsRows = await executeRows<{ claims: string | null }>(
+      dbClient,
       sql`SELECT current_setting('request.jwt.claims', true) AS claims`,
     );
     const rawClaims = claimsRows[0]?.claims;

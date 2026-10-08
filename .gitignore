@@ -83,3 +83,8 @@ designs/**
 # clerk configuration (can include secrets)
 /.clerk/
 /.swc
+
+# jobs Worker local state (secrets live in .dev.vars)
+workers/jobs/.dev.vars*
+!workers/jobs/.dev.vars.example
+workers/jobs/.wrangler/

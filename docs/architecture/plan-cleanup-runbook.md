@@ -19,7 +19,19 @@ Cleanup operations:
 | `PLAN_CLEANUP_ENABLED`     | Master switch for the plan cleanup HTTP endpoint (defaults to `false` when unset) | Set `true` in Vercel Production                                                   |
 | `MAINTENANCE_WORKER_TOKEN` | Bearer token for internal route auth                                              | Same value in Vercel Production and the GitHub `Production – atlaris` environment |
 
-## Scheduled Cleanup
+## Cloudflare Worker Owner (JCS-129, after cutover)
+
+After cutover the `atlaris-jobs` Worker owns the schedule: Cron `*/15 * * * *` runs `runPlanCleanupMaintenance` directly through Hyperdrive (`workers/jobs/src/jobs/plan-cleanup.ts`), with the same bounds as the route. Design: `docs/architecture/cloudflare-jobs-runtime.md`, Decision 7.
+
+| Item | Value |
+| --- | --- |
+| Switch | `JOB_PLAN_CLEANUP_ENABLED=true` (Worker variable, off when absent); `JOBS_PAUSED=true` pauses it |
+| Cutover | Disable the old owner first (GitHub repo variable `PLAN_CLEANUP_ENABLED=false`), then enable the Worker switch. Never run both owners. Production needs explicit approval |
+| Observation window | 7 days before B7 deletes the GitHub workflow and route |
+| Failures | Reported to Sentry (`atlaris-jobs`) with tags `job=plan-cleanup`, `runtime=cloudflare-worker`; the invocation is marked failed. No cron monitor |
+| Manual fallback | The HTTP route below stays available until B7 |
+
+## Scheduled Cleanup (current owner until cutover)
 
 Plan cleanup has **no** `pg_cron` schedule. Production is scheduled by `.github/workflows/plan-cleanup-scheduler.yml`, which POSTs to `https://atlaris.app/api/internal/maintenance/plans/cleanup` every 15 minutes.
 

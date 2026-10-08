@@ -1,0 +1,190 @@
+// atlaris-jobs: background jobs Worker. Layout and environments:
+// docs/architecture/cloudflare-jobs-runtime.md (Decisions 1, 2, 5).
+// The top level is local-only (`pnpm workers dev`) and is never deployed.
+// Bindings, vars, and secrets are non-inheritable, so each env lists its own.
+// Job switches (JOBS_PAUSED, JOB_*_ENABLED) are dashboard-managed variables
+// and never live here; keep_vars keeps them across Git deploys.
+{
+  "$schema": "../../node_modules/wrangler/config-schema.json",
+  "name": "atlaris-jobs",
+  "main": "src/index.ts",
+  // nodejs_compat is on by default from compatibility date 2026-08-04.
+  "compatibility_date": "2026-09-26",
+  "tsconfig": "./tsconfig.json",
+  "keep_vars": true,
+  "workers_dev": false,
+  "preview_urls": false,
+  "observability": { "enabled": true, "head_sampling_rate": 1 },
+  "version_metadata": { "binding": "CF_VERSION_METADATA" },
+  // Local only: `pnpm workers dev` sets
+  // CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE to this
+  // worktree's native Supabase stack, which takes precedence over this ID.
+  "hyperdrive": [
+    { "binding": "HYPERDRIVE", "id": "00000000000000000000000000000000" }
+  ],
+  // Worker replacements for Next/Vercel-only modules on job paths
+  // (design note, "Runtime compatibility audit").
+  "alias": {
+    "@sentry/nextjs": "@sentry/cloudflare",
+    "flags/next": "./src/runtime/flags-next.ts",
+    "@flags-sdk/vercel": "./src/runtime/flags-sdk-vercel.ts",
+    "workflow": "./src/runtime/workflow.ts",
+    "workflow/api": "./src/runtime/workflow-api.ts"
+  },
+  // Plan regeneration (B4): no dead-letter queue; job_queue stays the record
+  // and the */15 sweep re-sends lost work (design note, Decision 8).
+  "queues": {
+    "producers": [
+      { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-local" }
+    ],
+    "consumers": [
+      {
+        "queue": "atlaris-regeneration-local",
+        "max_batch_size": 1,
+        "max_batch_timeout": 0,
+        "max_retries": 3,
+        "max_concurrency": 2
+      }
+    ]
+  },
+  // Email delivery (B3b). Deployed envs start it from Workflow `schedules`
+  // (design note, Decision 8); locally it runs only from the manual command.
+  "workflows": [
+    {
+      "name": "atlaris-email-delivery",
+      "binding": "EMAIL_DELIVERY_WORKFLOW",
+      "class_name": "EmailDeliveryWorkflow"
+    },
+    // Module lesson generation (B5): started by POST /v1/module-lessons/start
+    // or by the regeneration consumer.
+    {
+      "name": "atlaris-module-lessons",
+      "binding": "MODULE_LESSONS_WORKFLOW",
+      "class_name": "ModuleLessonsWorkflow"
+    }
+  ],
+  "vars": {
+    "NODE_ENV": "development",
+    "WORKER_ENV": "development",
+    "APP_URL": "http://localhost:3000",
+    "SENTRY_DSN": "",
+    "LOG_LEVEL": "debug"
+  },
+  "env": {
+    "staging": {
+      "routes": [
+        { "pattern": "workers-staging.atlaris.app", "custom_domain": true }
+      ],
+      "vars": {
+        "NODE_ENV": "production",
+        "WORKER_ENV": "staging",
+        // The develop deployment's custom domain (design note, open question 1, resolved 2026-10-06).
+        "APP_URL": "https://staging.atlaris.app",
+        // atlaris-jobs Sentry project (not a secret).
+        "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
+        // Resend sender for staging email (B3b); the domain must be verified in Resend.
+        "RESEND_FROM": "Atlaris Staging <notifications@mail.atlaris.app>",
+        "RESEND_REPLY_TO": "support@atlaris.app",
+        "LOG_LEVEL": "info"
+      },
+      // atlaris-jobs-db-staging (Supabase atlaris-dev, direct connection).
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "3d880a7719be417eb9fbabc44380cf9c" }
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-staging" }
+        ],
+        "consumers": [
+          {
+            "queue": "atlaris-regeneration-staging",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 3,
+            "max_concurrency": 2
+          }
+        ]
+      },
+      "workflows": [
+        {
+          "name": "atlaris-email-delivery-staging",
+          "binding": "EMAIL_DELIVERY_WORKFLOW",
+          "class_name": "EmailDeliveryWorkflow",
+          // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
+          "schedules": ["0 14 * * *", "30 14 * * MON"]
+        },
+        {
+          "name": "atlaris-module-lessons-staging",
+          "binding": "MODULE_LESSONS_WORKFLOW",
+          "class_name": "ModuleLessonsWorkflow"
+        }
+      ],
+      "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "secrets": {
+        "required": [
+          "JOBS_SIGNING_SECRET",
+          "OPENROUTER_API_KEY",
+          "RESEND_API_KEY",
+          "EMAIL_UNSUBSCRIBE_TOKEN_SECRET"
+        ]
+      }
+    },
+    "production": {
+      "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }],
+      "vars": {
+        "NODE_ENV": "production",
+        "WORKER_ENV": "production",
+        "APP_URL": "https://atlaris.app",
+        // atlaris-jobs Sentry project (not a secret).
+        "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
+        // Resend sender for production email (B3b); same as the production app.
+        "RESEND_FROM": "Atlaris <notifications@mail.atlaris.app>",
+        "RESEND_REPLY_TO": "support@atlaris.app",
+        "LOG_LEVEL": "info"
+      },
+      // atlaris-jobs-db-production (Supabase atlaris-prod, direct connection).
+      "hyperdrive": [
+        { "binding": "HYPERDRIVE", "id": "d655ad23c1624151b787d53cf3188056" }
+      ],
+      "queues": {
+        "producers": [
+          { "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-production" }
+        ],
+        "consumers": [
+          {
+            "queue": "atlaris-regeneration-production",
+            "max_batch_size": 1,
+            "max_batch_timeout": 0,
+            "max_retries": 3,
+            "max_concurrency": 2
+          }
+        ]
+      },
+      "workflows": [
+        {
+          "name": "atlaris-email-delivery-production",
+          "binding": "EMAIL_DELIVERY_WORKFLOW",
+          "class_name": "EmailDeliveryWorkflow",
+          // Cloudflare weekdays start at 1 = Sunday, so Monday is MON.
+          "schedules": ["0 14 * * *", "30 14 * * MON"]
+        },
+        {
+          "name": "atlaris-module-lessons-production",
+          "binding": "MODULE_LESSONS_WORKFLOW",
+          "class_name": "ModuleLessonsWorkflow"
+        }
+      ],
+      "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
+      "version_metadata": { "binding": "CF_VERSION_METADATA" },
+      "secrets": {
+        "required": [
+          "JOBS_SIGNING_SECRET",
+          "OPENROUTER_API_KEY",
+          "RESEND_API_KEY",
+          "EMAIL_UNSUBSCRIBE_TOKEN_SECRET"
+        ]
+      }
+    }
+  }
+}

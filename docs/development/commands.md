@@ -63,6 +63,17 @@ vercel --prod --skip-domain
 
 Do not promote the rehearsal or treat it as a traffic gate. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment.
 
+### Jobs Worker (Cloudflare)
+
+The background jobs Worker in `workers/jobs/`. Local loop and `.dev.vars`: [workers-local-dev.md](./workers-local-dev.md).
+
+```bash
+pnpm workers dev          # Run the Worker locally (wrangler dev) against this worktree's database
+pnpm workers check        # Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules
+pnpm workers types        # Regenerate workers/jobs/worker-configuration.d.ts after a wrangler.jsonc change
+pnpm check:type:workers   # Typecheck the Worker and its unit tests (part of pnpm typecheck)
+```
+
 ## Build & Production
 
 ```bash

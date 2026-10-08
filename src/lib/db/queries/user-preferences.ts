@@ -2,6 +2,7 @@ import type { DbClient } from '@/lib/db/types';
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { SQL } from 'drizzle-orm';
 
+import { executeRows } from '@/lib/db/execute-rows';
 import {
   prepareRlsTransactionContext,
   reapplyJwtClaimsInTransaction,
@@ -139,7 +140,11 @@ export async function saveEmailNotificationPreferences(
       currentByCategory.set(row.category, row);
     }
 
-    const [settingsRow] = (await tx.execute(sql`
+    const [settingsRow] = await executeRows<{
+      unsubscribe_all_optional_emails: boolean;
+    }>(
+      tx,
+      sql`
       INSERT INTO ${userEmailNotificationSettings} (
         "user_id",
         "unsubscribe_all_optional_emails",
@@ -154,7 +159,8 @@ export async function saveEmailNotificationPreferences(
         "unsubscribe_all_optional_emails" = EXCLUDED."unsubscribe_all_optional_emails",
         "updated_at" = now()
       RETURNING "unsubscribe_all_optional_emails"
-    `)) as Array<{ unsubscribe_all_optional_emails: boolean }>;
+    `,
+    );
 
     if (!settingsRow) {
       throw new Error('Failed to persist email notification settings row.');
@@ -182,7 +188,12 @@ export async function saveEmailNotificationPreferences(
       )`;
     });
 
-    const categoryRows = (await tx.execute(sql`
+    const categoryRows = await executeRows<{
+      category: EmailNotificationCategory;
+      enabled: boolean;
+    }>(
+      tx,
+      sql`
       INSERT INTO ${userEmailNotificationPreferences} (
         "user_id",
         "category",
@@ -196,10 +207,8 @@ export async function saveEmailNotificationPreferences(
         "unsubscribed_at" = EXCLUDED."unsubscribed_at",
         "updated_at" = now()
       RETURNING "category", "enabled"
-    `)) as Array<{
-      category: EmailNotificationCategory;
-      enabled: boolean;
-    }>;
+    `,
+    );
 
     if (categoryRows.length !== EMAIL_NOTIFICATION_CATEGORIES.length) {
       throw new Error('Failed to persist email notification category rows.');
@@ -249,7 +258,14 @@ export async function upsertUserModelPreferences(
     );
   }
 
-  const [row] = (await dbClient.execute(sql`
+  const [row] = await executeRows<{
+    preferred_ai_model: string | null;
+    preferred_regeneration_ai_model: string | null;
+    preferred_lesson_ai_model: string | null;
+    analytics_timezone: string;
+  }>(
+    dbClient,
+    sql`
     INSERT INTO ${userPreferences} (
       "user_id",
       "preferred_ai_model",
@@ -271,12 +287,8 @@ export async function upsertUserModelPreferences(
       "preferred_regeneration_ai_model",
       "preferred_lesson_ai_model",
       "analytics_timezone"
-  `)) as Array<{
-    preferred_ai_model: string | null;
-    preferred_regeneration_ai_model: string | null;
-    preferred_lesson_ai_model: string | null;
-    analytics_timezone: string;
-  }>;
+  `,
+  );
 
   return row ? mapPreferenceRow(row) : undefined;
 }
@@ -286,7 +298,14 @@ export async function upsertUserAnalyticsTimezone(
   analyticsTimezone: string,
   dbClient: Pick<DbClient, 'execute'>,
 ): Promise<UserPreferenceValues | undefined> {
-  const [row] = (await dbClient.execute(sql`
+  const [row] = await executeRows<{
+    preferred_ai_model: string | null;
+    preferred_regeneration_ai_model: string | null;
+    preferred_lesson_ai_model: string | null;
+    analytics_timezone: string;
+  }>(
+    dbClient,
+    sql`
     INSERT INTO ${userPreferences} ("user_id", "analytics_timezone", "updated_at")
     VALUES (${userId}, ${analyticsTimezone}, now())
     ON CONFLICT ("user_id") DO UPDATE SET
@@ -297,12 +316,8 @@ export async function upsertUserAnalyticsTimezone(
       "preferred_regeneration_ai_model",
       "preferred_lesson_ai_model",
       "analytics_timezone"
-  `)) as Array<{
-    preferred_ai_model: string | null;
-    preferred_regeneration_ai_model: string | null;
-    preferred_lesson_ai_model: string | null;
-    analytics_timezone: string;
-  }>;
+  `,
+  );
 
   return row ? mapPreferenceRow(row) : undefined;
 }
