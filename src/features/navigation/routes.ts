@@ -30,6 +30,7 @@ export const ROUTES = {
   },
   PRICING: '/pricing',
   ABOUT: '/about',
+  WAITLIST: '/waitlist',
 } as const;
 
 export function planDetailPath(planId: string): string {

@@ -9,6 +9,7 @@ import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-retu
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
+import { resolveSiteGate } from '@/lib/proxy/site-gate';
 
 export const metadata: Metadata = {
   title: 'Pricing | Atlaris',
@@ -35,9 +36,12 @@ const pricingAppearance = {
 
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
-  const checkoutBaseline = showClerkBilling
-    ? await getOptionalCheckoutBillingSignature()
-    : null;
+  // The proxy keeps /pricing live while a site gate is on; skip the account DB read.
+  const appClosed = (await resolveSiteGate()) !== null;
+  const checkoutBaseline =
+    showClerkBilling && !appClosed
+      ? await getOptionalCheckoutBillingSignature()
+      : null;
   const checkoutReturnUrl = buildCheckoutReturnRedirectUrl(
     ROUTES.SETTINGS.BILLING,
     checkoutBaseline,
@@ -49,6 +53,7 @@ export default async function PricingPage(): Promise<ReactElement> {
         {showClerkBilling ? (
           <ClerkPricingTable
             appearance={pricingAppearance}
+            appClosed={appClosed}
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
         ) : (

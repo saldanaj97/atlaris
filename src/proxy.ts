@@ -1,4 +1,3 @@
-import { maintenanceMode } from '@/flags';
 import {
   appEnv,
   devAuthEnv,
@@ -7,11 +6,11 @@ import {
   readWorkflowCallbackTokenConfig,
 } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
-import { resolveEffectiveMaintenanceMode } from '@/lib/proxy/maintenance-mode';
 import {
   isProviderWebhookRoute,
   isProtectedRoute,
-  resolveMaintenanceRedirectPath,
+  resolveSiteGateRedirectPath,
+  resolveSiteGateRedirectSource,
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
@@ -20,6 +19,7 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
+import { resolveSiteGate } from '@/lib/proxy/site-gate';
 import {
   isWorkflowCallbackPath,
   resolveWorkflowCallbackAccess,
@@ -35,6 +35,7 @@ function buildProxyRequestContext(request: NextRequest) {
   const contentSecurityPolicy = createContentSecurityPolicy({
     isDevelopment: appEnv.isDevelopment,
     nonce,
+    clerkPublishableKey: process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   });
   return { correlationId, nonce, contentSecurityPolicy };
 }
@@ -123,22 +124,19 @@ async function handleProxyRequest(
     return nextWithProxyContext(request);
   }
 
-  // Maintenance mode
-  const effectiveMaintenanceMode = await resolveEffectiveMaintenanceMode(
-    appEnv.maintenanceMode,
-    { resolveMaintenanceFlag: maintenanceMode },
-  );
-  const maintenanceTarget = resolveMaintenanceRedirectPath(
-    effectiveMaintenanceMode,
-    pathname,
-    { allowMaintenancePreview: appEnv.isDevelopment },
-  );
+  // Maintenance mode / launch waitlist
+  const siteGate = await resolveSiteGate();
+  const gateTarget = resolveSiteGateRedirectPath(siteGate, pathname, {
+    allowGatePagePreview: appEnv.isDevelopment,
+  });
 
-  if (maintenanceTarget !== null) {
-    return withCorrelationId(
-      request,
-      NextResponse.redirect(new URL(maintenanceTarget, request.url)),
-    );
+  if (gateTarget !== null) {
+    const redirectUrl = new URL(gateTarget, request.url);
+    const source = resolveSiteGateRedirectSource(pathname);
+    if (siteGate !== null && source !== null) {
+      redirectUrl.searchParams.set('from', source);
+    }
+    return withCorrelationId(request, NextResponse.redirect(redirectUrl));
   }
 
   // Auth protection
