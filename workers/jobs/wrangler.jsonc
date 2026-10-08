@@ -138,6 +138,9 @@
         "APP_URL": "https://atlaris.app",
         // atlaris-jobs Sentry project (not a secret).
         "SENTRY_DSN": "https://416c04d341072377c95d42ea58df1b80@o4510462002462720.ingest.us.sentry.io/4512206008745984",
+        // Resend sender for production email (B3b); same as the production app.
+        "RESEND_FROM": "Atlaris <notifications@mail.atlaris.app>",
+        "RESEND_REPLY_TO": "support@atlaris.app",
         "LOG_LEVEL": "info"
       },
       // atlaris-jobs-db-production (Supabase atlaris-prod, direct connection).
