@@ -1,4 +1,7 @@
-import { flag } from '../../../../workers/jobs/src/runtime/flags-next';
+import {
+  FLAG_SWITCHES,
+  flag,
+} from '../../../../workers/jobs/src/runtime/flags-next';
 import { vercelAdapter } from '../../../../workers/jobs/src/runtime/flags-sdk-vercel';
 import {
   getStepMetadata,
@@ -8,11 +11,31 @@ import {
   getRun,
   start,
 } from '../../../../workers/jobs/src/runtime/workflow-api';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 describe('flags/next alias', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
+  });
+
+  // src/flags.ts declares every flag at import, so an unmapped key makes the
+  // Worker throw on startup and Cloudflare rejects the upload.
+  it('maps every flag key declared in src/flags.ts', () => {
+    const source = readFileSync(
+      join(import.meta.dirname, '../../../../src/flags.ts'),
+      'utf8',
+    );
+    const keys = [...source.matchAll(/key: '([^']+)'/g)].map((m) => m[1]);
+    expect(keys.length).toBeGreaterThan(0);
+    expect(keys.filter((key) => !(key! in FLAG_SWITCHES))).toEqual([]);
+  });
+
+  it('keeps launch-waitlist off on the Worker', async () => {
+    await expect(flag<boolean>({ key: 'launch-waitlist' })()).resolves.toBe(
+      false,
+    );
   });
 
   it('maps module-lesson-generation to JOB_MODULE_LESSONS_ENABLED', async () => {
