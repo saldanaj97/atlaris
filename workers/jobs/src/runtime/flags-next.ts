@@ -6,11 +6,13 @@ import type { JobSwitchVars } from '../env';
 import { isJobEnabled, type JobName } from '../switches';
 
 /** App flag key → Worker switch; `null` means always off on the Worker. */
-const FLAG_SWITCHES: Readonly<Record<string, JobName | null>> = {
+export const FLAG_SWITCHES: Readonly<Record<string, JobName | null>> = {
   'email-notification-delivery': 'EMAIL_DELIVERY',
   'module-lesson-generation': 'MODULE_LESSONS',
   // The Worker does not follow the app's maintenance mode (Decision 7).
   'maintenance-mode': null,
+  // A user-traffic gate on the app; no job reads it.
+  'launch-waitlist': null,
 };
 
 type FlagDeclaration = { readonly key: string };
