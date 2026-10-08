@@ -52,20 +52,21 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 - Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
 - Draft PRs do not run `ci-pr`; the gate starts when the PR is marked ready for review and reruns on later updates.
-- Runs: lint, type-check, dependency audit, unit tests, PR integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates), RLS security tests, and production workflow tests
+- Runs: lint, type-check, dependency audit, unit tests, PR integration tests (`integration-light`: impacted tests from the `integration tests` Smarter Testing suite, all tests for PRs into `main`), RLS security tests, and production workflow tests
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
-- `detect-changes` still selects related versus full integration coverage inside code pipelines. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
+- `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `workflow-tests` (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
 ### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
 
 - Trigger: **All pushes** that are not `pull_request` events, with jobs filtered to `develop` and `main`. Keep the CircleCI GitHub App **All pushes** trigger so this workflow still starts on trunk.
-- Runs: full integration tests (`integration-tests`) and RLS security tests (`security-tests`) after merge
+- Runs: integration tests (`integration-tests`: impacted tests on `develop`, all tests on `main`, via the `integration tests` Smarter Testing suite) and RLS security tests (`security-tests`) after merge
 - There is no CircleCI `merge_group` trigger. Do not treat merge-queue SHAs as gated here.
 - Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
 - Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
 - On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
+- On `develop`, `integration-impact-analysis` does the same for the `integration tests` suite. Its analysis command takes a lock so atoms run one at a time, because each integration run rebuilds one shared template database.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
 Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.

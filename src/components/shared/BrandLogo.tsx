@@ -16,8 +16,8 @@ interface BrandLogoProps {
   /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
   /**
-   * When false, render the lockup without a destination.
-   * Maintenance must not link home while that route redirects back here.
+   * When false, render the lockup without a destination
+   * (e.g. a second lockup on a page that already links home).
    */
   linked?: boolean;
 }
