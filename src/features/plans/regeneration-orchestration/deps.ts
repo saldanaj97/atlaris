@@ -92,7 +92,19 @@ export interface RegenerationOrchestrationDeps {
     ) => Promise<PlanGenerationRateLimitResult>;
   };
   logger: Pick<typeof logger, 'debug' | 'info' | 'error' | 'warn'>;
+  /**
+   * Set when `REGENERATION_RUNTIME=cloudflare`: enqueue hands the job to the
+   * jobs Worker instead of attaching a Vercel workflow. Must not throw; a failed
+   * hand-off leaves the job pending for the Worker's sweep.
+   */
+  dispatch?: (input: RegenerationDispatchInput) => Promise<void>;
 }
+
+export type RegenerationDispatchInput = {
+  readonly jobId: string;
+  readonly planId: string;
+  readonly userId: string;
+};
 
 export function createDefaultRegenerationOrchestrationDeps(
   dbClient: DbClient,

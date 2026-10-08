@@ -1,4 +1,7 @@
-import { WorkflowSdkMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
+import {
+  CloudflareWorkflowRunMetadataSchema,
+  WorkflowSdkMetadataSchema,
+} from '@/shared/schemas/workflow-metadata.schemas';
 import {
   MAX_LESSON_BLOCK_TEXT_LENGTH,
   MAX_LESSON_BLOCK_TITLE_LENGTH,
@@ -79,7 +82,13 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
 export const ModuleLessonGenerationMetadataSchema = z.strictObject({
   version: z.literal(1),
   batchRequestId: z.string().max(128).optional(),
-  workflow: WorkflowSdkMetadataSchema.optional(),
+  /** Which runtime owns the run: Vercel Workflow SDK or a Cloudflare Workflow. */
+  workflow: z
+    .discriminatedUnion('provider', [
+      WorkflowSdkMetadataSchema,
+      CloudflareWorkflowRunMetadataSchema,
+    ])
+    .optional(),
   providerStartedAt: z.iso.datetime().optional(),
 });
 

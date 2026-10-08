@@ -13,6 +13,7 @@ import {
   getCurrentMonth,
   incrementLessonModulesGeneratedInTx,
 } from '@/features/billing/usage-metrics';
+import { executeRows } from '@/lib/db/execute-rows';
 import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import {
   prepareRlsTransactionContext,
@@ -144,6 +145,8 @@ export type LessonGenerationClaimResult =
   | { readonly kind: 'not_found' };
 
 type ModuleLessonWorkflowClaimMetadata = {
+  /** Runtime marker stored in `lessonGenerationMetadata.workflow.provider`. */
+  readonly provider: 'workflow-sdk' | 'cloudflare-workflow';
   readonly runId: string;
   readonly startedAt: string;
 };
@@ -357,7 +360,7 @@ export async function claimModuleLessonGenerationOrDescribe(
     ...(options?.workflow
       ? {
           workflow: {
-            provider: 'workflow-sdk',
+            provider: options.workflow.provider,
             runId: options.workflow.runId,
             startedAt: options.workflow.startedAt,
           },
@@ -510,7 +513,9 @@ async function updateTaskLessonsInTx(
       sql`(${task.taskId}::uuid, ${JSON.stringify(task.content)}::jsonb)`,
   );
 
-  const updated = (await tx.execute(sql`
+  const updated = await executeRows<{ id: string }>(
+    tx,
+    sql`
     UPDATE tasks AS t
     SET
       lesson_content = v.content,
@@ -519,7 +524,8 @@ async function updateTaskLessonsInTx(
     WHERE t.id = v.id
       AND t.module_id = ${moduleId}::uuid
     RETURNING t.id
-  `)) as Array<{ id: string }>;
+  `,
+  );
 
   if (updated.length !== parsedTasks.length) {
     throw new Error(

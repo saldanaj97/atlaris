@@ -16,6 +16,14 @@ const loggerOptions: LoggerOptions = {
     level: (label) => ({ level: label }),
   },
   timestamp: stdTimeFunctions.isoTime,
+  // pino's browser build (the jobs Worker bundle) logs one object per call so
+  // Workers Logs can index its fields. Node ignores this option.
+  browser: {
+    asObject: true,
+    formatters: {
+      level: (label) => ({ level: label }),
+    },
+  },
 };
 
 export const logger = pino(loggerOptions);

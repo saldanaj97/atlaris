@@ -6,6 +6,7 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 
 import { getAttemptCap } from '@/lib/config/env';
+import { executeRows } from '@/lib/db/execute-rows';
 import { sql, type SQL } from 'drizzle-orm';
 
 export type PlanListRowStatus = PlanReadStatus;
@@ -262,12 +263,15 @@ export async function getPlanListPageRowsForUser(params: {
     referenceTimestamp: params.referenceTimestamp,
     planIds: params.planIds,
   });
-  const countRows = (await client.execute(sql`
+  const countRows = await executeRows<StatusCountRow>(
+    client,
+    sql`
     ${rowsSql}
     select status, count(*)::int as total
     from status_rows
     group by status
-  `)) as StatusCountRow[];
+  `,
+  );
   const statusCounts = { ...EMPTY_STATUS_COUNTS };
   for (const row of countRows) {
     statusCounts[row.status] = row.total;
@@ -282,7 +286,9 @@ export async function getPlanListPageRowsForUser(params: {
   const totalPages = Math.ceil(totalItems / pageSize);
   const page = Math.min(normalizePage(params.query.page), totalPages || 1);
   const statusFilter = status ? sql`where status = ${status}` : sql``;
-  const itemRows = (await client.execute(sql`
+  const itemRows = await executeRows<PlanListItemRow>(
+    client,
+    sql`
     ${rowsSql}
     select
       id,
@@ -297,7 +303,8 @@ export async function getPlanListPageRowsForUser(params: {
     ${planListOrderBy(params.query.sort)}
     limit ${pageSize}
     offset ${(page - 1) * pageSize}
-  `)) as PlanListItemRow[];
+  `,
+  );
 
   return {
     items: itemRows.map((row): PlanListQueryItemRow => ({

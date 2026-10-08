@@ -34,7 +34,8 @@ vi.mock('@/features/ai/orchestrator/provider-invocation', () => ({
 }));
 
 vi.mock('@/features/lesson-content/parse-module-lesson-batch', () => ({
-  parseModuleLessonBatchFromStream: mocks.parseBatch,
+  bufferModuleLessonBatchStream: vi.fn(async () => '{}'),
+  parseModuleLessonBatchText: mocks.parseBatch,
 }));
 
 vi.mock('@/features/ai/model-resolver', () => ({
@@ -273,14 +274,16 @@ describe('runModuleLessonGenerationWork', () => {
       name: 'parser',
       arrange: () => {
         mocks.invokeProvider.mockResolvedValue(providerOk());
-        mocks.parseBatch.mockRejectedValue(new Error('parse'));
+        mocks.parseBatch.mockImplementation(() => {
+          throw new Error('parse');
+        });
       },
     },
     {
       name: 'success persistence',
       arrange: (taskId: string) => {
         mocks.invokeProvider.mockResolvedValue(providerOk());
-        mocks.parseBatch.mockResolvedValue(parsedBatch(taskId));
+        mocks.parseBatch.mockReturnValue(parsedBatch(taskId));
         mocks.commitSuccess.mockRejectedValue(new Error('persist'));
       },
     },
@@ -428,7 +431,7 @@ describe('runModuleLessonGenerationWork', () => {
       modelId: 'google/gemini-3-flash-preview',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
-    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+    mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
 
     const userId = createId('user');
     await runModuleLessonGenerationWork(
@@ -462,7 +465,7 @@ describe('runModuleLessonGenerationWork', () => {
         modelId: AI_DEFAULT_MODEL,
       });
       mocks.invokeProvider.mockResolvedValue(providerOk());
-      mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+      mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
 
       await runModuleLessonGenerationWork(
         {
@@ -499,7 +502,7 @@ describe('runModuleLessonGenerationWork', () => {
       modelId: 'google/gemini-3-flash-preview',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
-    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+    mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
 
     const staleCallerSnapshot = {
       load: workLoad(),
@@ -543,7 +546,7 @@ describe('runModuleLessonGenerationWork', () => {
       modelId: 'openai/gpt-5.2',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
-    mocks.parseBatch.mockResolvedValue(parsedBatch(createId('task')));
+    mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
 
     await runModuleLessonGenerationWork(
       {

@@ -29,7 +29,19 @@ Supabase Cron schedules the function daily through migration `20260522223908_sch
 | `ai_usage_events`       | Not deleted by this endpoint                                 |
 | `email_notification_delivery_runs` / `email_notification_deliveries` | Not deleted by this endpoint; see the email delivery runbook for payload minimization and non-sensitive inventory |
 
-## Scheduled Cleanup
+## Cloudflare Worker Owner (JCS-129, after cutover)
+
+After cutover the `atlaris-jobs` Worker owns the schedule: Cron `0 3 * * *` calls `private.cleanup_retained_db_rows` through Hyperdrive (`workers/jobs/src/jobs/retention-cleanup.ts`). Design: `docs/architecture/cloudflare-jobs-runtime.md`, Decision 7.
+
+| Item | Value |
+| --- | --- |
+| Switch | `JOB_RETENTION_CLEANUP_ENABLED=true` (Worker variable, off when absent); `JOBS_PAUSED=true` pauses it |
+| Cutover | Unschedule the pg_cron job (`SELECT cron.unschedule('retention-cleanup');`), then enable the Worker switch before the next 03:00 UTC. Never run both owners. Production needs explicit approval |
+| Observation window | 7 daily runs before B7 removes the old owner |
+| Failures | Reported to Sentry (`atlaris-jobs`) with tags `job=retention-cleanup`, `runtime=cloudflare-worker`; the invocation is marked failed. No cron monitor |
+| Manual fallback | The HTTP route below stays available until B7 |
+
+## Scheduled Cleanup (current owner until cutover)
 
 The canonical production schedule is installed by the database migration:
 

@@ -151,6 +151,11 @@ async function enqueueAdmittedRegeneration(
   }
 
   const acceptedJobId = enqueueResult.id;
+  if (d.dispatch) {
+    await d.dispatch({ jobId: acceptedJobId, planId, userId });
+    return { kind: 'enqueued', jobId: acceptedJobId };
+  }
+
   const correlationId = `regen-${acceptedJobId}`;
   try {
     const attachResult = await attachPlanRegenerationWorkflow(
