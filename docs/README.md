@@ -85,6 +85,7 @@ Local development, env, deploy, and logging.
 | [local-database.md](./development/local-database.md) | Native Supabase local stack: dev, cloud agents, test stack, Docker fallback |
 | [supabase-native-spike.md](./development/supabase-native-spike.md) | JCS-121 spike: Supabase native (Docker-free) local stack evidence and go/no-go |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
+| [secrets-sync.md](./development/secrets-sync.md) | `pnpm secrets:sync`: push 1Password Environments to Workers and Vercel; production Worker workflow |
 | [workers-local-dev.md](./development/workers-local-dev.md) | Cloudflare jobs Worker local loop: `pnpm workers dev`, health check, cron trigger, `.dev.vars` |
 
 ## `security/`
@@ -169,6 +170,7 @@ docs/
 │   ├── local-database.md
 │   ├── supabase-native-spike.md
 │   ├── logging.md
+│   ├── secrets-sync.md
 │   └── workers-local-dev.md
 ├── security/
 │   ├── codex-scan-verification-2026-08-20.md

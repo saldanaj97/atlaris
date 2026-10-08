@@ -18,6 +18,7 @@
     "check:type:workers": "tsc -p workers/jobs --noEmit && tsc -p tests/unit/workers --noEmit",
     "db": "tsx scripts/db/cli.ts",
     "workers": "tsx scripts/workers/cli.ts",
+    "secrets:sync": "tsx scripts/secrets/sync.ts",
     "test": "tsx scripts/tests/cli.ts",
     "prepare": "husky || true"
   },
