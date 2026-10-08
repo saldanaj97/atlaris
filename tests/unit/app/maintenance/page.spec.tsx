@@ -1,6 +1,10 @@
 import MaintenancePage from '@/app/maintenance/page';
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
+  default: { star: 'star' },
+}));
 
 describe('MaintenancePage', () => {
   it('places the compact support footer after the maintenance content', () => {
@@ -10,10 +14,10 @@ describe('MaintenancePage', () => {
     const footer = screen.getByRole('contentinfo');
 
     expect(main).toHaveAttribute('tabindex', '-1');
-    expect(within(main).getByLabelText('Atlaris')).toBeInTheDocument();
+    // Marketing pages stay live during maintenance, so the header logo links back.
     expect(
-      within(main).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
-    ).not.toBeInTheDocument();
+      within(main).getByRole('link', { name: 'Atlaris - Go to homepage' }),
+    ).toHaveAttribute('href', '/landing');
     expect(main).toContainElement(
       screen.getByRole('heading', {
         level: 1,
@@ -23,6 +27,7 @@ describe('MaintenancePage', () => {
     expect(
       within(main).getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
+    expect(within(main).queryByText('Maintenance')).not.toBeInTheDocument();
     expect(
       within(main).getByText(
         /Atlaris is temporarily unavailable while maintenance is in progress/,
@@ -47,19 +52,17 @@ describe('MaintenancePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders the decorative mountain-lake backdrop artwork', () => {
+  it('renders the decorative star backdrop without photo artwork', () => {
     const { container } = render(<MaintenancePage />);
 
-    const backdrop = container.querySelector(
-      '[data-slot="responsive-backdrop"]',
-    );
-    expect(backdrop).not.toBeNull();
-    expect(backdrop).toHaveAttribute('aria-hidden', 'true');
+    const star = container.querySelector('.star');
+    expect(star).not.toBeNull();
+    expect(star?.closest('[aria-hidden="true"]')).not.toBeNull();
     expect(
-      container.querySelector('img[src*="maintenance-backdrop-desktop.jpg"]'),
-    ).not.toBeNull();
+      container.querySelector('[data-slot="responsive-backdrop"]'),
+    ).toBeNull();
     expect(
-      container.querySelector('img[src*="maintenance-backdrop-mobile.jpg"]'),
-    ).not.toBeNull();
+      container.querySelector('img[src*="maintenance-backdrop"]'),
+    ).toBeNull();
   });
 });

@@ -23,8 +23,6 @@ minimumReleaseAgeExclude:
   - "@supabase/cli-windows-x64@2.119.0"
   # JCS-122: http-cache-semantics 4.3.0 patches GHSA-ch52-4w7c-c8xp; clears minimumReleaseAge ~2026-10-11; remove then
   - http-cache-semantics@4.3.0
-  # JCS-127: source-map-js 1.2.2 patches GHSA-68fv-2mgg-jv7q; clears minimumReleaseAge ~2026-10-07; remove then
-  - source-map-js@1.2.2
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
@@ -64,13 +62,13 @@ overrides:
   uuid: ^11.1.1
   brace-expansion: ^5.0.11
   sharp: ^0.35.5
-  proxy-addr: ^2.0.8
-  source-map-js: ^1.2.2
   "@babel/core": ^7.29.6
   "@opentelemetry/core": ^2.8.0
   "@xhmikosr/decompress": ^11.1.4
   http-cache-semantics: ^4.3.0
   tmp: ^0.2.6
+  proxy-addr: ^2.0.8
+  source-map-js: ^1.2.2
 allowBuilds:
   "@openrouter/sdk": true
   "@sentry/cli": true

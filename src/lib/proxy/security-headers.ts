@@ -5,9 +5,38 @@ const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
 const STRIPE_CHECKOUT_SRC = 'https://js.stripe.com';
 const STRIPE_HOOKS_SRC = 'https://hooks.stripe.com';
 
-export type CreateContentSecurityPolicyInput =
+export type CreateContentSecurityPolicyInput = {
+  /** Production Clerk instances serve Clerk JS from their own Frontend API host. */
+  clerkPublishableKey?: string;
+} & (
   | { isDevelopment: true; nonce?: string }
-  | { isDevelopment: false; nonce: string };
+  | { isDevelopment: false; nonce: string }
+);
+
+/**
+ * Clerk Frontend API origin encoded in a publishable key
+ * (`pk_live_<base64("clerk.example.com$")>` → `https://clerk.example.com`),
+ * or null when the key is missing, malformed, or already covered by the
+ * development wildcard.
+ */
+export function clerkFrontendApiOrigin(
+  publishableKey: string | undefined,
+): string | null {
+  const encoded = publishableKey?.trim().split('_')[2];
+  if (!encoded) return null;
+
+  let host: string;
+  try {
+    host = atob(encoded).replace(/\$$/, '');
+  } catch {
+    return null;
+  }
+
+  if (!/^[a-z0-9.-]+$/i.test(host) || host.endsWith('.clerk.accounts.dev')) {
+    return null;
+  }
+  return `https://${host}`;
+}
 
 export function createContentSecurityPolicy(
   input: CreateContentSecurityPolicyInput,
@@ -20,19 +49,24 @@ export function createContentSecurityPolicy(
     }
   }
 
+  const clerkOrigin = clerkFrontendApiOrigin(input.clerkPublishableKey);
+  const clerkSrc = clerkOrigin
+    ? [CLERK_FRONTEND_API_SRC, clerkOrigin]
+    : [CLERK_FRONTEND_API_SRC];
+
   const scriptSrc = input.isDevelopment
     ? [
         "'self'",
         "'unsafe-inline'",
         "'unsafe-eval'",
-        CLERK_FRONTEND_API_SRC,
+        ...clerkSrc,
         CLOUDFLARE_CHALLENGES_SRC,
         STRIPE_CHECKOUT_SRC,
       ]
     : [
         "'self'",
         `'nonce-${input.nonce}'`,
-        CLERK_FRONTEND_API_SRC,
+        ...clerkSrc,
         CLOUDFLARE_CHALLENGES_SRC,
         STRIPE_CHECKOUT_SRC,
       ];
