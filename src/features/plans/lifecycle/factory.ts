@@ -9,7 +9,7 @@
  * finally block closed it.
  *
  * DB client scoping (server-owned writes):
- *   - Plan stream/retry sessions: service-role client for generation persistence
+ *   - Plan create/retry sessions: service-role client for generation persistence
  *     after request auth and ownership checks at the route boundary
  *   - Workers: service-role client (same server-owned write boundary)
  *   - Reads and pre-write access checks: request-scoped RLS via getDb()

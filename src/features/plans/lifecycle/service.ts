@@ -162,7 +162,7 @@ export interface PlanLifecycleFinalization {
  *
  * Returns discriminated union results for expected lifecycle outcomes.
  * Generation finalization can throw on DB/RLS/infra errors after provider success;
- * stream and worker layers treat those as unexpected failures.
+ * workflow and worker layers treat those as unexpected failures.
  */
 
 export interface PlanLifecycleServicePorts {
@@ -402,7 +402,7 @@ export class PlanLifecycleService {
 
   /**
    * Settles a reservation rejection without reserving again.
-   * Stream/workflow wrappers that already called `reserveAttemptSlot` must use
+   * Start paths that already called `reserveAttemptSlot` must use
    * this instead of {@link processGenerationAttempt}.
    */
   async settleReservationRejection(

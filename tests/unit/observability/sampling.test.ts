@@ -153,7 +153,7 @@ describe('tracesSampler', () => {
 
     it.each([
       'GET /api/plans',
-      'POST /api/v1/plans/stream',
+      'POST /api/v1/plans',
       'GET /api/v1/user/profile',
     ])('samples "%s" at 0.2', (name) => {
       expect(tracesSampler({ name })).toBe(0.2);

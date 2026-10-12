@@ -14,8 +14,8 @@
 #   ./scripts/tests/plan-generation/run.sh [command] [options]
 #
 # Commands:
-#   stream    - Stream generate a plan (default)
-#   create    - Create a plan record only (no generation)
+#   create    - Create a plan and start generation (default); returns
+#               202 { planId, attemptId }
 #   status    - Check plan generation status
 #   list      - List all plans for the user
 #
@@ -28,8 +28,8 @@
 #   --plan-id UUID       - Plan ID (required for status command)
 #
 # Examples:
-#   ./scripts/tests/plan-generation/run.sh stream --topic "Learn React hooks"
-#   ./scripts/tests/plan-generation/run.sh stream --topic "Python basics" --skill beginner --hours 5
+#   ./scripts/tests/plan-generation/run.sh create --topic "Learn React hooks"
+#   ./scripts/tests/plan-generation/run.sh create --topic "Python basics" --skill beginner --hours 5
 #   ./scripts/tests/plan-generation/run.sh status --plan-id "abc-123-def"
 #   ./scripts/tests/plan-generation/run.sh list
 # =============================================================================
@@ -52,7 +52,7 @@ BASE_URL="${BASE_URL:-http://localhost:3000}"
 COOKIE_HEADER="${COOKIE_HEADER:-}"
 
 # Default values
-COMMAND="stream"
+COMMAND="create"
 TOPIC="Learn TypeScript fundamentals"
 SKILL_LEVEL="beginner"
 WEEKLY_HOURS=10
@@ -76,7 +76,7 @@ DEV_AUTH_USER_ID_VALUE="$(read_env_value "DEV_AUTH_USER_ID" "$ENV_FILE")"
 # Parse arguments
 while [[ $# -gt 0 ]]; do
   case $1 in
-    stream|create|status|list)
+    create|status|list)
       COMMAND="$1"
       shift
       ;;
@@ -170,25 +170,9 @@ print_request_info() {
 
 # Execute based on command
 case $COMMAND in
-  stream)
-    print_request_info "POST /api/v1/plans/stream"
-    echo -e "${YELLOW}Streaming plan generation...${NC}"
-    echo ""
-    curl_args=(
-      -X POST "${BASE_URL}/api/v1/plans/stream"
-      -H "Content-Type: application/json"
-      -d "$(build_payload)"
-    )
-    if [[ -n "$COOKIE_HEADER" ]]; then
-      curl_args+=( -H "Cookie: ${COOKIE_HEADER}" )
-    fi
-    curl "${curl_args[@]}"
-    echo ""
-    ;;
-
   create)
     print_request_info "POST /api/v1/plans"
-    echo -e "${YELLOW}Creating plan record...${NC}"
+    echo -e "${YELLOW}Creating plan and starting generation...${NC}"
     echo ""
     curl_args=(
       -X POST "${BASE_URL}/api/v1/plans"
