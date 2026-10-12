@@ -488,38 +488,31 @@ export class PlanLifecycleService {
     });
   }
 
-  private async processGenerationAttemptInternal(
+  /**
+   * The provider half of {@link processGenerationAttemptWithReservation}:
+   * validates the held reservation (an already finalized attempt returns
+   * `already_finalized`), then provider → parse → pace. Nothing is settled;
+   * pass the result to {@link settleGenerationResult}. Lets a Cloudflare
+   * Workflow put a step boundary between provider work and settlement.
+   */
+  async runGenerationWithReservation(
     input: ProcessGenerationInput,
-    existingReservation?: AttemptReservation,
+    reservation: AttemptReservation,
+  ): Promise<GenerationRunResult> {
+    return this.runGeneration(input, reservation);
+  }
+
+  /**
+   * The settlement half of {@link processGenerationAttempt}: one finalization
+   * transaction (attempt, plan, content, usage) for a generation result.
+   * `already_finalized` settles nothing.
+   */
+  async settleGenerationResult(
+    input: ProcessGenerationInput,
+    generationResult: GenerationRunResult,
   ): Promise<GenerationAttemptResult> {
     const { planId, userId, tier } = input;
     const generationPurpose = parseGenerationPurpose(input.generationPurpose);
-
-    logger.info(
-      {
-        planId,
-        userId,
-        tier,
-        generationPurpose: describeGenerationPurpose(generationPurpose),
-      },
-      'plan.lifecycle.generation: attempt started',
-    );
-
-    const generationResult = await this.ports.generation.runGeneration({
-      planId: input.planId,
-      userId: input.userId,
-      tier: input.tier,
-      input: input.input,
-      generationPurpose,
-      signal: input.signal,
-      allowedGenerationStatuses: input.allowedGenerationStatuses,
-      requiredGenerationStatus: input.requiredGenerationStatus,
-      onAttemptReserved: input.onAttemptReserved,
-      ...(existingReservation ? { reservation: existingReservation } : {}),
-      ...(input.modelOverride !== undefined
-        ? { modelOverride: input.modelOverride }
-        : {}),
-    });
 
     if (generationResult.status === 'already_finalized') {
       if (generationResult.outcome === 'failure') {
@@ -626,6 +619,51 @@ export class PlanLifecycleService {
     }
 
     return this.settleGenerationFailure(input, generationResult);
+  }
+
+  private async processGenerationAttemptInternal(
+    input: ProcessGenerationInput,
+    existingReservation?: AttemptReservation,
+  ): Promise<GenerationAttemptResult> {
+    const generationResult = await this.runGeneration(
+      input,
+      existingReservation,
+    );
+    return this.settleGenerationResult(input, generationResult);
+  }
+
+  private async runGeneration(
+    input: ProcessGenerationInput,
+    existingReservation?: AttemptReservation,
+  ): Promise<GenerationRunResult> {
+    const { planId, userId, tier } = input;
+    const generationPurpose = parseGenerationPurpose(input.generationPurpose);
+
+    logger.info(
+      {
+        planId,
+        userId,
+        tier,
+        generationPurpose: describeGenerationPurpose(generationPurpose),
+      },
+      'plan.lifecycle.generation: attempt started',
+    );
+
+    return this.ports.generation.runGeneration({
+      planId: input.planId,
+      userId: input.userId,
+      tier: input.tier,
+      input: input.input,
+      generationPurpose,
+      signal: input.signal,
+      allowedGenerationStatuses: input.allowedGenerationStatuses,
+      requiredGenerationStatus: input.requiredGenerationStatus,
+      onAttemptReserved: input.onAttemptReserved,
+      ...(existingReservation ? { reservation: existingReservation } : {}),
+      ...(input.modelOverride !== undefined
+        ? { modelOverride: input.modelOverride }
+        : {}),
+    });
   }
 
   private async settleGenerationFailure(
