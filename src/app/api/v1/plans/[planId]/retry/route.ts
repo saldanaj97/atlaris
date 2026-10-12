@@ -85,7 +85,6 @@ export function createRetryHandler(deps?: {
           learningStyle: plan.learningStyle,
           startDate: plan.startDate,
           deadlineDate: plan.deadlineDate,
-          origin: plan.origin,
         },
         savedPreferredAiModel: actor.preferredAiModel ?? null,
         tierDb: db,

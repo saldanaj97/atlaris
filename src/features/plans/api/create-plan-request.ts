@@ -67,11 +67,10 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
 }
 
 /**
- * Reads and validates a create-plan JSON body for `POST /api/v1/plans` and the
- * legacy `POST /api/v1/plans/stream`. Logs structural payload metadata only
- * (never the topic or notes).
+ * Reads and validates a create-plan JSON body for `POST /api/v1/plans`. Logs
+ * structural payload metadata only (never the topic or notes).
  *
- * @param logPrefix Leads the log messages, e.g. `Plan stream`.
+ * @param logPrefix Leads the log messages, e.g. `Plan create`.
  * @param sentryRoute The Sentry `route` tag when the payload log fails.
  * @throws ValidationError for malformed JSON or an invalid body.
  */
