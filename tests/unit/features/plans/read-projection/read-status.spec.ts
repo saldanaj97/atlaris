@@ -162,7 +162,7 @@ describe('buildPlanDetailStatusSnapshot', () => {
       },
       hasModules: false,
       attemptsCount: 1,
-      latestAttempt: { classification: 'validation' },
+      latestAttempt: { classification: 'validation', status: 'failure' },
     });
 
     expect(snapshot.planId).toBe('plan-1');
@@ -172,5 +172,48 @@ describe('buildPlanDetailStatusSnapshot', () => {
     expect(snapshot.latestClassification).toBe('validation');
     expect(snapshot.createdAt).toBe(createdAt.toISOString());
     expect(snapshot.updatedAt).toBe(createdAt.toISOString());
+  });
+
+  // The plan page polls this snapshot while a retry runs; the final allowed
+  // attempt must read as processing until it settles.
+  it.each([
+    ['in_progress', 'processing'],
+    ['failure', 'failed'],
+  ] as const)(
+    'reads a generating plan at the attempt cap with a latest %s attempt as %s',
+    (attemptStatus, expected) => {
+      const createdAt = new Date('2026-01-01T00:00:00.000Z');
+      const snapshot = buildPlanDetailStatusSnapshot({
+        plan: {
+          id: 'plan-1',
+          generationStatus: 'generating',
+          createdAt,
+          updatedAt: createdAt,
+        },
+        hasModules: false,
+        attemptsCount: DEFAULT_ATTEMPT_CAP,
+        latestAttempt: { classification: null, status: attemptStatus },
+      });
+
+      expect(snapshot.status).toBe(expected);
+      expect(snapshot.attempts).toBe(DEFAULT_ATTEMPT_CAP);
+    },
+  );
+
+  it('keeps an exhausted pending_retry plan failed even with an in-progress attempt', () => {
+    const createdAt = new Date('2026-01-01T00:00:00.000Z');
+    const snapshot = buildPlanDetailStatusSnapshot({
+      plan: {
+        id: 'plan-1',
+        generationStatus: 'pending_retry',
+        createdAt,
+        updatedAt: createdAt,
+      },
+      hasModules: false,
+      attemptsCount: DEFAULT_ATTEMPT_CAP,
+      latestAttempt: { classification: null, status: 'in_progress' },
+    });
+
+    expect(snapshot.status).toBe('failed');
   });
 });

@@ -76,7 +76,7 @@ type PlanStatusRows = {
   >;
   hasModules: boolean;
   attemptsCount: number;
-  latestAttempt: Pick<GenerationAttempt, 'classification'> | null;
+  latestAttempt: Pick<GenerationAttempt, 'classification' | 'status'> | null;
 };
 
 /** Maximum number of generation attempts to return in attempt history queries. */
@@ -456,7 +456,10 @@ export async function getPlanStatusRowsForUser(
     hasModules: moduleRows.length > 0,
     attemptsCount: attemptMeta.attemptsCount,
     latestAttempt: attemptMeta.latestAttempt
-      ? { classification: attemptMeta.latestAttempt.classification }
+      ? {
+          classification: attemptMeta.latestAttempt.classification,
+          status: attemptMeta.latestAttempt.status,
+        }
       : null,
   };
 }
