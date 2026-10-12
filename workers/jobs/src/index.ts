@@ -8,6 +8,7 @@ import {
   handleEmailDeliveryRunsCommand,
 } from './http/email-delivery-runs';
 import { handleModuleLessonsStart } from './http/module-lessons-start';
+import { handlePlanGenerationStart } from './http/plan-generation-start';
 import { handleFetch } from './http/router';
 import { unauthorizedResponse, verifySignedRequest } from './http/signature';
 import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
@@ -25,6 +26,7 @@ import {
 import { isJobEnabled, isJobsPaused } from './switches';
 import { EmailDeliveryWorkflowEntrypoint } from './workflows/email-delivery';
 import { ModuleLessonsWorkflowEntrypoint } from './workflows/module-lessons';
+import { PlanGenerationWorkflowEntrypoint } from './workflows/plan-generation';
 import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
@@ -68,6 +70,11 @@ export const ModuleLessonsWorkflow = Sentry.instrumentWorkflowWithSentry(
   ModuleLessonsWorkflowEntrypoint,
 );
 
+export const PlanGenerationWorkflow = Sentry.instrumentWorkflowWithSentry(
+  sentryOptions,
+  PlanGenerationWorkflowEntrypoint,
+);
+
 export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
   async fetch(request, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
@@ -92,6 +99,17 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
       return handleModuleLessonsStart(request, {
         env: workerEnv,
         workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
+        logger,
+      });
+    }
+
+    if (
+      request.method === 'POST' &&
+      pathname === JOBS_COMMAND_PATHS.planGenerationStart
+    ) {
+      return handlePlanGenerationStart(request, {
+        env: workerEnv,
+        workflow: workerEnv.PLAN_GENERATION_WORKFLOW,
         logger,
       });
     }
