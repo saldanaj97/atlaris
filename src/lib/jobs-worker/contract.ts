@@ -4,6 +4,12 @@
  * both sides sign the same canonical string. Web Crypto only: runs on Node and
  * workerd.
  */
+import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+import type { GenerationPurpose } from '@/shared/types/generation-purpose';
+
+import { LEARNING_STYLES, SKILL_LEVELS } from '@/shared/types/db';
+import { generationStatus } from '@supabase/enums';
 import { z } from 'zod';
 
 export const JOBS_TIMESTAMP_HEADER = 'x-atlaris-jobs-timestamp';
@@ -15,6 +21,7 @@ export const JOBS_SIGNATURE_MAX_SKEW_SECONDS = 300;
 export const JOBS_COMMAND_PATHS = {
   regenerationEnqueue: '/v1/regeneration/enqueue',
   moduleLessonsStart: '/v1/module-lessons/start',
+  planGenerationStart: '/v1/plan-generation/start',
 } as const;
 
 /** `POST /v1/regeneration/enqueue` body; also the regeneration queue message. */
@@ -45,6 +52,91 @@ export const moduleLessonsStartCommandSchema = z.strictObject({
 export type ModuleLessonsStartCommand = z.infer<
   typeof moduleLessonsStartCommandSchema
 >;
+
+const subscriptionTierSchema = z.enum([
+  'free',
+  'starter',
+  'pro',
+]) satisfies z.ZodType<SubscriptionTier>;
+
+const planGenerationStatusSchema = z.enum(generationStatus.enumValues);
+
+/** The plan-generation workflow runs initial attempts only (create and retry). */
+const initialGenerationPurposeSchema = z.literal(
+  'initial',
+) satisfies z.ZodType<GenerationPurpose>;
+
+/**
+ * `SerializableAttemptReservation` as JSON carries it: `undefined` notes
+ * fields are dropped on the wire and restored as `undefined` keys here.
+ */
+const serializableReservationSchema = z.strictObject({
+  attemptId: z.uuid(),
+  attemptNumber: z.number().int().positive(),
+  startedAt: z.iso.datetime(),
+  admittedTier: subscriptionTierSchema.optional(),
+  promptHash: z.string().min(1),
+  sanitized: z.strictObject({
+    topic: z.strictObject({
+      value: z.string(),
+      truncated: z.boolean(),
+      originalLength: z.number().int().nonnegative(),
+    }),
+    notes: z
+      .strictObject({
+        value: z.string().optional(),
+        truncated: z.boolean(),
+        originalLength: z.number().int().nonnegative().optional(),
+      })
+      .transform((notes) => ({
+        value: notes.value,
+        truncated: notes.truncated,
+        originalLength: notes.originalLength,
+      })),
+  }),
+  generationPurpose: initialGenerationPurposeSchema.optional(),
+});
+
+/**
+ * `POST /v1/plan-generation/start` body; also the plan-generation Workflow
+ * params. Everything besides `v` is the app's `PlanGenerationWorkflowInput`
+ * (`toPlanGenerationWorkflowInput` checks the two stay in step). The instance
+ * ID comes from `reservation.attemptId`.
+ */
+export const planGenerationStartCommandSchema = z.strictObject({
+  v: z.literal(1),
+  planId: z.uuid(),
+  userId: z.uuid(),
+  tier: subscriptionTierSchema,
+  input: z.strictObject({
+    topic: z.string().min(1),
+    notes: z.string().nullable().optional(),
+    skillLevel: z.enum(SKILL_LEVELS),
+    weeklyHours: z.number(),
+    learningStyle: z.enum(LEARNING_STYLES),
+    startDate: z.string().nullable().optional(),
+    deadlineDate: z.string().nullable().optional(),
+  }),
+  generationPurpose: initialGenerationPurposeSchema.optional(),
+  modelOverride: z.string().min(1).max(256).nullable().optional(),
+  correlationId: z.string().min(1).max(256),
+  reservation: serializableReservationSchema,
+  allowedGenerationStatuses: z.array(planGenerationStatusSchema).optional(),
+  requiredGenerationStatus: planGenerationStatusSchema.optional(),
+});
+
+/** The parsed command (`v` included); the app builds the body from `z.input`. */
+export type PlanGenerationStartCommand = z.infer<
+  typeof planGenerationStartCommandSchema
+>;
+
+/** Drops `v`; the return type keeps the schema in step with the app's input. */
+export function toPlanGenerationWorkflowInput(
+  command: PlanGenerationStartCommand,
+): PlanGenerationWorkflowInput {
+  const { v: _version, ...input } = command;
+  return input;
+}
 
 /** `503` body codes when the Worker refuses a command (Decision 7). */
 export type JobsUnavailableCode = 'jobs_paused' | 'job_disabled';

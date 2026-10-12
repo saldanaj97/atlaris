@@ -61,6 +61,12 @@
       "name": "atlaris-module-lessons",
       "binding": "MODULE_LESSONS_WORKFLOW",
       "class_name": "ModuleLessonsWorkflow"
+    },
+    // Plan create/retry generation (B6): started by POST /v1/plan-generation/start.
+    {
+      "name": "atlaris-plan-generation",
+      "binding": "PLAN_GENERATION_WORKFLOW",
+      "class_name": "PlanGenerationWorkflow"
     }
   ],
   "vars": {
@@ -117,6 +123,11 @@
           "name": "atlaris-module-lessons-staging",
           "binding": "MODULE_LESSONS_WORKFLOW",
           "class_name": "ModuleLessonsWorkflow"
+        },
+        {
+          "name": "atlaris-plan-generation-staging",
+          "binding": "PLAN_GENERATION_WORKFLOW",
+          "class_name": "PlanGenerationWorkflow"
         }
       ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
@@ -173,6 +184,11 @@
           "name": "atlaris-module-lessons-production",
           "binding": "MODULE_LESSONS_WORKFLOW",
           "class_name": "ModuleLessonsWorkflow"
+        },
+        {
+          "name": "atlaris-plan-generation-production",
+          "binding": "PLAN_GENERATION_WORKFLOW",
+          "class_name": "PlanGenerationWorkflow"
         }
       ],
       "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },

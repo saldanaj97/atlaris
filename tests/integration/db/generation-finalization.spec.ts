@@ -8,7 +8,10 @@ import {
   commitPlanGenerationFailure,
   commitPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/generation-finalization/store';
-import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import {
+  mergeAttemptWorkflowMetadata,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import {
   aiUsageEvents,
   generationAttempts,
@@ -257,6 +260,75 @@ describe('plan generation finalization (single transaction)', () => {
     expect(entitlement?.initialPlanGeneratedAt).toBeNull();
     expect(entitlement?.freeAccessPlanId).toBeNull();
     expect(entitlement?.freeAccessPlanSelectedAt).toBeNull();
+  });
+
+  it('records the Cloudflare Workflow marker and keeps it through settlement', async () => {
+    const reservation = await reserveAttemptSlot({
+      planId,
+      userId,
+      input: TEST_INPUT,
+      generationPurpose: 'initial',
+      dbClient: db,
+      now: () => new Date('2026-03-02T09:00:00.000Z'),
+    });
+    if (!reservation.reserved) {
+      throw new Error(`Expected reservation, got ${reservation.reason}`);
+    }
+    const marker = {
+      provider: 'cloudflare-workflow' as const,
+      runId: `plan-${reservation.attemptId}`,
+      startedAt: '2026-03-02T09:00:00.000Z',
+    };
+
+    // The Worker's `record-workflow` step; repeating it is harmless.
+    await mergeAttemptWorkflowMetadata(db, reservation.attemptId, marker);
+    await mergeAttemptWorkflowMetadata(db, reservation.attemptId, marker);
+
+    const recorded = await db.query.generationAttempts.findFirst({
+      where: eq(generationAttempts.id, reservation.attemptId),
+    });
+    expect(recorded?.status).toBe('in_progress');
+    expect((recorded?.metadata as AttemptMetadata | null)?.workflow).toEqual(
+      marker,
+    );
+
+    await commitPlanGenerationFailure(db, {
+      variant: 'reserved_attempt',
+      planId,
+      userId,
+      attemptId: reservation.attemptId,
+      preparation: reservation,
+      classification: 'provider_error',
+      error: new Error('Plan generation is paused on the jobs Worker.'),
+      durationMs: 0,
+      timedOut: false,
+      extendedTimeout: false,
+      usageKind: 'plan',
+      generationPurpose: 'initial',
+      retryable: true,
+      workflowMetadata: { ...marker, completedAt: marker.startedAt },
+      now: () => new Date('2026-03-02T09:00:01.000Z'),
+    });
+
+    const settled = await db.query.generationAttempts.findFirst({
+      where: eq(generationAttempts.id, reservation.attemptId),
+    });
+    expect(settled?.status).toBe('failure');
+    expect((settled?.metadata as AttemptMetadata | null)?.workflow).toEqual({
+      ...marker,
+      completedAt: marker.startedAt,
+    });
+  });
+
+  it('rejects a workflow marker for an attempt that does not exist', async () => {
+    const attemptId = randomUUID();
+
+    await expect(
+      mergeAttemptWorkflowMetadata(db, attemptId, {
+        provider: 'cloudflare-workflow',
+        runId: `plan-${attemptId}`,
+      }),
+    ).rejects.toThrow(/no generation attempt row was updated/);
   });
 
   it('permanent failure with usage records usage and increments plansGenerated', async () => {
