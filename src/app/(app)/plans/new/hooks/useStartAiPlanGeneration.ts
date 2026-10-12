@@ -24,7 +24,6 @@ const GENERATION_ERROR_MESSAGE_MAX_LENGTH = 200;
 
 type PlanGenerationError = ReturnType<typeof normalizeThrown> & {
   planId?: string;
-  data?: { planId?: string };
   code?: string;
 };
 
@@ -129,8 +128,7 @@ export function useStartAiPlanGeneration(): {
           normalizedMessage.length <= GENERATION_ERROR_MESSAGE_MAX_LENGTH
             ? normalizedMessage
             : GENERATION_FAILED_FALLBACK;
-        const failedPlanId =
-          error.planId ?? error.data?.planId ?? planIdRef.current;
+        const failedPlanId = error.planId ?? planIdRef.current;
 
         if (isPostHogEnabledInCurrentEnvironment()) {
           posthog.capture('plan_generation_failed', {

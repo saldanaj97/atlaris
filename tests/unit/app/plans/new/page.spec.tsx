@@ -354,28 +354,6 @@ describe('AiPlanGenerationPanel', () => {
       );
     });
 
-    it('recovers planId from error.data.planId', async () => {
-      const planId = 'plan-recovery-456';
-      const errorWithData = new Error('Generation failed') as Error & {
-        status?: number;
-        data?: { planId?: string };
-      };
-      errorWithData.status = 200;
-      errorWithData.data = { planId };
-
-      mockStartGeneration.mockRejectedValue(errorWithData);
-
-      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
-
-      await fillTopic('Recovery from error data');
-      await chooseDefaultPreferences();
-      await submitForm();
-
-      await waitFor(() => {
-        expect(pushMock).toHaveBeenCalledWith(`/plans/${planId}`);
-      });
-    });
-
     it('recovers planId from the session state ref when the error does not include one', async () => {
       const planId = 'plan-recovery-789';
       Object.assign(mockState, {

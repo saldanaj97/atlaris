@@ -15,6 +15,17 @@ vi.mock('@/lib/api/rate-limit', async (importOriginal) => ({
   checkPlanGenerationRateLimit: mocks.checkPlanGenerationRateLimit,
 }));
 
+vi.mock('@/lib/api/parse-json-body', async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import('@/lib/api/parse-json-body')>();
+  return {
+    ...actual,
+    parseJsonBody: vi.fn((...args: Parameters<typeof actual.parseJsonBody>) =>
+      actual.parseJsonBody(...args),
+    ),
+  };
+});
+
 vi.mock('@/features/plans/api/route-context', async (importOriginal) => ({
   ...(await importOriginal<
     typeof import('@/features/plans/api/route-context')
@@ -63,6 +74,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
 import { createRetryHandler } from '@/app/api/v1/plans/[planId]/retry/route';
 import { createPlanCreateHandler } from '@/app/api/v1/plans/route';
 import { AppError, RateLimitError } from '@/lib/api/errors';
+import { parseJsonBody } from '@/lib/api/parse-json-body';
 
 const VALID_BODY = {
   topic: 'Learning TypeScript',
@@ -86,8 +98,6 @@ const NOT_STARTED = new AppError(
 
 function makeBoundary() {
   return {
-    respondCreateStream: vi.fn(),
-    respondRetryStream: vi.fn(),
     startCreate: vi.fn(async () => ({
       planId: PLAN_ID,
       attemptId: ATTEMPT_ID,
@@ -148,7 +158,6 @@ describe('POST /api/v1/plans', () => {
       savedPreferredAiModel: 'openai/gpt-4o-mini',
       requestId: 'corr-1',
     });
-    expect(boundary.respondCreateStream).not.toHaveBeenCalled();
   });
 
   it('returns 400 with reason details for malformed JSON', async () => {
@@ -185,6 +194,39 @@ describe('POST /api/v1/plans', () => {
     );
     expect(payloadCall?.[0]).toMatchObject({ payload: { hasTopic: true } });
     expect(JSON.stringify(logger.info.mock.calls)).not.toContain(privateTopic);
+    expect(boundary.startCreate).not.toHaveBeenCalled();
+  });
+
+  it('warns when the payload log fails and still returns an error response', async () => {
+    const boundary = makeBoundary();
+    const logger = makeLogger();
+    const post = createPlanCreateHandler({ boundary, logger });
+    // Promise resolution probes `then`; every other access throws so the
+    // warn path does not depend on field access order.
+    const payload = new Proxy(
+      {},
+      {
+        get(_, prop) {
+          if (prop === 'then') {
+            return undefined;
+          }
+          throw new Error('payload log boom');
+        },
+      },
+    );
+    vi.mocked(parseJsonBody).mockResolvedValueOnce(payload);
+
+    const response = await post(createRequest('{}'));
+
+    expect(response.status).toBe(400);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        authUserId: 'auth-1',
+        error: expect.objectContaining({ message: 'payload log boom' }),
+        payload: { payloadType: 'object' },
+      }),
+      'Plan create payload log failed',
+    );
     expect(boundary.startCreate).not.toHaveBeenCalled();
   });
 
@@ -250,7 +292,7 @@ describe('POST /api/v1/plans/:planId/retry', () => {
     });
   });
 
-  it('starts the retry and returns 202 { planId, attemptId } instead of SSE', async () => {
+  it('starts the retry and returns 202 { planId, attemptId }', async () => {
     const boundary = makeBoundary();
     const post = createRetryHandler({ boundary });
 
@@ -275,13 +317,11 @@ describe('POST /api/v1/plans/:planId/retry', () => {
         learningStyle: 'mixed',
         startDate: '2030-01-01',
         deadlineDate: '2030-06-01',
-        origin: 'ai',
       },
       savedPreferredAiModel: 'openai/gpt-4o-mini',
       tierDb: {},
       requestId: 'corr-1',
     });
-    expect(boundary.respondRetryStream).not.toHaveBeenCalled();
   });
 
   it.each(['generating', 'ready'])(

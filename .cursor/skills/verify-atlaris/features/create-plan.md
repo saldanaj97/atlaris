@@ -41,4 +41,4 @@ Preconditions:
 - Auth fixture checkout is disabled; this path only works if the seeded tier can create a plan. If the header shows **Upgrade**, stop and record the entitlement, do not force the form.
 - Generation can take up to 90s even with mock AI. Wait for the plan URL and module links; do not sleep a fixed time and pass.
 - A single-module plan has no **Next module** control. Missing next-module is not a failure.
-- Do not count API `POST /api/v1/plans/stream` alone as proof. The user-visible plan page is the proof.
+- Do not count API `POST /api/v1/plans` alone as proof. The user-visible plan page is the proof.

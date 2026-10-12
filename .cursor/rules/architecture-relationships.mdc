@@ -71,8 +71,8 @@ flowchart LR
 - `src/lib/api/context.ts` --> `supabase/runtime.ts` --> `supabase/rls.ts`: DB runtime and RLS context wiring.
 - `src/app/(app|landing|auth)` --> `src/components`, `src/hooks`, `src/features`: route groups compose UI and feature boundaries.
 - Client islands --> `src/app/_shared/client-api.ts`: use typed client API helpers for browser calls.
-- Plan UI/SSE hooks --> `src/app/api/v1/plans/stream`: generation session entrypoint.
-- `/api/v1/plans/stream` --> `src/features/plans/session/plan-generation-session.ts`: session orchestration behind `requestBoundary.route`.
+- Plan UI hooks --> `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`: generation start entrypoints (`202`; the plan page polls `GET /api/v1/plans/:planId/status`).
+- Plan create/retry routes --> `src/features/plans/session/plan-generation-session.ts`: session orchestration behind `requestBoundary.route`.
 - `PlanGenerationSession` --> `PlanLifecycleService`: plan lifecycle is the central hexagonal service.
 - `PlanLifecycleService` --> collaborator ports declared in `src/features/plans/lifecycle/service.ts` as `PlanLifecycleServicePorts` (`planPersistence`, `quota`, `generation`, `generationFinalization`): depends on ports, not concrete adapters.
 - `src/features/plans/lifecycle/factory.ts` --> `plan-persistence-store.ts`, `generation.ts`, `generation-finalization/store.ts`, billing tier/duration policy: concrete lifecycle wiring on one DB client.

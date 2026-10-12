@@ -7,8 +7,8 @@ import { UnifiedPlanInput } from '@/app/(app)/plans/new/components/plan-form/Uni
 import { useStartAiPlanGeneration } from '@/app/(app)/plans/new/hooks/useStartAiPlanGeneration';
 
 /**
- * AiPlanGenerationPanel collects the learning goal form, streams AI plan
- * generation progress, and routes to the created plan on success.
+ * AiPlanGenerationPanel collects the learning goal form, starts AI plan
+ * generation, and routes to the created plan once it starts.
  */
 export function AiPlanGenerationPanel({
   subscriptionTier,
