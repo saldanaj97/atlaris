@@ -33,7 +33,7 @@ All three product paths use durable workflows:
 | ---- | -------- |
 | Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202`; clients poll `GET .../lesson-content/status`. |
 | Plan regeneration | Enqueue and worker drain call `attachPlanRegenerationWorkflow` (start + CAS persist `job_queue` runId); drain may return `workflow-in-flight`. |
-| Plan create/retry | SSE sessions reserve the attempt in-process, then run provider/finalization in `planGenerationWorkflow` (`await run.returnValue` — SSE transport unchanged). |
+| Plan create/retry | `POST /api/v1/plans` and `POST .../retry` reserve the attempt, start `planGenerationWorkflow` (unless `PLAN_GENERATION_RUNTIME=cloudflare`), and return `202`; clients poll `GET .../status`. The legacy SSE route still awaits `run.returnValue`. |
 
 Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
 
@@ -93,7 +93,7 @@ Orchestration for product workflows is covered in `tests/unit/features/**/workfl
 
 ## Related docs
 
-- [Plan generation architecture](./plan-generation-architecture.md) — SSE create/retry ([durable workflows](./plan-generation-architecture.md#durable-workflows)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
+- [Plan generation architecture](./plan-generation-architecture.md) — create/retry and status polling ([durable workflows](./plan-generation-architecture.md#durable-workflows)) and [module lesson generation](./plan-generation-architecture.md#module-lesson-generation-separate-pipeline)
 - [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration worker and durable drain
 - [Environment variables](../development/environment.md#workflow-sdk) — Workflow SDK callback configuration
 - [Development commands](../development/commands.md) — `pnpm deploy:preview` and workflow test commands

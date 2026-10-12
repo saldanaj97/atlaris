@@ -29,8 +29,8 @@ type PlanGenerationError = ReturnType<typeof normalizeThrown> & {
 };
 
 /**
- * Submits the create-plan form, streams AI generation, and navigates to the
- * plan detail page when a plan id is ready (generation continues on that page).
+ * Submits the create-plan form, starts AI generation, and navigates to the
+ * plan detail page once the plan id is ready (that page polls its status).
  */
 export function useStartAiPlanGeneration(): {
   isSubmitting: boolean;
@@ -82,10 +82,12 @@ export function useStartAiPlanGeneration(): {
       });
     }
 
+    let navigatingToPlan = false;
     void startSession(
       { kind: 'create', input: mappingResult.payload },
       {
         onPlanIdReady: (readyPlanId) => {
+          navigatingToPlan = true;
           toast.success(GENERATION_STARTED_TOAST);
           router.push(planDetailPath(readyPlanId));
         },
@@ -119,7 +121,7 @@ export function useStartAiPlanGeneration(): {
           return;
         }
 
-        clientLogger.error('Streaming plan generation failed', streamError);
+        clientLogger.error('Plan generation failed to start', streamError);
 
         const normalizedMessage = error.message.trim();
         const message =
@@ -147,6 +149,11 @@ export function useStartAiPlanGeneration(): {
         toast.error(message);
       })
       .finally(() => {
+        // The 202 arrives before the plan page loads; stay locked so the form
+        // cannot submit a second plan in that window.
+        if (navigatingToPlan) {
+          return;
+        }
         isSubmittingRef.current = false;
         setIsSubmitting(false);
       });

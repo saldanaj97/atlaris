@@ -105,8 +105,8 @@ generation finalization via the same mapper.
 Persistable vs runtime-only models and tier-aware listing remain in
 [`src/features/ai/model-preferences.ts`](../src/features/ai/model-preferences.ts),
 `GET`/`PATCH` [`/api/v1/user/preferences`](../src/app/api/v1/user/preferences/route.ts),
-and plan stream model resolution in
-[`plans/stream/route.ts`](../src/app/api/v1/plans/stream/route.ts).
+and plan create/retry model resolution in
+[`session/model-resolution.ts`](../src/features/plans/session/model-resolution.ts).
 
 ## ~~Drizzle snapshot metadata drift~~ _(resolved)_
 

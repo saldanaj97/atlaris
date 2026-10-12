@@ -231,4 +231,49 @@ describe('plan-status-machine', () => {
       expect(next.delayMs).toBe(INITIAL_POLL_MS);
     });
   });
+
+  describe('restart', () => {
+    it('resumes polling from a terminal failed status as processing', () => {
+      const failed = transitionPlanPollState(
+        createInitialPlanPollState('plan-1', 'processing'),
+        {
+          type: 'response',
+          status: 'failed',
+          attempts: 2,
+          error: 'Plan generation timed out. Please try again.',
+          backoffMode: 'scheduled',
+        },
+      );
+      expect(failed.phase).toBe('terminal');
+
+      const next = transitionPlanPollState(
+        { ...failed, delayMs: 8000 },
+        { type: 'restart' },
+      );
+
+      expect(next).toEqual({
+        ...failed,
+        phase: 'polling',
+        status: 'processing',
+        error: null,
+        pollingError: null,
+        consecutiveFailures: 0,
+        delayMs: INITIAL_POLL_MS,
+      });
+    });
+
+    it('clears a stopped poller', () => {
+      const state = pendingState({
+        phase: 'stopped',
+        pollingError: 'Unable to reach the server',
+        consecutiveFailures: MAX_CONSECUTIVE_FAILURES,
+      });
+
+      const next = transitionPlanPollState(state, { type: 'restart' });
+
+      expect(next.phase).toBe('polling');
+      expect(next.pollingError).toBeNull();
+      expect(next.consecutiveFailures).toBe(0);
+    });
+  });
 });

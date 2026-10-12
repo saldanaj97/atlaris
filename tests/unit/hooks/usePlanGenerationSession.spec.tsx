@@ -4,18 +4,6 @@ import { usePlanGenerationSession } from '@/features/plans/session/usePlanGenera
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const encoder = new TextEncoder();
-
-const toStream = (chunks: string[]) =>
-  new ReadableStream<Uint8Array>({
-    start(controller) {
-      for (const chunk of chunks) {
-        controller.enqueue(encoder.encode(chunk));
-      }
-      controller.close();
-    },
-  });
-
 const basePayload: CreateLearningPlanInput = {
   topic: 'TypeScript',
   skillLevel: 'beginner',
@@ -28,177 +16,158 @@ const basePayload: CreateLearningPlanInput = {
   deadlineDate: '2030-01-01',
 };
 
+function jsonResponse(body: unknown, status: number): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
+  });
+}
+
+function stubFetch(response: Response | Promise<Response>) {
+  const fetchMock = vi.fn().mockReturnValue(Promise.resolve(response));
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
+
 describe('usePlanGenerationSession', () => {
   afterEach(() => {
+    vi.unstubAllGlobals();
     vi.restoreAllMocks();
   });
 
-  it('invokes onPlanIdReady when plan_start arrives before complete', async () => {
-    const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-early","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
-      'data: {"type":"complete","data":{"planId":"plan-early","modulesCount":1,"tasksCount":1,"totalMinutes":60}}\n\n',
-    ];
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(toStream(chunks), {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      ),
+  it('POSTs the create body to /api/v1/plans and resolves on 202 with both IDs', async () => {
+    const fetchMock = stubFetch(
+      jsonResponse({ planId: 'plan-1', attemptId: 'attempt-1' }, 202),
     );
-
     const { result } = renderHook(() => usePlanGenerationSession());
 
-    const readyOrder: string[] = [];
-    await act(async () => {
-      await result.current.startSession(
-        { kind: 'create', input: basePayload },
-        {
-          onPlanIdReady: (id) => {
-            readyOrder.push(`ready:${id}`);
-          },
-        },
-      );
-      readyOrder.push('resolved');
-    });
-
-    expect(readyOrder).toEqual(['ready:plan-early', 'resolved']);
-  });
-
-  it('ignores SSE events emitted after complete', async () => {
-    const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-late","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
-      'data: {"type":"module_summary","data":{"planId":"plan-late","index":0,"title":"Only module","description":"Intro","estimatedMinutes":120,"tasksCount":3}}\n\n',
-      'data: {"type":"complete","data":{"planId":"plan-late","modulesCount":1,"tasksCount":3,"totalMinutes":120}}\n\n',
-      'data: {"type":"module_summary","data":{"planId":"plan-late","index":1,"title":"Should not apply","description":"Late","estimatedMinutes":1,"tasksCount":1}}\n\n',
-      'data: {"type":"progress","data":{"planId":"plan-late","modulesParsed":99,"modulesTotalHint":99,"percent":99}}\n\n',
-    ];
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(toStream(chunks), {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      ),
-    );
-
-    const { result } = renderHook(() => usePlanGenerationSession());
-
-    await act(async () => {
-      await result.current.startSession({ kind: 'create', input: basePayload });
-    });
-
-    expect(result.current.state.status).toBe('complete');
-    expect(result.current.state.modules).toHaveLength(1);
-    expect(result.current.state.modules[0]?.title).toBe('Only module');
-    expect(result.current.state.progress?.percent).toBeUndefined();
-  });
-
-  it('streams events and resolves with plan id', async () => {
-    const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-1","attemptNumber":1,"topic":"TypeScript","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
-      'data: {"type":"module_summary","data":{"planId":"plan-1","index":0,"title":"Module 1","description":"Intro","estimatedMinutes":120,"tasksCount":3}}\n\n',
-      'data: {"type":"progress","data":{"planId":"plan-1","modulesParsed":1,"modulesTotalHint":2,"percent":50}}\n\n',
-      'data: {"type":"complete","data":{"planId":"plan-1","modulesCount":2,"tasksCount":6,"totalMinutes":240}}\n\n',
-    ];
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(toStream(chunks), {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      ),
-    );
-
-    const { result } = renderHook(() => usePlanGenerationSession());
-
-    let sessionResult:
-      | Awaited<ReturnType<typeof result.current.startSession>>
-      | undefined;
-    let notifiedPlanId: string | undefined;
+    const order: string[] = [];
+    let sessionResult: unknown;
     await act(async () => {
       sessionResult = await result.current.startSession(
         { kind: 'create', input: basePayload },
-        {
-          onPlanIdReady: (id) => {
-            notifiedPlanId = id;
-          },
-        },
+        { onPlanIdReady: (id) => order.push(`ready:${id}`) },
       );
+      order.push('resolved');
     });
 
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/plans',
+      expect.objectContaining({
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(basePayload),
+        credentials: 'include',
+      }),
+    );
     expect(sessionResult).toEqual({
-      status: 'completed',
+      status: 'started',
       planId: 'plan-1',
-      result: 'plan-1',
+      attemptId: 'attempt-1',
     });
-    expect(notifiedPlanId).toBe('plan-1');
-    expect(result.current.state.status).toBe('complete');
-    expect(result.current.state.modules).toHaveLength(1);
-    expect(result.current.state.progress?.modulesParsed).toBe(1);
-    expect(result.current.state.progress?.percent).toBe(50);
+    expect(order).toEqual(['ready:plan-1', 'resolved']);
+    expect(result.current.state).toEqual({
+      status: 'started',
+      planId: 'plan-1',
+      attemptId: 'attempt-1',
+    });
   });
 
-  it('sets error state on error event', async () => {
-    const chunks = [
-      'data: {"type":"plan_start","data":{"planId":"plan-err","attemptNumber":1,"topic":"TS","skillLevel":"beginner","learningStyle":"mixed","weeklyHours":5,"startDate":null,"deadlineDate":"2030-01-01"}}\n\n',
-      'data: {"type":"error","data":{"planId":"plan-err","code":"VALIDATION_ERROR","message":"boom","classification":"validation","retryable":false}}\n\n',
-    ];
-
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(toStream(chunks), {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        }),
-      ),
+  it('POSTs a retry without a body to /api/v1/plans/:planId/retry', async () => {
+    const fetchMock = stubFetch(
+      jsonResponse({ planId: 'plan-9', attemptId: 'attempt-2' }, 202),
     );
-
     const { result } = renderHook(() => usePlanGenerationSession());
 
-    let notifiedPlanId: string | undefined;
+    await act(async () => {
+      await result.current.startSession({ kind: 'retry', planId: 'plan-9' });
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/v1/plans/plan-9/retry',
+      expect.objectContaining({ method: 'POST', body: undefined }),
+    );
+    expect(result.current.state.status).toBe('started');
+  });
+
+  it('reports starting while the request is in flight', async () => {
+    let respond: (response: Response) => void = () => {};
+    stubFetch(
+      new Promise<Response>((resolve) => {
+        respond = resolve;
+      }),
+    );
+    const { result } = renderHook(() => usePlanGenerationSession());
+
+    let pending: Promise<unknown> = Promise.resolve();
+    act(() => {
+      pending = result.current.startSession({
+        kind: 'retry',
+        planId: 'plan-9',
+      });
+    });
+    expect(result.current.state.status).toBe('starting');
+
+    await act(async () => {
+      respond(jsonResponse({ planId: 'plan-9', attemptId: 'attempt-2' }, 202));
+      await pending;
+    });
+    expect(result.current.state.status).toBe('started');
+  });
+
+  it('keeps the plan ID from a not-started error so the caller can open the plan', async () => {
+    stubFetch(
+      jsonResponse(
+        {
+          error: 'Plan generation encountered an error. Please try again.',
+          code: 'GENERATION_FAILED',
+          classification: 'provider_error',
+          details: { planId: 'plan-err', retryable: true },
+        },
+        503,
+      ),
+    );
+    const onPlanIdReady = vi.fn();
+    const { result } = renderHook(() => usePlanGenerationSession());
+
     await act(async () => {
       await expect(
         result.current.startSession(
           { kind: 'create', input: basePayload },
-          {
-            onPlanIdReady: (id) => {
-              notifiedPlanId = id;
-            },
-          },
+          { onPlanIdReady },
         ),
-      ).rejects.toThrow('boom');
+      ).rejects.toMatchObject({
+        message: 'Plan generation encountered an error. Please try again.',
+        code: 'GENERATION_FAILED',
+        status: 503,
+        planId: 'plan-err',
+        classification: 'provider_error',
+        retryable: true,
+      });
     });
 
-    expect(notifiedPlanId).toBe('plan-err');
-    expect(result.current.state.status).toBe('error');
-    expect(result.current.state.error?.classification).toBe('validation');
+    expect(onPlanIdReady).not.toHaveBeenCalled();
+    expect(result.current.state).toMatchObject({
+      status: 'error',
+      planId: 'plan-err',
+      error: {
+        message: 'Plan generation encountered an error. Please try again.',
+        classification: 'provider_error',
+        retryable: true,
+      },
+    });
   });
 
-  it('throws normalized api error for non-streaming failures', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response(
-          JSON.stringify({
-            error: 'Rate limit exceeded. Please wait and retry.',
-            code: 'RATE_LIMITED',
-          }),
-          {
-            status: 429,
-            headers: { 'Content-Type': 'application/json' },
-          },
-        ),
+  it('throws the normalized API error for pre-generation failures', async () => {
+    stubFetch(
+      jsonResponse(
+        {
+          error: 'Rate limit exceeded. Please wait and retry.',
+          code: 'RATE_LIMITED',
+        },
+        429,
       ),
     );
-
     const { result } = renderHook(() => usePlanGenerationSession());
 
     await act(async () => {
@@ -208,6 +177,7 @@ describe('usePlanGenerationSession', () => {
         message: 'Rate limit exceeded. Please wait and retry.',
         code: 'RATE_LIMITED',
         status: 429,
+        planId: undefined,
       });
     });
 
@@ -219,17 +189,44 @@ describe('usePlanGenerationSession', () => {
     });
   });
 
-  it('throws a StreamingError for unexpected non-SSE responses', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn().mockResolvedValue(
-        new Response('<html>sign-in</html>', {
-          status: 200,
-          headers: { 'Content-Type': 'text/html' },
-        }),
-      ),
-    );
+  it('uses the retry fallback message when the error body has none', async () => {
+    stubFetch(new Response('', { status: 500 }));
+    const { result } = renderHook(() => usePlanGenerationSession());
 
+    await act(async () => {
+      await expect(
+        result.current.startSession({ kind: 'retry', planId: 'plan-9' }),
+      ).rejects.toMatchObject({ message: 'Failed to retry generation.' });
+    });
+  });
+
+  it('treats a redirect to a non-JSON page as sign-in required', async () => {
+    const response = new Response('<html>sign-in</html>', {
+      status: 200,
+      headers: { 'Content-Type': 'text/html' },
+    });
+    Object.defineProperty(response, 'redirected', { value: true });
+    stubFetch(response);
+    const { result } = renderHook(() => usePlanGenerationSession());
+
+    await act(async () => {
+      await expect(
+        result.current.startSession({ kind: 'create', input: basePayload }),
+      ).rejects.toMatchObject({
+        code: 'AUTH_REQUIRED',
+        classification: 'auth_required',
+        retryable: false,
+      });
+    });
+
+    expect(result.current.state.error?.classification).toBe('auth_required');
+  });
+
+  it.each([
+    ['a non-JSON body', new Response('<html>oops</html>', { status: 200 })],
+    ['a 2xx body without IDs', jsonResponse({ accepted: true }, 202)],
+  ])('rejects %s as an unexpected response', async (_label, response) => {
+    stubFetch(response);
     const { result } = renderHook(() => usePlanGenerationSession());
 
     await act(async () => {
@@ -237,18 +234,45 @@ describe('usePlanGenerationSession', () => {
         result.current.startSession({ kind: 'create', input: basePayload }),
       ).rejects.toMatchObject({
         message: 'Unexpected server response. Please try again.',
-        code: 'INVALID_STREAM_RESPONSE',
+        code: 'INVALID_START_RESPONSE',
         classification: 'provider_error',
         retryable: false,
-        status: 200,
       });
     });
 
     expect(result.current.state.status).toBe('error');
-    expect(result.current.state.error).toMatchObject({
-      message: 'Unexpected server response. Please try again.',
+  });
+
+  it('resolves as cancelled when the request is aborted', async () => {
+    stubFetch(Promise.reject(new DOMException('Aborted', 'AbortError')));
+    const { result } = renderHook(() => usePlanGenerationSession());
+
+    let sessionResult: unknown;
+    await act(async () => {
+      sessionResult = await result.current.startSession({
+        kind: 'retry',
+        planId: 'plan-9',
+      });
+    });
+
+    expect(sessionResult).toEqual({ status: 'cancelled', planId: 'plan-9' });
+    expect(result.current.state.status).toBe('cancelled');
+  });
+
+  it('sets a retryable error state when the network request fails', async () => {
+    stubFetch(Promise.reject(new TypeError('Failed to fetch')));
+    const { result } = renderHook(() => usePlanGenerationSession());
+
+    await act(async () => {
+      await expect(
+        result.current.startSession({ kind: 'create', input: basePayload }),
+      ).rejects.toThrow('Failed to fetch');
+    });
+
+    expect(result.current.state.error).toEqual({
+      message: 'Unable to start plan generation. Please try again.',
       classification: 'provider_error',
-      retryable: false,
+      retryable: true,
     });
   });
 });

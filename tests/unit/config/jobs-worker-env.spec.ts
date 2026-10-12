@@ -59,6 +59,31 @@ describe('jobsWorkerEnv', () => {
     expect(read).toThrow(/^MODULE_LESSONS_RUNTIME must be one of/);
   });
 
+  it('defaults plan generation to the Vercel runtime', () => {
+    expect(createJobsWorkerEnvForTests(base).planGenerationRuntime).toBe(
+      'vercel',
+    );
+  });
+
+  it.each([
+    ['cloudflare', 'cloudflare'],
+    [' Cloudflare ', 'cloudflare'],
+    ['vercel', 'vercel'],
+  ])('reads PLAN_GENERATION_RUNTIME=%j', (value, expected) => {
+    expect(
+      createJobsWorkerEnvForTests({ ...base, PLAN_GENERATION_RUNTIME: value })
+        .planGenerationRuntime,
+    ).toBe(expected);
+  });
+
+  it('rejects an unknown plan generation runtime', () => {
+    const read = () =>
+      createJobsWorkerEnvForTests({ ...base, PLAN_GENERATION_RUNTIME: 'cf' })
+        .planGenerationRuntime;
+    expect(read).toThrow(EnvValidationError);
+    expect(read).toThrow(/^PLAN_GENERATION_RUNTIME must be one of/);
+  });
+
   it('reads each runtime independently', () => {
     const env = createJobsWorkerEnvForTests({
       ...base,
@@ -66,6 +91,15 @@ describe('jobsWorkerEnv', () => {
     });
     expect(env.moduleLessonsRuntime).toBe('cloudflare');
     expect(env.regenerationRuntime).toBe('vercel');
+    expect(env.planGenerationRuntime).toBe('vercel');
+
+    const planOnly = createJobsWorkerEnvForTests({
+      ...base,
+      PLAN_GENERATION_RUNTIME: 'cloudflare',
+    });
+    expect(planOnly.planGenerationRuntime).toBe('cloudflare');
+    expect(planOnly.moduleLessonsRuntime).toBe('vercel');
+    expect(planOnly.regenerationRuntime).toBe('vercel');
   });
 
   it('normalizes JOBS_WORKER_URL to its origin', () => {

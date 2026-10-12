@@ -27,7 +27,9 @@ export type PlanPollEvent =
     }
   | { type: 'transient_failure'; message: string }
   | { type: 'fatal_failure'; message: string }
-  | { type: 'revalidate' };
+  | { type: 'revalidate' }
+  /** A new attempt was accepted (e.g. retry): poll again, even from terminal. */
+  | { type: 'restart' };
 
 function isTerminalStatus(status: PlanStatus): boolean {
   return status === 'ready' || status === 'failed';
@@ -81,6 +83,17 @@ export function transitionPlanPollState(
       return {
         ...state,
         phase: 'polling',
+        pollingError: null,
+        consecutiveFailures: 0,
+        delayMs: INITIAL_POLL_MS,
+      };
+
+    case 'restart':
+      return {
+        ...state,
+        phase: 'polling',
+        status: 'processing',
+        error: null,
         pollingError: null,
         consecutiveFailures: 0,
         delayMs: INITIAL_POLL_MS,
