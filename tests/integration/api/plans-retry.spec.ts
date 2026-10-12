@@ -1,85 +1,59 @@
-import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
-
 import { seedFailedAttemptsForDurableWindow } from '../../fixtures/attempts';
 import { createPlanForRetryTest } from '../../fixtures/plans';
 import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
-import {
-  expectPlanStartEvent,
-  expectStreamingJsonObject,
-  expectTerminalEventAfterStart,
-  readStreamingResponse,
-} from '../../helpers/streaming';
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
+import { GET as getStatus } from '@/app/api/v1/plans/[planId]/status/route';
+import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
+import {
+  JOBS_SIGNATURE_HEADER,
+  planGenerationStartCommandSchema,
+} from '@/lib/jobs-worker/contract';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { desc, eq } from 'drizzle-orm';
-import {
-  afterAll,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workflowProcessFactory = vi.hoisted(() =>
-  vi.fn((lifecycleService: PlanLifecycleService) =>
-    lifecycleService.processGenerationAttempt.bind(lifecycleService),
-  ),
-);
+const workflowStartMock = vi.hoisted(() => vi.fn());
 
-vi.mock('@/features/plans/create-workflow-backed-process-generation', () => ({
-  createWorkflowBackedProcessGeneration: workflowProcessFactory,
-}));
+vi.mock('workflow/api', () => ({ start: workflowStartMock }));
 
 type RetryAttemptOverrides = Partial<
   Omit<typeof generationAttempts.$inferInsert, 'planId'>
 >;
 
-type CreateTestPlanWithAttemptOptions = {
-  userId: string;
-  planOverrides?: Parameters<typeof createPlanForRetryTest>[1];
-  attemptOverrides?: RetryAttemptOverrides;
-};
-
-async function createTestPlanWithAttempt({
-  userId,
-  planOverrides,
-  attemptOverrides,
-}: CreateTestPlanWithAttemptOptions) {
-  const plan = await createPlanForRetryTest(userId, planOverrides);
-
-  if (attemptOverrides) {
-    await db.insert(generationAttempts).values({
-      planId: plan.id,
-      status: 'in_progress',
-      classification: null,
-      durationMs: 0,
-      modulesCount: 0,
-      tasksCount: 0,
-      promptHash: 'retry-in-progress',
-      ...attemptOverrides,
-    });
-  }
-
+async function createFailedPlan(
+  userId: string,
+  attemptOverrides: RetryAttemptOverrides = {},
+) {
+  const plan = await createPlanForRetryTest(userId);
+  await db.insert(generationAttempts).values({
+    planId: plan.id,
+    status: 'failure',
+    classification: 'timeout',
+    durationMs: 1_000,
+    modulesCount: 0,
+    tasksCount: 0,
+    promptHash: `retry-first-${plan.id}`,
+    ...attemptOverrides,
+  });
   return plan;
 }
 
-function createRetryInvocation(planId: string) {
-  return {
-    request: new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
+function retry(planId: string) {
+  return POST(
+    new Request(`http://localhost/api/v1/plans/${planId}/retry`, {
       method: 'POST',
     }),
-    context: buildRouteHandlerContext({ planId }),
-  };
+    buildRouteHandlerContext({ planId }),
+  );
 }
 
 async function listAttempts(planId: string) {
   return db
     .select({
+      id: generationAttempts.id,
       status: generationAttempts.status,
       classification: generationAttempts.classification,
     })
@@ -88,134 +62,214 @@ async function listAttempts(planId: string) {
     .orderBy(desc(generationAttempts.createdAt));
 }
 
-beforeAll(() => {
-  vi.stubEnv('AI_PROVIDER', 'mock');
-  vi.stubEnv('MOCK_GENERATION_DELAY_MS', '25');
-});
+async function getGenerationStatus(planId: string) {
+  const [plan] = await db
+    .select({ generationStatus: learningPlans.generationStatus })
+    .from(learningPlans)
+    .where(eq(learningPlans.id, planId))
+    .limit(1);
+  return plan?.generationStatus;
+}
+
+async function setUpRetryUser(label: string) {
+  const authUserId = `auth_retry_${label}`;
+  setTestUser(authUserId);
+  return ensureUser({
+    authUserId,
+    email: `retry-${label}@example.com`,
+    subscriptionTier: 'pro',
+  });
+}
 
 beforeEach(() => {
-  workflowProcessFactory.mockClear();
+  workflowStartMock.mockReset();
+  workflowStartMock.mockResolvedValue({ runId: 'wrun_retry' });
 });
 
-afterAll(() => {
+afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
-describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary smoke', () => {
-  it('streams retry success with incremented attempt numbering via the default boundary', async () => {
-    const authUserId = 'auth_retry_success';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-success@example.com',
-      subscriptionTier: 'pro',
-    });
+describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
+  it('reserves the next attempt, starts the Vercel workflow, and returns 202', async () => {
+    const userId = await setUpRetryUser('success');
+    const plan = await createFailedPlan(userId);
 
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      attemptOverrides: {
-        status: 'failure',
-        classification: 'timeout',
-        durationMs: 1_000,
-        promptHash: 'retry-success-first-attempt',
-      },
-    });
+    const response = await retry(plan.id);
 
-    const { request, context } = createRetryInvocation(plan.id);
-    const response = await POST(request, context);
-    expect(response.status).toBe(200);
-    expect(workflowProcessFactory).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-      expect.any(String),
-    );
-
-    const events = await readStreamingResponse(response);
-    const { planId } = expectPlanStartEvent(events, 2);
-    const completeEvent = expectTerminalEventAfterStart(events, 'complete');
-    expect(expectStreamingJsonObject(completeEvent.data).planId).toBe(planId);
+    expect(response.status).toBe(202);
+    expect(response.headers.get('X-RateLimit-Remaining')).toMatch(/^\d+$/);
+    const body = (await response.json()) as {
+      planId: string;
+      attemptId: string;
+    };
+    expect(body.planId).toBe(plan.id);
 
     const attempts = await listAttempts(plan.id);
-    const [persistedPlan] = await db
-      .select({ generationStatus: learningPlans.generationStatus })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, plan.id))
-      .limit(1);
-
-    expect(persistedPlan?.generationStatus).toBe('ready');
     expect(attempts).toHaveLength(2);
     expect(attempts[0]).toMatchObject({
-      status: 'success',
-      classification: null,
+      id: body.attemptId,
+      status: 'in_progress',
     });
     expect(attempts[1]).toMatchObject({
       status: 'failure',
       classification: 'timeout',
     });
+    await expect(getGenerationStatus(plan.id)).resolves.toBe('generating');
+
+    expect(workflowStartMock).toHaveBeenCalledTimes(1);
+    expect(workflowStartMock).toHaveBeenCalledWith(planGenerationWorkflow, [
+      expect.objectContaining({
+        planId: plan.id,
+        userId,
+        allowedGenerationStatuses: ['failed', 'pending_retry'],
+        reservation: expect.objectContaining({ attemptId: body.attemptId }),
+      }),
+    ]);
   });
 
-  it('serializes concurrent retries: winner stream completes; loser 400 or SSE error', async () => {
-    const authUserId = 'auth_retry_concurrent';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-concurrent@example.com',
-      subscriptionTier: 'pro',
+  it('reads the final allowed attempt as processing while it runs', async () => {
+    const userId = await setUpRetryUser('final-attempt');
+    const plan = await createFailedPlan(userId);
+    await db.insert(generationAttempts).values({
+      planId: plan.id,
+      status: 'failure',
+      classification: 'provider_error',
+      durationMs: 1_000,
+      modulesCount: 0,
+      tasksCount: 0,
+      promptHash: `retry-second-${plan.id}`,
     });
 
-    const plan = await createTestPlanWithAttempt({
+    const response = await retry(plan.id);
+    expect(response.status).toBe(202);
+
+    const status = await getStatus(
+      new Request(`http://localhost/api/v1/plans/${plan.id}/status`),
+      buildRouteHandlerContext({ planId: plan.id }),
+    );
+    await expect(status.json()).resolves.toMatchObject({
+      status: 'processing',
+      attempts: 3,
+      latestError: null,
+    });
+  });
+
+  it('settles the reserved attempt and returns the not-started error when the workflow cannot start', async () => {
+    const userId = await setUpRetryUser('start-failure');
+    const plan = await createFailedPlan(userId);
+    workflowStartMock.mockRejectedValue(new Error('workflow unavailable'));
+
+    const response = await retry(plan.id);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({
+      error: 'Plan generation encountered an error. Please try again.',
+      code: 'GENERATION_FAILED',
+      classification: 'provider_error',
+      details: { planId: plan.id, retryable: true },
+    });
+    const attempts = await listAttempts(plan.id);
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0]).toMatchObject({
+      status: 'failure',
+      classification: 'provider_error',
+    });
+    // The shared failure policy releases the reservation (`ready` for a
+    // last-good plan, `failed` otherwise); it never stays `generating`.
+    await expect(getGenerationStatus(plan.id)).resolves.not.toBe('generating');
+  });
+
+  it('sends a signed start command to the jobs Worker when PLAN_GENERATION_RUNTIME=cloudflare', async () => {
+    const userId = await setUpRetryUser('cloudflare');
+    const plan = await createFailedPlan(userId);
+    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cloudflare');
+    vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
+    vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
+    const workerFetch = vi.fn(async (_url: URL | string, _init: RequestInit) =>
+      Response.json(
+        { accepted: true, instanceId: 'plan-instance' },
+        { status: 202 },
+      ),
+    );
+    vi.stubGlobal('fetch', workerFetch);
+
+    const response = await retry(plan.id);
+
+    expect(response.status).toBe(202);
+    const { attemptId } = (await response.json()) as { attemptId: string };
+    expect(workflowStartMock).not.toHaveBeenCalled();
+    expect(workerFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = workerFetch.mock.calls[0]!;
+    expect(String(url)).toBe(
+      'https://workers-test.atlaris.app/v1/plan-generation/start',
+    );
+    expect(new Headers(init.headers).get(JOBS_SIGNATURE_HEADER)).toMatch(
+      /^v1=[0-9a-f]{64}$/,
+    );
+    const command = planGenerationStartCommandSchema.parse(
+      JSON.parse(String(init.body)),
+    );
+    expect(command).toMatchObject({
+      planId: plan.id,
       userId,
-      attemptOverrides: {
-        status: 'failure',
-        classification: 'timeout',
-        durationMs: 1_000,
-        promptHash: 'retry-concurrent-first',
-      },
+      reservation: { attemptId },
     });
+    await expect(getGenerationStatus(plan.id)).resolves.toBe('generating');
+  });
 
-    const invocationA = createRetryInvocation(plan.id);
-    const invocationB = createRetryInvocation(plan.id);
-    const [resA, resB] = await Promise.all([
-      POST(invocationA.request, invocationA.context),
-      POST(invocationB.request, invocationB.context),
-    ]);
+  it('settles the attempt when the Cloudflare runtime is not configured', async () => {
+    const userId = await setUpRetryUser('cloudflare-unconfigured');
+    const plan = await createFailedPlan(userId);
+    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cloudflare');
+    vi.stubEnv('JOBS_WORKER_URL', undefined);
+    vi.stubEnv('JOBS_SIGNING_SECRET', undefined);
 
-    if (resA.status === 200 && resB.status === 200) {
-      const [eventsA, eventsB] = await Promise.all([
-        readStreamingResponse(resA),
-        readStreamingResponse(resB),
-      ]);
-      const hasStart = (events: typeof eventsA) =>
-        events.some((e) => e.type === 'plan_start');
-      expect(hasStart(eventsA) !== hasStart(eventsB)).toBe(true);
-      const winner = hasStart(eventsA) ? eventsA : eventsB;
-      const loser = hasStart(eventsA) ? eventsB : eventsA;
-      expectPlanStartEvent(winner, 2);
-      expect(winner.some((e) => e.type === 'complete')).toBe(true);
-      expect(loser.some((e) => e.type === 'plan_start')).toBe(false);
-      expect(loser.some((e) => e.type === 'error')).toBe(true);
-    } else {
-      const statuses = [resA.status, resB.status].sort((a, b) => a - b);
-      expect(statuses).toEqual([200, 400]);
-      const streamRes = resA.status === 200 ? resA : resB;
-      const rejectedRes = resA.status === 400 ? resA : resB;
-      const errBody = (await rejectedRes.json()) as { code?: string };
-      expect(errBody.code).toBe('VALIDATION_ERROR');
-      const events = await readStreamingResponse(streamRes);
-      expectPlanStartEvent(events, 2);
-      expect(events.some((e) => e.type === 'complete')).toBe(true);
-    }
+    const response = await retry(plan.id);
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'GENERATION_FAILED',
+      details: { planId: plan.id, retryable: true },
+    });
+    const [latest] = await listAttempts(plan.id);
+    expect(latest).toMatchObject({
+      status: 'failure',
+      classification: 'provider_error',
+    });
+    await expect(getGenerationStatus(plan.id)).resolves.not.toBe('generating');
+  });
+
+  it('rejects an invalid PLAN_GENERATION_RUNTIME before reserving', async () => {
+    const userId = await setUpRetryUser('invalid-runtime');
+    const plan = await createFailedPlan(userId);
+    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cf');
+
+    const response = await retry(plan.id);
+
+    expect(response.status).toBe(500);
+    await expect(listAttempts(plan.id)).resolves.toHaveLength(1);
+    await expect(getGenerationStatus(plan.id)).resolves.toBe('failed');
+  });
+
+  it('starts exactly one attempt for concurrent retries', async () => {
+    const userId = await setUpRetryUser('concurrent');
+    const plan = await createFailedPlan(userId);
+
+    const responses = await Promise.all([retry(plan.id), retry(plan.id)]);
+    const statuses = responses.map((response) => response.status);
+
+    expect(statuses.filter((status) => status === 202)).toHaveLength(1);
+    const loser = responses.find((response) => response.status !== 202)!;
+    expect(loser.status).toBeGreaterThanOrEqual(400);
+    expect(loser.status).toBeLessThan(500);
+    expect(workflowStartMock).toHaveBeenCalledTimes(1);
 
     const attempts = await listAttempts(plan.id);
     expect(attempts).toHaveLength(2);
-
-    const [persistedPlan] = await db
-      .select({ generationStatus: learningPlans.generationStatus })
-      .from(learningPlans)
-      .where(eq(learningPlans.id, plan.id))
-      .limit(1);
-
-    expect(persistedPlan?.generationStatus).toBe('ready');
+    expect(attempts[0]?.status).toBe('in_progress');
+    await expect(getGenerationStatus(plan.id)).resolves.toBe('generating');
   });
 
   it('applies durable generation_attempts rate limit before retry starts', async () => {
@@ -226,11 +280,10 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
       email: 'retry-rate-limit@example.com',
     });
 
-    const plan = await createTestPlanWithAttempt({ userId });
+    const plan = await createPlanForRetryTest(userId);
     await seedFailedAttemptsForDurableWindow(plan.id);
 
-    const { request, context } = createRetryInvocation(plan.id);
-    const response = await POST(request, context);
+    const response = await retry(plan.id);
     expect(response.status).toBe(429);
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
 
@@ -240,31 +293,21 @@ describe('POST /api/v1/plans/:planId/retry — HTTP preflight + default boundary
     };
     expect(body.code).toBe('RATE_LIMITED');
     expect(typeof body.retryAfter).toBe('number');
-    expect(workflowProcessFactory).not.toHaveBeenCalled();
+    expect(workflowStartMock).not.toHaveBeenCalled();
   });
 
   it('returns 400 when plan is not in failed state', async () => {
-    const authUserId = 'auth_retry_invalid_status';
-    setTestUser(authUserId);
-    const userId = await ensureUser({
-      authUserId,
-      email: 'retry-invalid-status@example.com',
+    const userId = await setUpRetryUser('invalid-status');
+    const plan = await createPlanForRetryTest(userId, {
+      topic: 'Ready plan',
+      generationStatus: 'ready',
     });
 
-    const plan = await createTestPlanWithAttempt({
-      userId,
-      planOverrides: {
-        topic: 'Ready plan',
-        generationStatus: 'ready',
-      },
-    });
-
-    const { request, context } = createRetryInvocation(plan.id);
-    const response = await POST(request, context);
+    const response = await retry(plan.id);
     expect(response.status).toBe(400);
     const body = (await response.json()) as { error?: string; code?: string };
     expect(body.code).toBe('VALIDATION_ERROR');
     expect(body.error).toContain('not eligible for retry');
-    expect(workflowProcessFactory).not.toHaveBeenCalled();
+    expect(workflowStartMock).not.toHaveBeenCalled();
   });
 });

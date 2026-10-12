@@ -8,8 +8,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const RETRY_COOLDOWN_MS = 5000;
 
-/** Derived retry UI phase; `cancelled` is a resolved retry stream (e.g. user disconnect), not idle. */
-type RetryStatus = 'idle' | 'retrying' | 'success' | 'error' | 'cancelled';
+/** Derived retry UI phase; `cancelled` is an aborted retry request, not idle. */
+type RetryStatus = 'idle' | 'retrying' | 'error' | 'cancelled';
 
 interface UseRetryGenerationReturn {
   status: RetryStatus;
@@ -19,14 +19,17 @@ interface UseRetryGenerationReturn {
 }
 
 /**
- * Retry cooldown + stream delegation. Pass the same `session` instance used
+ * Retry cooldown + start delegation. Pass the same `session` instance used
  * elsewhere on the surface (e.g. pending page) to avoid duplicate session hooks.
+ * `onRetryStarted` runs as soon as the server accepts the retry, so the caller
+ * can resume status polling; the retry itself runs in the background.
  */
 export function useRetryGeneration(
   planId: string,
   maxAttempts: number,
   currentAttempts: number,
   session: UsePlanGenerationSessionResult,
+  onRetryStarted?: () => void,
 ): UseRetryGenerationReturn {
   const router = useRouter();
   const { state, startSession, cancel } = session;
@@ -47,11 +50,8 @@ export function useRetryGeneration(
 
   const status: RetryStatus = (() => {
     switch (state.status) {
-      case 'connecting':
-      case 'generating':
+      case 'starting':
         return 'retrying';
-      case 'complete':
-        return 'success';
       case 'error':
         return 'error';
       case 'cancelled':
@@ -84,7 +84,10 @@ export function useRetryGeneration(
     try {
       // Refresh on any settle so failed-plan SSR `plan.attempts` rehydrates
       // (terminal usePlanStatus keeps poller attempts at 0).
-      await startSession({ kind: 'retry', planId });
+      await startSession(
+        { kind: 'retry', planId },
+        { onPlanIdReady: () => onRetryStarted?.() },
+      );
       router.refresh();
     } catch (error) {
       if (!(error instanceof DOMException && error.name === 'AbortError')) {
@@ -94,7 +97,7 @@ export function useRetryGeneration(
     }
 
     retryInFlightRef.current = false;
-  }, [cooldownActive, planId, router, startSession]);
+  }, [cooldownActive, onRetryStarted, planId, router, startSession]);
 
   return {
     status,

@@ -32,7 +32,12 @@ function modelOperationForGenerationPurpose(
   }
 }
 
-async function validateReservation(
+/**
+ * Replay check for a held reservation: `already_finalized` when the attempt
+ * is `success` or `failure`, `undefined` while it is still in progress on a
+ * `generating` plan, and a thrown error for a stale reservation.
+ */
+export async function validateReservation(
   dbClient: DbClient,
   params: GenerationRunParams,
 ): Promise<

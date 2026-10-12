@@ -43,6 +43,11 @@ type PlanReadStatusInput =
       hasModules: boolean;
       attemptsCount: number;
       attemptCap: number;
+      /**
+       * The latest attempt is still running. A `generating` plan whose final
+       * allowed attempt is in flight reads `processing`, not `failed`.
+       */
+      latestAttemptInProgress?: boolean;
     };
 
 /**
@@ -108,6 +113,9 @@ export function derivePlanReadStatus(
     case 'failed':
       return 'failed';
     case 'generating':
+      return attemptsExhausted && params.latestAttemptInProgress !== true
+        ? 'failed'
+        : 'processing';
     case 'pending_retry':
       return attemptsExhausted ? 'failed' : 'processing';
     case 'ready':
@@ -220,7 +228,7 @@ export function buildPlanDetailStatusSnapshot(params: {
   >;
   hasModules: boolean;
   attemptsCount: number;
-  latestAttempt: Pick<GenerationAttempt, 'classification'> | null;
+  latestAttempt: Pick<GenerationAttempt, 'classification' | 'status'> | null;
 }): PlanDetailStatusSnapshot {
   const { plan, hasModules, attemptsCount, latestAttempt } = params;
   const attemptCap = getGenerationAttemptCap();
@@ -232,6 +240,7 @@ export function buildPlanDetailStatusSnapshot(params: {
       hasModules,
       attemptsCount,
       attemptCap,
+      latestAttemptInProgress: latestAttempt?.status === 'in_progress',
     }),
     attempts: attemptsCount,
     attemptCap,

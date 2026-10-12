@@ -12,6 +12,8 @@ interface UsePlanStatusReturn {
   pollingError: string | null;
   isPolling: boolean;
   revalidate: () => Promise<void>;
+  /** Polls again after a new attempt starts, even from `failed`. */
+  restart: () => Promise<void>;
 }
 
 function createPoller(
@@ -69,5 +71,6 @@ export function usePlanStatus(
     pollingError: snapshot.pollingError,
     isPolling: snapshot.isPolling,
     revalidate: poller.revalidate,
+    restart: poller.restart,
   };
 }

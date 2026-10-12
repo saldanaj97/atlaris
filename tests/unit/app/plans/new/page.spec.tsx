@@ -42,9 +42,7 @@ vi.mock('@/features/plans/session/usePlanGenerationSession', async () => {
 
 const mockState: PlanGenerationSessionState = {
   status: 'idle',
-  modules: [],
   planId: undefined,
-  progress: undefined,
   error: undefined,
 };
 
@@ -56,9 +54,7 @@ describe('AiPlanGenerationPanel', () => {
     vi.clearAllMocks();
     Object.assign(mockState, {
       status: 'idle' as const,
-      modules: [],
       planId: undefined,
-      progress: undefined,
       error: undefined,
     });
     mockUsePlanGenerationSession.mockReturnValue({
@@ -130,9 +126,9 @@ describe('AiPlanGenerationPanel', () => {
       'submits on %s only when the form is valid',
       async (_label, shortcut) => {
         mockStartGeneration.mockResolvedValue({
-          status: 'completed',
+          status: 'started',
           planId: 'plan-keyboard',
-          result: 'plan-keyboard',
+          attemptId: 'attempt-1',
         });
 
         render(<AiPlanGenerationPanel subscriptionTier='pro' />);
@@ -200,7 +196,7 @@ describe('AiPlanGenerationPanel', () => {
       const planId = 'plan-123';
       mockStartGeneration.mockImplementation(async (_input, options) => {
         options?.onPlanIdReady?.(planId);
-        return { status: 'completed', planId, result: planId };
+        return { status: 'started', planId, attemptId: 'attempt-1' };
       });
 
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
@@ -241,9 +237,9 @@ describe('AiPlanGenerationPanel', () => {
 
     it('uses the real form values instead of a mocked mapper payload', async () => {
       mockStartGeneration.mockResolvedValue({
-        status: 'completed',
+        status: 'started',
         planId: 'plan-456',
-        result: 'plan-456',
+        attemptId: 'attempt-1',
       });
 
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
@@ -353,7 +349,7 @@ describe('AiPlanGenerationPanel', () => {
       });
 
       expect(clientLogger.error).toHaveBeenCalledWith(
-        'Streaming plan generation failed',
+        'Plan generation failed to start',
         errorWithPlanId,
       );
     });
@@ -380,10 +376,10 @@ describe('AiPlanGenerationPanel', () => {
       });
     });
 
-    it('recovers planId from the streaming state ref when the error does not include one', async () => {
+    it('recovers planId from the session state ref when the error does not include one', async () => {
       const planId = 'plan-recovery-789';
       Object.assign(mockState, {
-        status: 'generating' as const,
+        status: 'error' as const,
         planId,
       });
 
@@ -407,7 +403,7 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   describe('handleSubmit - generic error handling', () => {
-    it('shows the streaming error message when no planId can be recovered', async () => {
+    it('shows the start error message when no planId can be recovered', async () => {
       const genericError = new Error('Network error');
       mockStartGeneration.mockRejectedValue(genericError);
 
@@ -427,7 +423,7 @@ describe('AiPlanGenerationPanel', () => {
 
       expect(pushMock).not.toHaveBeenCalled();
       expect(clientLogger.error).toHaveBeenCalledWith(
-        'Streaming plan generation failed',
+        'Plan generation failed to start',
         genericError,
       );
     });
@@ -482,6 +478,31 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   describe('UnifiedPlanInput integration', () => {
+    it('keeps the form locked after the plan starts while the plan page loads', async () => {
+      mockStartGeneration.mockImplementation(async (_input, options) => {
+        options?.onPlanIdReady?.('plan-started');
+        return {
+          status: 'started',
+          planId: 'plan-started',
+          attemptId: 'attempt-1',
+        };
+      });
+
+      render(<AiPlanGenerationPanel subscriptionTier='pro' />);
+
+      await fillTopic('Started topic');
+      await chooseDefaultPreferences();
+      await submitForm();
+
+      await waitFor(() => {
+        expect(pushMock).toHaveBeenCalledWith('/plans/plan-started');
+      });
+      expect(
+        screen.getByRole('button', { name: /generating/i }),
+      ).toBeDisabled();
+      expect(mockStartGeneration).toHaveBeenCalledTimes(1);
+    });
+
     it('shows the real submitting state while generation is in flight', async () => {
       const deferredGeneration = createDeferredPromise<PlanGenerationResult>();
       mockStartGeneration.mockImplementation(() => deferredGeneration.promise);
@@ -499,9 +520,9 @@ describe('AiPlanGenerationPanel', () => {
       });
 
       deferredGeneration.resolve({
-        status: 'completed',
+        status: 'started',
         planId: 'plan-999',
-        result: 'plan-999',
+        attemptId: 'attempt-1',
       });
 
       await waitFor(() => {

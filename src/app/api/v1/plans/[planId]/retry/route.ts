@@ -8,6 +8,7 @@ import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
   type PlanGenerationSessionBoundary,
+  type StartedPlanGeneration,
 } from '@/features/plans/session/plan-generation-session';
 import { AppError } from '@/lib/api/errors';
 import {
@@ -15,6 +16,7 @@ import {
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { json } from '@/lib/api/response';
 
 export const maxDuration = 60;
 
@@ -37,7 +39,7 @@ const defaultBoundary: PlanGenerationSessionBoundary =
  * the lifecycle service under the boundary; production uses the default
  * boundary singleton.
  */
-function createRetryHandler(deps?: {
+export function createRetryHandler(deps?: {
   boundary?: PlanGenerationSessionBoundary;
 }): PlainHandler {
   const boundary = deps?.boundary ?? defaultBoundary;
@@ -71,7 +73,7 @@ function createRetryHandler(deps?: {
         );
       }
 
-      return await boundary.respondRetryStream({
+      const started = await boundary.startRetry({
         req,
         authUserId,
         internalUserId,
@@ -87,8 +89,12 @@ function createRetryHandler(deps?: {
         },
         savedPreferredAiModel: actor.preferredAiModel ?? null,
         tierDb: db,
-        responseHeaders: generationRateLimitHeaders,
         requestId: correlationId,
+      });
+
+      return json<StartedPlanGeneration>(started, {
+        status: 202,
+        headers: generationRateLimitHeaders,
       });
     },
   );
@@ -97,9 +103,9 @@ function createRetryHandler(deps?: {
 /**
  * POST /api/v1/plans/:planId/retry
  *
- * Retries generation for a failed plan. Returns a streaming response.
- * Delegates to PlanLifecycleService for attempt management, generation,
- * failure marking, and usage recording. The route is a thin adapter that
- * handles HTTP-level validation (ownership, plan status) and SSE streaming.
+ * Retries generation for a failed plan: reserves the next attempt and starts
+ * it on `PLAN_GENERATION_RUNTIME`. Returns `202 { planId, attemptId }`; the
+ * plan page polls `GET /api/v1/plans/:planId/status` for the outcome. The
+ * route is a thin adapter for HTTP-level validation (ownership, plan status).
  */
 export const POST = createRetryHandler();

@@ -1,6 +1,7 @@
 import type {
   AttemptReservation,
   AttemptMetadata,
+  AttemptWorkflowMetadata,
   AttemptsDbClient,
   GenerationAttemptRecord,
   ReserveAttemptResult,
@@ -443,4 +444,35 @@ export async function persistFailedAttemptInTx(
   }
 
   return updatedAttempt;
+}
+
+/**
+ * Merges `workflow` into an attempt's metadata (`metadata.workflow`), keeping
+ * the other metadata keys and any workflow fields the patch does not set.
+ * Throws when no attempt row matches.
+ */
+export async function mergeAttemptWorkflowMetadata(
+  dbClient: AttemptsDbClient,
+  attemptId: string,
+  workflow: AttemptWorkflowMetadata,
+): Promise<void> {
+  const patchJson = JSON.stringify(workflow);
+
+  const [updated] = await dbClient
+    .update(generationAttempts)
+    .set({
+      metadata: sql`jsonb_set(
+        coalesce(${generationAttempts.metadata}, '{}'::jsonb),
+        '{workflow}',
+        coalesce(${generationAttempts.metadata}->'workflow', '{}'::jsonb) || ${patchJson}::jsonb
+      )`,
+    })
+    .where(eq(generationAttempts.id, attemptId))
+    .returning({ id: generationAttempts.id });
+
+  if (!updated) {
+    throw new Error(
+      `Failed to persist plan generation workflow metadata for attempt ${attemptId}: no generation attempt row was updated.`,
+    );
+  }
 }

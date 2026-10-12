@@ -4,9 +4,13 @@ import type {
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle/types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
-import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
+import {
+  buildPlanGenerationWorkflowInput,
+  type FinalizeStartFailure,
+  reservePlanGenerationAttempt,
+  settleStartFailureWith,
+} from '@/features/plans/start-plan-generation-attempt';
 import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { start } from 'workflow/api';
@@ -18,15 +22,7 @@ export type CreateWorkflowBackedProcessGenerationDeps = {
   readonly workflowStart?: typeof start;
   readonly workflowFn?: typeof planGenerationWorkflow;
   readonly clock?: () => number;
-  readonly finalizeFailure?: (
-    dbClient: AttemptsDbClient,
-    input: {
-      reservation: AttemptReservation;
-      planId: string;
-      userId: string;
-      error: Error;
-    },
-  ) => Promise<void>;
+  readonly finalizeFailure?: FinalizeStartFailure;
 };
 
 /**
@@ -44,37 +40,15 @@ export function createWorkflowBackedProcessGeneration(
   const workflowFn = deps.workflowFn ?? planGenerationWorkflow;
   const clock = deps.clock ?? DEFAULT_CLOCK;
   const finalizeFailure =
-    deps.finalizeFailure ??
-    (async (_dbClient, failureInput) => {
-      await lifecycleService.settleReservedAttemptFailure({
-        reservation: failureInput.reservation,
-        planId: failureInput.planId,
-        userId: failureInput.userId,
-        error: failureInput.error,
-        classification: 'provider_error',
-        generationPurpose: failureInput.reservation.generationPurpose,
-        retryable: true,
-        durationMs: 0,
-        timedOut: false,
-        extendedTimeout: false,
-      });
-    });
+    deps.finalizeFailure ?? settleStartFailureWith(lifecycleService);
 
   return async (input) => {
     const startedAt = clock();
-    const reservation = await reserveSlot({
-      planId: input.planId,
-      userId: input.userId,
-      input: input.input,
-      generationPurpose: input.generationPurpose,
+    const reservation = await reservePlanGenerationAttempt(
+      reserveSlot,
+      input,
       dbClient,
-      ...(input.allowedGenerationStatuses !== undefined
-        ? { allowedGenerationStatuses: input.allowedGenerationStatuses }
-        : {}),
-      ...(input.requiredGenerationStatus !== undefined
-        ? { requiredGenerationStatus: input.requiredGenerationStatus }
-        : {}),
-    });
+    );
 
     if (!reservation.reserved) {
       return lifecycleService.settleReservationRejection(input, reservation, {
@@ -87,18 +61,7 @@ export function createWorkflowBackedProcessGeneration(
       await input.onAttemptReserved?.(reservation);
 
       const run = await workflowStart(workflowFn, [
-        {
-          planId: input.planId,
-          userId: input.userId,
-          tier: input.tier,
-          input: input.input,
-          generationPurpose: input.generationPurpose,
-          modelOverride: input.modelOverride ?? null,
-          correlationId,
-          reservation: toSerializableReservation(reservation),
-          allowedGenerationStatuses: input.allowedGenerationStatuses,
-          requiredGenerationStatus: input.requiredGenerationStatus,
-        },
+        buildPlanGenerationWorkflowInput(input, reservation, correlationId),
       ]);
 
       return await run.returnValue;
