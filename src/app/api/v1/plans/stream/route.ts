@@ -1,83 +1,22 @@
-import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
 
+import {
+  type CreatePlanRouteLogger,
+  parseCreatePlanRequest,
+} from '@/features/plans/api/create-plan-request';
 import {
   createPlanGenerationSessionBoundary,
   type PlanGenerationSessionBoundary,
 } from '@/features/plans/session/plan-generation-session';
-import { createLearningPlanSchema } from '@/features/plans/validation/learningPlans';
-import { ValidationError } from '@/lib/api/errors';
-import { parseJsonBody } from '@/lib/api/parse-json-body';
 import {
   checkPlanGenerationRateLimit,
   getPlanGenerationRateLimitHeaders,
 } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
-import { serializeErrorForLog } from '@/lib/errors';
-import { type Logger, logger } from '@/lib/logging/logger';
-import * as Sentry from '@sentry/nextjs';
-import { ZodError } from 'zod';
-
-type StreamRouteLogger = Pick<Logger, 'error' | 'info' | 'warn'>;
+import { logger } from '@/lib/logging/logger';
 
 const defaultBoundary: PlanGenerationSessionBoundary =
   createPlanGenerationSessionBoundary();
-
-function tryBuildPayloadLog(
-  payload: unknown,
-):
-  | { ok: true; payloadLog: Record<string, unknown> }
-  | { ok: false; error: unknown; fallback: Record<string, unknown> } {
-  try {
-    // Payload logging must not break generation when unusual getters/proxies throw.
-    return { ok: true, payloadLog: toPayloadLog(payload) };
-  } catch (error) {
-    return {
-      ok: false,
-      error,
-      fallback: { payloadType: typeof payload },
-    };
-  }
-}
-
-function toPayloadLog(payload: unknown): Record<string, unknown> {
-  if (!payload || typeof payload !== 'object') {
-    return { payloadType: typeof payload };
-  }
-
-  const maybePayload = payload as Partial<CreateLearningPlanInput> & {
-    notes?: unknown;
-    extractedContent?: unknown;
-  };
-
-  return {
-    hasTopic:
-      typeof maybePayload.topic === 'string' && maybePayload.topic.length > 0,
-    skillLevel:
-      typeof maybePayload.skillLevel === 'string'
-        ? maybePayload.skillLevel
-        : null,
-    weeklyHours:
-      typeof maybePayload.weeklyHours === 'number'
-        ? maybePayload.weeklyHours
-        : null,
-    learningStyle:
-      typeof maybePayload.learningStyle === 'string'
-        ? maybePayload.learningStyle
-        : null,
-    visibility:
-      typeof maybePayload.visibility === 'string'
-        ? maybePayload.visibility
-        : null,
-    origin:
-      typeof maybePayload.origin === 'string' ? maybePayload.origin : null,
-    hasNotes:
-      typeof maybePayload.notes === 'string' && maybePayload.notes.length > 0,
-    hasExtractedContent:
-      typeof maybePayload.extractedContent === 'object' &&
-      maybePayload.extractedContent !== null,
-  };
-}
 
 /**
  * Creates the stream POST handler with optional dependency overrides.
@@ -89,7 +28,7 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
  */
 export function createStreamHandler(deps?: {
   boundary?: PlanGenerationSessionBoundary;
-  logger?: StreamRouteLogger;
+  logger?: CreatePlanRouteLogger;
 }): PlainHandler {
   const routeLogger = deps?.logger ?? logger;
   const boundary = deps?.boundary ?? defaultBoundary;
@@ -104,67 +43,14 @@ export function createStreamHandler(deps?: {
         'Plan stream handler entered',
       );
 
-      const parsedBody = await parseJsonBody(req, {
-        mode: 'required',
-        onMalformedJson: (error) =>
-          new ValidationError(
-            'Invalid request body.',
-            { reason: 'Malformed or invalid JSON payload.' },
-            { authUserId, error: serializeErrorForLog(error) },
-          ),
-        maxBytes: 1 * 1024 * 1024,
+      const body = await parseCreatePlanRequest({
+        req,
+        authUserId,
+        correlationId,
+        logger: routeLogger,
+        logPrefix: 'Plan stream',
+        sentryRoute: 'plans-stream',
       });
-
-      const payloadLogResult = tryBuildPayloadLog(parsedBody);
-      if (payloadLogResult.ok) {
-        routeLogger.info(
-          { authUserId, correlationId, payload: payloadLogResult.payloadLog },
-          'Plan stream request payload received',
-        );
-      } else {
-        const { error, fallback } = payloadLogResult;
-        routeLogger.warn(
-          {
-            authUserId,
-            correlationId,
-            error: serializeErrorForLog(error),
-            payload: fallback,
-          },
-          'Plan stream payload log failed',
-        );
-        Sentry.captureException(
-          error instanceof Error ? error : new Error(String(error)),
-          {
-            level: 'warning',
-            tags: {
-              route: 'plans-stream',
-              source: 'payload-log',
-            },
-            extra: {
-              authUserId,
-              payload: fallback,
-            },
-          },
-        );
-      }
-
-      let body: CreateLearningPlanInput;
-      try {
-        body = createLearningPlanSchema.parse(parsedBody);
-      } catch (error) {
-        if (error instanceof ZodError) {
-          const validation = error.flatten();
-          throw new ValidationError('Invalid request body.', validation, {
-            authUserId,
-            validation,
-          });
-        }
-        throw new ValidationError(
-          'Invalid request body.',
-          { reason: 'Malformed or invalid JSON payload.' },
-          { authUserId, error: serializeErrorForLog(error) },
-        );
-      }
 
       const internalUserId = actor.id;
 

@@ -4,6 +4,7 @@ import {
   createInitialPlanPollState,
   shouldContinuePolling,
   transitionPlanPollState,
+  type PlanPollEvent,
   type PlanPollState,
 } from './plan-status-machine';
 import { parseApiErrorResponse } from '@/lib/api/error-response';
@@ -99,11 +100,27 @@ export class PlanStatusPoller {
 
   // fallow-ignore-next-line unused-class-member
   revalidate = async (): Promise<void> => {
+    await this.transitionAndPollNow({ type: 'revalidate' });
+  };
+
+  /**
+   * Resumes polling after a new attempt starts (e.g. a retry was accepted),
+   * including from a terminal `failed` status. Reads as `processing` until the
+   * first response.
+   */
+  // fallow-ignore-next-line unused-class-member
+  restart = async (): Promise<void> => {
+    await this.transitionAndPollNow({ type: 'restart' });
+  };
+
+  private async transitionAndPollNow(
+    event: Extract<PlanPollEvent, { type: 'revalidate' | 'restart' }>,
+  ): Promise<void> {
     if (this.cancelled) {
       return;
     }
 
-    this.state = transitionPlanPollState(this.state, { type: 'revalidate' });
+    this.state = transitionPlanPollState(this.state, event);
     this.syncSnapshot();
     this.emit();
     if (shouldContinuePolling(this.state)) {
@@ -119,7 +136,7 @@ export class PlanStatusPoller {
       }
       this.scheduleNextPoll();
     }
-  };
+  }
 
   start(): void {
     if (this.started) {

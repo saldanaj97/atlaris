@@ -21,8 +21,15 @@ interface PlanPendingStateProps {
 export function PlanPendingState({ plan }: PlanPendingStateProps) {
   const { refresh } = useRouter();
   const planGenerationSession = usePlanGenerationSession();
-  const { status, attempts, error, pollingError, isPolling, revalidate } =
-    usePlanStatus(plan.id, plan.status ?? 'pending');
+  const {
+    status,
+    attempts,
+    error,
+    pollingError,
+    isPolling,
+    revalidate,
+    restart,
+  } = usePlanStatus(plan.id, plan.status ?? 'pending');
   const currentAttempts = plan.status === 'failed' ? plan.attempts : attempts;
 
   const {
@@ -35,6 +42,14 @@ export function PlanPendingState({ plan }: PlanPendingStateProps) {
     plan.attemptCap,
     currentAttempts,
     planGenerationSession,
+    () => {
+      restart().catch((restartError: unknown) => {
+        clientLogger.error('Failed to resume plan status polling', {
+          error: restartError,
+          planId: plan.id,
+        });
+      });
+    },
   );
 
   useEffect(() => {
