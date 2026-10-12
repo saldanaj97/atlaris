@@ -1,18 +1,19 @@
 # Plan Generation Architecture
 
 **Audience:** Developers onboarding to the plan generation pipeline  
-**Last Updated:** August 2026
+**Last Updated:** October 2026
 
 ## Overview
 
-Plan generation now begins with `POST /api/v1/plans/stream`.
+Plan generation starts with `POST /api/v1/plans` (create) or `POST /api/v1/plans/:planId/retry` (retry). The request creates the plan (create only), reserves a generation attempt, hands the attempt to the runtime that `PLAN_GENERATION_RUNTIME` names, and returns `202 { planId, attemptId }`. Generation never runs on the request. The client opens the plan page, which polls `GET /api/v1/plans/:planId/status` until the plan is `ready` or `failed`.
 
-The stream route creates the plan record, runs generation, and emits SSE events in one request so the client can redirect as soon as the plan id exists without maintaining a separate shell-creation phase.
+`POST /api/v1/plans/stream` (SSE) still works for tabs opened before create + poll shipped. It reserves, starts the Vercel workflow, and awaits it on the open connection. A follow-up change (JCS-133) removes it.
 
 At runtime, the pipeline combines:
 
 - Clerk Auth for user identity
 - request-scoped RLS database access via `getDb()`
+- a Vercel Workflow SDK run or a Cloudflare Workflow instance per attempt (`PLAN_GENERATION_RUNTIME`)
 - OpenRouter-backed streaming model generation
 - strict parsing and pacing before persistence
 - generation execution without DB settlement (orchestrator)
@@ -22,19 +23,17 @@ At runtime, the pipeline combines:
 
 ```text
 User submits create form
-  → POST /api/v1/plans/stream
+  → POST /api/v1/plans
   → auth + aiGeneration rate limit
   → validate and normalize input
   → durable generation-window checks
+  → read PLAN_GENERATION_RUNTIME (invalid value: 500, nothing created)
   → create learning_plans row
-  → return planId
   → reserve attempt slot
-  → call AI provider
-  → parse streamed output
-  → pace modules/tasks to available hours
-  → return unfinalized outcome to lifecycle (orchestrator)
-  → lifecycle finalizes attempt, content, plan status, and usage in one DB transaction
-  → emit SSE events to client
+  → start the attempt: vercel → planGenerationWorkflow, cloudflare → signed POST /v1/plan-generation/start
+  → 202 { planId, attemptId }; client navigates to /plans/:planId
+  → (runtime) call AI provider → parse → pace → lifecycle finalizes attempt, content, plan status, and usage in one transaction
+  → plan page polls GET /api/v1/plans/:planId/status until ready or failed
 ```
 
 ## Request boundary and auth
@@ -50,17 +49,27 @@ This separation between external auth identity and internal app user row is not 
 
 ### API layer
 
-| File                                                                                  | Responsibility                             |
-| ------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `src/app/api/v1/plans/stream/route.ts`                                                | Start streamed plan generation             |
-| `src/app/api/v1/plans/stream/helpers.ts`                                              | Stream-side success/failure handling       |
-| `src/app/api/v1/plans/[planId]/status/route.ts`                                       | Return plan generation status              |
-| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                     | Return attempt history                     |
-| `src/app/api/v1/plans/[planId]/retry/route.ts`                                        | Retry a failed or pending-retry generation |
-| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                   | Regenerate an existing plan                |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`   | Start module lesson workflow (async)       |
-| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`     | Poll module lesson generation status       |
-| `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook      |
+| File                                                                                  | Responsibility                                                       |
+| ------------------------------------------------------------------------------------- | -------------------------------------------------------------------- |
+| `src/app/api/v1/plans/route.ts`                                                       | `POST`: create a plan and start its first attempt (202); `GET`: list |
+| `src/app/api/v1/plans/[planId]/retry/route.ts`                                        | Retry a failed or pending-retry generation (202)                     |
+| `src/app/api/v1/plans/[planId]/status/route.ts`                                       | Return plan generation status (polled by the plan page)              |
+| `src/app/api/v1/plans/stream/route.ts`                                                | Legacy SSE create for already-open tabs; removal pending             |
+| `src/app/api/v1/plans/[planId]/attempts/route.ts`                                     | Return attempt history                                               |
+| `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                   | Regenerate an existing plan                                          |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`   | Start module lesson workflow (async)                                 |
+| `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts`     | Poll module lesson generation status                                 |
+| `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` | Client generate + status polling hook                                |
+
+### Session and start
+
+| File                                                       | Responsibility                                                                        |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `src/features/plans/session/plan-generation-session.ts`    | Session boundary: `startCreate` / `startRetry`, error mapping, legacy SSE methods     |
+| `src/features/plans/start-plan-generation-attempt.ts`      | Reserve the attempt and hand it to `PLAN_GENERATION_RUNTIME`; settle when not started |
+| `src/features/jobs/plan-generation-dispatch.ts`            | Signed `POST /v1/plan-generation/start` to the jobs Worker; never throws              |
+| `src/features/plans/session/usePlanGenerationSession.ts`   | Client create/retry request (`starting` → `started` on 202)                           |
+| `src/app/(app)/plans/[id]/components/PlanPendingState.tsx` | Plan page: status polling (`usePlanStatus`) and retry (`useRetryGeneration`)          |
 
 ### AI layer
 
@@ -91,19 +100,30 @@ This separation between external auth identity and internal app user row is not 
 
 ## Lifecycle
 
-### 1) Start the stream
+### 1) Start the attempt
 
-`POST /api/v1/plans/stream` creates a new plan (it does not take a plan id). The route performs:
+`POST /api/v1/plans` creates a new plan (it does not take a plan id). The route and session boundary perform:
 
 1. authenticated user rate limiting for `aiGeneration` (`requestBoundary.route`)
-2. request validation and normalization (`createLearningPlanSchema`)
+2. request validation and normalization (`parseCreatePlanRequest`, `createLearningPlanSchema`)
 3. durable generation-window checks (`checkPlanGenerationRateLimit` using `src/shared/constants/generation.ts`)
-4. plan-row creation (`lifecycleService.createPlan`)
-5. SSE response initialization and session orchestration (attempt reserve, provider run, finalization)
+4. `PLAN_GENERATION_RUNTIME` read, before anything is created, so an invalid value cannot strand a plan or a reservation
+5. plan-row creation (`lifecycleService.createPlan`)
+6. attempt reservation (`reserveAttemptSlot`)
+7. the runtime start (`startPlanGenerationAttempt`), then `202 { planId, attemptId }` with the generation-window rate-limit headers
 
-Ownership checks and attempt-cap / status validation apply to retry and other plan-scoped routes, not to create-stream.
+`POST /api/v1/plans/:planId/retry` runs the same steps, except that steps 2 and 5 become ownership and status checks: only `failed` and `pending_retry` plans may retry (`400 VALIDATION_ERROR` otherwise), and the reservation re-checks those statuses inside its transaction.
 
-The stream route must not couple the plan’s lifecycle to a fragile client connection. Early navigation is common; silent partial failure is worse.
+| Start outcome                                                                                                                          | Settlement                                                                                    | Response                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| Vercel `start()` resolved, or the Worker answered `202` or `200 duplicate`                                                             | None; the runtime owns the attempt                                                            | `202 { planId, attemptId }`                                         |
+| Reservation rejected (cap, concurrent attempt, status changed)                                                                         | `settleReservationRejection`                                                                  | Status from `PLAN_CREATION_FAILURE_HTTP_MAP` for the classification |
+| Vercel `start()` threw; Worker `503 jobs_paused` / `job_disabled`; any other Worker non-2xx, timeout, network error, or missing config | `settleReservedAttemptFailure` as a retryable `provider_error` (the plan leaves `generating`) | `503 GENERATION_FAILED`                                             |
+| Unexpected error after the plan exists                                                                                                 | The plan is marked failed (`onUnhandledError`)                                                | `503 GENERATION_FAILED`                                             |
+
+Every not-started response uses the canonical error shape `{ error, code, classification, details: { planId, retryable } }`. `error` and `code` are the same presentation (`getFailurePresentation`) that the SSE `error` event carried for that classification. `details.planId` lets the client open the plan page with "Generation failed. You can retry from the plan page.", as it did after `plan_start`.
+
+On `vercel` the request returns as soon as `start()` resolves and never reads `run.returnValue`. A Vercel run that throws after it started is therefore not settled by the request: the stuck-plan cleanup (`cleanupStuckPlans`, 15 minutes) marks the plan failed. On `cloudflare` the Workflow's `fail` step settles it right away.
 
 ### 2) Run generation execution
 
@@ -117,7 +137,7 @@ Production path: `PlanLifecycleService.processGenerationAttempt` (or `processGen
 6. pace modules/tasks to fit available hours
 7. return **unfinalized** success or failure (attempt still reserved / in-flight at DB)
 
-Lifecycle settlement owns the single transactional finalize after this returns. Stream wrappers that already reserved must call `settleReservationRejection` instead of `processGenerationAttempt`. Pre-provider reserved failures use `settleReservedAttemptFailure`.
+Lifecycle settlement owns the single transactional finalize after this returns. Start paths that already reserved (`startPlanGenerationAttempt`, the legacy SSE wrapper) must call `settleReservationRejection` instead of `processGenerationAttempt`. Pre-provider reserved failures use `settleReservedAttemptFailure`.
 
 ### 3) Finalize in lifecycle (one transaction)
 
@@ -149,17 +169,13 @@ Lifecycle settlement owns the single transactional finalize after this returns. 
 
 The lifecycle finalization store owns the success and failure transactions. The database layer exposes `reserveAttemptSlot`, `persistSuccessfulAttemptInTx`, and `persistFailedAttemptInTx` as transaction-scoped primitives; integration tests exercise the lifecycle commit so attempt, plan, module/task, and usage state settle together.
 
-## Stream contract
+## Status polling
 
-The SSE endpoint emits client-safe events such as:
+- **Client start.** `usePlanGenerationSession` POSTs the create or retry request and resolves on `202`. For create, `useStartAiPlanGeneration` shows "Your learning plan generation has started." and navigates to the plan. For retry, `useRetryGeneration` calls `usePlanStatus().restart()` when the server accepts: the poller of a `failed` plan is terminal, so `restart` resumes polling and reads `processing` until the first response. It then refreshes the route so server-rendered attempt counts catch up.
+- **Status route.** `GET /api/v1/plans/:planId/status` derives `status` with `derivePlanReadStatus`. A `generating` plan reads `processing` while its latest attempt is `in_progress`, even when that attempt is the last one the cap allows; without that, the final retry would read `failed` while it runs. `latestError` is the classification presentation message for a `failed` plan.
+- **Terminal states.** `ready` refreshes the page into the plan view; `failed` shows the failure panel with `latestError` and the retry action while attempts remain.
 
-- `plan_start`
-- `module_summary`
-- `progress`
-- `complete`
-- `error`
-
-Client-facing errors are sanitized and serialized into the canonical API error shape instead of leaking raw provider or infrastructure failures.
+The legacy SSE route still emits `plan_start`, `module_summary`, `progress`, `complete`, and `error` for clients that started on it.
 
 ## Failure classes
 
@@ -175,24 +191,31 @@ These classifications drive logging, user messaging, and retry decisions.
 
 ## Durable workflows
 
-The session boundary (`plan-generation-session.ts`) still reserves the attempt and emits `plan_start` on the SSE connection, then runs provider work and lifecycle finalization inside `planGenerationWorkflow`. The client protocol is unchanged; only backend durability changes.
+Both runtimes run the same lifecycle halves for a reserved attempt. `PLAN_GENERATION_RUNTIME` (`jobsWorkerEnv.planGenerationRuntime`) picks one per request:
+
+| Value            | Start                                                                      | Runs                                           |
+| ---------------- | -------------------------------------------------------------------------- | ---------------------------------------------- |
+| unset / `vercel` | `workflow/api.start(planGenerationWorkflow, …)`                            | Vercel Workflow SDK (`planGenerationWorkflow`) |
+| `cloudflare`     | `dispatchPlanGenerationToWorker` → signed `POST /v1/plan-generation/start` | Cloudflare Workflow `PlanGenerationWorkflow`   |
+
+Any other value is an `EnvValidationError` (HTTP 500) before a plan or attempt exists. **Rollback:** unset `PLAN_GENERATION_RUNTIME` (or set `vercel`) and redeploy; new attempts start on Vercel while running Worker instances finish and settle through lifecycle finalization.
 
 Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For file layout and correlation, see [Workflow SDK](./workflow-sdk.md).
 
 ### Cloudflare Workflow path (B6, staging first)
 
-The jobs Worker (`workers/jobs`) can run plan create/retry generation as the Cloudflare Workflow `PlanGenerationWorkflow` (`atlaris-plan-generation-<env>`, binding `PLAN_GENERATION_WORKFLOW`). Nothing routes to it yet: the app still runs `planGenerationWorkflow` on Vercel until the app-side create route ships. Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
+The jobs Worker (`workers/jobs`) runs plan create/retry generation as the Cloudflare Workflow `PlanGenerationWorkflow` (`atlaris-plan-generation-<env>`, binding `PLAN_GENERATION_WORKFLOW`) when the app sets `PLAN_GENERATION_RUNTIME=cloudflare`. Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
 
-**Start.** Signed `POST /v1/plan-generation/start` with `{ v: 1, ...PlanGenerationWorkflowInput }` (`planGenerationStartCommandSchema`, `src/lib/jobs-worker/contract.ts`): `planId`, `userId`, `tier`, `input`, `generationPurpose` (`initial` only), `modelOverride`, `correlationId`, the reservation from `toSerializableReservation`, and the optional `allowedGenerationStatuses` / `requiredGenerationStatus`. The app reserves the attempt first, as `create-workflow-backed-process-generation.ts` does before `workflow/api.start`. Responses: `202 { accepted, instanceId }`, `200 { accepted, duplicate: true }` when the instance already exists, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `503 { code: "workflow_start_failed" }`. Handler: `workers/jobs/src/http/plan-generation-start.ts`. Instance ID: `plan-<attemptId>`.
+**Start.** Signed `POST /v1/plan-generation/start` with `{ v: 1, ...PlanGenerationWorkflowInput }` (`planGenerationStartCommandSchema`, `src/lib/jobs-worker/contract.ts`): `planId`, `userId`, `tier`, `input`, `generationPurpose` (`initial` only), `modelOverride`, `correlationId`, the reservation from `toSerializableReservation`, and the optional `allowedGenerationStatuses` / `requiredGenerationStatus`. The app reserves the attempt first (`startPlanGenerationAttempt`) and sends the command through `dispatchPlanGenerationToWorker`: one attempt, 10-second timeout, no retry (Decision 4). Responses: `202 { accepted, instanceId }`, `200 { accepted, duplicate: true }` when the instance already exists, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `503 { code: "workflow_start_failed" }`. Handler: `workers/jobs/src/http/plan-generation-start.ts`. Instance ID: `plan-<attemptId>`.
 
 **Steps** (`workers/jobs/src/workflows/plan-generation/run.ts`). Names are final once deployed; never rename, reorder, or remove them.
 
-| Step              | Work                                                                                                                                                                                                                                                                                                                                                                                                                  | Retries                           |
-| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
-| `record-workflow` | `mergeAttemptWorkflowMetadata` writes `{ provider: 'cloudflare-workflow', runId: <instanceId>, startedAt }` to `generation_attempts.metadata.workflow`.                                                                                                                                                                                                                                                               | 3, exponential                    |
+| Step              | Work                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Retries                           |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| `record-workflow` | `mergeAttemptWorkflowMetadata` writes `{ provider: 'cloudflare-workflow', runId: <instanceId>, startedAt }` to `generation_attempts.metadata.workflow`.                                                                                                                                                                                                                                                                                                               | 3, exponential                    |
 | `generate`        | Switch off → stop before the provider (`disabled`). Otherwise `PlanLifecycleService.runGenerationWithReservation`, the provider half of the Vercel step: replay check (an attempt already `success` or `failure` ends the run), OpenRouter call under the adaptive timeout, parse, pace. Provider and parse failures come back classified as on Vercel. Returns the paced modules, provider metadata, and usage. Step timeout: AI base + extension timeout plus 60 s. | 0 (never repeats a provider call) |
-| `finalize`        | `PlanLifecycleService.settleGenerationResult`, the settlement half of the Vercel step: `finalizeSuccess` / `finalizeFailure` in one transaction with usage exactly as today, then the first two modules' lessons start through `createWorkflowModuleLessonStarter` (the lessons Workflow). A `disabled` run settles the attempt as a retryable `provider_error` (Decision 7). A retry first repeats the replay check and stops if its commit landed. | 2 (transient DB only)             |
-| `fail`            | Runs after any thrown step. Unless the attempt is already finalized, settles it as a retryable `provider_error`, as the app does when a Vercel run fails.                                                                                                                                                                                                                                                             | 3                                 |
+| `finalize`        | `PlanLifecycleService.settleGenerationResult`, the settlement half of the Vercel step: `finalizeSuccess` / `finalizeFailure` in one transaction with usage exactly as today, then the first two modules' lessons start through `createWorkflowModuleLessonStarter` (the lessons Workflow). A `disabled` run settles the attempt as a retryable `provider_error` (Decision 7). A retry first repeats the replay check and stops if its commit landed.                  | 2 (transient DB only)             |
+| `fail`            | Runs after any thrown step. Unless the attempt is already finalized, settles it as a retryable `provider_error`, as the app does when a Vercel run fails.                                                                                                                                                                                                                                                                                                             | 3                                 |
 
 Parse failures are never retried: invalid JSON settles as a retryable `provider_error` and a schema failure as a permanent `validation` failure with usage, the same classification and messaging as on Vercel. Each step opens its own database pool (`withStepDb`); Worker paths never use the service-role singleton. Each step execution writes one log line `{ job: "plan-generation", step, instanceId, planId, attemptId, outcome, errorKind?, taskCount? }` for per-step CPU measurement (Decision 9).
 
@@ -200,7 +223,7 @@ Parse failures are never retried: invalid JSON settles as a retryable `provider_
 
 **Settings.** Worker switch `JOB_PLAN_GENERATION_ENABLED` (dashboard variable; off unless `true`) and `JOBS_PAUSED`; lessons after success also need `JOB_MODULE_LESSONS_ENABLED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The step timeout follows the Worker's `AI_TIMEOUT_*` variables (app defaults when unset).
 
-**Staging cutover.** After the app-side create route ships: set `JOB_PLAN_GENERATION_ENABLED=true` on the staging Worker before deploying the app version that sends `plan-generation/start`, then run create and retry journeys with the real provider and record CPU per step from Workers Logs (Decision 9). **Rollback:** Vercel Instant Rollback of the app restores the Vercel path; running Worker instances finish and settle through lifecycle finalization. Production waits for explicit approval.
+**Staging cutover.** Set `JOB_PLAN_GENERATION_ENABLED=true` on the staging Worker, then set `PLAN_GENERATION_RUNTIME=cloudflare` (with `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`) on the app's staging environment. Run create and retry journeys with the real provider and record CPU per step from Workers Logs (Decision 9). **Rollback:** unset `PLAN_GENERATION_RUNTIME`; running Worker instances finish and settle through lifecycle finalization. Production waits for explicit approval.
 
 ## Module lesson generation (separate pipeline)
 
