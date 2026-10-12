@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const {
   refreshMock,
   revalidateMock,
+  restartMock,
   retryGenerationMock,
   mockUsePlanStatus,
   mockUseRetryGeneration,
@@ -16,6 +17,7 @@ const {
 } = vi.hoisted(() => ({
   refreshMock: vi.fn(),
   revalidateMock: vi.fn().mockResolvedValue(undefined),
+  restartMock: vi.fn().mockResolvedValue(undefined),
   retryGenerationMock: vi.fn().mockResolvedValue(undefined),
   mockUsePlanStatus: vi.fn(),
   mockUseRetryGeneration: vi.fn(),
@@ -42,7 +44,6 @@ function createSessionMock(): UsePlanGenerationSessionResult {
   return {
     state: {
       status: 'idle',
-      modules: [],
     },
     startSession: vi.fn(),
     cancel: vi.fn(),
@@ -59,6 +60,7 @@ function mockPlanStatus(
     pollingError: null,
     isPolling: false,
     revalidate: revalidateMock,
+    restart: restartMock,
     ...overrides,
   });
 }
@@ -135,7 +137,42 @@ describe('PlanPendingState', () => {
       5,
       3,
       expect.anything(),
+      expect.any(Function),
     );
+  });
+
+  it('resumes status polling when the server accepts a retry', () => {
+    render(
+      <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
+    );
+
+    const onRetryStarted = mockUseRetryGeneration.mock.lastCall?.[4] as
+      | (() => void)
+      | undefined;
+    expect(restartMock).not.toHaveBeenCalled();
+
+    onRetryStarted?.();
+
+    expect(restartMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows the generating panel once polling resumes after a retry', () => {
+    mockPlanStatus({ status: 'processing', attempts: 2, isPolling: true });
+
+    render(
+      <PlanPendingState
+        plan={createTestPlanDetail({
+          status: 'failed',
+          attempts: 1,
+          attemptCap: 3,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText('Generating Your Learning Plan'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Generation Failed')).not.toBeInTheDocument();
   });
 
   it('keeps the interrupted fallback when a retry session is cancelled', () => {

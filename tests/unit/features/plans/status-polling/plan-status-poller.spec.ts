@@ -47,4 +47,36 @@ describe('PlanStatusPoller', () => {
     expect(listener).not.toHaveBeenCalled();
     expect(poller.getSnapshot()).toEqual(initialSnapshot);
   });
+
+  it('polls again after restart from a terminal failed status', async () => {
+    const fetcher = vi.fn(async () =>
+      createMockFetchResponse(
+        createPlanStatusResponse({ status: 'ready', attempts: 2 }),
+      ),
+    );
+    const poller = new PlanStatusPoller({
+      planId: 'plan-123',
+      initialStatus: 'failed',
+      fetcher: fetcher as unknown as typeof fetch,
+    });
+    const snapshots: string[] = [];
+    poller.subscribe(() => snapshots.push(poller.getSnapshot().status));
+
+    poller.start();
+    await poller.revalidate();
+    expect(fetcher).not.toHaveBeenCalled();
+
+    await poller.restart();
+
+    expect(fetcher).toHaveBeenCalledWith('/api/v1/plans/plan-123/status', {
+      signal: expect.any(AbortSignal),
+    });
+    expect(snapshots).toEqual(['failed', 'processing', 'ready']);
+    expect(poller.getSnapshot()).toMatchObject({
+      status: 'ready',
+      attempts: 2,
+      isPolling: false,
+    });
+    poller.dispose();
+  });
 });

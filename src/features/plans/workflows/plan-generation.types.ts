@@ -2,7 +2,10 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle/types';
-import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
+import type {
+  AttemptReservation,
+  AttemptWorkflowMetadata,
+} from '@/lib/db/queries/types/attempts.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -57,6 +60,25 @@ export function resolvePlanGenerationWorkflowPurpose(
       throw new Error(`Unhandled generation purpose: ${String(_never)}`);
     }
   }
+}
+
+/** The lifecycle input a plan-generation run generates and settles with. */
+export function toPlanGenerationProcessInput(
+  input: PlanGenerationWorkflowInput,
+  generationPurpose: GenerationPurpose,
+  workflowMetadata: AttemptWorkflowMetadata,
+): ProcessGenerationInput {
+  return {
+    planId: input.planId,
+    userId: input.userId,
+    tier: input.tier,
+    input: input.input,
+    generationPurpose,
+    modelOverride: input.modelOverride ?? undefined,
+    allowedGenerationStatuses: input.allowedGenerationStatuses,
+    requiredGenerationStatus: input.requiredGenerationStatus,
+    workflowMetadata,
+  };
 }
 
 export function toSerializableReservation(

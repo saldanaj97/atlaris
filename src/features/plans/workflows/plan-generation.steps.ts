@@ -4,37 +4,12 @@ import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import {
   fromSerializableReservation,
   resolvePlanGenerationWorkflowPurpose,
+  toPlanGenerationProcessInput,
 } from './plan-generation.types';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { generationAttempts } from '@supabase/schema';
+import { mergeAttemptWorkflowMetadata } from '@/lib/db/queries/attempts';
 import { db as serviceRoleDb } from '@supabase/service-role';
-import { eq, sql } from 'drizzle-orm';
 import { getWorkflowMetadata } from 'workflow';
-
-async function mergeAttemptWorkflowMetadata(
-  attemptId: string,
-  workflowPatch: Record<string, string>,
-): Promise<void> {
-  const patchJson = JSON.stringify(workflowPatch);
-
-  const [updated] = await serviceRoleDb
-    .update(generationAttempts)
-    .set({
-      metadata: sql`jsonb_set(
-        coalesce(${generationAttempts.metadata}, '{}'::jsonb),
-        '{workflow}',
-        coalesce(${generationAttempts.metadata}->'workflow', '{}'::jsonb) || ${patchJson}::jsonb
-      )`,
-    })
-    .where(eq(generationAttempts.id, attemptId))
-    .returning({ id: generationAttempts.id });
-
-  if (!updated) {
-    throw new Error(
-      `Failed to persist plan generation workflow metadata for attempt ${attemptId}: no generation attempt row was updated.`,
-    );
-  }
-}
 
 export async function persistPlanGenerationWorkflowMetadataStep(
   input: PlanGenerationWorkflowInput,
@@ -43,11 +18,15 @@ export async function persistPlanGenerationWorkflowMetadataStep(
 
   const { workflowRunId: runId } = getWorkflowMetadata();
 
-  await mergeAttemptWorkflowMetadata(input.reservation.attemptId, {
-    provider: 'workflow-sdk',
-    runId,
-    startedAt: input.reservation.startedAt,
-  });
+  await mergeAttemptWorkflowMetadata(
+    serviceRoleDb,
+    input.reservation.attemptId,
+    {
+      provider: 'workflow-sdk',
+      runId,
+      startedAt: input.reservation.startedAt,
+    },
+  );
 }
 
 export async function runPlanGenerationStep(
@@ -64,21 +43,11 @@ export async function runPlanGenerationStep(
   const { workflowRunId: runId } = getWorkflowMetadata();
 
   const result = await lifecycle.processGenerationAttemptWithReservation(
-    {
-      planId: input.planId,
-      userId: input.userId,
-      tier: input.tier,
-      input: input.input,
-      generationPurpose,
-      modelOverride: input.modelOverride ?? undefined,
-      allowedGenerationStatuses: input.allowedGenerationStatuses,
-      requiredGenerationStatus: input.requiredGenerationStatus,
-      workflowMetadata: {
-        provider: 'workflow-sdk',
-        runId,
-        startedAt: input.reservation.startedAt,
-      },
-    },
+    toPlanGenerationProcessInput(input, generationPurpose, {
+      provider: 'workflow-sdk',
+      runId,
+      startedAt: input.reservation.startedAt,
+    }),
     reservation,
   );
 

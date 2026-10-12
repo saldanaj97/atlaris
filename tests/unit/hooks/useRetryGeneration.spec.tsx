@@ -18,55 +18,65 @@ function createMockSession(
   return {
     state: {
       status: 'idle',
-      modules: [],
       ...overrides.state,
     },
     startSession:
       overrides.startSession ??
       vi.fn().mockResolvedValue({
-        status: 'completed' as const,
+        status: 'started' as const,
         planId: 'plan-x',
-        result: 'plan-x',
+        attemptId: 'attempt-x',
       }),
     cancel: overrides.cancel ?? vi.fn(),
   };
 }
 
+/** A startSession that accepts the retry the way the server's 202 does. */
+function acceptingStartSession(planId: string) {
+  return vi.fn<UsePlanGenerationSessionResult['startSession']>(
+    async (_request, options) => {
+      options?.onPlanIdReady?.(planId);
+      return { status: 'started', planId, attemptId: 'attempt-2' };
+    },
+  );
+}
+
 describe('useRetryGeneration', () => {
   afterEach(() => {
-    refresh.mockClear();
+    refresh.mockReset();
     vi.restoreAllMocks();
   });
 
-  it('delegates retry to session.startSession with retry kind', async () => {
-    const startSession = vi.fn().mockResolvedValue({
-      status: 'completed' as const,
-      planId: 'plan-1',
-      result: 'plan-1',
-    });
+  it('starts the retry, hands off to status polling, then refreshes', async () => {
+    const order: string[] = [];
+    const startSession = acceptingStartSession('plan-1');
+    refresh.mockImplementation(() => order.push('refresh'));
+    const onRetryStarted = vi.fn(() => order.push('poll'));
     const session = createMockSession({ startSession });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 0, session),
+      useRetryGeneration('plan-1', 3, 0, session, onRetryStarted),
     );
 
     await act(async () => {
       await expect(result.current.retryGeneration()).resolves.toBeUndefined();
     });
 
-    expect(startSession).toHaveBeenCalledWith({
-      kind: 'retry',
-      planId: 'plan-1',
-    });
-    expect(refresh).toHaveBeenCalledTimes(1);
+    expect(startSession).toHaveBeenCalledWith(
+      { kind: 'retry', planId: 'plan-1' },
+      { onPlanIdReady: expect.any(Function) },
+    );
+    expect(onRetryStarted).toHaveBeenCalledTimes(1);
+    expect(order).toEqual(['poll', 'refresh']);
   });
 
-  it('refreshes the router when a retry stream fails', async () => {
+  it('refreshes without resuming polling when the retry does not start', async () => {
     const startSession = vi.fn().mockRejectedValue(new Error('provider down'));
+    const onRetryStarted = vi.fn();
     const session = createMockSession({ startSession });
 
     const { result } = renderHook(() =>
-      useRetryGeneration('plan-1', 3, 1, session),
+      useRetryGeneration('plan-1', 3, 1, session, onRetryStarted),
     );
 
     await act(async () => {
@@ -74,6 +84,7 @@ describe('useRetryGeneration', () => {
     });
 
     expect(refresh).toHaveBeenCalledTimes(1);
+    expect(onRetryStarted).not.toHaveBeenCalled();
   });
 
   it('does not refresh the router when retry is aborted', async () => {
@@ -93,12 +104,10 @@ describe('useRetryGeneration', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it('disables retry while session is generating', () => {
+  it('disables retry while the retry request is starting', () => {
     const session = createMockSession({
       state: {
-        status: 'generating',
-        modules: [],
-        planId: 'plan-1',
+        status: 'starting',
       },
     });
 
@@ -108,6 +117,23 @@ describe('useRetryGeneration', () => {
 
     expect(result.current.isDisabled).toBe(true);
     expect(result.current.status).toBe('retrying');
+  });
+
+  it('returns to idle once the server accepts the retry (polling owns the status)', () => {
+    const session = createMockSession({
+      state: {
+        status: 'started',
+        planId: 'plan-1',
+        attemptId: 'attempt-2',
+      },
+    });
+
+    const { result } = renderHook(() =>
+      useRetryGeneration('plan-1', 3, 2, session),
+    );
+
+    expect(result.current.status).toBe('idle');
+    expect(result.current.error).toBeNull();
   });
 
   it('disables retry when attempts reach max', () => {
@@ -124,7 +150,6 @@ describe('useRetryGeneration', () => {
     const session = createMockSession({
       state: {
         status: 'error',
-        modules: [],
         error: {
           message: 'provider down',
           classification: 'provider_error',
@@ -145,7 +170,6 @@ describe('useRetryGeneration', () => {
     const session = createMockSession({
       state: {
         status: 'cancelled',
-        modules: [],
         planId: 'plan-1',
       },
     });
@@ -163,7 +187,6 @@ describe('useRetryGeneration', () => {
     const session = createMockSession({
       state: {
         status: 'cancelled',
-        modules: [],
         planId: 'plan-1',
       },
     });

@@ -238,7 +238,8 @@ All error payloads must follow the canonical API error contract in `docs/api/err
 
 ### AI Generation (`aiGeneration`)
 
-- `POST /api/v1/plans/stream`
+- `POST /api/v1/plans`
+- `POST /api/v1/plans/stream` (legacy SSE create; removal pending)
 - `POST /api/v1/plans/[planId]/retry`
 - `POST /api/v1/plans/[planId]/regenerate`
 
