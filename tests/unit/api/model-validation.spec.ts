@@ -56,21 +56,21 @@ describe('Model validation helpers (preferences + tier gating)', () => {
   describe('Model override query param parsing', () => {
     it('extracts model ID from query param', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
     it('returns null when model param is not present', () => {
-      const url = new URL('http://localhost/api/v1/plans/stream');
+      const url = new URL('http://localhost/api/v1/plans');
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBeNull();
     });
 
     it('handles URL-encoded model IDs', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(FREE_QUERY_OVERRIDE_MODEL)}`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(FREE_QUERY_OVERRIDE_MODEL);
@@ -78,7 +78,7 @@ describe('Model validation helpers (preferences + tier gating)', () => {
 
     it('handles model param with other query params', () => {
       const url = new URL(
-        `http://localhost/api/v1/plans/stream?topic=test&model=${encodeURIComponent(STARTER_PERSISTABLE_MODEL)}&hours=10`,
+        `http://localhost/api/v1/plans?topic=test&model=${encodeURIComponent(STARTER_PERSISTABLE_MODEL)}&hours=10`,
       );
       const modelOverride = url.searchParams.get('model');
       expect(modelOverride).toBe(STARTER_PERSISTABLE_MODEL);

@@ -4,13 +4,11 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
 
 import {
   preparePlanGenerationSessionCommand,
-  type RespondCreateStreamArgs,
-  type RespondRetryStreamArgs,
   type SessionCommand,
+  type StartCreateArgs,
+  type StartRetryArgs,
 } from './session-command';
-import { runPlanGenerationSessionStream } from './stream-transport';
 import { getFailurePresentation } from '@/features/ai/failure-presentation';
-import { createWorkflowBackedProcessGeneration } from '@/features/plans/create-workflow-backed-process-generation';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
 import {
@@ -30,15 +28,9 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 export {
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
   type RetryPlanGenerationPlanSnapshot,
-  type RespondCreateStreamArgs,
-  type RespondRetryStreamArgs,
+  type StartCreateArgs,
+  type StartRetryArgs,
 } from './session-command';
-
-/** Args for `startCreate`: the stream args without SSE response headers. */
-export type StartCreateArgs = Omit<RespondCreateStreamArgs, 'responseHeaders'>;
-
-/** Args for `startRetry`: the stream args without SSE response headers. */
-export type StartRetryArgs = Omit<RespondRetryStreamArgs, 'responseHeaders'>;
 
 /** `202` body of `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`. */
 export type StartedPlanGeneration = {
@@ -47,19 +39,15 @@ export type StartedPlanGeneration = {
 };
 
 /**
- * Public boundary that turns a validated create or retry intent into either a
- * streaming plan-generation `Response` (legacy SSE) or a started attempt the
- * client polls (`startCreate` / `startRetry`).
+ * Public boundary that turns a validated create or retry intent into a started
+ * attempt the client polls (`startCreate` / `startRetry`).
  *
  * Implementations hide:
  * - create vs retry preparation
- * - `plan_start` emission and SSE sequencing
  * - the `PLAN_GENERATION_RUNTIME` hand-off
  * - unhandled-exception cleanup
  */
 export interface PlanGenerationSessionBoundary {
-  respondCreateStream(args: RespondCreateStreamArgs): Promise<Response>;
-  respondRetryStream(args: RespondRetryStreamArgs): Promise<Response>;
   /**
    * Creates the plan, reserves its first attempt, and starts it.
    * @throws AppError when nothing was started; `details.planId` names the plan
@@ -101,10 +89,6 @@ export function createPlanGenerationSessionBoundary(
     deps.runtime ?? (() => jobsWorkerEnv.planGenerationRuntime);
 
   return {
-    respondCreateStream: (args) =>
-      run({ kind: 'create', ...args }, buildLifecycle),
-    respondRetryStream: (args) =>
-      run({ kind: 'retry', ...args }, buildLifecycle),
     startCreate: (args) =>
       startGeneration({ kind: 'create', ...args }, buildLifecycle, {
         readRuntime,
@@ -118,39 +102,11 @@ export function createPlanGenerationSessionBoundary(
   };
 }
 
-async function run(
-  command: SessionCommand,
-  buildLifecycle: CreateLifecycleService,
-): Promise<Response> {
-  const lifecycleService = buildLifecycle(serviceRoleDb);
-
-  const prepared = await preparePlanGenerationSessionCommand({
-    command,
-    lifecycleService,
-  });
-
-  const processGeneration = createWorkflowBackedProcessGeneration(
-    lifecycleService,
-    serviceRoleDb,
-    command.requestId ?? `plan-gen-${prepared.planId}`,
-  );
-
-  return await runPlanGenerationSessionStream({
-    requestSignal: command.req.signal,
-    requestId: command.requestId,
-    authUserId: command.authUserId,
-    dbClient: serviceRoleDb,
-    prepared,
-    processGeneration,
-    responseHeaders: command.responseHeaders,
-  });
-}
-
 /**
  * The canonical error for an attempt that never started (reservation rejected,
- * runtime refused, or an unexpected start error). The message and code match
- * the SSE `error` event the stream route emits for the same classification;
- * `details.planId` lets the client open the plan page, as `plan_start` did.
+ * runtime refused, or an unexpected start error). The message and code come
+ * from the classification's failure presentation; `details.planId` lets the
+ * client open the plan page.
  */
 function planGenerationNotStartedError(
   planId: string,

@@ -7,8 +7,6 @@
 
 Plan generation starts with `POST /api/v1/plans` (create) or `POST /api/v1/plans/:planId/retry` (retry). The request creates the plan (create only), reserves a generation attempt, hands the attempt to the runtime that `PLAN_GENERATION_RUNTIME` names, and returns `202 { planId, attemptId }`. Generation never runs on the request. The client opens the plan page, which polls `GET /api/v1/plans/:planId/status` until the plan is `ready` or `failed`.
 
-`POST /api/v1/plans/stream` (SSE) still works for tabs opened before create + poll shipped. It reserves, starts the Vercel workflow, and awaits it on the open connection. A follow-up change (JCS-133) removes it.
-
 At runtime, the pipeline combines:
 
 - Clerk Auth for user identity
@@ -54,7 +52,6 @@ This separation between external auth identity and internal app user row is not 
 | `src/app/api/v1/plans/route.ts`                                                       | `POST`: create a plan and start its first attempt (202); `GET`: list |
 | `src/app/api/v1/plans/[planId]/retry/route.ts`                                        | Retry a failed or pending-retry generation (202)                     |
 | `src/app/api/v1/plans/[planId]/status/route.ts`                                       | Return plan generation status (polled by the plan page)              |
-| `src/app/api/v1/plans/stream/route.ts`                                                | Legacy SSE create for already-open tabs; removal pending             |
 | `src/app/api/v1/plans/[planId]/attempts/route.ts`                                     | Return attempt history                                               |
 | `src/app/api/v1/plans/[planId]/regenerate/route.ts`                                   | Regenerate an existing plan                                          |
 | `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts`   | Start module lesson workflow (async)                                 |
@@ -65,7 +62,7 @@ This separation between external auth identity and internal app user row is not 
 
 | File                                                       | Responsibility                                                                        |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `src/features/plans/session/plan-generation-session.ts`    | Session boundary: `startCreate` / `startRetry`, error mapping, legacy SSE methods     |
+| `src/features/plans/session/plan-generation-session.ts`    | Session boundary: `startCreate` / `startRetry`, error mapping                         |
 | `src/features/plans/start-plan-generation-attempt.ts`      | Reserve the attempt and hand it to `PLAN_GENERATION_RUNTIME`; settle when not started |
 | `src/features/jobs/plan-generation-dispatch.ts`            | Signed `POST /v1/plan-generation/start` to the jobs Worker; never throws              |
 | `src/features/plans/session/usePlanGenerationSession.ts`   | Client create/retry request (`starting` → `started` on 202)                           |
@@ -121,7 +118,7 @@ This separation between external auth identity and internal app user row is not 
 | Vercel `start()` threw; Worker `503 jobs_paused` / `job_disabled`; any other Worker non-2xx, timeout, network error, or missing config | `settleReservedAttemptFailure` as a retryable `provider_error` (the plan leaves `generating`) | `503 GENERATION_FAILED`                                             |
 | Unexpected error after the plan exists                                                                                                 | The plan is marked failed (`onUnhandledError`)                                                | `503 GENERATION_FAILED`                                             |
 
-Every not-started response uses the canonical error shape `{ error, code, classification, details: { planId, retryable } }`. `error` and `code` are the same presentation (`getFailurePresentation`) that the SSE `error` event carried for that classification. `details.planId` lets the client open the plan page with "Generation failed. You can retry from the plan page.", as it did after `plan_start`.
+Every not-started response uses the canonical error shape `{ error, code, classification, details: { planId, retryable } }`. `error` and `code` come from the classification's failure presentation (`getFailurePresentation`). `details.planId` lets the client open the plan page with "Generation failed. You can retry from the plan page.".
 
 On `vercel` the request returns as soon as `start()` resolves and never reads `run.returnValue`. A Vercel run that throws after it started is therefore not settled by the request: the stuck-plan cleanup (`cleanupStuckPlans`, 15 minutes) marks the plan failed. On `cloudflare` the Workflow's `fail` step settles it right away.
 
@@ -137,7 +134,7 @@ Production path: `PlanLifecycleService.processGenerationAttempt` (or `processGen
 6. pace modules/tasks to fit available hours
 7. return **unfinalized** success or failure (attempt still reserved / in-flight at DB)
 
-Lifecycle settlement owns the single transactional finalize after this returns. Start paths that already reserved (`startPlanGenerationAttempt`, the legacy SSE wrapper) must call `settleReservationRejection` instead of `processGenerationAttempt`. Pre-provider reserved failures use `settleReservedAttemptFailure`.
+Lifecycle settlement owns the single transactional finalize after this returns. Start paths that already reserved (`startPlanGenerationAttempt`) must call `settleReservationRejection` instead of `processGenerationAttempt`. Pre-provider reserved failures use `settleReservedAttemptFailure`.
 
 ### 3) Finalize in lifecycle (one transaction)
 
@@ -174,8 +171,6 @@ The lifecycle finalization store owns the success and failure transactions. The 
 - **Client start.** `usePlanGenerationSession` POSTs the create or retry request and resolves on `202`. For create, `useStartAiPlanGeneration` shows "Your learning plan generation has started." and navigates to the plan. For retry, `useRetryGeneration` calls `usePlanStatus().restart()` when the server accepts: the poller of a `failed` plan is terminal, so `restart` resumes polling and reads `processing` until the first response. It then refreshes the route so server-rendered attempt counts catch up.
 - **Status route.** `GET /api/v1/plans/:planId/status` derives `status` with `derivePlanReadStatus`. A `generating` plan reads `processing` while its latest attempt is `in_progress`, even when that attempt is the last one the cap allows; without that, the final retry would read `failed` while it runs. `latestError` is the classification presentation message for a `failed` plan.
 - **Terminal states.** `ready` refreshes the page into the plan view; `failed` shows the failure panel with `latestError` and the retry action while attempts remain.
-
-The legacy SSE route still emits `plan_start`, `module_summary`, `progress`, `complete`, and `error` for clients that started on it.
 
 ## Failure classes
 

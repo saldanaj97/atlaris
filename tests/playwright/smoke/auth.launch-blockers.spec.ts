@@ -59,7 +59,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
 
     const generationResponsePromise = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/plans/stream') &&
+        new URL(response.url()).pathname === '/api/v1/plans' &&
         response.request().method() === 'POST',
     );
 

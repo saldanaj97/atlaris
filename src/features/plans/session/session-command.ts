@@ -30,31 +30,29 @@ export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [
 /**
  * Minimal plan snapshot needed to retry generation without route-owned session wiring.
  */
-export interface RetryPlanGenerationPlanSnapshot extends PlanGenerationCoreFieldsNormalized {
-  origin: 'ai' | 'manual' | 'template' | null;
-}
+export type RetryPlanGenerationPlanSnapshot =
+  PlanGenerationCoreFieldsNormalized;
 
 /**
- * Args for boundary `respondCreateStream` — supplied after HTTP preflight.
+ * Args for boundary `startCreate` — supplied after HTTP preflight.
  * `requestId` is optional for direct tests and any non-route callers; routes
- * pass request-boundary correlation ids so SSE errors can include them.
+ * pass request-boundary correlation ids for the generation correlation id.
  */
-export interface RespondCreateStreamArgs {
+export interface StartCreateArgs {
   req: Request;
   authUserId: string;
   internalUserId: string;
   body: CreateLearningPlanInput;
   savedPreferredAiModel: string | null;
-  responseHeaders?: HeadersInit;
   requestId?: string;
 }
 
 /**
- * Args for boundary `respondRetryStream` — supplied after HTTP preflight.
+ * Args for boundary `startRetry` — supplied after HTTP preflight.
  * `requestId` is optional for direct tests and any non-route callers; routes
- * pass request-boundary correlation ids so SSE errors can include them.
+ * pass request-boundary correlation ids for the generation correlation id.
  */
-export interface RespondRetryStreamArgs {
+export interface StartRetryArgs {
   req: Request;
   authUserId: string;
   internalUserId: string;
@@ -62,20 +60,18 @@ export interface RespondRetryStreamArgs {
   plan: RetryPlanGenerationPlanSnapshot;
   savedPreferredAiModel: string | null;
   tierDb: DbClient;
-  responseHeaders?: HeadersInit;
   requestId?: string;
 }
 
 export type SessionCommand =
-  | ({ kind: 'create' } & RespondCreateStreamArgs)
-  | ({ kind: 'retry' } & RespondRetryStreamArgs);
+  | ({ kind: 'create' } & StartCreateArgs)
+  | ({ kind: 'retry' } & StartRetryArgs);
 
 type CreateSessionCommand = Extract<SessionCommand, { kind: 'create' }>;
 type RetrySessionCommand = Extract<SessionCommand, { kind: 'retry' }>;
 
 export interface PreparedSessionPlan {
   planId: string;
-  planStartInput: CreateLearningPlanInput;
   generationInput: ProcessGenerationInput;
   fallbackClassification: FailureClassification;
   onUnhandledError: UnhandledGenerationErrorHandler;
@@ -132,12 +128,6 @@ async function prepareCreate(
 
   return {
     planId: createResult.planId,
-    planStartInput: {
-      ...body,
-      topic: createResult.normalizedInput.topic,
-      startDate: createResult.normalizedInput.startDate ?? undefined,
-      deadlineDate: createResult.normalizedInput.deadlineDate ?? undefined,
-    },
     generationInput,
     fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
@@ -185,12 +175,6 @@ async function prepareRetry(
 
   return {
     planId,
-    planStartInput: {
-      ...retryInput,
-      notes: undefined,
-      visibility: 'private',
-      origin: plan.origin ?? 'ai',
-    },
     generationInput: {
       planId,
       userId: internalUserId,

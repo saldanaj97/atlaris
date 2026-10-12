@@ -96,7 +96,7 @@ type UnknownThrownCore = {
 
 /**
  * Single authority for extracting structured fields from an unknown thrown
- * value. Does not replace richer adapters (SSE ErrorLike, attempt errors).
+ * value. Does not replace richer adapters (attempt errors).
  */
 export function unknownThrownCore(value: unknown): UnknownThrownCore {
   if (value instanceof Error) {

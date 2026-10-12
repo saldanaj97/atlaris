@@ -1,19 +1,10 @@
 import { setTestUser } from '../../helpers/auth';
-import { POST } from '@/app/api/v1/plans/stream/route';
+import { POST } from '@/app/api/v1/plans/route';
 import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { mockServerSession } from '@tests/helpers/mock-server-auth';
 import { eq } from 'drizzle-orm';
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const serverAuth = vi.hoisted(() => {
   const getSession = vi.fn();
@@ -24,18 +15,12 @@ const serverAuth = vi.hoisted(() => {
 });
 vi.mock('@/lib/auth/server', () => serverAuth.module());
 
-beforeAll(() => {
-  // Use the mock AI provider so the default session boundary completes without
-  // real network calls; the lifecycle DTOs stay encapsulated under the boundary.
-  vi.stubEnv('AI_PROVIDER', 'mock');
-  vi.stubEnv('MOCK_GENERATION_DELAY_MS', '5');
-});
+// The create route starts the Vercel workflow; no generation runs here.
+vi.mock('workflow/api', () => ({
+  start: vi.fn(async () => ({ runId: 'wrun_provisioning' })),
+}));
 
-afterAll(() => {
-  vi.unstubAllEnvs();
-});
-
-describe('POST /api/v1/plans/stream user provisioning', () => {
+describe('POST /api/v1/plans user provisioning', () => {
   const authUserId = 'auth_provisioning_flow';
   const authEmail = 'provisioning@example.com';
 
@@ -65,7 +50,7 @@ describe('POST /api/v1/plans/stream user provisioning', () => {
     };
 
     const response = await POST(
-      new Request('http://localhost/api/v1/plans/stream', {
+      new Request('http://localhost/api/v1/plans', {
         method: 'POST',
         body: JSON.stringify(planPayload),
         headers: {
@@ -74,9 +59,7 @@ describe('POST /api/v1/plans/stream user provisioning', () => {
       }),
     );
 
-    expect(response.status).toBe(200);
-    // Drain the SSE body so the request fully settles before reading the user row.
-    await response.body?.cancel();
+    expect(response.status).toBe(202);
 
     const [provisionedUser] = await db
       .select()
