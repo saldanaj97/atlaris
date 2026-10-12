@@ -33,7 +33,7 @@ All three product paths use durable workflows:
 | ---- | -------- |
 | Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202`; clients poll `GET .../lesson-content/status`. |
 | Plan regeneration | Enqueue and worker drain call `attachPlanRegenerationWorkflow` (start + CAS persist `job_queue` runId); drain may return `workflow-in-flight`. |
-| Plan create/retry | `POST /api/v1/plans` and `POST .../retry` reserve the attempt, start `planGenerationWorkflow` (unless `PLAN_GENERATION_RUNTIME=cloudflare`), and return `202`; clients poll `GET .../status`. The legacy SSE route still awaits `run.returnValue`. |
+| Plan create/retry | `POST /api/v1/plans` and `POST .../retry` reserve the attempt, start `planGenerationWorkflow` (unless `PLAN_GENERATION_RUNTIME=cloudflare`), and return `202`; clients poll `GET .../status`. |
 
 Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
 
