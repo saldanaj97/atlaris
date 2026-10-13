@@ -25,6 +25,17 @@ const FORBIDDEN_INPUT =
 const FORBIDDEN_EXTERNAL =
   /^(?:next|workflow)(?:\/|$)|^@(?:workflow|vercel|clerk)\//;
 
+/**
+ * Startup CPU budget, best of STARTUP_PROFILE_RUNS profiles, calibrated on the
+ * CircleCI `large` runner. Cloudflare rejects a deploy whose global scope
+ * takes over 1 second on its validator (error 10021). Before the OpenRouter
+ * SDK was lazy-loaded, the Worker failed that validation intermittently; it
+ * then measured ~116 ms on an Apple Silicon Mac. After, it measures ~34 ms on
+ * the Mac and ~127 ms on the CI runner, so CI reads about 3.7x a Mac.
+ */
+export const STARTUP_CPU_BUDGET_MS = 200;
+const STARTUP_PROFILE_RUNS = 3;
+
 export class WorkersCliUsageError extends Error {
   constructor(message: string) {
     super(message);
@@ -35,7 +46,7 @@ export class WorkersCliUsageError extends Error {
 const USAGE = [
   'Usage:',
   '  pnpm workers dev     Run the jobs Worker locally against this worktree’s database',
-  '  pnpm workers check   Bundle for staging and fail on Next, Vercel, Clerk, or workflow modules',
+  '  pnpm workers check   Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules, or startup CPU over budget',
   '  pnpm workers types   Regenerate workers/jobs/worker-configuration.d.ts',
 ].join('\n');
 
@@ -55,6 +66,26 @@ export function findForbiddenBundleModules(metafile: Metafile): string[] {
       .map((entry) => `external ${entry.path}`),
   );
   return [...new Set([...inputs, ...externals])];
+}
+
+type CpuProfile = {
+  nodes: { id: number; callFrame: { functionName: string } }[];
+  samples: number[];
+  timeDeltas: number[];
+};
+
+/** CPU time in a V8 startup profile: every sample except idle, in ms. */
+export function startupCpuMs(profile: CpuProfile): number {
+  const idle = new Set(
+    profile.nodes
+      .filter((node) => node.callFrame.functionName === '(idle)')
+      .map((node) => node.id),
+  );
+  let micros = 0;
+  profile.samples.forEach((id, index) => {
+    if (!idle.has(id)) micros += profile.timeDeltas[index] ?? 0;
+  });
+  return micros / 1000;
 }
 
 /** Stable per-worktree ports so several worktrees can run the Worker at once. */
@@ -160,6 +191,35 @@ async function check(): Promise<number> {
     }
     console.log(
       `[workers] Bundle gate passed: ${Object.keys(metafile.inputs).length} inputs, no Next, Vercel, Clerk, or workflow modules.`,
+    );
+
+    const samples: number[] = [];
+    for (let run = 1; run <= STARTUP_PROFILE_RUNS; run += 1) {
+      const profilePath = join(outdir, `startup-${run}.cpuprofile`);
+      const startupCode = await runWrangler([
+        'check',
+        'startup',
+        '--env',
+        'staging',
+        '--outfile',
+        profilePath,
+      ]);
+      if (startupCode !== 0) return startupCode;
+      samples.push(
+        startupCpuMs(
+          JSON.parse(readFileSync(profilePath, 'utf8')) as CpuProfile,
+        ),
+      );
+    }
+    const best = Math.min(...samples);
+    if (best > STARTUP_CPU_BUDGET_MS) {
+      console.error(
+        `[workers] Startup gate failed: ${best.toFixed(1)} ms startup CPU (best of ${STARTUP_PROFILE_RUNS}) exceeds the ${STARTUP_CPU_BUDGET_MS} ms budget. Cloudflare rejects deploys whose startup runs too long (error 10021); move work out of module scope.`,
+      );
+      return 1;
+    }
+    console.log(
+      `[workers] Startup gate passed: ${best.toFixed(1)} ms startup CPU (best of ${STARTUP_PROFILE_RUNS}, budget ${STARTUP_CPU_BUDGET_MS} ms).`,
     );
     return 0;
   } finally {

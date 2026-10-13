@@ -38,15 +38,19 @@ const DEFAULT_OPENROUTER_RESPONSE = {
 
 const mockSend = vi.fn().mockResolvedValue(DEFAULT_OPENROUTER_RESPONSE);
 
-vi.mock('@openrouter/sdk', () => {
-  return {
-    OpenRouter: class {
-      chat = {
-        send: mockSend,
-      };
-    },
-  };
-});
+vi.mock('@openrouter/sdk/core', () => ({
+  OpenRouterCore: class {},
+}));
+
+// The standalone function returns a Result; mirror that so the provider's
+// unwrapping (ok value, or thrown error) runs against mockSend's outcome.
+vi.mock('@openrouter/sdk/funcs/chatSend', () => ({
+  chatSend: (_core: unknown, request: unknown, options: unknown) =>
+    Promise.resolve(mockSend(request, options)).then(
+      (value: unknown) => ({ ok: true, value }),
+      (error: unknown) => ({ ok: false, error }),
+    ),
+}));
 
 const mockInput = createGenerationInput();
 

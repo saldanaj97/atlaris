@@ -94,7 +94,7 @@ workers/jobs/
 - **Driver-neutral queries.** `DbClient` (`src/lib/db/types.ts:1-4`) is typed from `drizzle-orm/postgres-js`. B2 retypes it to Drizzle's driver-neutral Postgres database type and routes every `execute()` result through one helper, because node-postgres returns `{ rows }` while call sites cast to arrays today (`src/lib/db/queries/admin/retention.ts:18-26`, `email-delivery-content.ts:34`, `module-lesson-generation.ts:513`, `user-preferences.ts:142-289`, `plan-list.ts:265-285`). This lands in B2, before B3a's retention job needs it.
 - **Dependencies B2 requests** (the orchestrator owns `package.json`): `wrangler`, `@sentry/cloudflare@10.70.0`, `pg` (at least 8.16.3 for Hyperdrive [hd-supabase]), `@types/pg`.
 - **Tests.** Worker handler logic is tested with the existing Vitest setup (`tests/unit/workers/jobs/**`, Node, mocked bindings). The shared query layer's DB-backed tests gain a node-postgres run on the native test stack. Workers-runtime behavior is proven on staging, not by a second test harness.
-- **Bundle gate (every phase).** `wrangler deploy --dry-run --outdir <tmp> --env staging` [wrangler-cmds], then fail if the output contains `next/`, `@vercel/`, `@clerk/`, or the Vercel `workflow` runtime.
+- **Bundle gate (every phase).** `wrangler deploy --dry-run --outdir <tmp> --env staging` [wrangler-cmds], then fail if the output contains `next/`, `@vercel/`, `@clerk/`, or the Vercel `workflow` runtime. Since 2026-10-13 the gate also fails when local startup CPU exceeds a budget, after Workers Builds deploys started failing Cloudflare's startup validation (error 10021); see [workers-local-dev.md](../development/workers-local-dev.md#startup-cpu-budget).
 
 ### Evidence
 
