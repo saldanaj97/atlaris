@@ -51,11 +51,17 @@ The local (top-level) Wrangler config declares no `secrets.required`, so every k
 
 | Command | What it does |
 | --- | --- |
-| `pnpm workers check` | Bundles the staging Worker with `wrangler deploy --dry-run` and fails if the bundle contains `next`, `@vercel/*`, `@clerk/*`, or the Vercel `workflow` runtime |
+| `pnpm workers check` | Bundles the staging Worker with `wrangler deploy --dry-run` and fails if the bundle contains `next`, `@vercel/*`, `@clerk/*`, or the Vercel `workflow` runtime. Then profiles startup with `wrangler check startup` three times and fails if the best run uses more than 100 ms of CPU (see below) |
 | `pnpm workers types` | Regenerates `workers/jobs/worker-configuration.d.ts` after a `wrangler.jsonc` change (commit the result) |
 | `pnpm check:type:workers` | Typechecks the Worker and its unit tests with Workers types (part of `pnpm typecheck`) |
 
 Wrangler always runs from `workers/jobs/`, the same root directory Workers Builds uses.
+
+### Startup CPU budget
+
+Cloudflare rejects a deploy whose top-level code takes longer than 1 second on its validator, with error 10021 ("Script startup exceeded CPU time limit"). Its validator reads far higher than a local profile: at about 116 ms of local startup CPU, Workers Builds deploys failed intermittently. The budget in `scripts/workers/cli.ts` (`STARTUP_CPU_BUDGET_MS`) keeps a margin below that.
+
+Keep heavy work out of module scope. Load large dependencies that only one job path needs inside the handler with `await import(...)`, as the OpenRouter provider does for the SDK. To see where startup time goes, run `pnpm exec wrangler check startup --env staging` from `workers/jobs/` and open the written `worker-startup.cpuprofile` in Chrome DevTools; delete the file afterwards.
 
 ## Tests
 

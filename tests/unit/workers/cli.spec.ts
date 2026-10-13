@@ -1,6 +1,7 @@
 import {
   findForbiddenBundleModules,
   readLocalDatabaseUrl,
+  startupCpuMs,
   workerDevPorts,
   WorkersCliUsageError,
 } from '../../../scripts/workers/cli';
@@ -51,6 +52,23 @@ describe('findForbiddenBundleModules', () => {
     expect(forbidden).toContain('external next/cache');
     expect(forbidden).toContain('external @workflow/core');
     expect(forbidden).not.toContain('external nextgen');
+  });
+});
+
+describe('startupCpuMs', () => {
+  it('counts every sample except idle, garbage collection included', () => {
+    expect(
+      startupCpuMs({
+        nodes: [
+          { id: 1, callFrame: { functionName: '(root)' } },
+          { id: 2, callFrame: { functionName: '(idle)' } },
+          { id: 3, callFrame: { functionName: '(garbage collector)' } },
+          { id: 4, callFrame: { functionName: 'init_schemas' } },
+        ],
+        samples: [4, 2, 3, 4, 2],
+        timeDeltas: [10_000, 30_000, 5_000, 2_500, 1_000],
+      }),
+    ).toBe(17.5);
   });
 });
 

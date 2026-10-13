@@ -69,7 +69,7 @@ The background jobs Worker in `workers/jobs/`. Local loop and `.dev.vars`: [work
 
 ```bash
 pnpm workers dev          # Run the Worker locally (wrangler dev) against this worktree's database
-pnpm workers check        # Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules
+pnpm workers check        # Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules, or startup CPU over budget
 pnpm workers types        # Regenerate workers/jobs/worker-configuration.d.ts after a wrangler.jsonc change
 pnpm check:type:workers   # Typecheck the Worker and its unit tests (part of pnpm typecheck)
 ```
