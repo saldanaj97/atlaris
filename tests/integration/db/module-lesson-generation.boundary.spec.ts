@@ -84,6 +84,36 @@ async function startThenRunModuleLessonGeneration(
   return workflowResult ?? { kind: 'failed' };
 }
 
+/** Provider batch whose tasks echo the given ids, one heading lesson each. */
+function mockLessonBatchResponse(
+  lessons: ReadonlyArray<{ readonly taskId: string; readonly heading: string }>,
+) {
+  return {
+    stream: new ReadableStream<string>({
+      start(controller) {
+        controller.enqueue(
+          JSON.stringify({
+            version: 1,
+            tasks: lessons.map(({ taskId, heading }) => ({
+              taskId,
+              content: {
+                version: 1,
+                blocks: [{ type: 'heading', text: heading }],
+              },
+            })),
+          }),
+        );
+        controller.close();
+      },
+    }),
+    metadata: {
+      provider: 'mock',
+      model: 'mock-module-lesson-batch-v1',
+      usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+    },
+  };
+}
+
 describe('module lesson generation boundary (integration)', () => {
   afterEach(async () => {
     await cleanupTrackedRlsClients();
@@ -496,6 +526,110 @@ describe('module lesson generation boundary (integration)', () => {
       .where(eq(tasks.moduleId, mod.id))
       .orderBy(asc(tasks.order));
     expect(taskRows).toHaveLength(2);
+    expect(taskRows.every((row) => row.lessonContent === null)).toBe(true);
+  });
+
+  it('persists each lesson to its positional task when one echoed id is garbled', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-garbled-id');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId });
+    const mod = await createTestModule({ planId: plan.id });
+    const createdTasks = await Promise.all(
+      [1, 2, 3].map((order) =>
+        createTestTask({ moduleId: mod.id, order, title: `Task ${order}` }),
+      ),
+    );
+    const middleId = createdTasks[1].id;
+    const garbledId = `${middleId.slice(0, -1)}${middleId.endsWith('0') ? '1' : '0'}`;
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    vi.spyOn(
+      MockGenerationProvider.prototype,
+      'generateModuleLessonBatch',
+    ).mockResolvedValue(
+      mockLessonBatchResponse([
+        { taskId: createdTasks[0].id, heading: 'Lesson one' },
+        { taskId: garbledId, heading: 'Lesson two' },
+        { taskId: createdTasks[2].id, heading: 'Lesson three' },
+      ]),
+    );
+
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+    });
+
+    expect(result.kind).toBe('success');
+
+    const [modRow] = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(modRow?.lessonGenerationStatus).toBe('ready');
+
+    const rows = await db
+      .select({ id: tasks.id, lessonContent: tasks.lessonContent })
+      .from(tasks)
+      .where(eq(tasks.moduleId, mod.id))
+      .orderBy(asc(tasks.order));
+    expect(rows.map((row) => row.id)).toEqual(
+      createdTasks.map((task) => task.id),
+    );
+    expect(rows.map((row) => row.lessonContent?.blocks[0])).toEqual([
+      { type: 'heading', text: 'Lesson one' },
+      { type: 'heading', text: 'Lesson two' },
+      { type: 'heading', text: 'Lesson three' },
+    ]);
+  });
+
+  it('fails without partial writes when the batch reorders task ids', async () => {
+    const authUserId = buildTestAuthUserId('mod-lesson-reordered-ids');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'free',
+    });
+    const plan = await createTestPlan({ userId });
+    const mod = await createTestModule({ planId: plan.id });
+    const task1 = await createTestTask({ moduleId: mod.id, order: 1 });
+    const task2 = await createTestTask({ moduleId: mod.id, order: 2 });
+
+    const rlsDb = await createRlsDbForUser(authUserId);
+    vi.spyOn(
+      MockGenerationProvider.prototype,
+      'generateModuleLessonBatch',
+    ).mockResolvedValue(
+      mockLessonBatchResponse([
+        { taskId: task2.id, heading: 'Second first' },
+        { taskId: task1.id, heading: 'First second' },
+      ]),
+    );
+
+    const result = await startThenRunModuleLessonGeneration({
+      dbClient: rlsDb,
+      userId,
+      planId: plan.id,
+      moduleId: mod.id,
+    });
+
+    expect(result.kind).toBe('failed');
+
+    const [modRow] = await db
+      .select()
+      .from(modules)
+      .where(eq(modules.id, mod.id));
+    expect(modRow?.lessonGenerationStatus).toBe('failed');
+
+    const taskRows = await db
+      .select({ lessonContent: tasks.lessonContent })
+      .from(tasks)
+      .where(eq(tasks.moduleId, mod.id));
     expect(taskRows.every((row) => row.lessonContent === null)).toBe(true);
   });
 
