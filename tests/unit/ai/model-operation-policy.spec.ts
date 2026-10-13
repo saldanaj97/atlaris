@@ -24,7 +24,7 @@ const CONTRACT_MODEL_IDS = [
   'openai/gpt-4o-mini-2024-07-18',
   'google/gemini-3-flash-preview',
   'openai/gpt-5.2',
-  'google/gemini-3-pro-preview',
+  'google/gemini-3.1-pro-preview',
 ] as const;
 
 const HAIKU_MODEL_ID = 'anthropic/claude-haiku-4.5';
@@ -110,7 +110,7 @@ describe('model-operation-policy', () => {
         tier: 'pro',
         operation: 'regeneration',
         allowed: true,
-        defaultModelId: 'google/gemini-3-pro-preview',
+        defaultModelId: 'google/gemini-3.1-pro-preview',
         expectedIds: 'full',
       },
       {
@@ -173,7 +173,7 @@ describe('model-operation-policy', () => {
     const lesson = getModelOperationPolicy('pro', 'lesson');
 
     expect(outline.defaultModelId).toBe('openai/gpt-5.2');
-    expect(regeneration.defaultModelId).toBe('google/gemini-3-pro-preview');
+    expect(regeneration.defaultModelId).toBe('google/gemini-3.1-pro-preview');
     expect(lesson.defaultModelId).toBe('google/gemini-3-flash-preview');
     expect(
       new Set([

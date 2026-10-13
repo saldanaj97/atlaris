@@ -41,7 +41,7 @@ function shouldUseMock(): boolean {
  * should already have validated the model/tier pair through
  * `resolveModelForTier`.
  *
- * @param modelId - OpenRouter model ID (e.g., 'google/gemini-2.0-flash-exp:free')
+ * @param modelId - OpenRouter model ID (e.g., 'google/gemini-3-flash-preview')
  * @returns An instance implementing `AiPlanGenerationProvider`
  */
 export function getGenerationProviderWithModel(

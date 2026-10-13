@@ -159,7 +159,7 @@ describe('production Workflow SDK entrypoints', () => {
       assertRegenerationAdmissionDenialLeavesNoOrphans({
         scenario: 'model-denial',
         tier: 'starter',
-        overrides: { model: 'google/gemini-3-pro-preview' },
+        overrides: { model: 'google/gemini-3.1-pro-preview' },
         message: 'Model is not allowed for regeneration on this tier.',
       }),
     ).resolves.toBeUndefined();

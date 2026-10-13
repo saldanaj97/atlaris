@@ -23,7 +23,7 @@ vi.mock('@/features/ai/ai-models', () => ({
         inputCostPerMillion: 2.5,
         outputCostPerMillion: 10,
       },
-      'google/gemini-2.0-flash-exp:free': {
+      'openrouter/free': {
         inputCostPerMillion: 0,
         outputCostPerMillion: 0,
       },

@@ -27,9 +27,15 @@ describe('computeCostCents', () => {
   });
 
   it('returns 0 for free models', () => {
+    expect(computeCostCents('openrouter/free', 100_000, 50_000)).toBe(0);
+  });
+
+  it('prices the Pro regeneration default from the catalog', () => {
+    // google/gemini-3.1-pro-preview: $2/M input, $12/M output
+    // 1M input = 200 cents, 500K output = 600 cents
     expect(
-      computeCostCents('google/gemini-2.0-flash-exp:free', 100_000, 50_000),
-    ).toBe(0);
+      computeCostCents('google/gemini-3.1-pro-preview', 1_000_000, 500_000),
+    ).toBe(800);
   });
 
   it('computes cost correctly for paid models', () => {
@@ -131,7 +137,7 @@ describe('calculateCostFromUsage', () => {
       inputTokens: 500_000,
       outputTokens: 200_000,
       totalTokens: 700_000,
-      model: 'google/gemini-2.0-flash-exp:free',
+      model: 'openrouter/free',
       provider: 'openrouter',
       estimatedCostCents: 0,
       providerCostMicrousd: null,

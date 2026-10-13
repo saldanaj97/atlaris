@@ -184,7 +184,7 @@ describe('AI Provider Factory', () => {
     it('returns MockGenerationProvider in test environment by default', async () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-3-flash-preview',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -206,7 +206,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-3-flash-preview',
       );
 
       expect(provider.constructor.name).toBe('RouterGenerationProvider');
@@ -217,7 +217,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider1 = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-3-flash-preview',
       );
       const provider2 = getGenerationProviderWithModel('invalid/model-id');
       const provider3 = getGenerationProviderWithModel(
@@ -235,7 +235,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-2.0-flash-exp:free',
+        'google/gemini-3-flash-preview',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');

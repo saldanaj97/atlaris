@@ -52,6 +52,8 @@ describe('model-preferences', () => {
       'too/many/parts/here',
       'openai/',
       'gpt-oss-20b:free',
+      'google/gemini-3-pro-preview',
+      'google/gemini-2.0-flash-exp:free',
     ])('rejects non-persistable or invalid id %s', (id) => {
       expect(isPersistableModelId(id)).toBe(false);
     });
@@ -138,7 +140,7 @@ describe('model-preferences', () => {
   describe('savedModelIdForOperation', () => {
     const saved = {
       preferredAiModel: 'openai/gpt-5.2',
-      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
       preferredLessonAiModel: 'google/gemini-3-flash-preview',
     };
 
@@ -167,7 +169,7 @@ describe('model-preferences', () => {
   describe('resolveOverrideOrSavedModelId', () => {
     const saved = {
       preferredAiModel: 'openai/gpt-5.2',
-      preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+      preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
       preferredLessonAiModel: 'google/gemini-3-flash-preview',
     };
 
@@ -228,6 +230,26 @@ describe('model-preferences', () => {
       expect(resolveEffectivePreference('free', null, 'initial_outline')).toBe(
         AI_DEFAULT_MODEL,
       );
+    });
+
+    it('falls back to the Pro regeneration default for a retired saved id', () => {
+      expect(
+        resolveEffectivePreference(
+          'pro',
+          'google/gemini-3-pro-preview',
+          'regeneration',
+        ),
+      ).toBe('google/gemini-3.1-pro-preview');
+    });
+
+    it('hides a retired saved id from the settings picker', () => {
+      expect(
+        resolveSavedPreferenceForSettings(
+          'pro',
+          'openai/gpt-4o-mini-search-preview',
+          'initial_outline',
+        ),
+      ).toBeNull();
     });
 
     it('uses the Pro lesson default when the lesson slot is empty', () => {
