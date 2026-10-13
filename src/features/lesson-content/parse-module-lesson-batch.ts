@@ -3,6 +3,7 @@ import type { ModuleLessonBatchProviderOutput } from '@/shared/types/lesson-cont
 import { MAX_RAW_RESPONSE_CHARS } from '@/features/ai/constants';
 import { ParserError } from '@/features/ai/parser';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
+import { logger } from '@/lib/logging/logger';
 import { ModuleLessonBatchProviderOutputSchema } from '@/shared/schemas/lesson-content.schemas';
 
 function assertExpectedIdsWellFormed(
@@ -16,36 +17,56 @@ function assertExpectedIdsWellFormed(
   }
 }
 
-function validateTaskCoverageAndOrder(
-  tasks: readonly { taskId: string }[],
+/**
+ * Maps output tasks to `expectedOrderedTaskIds` by position. The prompt lists
+ * tasks in DB order, so `tasks[i]` belongs to the i-th expected task. An
+ * echoed id that matches no expected task (garbled or invented) is replaced
+ * with the expected id, even when every id is garbled. An id that names a
+ * different expected task means the model reordered or duplicated lessons,
+ * so the batch is rejected.
+ */
+function assignTaskIdsByPosition(
+  output: ModuleLessonBatchProviderOutput,
   expectedOrderedTaskIds: readonly string[],
-): void {
+): ModuleLessonBatchProviderOutput {
   assertExpectedIdsWellFormed(expectedOrderedTaskIds);
 
-  const outputIds = tasks.map((t) => t.taskId);
-
-  if (outputIds.length !== expectedOrderedTaskIds.length) {
+  if (output.tasks.length !== expectedOrderedTaskIds.length) {
     throw new ParserError(
       'validation',
-      `Module lesson batch must include exactly ${String(expectedOrderedTaskIds.length)} tasks; got ${String(outputIds.length)}.`,
+      `Module lesson batch must include exactly ${String(expectedOrderedTaskIds.length)} tasks; got ${String(output.tasks.length)}.`,
     );
   }
 
-  if (new Set(outputIds).size !== outputIds.length) {
-    throw new ParserError(
-      'validation',
-      'Module lesson batch output contains duplicate taskId entries.',
-    );
-  }
+  const expectedIndexById = new Map(
+    expectedOrderedTaskIds.map((id, index) => [id, index]),
+  );
+  let repairedTaskIdCount = 0;
 
-  for (let i = 0; i < expectedOrderedTaskIds.length; i++) {
-    if (outputIds[i] !== expectedOrderedTaskIds[i]) {
+  const tasks = output.tasks.map((task, i) => {
+    const expectedId = expectedOrderedTaskIds[i];
+    if (task.taskId === expectedId) return task;
+
+    const otherIndex = expectedIndexById.get(task.taskId);
+    if (otherIndex !== undefined) {
       throw new ParserError(
         'validation',
-        `tasks[${String(i)}].taskId must match DB order (got ${outputIds[i] ?? '(missing)'}, expected ${expectedOrderedTaskIds[i] ?? '(missing)'}).`,
+        `tasks[${String(i)}].taskId names the task expected at index ${String(otherIndex)}; lessons must follow DB order.`,
       );
     }
+
+    repairedTaskIdCount++;
+    return { ...task, taskId: expectedId };
+  });
+
+  if (repairedTaskIdCount > 0) {
+    logger.warn(
+      { repairedTaskIdCount, taskCount: tasks.length },
+      'Module lesson batch task ids repaired by position',
+    );
   }
+
+  return { ...output, tasks };
 }
 
 export type ParseModuleLessonBatchOptions = {
@@ -53,7 +74,8 @@ export type ParseModuleLessonBatchOptions = {
 };
 
 /**
- * Parses buffered provider text: JSON.parse → Zod → exact task id set + strict order vs `expectedOrderedTaskIds`.
+ * Parses buffered provider text: JSON.parse → Zod → exact task count, with
+ * task ids assigned by position from `expectedOrderedTaskIds`.
  */
 export function parseModuleLessonBatchText(
   rawText: string,
@@ -94,8 +116,7 @@ export function parseModuleLessonBatchText(
     );
   }
 
-  validateTaskCoverageAndOrder(zodResult.data.tasks, expectedOrderedTaskIds);
-  return zodResult.data;
+  return assignTaskIdsByPosition(zodResult.data, expectedOrderedTaskIds);
 }
 
 export type ParseModuleLessonBatchFromStreamOptions =
