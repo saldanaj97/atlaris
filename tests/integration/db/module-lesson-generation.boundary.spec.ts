@@ -2,9 +2,11 @@ import type { StartModuleLessonGenerationResult } from '@/features/lesson-conten
 import type { ModuleLessonWorkflowResult } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
 
+import { ParserError } from '@/features/ai/parser';
 import { MockGenerationProvider } from '@/features/ai/providers/mock';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import { setModuleLessonGenerationEnabledForTests } from '@/features/lesson-content/generation-flag';
+import * as moduleLessonBatchParser from '@/features/lesson-content/parse-module-lesson-batch';
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { markModuleLessonProviderStarted } from '@/lib/db/queries/module-lesson-generation';
 import { modules, tasks, aiUsageEvents, usageMetrics } from '@supabase/schema';
@@ -543,8 +545,8 @@ describe('module lesson generation boundary (integration)', () => {
         createTestTask({ moduleId: mod.id, order, title: `Task ${order}` }),
       ),
     );
-    const middleId = createdTasks[1].id;
-    const garbledId = `${middleId.slice(0, -1)}${middleId.endsWith('0') ? '1' : '0'}`;
+    // Truncated, as models garble it: no longer a valid UUID.
+    const garbledId = createdTasks[1].id.slice(0, -1);
 
     const rlsDb = await createRlsDbForUser(authUserId);
     vi.spyOn(
@@ -601,6 +603,10 @@ describe('module lesson generation boundary (integration)', () => {
     const task2 = await createTestTask({ moduleId: mod.id, order: 2 });
 
     const rlsDb = await createRlsDbForUser(authUserId);
+    const parseSpy = vi.spyOn(
+      moduleLessonBatchParser,
+      'parseModuleLessonBatchText',
+    );
     vi.spyOn(
       MockGenerationProvider.prototype,
       'generateModuleLessonBatch',
@@ -619,6 +625,13 @@ describe('module lesson generation boundary (integration)', () => {
     });
 
     expect(result.kind).toBe('failed');
+    const parseOutcome = parseSpy.mock.results.at(-1);
+    expect(parseOutcome?.type).toBe('throw');
+    expect(parseOutcome?.value).toBeInstanceOf(ParserError);
+    expect(parseOutcome?.value).toHaveProperty(
+      'message',
+      expect.stringMatching(/must follow DB order/),
+    );
 
     const [modRow] = await db
       .select()
