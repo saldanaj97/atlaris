@@ -43,7 +43,7 @@ Requests that supply both Bearer and the custom header are rejected.
 
 ## Middleware
 
-`isProtectedRoute()` in `src/lib/proxy/middleware-policy.ts` skips Clerk for all `/api/internal/` paths. Token validation happens inside each route handler. The exact regeneration drain path is allowed through the maintenance redirect layer so the Production scheduler can invoke it, while route-level `REGENERATION_WORKER_TOKEN` authentication, queue enablement, and bounded drain controls still apply. Other internal maintenance routes remain covered by maintenance redirects unless separately and explicitly documented.
+`isProtectedRoute()` in `src/lib/proxy/middleware-policy.ts` skips Clerk for all `/api/internal/` paths. Token validation happens inside each route handler. `isSiteGateExempt()` also exempts every `/api/internal/` path from the maintenance and launch waitlist redirects, so the proxy never reads the gate flags for them. Route-level worker tokens and env master switches (such as `REGENERATION_QUEUE_ENABLED`, `PLAN_CLEANUP_ENABLED`, and `RETENTION_CLEANUP_ENABLED`) still apply.
 
 ## Email delivery recovery
 

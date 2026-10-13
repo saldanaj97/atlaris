@@ -1,6 +1,7 @@
 import {
   isProviderWebhookRoute,
   isProtectedRoute,
+  isSiteGateExempt,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
   shouldBypassClerkMiddleware,
@@ -201,30 +202,37 @@ describe('middleware policy', () => {
     ).toBe('/maintenance');
   });
 
-  it('allows the exact regeneration drain through maintenance redirects', () => {
-    expect(
-      resolveSiteGateRedirectPath(
-        'maintenance',
-        '/api/internal/jobs/regeneration/process',
-      ),
-    ).toBe(null);
-    expect(
-      resolveSiteGateRedirectPath(
-        'maintenance',
-        '/api/internal/jobs/regeneration/process/',
-      ),
-    ).toBe(null);
+  it.each([
+    '/api/internal/maintenance/plans/cleanup',
+    '/api/internal/maintenance/retention/cleanup',
+    '/api/internal/jobs/regeneration/process/',
+    '/landing',
+    '/.well-known/vercel/flags',
+  ])('isSiteGateExempt is true for %s', (pathname) => {
+    expect(isSiteGateExempt(pathname)).toBe(true);
   });
 
+  it.each(['/api/internals', '/api/v1/plans', '/waitlist', '/'])(
+    'isSiteGateExempt is false for %s',
+    (pathname) => {
+      expect(isSiteGateExempt(pathname)).toBe(false);
+    },
+  );
+
   it.each([
-    '/api/internal/maintenance/retention/cleanup',
     '/api/internal/maintenance/plans/cleanup',
     '/api/internal/maintenance/billing/reconcile-clerk',
-    '/api/internal/maintenance/notifications/email',
-    '/api/internal/jobs/regeneration/process/extra',
-    '/api/internal/jobs/regeneration/process-other',
-  ])('redirects maintenance-mode non-bypass path %s', (pathname) => {
-    expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(
+    '/api/internal/jobs/regeneration/process',
+    '/landing',
+    '/.well-known/vercel/flags',
+  ])('never redirects exempt path %s in any gate state', (pathname) => {
+    for (const gate of [null, 'maintenance', 'waitlist'] as const) {
+      expect(resolveSiteGateRedirectPath(gate, pathname)).toBe(null);
+    }
+  });
+
+  it('still redirects /api/internals during maintenance', () => {
+    expect(resolveSiteGateRedirectPath('maintenance', '/api/internals')).toBe(
       '/maintenance',
     );
   });
