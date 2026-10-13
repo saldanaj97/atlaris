@@ -42,6 +42,12 @@ function runRow(overrides: Record<string, unknown> = {}) {
   };
 }
 
+function instanceWithStatus(status: string) {
+  return {
+    status: vi.fn(async () => ({ status })),
+  } as unknown as WorkflowInstance;
+}
+
 function post(body: unknown) {
   return new Request(
     'https://workers-staging.atlaris.app/v1/email-delivery/runs',
@@ -187,10 +193,68 @@ describe('handleEmailDeliveryRunsCommand', () => {
     });
   });
 
-  it('treats an existing instance as a duplicate and leaves the run alone', async () => {
+  it.each(['running', 'queued', 'waiting', 'paused'])(
+    'treats an existing %s instance as a duplicate and leaves the run alone',
+    async (status) => {
+      const { deps, workflow } = makeDeps();
+      workflow.create.mockRejectedValue(new Error('instance already exists'));
+      workflow.get.mockResolvedValue(instanceWithStatus(status));
+
+      const response = await handleEmailDeliveryRunsCommand(post(START), deps);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toMatchObject({
+        accepted: true,
+        duplicate: true,
+        instanceId: INSTANCE_ID,
+      });
+      expect(runs.fail).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(['errored', 'terminated', 'complete'])(
+    'fails an unclaimed run whose existing instance is %s so resume can requeue it',
+    async (status) => {
+      const { deps, workflow } = makeDeps();
+      workflow.create.mockRejectedValue(new Error('instance already exists'));
+      workflow.get.mockResolvedValue(instanceWithStatus(status));
+
+      const response = await handleEmailDeliveryRunsCommand(post(START), deps);
+
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({
+        code: 'workflow_instance_abandoned',
+      });
+      expect(runs.fail).toHaveBeenCalledWith(
+        expect.objectContaining({
+          runId: RUN_ID,
+          workflowRunId: null,
+          errorClass: 'workflow_instance_abandoned',
+        }),
+        expect.anything(),
+      );
+    },
+  );
+
+  it('keeps an existing instance with an unreadable status as a duplicate', async () => {
     const { deps, workflow } = makeDeps();
     workflow.create.mockRejectedValue(new Error('instance already exists'));
-    workflow.get.mockResolvedValue({} as WorkflowInstance);
+    workflow.get.mockResolvedValue({
+      status: vi.fn(async () => {
+        throw new Error('status unavailable');
+      }),
+    } as unknown as WorkflowInstance);
+
+    const response = await handleEmailDeliveryRunsCommand(post(START), deps);
+
+    expect(response.status).toBe(200);
+    expect(runs.fail).not.toHaveBeenCalled();
+  });
+
+  it('treats an existing instance as a duplicate and leaves the run alone (get called with the instance id)', async () => {
+    const { deps, workflow } = makeDeps();
+    workflow.create.mockRejectedValue(new Error('instance already exists'));
+    workflow.get.mockResolvedValue(instanceWithStatus('running'));
 
     const response = await handleEmailDeliveryRunsCommand(post(START), deps);
 

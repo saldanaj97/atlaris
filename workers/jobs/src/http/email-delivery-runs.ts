@@ -140,15 +140,31 @@ async function prepareRun(
     : { kind: 'invalid_state' };
 }
 
-async function instanceExists(
+/** Instance states that never run again, so an unclaimed run behind one is abandoned. */
+const TERMINAL_INSTANCE_STATUSES: readonly string[] = [
+  'errored',
+  'terminated',
+  'complete',
+];
+
+type ExistingInstance = { readonly terminal: boolean };
+
+/** `null` when no instance has this ID. A status that cannot be read counts as live. */
+async function findInstance(
   workflow: EmailDeliveryRunsDeps['workflow'],
   instanceId: string,
-): Promise<boolean> {
+): Promise<ExistingInstance | null> {
+  let instance: WorkflowInstance;
   try {
-    await workflow.get(instanceId);
-    return true;
+    instance = await workflow.get(instanceId);
   } catch {
-    return false;
+    return null;
+  }
+  try {
+    const { status } = await instance.status();
+    return { terminal: TERMINAL_INSTANCE_STATUSES.includes(status) };
+  } catch {
+    return { terminal: false };
   }
 }
 
@@ -209,7 +225,8 @@ export async function handleEmailDeliveryRunsCommand(
       params: { v: 1, runId: run.id },
     });
   } catch {
-    if (await instanceExists(deps.workflow, instanceId)) {
+    const existing = await findInstance(deps.workflow, instanceId);
+    if (existing && !existing.terminal) {
       return Response.json({
         accepted: true,
         duplicate: true,
@@ -217,22 +234,38 @@ export async function handleEmailDeliveryRunsCommand(
         instanceId,
       });
     }
+    // No instance, or one that ended without claiming the run: nothing will
+    // run it. Fail the unclaimed reservation so `resume` can requeue it.
+    const abandoned = existing !== null;
     await deps.withDb((db) =>
       failEmailNotificationDeliveryRun(
         {
           runId: run.id,
           workflowRunId: null,
-          errorClass: 'workflow_start_failed',
-          errorMessage: 'Email delivery workflow could not be started.',
+          errorClass: abandoned
+            ? 'workflow_instance_abandoned'
+            : 'workflow_start_failed',
+          errorMessage: abandoned
+            ? 'Email delivery workflow ended before claiming the run.'
+            : 'Email delivery workflow could not be started.',
         },
         db,
       ),
     );
     deps.logger.error(
       fields,
-      'Email notification delivery workflow could not be started',
+      abandoned
+        ? 'Email notification delivery workflow ended before claiming the run'
+        : 'Email notification delivery workflow could not be started',
     );
-    return Response.json({ code: 'workflow_start_failed' }, { status: 503 });
+    return Response.json(
+      {
+        code: abandoned
+          ? 'workflow_instance_abandoned'
+          : 'workflow_start_failed',
+      },
+      { status: 503 },
+    );
   }
 
   deps.logger.info(fields, 'Email notification delivery workflow started');
