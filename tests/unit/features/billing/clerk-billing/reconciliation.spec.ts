@@ -255,6 +255,9 @@ function makeClerkClient(subscription = makeSubscription()) {
     billing: {
       getUserBillingSubscription: vi.fn().mockResolvedValue(subscription),
     },
+    users: {
+      getUser: vi.fn().mockResolvedValue({ id: 'user_missing' }),
+    },
   };
 }
 
@@ -417,10 +420,13 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
 
-  it('acknowledges a billing event whose Clerk payer was deleted', async () => {
+  it('acknowledges a billing event once Clerk confirms the payer was deleted', async () => {
     const db = makeDb({});
     const clerkClient = makeClerkClient();
     clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(
+      clerkApiError(404, 'resource_not_found'),
+    );
+    clerkClient.users.getUser.mockRejectedValueOnce(
       clerkApiError(404, 'resource_not_found'),
     );
     const logger = makeLogger();
@@ -436,6 +442,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
       result: 'skipped_payer_deleted',
     });
 
+    expect(clerkClient.users.getUser).toHaveBeenCalledWith('user_missing');
     expect(db.transaction).toHaveBeenCalledTimes(1);
     expect(db.execute).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
@@ -468,10 +475,61 @@ describe('applyVerifiedClerkBillingEvent', () => {
       }),
     ).rejects.toBe(error);
 
+    expect(clerkClient.users.getUser).not.toHaveBeenCalled();
     expect(db.transaction).not.toHaveBeenCalled();
     expect(db.insert).toHaveBeenCalledTimes(1);
     expect(db.update).not.toHaveBeenCalled();
   });
+
+  it.each([
+    [
+      'the Clerk user still exists',
+      (getUser: ReturnType<typeof vi.fn>) =>
+        getUser.mockResolvedValueOnce({ id: 'user_missing' }),
+    ],
+    [
+      'the user lookup returns a Clerk 500',
+      (getUser: ReturnType<typeof vi.fn>) =>
+        getUser.mockRejectedValueOnce(
+          clerkApiError(500, 'internal_clerk_error'),
+        ),
+    ],
+    [
+      'the user lookup hits a network failure',
+      (getUser: ReturnType<typeof vi.fn>) =>
+        getUser.mockRejectedValueOnce(new TypeError('fetch failed')),
+    ],
+    [
+      'the user lookup hangs past the timeout',
+      (getUser: ReturnType<typeof vi.fn>) =>
+        getUser.mockReturnValueOnce(new Promise(() => undefined)),
+    ],
+  ])(
+    'retries a billing 404 with the original error when %s',
+    async (_label, arrangeLookup) => {
+      const refreshError = clerkApiError(404, 'resource_not_found');
+      const db = makeDb({});
+      const clerkClient = makeClerkClient();
+      clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(
+        refreshError,
+      );
+      arrangeLookup(clerkClient.users.getUser);
+
+      await expect(
+        applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_retryable', {
+          clerkClient,
+          db,
+          logger: makeLogger(),
+          payerNetworkTimeoutMs: 20,
+        }),
+      ).rejects.toBe(refreshError);
+
+      expect(clerkClient.users.getUser).toHaveBeenCalledWith('user_missing');
+      expect(db.transaction).not.toHaveBeenCalled();
+      expect(db.insert).toHaveBeenCalledTimes(1);
+      expect(db.update).not.toHaveBeenCalled();
+    },
+  );
 
   it('times out a hung Clerk refresh without completing the webhook', async () => {
     const db = makeDb({});
@@ -481,6 +539,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
           () => new Promise<BackendBillingSubscription>(() => undefined),
         ),
       },
+      users: { getUser: vi.fn() },
     };
 
     await expect(
