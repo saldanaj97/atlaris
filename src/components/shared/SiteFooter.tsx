@@ -14,6 +14,9 @@ interface SiteFooterProps {
 }
 
 export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
+  // oxlint-disable-next-line react/purity -- Server component; the copyright year is read once per render.
+  const year = new Date().getFullYear();
+
   if (variant === 'maintenance') {
     return (
       <footer className='relative z-10 px-4 py-6 sm:px-6 lg:px-8'>
@@ -27,7 +30,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
               {SUPPORT_EMAIL}
             </a>
             <p suppressHydrationWarning>
-              © {new Date().getFullYear()} Atlaris. All rights reserved.
+              © {year} Atlaris. All rights reserved.
             </p>
           </div>
         </div>
@@ -82,7 +85,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
         </div>
 
         <p className='text-xs text-muted-foreground' suppressHydrationWarning>
-          © {new Date().getFullYear()} Atlaris. All rights reserved.
+          © {year} Atlaris. All rights reserved.
         </p>
       </div>
     </footer>
