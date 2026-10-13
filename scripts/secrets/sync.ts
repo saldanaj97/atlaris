@@ -270,6 +270,25 @@ function run(
   });
 }
 
+/** Runs a long command with its output shown live; only the exit code is kept. */
+function runVisible(
+  command: string,
+  args: readonly string[],
+  env: Record<string, string>,
+): Promise<number> {
+  return new Promise((resolvePromise) => {
+    const child = spawn(command, args, {
+      env: { ...process.env, ...env },
+      stdio: ['ignore', 'inherit', 'inherit'],
+    });
+    child.on('error', (error) => {
+      console.error(`[secrets] ${command} failed to start: ${error.message}`);
+      resolvePromise(1);
+    });
+    child.on('close', (code) => resolvePromise(code ?? 1));
+  });
+}
+
 async function readEnvironment(target: SyncTarget) {
   const result = await run('op', ['environment', 'read', target.environmentId]);
   if (result.code !== 0) {
@@ -434,11 +453,17 @@ export function writtenKey(responseBody: string, name: string): boolean {
   }
 }
 
-async function redeployVercel(options: SyncOptions): Promise<number> {
+/**
+ * Rebuilds the latest ready deployment. The build takes minutes, so the
+ * deployment is named up front and the Vercel CLI's progress streams live.
+ */
+export async function redeployVercel(options: SyncOptions): Promise<number> {
+  const environment = options.target.environment;
   const filter =
-    options.target.environment === 'production'
+    environment === 'production'
       ? ['--environment', 'production']
       : ['-m', `githubCommitRef=${options.gitBranch}`];
+  console.log(`[secrets] Finding the latest ready ${environment} deployment…`);
   const list = await run('vercel', ['ls', ...filter, '--format', 'json'], {
     env: VERCEL_LINK,
   });
@@ -446,7 +471,7 @@ async function redeployVercel(options: SyncOptions): Promise<number> {
     list.code === 0
       ? (
           JSON.parse(list.stdout) as {
-            deployments: { url: string; state: string }[];
+            deployments: { url: string; state: string; createdAt?: number }[];
           }
         ).deployments.find((deployment) => deployment.state === 'READY')
       : undefined;
@@ -454,15 +479,24 @@ async function redeployVercel(options: SyncOptions): Promise<number> {
     console.error('[secrets] No ready deployment found to redeploy.');
     return 1;
   }
-  console.log(`[secrets] Redeploying ${latest.url}…`);
-  const result = await run(
-    'vercel',
-    ['redeploy', latest.url, '--target', options.target.environment],
-    { env: VERCEL_LINK },
+  const created =
+    latest.createdAt !== undefined
+      ? ` (created ${new Date(latest.createdAt).toISOString()})`
+      : '';
+  console.log(
+    `[secrets] Redeploying ${latest.url}${created} to ${environment}.`,
   );
-  console.log(result.stdout.trim());
-  if (result.code !== 0) console.error(result.stderr.trim());
-  return result.code;
+  console.log(
+    '[secrets] Building… this usually takes a few minutes; Vercel output follows.',
+  );
+  const code = await runVisible(
+    'vercel',
+    ['redeploy', latest.url, '--target', environment],
+    VERCEL_LINK,
+  );
+  if (code === 0) console.log('[secrets] Redeploy finished.');
+  else console.error(`[secrets] Redeploy failed (exit ${code}).`);
+  return code;
 }
 
 export async function runSecretsSync(argv: readonly string[]): Promise<number> {
