@@ -9,6 +9,7 @@ import { getCorrelationId } from '@/lib/proxy/correlation';
 import {
   isProviderWebhookRoute,
   isProtectedRoute,
+  isSiteGateExempt,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
   shouldBypassClerkMiddleware,
@@ -19,7 +20,7 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
-import { resolveSiteGate } from '@/lib/proxy/site-gate';
+import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
 import {
   isWorkflowCallbackPath,
   resolveWorkflowCallbackAccess,
@@ -124,19 +125,23 @@ async function handleProxyRequest(
     return nextWithProxyContext(request);
   }
 
-  // Maintenance mode / launch waitlist
-  const siteGate = await resolveSiteGate();
-  const gateTarget = resolveSiteGateRedirectPath(siteGate, pathname, {
-    allowGatePagePreview: appEnv.isDevelopment,
-  });
+  // Maintenance mode / launch waitlist. Exempt paths never redirect, so skip the flag reads.
+  if (!isSiteGateExempt(pathname)) {
+    const siteGate = await resolveSiteGate({
+      bypassCache: request.cookies.has(FLAG_OVERRIDES_COOKIE),
+    });
+    const gateTarget = resolveSiteGateRedirectPath(siteGate, pathname, {
+      allowGatePagePreview: appEnv.isDevelopment,
+    });
 
-  if (gateTarget !== null) {
-    const redirectUrl = new URL(gateTarget, request.url);
-    const source = resolveSiteGateRedirectSource(pathname);
-    if (siteGate !== null && source !== null) {
-      redirectUrl.searchParams.set('from', source);
+    if (gateTarget !== null) {
+      const redirectUrl = new URL(gateTarget, request.url);
+      const source = resolveSiteGateRedirectSource(pathname);
+      if (siteGate !== null && source !== null) {
+        redirectUrl.searchParams.set('from', source);
+      }
+      return withCorrelationId(request, NextResponse.redirect(redirectUrl));
     }
-    return withCorrelationId(request, NextResponse.redirect(redirectUrl));
   }
 
   // Auth protection
@@ -213,7 +218,7 @@ export const config = {
   matcher: [
     // Catch-all for app routes including /.well-known/workflow. Skip /ingest so
     // the public PostHog proxy stays outside Clerk; that route owns validation.
-    '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)).*)',
     '/(api|trpc)(.*)',
   ],
 };
