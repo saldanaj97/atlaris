@@ -1,9 +1,5 @@
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
-import {
-  AI_DEFAULT_MODEL,
-  AVAILABLE_MODELS,
-  isValidModelId,
-} from '@/features/ai/ai-models';
+import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { describe, expect, it, vi } from 'vitest';
@@ -19,17 +15,12 @@ const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
 ).find(
   ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
-const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
-  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
-)?.id;
+// The free router is the only Free-labelled catalog model.
+const FREE_QUERY_OVERRIDE_MODEL = AI_DEFAULT_MODEL;
 const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
 const STARTER_OUTLINE_DEFAULT = 'google/gemini-2.5-flash-lite';
 
-if (
-  !STARTER_PERSISTABLE_MODEL ||
-  !PRO_PERSISTABLE_MODEL ||
-  !FREE_QUERY_OVERRIDE_MODEL
-) {
+if (!STARTER_PERSISTABLE_MODEL || !PRO_PERSISTABLE_MODEL) {
   throw new Error('Expected model fixtures for validation tests');
 }
 

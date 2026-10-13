@@ -110,15 +110,28 @@ describe('AI Models Configuration', () => {
       expect(model?.provider).toBe('OpenRouter');
     });
 
-    it('includes Gemini 2.0 Flash because it is still a supported free model', () => {
-      const model = getModelById('google/gemini-2.0-flash-exp:free');
+    it('includes Gemini 3.1 Pro Preview with its OpenRouter pricing', () => {
+      const model = getModelById('google/gemini-3.1-pro-preview');
       expect(model).toMatchObject({
-        id: 'google/gemini-2.0-flash-exp:free',
-        name: 'Gemini 2.0 Flash',
+        id: 'google/gemini-3.1-pro-preview',
+        name: 'Gemini 3.1 Pro Preview',
         provider: 'Google',
-        tier: 'free',
+        tier: 'pro',
         contextWindow: 1_048_576,
+        inputCostPerMillion: 2,
+        outputCostPerMillion: 12,
       });
+    });
+
+    it.each([
+      'google/gemini-3-pro-preview',
+      'google/gemini-2.0-flash-exp:free',
+      'openai/gpt-oss-20b:free',
+      'alibaba/tongyi-deepresearch-30b-a3b:free',
+      'openai/gpt-4o-mini-search-preview',
+    ])('excludes retired OpenRouter model %s', (retiredId) => {
+      expect(getModelById(retiredId)).toBeUndefined();
+      expect(isValidModelId(retiredId)).toBe(false);
     });
 
     it('returns correct model for each model in AVAILABLE_MODELS', () => {
@@ -221,11 +234,11 @@ describe('AI Models Configuration', () => {
 
     it('returns false for partial model IDs', () => {
       expect(isValidModelId('google/')).toBe(false);
-      expect(isValidModelId('/gemini-2.0-flash-exp:free')).toBe(false);
+      expect(isValidModelId('/gemini-3-flash-preview')).toBe(false);
     });
 
     it('returns false for case-mismatched IDs', () => {
-      expect(isValidModelId('GOOGLE/GEMINI-2.0-FLASH-EXP:FREE')).toBe(false);
+      expect(isValidModelId('GOOGLE/GEMINI-3-FLASH-PREVIEW')).toBe(false);
     });
   });
 
@@ -258,7 +271,7 @@ describe('AI Models Configuration', () => {
         'openai/gpt-5.2',
       );
       expect(getDefaultModelForTier('pro', 'regeneration')).toBe(
-        'google/gemini-3-pro-preview',
+        'google/gemini-3.1-pro-preview',
       );
       expect(getDefaultModelForTier('pro', 'lesson')).toBe(
         'google/gemini-3-flash-preview',

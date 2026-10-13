@@ -159,7 +159,7 @@ describe('user preference queries', () => {
   it('upserts preferred AI model on the user preference row', async () => {
     const execute = vi.fn().mockResolvedValue([
       {
-        preferred_ai_model: 'google/gemini-2.0-flash-exp:free',
+        preferred_ai_model: 'google/gemini-2.5-flash-lite',
         analytics_timezone: 'UTC',
       },
     ]);
@@ -170,11 +170,11 @@ describe('user preference queries', () => {
 
     const result = await upsertUserModelPreferences(
       'user-1',
-      { preferredAiModel: 'google/gemini-2.0-flash-exp:free' },
+      { preferredAiModel: 'google/gemini-2.5-flash-lite' },
       dbClient,
     );
 
-    expect(result?.preferredAiModel).toBe('google/gemini-2.0-flash-exp:free');
+    expect(result?.preferredAiModel).toBe('google/gemini-2.5-flash-lite');
     expect(execute).toHaveBeenCalledOnce();
 
     const query = new PgDialect().sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
@@ -196,7 +196,7 @@ describe('user preference queries', () => {
     const execute = vi.fn().mockResolvedValue([
       {
         preferred_ai_model: 'openai/gpt-5.2',
-        preferred_regeneration_ai_model: 'google/gemini-3-pro-preview',
+        preferred_regeneration_ai_model: 'google/gemini-3.1-pro-preview',
         preferred_lesson_ai_model: null,
         analytics_timezone: 'UTC',
       },
@@ -209,14 +209,14 @@ describe('user preference queries', () => {
     const result = await upsertUserModelPreferences(
       'user-1',
       {
-        preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+        preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
         preferredLessonAiModel: null,
       },
       dbClient,
     );
 
     expect(result?.preferredRegenerationAiModel).toBe(
-      'google/gemini-3-pro-preview',
+      'google/gemini-3.1-pro-preview',
     );
     expect(result?.preferredLessonAiModel).toBeNull();
 

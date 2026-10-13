@@ -410,7 +410,7 @@ describe('requestPlanRegeneration', () => {
         {
           userId: 'user-1',
           planId: ownedPlan.id,
-          overrides: { model: 'google/gemini-3-pro-preview' },
+          overrides: { model: 'google/gemini-3.1-pro-preview' },
         },
         deps,
       );
@@ -421,7 +421,7 @@ describe('requestPlanRegeneration', () => {
         'user-1',
         {
           planId: ownedPlan.id,
-          overrides: { model: 'google/gemini-3-pro-preview' },
+          overrides: { model: 'google/gemini-3.1-pro-preview' },
         },
         7,
       );

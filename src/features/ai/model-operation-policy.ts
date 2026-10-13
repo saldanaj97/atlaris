@@ -27,7 +27,7 @@ export const STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID =
 
 const PRO_DEFAULT_MODEL_BY_OPERATION = {
   initial_outline: 'openai/gpt-5.2',
-  regeneration: 'google/gemini-3-pro-preview',
+  regeneration: 'google/gemini-3.1-pro-preview',
   lesson: 'google/gemini-3-flash-preview',
 } as const satisfies Record<ModelOperation, string>;
 

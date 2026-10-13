@@ -181,7 +181,7 @@ beforeEach(() => {
   mocks.resolveUserTier.mockResolvedValue('pro');
   mocks.getUserPreferences.mockResolvedValue({
     preferredAiModel: 'openai/gpt-5.2',
-    preferredRegenerationAiModel: 'google/gemini-3-pro-preview',
+    preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
     preferredLessonAiModel: 'google/gemini-3-flash-preview',
     analyticsTimezone: 'UTC',
   });

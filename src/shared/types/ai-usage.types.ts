@@ -28,7 +28,7 @@ export type CanonicalAIUsage = {
   readonly outputTokens: number;
   /** Total tokens (input + output). */
   readonly totalTokens: number;
-  /** AI model identifier (e.g., 'google/gemini-2.0-flash-exp:free'). */
+  /** AI model identifier (e.g., 'google/gemini-3-flash-preview'). */
   readonly model: string;
   /** Provider identifier (e.g., 'openrouter', 'mock'). */
   readonly provider: string;
