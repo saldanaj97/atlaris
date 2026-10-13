@@ -8,6 +8,7 @@ import {
   ClerkBillingRefreshTimeoutError,
   reconcileClerkBillingEntitlements,
 } from '@/features/billing/clerk-billing/reconciliation';
+import { ClerkAPIResponseError } from '@clerk/nextjs/errors';
 import {
   clerkWebhookEventClaims,
   clerkWebhookEvents,
@@ -95,6 +96,12 @@ function subscription(
   };
 }
 
+const unusedUserLookup = {
+  getUser: async (): Promise<never> => {
+    throw new Error('Unexpected Clerk user lookup');
+  },
+};
+
 function logger() {
   return {
     debug: vi.fn(),
@@ -153,6 +160,7 @@ describe('Clerk billing webhook claims', () => {
       applyVerifiedClerkBillingEvent(billingEvent(), 'evt_claim_completed', {
         clerkClient: {
           billing: { getUserBillingSubscription: getSubscription },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -198,6 +206,7 @@ describe('Clerk billing webhook claims', () => {
         {
           clerkClient: {
             billing: { getUserBillingSubscription: getSubscription },
+            users: unusedUserLookup,
           },
           db,
           logger: logger(),
@@ -222,6 +231,7 @@ describe('Clerk billing webhook claims', () => {
       applyVerifiedClerkBillingEvent(event, eventId, {
         clerkClient: {
           billing: { getUserBillingSubscription: getSubscription },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -245,6 +255,7 @@ describe('Clerk billing webhook claims', () => {
       applyVerifiedClerkBillingEvent(event, eventId, {
         clerkClient: {
           billing: { getUserBillingSubscription: getSubscription },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -518,7 +529,10 @@ describe('Clerk billing webhook claims', () => {
     const eventId = 'evt_claim_race';
 
     const first = applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
-      clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+      clerkClient: {
+        billing: { getUserBillingSubscription: firstGet },
+        users: unusedUserLookup,
+      },
       db,
       logger: logger(),
       createClaimToken: () => '00000000-0000-4000-8000-000000000011',
@@ -527,7 +541,10 @@ describe('Clerk billing webhook claims', () => {
 
     await expect(
       applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
-        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+        clerkClient: {
+          billing: { getUserBillingSubscription: secondGet },
+          users: unusedUserLookup,
+        },
         db,
         logger: logger(),
         createClaimToken: () => '00000000-0000-4000-8000-000000000012',
@@ -575,7 +592,10 @@ describe('Clerk billing webhook claims', () => {
     const eventId = 'evt_claim_stale_owner';
 
     const first = applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
-      clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+      clerkClient: {
+        billing: { getUserBillingSubscription: firstGet },
+        users: unusedUserLookup,
+      },
       db,
       logger: logger(),
       createClaimToken: () => '00000000-0000-4000-8000-000000000041',
@@ -588,7 +608,10 @@ describe('Clerk billing webhook claims', () => {
       .where(eq(clerkWebhookEventClaims.eventId, eventId));
 
     const second = applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
-      clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+      clerkClient: {
+        billing: { getUserBillingSubscription: secondGet },
+        users: unusedUserLookup,
+      },
       db,
       logger: logger(),
       createClaimToken: () => '00000000-0000-4000-8000-000000000042',
@@ -627,6 +650,7 @@ describe('Clerk billing webhook claims', () => {
       applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
         clerkClient: {
           billing: { getUserBillingSubscription: getSubscription },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -650,7 +674,10 @@ describe('Clerk billing webhook claims', () => {
 
     await expect(
       applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
-        clerkClient: { billing: { getUserBillingSubscription: failedGet } },
+        clerkClient: {
+          billing: { getUserBillingSubscription: failedGet },
+          users: unusedUserLookup,
+        },
         db,
         logger: logger(),
       }),
@@ -677,11 +704,75 @@ describe('Clerk billing webhook claims', () => {
               .fn()
               .mockResolvedValue(subscription()),
           },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
       }),
     ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+  });
+
+  it('completes a deleted Clerk payer once and skips its redelivery', async () => {
+    await seedBillingUser();
+    const eventId = 'evt_claim_payer_deleted';
+    const notFound = () =>
+      new ClerkAPIResponseError('Not Found', {
+        data: [
+          {
+            code: 'resource_not_found',
+            message: 'not found',
+            long_message: 'not found',
+          },
+        ],
+        status: 404,
+      });
+    const deletedGet = vi.fn().mockRejectedValue(notFound());
+    const deletedUserLookup = {
+      getUser: vi.fn().mockRejectedValue(notFound()),
+    };
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
+        clerkClient: {
+          billing: { getUserBillingSubscription: deletedGet },
+          users: deletedUserLookup,
+        },
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({
+      status: 'inserted',
+      result: 'skipped_payer_deleted',
+    });
+    await expect(currentTier('billing_claim_user')).resolves.toBe('starter');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([{ eventId }]);
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEventClaims.eventId })
+        .from(clerkWebhookEventClaims)
+        .where(eq(clerkWebhookEventClaims.eventId, eventId)),
+    ).resolves.toEqual([]);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
+        clerkClient: {
+          billing: { getUserBillingSubscription: deletedGet },
+          users: deletedUserLookup,
+        },
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'duplicate' });
+    expect(deletedGet).toHaveBeenCalledTimes(1);
+    expect(deletedUserLookup.getUser).toHaveBeenCalledTimes(1);
+    expect(deletedUserLookup.getUser).toHaveBeenCalledWith(
+      'billing_claim_user',
+    );
   });
 
   it('lets the legacy ledger win without allowing a stale claimant to project', async () => {
@@ -703,6 +794,7 @@ describe('Clerk billing webhook claims', () => {
       applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
         clerkClient: {
           billing: { getUserBillingSubscription: getSubscription },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -751,6 +843,7 @@ describe('Clerk billing webhook claims', () => {
               return releaseStaleRefresh.promise;
             }),
           },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),
@@ -772,6 +865,7 @@ describe('Clerk billing webhook claims', () => {
                 }),
               ),
             },
+            users: unusedUserLookup,
           },
           db,
           logger: logger(),
@@ -821,7 +915,10 @@ describe('Clerk billing webhook claims', () => {
       billingEvent(firstPayer),
       `evt_${firstPayer}`,
       {
-        clerkClient: { billing: { getUserBillingSubscription: firstGet } },
+        clerkClient: {
+          billing: { getUserBillingSubscription: firstGet },
+          users: unusedUserLookup,
+        },
         db,
         logger: logger(),
       },
@@ -830,7 +927,10 @@ describe('Clerk billing webhook claims', () => {
       billingEvent(secondPayer),
       `evt_${secondPayer}`,
       {
-        clerkClient: { billing: { getUserBillingSubscription: secondGet } },
+        clerkClient: {
+          billing: { getUserBillingSubscription: secondGet },
+          users: unusedUserLookup,
+        },
         db,
         logger: logger(),
       },
@@ -875,6 +975,7 @@ describe('Clerk billing webhook claims', () => {
                 }),
               ),
             },
+            users: unusedUserLookup,
           },
           db,
           logger: logger(),
@@ -943,6 +1044,7 @@ describe('Clerk billing webhook claims', () => {
           {
             clerkClient: {
               billing: { getUserBillingSubscription: secondGet },
+              users: unusedUserLookup,
             },
             db,
             logger: logger(),
@@ -979,7 +1081,10 @@ describe('Clerk billing webhook claims', () => {
 
     await expect(
       applyVerifiedClerkBillingEvent(billingEvent(payerUserId), eventId, {
-        clerkClient: { billing: { getUserBillingSubscription: hungGet } },
+        clerkClient: {
+          billing: { getUserBillingSubscription: hungGet },
+          users: unusedUserLookup,
+        },
         db,
         logger: logger(),
         payerNetworkTimeoutMs: 150,
@@ -1008,6 +1113,7 @@ describe('Clerk billing webhook claims', () => {
               .fn()
               .mockResolvedValue(subscription({ payerId: payerUserId })),
           },
+          users: unusedUserLookup,
         },
         db,
         logger: logger(),

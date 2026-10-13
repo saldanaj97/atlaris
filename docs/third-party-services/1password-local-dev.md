@@ -7,7 +7,7 @@ keychain, not the repository. Cloud agents stay on
 
 ## What you create once
 
-1. In 1Password, create a service account that can read only the Atlaris local
+1. In 1Password, create a service account that can read only the `atlaris-local`
    Environment. Copy the token once.
 2. Copy the Environment ID from Developer → View Environments → Manage
    environment.

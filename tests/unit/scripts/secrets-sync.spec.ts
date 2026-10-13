@@ -4,13 +4,23 @@ import {
   parseSyncArgs,
   planSync,
   readWranglerVarNames,
+  redeployVercel,
   SecretsSyncUsageError,
   SYNC_TARGETS,
   writtenKey,
 } from '../../../scripts/secrets/sync';
+import { spawn } from 'node:child_process';
+import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+// Replaces the whole module, named and default exports alike, so no test can
+// start a real `vercel` or `op` process.
+vi.mock('node:child_process', () => {
+  const spawn = vi.fn();
+  return { spawn, default: { spawn } };
+});
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
 
@@ -162,5 +172,84 @@ describe('writtenKey', () => {
     ).toBe(false);
     expect(writtenKey('{"created":{"key":"OTHER"}}', 'APP_URL')).toBe(false);
     expect(writtenKey('Error: forbidden', 'APP_URL')).toBe(false);
+  });
+});
+
+describe.sequential('redeployVercel', () => {
+  /** A child process that prints `stdout` and exits with `code`. */
+  function fakeChild(code: number, stdout = '') {
+    const child = Object.assign(new EventEmitter(), {
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+      stdin: { end: vi.fn() },
+    });
+    queueMicrotask(() => {
+      if (stdout) child.stdout.emit('data', Buffer.from(stdout));
+      child.emit('close', code);
+    });
+    return child;
+  }
+
+  const deployments = JSON.stringify({
+    deployments: [
+      { url: 'building.vercel.app', state: 'BUILDING' },
+      { url: 'ready.vercel.app', state: 'READY', createdAt: 0 },
+    ],
+  });
+
+  afterEach(() => vi.restoreAllMocks());
+
+  it('names the deployment and announces the build before streaming the redeploy', async () => {
+    const events: string[] = [];
+    vi.spyOn(console, 'log').mockImplementation((line: string) => {
+      events.push(line);
+    });
+    vi.mocked(spawn).mockImplementation(((command: string, args: string[]) => {
+      events.push(`spawn ${command} ${args[0]}`);
+      return args[0] === 'ls' ? fakeChild(0, deployments) : fakeChild(0);
+    }) as unknown as typeof spawn);
+
+    const code = await redeployVercel(
+      parseSyncArgs(['vercel', 'production', '--redeploy']),
+    );
+
+    expect(code).toBe(0);
+    expect(events).toEqual([
+      '[secrets] Finding the latest ready production deployment…',
+      'spawn vercel ls',
+      '[secrets] Redeploying ready.vercel.app (created 1970-01-01T00:00:00.000Z) to production.',
+      expect.stringMatching(/^\[secrets\] Building…/),
+      'spawn vercel redeploy',
+      '[secrets] Redeploy finished.',
+    ]);
+    expect(vi.mocked(spawn).mock.calls[1]).toEqual([
+      'vercel',
+      ['redeploy', 'ready.vercel.app', '--target', 'production'],
+      expect.objectContaining({ stdio: ['ignore', 'inherit', 'inherit'] }),
+    ]);
+  });
+
+  it('returns the redeploy exit code when the build fails', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    vi.mocked(spawn).mockImplementation(((_command: string, args: string[]) =>
+      args[0] === 'ls'
+        ? fakeChild(0, deployments)
+        : fakeChild(2)) as unknown as typeof spawn);
+
+    const code = await redeployVercel(
+      parseSyncArgs([
+        'vercel',
+        'preview',
+        '--git-branch',
+        'develop',
+        '--redeploy',
+      ]),
+    );
+
+    expect(code).toBe(2);
+    expect(error).toHaveBeenCalledWith('[secrets] Redeploy failed (exit 2).');
   });
 });

@@ -36,8 +36,12 @@ type ReconciliationDeps = {
   payerNetworkTimeoutMs?: number;
 };
 
-type ApplyVerifiedClerkBillingEventDeps = Omit<ReconciliationDeps, 'db'> & {
+type ApplyVerifiedClerkBillingEventDeps = Omit<
+  ReconciliationDeps,
+  'db' | 'clerkClient'
+> & {
   db?: ServiceRoleDb;
+  clerkClient?: ClerkWebhookClient;
   createClaimToken?: () => string;
 };
 
@@ -46,6 +50,12 @@ type ClerkBillingClient = {
     getUserBillingSubscription(
       userId: string,
     ): Promise<BackendBillingSubscription>;
+  };
+};
+
+type ClerkWebhookClient = ClerkBillingClient & {
+  users: {
+    getUser(userId: string): Promise<unknown>;
   };
 };
 
@@ -69,6 +79,7 @@ type ClerkWebhookProjectionSource =
 
 type ClerkWebhookApplyResult =
   | ClerkBillingApplyResult
+  | 'skipped_payer_deleted'
   | ClerkUserProjectionApplyResult;
 
 export type ApplyVerifiedClerkBillingEventResult =
@@ -120,6 +131,65 @@ async function withBoundedTimeout<T>(
     if (timer !== undefined) {
       clearTimeout(timer);
     }
+  }
+}
+
+function isClerkResourceNotFound(error: unknown): boolean {
+  if (
+    !error ||
+    typeof error !== 'object' ||
+    !('status' in error) ||
+    error.status !== 404 ||
+    !('errors' in error) ||
+    !Array.isArray(error.errors)
+  ) {
+    return false;
+  }
+  return error.errors.some(
+    (entry: unknown) =>
+      !!entry &&
+      typeof entry === 'object' &&
+      'code' in entry &&
+      entry.code === 'resource_not_found',
+  );
+}
+
+function payerNetworkTimeoutMs(
+  deps: Pick<ReconciliationDeps, 'payerNetworkTimeoutMs'>,
+): number {
+  return Math.max(
+    1,
+    Math.trunc(
+      deps.payerNetworkTimeoutMs ?? CLERK_BILLING_PAYER_NETWORK_TIMEOUT_MS,
+    ),
+  );
+}
+
+/**
+ * The billing refresh 404s for a deleted payer, but a 404 alone does not prove
+ * the user is gone. Only a matching user lookup 404 confirms the deletion.
+ */
+async function isClerkPayerDeleted(
+  payerUserId: string,
+  deps: ApplyVerifiedClerkBillingEventDeps,
+): Promise<boolean> {
+  const client = deps.clerkClient ?? (await getClerkClient());
+  try {
+    await withBoundedTimeout(
+      client.users.getUser(payerUserId),
+      payerNetworkTimeoutMs(deps),
+      new Error('Clerk payer lookup timed out'),
+    );
+    return false;
+  } catch (error) {
+    if (isClerkResourceNotFound(error)) {
+      return true;
+    }
+    deps.logger.warn(
+      { error, payerUserId },
+      'Clerk payer lookup failed after billing 404; retry requested',
+    );
+    return false;
   }
 }
 
@@ -292,12 +362,29 @@ async function finalizeClerkWebhookEvent(
       ? args.projectionSource.source
       : null;
 
+  let payerDeleted = false;
   if (billingSource !== null && billingSource.payerUserId !== null) {
-    billingSource = await refreshClerkBillingSource(billingSource, deps);
+    const payerUserId = billingSource.payerUserId;
+    try {
+      billingSource = await refreshClerkBillingSource(billingSource, deps);
+    } catch (error) {
+      // A deleted Clerk payer can never refresh; acknowledge instead of retrying.
+      if (
+        !isClerkResourceNotFound(error) ||
+        !(await isClerkPayerDeleted(payerUserId, deps))
+      ) {
+        throw error;
+      }
+      payerDeleted = true;
+    }
   }
 
   return db.transaction(async (tx) => {
-    if (billingSource !== null && billingSource.payerUserId !== null) {
+    if (
+      !payerDeleted &&
+      billingSource !== null &&
+      billingSource.payerUserId !== null
+    ) {
       await acquireClerkBillingPayerLock(tx, billingSource.payerUserId, deps);
     }
 
@@ -346,6 +433,17 @@ async function finalizeClerkWebhookEvent(
     }
 
     if (args.projectionSource.kind === 'billing') {
+      if (payerDeleted) {
+        deps.logger.warn(
+          {
+            eventId: args.eventId,
+            payerUserId: args.projectionSource.source.payerUserId,
+            type: args.event.type,
+          },
+          'Clerk Billing payer not found in Clerk; acknowledged without projection',
+        );
+        return { status: 'inserted', result: 'skipped_payer_deleted' };
+      }
       const result = await applyClerkBillingSource(
         billingSource ?? args.projectionSource.source,
         {
@@ -390,12 +488,7 @@ async function refreshClerkBillingSource(
 
   const client = deps.clerkClient ?? (await getClerkClient());
   const timeoutError = new ClerkBillingRefreshTimeoutError();
-  const timeoutMs = Math.max(
-    1,
-    Math.trunc(
-      deps.payerNetworkTimeoutMs ?? CLERK_BILLING_PAYER_NETWORK_TIMEOUT_MS,
-    ),
-  );
+  const timeoutMs = payerNetworkTimeoutMs(deps);
 
   let subscription: BackendBillingSubscription;
   try {

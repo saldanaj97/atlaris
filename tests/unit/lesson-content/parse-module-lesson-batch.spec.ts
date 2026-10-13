@@ -3,9 +3,10 @@ import {
   parseModuleLessonBatchFromStream,
   parseModuleLessonBatchText,
 } from '@/features/lesson-content/parse-module-lesson-batch';
+import { logger } from '@/lib/logging/logger';
 import { MAX_LESSON_BLOCK_TEXT_LENGTH } from '@supabase/schema/constants';
 import { randomUUID } from 'node:crypto';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const taskA = randomUUID();
 const taskB = randomUUID();
@@ -29,6 +30,10 @@ function validPayload() {
 }
 
 describe('parseModuleLessonBatchText', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it('accepts valid JSON matching expected order', () => {
     const json = JSON.stringify(validPayload());
     const out = parseModuleLessonBatchText(json, [taskA, taskB]);
@@ -104,6 +109,80 @@ describe('parseModuleLessonBatchText', () => {
     };
     expect(() =>
       parseModuleLessonBatchText(JSON.stringify(swapped), [taskA, taskB]),
+    ).toThrow(ParserError);
+  });
+
+  it('assigns the expected id by position when one echoed id is garbled', () => {
+    const warn = vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+    const garbled = {
+      version: 1,
+      tasks: [
+        {
+          taskId: `${taskA.slice(0, -1)}`,
+          content: { version: 1, blocks: [{ type: 'heading', text: 'A' }] },
+        },
+        {
+          taskId: taskB,
+          content: { version: 1, blocks: [{ type: 'heading', text: 'B' }] },
+        },
+      ],
+    };
+    const out = parseModuleLessonBatchText(JSON.stringify(garbled), [
+      taskA,
+      taskB,
+    ]);
+    expect(out.tasks.map((t) => t.taskId)).toEqual([taskA, taskB]);
+    expect(out.tasks[0].content.blocks[0]).toMatchObject({ text: 'A' });
+    expect(out.tasks[1].content.blocks[0]).toMatchObject({ text: 'B' });
+    expect(warn).toHaveBeenCalledWith(
+      { repairedTaskIdCount: 1, taskCount: 2 },
+      'Module lesson batch task ids repaired by position',
+    );
+  });
+
+  it('assigns ids by position when every echoed id is wrong but the count matches', () => {
+    const allWrong = {
+      version: 1,
+      tasks: [
+        { taskId: 'task-1', content: { version: 1, blocks: [sampleBlock] } },
+        {
+          taskId: randomUUID(),
+          content: { version: 1, blocks: [sampleBlock] },
+        },
+      ],
+    };
+    const out = parseModuleLessonBatchText(JSON.stringify(allWrong), [
+      taskA,
+      taskB,
+    ]);
+    expect(out.tasks.map((t) => t.taskId)).toEqual([taskA, taskB]);
+  });
+
+  it('rejects a garbled id when the task count is wrong', () => {
+    const short = {
+      version: 1,
+      tasks: [
+        {
+          taskId: 'not-a-uuid',
+          content: { version: 1, blocks: [sampleBlock] },
+        },
+      ],
+    };
+    expect(() =>
+      parseModuleLessonBatchText(JSON.stringify(short), [taskA, taskB]),
+    ).toThrow(ParserError);
+  });
+
+  it('rejects a valid id at another position even when the rest is garbled', () => {
+    const misplaced = {
+      version: 1,
+      tasks: [
+        { taskId: 'garbled', content: { version: 1, blocks: [sampleBlock] } },
+        { taskId: taskA, content: { version: 1, blocks: [sampleBlock] } },
+      ],
+    };
+    expect(() =>
+      parseModuleLessonBatchText(JSON.stringify(misplaced), [taskA, taskB]),
     ).toThrow(ParserError);
   });
 

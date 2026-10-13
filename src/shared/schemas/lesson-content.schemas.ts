@@ -71,7 +71,9 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
   tasks: z
     .array(
       z.strictObject({
-        taskId: z.uuid(),
+        // Any string: the parser maps lessons to tasks by position and
+        // repairs echoed ids the model garbled.
+        taskId: z.string(),
         content: LessonContentSchema,
       }),
     )
