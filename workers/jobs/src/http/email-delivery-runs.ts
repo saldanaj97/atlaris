@@ -4,6 +4,7 @@ import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
 import { isJobEnabled, isJobsPaused } from '../switches';
+import { findInstance } from '../workflow-instance';
 import {
   createEmailNotificationDeliveryReferenceTimestamp,
   getEmailNotificationDeliveryLedgerKeys,
@@ -138,34 +139,6 @@ async function prepareRun(
   return prepared.outcome === 'prepared'
     ? { kind: 'ready', run: prepared.run }
     : { kind: 'invalid_state' };
-}
-
-/** Instance states that never run again, so an unclaimed run behind one is abandoned. */
-const TERMINAL_INSTANCE_STATUSES: readonly string[] = [
-  'errored',
-  'terminated',
-  'complete',
-];
-
-type ExistingInstance = { readonly terminal: boolean };
-
-/** `null` when no instance has this ID. A status that cannot be read counts as live. */
-async function findInstance(
-  workflow: EmailDeliveryRunsDeps['workflow'],
-  instanceId: string,
-): Promise<ExistingInstance | null> {
-  let instance: WorkflowInstance;
-  try {
-    instance = await workflow.get(instanceId);
-  } catch {
-    return null;
-  }
-  try {
-    const { status } = await instance.status();
-    return { terminal: TERMINAL_INSTANCE_STATUSES.includes(status) };
-  } catch {
-    return { terminal: false };
-  }
 }
 
 /**

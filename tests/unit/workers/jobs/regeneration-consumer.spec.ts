@@ -372,22 +372,75 @@ describe('createWorkflowModuleLessonStarter', () => {
     });
   });
 
-  it('treats an existing instance as a duplicate without reverting the claim', async () => {
+  function startWithExistingInstance(instance: WorkflowInstance) {
     const workflow = {
       create: vi.fn(async () => {
         throw new Error('instance already exists');
       }),
-      get: vi.fn(async () => ({}) as WorkflowInstance),
+      get: vi.fn(async () => instance),
     };
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
       logger,
     });
+    return { workflow, start };
+  }
+
+  it.each(['running', 'queued', 'waiting', 'paused'])(
+    'treats an existing %s instance as a duplicate without reverting the claim',
+    async (status) => {
+      const { workflow, start } = startWithExistingInstance({
+        status: vi.fn(async () => ({ status })),
+      } as unknown as WorkflowInstance);
+
+      await expect(start(startParams())).resolves.toEqual({
+        kind: 'in_flight',
+      });
+      expect(workflow.get).toHaveBeenCalledWith(
+        `lessons-${MODULE_ID}-attempt-1`,
+      );
+      expect(lessonQueries.revert).not.toHaveBeenCalled();
+      expect(logger.error).not.toHaveBeenCalled();
+    },
+  );
+
+  it('treats an existing instance with an unreadable status as a duplicate', async () => {
+    const { start } = startWithExistingInstance({
+      status: vi.fn(async () => {
+        throw new Error('status unavailable');
+      }),
+    } as unknown as WorkflowInstance);
 
     await expect(start(startParams())).resolves.toEqual({ kind: 'in_flight' });
-    expect(workflow.get).toHaveBeenCalledWith(`lessons-${MODULE_ID}-attempt-1`);
     expect(lessonQueries.revert).not.toHaveBeenCalled();
     expect(logger.error).not.toHaveBeenCalled();
   });
+
+  it.each(['errored', 'terminated', 'complete'])(
+    'reverts the claim when the existing instance is %s',
+    async (status) => {
+      const params = startParams();
+      const { start } = startWithExistingInstance({
+        status: vi.fn(async () => ({ status })),
+      } as unknown as WorkflowInstance);
+
+      await expect(start(params)).resolves.toMatchObject({
+        kind: 'workflow_start_failed',
+      });
+      expect(lessonQueries.revert).toHaveBeenCalledWith(params.dbClient, {
+        userId: USER_ID,
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        batchRequestId: 'attempt-1',
+      });
+      expect(logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: `lessons-${MODULE_ID}-attempt-1`,
+          moduleId: MODULE_ID,
+        }),
+        'Module lessons workflow instance already ended; reverting the claim',
+      );
+    },
+  );
 });
