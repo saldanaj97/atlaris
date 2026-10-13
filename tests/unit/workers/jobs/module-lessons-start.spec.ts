@@ -82,28 +82,101 @@ describe('handleModuleLessonsStart', () => {
     expect(create).toHaveBeenCalledWith({ id: INSTANCE_ID, params: command });
   });
 
-  it('answers 200 duplicate when the instance already exists', async () => {
-    const { deps } = makeDeps(
+  function createFailsWith(instance: WorkflowInstance) {
+    return makeDeps(
       {},
       {
         create: vi.fn(async () => {
           throw new Error('instance.already_exists');
         }),
+        get: vi.fn(async () => instance),
       },
     );
+  }
 
-    const response = await handleModuleLessonsStart(
+  async function start(deps: ModuleLessonsStartDeps) {
+    return handleModuleLessonsStart(
       await signed(JSON.stringify(command)),
       deps,
     );
+  }
+
+  it.each(['running', 'queued', 'waiting', 'paused'])(
+    'answers 200 duplicate when a %s instance already exists',
+    async (status) => {
+      const { deps } = createFailsWith({
+        status: vi.fn(async () => ({ status })),
+      } as unknown as WorkflowInstance);
+
+      const response = await start(deps);
+
+      expect(response.status).toBe(200);
+      await expect(response.json()).resolves.toEqual({
+        accepted: true,
+        duplicate: true,
+      });
+      expect(deps.workflow.get).toHaveBeenCalledWith(INSTANCE_ID);
+      expect(deps.logger.error).not.toHaveBeenCalled();
+    },
+  );
+
+  it('answers 200 duplicate when the existing instance status is unreadable', async () => {
+    const { deps } = createFailsWith({
+      status: vi.fn(async () => {
+        throw new Error('status unavailable');
+      }),
+    } as unknown as WorkflowInstance);
+
+    const response = await start(deps);
+
+    expect(response.status).toBe(200);
+    expect(deps.logger.error).not.toHaveBeenCalled();
+  });
+
+  it('answers 200 duplicate when the existing instance completed successfully', async () => {
+    const { deps } = createFailsWith({
+      status: vi.fn(async () => ({
+        status: 'complete',
+        output: { kind: 'success' },
+      })),
+    } as unknown as WorkflowInstance);
+
+    const response = await start(deps);
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       accepted: true,
       duplicate: true,
     });
-    expect(deps.workflow.get).toHaveBeenCalledWith(INSTANCE_ID);
+    expect(deps.logger.error).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['errored', undefined],
+    ['terminated', undefined],
+    ['rollingBack', undefined],
+    ['complete', { kind: 'failed' }],
+    ['complete', { kind: 'disabled' }],
+    ['complete', undefined],
+  ])(
+    'answers 503 workflow_start_failed when the existing instance is %s (output %j)',
+    async (status, output) => {
+      const { deps } = createFailsWith({
+        status: vi.fn(async () => ({ status, output })),
+      } as unknown as WorkflowInstance);
+
+      const response = await start(deps);
+
+      expect(response.status).toBe(503);
+      await expect(response.json()).resolves.toEqual({
+        code: 'workflow_start_failed',
+      });
+      expect(deps.logger.error).toHaveBeenCalledWith(
+        expect.objectContaining({ instanceId: INSTANCE_ID }),
+        'Module lessons workflow instance already ended',
+      );
+    },
+  );
 
   it('answers 503 when create fails and no instance exists', async () => {
     const { deps } = makeDeps(

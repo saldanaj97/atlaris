@@ -90,7 +90,8 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 | Response | Meaning |
 | --- | --- |
 | `202 { accepted, instanceId, runId }` | Workflow started |
-| `200 { accepted, duplicate: true, runId, … }` | The run already exists (an existing run also returns `status` and `instanceId`, its persisted `workflow_run_id`, null if unclaimed) in a state that needs no new instance, the instance already exists, or `replay_reviewed` still has unresolved `manual_review` rows |
+| `503 { code: "workflow_instance_abandoned" }` | The instance for this unclaimed run already exists but ended (`errored`, `terminated`, or `complete`) without claiming it, so nothing will run it. The run is marked `failed`; `resume` it. If another request claimed or finished the run first, the response is instead the `200` existing-run response below |
+| `200 { accepted, duplicate: true, runId, … }` | The run already exists (an existing run also returns `status` and `instanceId`, its persisted `workflow_run_id`, null if unclaimed) in a state that needs no new instance, the unclaimed run's instance already exists and is still live (`running`, `queued`, `waiting`, or `paused`), or `replay_reviewed` still has unresolved `manual_review` rows |
 | `400 { error: "invalid_body" }` | Body, date, Monday rule, or future `start` date invalid |
 | `409 { code: "invalid_run_state" }` | Action does not fit the run's state |
 | `503 { code: "jobs_paused" \| "job_disabled" \| "workflow_start_failed" }` | Switch off, or the instance could not be created (the run is marked `failed`; `resume` it) |
