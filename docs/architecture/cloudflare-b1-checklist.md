@@ -140,16 +140,16 @@ Repeat A3 with:
 
 ### A6. New secrets in 1Password
 
-Create one 1Password item per environment, for example `Atlaris jobs Worker – staging` and `Atlaris jobs Worker – production`.
+Store the values in the Worker's 1Password Environment: `atlaris-worker-preview` for staging and `atlaris-worker-production` for production. `pnpm secrets:sync` reads them from there ([secrets-sync.md](../development/secrets-sync.md)).
 
 1. **`JOBS_SIGNING_SECRET`.** Generate a new value per environment with 1Password's generator: 64 characters, letters and digits. Never reuse the staging value in production.
-2. **Existing values to collect** for the same environment, taken from the app's Vercel environment or its 1Password item:
+2. **Existing values to collect** for the same environment, taken from the app's Vercel environment or its 1Password Environment (`atlaris-vercel-preview` or `atlaris-vercel-prod`):
    - `OPENROUTER_API_KEY`
    - `RESEND_API_KEY`
    - `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`. This must be **exactly** the app's value for that environment; the app verifies unsubscribe tokens the Worker signs.
    - Staging reuses the `develop` Preview's OpenRouter and Resend keys (decided 2026-10-05); production uses the app's Production values.
 
-**Verify:** each 1Password item holds `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
+**Verify:** each Worker 1Password Environment holds `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`.
 
 **Copy back:** "secrets stored" (no values).
 

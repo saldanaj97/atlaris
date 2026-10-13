@@ -175,6 +175,22 @@ describe('Clerk billing webhook POST', () => {
     });
   });
 
+  it('acknowledges a billing event for a deleted Clerk payer with 200', async () => {
+    mocks.applyVerifiedClerkBillingEvent.mockResolvedValue({
+      status: 'inserted',
+      result: 'skipped_payer_deleted',
+    });
+
+    const response = await POST(request({ 'svix-id': 'evt_1' }));
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      status: 'inserted',
+      result: 'skipped_payer_deleted',
+    });
+  });
+
   it('returns 500 so Clerk retries transient processing failures', async () => {
     mocks.applyVerifiedClerkBillingEvent.mockRejectedValue(
       new Error('local user not provisioned'),
