@@ -214,7 +214,7 @@ describe('handleEmailDeliveryRunsCommand', () => {
     },
   );
 
-  it.each(['errored', 'terminated', 'complete'])(
+  it.each(['errored', 'terminated', 'complete', 'rollingBack'])(
     'fails an unclaimed run whose existing instance is %s so resume can requeue it',
     async (status) => {
       const { deps, workflow } = makeDeps();

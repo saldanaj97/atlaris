@@ -154,6 +154,7 @@ describe('handleModuleLessonsStart', () => {
   it.each([
     ['errored', undefined],
     ['terminated', undefined],
+    ['rollingBack', undefined],
     ['complete', { kind: 'failed' }],
     ['complete', { kind: 'disabled' }],
     ['complete', undefined],

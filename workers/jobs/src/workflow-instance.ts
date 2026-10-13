@@ -1,8 +1,9 @@
-/** Instance states that never run again. */
+/** Instance states that never run again (`rollingBack` only finishes a termination). */
 const TERMINAL_INSTANCE_STATUSES: readonly string[] = [
   'errored',
   'terminated',
   'complete',
+  'rollingBack',
 ];
 
 export type ExistingInstance = {
