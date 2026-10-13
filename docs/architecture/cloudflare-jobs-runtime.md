@@ -26,22 +26,24 @@ Already decided (not reopened here): all background execution moves to Cloudflar
 
 1. **Cron Triggers are limited to 5 per account on Free, not per Worker** [workers-limits]. Staging and production are separate Workers that share the limit, so "4 of 5" per environment would need 8. Decision 8 fits both environments in 4.
 2. **Cloudflare documents Drizzle + Postgres.js over Hyperdrive as unsupported** [hd-drizzle]. That is this repo's only DB stack (`supabase/service-role.ts:47-48`). Decision 1 adds node-postgres for the Worker.
-3. **Cloudflare cron weekdays start at 1 = Sunday** [cron-triggers]. The weekly email expression `30 14 * * 1` (`vercel.json:10`) means Monday on Vercel but Sunday on Cloudflare. Use `30 14 * * MON`.
+3. **Cloudflare cron weekdays start at 1 = Sunday** [cron-triggers]. The weekly email expression `30 14 * * 1` (the former `vercel.json` cron) means Monday on Vercel but Sunday on Cloudflare. Use `30 14 * * MON`.
 4. **B4 is the first phase that runs AI work on Workers**, not B5. Regeneration finalization also starts module lesson workflows (`src/features/plans/lifecycle/generation-finalization/store.ts:151` → `src/features/lesson-content/progressive-enqueue.ts`), which the Worker cannot do until B5 ships the lessons Workflow. Decided: B4's production cutover follows B5's CPU gate (Decisions 7 and 9).
 
 ## Current job inventory
 
 | Job | Trigger today | Schedule | Code entry | Auth today | Cloudflare target | Phase |
 | --- | --- | --- | --- | --- | --- | --- |
-| Stuck-plan and orphaned-attempt cleanup | GitHub Actions → `POST /api/internal/maintenance/plans/cleanup` | `*/15 * * * *` (`.github/workflows/plan-cleanup-scheduler.yml:4-5`; repo variable gate on line 17) | `runPlanCleanupMaintenance` (`src/features/plans/cleanup.ts`); Sentry monitor `plan-cleanup-maintenance` (`src/app/api/internal/maintenance/plans/cleanup/route.ts:6-15`) | `MAINTENANCE_WORKER_TOKEN` | Cron `*/15 * * * *` | B3a |
+| Stuck-plan and orphaned-attempt cleanup | GitHub Actions → `POST /api/internal/maintenance/plans/cleanup` (scheduler removed in B7a; the Worker cron owns it, the route stays for manual runs) | `*/15 * * * *` (former `.github/workflows/plan-cleanup-scheduler.yml`) | `runPlanCleanupMaintenance` (`src/features/plans/cleanup.ts`); Sentry monitor `plan-cleanup-maintenance` (`src/app/api/internal/maintenance/plans/cleanup/route.ts:6-15`) | `MAINTENANCE_WORKER_TOKEN` | Cron `*/15 * * * *` | B3a |
 | Retention cleanup | Supabase `pg_cron` job `retention-cleanup` | `0 3 * * *` (`supabase/migrations/20260522223908_schedule_retention_cleanup.sql:64-68`) | `cleanupRetainedDbRows` → `private.cleanup_retained_db_rows()` (`src/lib/db/queries/admin/retention.ts`) | none (in-database) | Cron `0 3 * * *` | B3a |
-| Email daily and weekly | Vercel Cron → `GET /api/cron/notifications/email?runKind=…` → Vercel Workflow | `0 14 * * *`, `30 14 * * 1` (`vercel.json:3-12`) | `start-email-notification-delivery-workflow.ts`, `workflows/email-notification-delivery.{workflow,steps}.ts`; monitors in `delivery-monitor.ts:5-24` | `CRON_SECRET`; manual route uses `MAINTENANCE_WORKER_TOKEN` | Workflow with `schedules` | B3b |
+| Email daily and weekly | Vercel Cron → `GET /api/cron/notifications/email?runKind=…` → Vercel Workflow (removed in B7a; the Worker's Workflow `schedules` own it, and the manual route starts a Worker run through `POST /v1/email-delivery/runs`) | `0 14 * * *`, `30 14 * * 1` (former `vercel.json`) | Worker `EmailDeliveryWorkflow` (`workers/jobs/src/workflows/email-delivery/`); monitors in `delivery-monitor.ts:5-24` | Cron route `CRON_SECRET` (retired); manual route uses `MAINTENANCE_WORKER_TOKEN` | Workflow with `schedules` | B3b |
 | Plan regeneration | Enqueue route starts a Vercel workflow immediately; GitHub Actions drain every 15 minutes as fallback | `*/15 * * * *` (`.github/workflows/regeneration-worker-scheduler.yml:4-5`; gate on line 17) | `requestPlanRegeneration` → `attachPlanRegenerationWorkflow`; `planRegenerationWorkflow` claim → reserve → process → finalize (`src/features/plans/workflows/plan-regeneration.workflow.ts:17-36`) | `REGENERATION_WORKER_TOKEN` | Queue + consumer, sweep in the `*/15` cron | B4 |
-| Module lesson generation | `POST …/lesson-content/generate` → `workflow/api.start`; progressive enqueue after plan finalization | on demand | `startModuleLessonGeneration`, `moduleLessonGenerationWorkflow` | user session | Workflow | B5 |
-| Plan create/retry | `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`: reserve in-process, start the attempt on `PLAN_GENERATION_RUNTIME`, return `202`; the client polls status | on demand | `startPlanGenerationAttempt` (`src/features/plans/start-plan-generation-attempt.ts`) | user session | Workflow | B6 |
+| Module lesson generation | `POST …/lesson-content/generate` → signed `POST /v1/module-lessons/start` (the Vercel `workflow/api.start` path and `MODULE_LESSONS_RUNTIME` were removed in B7a); progressive enqueue after plan finalization | on demand | `startModuleLessonGeneration`, Worker `ModuleLessonsWorkflow` | user session | Workflow | B5 |
+| Plan create/retry | `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`: reserve in-process, send the signed start command to the Worker (`PLAN_GENERATION_RUNTIME` and the Vercel workflow were removed in B7a), return `202`; the client polls status | on demand | `startPlanGenerationAttempt` (`src/features/plans/start-plan-generation-attempt.ts`) | user session | Workflow | B6 |
 | Clerk Billing reconciliation | Manual `POST /api/internal/maintenance/billing/reconcile-clerk` | manual | `src/features/billing/clerk-billing/reconciliation.ts` (imports `@clerk/nextjs/server`) | `MAINTENANCE_WORKER_TOKEN` | Stays on Vercel: manual repair, not a background job, and depends on the Next Clerk SDK | — |
 
-Workflow SDK wiring removed in B7: `withWorkflow()` (`next.config.ts:6,109-114`), the `/.well-known/workflow/` proxy branch (`src/lib/proxy/workflow-callback-auth.ts`), the `workflow` dependency, `vercel.json` crons, and both GitHub schedulers.
+Removed in B7a (JCS-134): the Vercel Workflow paths for plan create/retry, module lessons, and email delivery, the `PLAN_GENERATION_RUNTIME` and `MODULE_LESSONS_RUNTIME` switches, the Vercel email crons (`vercel.json`) with `GET /api/cron/notifications/email` and `CRON_SECRET`, and `plan-cleanup-scheduler.yml`.
+
+Still in place until plan regeneration (B4) leaves Vercel: `withWorkflow()` (`next.config.ts`), the `/.well-known/workflow/` proxy branch (`src/lib/proxy/workflow-callback-auth.ts`), the `workflow` dependency, `plan-regeneration.*`, and `regeneration-worker-scheduler.yml`. The four manual maintenance routes under `/api/internal/maintenance/` stay for operator use.
 
 ## Runtime compatibility audit
 
@@ -388,7 +390,7 @@ A Workers rollback restores code only; bindings and connected resources do not c
 
 | Job | Disable old owner | Enable new owner |
 | --- | --- | --- |
-| Plan cleanup | GitHub repo variable `PLAN_CLEANUP_ENABLED=false` (`.github/workflows/plan-cleanup-scheduler.yml:17`) | `JOB_PLAN_CLEANUP_ENABLED=true` |
+| Plan cleanup | GitHub repo variable `PLAN_CLEANUP_ENABLED=false` (scheduler workflow removed in B7a) | `JOB_PLAN_CLEANUP_ENABLED=true` |
 | Retention | `SELECT cron.unschedule('retention-cleanup');` per environment (retention runbook). B3a also ships it as a migration so new databases match | `JOB_RETENTION_CLEANUP_ENABLED=true` before the next 03:00 UTC |
 | Email | Vercel Flag `email-notification-delivery` off (stops the cron route before it reserves work) | `JOB_EMAIL_DELIVERY_ENABLED=true` |
 | Regeneration | GitHub repo variable `REGENERATION_QUEUE_ENABLED=false`, then deploy the app version that enqueues through the Worker | `JOB_REGENERATION_ENABLED=true` before that app deploy |

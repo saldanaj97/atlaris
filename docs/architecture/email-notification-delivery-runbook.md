@@ -57,20 +57,20 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 ## Schedule and ownership
 
-Vercel Cron owns email invocation through one path:
+The jobs Worker's Workflow schedules own email invocation. The Vercel Cron entries, `GET /api/cron/notifications/email`, and `CRON_SECRET` were removed in B7a (JCS-134).
 
 | Logical run | UTC schedule | Monitor slug |
 | --- | --- | --- |
-| `daily` (`daily_reminder`, `streak_reminder`) | `0 14 * * *` | `email-notification-delivery-daily` |
-| `weekly` (`weekly_summary`) | `30 14 * * 1` | `email-notification-delivery-weekly` |
+| `daily` (`daily_reminder`, `streak_reminder`) | `0 14 * * *` | none (see Monitoring below) |
+| `weekly` (`weekly_summary`) | `30 14 * * MON` | none (see Monitoring below) |
 
-Vercel Cron can be delayed, missed, or invoked more than once. Hobby precision is hourly, so both Sentry monitors use a 60-minute check-in margin. The application uses the durable `(run_kind, scheduler_date_utc)` key and the per-message delivery ledger to make duplicates safe.
+A schedule can fire late, be missed, or fire more than once. The application uses the durable `(run_kind, scheduler_date_utc)` key and the per-message delivery ledger to make duplicates safe.
 
-Only one email scheduler may be active. The GitHub workflow `.github/workflows/email-notification-delivery-scheduler.yml` must stay absent while the Vercel Cron entries are enabled.
+Only one email scheduler may be active. The GitHub workflow `.github/workflows/email-notification-delivery-scheduler.yml` must stay absent.
 
 ## Cloudflare Worker owner (Track B, B3b)
 
-The jobs Worker (`workers/jobs`) carries a second implementation that stays off until cutover. It reuses the same run table, ledger, and domain code (`runEmailNotificationDelivery`), never the Vercel `*.workflow.ts`/`*.steps.ts` wrappers. Design: [cloudflare-jobs-runtime.md](./cloudflare-jobs-runtime.md), Decisions 4, 7, 8, and 9.
+The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run table, ledger, and domain code (`runEmailNotificationDelivery`). Design: [cloudflare-jobs-runtime.md](./cloudflare-jobs-runtime.md), Decisions 4, 7, 8, and 9.
 
 | Item | Worker behavior |
 | --- | --- |
@@ -85,7 +85,7 @@ The jobs Worker (`workers/jobs`) carries a second implementation that stays off 
 
 **Staging safe recipients.** When `WORKER_ENV` is not `production`, only addresses in the dashboard variable `EMAIL_TEST_RECIPIENT_ALLOWLIST` (comma-separated, case-insensitive; never in `wrangler.jsonc`) may receive email. Other recipients are counted as `skipped` without a ledger row, so they are never marked sent. If the variable is missing or empty, the page sends nothing, logs `test_recipient_allowlist_missing`, and pauses the run (`test_recipient_allowlist_missing`); set the variable and `resume`. Production ignores the variable.
 
-**Manual command.** `POST /v1/email-delivery/runs` on the Worker hostname, signed per Decision 4, with body `{ "v": 1, "runKind": "daily", "schedulerDateUtc": "2026-07-10", "action": "start" | "resume" | "replay_reviewed" }`. Validation and state rules match the app's manual route. The instance ID is `email-<runId>-<run updated_at in ms>`, so a repeated command for the same queued run is a duplicate and each resume gets a new instance.
+**Manual command.** `POST /v1/email-delivery/runs` on the Worker hostname, signed per Decision 4, with body `{ "v": 1, "runKind": "daily", "schedulerDateUtc": "2026-07-10", "action": "start" | "resume" | "replay_reviewed" }`. The app's manual route forwards to it with the same validation and state rules. The instance ID is `email-<runId>-<run updated_at in ms>`, so a repeated command for the same queued run is a duplicate and each resume gets a new instance.
 
 | Response | Meaning |
 | --- | --- |
@@ -95,15 +95,15 @@ The jobs Worker (`workers/jobs`) carries a second implementation that stays off 
 | `409 { code: "invalid_run_state" }` | Action does not fit the run's state |
 | `503 { code: "jobs_paused" \| "job_disabled" \| "workflow_start_failed" }` | Switch off, or the instance could not be created (the run is marked `failed`; `resume` it) |
 
-The app's manual route (`/api/internal/maintenance/notifications/email`) is unchanged and still starts the Vercel workflow.
+The app's manual route (`/api/internal/maintenance/notifications/email`) checks the `email-notification-delivery` Vercel Flag, then sends this command with `dispatchEmailDeliveryToWorker` (`JOBS_WORKER_URL`, `JOBS_SIGNING_SECRET`). It is for manual operations only; the Worker's schedules run the daily and weekly sends.
 
-**Cutover.** Staging (Vercel Cron only invokes Production, so staging has no scheduled old owner): set `EMAIL_TEST_RECIPIENT_ALLOWLIST`, then `JOB_EMAIL_DELIVERY_ENABLED=true`, and verify one full run. Production (explicit approval): Vercel Flag off, then the switch on, then watch the next run; observe 14 days before B7 removes the Vercel path. Rollback: switch off, Vercel Flag on. The run key and ledger keep a handover from double-sending.
+**Switches.** Staging: set `EMAIL_TEST_RECIPIENT_ALLOWLIST`, then `JOB_EMAIL_DELIVERY_ENABLED=true`. Production: `JOB_EMAIL_DELIVERY_ENABLED=true` on the Worker. To stop delivery, switch it off or set `JOBS_PAUSED=true`. The run key and ledger prevent double-sending across restarts.
 
 ## Inspect a run
 
-1. In Vercel, inspect the Cron invocation for `GET /api/cron/notifications/email?runKind=daily` or `?runKind=weekly` and record the response's `runId` and `workflowRunId`.
-2. Inspect the Workflow SDK run by `workflowRunId` to find the current durable step or retry.
-3. Inspect the matching Sentry monitor. A check-in begins when the workflow claims the run and closes only on `completed`, `failed`, or `needs_review`.
+1. Find the run in `email_notification_delivery_runs` by `run_kind` and `scheduler_date_utc`, and record its `id` and `workflow_run_id` (`cf:<instance ID>`).
+2. Inspect the Cloudflare Workflow instance in the Workflows dashboard by the ID after `cf:` to find the current durable step or retry.
+3. Check Sentry for `job: email-delivery` exceptions; failed and `needs_review` runs are reported there.
 4. Inspect the service-role delivery run and ledger without selecting recipient addresses or provider payloads:
 
 ```sql
@@ -138,7 +138,7 @@ If a `sent` or `skipped` row has a payload, treat it as an invariant breach and 
 
 ## Trigger a safe manual run
 
-Use the manual recovery route with `MAINTENANCE_WORKER_TOKEN`, never `CRON_SECRET`. It accepts only a code-owned run kind, UTC date, and explicit action.
+Use the manual recovery route with `MAINTENANCE_WORKER_TOKEN`. It accepts only a code-owned run kind, UTC date, and explicit action.
 
 ```bash
 curl --fail-with-body \
@@ -154,7 +154,7 @@ For a weekly run, use a Monday UTC date and `"runKind":"weekly"`. A `start` requ
 
 1. Correct the feature-flag, Resend, configuration, or infrastructure cause.
 2. Send the same `runKind` and `schedulerDateUtc` with `"action":"resume"`.
-3. Confirm the response has a new Workflow run ID and that the persisted cursor and reference timestamp remain unchanged.
+3. Confirm the response has a new Workflow instance ID and that the persisted cursor and reference timestamp remain unchanged.
 
 `resume` is only valid for `paused` or `failed` runs. It does not recompute a run's date-dependent eligibility or content.
 
@@ -172,12 +172,11 @@ This action resets the run cursor but retains the logical date and domain delive
 
 ## Stop delivery or roll back
 
-- Turn off the `email-notification-delivery` Vercel Flag to stop the cron route before it reserves work and to pause a workflow before its next page.
-- If the cron invocation itself is unhealthy, disable the Vercel email Cron entries.
+- Switch off `JOB_EMAIL_DELIVERY_ENABLED` (or set `JOBS_PAUSED=true`) on the Worker to stop scheduled runs before they reserve work and to pause a running instance before its next page. The `email-notification-delivery` Vercel Flag gates only the manual route.
 - Do not re-enable the deleted GitHub scheduler as a parallel fallback. Resolve the durable run and resume it through the manual route after correction.
 
 ## Deployment checks
 
-Before enabling delivery, apply the run-table migration, deploy the application and `vercel.json`, configure a distinct `CRON_SECRET`, `RESEND_API_KEY`, `RESEND_FROM`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and production HTTPS `APP_URL`, confirm exactly two Vercel email Cron entries, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.
+Before enabling delivery, apply the run-table migration, deploy the Worker and the application, configure `RESEND_API_KEY`, `RESEND_FROM`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and production HTTPS `APP_URL`, confirm the Worker's email Workflow schedules, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.
 
 `20260710151930_create_email_notification_delivery_runs` deliberately retains its Supabase CLI-generated version even though the prerequisite delivery-ledger migration is future-dated. The staging and production migration workflows include both migrations in the explicit `expand` safe list. Confirm the workflow logs list both before enabling the application path.

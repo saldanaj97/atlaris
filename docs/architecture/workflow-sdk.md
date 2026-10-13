@@ -1,11 +1,11 @@
 # Workflow SDK (durable execution)
 
 **Audience:** Developers operating or extending workflow-backed generation.
-**Last Updated:** August 2026
+**Last Updated:** October 2026
 
 ## Overview
 
-Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe orchestration. Postgres remains the source of truth for user-visible status; workflow run IDs are stored for correlation only.
+Atlaris uses [Workflow SDK](https://workflow-sdk.dev) for durable, replay-safe orchestration of **plan regeneration only**. Plan create/retry, module lessons, and email delivery run as Cloudflare Workflows on the jobs Worker ([Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md)); their Vercel Workflow SDK paths are retired. Postgres remains the source of truth for user-visible status; workflow run IDs are stored for correlation only.
 
 Base wiring: `withWorkflow()` in `next.config.ts`, `workflow` TypeScript plugin in `tsconfig.json`, and `/.well-known/workflow/` handled by an early proxy auth branch (see [Callback security](#callback-security)).
 
@@ -27,23 +27,29 @@ Implementation: `resolveWorkflowCallbackAccess()` in `src/lib/proxy/workflow-cal
 
 ## Product workflows
 
-All three product paths use durable workflows:
+Plan regeneration is the one product path still on Workflow SDK:
 
 | Path | Behavior |
 | ---- | -------- |
-| Module lessons | `POST .../lesson-content/generate` starts `moduleLessonGenerationWorkflow` and returns `202`; clients poll `GET .../lesson-content/status`. |
-| Plan regeneration | Enqueue and worker drain call `attachPlanRegenerationWorkflow` (start + CAS persist `job_queue` runId); drain may return `workflow-in-flight`. |
-| Plan create/retry | `POST /api/v1/plans` and `POST .../retry` reserve the attempt, start `planGenerationWorkflow` (unless `PLAN_GENERATION_RUNTIME=cloudflare`), and return `202`; clients poll `GET .../status`. |
+| Plan regeneration | Enqueue and worker drain call `attachPlanRegenerationWorkflow` (start + CAS persist `job_queue` runId); drain may return `workflow-in-flight`. `REGENERATION_RUNTIME=cloudflare` sends the enqueue to the jobs Worker instead. |
 
-Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md).
+Where the other paths run:
+
+| Path | Runtime |
+| ---- | ------- |
+| Plan create/retry | Cloudflare Workflow `PlanGenerationWorkflow`; the app sends a signed `POST /v1/plan-generation/start`. |
+| Module lessons | Cloudflare Workflow `ModuleLessonsWorkflow`; the app sends a signed `POST /v1/module-lessons/start`. |
+| Email delivery | Cloudflare Workflow `EmailDeliveryWorkflow`, started by the Worker's cron triggers or by the manual maintenance route. |
+
+Pipeline context: [plan create/retry and module lessons](./plan-generation-architecture.md) · [queued regeneration](./regeneration-worker-runbook.md) · [email delivery](./email-notification-delivery-runbook.md).
 
 ## Workflow file layout
 
-| Area              | Files                                                              |
-| ----------------- | ------------------------------------------------------------------ |
-| Module lessons    | `src/features/lesson-content/workflows/module-lesson-generation.*` |
-| Plan regeneration | `src/features/plans/workflows/plan-regeneration.*`                 |
-| Plan create/retry | `src/features/plans/workflows/plan-generation.*`                   |
+| Area              | Files                                              |
+| ----------------- | -------------------------------------------------- |
+| Plan regeneration | `src/features/plans/workflows/plan-regeneration.*` |
+
+The `*.types.ts` modules for plan generation, module lessons, and email delivery remain because the Worker and the app share their input and result types. They contain no `"use workflow"` or `"use step"` functions.
 
 DB, AI, and queue side effects live in `"use step"` functions. Request routes authenticate and start workflows; steps use the service-role client.
 
@@ -51,15 +57,15 @@ DB, AI, and queue side effects live in `"use step"` functions. Request routes au
 
 | Surface                  | Where run ID is stored                                                                 |
 | ------------------------ | -------------------------------------------------------------------------------------- |
-| Module lesson generation | `modules.lessonGenerationMetadata.workflow.runId` (written by `claimModuleLessonGenerationOrDescribe` during CAS claim) |
 | Plan regeneration        | `job_queue.payload.workflow.runId` (CAS via `updateJobPayloadIfRunIdMissing` / attach layer) |
-| Plan create/retry        | `generation_attempts.metadata.workflow`                                                |
+| Plan create/retry        | `generation_attempts.metadata.workflow` (`provider: 'cloudflare-workflow'`; `workflow-sdk` on regeneration attempts and older rows) |
+| Module lesson generation | `modules.lessonGenerationMetadata.workflow.runId` (Cloudflare instance ID; written by `claimModuleLessonGenerationOrDescribe`) |
 
-To trace a run: read the row above, then inspect Workflow SDK / Vercel workflow UI for the `runId`.
+To trace a regeneration run: read the row above, then inspect Workflow SDK / Vercel workflow UI for the `runId`. For Cloudflare instances, use the instance ID in the Cloudflare Workflows dashboard or Workers Logs.
 
 ## Safe replay rules
 
-- **Do not** call `reserveAttemptSlot` or `claimModuleLessonGenerationOrDescribe` twice on replay; workflow paths extract post-claim work or pass an existing reservation.
+- **Do not** call `reserveAttemptSlot` twice on replay; workflow paths pass an existing reservation.
 - Plan regeneration workflow claims the job once in `claimPlanRegenerationJobStep`; generation uses normal lifecycle finalization.
 - `already_finalized` from `PlanLifecycleService` / the generation port short-circuits provider work when the **attempt** is already `success` or `failure`. Replay is attempt-status based, not plan `ready` + `finalizedAt`.
 
@@ -89,7 +95,7 @@ Workflow SDK tests use a **separate** Vitest config and their own isolated Testc
 - Default discovery: production workflow directories plus `tests/helpers/workflow`
 - Override discovery roots: `WORKFLOW_VITEST_DIRS=dir-a,dir-b` (comma-separated)
 
-Orchestration for product workflows is covered in `tests/unit/features/**/workflows/*.workflow.spec.ts` by calling workflow functions directly with mocked steps (per [Workflow SDK testing](https://workflow-sdk.dev/docs/testing)).
+Orchestration for the regeneration workflow is covered in `tests/unit/features/**/workflows/*.workflow.spec.ts` by calling workflow functions directly with mocked steps (per [Workflow SDK testing](https://workflow-sdk.dev/docs/testing)). The Worker's Cloudflare Workflows are covered in `tests/unit/workers/jobs/`.
 
 ## Related docs
 
