@@ -26,13 +26,14 @@ const FORBIDDEN_EXTERNAL =
   /^(?:next|workflow)(?:\/|$)|^@(?:workflow|vercel|clerk)\//;
 
 /**
- * Startup CPU budget, best of STARTUP_PROFILE_RUNS local profiles. Cloudflare
- * rejects a deploy whose global scope takes over 1 second on its validator
- * (error 10021), which reads far higher than a local profile: the Worker
- * failed validation intermittently at ~116 ms local CPU and measures ~34 ms
- * after lazy-loading the OpenRouter SDK.
+ * Startup CPU budget, best of STARTUP_PROFILE_RUNS profiles, calibrated on the
+ * CircleCI `large` runner. Cloudflare rejects a deploy whose global scope
+ * takes over 1 second on its validator (error 10021). Before the OpenRouter
+ * SDK was lazy-loaded, the Worker failed that validation intermittently; it
+ * then measured ~116 ms on an Apple Silicon Mac. After, it measures ~34 ms on
+ * the Mac and ~127 ms on the CI runner, so CI reads about 3.7x a Mac.
  */
-export const STARTUP_CPU_BUDGET_MS = 100;
+export const STARTUP_CPU_BUDGET_MS = 200;
 const STARTUP_PROFILE_RUNS = 3;
 
 export class WorkersCliUsageError extends Error {
