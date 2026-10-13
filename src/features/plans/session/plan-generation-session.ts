@@ -17,10 +17,6 @@ import {
   type StartPlanGenerationAttemptResult,
 } from '@/features/plans/start-plan-generation-attempt';
 import { AppError } from '@/lib/api/errors';
-import {
-  jobsWorkerEnv,
-  type PlanGenerationRuntime,
-} from '@/lib/config/env/jobs-worker';
 import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
@@ -44,7 +40,7 @@ export type StartedPlanGeneration = {
  *
  * Implementations hide:
  * - create vs retry preparation
- * - the `PLAN_GENERATION_RUNTIME` hand-off
+ * - the jobs Worker hand-off
  * - unhandled-exception cleanup
  */
 export interface PlanGenerationSessionBoundary {
@@ -66,8 +62,6 @@ type CreateLifecycleService = (
 /** Optional dependency overrides for {@link createPlanGenerationSessionBoundary}. */
 interface CreateSessionBoundaryDeps {
   createLifecycleService?: CreateLifecycleService;
-  /** Defaults to `PLAN_GENERATION_RUNTIME` (`jobsWorkerEnv.planGenerationRuntime`). */
-  runtime?: () => PlanGenerationRuntime;
   startDeps?: StartPlanGenerationAttemptDeps;
 }
 
@@ -85,18 +79,13 @@ export function createPlanGenerationSessionBoundary(
     deps.createLifecycleService ??
     (() => createPlanLifecycleService({ dbClient: serviceRoleDb }));
 
-  const readRuntime =
-    deps.runtime ?? (() => jobsWorkerEnv.planGenerationRuntime);
-
   return {
     startCreate: (args) =>
       startGeneration({ kind: 'create', ...args }, buildLifecycle, {
-        readRuntime,
         startDeps: deps.startDeps,
       }),
     startRetry: (args) =>
       startGeneration({ kind: 'retry', ...args }, buildLifecycle, {
-        readRuntime,
         startDeps: deps.startDeps,
       }),
   };
@@ -104,7 +93,7 @@ export function createPlanGenerationSessionBoundary(
 
 /**
  * The canonical error for an attempt that never started (reservation rejected,
- * runtime refused, or an unexpected start error). The message and code come
+ * Worker refused, or an unexpected start error). The message and code come
  * from the classification's failure presentation; `details.planId` lets the
  * client open the plan page.
  */
@@ -131,13 +120,9 @@ async function startGeneration(
   command: SessionCommand,
   buildLifecycle: CreateLifecycleService,
   deps: {
-    readRuntime: () => PlanGenerationRuntime;
     startDeps?: StartPlanGenerationAttemptDeps;
   },
 ): Promise<StartedPlanGeneration> {
-  // Read before creating or reserving anything, so a misconfigured value
-  // cannot leave a plan or attempt behind.
-  const runtime = deps.readRuntime();
   const lifecycleService = buildLifecycle(serviceRoleDb);
 
   const prepared = await preparePlanGenerationSessionCommand({
@@ -153,7 +138,6 @@ async function startGeneration(
         lifecycleService,
         dbClient: serviceRoleDb,
         correlationId: command.requestId ?? `plan-gen-${prepared.planId}`,
-        runtime,
         input: prepared.generationInput,
       },
       deps.startDeps,

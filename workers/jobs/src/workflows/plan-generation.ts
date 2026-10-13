@@ -38,6 +38,7 @@ export class PlanGenerationWorkflowEntrypoint extends WorkflowEntrypoint<
       startModuleLessons: createWorkflowModuleLessonStarter({
         workflow: env.MODULE_LESSONS_WORKFLOW,
         isEnabled: () => isJobEnabled(env, 'MODULE_LESSONS'),
+        logger,
       }),
       logger,
       nonRetryable: (message) => new NonRetryableError(message),

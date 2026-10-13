@@ -13,7 +13,6 @@ interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
   readonly clerkBillingReconciliationEnabled: boolean;
-  readonly cronSecret: string | undefined;
   readonly workerToken: string | undefined;
   readonly workerHealthToken: string | undefined;
 }
@@ -46,10 +45,6 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
         access.getServerOptional('CLERK_BILLING_RECONCILIATION_ENABLED'),
         false,
       );
-    },
-    /** Bearer secret used only by Vercel Cron GET routes. */
-    get cronSecret(): string | undefined {
-      return access.getServerRequiredProdOnly('CRON_SECRET');
     },
     /**
      * Bearer token for authenticated maintenance HTTP routes.

@@ -15,11 +15,6 @@ const serverAuth = vi.hoisted(() => {
 });
 vi.mock('@/lib/auth/server', () => serverAuth.module());
 
-// The create route starts the Vercel workflow; no generation runs here.
-vi.mock('workflow/api', () => ({
-  start: vi.fn(async () => ({ runId: 'wrun_provisioning' })),
-}));
-
 describe('POST /api/v1/plans user provisioning', () => {
   const authUserId = 'auth_provisioning_flow';
   const authEmail = 'provisioning@example.com';
@@ -32,10 +27,25 @@ describe('POST /api/v1/plans user provisioning', () => {
     });
 
     setTestUser(authUserId);
+
+    // The create route sends the start command to the jobs Worker; no generation runs here.
+    vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
+    vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        Response.json(
+          { accepted: true, instanceId: 'plan-provisioning' },
+          { status: 202 },
+        ),
+      ),
+    );
   });
 
   afterEach(() => {
     vi.clearAllMocks();
+    vi.unstubAllEnvs();
+    vi.unstubAllGlobals();
   });
 
   it('creates a database user when the Auth user is new', async () => {

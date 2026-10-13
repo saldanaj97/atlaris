@@ -49,31 +49,45 @@ export type RegenerationConsumerDeps = {
   readonly now?: () => number;
 };
 
+async function instanceExists(
+  workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'get'>,
+  instanceId: string,
+): Promise<boolean> {
+  try {
+    await workflow.get(instanceId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Starts module lessons from regeneration finalization: the same flag check,
  * preflight, and provisional claim as `startModuleLessonGeneration`, then
- * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop). A thrown create
- * reverts the provisional claim, as a failed Vercel start does.
+ * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop to this Worker). A
+ * thrown create reports `duplicate` when the instance already exists (a
+ * redelivery) and `failed` otherwise; `failed` reverts the provisional claim.
  */
 export function createWorkflowModuleLessonStarter(deps: {
-  readonly workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'create'>;
+  readonly workflow: Pick<
+    Workflow<ModuleLessonsWorkflowParams>,
+    'create' | 'get'
+  >;
   /** `isJobEnabled(env, 'MODULE_LESSONS')`. */
   readonly isEnabled: () => boolean;
+  readonly logger: Pick<Logger, 'info' | 'error'>;
 }): RegenerationRunContext['startModuleLessons'] {
   return (params) =>
     startModuleLessonGeneration(params, {
       dbClient: params.dbClient,
       isGenerationEnabled: deps.isEnabled,
-      // 'vercel' means "use the injected workflowStart", never an HTTP hop to this Worker.
-      runtime: () => 'vercel',
-      workflowStart: async (_vercelWorkflow, [input]) => {
-        // The start helper claims with `batchRequestId = correlationId`.
+      dispatch: async (input) => {
         const command: ModuleLessonsWorkflowParams = {
           v: 1,
           planId: input.planId,
           moduleId: input.moduleId,
           userId: input.userId,
-          batchRequestId: input.correlationId,
+          batchRequestId: input.batchRequestId,
           correlationId: input.correlationId,
           ...(input.modelOverride
             ? { modelOverride: input.modelOverride }
@@ -83,8 +97,36 @@ export function createWorkflowModuleLessonStarter(deps: {
           command.moduleId,
           command.batchRequestId,
         );
-        await deps.workflow.create({ id, params: command });
-        return { runId: id, returnValue: Promise.resolve() };
+        try {
+          await deps.workflow.create({ id, params: command });
+        } catch (error) {
+          if (await instanceExists(deps.workflow, id)) {
+            deps.logger.info(
+              {
+                job: REGENERATION_JOB_TAG,
+                planId: command.planId,
+                moduleId: command.moduleId,
+                correlationId: command.correlationId,
+                id,
+              },
+              'Module lessons workflow already exists',
+            );
+            return { kind: 'duplicate' };
+          }
+          deps.logger.error(
+            {
+              job: REGENERATION_JOB_TAG,
+              err: error,
+              planId: command.planId,
+              moduleId: command.moduleId,
+              correlationId: command.correlationId,
+              id,
+            },
+            'Failed to create the module lessons Workflow instance',
+          );
+          return { kind: 'failed' };
+        }
+        return { kind: 'accepted', instanceId: id };
       },
     });
 }

@@ -19,21 +19,6 @@ const REGENERATION_RUNTIMES: readonly RegenerationRuntime[] = [
 ];
 
 /**
- * Where module lesson generation starts. `vercel` (default) starts the Vercel
- * workflow; `cloudflare` sends the signed start command to the jobs Worker
- * (docs/architecture/plan-generation-architecture.md, Cloudflare Workflow path).
- */
-export type ModuleLessonsRuntime = RegenerationRuntime;
-
-/**
- * Where plan create and retry attempts run once the app has reserved them.
- * `vercel` (default) starts the Vercel workflow; `cloudflare` sends the signed
- * start command to the jobs Worker
- * (docs/architecture/plan-generation-architecture.md, Create and retry).
- */
-export type PlanGenerationRuntime = RegenerationRuntime;
-
-/**
  * App-side settings for signed commands to the Cloudflare jobs Worker
  * (docs/architecture/cloudflare-jobs-runtime.md, Decision 4).
  */
@@ -43,17 +28,12 @@ interface JobsWorkerEnv {
   /** HMAC key shared with the Worker's `JOBS_SIGNING_SECRET`. */
   readonly signingSecret: string | undefined;
   readonly regenerationRuntime: RegenerationRuntime;
-  readonly moduleLessonsRuntime: ModuleLessonsRuntime;
-  readonly planGenerationRuntime: PlanGenerationRuntime;
 }
 
 /** Unset means `vercel`; any other value than the two runtimes is a config error. */
 function readRuntime(
   access: ServerEnvAccess,
-  key:
-    | 'REGENERATION_RUNTIME'
-    | 'MODULE_LESSONS_RUNTIME'
-    | 'PLAN_GENERATION_RUNTIME',
+  key: 'REGENERATION_RUNTIME',
 ): RegenerationRuntime {
   const raw = access.getServerOptional(key);
   if (raw === undefined) {
@@ -101,12 +81,6 @@ function createJobsWorkerEnv(access: ServerEnvAccess): JobsWorkerEnv {
     },
     get regenerationRuntime(): RegenerationRuntime {
       return readRuntime(access, 'REGENERATION_RUNTIME');
-    },
-    get moduleLessonsRuntime(): ModuleLessonsRuntime {
-      return readRuntime(access, 'MODULE_LESSONS_RUNTIME');
-    },
-    get planGenerationRuntime(): PlanGenerationRuntime {
-      return readRuntime(access, 'PLAN_GENERATION_RUNTIME');
     },
   };
 }
