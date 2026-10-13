@@ -100,15 +100,7 @@ It fails closed if browser roles can bypass RLS, if any public application table
 5. Verify plan cleanup when `JOB_PLAN_CLEANUP_ENABLED=true` on the jobs Worker:
    - Confirm the Worker's `*/15 * * * *` cron runs `job=plan-cleanup` successfully in Workers Logs.
    - The manual route `POST /api/internal/maintenance/plans/cleanup` needs `PLAN_CLEANUP_ENABLED=true` and `MAINTENANCE_WORKER_TOKEN` in Vercel; it is for manual operations only.
-6. Verify scheduled retention cleanup after migration `20260522223908_schedule_retention_cleanup.sql`:
-
-```sql
-SELECT jobid, jobname, schedule, active
-FROM cron.job
-WHERE jobname = 'retention-cleanup';
-```
-
-If the migration applied but no cron job exists, enable `pg_cron` in Supabase and register the job manually (see retention runbook).
+6. Verify scheduled retention cleanup: the jobs Worker's `0 3 * * *` cron owns it (requires `JOB_RETENTION_CLEANUP_ENABLED=true`). Confirm Workers Logs show "Completed retention cleanup" at 03:00 UTC. The `retention-cleanup` pg_cron job from migration `20260522223908_schedule_retention_cleanup.sql` is history: production `cron.job` is empty, and the pg_cron job must not be re-registered (see the retention runbook).
 
 7. Enable module lesson generation when the hosted environment should serve it:
    - Register the boolean flag before the first smoke test if it does not already exist:
