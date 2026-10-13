@@ -54,6 +54,8 @@ Other types are ignored (`status: 'ignored'`). Subscribe the Clerk endpoint to `
 
 Table `clerk_webhook_events` stores Svix delivery IDs (`event_id` unique). Duplicate inserts return `{ ok: true, status: 'duplicate' }` with HTTP 200 so Clerk does not retry forever. Rows older than 45 days are pruned by retention cleanup.
 
+If the Clerk Billing refresh returns 404 `resource_not_found` and a bounded `users.getUser(payerUserId)` lookup also returns 404 `resource_not_found` (payer deleted in Clerk), the event is recorded in the ledger and acknowledged with HTTP 200 and `result: 'skipped_payer_deleted'` without writing entitlements. If the user still exists or the lookup fails, the original refresh error is rethrown; other refresh failures (5xx, 429, network, timeout) also return non-2xx so Clerk retries.
+
 ### Projection into `users`
 
 Lookup: `users.auth_user_id` = Clerk payer user id (`user_...`).
