@@ -89,24 +89,52 @@ export async function createUser(
   return result[0];
 }
 
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  if ('code' in error && error.code === '23505') {
+    return true;
+  }
+  return 'cause' in error && isUniqueViolation(error.cause);
+}
+
 /**
  * Creates a user when absent, or returns the row created by a concurrent request.
  * Email conflicts belonging to a different auth identity remain database errors.
+ *
+ * Only `auth_user_id` arbitrates the conflict, so a concurrent insert of the same
+ * row can still fail on `users_email_unique`. That violation is resolved by
+ * re-reading this auth identity; it is re-raised when no row for it exists.
+ * The re-read needs a non-transactional client: a failed statement aborts a
+ * surrounding transaction.
  */
 export async function getOrCreateUser(
   userData: CreateUserData,
   dbClient: UsersDbClient,
 ): Promise<ActorUser | undefined> {
-  const inserted = await dbClient
-    .insert(users)
-    .values({
-      authUserId: userData.authUserId,
-      email: userData.email,
-      name: userData.name,
-      clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
-    })
-    .onConflictDoNothing({ target: users.authUserId })
-    .returning();
+  let inserted: DbUser[];
+  try {
+    inserted = await dbClient
+      .insert(users)
+      .values({
+        authUserId: userData.authUserId,
+        email: userData.email,
+        name: userData.name,
+        clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
+      })
+      .onConflictDoNothing({ target: users.authUserId })
+      .returning();
+  } catch (error) {
+    if (!isUniqueViolation(error)) {
+      throw error;
+    }
+    const existing = await getUserByAuthId(userData.authUserId, dbClient);
+    if (!existing) {
+      throw error;
+    }
+    return existing;
+  }
 
   if (inserted[0]) {
     return toActorUser(inserted[0], null);
