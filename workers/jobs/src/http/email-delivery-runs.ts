@@ -15,6 +15,7 @@ import { countEmailNotificationDeliveryManualReviews } from '@/lib/db/queries/em
 import {
   type EmailNotificationDeliveryRun,
   failEmailNotificationDeliveryRun,
+  loadEmailNotificationDeliveryRun,
   loadEmailNotificationDeliveryRunByKey,
   prepareEmailNotificationDeliveryRunResume,
   reserveEmailNotificationDeliveryRun,
@@ -210,7 +211,7 @@ export async function handleEmailDeliveryRunsCommand(
     // No instance, or one that ended without claiming the run: nothing will
     // run it. Fail the unclaimed reservation so `resume` can requeue it.
     const abandoned = existing !== null;
-    await deps.withDb((db) =>
+    const failed = await deps.withDb((db) =>
       failEmailNotificationDeliveryRun(
         {
           runId: run.id,
@@ -225,6 +226,22 @@ export async function handleEmailDeliveryRunsCommand(
         db,
       ),
     );
+    if (failed.outcome === 'stale') {
+      // Another request's workflow claimed or finished the run after it was
+      // read as queued: report the run as it now stands.
+      const current = await deps.withDb((db) =>
+        loadEmailNotificationDeliveryRun(run.id, db),
+      );
+      if (current) {
+        return Response.json({
+          accepted: true,
+          duplicate: true,
+          runId: current.id,
+          status: current.status,
+          instanceId: current.workflowRunId,
+        });
+      }
+    }
     deps.logger.error(
       fields,
       abandoned

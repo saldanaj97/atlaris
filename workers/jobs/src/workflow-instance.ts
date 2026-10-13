@@ -5,7 +5,28 @@ const TERMINAL_INSTANCE_STATUSES: readonly string[] = [
   'complete',
 ];
 
-export type ExistingInstance = { readonly terminal: boolean };
+export type ExistingInstance = {
+  readonly terminal: boolean;
+  /** The Workflow's return value once it has completed. */
+  readonly output?: unknown;
+};
+
+/**
+ * True for a module lessons instance that completed with a `success` outcome.
+ * A `complete` instance can also be a handled failure, so status alone is not
+ * enough to keep a claim.
+ */
+export function moduleLessonsInstanceSucceeded(
+  instance: ExistingInstance,
+): boolean {
+  const output = instance.output;
+  return (
+    typeof output === 'object' &&
+    output !== null &&
+    'kind' in output &&
+    output.kind === 'success'
+  );
+}
 
 /**
  * Looks up a Workflow instance by ID. Returns `null` when none exists. An
@@ -23,8 +44,8 @@ export async function findInstance(
     return null;
   }
   try {
-    const { status } = await instance.status();
-    return { terminal: TERMINAL_INSTANCE_STATUSES.includes(status) };
+    const { status, output } = await instance.status();
+    return { terminal: TERMINAL_INSTANCE_STATUSES.includes(status), output };
   } catch {
     return { terminal: false };
   }

@@ -417,12 +417,30 @@ describe('createWorkflowModuleLessonStarter', () => {
     expect(logger.error).not.toHaveBeenCalled();
   });
 
-  it.each(['errored', 'terminated', 'complete'])(
-    'reverts the claim when the existing instance is %s',
-    async (status) => {
+  it('keeps the claim when the existing instance completed successfully', async () => {
+    const { start } = startWithExistingInstance({
+      status: vi.fn(async () => ({
+        status: 'complete',
+        output: { kind: 'success' },
+      })),
+    } as unknown as WorkflowInstance);
+
+    await expect(start(startParams())).resolves.toEqual({ kind: 'in_flight' });
+    expect(lessonQueries.revert).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['errored', undefined],
+    ['terminated', undefined],
+    ['complete', { kind: 'failed' }],
+    ['complete', undefined],
+  ])(
+    'reverts the claim when the existing instance is %s (output %j)',
+    async (status, output) => {
       const params = startParams();
       const { start } = startWithExistingInstance({
-        status: vi.fn(async () => ({ status })),
+        status: vi.fn(async () => ({ status, output })),
       } as unknown as WorkflowInstance);
 
       await expect(start(params)).resolves.toMatchObject({

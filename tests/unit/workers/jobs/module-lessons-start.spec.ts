@@ -133,11 +133,35 @@ describe('handleModuleLessonsStart', () => {
     expect(deps.logger.error).not.toHaveBeenCalled();
   });
 
-  it.each(['errored', 'terminated', 'complete'])(
-    'answers 503 workflow_start_failed when the existing instance is %s',
-    async (status) => {
+  it('answers 200 duplicate when the existing instance completed successfully', async () => {
+    const { deps } = createFailsWith({
+      status: vi.fn(async () => ({
+        status: 'complete',
+        output: { kind: 'success' },
+      })),
+    } as unknown as WorkflowInstance);
+
+    const response = await start(deps);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      accepted: true,
+      duplicate: true,
+    });
+    expect(deps.logger.error).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['errored', undefined],
+    ['terminated', undefined],
+    ['complete', { kind: 'failed' }],
+    ['complete', { kind: 'disabled' }],
+    ['complete', undefined],
+  ])(
+    'answers 503 workflow_start_failed when the existing instance is %s (output %j)',
+    async (status, output) => {
       const { deps } = createFailsWith({
-        status: vi.fn(async () => ({ status })),
+        status: vi.fn(async () => ({ status, output })),
       } as unknown as WorkflowInstance);
 
       const response = await start(deps);

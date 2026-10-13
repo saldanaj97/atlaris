@@ -4,7 +4,10 @@ import type { SigningSecrets } from './signature';
 import type { Logger } from '@/lib/logging/logger';
 
 import { isJobEnabled, isJobsPaused } from '../switches';
-import { findInstance } from '../workflow-instance';
+import {
+  findInstance,
+  moduleLessonsInstanceSucceeded,
+} from '../workflow-instance';
 import { moduleLessonsInstanceId } from '../workflows/module-lessons/instance-id';
 import { MODULE_LESSONS_JOB } from '../workflows/module-lessons/run';
 import { unauthorizedResponse, verifySignedRequest } from './signature';
@@ -36,8 +39,8 @@ function parseBody(body: string): ModuleLessonsStartCommand | null {
  * `POST /v1/module-lessons/start`: verifies the signature, then creates the
  * module lessons Workflow instance. The app has already made the provisional
  * claim; the Workflow's first step adopts it. The instance ID makes repeated
- * commands for one claim harmless while its instance is live; an instance that
- * already ended counts as a failed start.
+ * commands for one claim harmless while its instance is live or finished successfully; an instance
+ * that ended otherwise counts as a failed start.
  */
 export async function handleModuleLessonsStart(
   request: Request,
@@ -76,12 +79,16 @@ export async function handleModuleLessonsStart(
     await deps.workflow.create({ id: instanceId, params: command });
   } catch (error) {
     const existing = await findInstance(deps.workflow, instanceId);
-    if (existing && !existing.terminal) {
+    if (
+      existing &&
+      (!existing.terminal || moduleLessonsInstanceSucceeded(existing))
+    ) {
       deps.logger.info(fields, 'Module lessons workflow already exists');
       return Response.json({ accepted: true, duplicate: true });
     }
-    // An instance that already ended will not adopt the claim: report a failed
-    // start so the app reverts it.
+    // An instance that ended without succeeding will not adopt the claim:
+    // report a failed start so the app reverts it. One that completed
+    // successfully is a harmless repeat of a finished start.
     deps.logger.error(
       { ...fields, err: error },
       existing

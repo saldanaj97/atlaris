@@ -13,7 +13,10 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
-import { findInstance } from '../workflow-instance';
+import {
+  findInstance,
+  moduleLessonsInstanceSucceeded,
+} from '../workflow-instance';
 import { moduleLessonsInstanceId } from '../workflows/module-lessons/instance-id';
 import {
   readRegenerationSwitch,
@@ -56,7 +59,7 @@ export type RegenerationConsumerDeps = {
  * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop to this Worker). A
  * thrown create reports `duplicate` when a live instance already exists (a
  * redelivery) and `failed` otherwise, including for an instance that already
- * ended; `failed` reverts the provisional claim.
+ * ended without succeeding; `failed` reverts the provisional claim.
  */
 export function createWorkflowModuleLessonStarter(deps: {
   readonly workflow: Pick<
@@ -91,7 +94,11 @@ export function createWorkflowModuleLessonStarter(deps: {
           await deps.workflow.create({ id, params: command });
         } catch (error) {
           const existing = await findInstance(deps.workflow, id);
-          if (existing && existing.terminal) {
+          if (
+            existing &&
+            existing.terminal &&
+            !moduleLessonsInstanceSucceeded(existing)
+          ) {
             deps.logger.error(
               {
                 job: REGENERATION_JOB_TAG,

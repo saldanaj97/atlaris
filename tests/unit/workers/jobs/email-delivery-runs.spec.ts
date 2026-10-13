@@ -9,6 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const runs = vi.hoisted(() => ({
   reserve: vi.fn(),
+  load: vi.fn(),
   loadByKey: vi.fn(),
   prepare: vi.fn(),
   fail: vi.fn(),
@@ -17,6 +18,7 @@ const countManualReviews = vi.hoisted(() => vi.fn());
 
 vi.mock('@/lib/db/queries/email-notification-delivery-runs', () => ({
   reserveEmailNotificationDeliveryRun: runs.reserve,
+  loadEmailNotificationDeliveryRun: runs.load,
   loadEmailNotificationDeliveryRunByKey: runs.loadByKey,
   prepareEmailNotificationDeliveryRunResume: runs.prepare,
   failEmailNotificationDeliveryRun: runs.fail,
@@ -235,6 +237,28 @@ describe('handleEmailDeliveryRunsCommand', () => {
       );
     },
   );
+
+  it('reports the run as it now stands when it was claimed before the abandoned-instance failure', async () => {
+    const { deps, workflow } = makeDeps();
+    workflow.create.mockRejectedValue(new Error('instance already exists'));
+    workflow.get.mockResolvedValue(instanceWithStatus('complete'));
+    runs.fail.mockResolvedValue({ outcome: 'stale' });
+    runs.load.mockResolvedValue(
+      runRow({ status: 'completed', workflowRunId: `cf:${INSTANCE_ID}` }),
+    );
+
+    const response = await handleEmailDeliveryRunsCommand(post(START), deps);
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      accepted: true,
+      duplicate: true,
+      runId: RUN_ID,
+      status: 'completed',
+      instanceId: `cf:${INSTANCE_ID}`,
+    });
+    expect(deps.logger.error).not.toHaveBeenCalled();
+  });
 
   it('keeps an existing instance with an unreadable status as a duplicate', async () => {
     const { deps, workflow } = makeDeps();
