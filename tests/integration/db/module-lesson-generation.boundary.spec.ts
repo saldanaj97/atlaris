@@ -1,5 +1,4 @@
 import type { StartModuleLessonGenerationResult } from '@/features/lesson-content/start-module-lesson-generation-workflow';
-import type { ModuleLessonWorkflowResult } from '@/features/lesson-content/workflows/module-lesson-generation.types';
 import type { DbClient } from '@/lib/db/types';
 
 import { ParserError } from '@/features/ai/parser';
@@ -17,28 +16,16 @@ import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { ensureUser } from '@tests/helpers/db/users';
 import {
+  createInlineModuleLessonsWorker,
+  type InlineModuleLessonsOutcome,
+} from '@tests/helpers/inline-module-lessons-worker';
+import {
   createRlsDbForUser,
   cleanupTrackedRlsClients,
 } from '@tests/helpers/rls';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const getWorkflowMetadata = vi.hoisted(() => vi.fn());
-
-vi.mock('workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('workflow')>();
-  return {
-    ...actual,
-    getWorkflowMetadata,
-  };
-});
-
-const workflowRunIds = new AsyncLocalStorage<string>();
-getWorkflowMetadata.mockImplementation(() => ({
-  workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
-}));
 
 type StartThenRunParams = {
   readonly dbClient: DbClient;
@@ -52,30 +39,27 @@ type StartThenRunDeps = {
   readonly resolveGenerationEnabled?: () => Promise<boolean>;
 };
 
+type StartThenRunResult =
+  | StartModuleLessonGenerationResult
+  | InlineModuleLessonsOutcome;
+
+/**
+ * Starts the module through the app's start path, which claims it and hands
+ * the command to the jobs Worker; the inline worker stands in for the Worker's
+ * Workflow.
+ */
 async function startThenRunModuleLessonGeneration(
   params: StartThenRunParams,
   deps: StartThenRunDeps = {},
-): Promise<StartModuleLessonGenerationResult | ModuleLessonWorkflowResult> {
-  let workflowResult: ModuleLessonWorkflowResult | undefined;
+): Promise<StartThenRunResult> {
+  const worker = createInlineModuleLessonsWorker();
 
   const startResult = await startModuleLessonGeneration(
-    {
-      ...params,
-      correlationId: createId('corr'),
-    },
+    { ...params, correlationId: createId('corr') },
     {
       dbClient: deps.serverDbClient,
       isGenerationEnabled: deps.resolveGenerationEnabled,
-      workflowStart: async (workflowFn, args) => {
-        const runId = createId('wrun');
-        workflowResult = await workflowRunIds.run(runId, () =>
-          workflowFn(args[0]),
-        );
-        return {
-          runId,
-          returnValue: Promise.resolve(workflowResult),
-        };
-      },
+      dispatch: worker.dispatch,
     },
   );
 
@@ -83,7 +67,7 @@ async function startThenRunModuleLessonGeneration(
     return startResult;
   }
 
-  return workflowResult ?? { kind: 'failed' };
+  return worker.outcome() ?? { kind: 'failed' };
 }
 
 /** Provider batch whose tasks echo the given ids, one heading lesson each. */
@@ -127,9 +111,6 @@ describe('module lesson generation boundary (integration)', () => {
   beforeEach(() => {
     setModuleLessonGenerationEnabledForTests(true);
     vi.stubEnv('MOCK_GENERATION_DELAY_MS', '0');
-    getWorkflowMetadata.mockImplementation(() => ({
-      workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
-    }));
   });
 
   it('CAS + success persists task lessons, module ready, and usage row', async () => {

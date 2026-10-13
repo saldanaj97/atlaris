@@ -41,8 +41,6 @@ describe('middleware policy', () => {
   it.each([
     '/api/health/worker',
     '/api/health/worker/',
-    '/api/cron/notifications/email',
-    '/api/cron/notifications/email/',
     '/api/v1/notifications/email/unsubscribe',
     '/api/v1/notifications/email/unsubscribe/',
   ])('isProtectedRoute skips Clerk-bypass exact path %s', (pathname) => {
@@ -77,18 +75,6 @@ describe('middleware policy', () => {
     ).toBe(null);
     expect(
       resolveSiteGateRedirectPath('maintenance', '/api/health/worker/'),
-    ).toBe(null);
-    expect(
-      resolveSiteGateRedirectPath(
-        'maintenance',
-        '/api/cron/notifications/email',
-      ),
-    ).toBe(null);
-    expect(
-      resolveSiteGateRedirectPath(
-        'maintenance',
-        '/api/cron/notifications/email/',
-      ),
     ).toBe(null);
     expect(
       resolveSiteGateRedirectPath(

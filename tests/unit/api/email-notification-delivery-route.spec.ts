@@ -1,5 +1,4 @@
 import { createEmailNotificationDeliveryPostRoute } from '@/app/api/internal/maintenance/notifications/email/route';
-import { EmailNotificationDeliveryRunActionError } from '@/features/notifications/email/start-email-notification-delivery-workflow';
 import { createMaintenancePostRequest } from '@tests/helpers/maintenance-request';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -20,7 +19,7 @@ describe('email notification delivery recovery route', () => {
     const resolveDeliveryEnabled = vi.fn();
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled,
-      startWorkflow: vi.fn(),
+      dispatch: vi.fn(),
     });
 
     const response = await POST(
@@ -34,11 +33,11 @@ describe('email notification delivery recovery route', () => {
     expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
   });
 
-  it('returns disabled without reserving or starting a workflow', async () => {
-    const startWorkflow = vi.fn();
+  it('returns disabled without dispatching to the Worker', async () => {
+    const dispatch = vi.fn();
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(false),
-      startWorkflow,
+      dispatch,
     });
 
     const response = await POST(
@@ -57,14 +56,14 @@ describe('email notification delivery recovery route', () => {
       ok: true,
       outcome: 'disabled',
     });
-    expect(startWorkflow).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it('rejects raw category, cursor, and batch controls before evaluating the flag', async () => {
     const resolveDeliveryEnabled = vi.fn();
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled,
-      startWorkflow: vi.fn(),
+      dispatch: vi.fn(),
     });
 
     const response = await POST(
@@ -87,7 +86,7 @@ describe('email notification delivery recovery route', () => {
     const resolveDeliveryEnabled = vi.fn();
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled,
-      startWorkflow: vi.fn(),
+      dispatch: vi.fn(),
     });
 
     const response = await POST(
@@ -107,10 +106,10 @@ describe('email notification delivery recovery route', () => {
 
   it('rejects a future date for a new manual run', async () => {
     const resolveDeliveryEnabled = vi.fn();
-    const startWorkflow = vi.fn();
+    const dispatch = vi.fn();
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled,
-      startWorkflow,
+      dispatch,
       now: () => new Date('2026-07-10T23:59:59.000Z'),
     });
 
@@ -127,18 +126,19 @@ describe('email notification delivery recovery route', () => {
 
     expect(response.status).toBe(400);
     expect(resolveDeliveryEnabled).not.toHaveBeenCalled();
-    expect(startWorkflow).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
-  it('uses the shared starter and returns 202 only for a newly started run', async () => {
-    const startWorkflow = vi.fn().mockResolvedValue({
+  it('dispatches to the jobs Worker and returns 202 only for a newly started run', async () => {
+    const dispatch = vi.fn().mockResolvedValue({
+      kind: 'accepted',
       outcome: 'started',
       runId: 'run-1',
-      workflowRunId: 'workflow-1',
+      instanceId: 'workflow-1',
     });
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
-      startWorkflow,
+      dispatch,
       now: () => new Date('2026-07-10T00:00:00.000Z'),
     });
 
@@ -160,21 +160,17 @@ describe('email notification delivery recovery route', () => {
       runId: 'run-1',
       workflowRunId: 'workflow-1',
     });
-    expect(startWorkflow).toHaveBeenCalledWith({
+    expect(dispatch).toHaveBeenCalledWith({
       runKind: 'daily',
       schedulerDateUtc: '2026-07-10',
       action: 'start',
     });
   });
 
-  it('reports a failed workflow start as unavailable to the operator', async () => {
+  it('reports a failed Worker dispatch as unavailable to the operator', async () => {
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
-      startWorkflow: vi.fn().mockResolvedValue({
-        outcome: 'failed_requires_resume',
-        runId: 'run-1',
-        workflowRunId: null,
-      }),
+      dispatch: vi.fn().mockResolvedValue({ kind: 'failed' }),
       now: () => new Date('2026-07-10T00:00:00.000Z'),
     });
 
@@ -196,22 +192,24 @@ describe('email notification delivery recovery route', () => {
     });
   });
 
-  it('passes explicit resume and replay actions to the same starter', async () => {
-    const startWorkflow = vi
+  it('passes explicit resume and replay actions to the same dispatch', async () => {
+    const dispatch = vi
       .fn()
       .mockResolvedValueOnce({
+        kind: 'accepted',
         outcome: 'already_paused',
         runId: 'run-2',
-        workflowRunId: null,
+        instanceId: null,
       })
       .mockResolvedValueOnce({
+        kind: 'accepted',
         outcome: 'needs_review',
         runId: 'run-3',
-        workflowRunId: null,
+        instanceId: null,
       });
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
-      startWorkflow,
+      dispatch,
       now: () => new Date('2026-07-10T00:00:00.000Z'),
     });
 
@@ -238,12 +236,12 @@ describe('email notification delivery recovery route', () => {
 
     expect(resume.status).toBe(200);
     expect(replay.status).toBe(200);
-    expect(startWorkflow).toHaveBeenNthCalledWith(1, {
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
       runKind: 'daily',
       schedulerDateUtc: '2026-07-10',
       action: 'resume',
     });
-    expect(startWorkflow).toHaveBeenNthCalledWith(2, {
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
       runKind: 'weekly',
       schedulerDateUtc: '2026-07-13',
       action: 'replay_reviewed',
@@ -253,9 +251,7 @@ describe('email notification delivery recovery route', () => {
   it('rejects a manual action that does not match the run state', async () => {
     const POST = createEmailNotificationDeliveryPostRoute({
       resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
-      startWorkflow: vi
-        .fn()
-        .mockRejectedValue(new EmailNotificationDeliveryRunActionError()),
+      dispatch: vi.fn().mockResolvedValue({ kind: 'invalid_run_state' }),
     });
 
     const response = await POST(
@@ -270,5 +266,58 @@ describe('email notification delivery recovery route', () => {
     );
 
     expect(response.status).toBe(409);
+  });
+
+  it('returns disabled when the Worker switch refuses the command', async () => {
+    const POST = createEmailNotificationDeliveryPostRoute({
+      resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
+      dispatch: vi
+        .fn()
+        .mockResolvedValue({ kind: 'disabled', code: 'job_disabled' }),
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
+    });
+
+    const response = await POST(
+      createMaintenancePostRequest(URL, {
+        body: JSON.stringify({
+          runKind: 'daily',
+          schedulerDateUtc: '2026-07-10',
+          action: 'start',
+        }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      ok: true,
+      outcome: 'disabled',
+    });
+  });
+
+  it('reports an existing failed run as unavailable until it is resumed', async () => {
+    const POST = createEmailNotificationDeliveryPostRoute({
+      resolveDeliveryEnabled: vi.fn().mockResolvedValue(true),
+      dispatch: vi.fn().mockResolvedValue({
+        kind: 'accepted',
+        outcome: 'failed_requires_resume',
+        runId: 'run-1',
+        instanceId: null,
+      }),
+      now: () => new Date('2026-07-10T00:00:00.000Z'),
+    });
+
+    const response = await POST(
+      createMaintenancePostRequest(URL, {
+        body: JSON.stringify({
+          runKind: 'daily',
+          schedulerDateUtc: '2026-07-10',
+          action: 'start',
+        }),
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+
+    expect(response.status).toBe(503);
   });
 });

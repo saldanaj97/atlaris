@@ -4,7 +4,6 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { POST } from '@/app/api/v1/plans/[planId]/retry/route';
 import { GET as getStatus } from '@/app/api/v1/plans/[planId]/status/route';
-import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import {
   JOBS_SIGNATURE_HEADER,
   planGenerationStartCommandSchema,
@@ -15,9 +14,8 @@ import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { desc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workflowStartMock = vi.hoisted(() => vi.fn());
-
-vi.mock('workflow/api', () => ({ start: workflowStartMock }));
+const workerFetch =
+  vi.fn<(url: URL | string, init: RequestInit) => Promise<Response>>();
 
 type RetryAttemptOverrides = Partial<
   Omit<typeof generationAttempts.$inferInsert, 'planId'>
@@ -82,8 +80,16 @@ async function setUpRetryUser(label: string) {
 }
 
 beforeEach(() => {
-  workflowStartMock.mockReset();
-  workflowStartMock.mockResolvedValue({ runId: 'wrun_retry' });
+  workerFetch.mockReset();
+  workerFetch.mockImplementation(async () =>
+    Response.json(
+      { accepted: true, instanceId: 'plan-instance' },
+      { status: 202 },
+    ),
+  );
+  vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
+  vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
+  vi.stubGlobal('fetch', workerFetch);
 });
 
 afterEach(() => {
@@ -92,7 +98,7 @@ afterEach(() => {
 });
 
 describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
-  it('reserves the next attempt, starts the Vercel workflow, and returns 202', async () => {
+  it('reserves the next attempt, sends the signed start command to the jobs Worker, and returns 202', async () => {
     const userId = await setUpRetryUser('success');
     const plan = await createFailedPlan(userId);
 
@@ -118,15 +124,23 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     });
     await expect(getGenerationStatus(plan.id)).resolves.toBe('generating');
 
-    expect(workflowStartMock).toHaveBeenCalledTimes(1);
-    expect(workflowStartMock).toHaveBeenCalledWith(planGenerationWorkflow, [
-      expect.objectContaining({
-        planId: plan.id,
-        userId,
-        allowedGenerationStatuses: ['failed', 'pending_retry'],
-        reservation: expect.objectContaining({ attemptId: body.attemptId }),
-      }),
-    ]);
+    expect(workerFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = workerFetch.mock.calls[0]!;
+    expect(String(url)).toBe(
+      'https://workers-test.atlaris.app/v1/plan-generation/start',
+    );
+    expect(new Headers(init.headers).get(JOBS_SIGNATURE_HEADER)).toMatch(
+      /^v1=[0-9a-f]{64}$/,
+    );
+    const command = planGenerationStartCommandSchema.parse(
+      JSON.parse(String(init.body)),
+    );
+    expect(command).toMatchObject({
+      planId: plan.id,
+      userId,
+      allowedGenerationStatuses: ['failed', 'pending_retry'],
+      reservation: { attemptId: body.attemptId },
+    });
   });
 
   it('reads the final allowed attempt as processing while it runs', async () => {
@@ -156,10 +170,10 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     });
   });
 
-  it('settles the reserved attempt and returns the not-started error when the workflow cannot start', async () => {
+  it('settles the reserved attempt and returns the not-started error when the Worker cannot be reached', async () => {
     const userId = await setUpRetryUser('start-failure');
     const plan = await createFailedPlan(userId);
-    workflowStartMock.mockRejectedValue(new Error('workflow unavailable'));
+    workerFetch.mockRejectedValue(new Error('worker unreachable'));
 
     const response = await retry(plan.id);
 
@@ -181,48 +195,9 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     await expect(getGenerationStatus(plan.id)).resolves.not.toBe('generating');
   });
 
-  it('sends a signed start command to the jobs Worker when PLAN_GENERATION_RUNTIME=cloudflare', async () => {
-    const userId = await setUpRetryUser('cloudflare');
-    const plan = await createFailedPlan(userId);
-    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cloudflare');
-    vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
-    vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
-    const workerFetch = vi.fn(async (_url: URL | string, _init: RequestInit) =>
-      Response.json(
-        { accepted: true, instanceId: 'plan-instance' },
-        { status: 202 },
-      ),
-    );
-    vi.stubGlobal('fetch', workerFetch);
-
-    const response = await retry(plan.id);
-
-    expect(response.status).toBe(202);
-    const { attemptId } = (await response.json()) as { attemptId: string };
-    expect(workflowStartMock).not.toHaveBeenCalled();
-    expect(workerFetch).toHaveBeenCalledTimes(1);
-    const [url, init] = workerFetch.mock.calls[0]!;
-    expect(String(url)).toBe(
-      'https://workers-test.atlaris.app/v1/plan-generation/start',
-    );
-    expect(new Headers(init.headers).get(JOBS_SIGNATURE_HEADER)).toMatch(
-      /^v1=[0-9a-f]{64}$/,
-    );
-    const command = planGenerationStartCommandSchema.parse(
-      JSON.parse(String(init.body)),
-    );
-    expect(command).toMatchObject({
-      planId: plan.id,
-      userId,
-      reservation: { attemptId },
-    });
-    await expect(getGenerationStatus(plan.id)).resolves.toBe('generating');
-  });
-
-  it('settles the attempt when the Cloudflare runtime is not configured', async () => {
+  it('settles the attempt when the jobs Worker is not configured', async () => {
     const userId = await setUpRetryUser('cloudflare-unconfigured');
     const plan = await createFailedPlan(userId);
-    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cloudflare');
     vi.stubEnv('JOBS_WORKER_URL', undefined);
     vi.stubEnv('JOBS_SIGNING_SECRET', undefined);
 
@@ -241,18 +216,6 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     await expect(getGenerationStatus(plan.id)).resolves.not.toBe('generating');
   });
 
-  it('rejects an invalid PLAN_GENERATION_RUNTIME before reserving', async () => {
-    const userId = await setUpRetryUser('invalid-runtime');
-    const plan = await createFailedPlan(userId);
-    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cf');
-
-    const response = await retry(plan.id);
-
-    expect(response.status).toBe(500);
-    await expect(listAttempts(plan.id)).resolves.toHaveLength(1);
-    await expect(getGenerationStatus(plan.id)).resolves.toBe('failed');
-  });
-
   it('starts exactly one attempt for concurrent retries', async () => {
     const userId = await setUpRetryUser('concurrent');
     const plan = await createFailedPlan(userId);
@@ -264,7 +227,7 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     const loser = responses.find((response) => response.status !== 202)!;
     expect(loser.status).toBeGreaterThanOrEqual(400);
     expect(loser.status).toBeLessThan(500);
-    expect(workflowStartMock).toHaveBeenCalledTimes(1);
+    expect(workerFetch).toHaveBeenCalledTimes(1);
 
     const attempts = await listAttempts(plan.id);
     expect(attempts).toHaveLength(2);
@@ -293,7 +256,7 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     };
     expect(body.code).toBe('RATE_LIMITED');
     expect(typeof body.retryAfter).toBe('number');
-    expect(workflowStartMock).not.toHaveBeenCalled();
+    expect(workerFetch).not.toHaveBeenCalled();
   });
 
   it('returns 400 when plan is not in failed state', async () => {
@@ -308,6 +271,6 @@ describe('POST /api/v1/plans/:planId/retry — create + poll', () => {
     const body = (await response.json()) as { error?: string; code?: string };
     expect(body.code).toBe('VALIDATION_ERROR');
     expect(body.error).toContain('not eligible for retry');
-    expect(workflowStartMock).not.toHaveBeenCalled();
+    expect(workerFetch).not.toHaveBeenCalled();
   });
 });

@@ -88,16 +88,16 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 
 ## Ownership and retention
 
-- `oauth_state_tokens` is retained as integration infrastructure for future multi-instance OAuth flows. Expired rows are deleted by `private.cleanup_retained_db_rows()` via Supabase Cron.
+- `oauth_state_tokens` is retained as integration infrastructure for future multi-instance OAuth flows. Expired rows are deleted by `private.cleanup_retained_db_rows()` by the jobs Worker's daily retention cron.
 - `resources` and `task_resources` are active read surfaces for plan detail/resource display. A production writer is still a product follow-up; the tables are not removed while the UI/API read surface exists.
-- `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `private.cleanup_retained_db_rows()` via Supabase Cron.
+- `job_queue` keeps active jobs indefinitely while terminal `completed`/`failed` rows older than 30 days are deleted by `private.cleanup_retained_db_rows()` by the jobs Worker's daily retention cron.
 - `clerk_webhook_events` keeps completed Clerk/Svix delivery IDs for 45 days before `private.cleanup_retained_db_rows()` prunes old idempotency rows.
 - `clerk_webhook_event_claims` holds temporary claim tokens while a webhook refreshes Clerk. Successful and failed requests remove their claims; crash leftovers can be reclaimed after the two-minute lease and stale claims are pruned by retention cleanup.
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
 - `learning_activity_events` follows FK cascades; there is no separate retention prune for analytics history today.
 - Email delivery run/ledger tables are operational state for the scheduler; see [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md).
 
-Scheduled invocation: Supabase Cron runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).
+Scheduled invocation: the jobs Worker's cron (`0 3 * * *`) runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).
 
 ## Code locations
 
