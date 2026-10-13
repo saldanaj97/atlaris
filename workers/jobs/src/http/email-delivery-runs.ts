@@ -18,9 +18,10 @@ import {
   prepareEmailNotificationDeliveryRunResume,
   reserveEmailNotificationDeliveryRun,
 } from '@/lib/db/queries/email-notification-delivery-runs';
+import { JOBS_COMMAND_PATHS } from '@/lib/jobs-worker/contract';
 import { z } from 'zod';
 
-export const EMAIL_DELIVERY_RUNS_PATH = '/v1/email-delivery/runs';
+export const EMAIL_DELIVERY_RUNS_PATH = JOBS_COMMAND_PATHS.emailDeliveryRuns;
 
 const commandSchema = z.strictObject({
   v: z.literal(1),
@@ -78,7 +79,7 @@ function parseCommand(
   return command;
 }
 
-/** Same state rules as the app's `startEmailNotificationDeliveryWorkflow`. */
+/** Reserves a run for `start`, or requeues an existing one for a resume action. */
 async function prepareRun(
   command: EmailDeliveryRunsCommand,
   db: DbClient,
