@@ -7,25 +7,31 @@ import { describe, expect, it } from 'vitest';
 
 describe('concurrent user provisioning', () => {
   it('resolves simultaneous first requests to the same user row', async () => {
-    const authUserId = buildTestAuthUserId('user-provisioning-race');
-    const input = {
-      authUserId,
-      email: buildTestEmail(authUserId),
-      name: 'Concurrent User',
-    };
+    // The race window sits between the auth_user_id pre-check and the email
+    // index insert, so several rounds of concurrent calls are needed to hit it.
+    for (let round = 0; round < 10; round += 1) {
+      const authUserId = buildTestAuthUserId(`user-provisioning-race-${round}`);
+      const input = {
+        authUserId,
+        email: buildTestEmail(authUserId),
+        name: 'Concurrent User',
+      };
 
-    const [first, second] = await Promise.all([
-      getOrCreateUser(input, db),
-      getOrCreateUser(input, db),
-    ]);
+      const results = await Promise.all(
+        Array.from({ length: 8 }, () => getOrCreateUser(input, db)),
+      );
 
-    expect(first?.id).toBeDefined();
-    expect(second?.id).toBe(first?.id);
-    const rows = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(eq(users.authUserId, authUserId));
-    expect(rows).toHaveLength(1);
+      const firstId = results[0]?.id;
+      expect(firstId).toBeDefined();
+      expect(results.map((user) => user?.id)).toEqual(
+        results.map(() => firstId),
+      );
+      const rows = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.authUserId, authUserId));
+      expect(rows).toHaveLength(1);
+    }
   });
 
   it('does not transfer an existing email to another auth identity', async () => {
@@ -43,7 +49,9 @@ describe('concurrent user provisioning', () => {
         { authUserId: secondAuthUserId, email, name: 'Conflicting User' },
         db,
       ),
-    ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
+    ).rejects.toMatchObject({
+      cause: { code: '23505', constraint_name: 'users_email_unique' },
+    });
 
     const rows = await db.select().from(users).where(eq(users.email, email));
     expect(rows).toHaveLength(1);
