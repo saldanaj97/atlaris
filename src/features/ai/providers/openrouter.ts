@@ -6,6 +6,8 @@ import type {
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/features/ai/types/provider.types';
+import type { OpenRouterCore } from '@openrouter/sdk/core';
+import type { chatSend } from '@openrouter/sdk/funcs/chatSend';
 import type { ChatRequest } from '@openrouter/sdk/models';
 
 import { getOutputTokenCeiling } from '@/features/ai/cost';
@@ -32,7 +34,6 @@ import {
 } from '@/features/ai/timeout';
 import { openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { OpenRouter } from '@openrouter/sdk';
 import * as Sentry from '@sentry/nextjs';
 
 export type OpenRouterClient = {
@@ -55,6 +56,39 @@ export type OpenRouterProviderConfig = {
 
 const OPENROUTER_DEFAULT_TIMEOUT_MS = DEFAULT_GENERATION_TIMEOUT_MS;
 const OPENROUTER_TIMEOUT_EXTENSION_MS = DEFAULT_GENERATION_EXTENSION_MS;
+
+type OpenRouterSdkOptions = ConstructorParameters<typeof OpenRouterCore>[0];
+
+/**
+ * Loads the SDK on the first request, and only its core client and standalone
+ * chat function. The full `OpenRouter` client builds thousands of zod schemas
+ * at import, which pushed the jobs Worker toward Cloudflare's startup CPU
+ * limit (validation error 10021).
+ */
+function createLazyOpenRouterClient(
+  sdkOptions: OpenRouterSdkOptions,
+): OpenRouterClient {
+  let sdk: Promise<{ core: OpenRouterCore; send: typeof chatSend }> | undefined;
+  return {
+    chat: {
+      send: async (request, options) => {
+        sdk ??= Promise.all([
+          import('@openrouter/sdk/core'),
+          import('@openrouter/sdk/funcs/chatSend'),
+        ]).then(([coreModule, chatSendModule]) => ({
+          core: new coreModule.OpenRouterCore(sdkOptions),
+          send: chatSendModule.chatSend,
+        }));
+        const { core, send } = await sdk;
+        const result = await send(core, { chatRequest: request }, options);
+        if (!result.ok) {
+          throw result.error;
+        }
+        return result.value;
+      },
+    },
+  };
+}
 
 /** Narrow span surface used for gen_ai.* manual span attributes */
 type GenAiManualSpan = {
@@ -329,17 +363,11 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       }
       const siteUrl = cfg.siteUrl ?? openRouterEnv.siteUrl;
       const appName = cfg.appName ?? openRouterEnv.appName;
-      const client = new OpenRouter({
+      this.client = createLazyOpenRouterClient({
         apiKey,
         ...(siteUrl && { httpReferer: siteUrl }),
         ...(appName && { appTitle: appName }),
       });
-      this.client = {
-        chat: {
-          send: (request, options) =>
-            client.chat.send({ chatRequest: request }, options),
-        },
-      };
     }
   }
 
