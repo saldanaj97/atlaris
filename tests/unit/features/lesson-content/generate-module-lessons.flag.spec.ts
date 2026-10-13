@@ -22,7 +22,7 @@ describe('module lesson generation flag boundary', () => {
     const isGenerationEnabled = vi.fn(async () => false);
     const loadContext = vi.fn();
     const claim = vi.fn();
-    const workflowStart = vi.fn();
+    const dispatch = vi.fn();
 
     const result = await startModuleLessonGeneration(
       {
@@ -32,14 +32,14 @@ describe('module lesson generation flag boundary', () => {
         moduleId: createId('module'),
         correlationId: createId('corr'),
       },
-      { isGenerationEnabled, loadContext, claim, workflowStart },
+      { isGenerationEnabled, loadContext, claim, dispatch },
     );
 
     expect(result).toEqual({ kind: 'disabled' });
     expect(isGenerationEnabled).toHaveBeenCalledOnce();
     expect(loadContext).not.toHaveBeenCalled();
     expect(claim).not.toHaveBeenCalled();
-    expect(workflowStart).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 
   it('runModuleLessonGenerationWork returns disabled without provider work when flag is off', async () => {
@@ -83,7 +83,7 @@ describe('module lesson generation flag boundary', () => {
     const isGenerationEnabled = vi.fn(async () => true);
     const loadContext = vi.fn().mockResolvedValueOnce(null);
     const claim = vi.fn();
-    const workflowStart = vi.fn();
+    const dispatch = vi.fn();
 
     const result = await startModuleLessonGeneration(
       {
@@ -93,13 +93,13 @@ describe('module lesson generation flag boundary', () => {
         moduleId: createId('module'),
         correlationId: createId('corr'),
       },
-      { isGenerationEnabled, loadContext, claim, workflowStart },
+      { isGenerationEnabled, loadContext, claim, dispatch },
     );
 
     expect(isGenerationEnabled).toHaveBeenCalledOnce();
     expect(loadContext).toHaveBeenCalledOnce();
     expect(result).toEqual({ kind: 'not_found' });
     expect(claim).not.toHaveBeenCalled();
-    expect(workflowStart).not.toHaveBeenCalled();
+    expect(dispatch).not.toHaveBeenCalled();
   });
 });

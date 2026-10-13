@@ -52,8 +52,8 @@ export type RegenerationConsumerDeps = {
 /**
  * Starts module lessons from regeneration finalization: the same flag check,
  * preflight, and provisional claim as `startModuleLessonGeneration`, then
- * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop). A thrown create
- * reverts the provisional claim, as a failed Vercel start does.
+ * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop to this Worker). A
+ * thrown create reports `failed`, which reverts the provisional claim.
  */
 export function createWorkflowModuleLessonStarter(deps: {
   readonly workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'create'>;
@@ -64,16 +64,13 @@ export function createWorkflowModuleLessonStarter(deps: {
     startModuleLessonGeneration(params, {
       dbClient: params.dbClient,
       isGenerationEnabled: deps.isEnabled,
-      // 'vercel' means "use the injected workflowStart", never an HTTP hop to this Worker.
-      runtime: () => 'vercel',
-      workflowStart: async (_vercelWorkflow, [input]) => {
-        // The start helper claims with `batchRequestId = correlationId`.
+      dispatch: async (input) => {
         const command: ModuleLessonsWorkflowParams = {
           v: 1,
           planId: input.planId,
           moduleId: input.moduleId,
           userId: input.userId,
-          batchRequestId: input.correlationId,
+          batchRequestId: input.batchRequestId,
           correlationId: input.correlationId,
           ...(input.modelOverride
             ? { modelOverride: input.modelOverride }
@@ -83,8 +80,12 @@ export function createWorkflowModuleLessonStarter(deps: {
           command.moduleId,
           command.batchRequestId,
         );
-        await deps.workflow.create({ id, params: command });
-        return { runId: id, returnValue: Promise.resolve() };
+        try {
+          await deps.workflow.create({ id, params: command });
+        } catch {
+          return { kind: 'failed' };
+        }
+        return { kind: 'accepted', instanceId: id };
       },
     });
 }

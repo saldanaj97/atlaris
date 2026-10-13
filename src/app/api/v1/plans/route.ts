@@ -134,7 +134,7 @@ export function createPlanCreateHandler(deps?: {
  * POST /api/v1/plans
  *
  * Creates an AI plan and starts its first generation attempt on
- * `PLAN_GENERATION_RUNTIME`. Returns `202 { planId, attemptId }`; the client
+ * the jobs Worker. Returns `202 { planId, attemptId }`; the client
  * polls `GET /api/v1/plans/:planId/status` for the outcome.
  */
 export const POST = createPlanCreateHandler();
