@@ -239,7 +239,7 @@ describe('createWorkflowModuleLessonStarter', () => {
   const PLAN_ID = '0b5e2c1d-6f4a-4e3b-9c8d-7a6b5c4d3e2f';
   const MODULE_ID = '1c6f3d2e-7a5b-4f4c-8d9e-8b7c6d5e4f30';
   const USER_ID = '2d7a4e3f-8b6c-4a5d-9e0f-9c8d7e6f5a41';
-  const logger = { error: vi.fn() };
+  const logger = { info: vi.fn(), error: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -266,7 +266,10 @@ describe('createWorkflowModuleLessonStarter', () => {
   }
 
   it('claims on the invocation db, then creates the instance directly', async () => {
-    const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
+    const workflow = {
+      create: vi.fn(async () => ({}) as WorkflowInstance),
+      get: vi.fn(),
+    };
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
@@ -300,7 +303,10 @@ describe('createWorkflowModuleLessonStarter', () => {
   });
 
   it('hashes a correlation ID that is not instance-ID safe', async () => {
-    const workflow = { create: vi.fn(async () => ({}) as WorkflowInstance) };
+    const workflow = {
+      create: vi.fn(async () => ({}) as WorkflowInstance),
+      get: vi.fn(),
+    };
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
@@ -317,7 +323,7 @@ describe('createWorkflowModuleLessonStarter', () => {
   });
 
   it('does not claim or create while the lessons switch is off', async () => {
-    const workflow = { create: vi.fn() };
+    const workflow = { create: vi.fn(), get: vi.fn() };
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => false,
@@ -333,6 +339,9 @@ describe('createWorkflowModuleLessonStarter', () => {
     const workflow = {
       create: vi.fn(async () => {
         throw new Error('create failed');
+      }),
+      get: vi.fn(async () => {
+        throw new Error('not found');
       }),
     };
     const start = createWorkflowModuleLessonStarter({
@@ -361,5 +370,24 @@ describe('createWorkflowModuleLessonStarter', () => {
       moduleId: MODULE_ID,
       batchRequestId: 'attempt-1',
     });
+  });
+
+  it('treats an existing instance as a duplicate without reverting the claim', async () => {
+    const workflow = {
+      create: vi.fn(async () => {
+        throw new Error('instance already exists');
+      }),
+      get: vi.fn(async () => ({}) as WorkflowInstance),
+    };
+    const start = createWorkflowModuleLessonStarter({
+      workflow,
+      isEnabled: () => true,
+      logger,
+    });
+
+    await expect(start(startParams())).resolves.toEqual({ kind: 'in_flight' });
+    expect(workflow.get).toHaveBeenCalledWith(`lessons-${MODULE_ID}-attempt-1`);
+    expect(lessonQueries.revert).not.toHaveBeenCalled();
+    expect(logger.error).not.toHaveBeenCalled();
   });
 });

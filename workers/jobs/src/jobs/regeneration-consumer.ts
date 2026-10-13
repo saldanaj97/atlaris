@@ -49,17 +49,33 @@ export type RegenerationConsumerDeps = {
   readonly now?: () => number;
 };
 
+async function instanceExists(
+  workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'get'>,
+  instanceId: string,
+): Promise<boolean> {
+  try {
+    await workflow.get(instanceId);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Starts module lessons from regeneration finalization: the same flag check,
  * preflight, and provisional claim as `startModuleLessonGeneration`, then
  * `MODULE_LESSONS_WORKFLOW.create` directly (no HTTP hop to this Worker). A
- * thrown create reports `failed`, which reverts the provisional claim.
+ * thrown create reports `duplicate` when the instance already exists (a
+ * redelivery) and `failed` otherwise; `failed` reverts the provisional claim.
  */
 export function createWorkflowModuleLessonStarter(deps: {
-  readonly workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'create'>;
+  readonly workflow: Pick<
+    Workflow<ModuleLessonsWorkflowParams>,
+    'create' | 'get'
+  >;
   /** `isJobEnabled(env, 'MODULE_LESSONS')`. */
   readonly isEnabled: () => boolean;
-  readonly logger: Pick<Logger, 'error'>;
+  readonly logger: Pick<Logger, 'info' | 'error'>;
 }): RegenerationRunContext['startModuleLessons'] {
   return (params) =>
     startModuleLessonGeneration(params, {
@@ -84,6 +100,19 @@ export function createWorkflowModuleLessonStarter(deps: {
         try {
           await deps.workflow.create({ id, params: command });
         } catch (error) {
+          if (await instanceExists(deps.workflow, id)) {
+            deps.logger.info(
+              {
+                job: REGENERATION_JOB_TAG,
+                planId: command.planId,
+                moduleId: command.moduleId,
+                correlationId: command.correlationId,
+                id,
+              },
+              'Module lessons workflow already exists',
+            );
+            return { kind: 'duplicate' };
+          }
           deps.logger.error(
             {
               job: REGENERATION_JOB_TAG,
