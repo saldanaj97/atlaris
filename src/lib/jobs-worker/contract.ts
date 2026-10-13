@@ -22,6 +22,7 @@ export const JOBS_COMMAND_PATHS = {
   regenerationEnqueue: '/v1/regeneration/enqueue',
   moduleLessonsStart: '/v1/module-lessons/start',
   planGenerationStart: '/v1/plan-generation/start',
+  emailDeliveryRuns: '/v1/email-delivery/runs',
 } as const;
 
 /** `POST /v1/regeneration/enqueue` body; also the regeneration queue message. */

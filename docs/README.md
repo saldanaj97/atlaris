@@ -40,12 +40,12 @@ System design, pipelines, and operational runbooks.
 | [email-notification-delivery-runbook.md](./architecture/email-notification-delivery-runbook.md) | Email notification scheduler runbook |
 | [internal-worker-routes.md](./architecture/internal-worker-routes.md) | Internal `/api/internal/` workers and token auth |
 | [plan-cleanup-runbook.md](./architecture/plan-cleanup-runbook.md) | Stuck-plan and orphaned-attempt maintenance |
-| [plan-generation-architecture.md](./architecture/plan-generation-architecture.md) | Plan generation pipeline (`POST /api/v1/plans` create + retry, status polling, `PLAN_GENERATION_RUNTIME`) |
+| [plan-generation-architecture.md](./architecture/plan-generation-architecture.md) | Plan generation pipeline (`POST /api/v1/plans` create + retry on the jobs Worker, status polling) |
 | [regeneration-worker-runbook.md](./architecture/regeneration-worker-runbook.md) | Queued plan regeneration drain runbook |
 | [retention-cleanup-runbook.md](./architecture/retention-cleanup-runbook.md) | DB retention cleanup (tokens, webhooks, jobs) |
 | [usage-analytics-metric-contract.md](./architecture/usage-analytics-metric-contract.md) | Usage analytics metric contract (shipped `/analytics/usage`) |
 | [user-preferences.md](./architecture/user-preferences.md) | Settings ledger, AI/email prefs, analytics timezone |
-| [workflow-sdk.md](./architecture/workflow-sdk.md) | Workflow SDK durable execution |
+| [workflow-sdk.md](./architecture/workflow-sdk.md) | Workflow SDK durable execution (plan regeneration only) |
 
 ## `ci/`
 

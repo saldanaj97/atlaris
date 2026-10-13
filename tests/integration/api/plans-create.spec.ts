@@ -2,15 +2,17 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { POST } from '@/app/api/v1/plans/route';
-import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
+import {
+  JOBS_SIGNATURE_HEADER,
+  planGenerationStartCommandSchema,
+} from '@/lib/jobs-worker/contract';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workflowStartMock = vi.hoisted(() => vi.fn());
-
-vi.mock('workflow/api', () => ({ start: workflowStartMock }));
+const workerFetch =
+  vi.fn<(url: URL | string, init: RequestInit) => Promise<Response>>();
 
 const payload = {
   topic: 'Learning TypeScript',
@@ -66,16 +68,25 @@ async function listAttempts(planId: string) {
 }
 
 beforeEach(() => {
-  workflowStartMock.mockReset();
-  workflowStartMock.mockResolvedValue({ runId: 'wrun_create' });
+  workerFetch.mockReset();
+  workerFetch.mockImplementation(async () =>
+    Response.json(
+      { accepted: true, instanceId: 'plan-instance' },
+      { status: 202 },
+    ),
+  );
+  vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
+  vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
+  vi.stubGlobal('fetch', workerFetch);
 });
 
 afterEach(() => {
   vi.unstubAllEnvs();
+  vi.unstubAllGlobals();
 });
 
 describe('POST /api/v1/plans — create + poll', () => {
-  it('creates the plan, reserves its first attempt, starts the workflow, and returns 202', async () => {
+  it('creates the plan, reserves its first attempt, sends the signed start command to the jobs Worker, and returns 202', async () => {
     const userId = await setUpUser('plans-create-success');
 
     const response = await create();
@@ -100,15 +111,24 @@ describe('POST /api/v1/plans — create + poll', () => {
     await expect(listAttempts(body.planId)).resolves.toEqual([
       { id: body.attemptId, status: 'in_progress', classification: null },
     ]);
-    expect(workflowStartMock).toHaveBeenCalledWith(planGenerationWorkflow, [
-      expect.objectContaining({
-        planId: body.planId,
-        userId,
-        generationPurpose: 'initial',
-        input: expect.objectContaining({ topic: 'Learning TypeScript' }),
-        reservation: expect.objectContaining({ attemptId: body.attemptId }),
-      }),
-    ]);
+    expect(workerFetch).toHaveBeenCalledTimes(1);
+    const [url, init] = workerFetch.mock.calls[0]!;
+    expect(String(url)).toBe(
+      'https://workers-test.atlaris.app/v1/plan-generation/start',
+    );
+    expect(new Headers(init.headers).get(JOBS_SIGNATURE_HEADER)).toMatch(
+      /^v1=[0-9a-f]{64}$/,
+    );
+    const command = planGenerationStartCommandSchema.parse(
+      JSON.parse(String(init.body)),
+    );
+    expect(command).toMatchObject({
+      planId: body.planId,
+      userId,
+      generationPurpose: 'initial',
+      input: expect.objectContaining({ topic: 'Learning TypeScript' }),
+      reservation: { attemptId: body.attemptId },
+    });
   });
 
   it('returns 400 for an invalid body without creating a plan', async () => {
@@ -121,12 +141,11 @@ describe('POST /api/v1/plans — create + poll', () => {
       error: 'Invalid request body.',
     });
     await expect(listUserPlans(userId)).resolves.toEqual([]);
-    expect(workflowStartMock).not.toHaveBeenCalled();
+    expect(workerFetch).not.toHaveBeenCalled();
   });
 
   it('returns the not-started error with the plan ID when the jobs Worker is not configured', async () => {
     const userId = await setUpUser('plans-create-cf-unconfigured');
-    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cloudflare');
     vi.stubEnv('JOBS_WORKER_URL', undefined);
     vi.stubEnv('JOBS_SIGNING_SECRET', undefined);
 
@@ -148,16 +167,6 @@ describe('POST /api/v1/plans — create + poll', () => {
       status: 'failure',
       classification: 'provider_error',
     });
-    expect(workflowStartMock).not.toHaveBeenCalled();
-  });
-
-  it('rejects an invalid PLAN_GENERATION_RUNTIME before creating a plan', async () => {
-    const userId = await setUpUser('plans-create-invalid-runtime');
-    vi.stubEnv('PLAN_GENERATION_RUNTIME', 'cf');
-
-    const response = await create();
-
-    expect(response.status).toBe(500);
-    await expect(listUserPlans(userId)).resolves.toEqual([]);
+    expect(workerFetch).not.toHaveBeenCalled();
   });
 });

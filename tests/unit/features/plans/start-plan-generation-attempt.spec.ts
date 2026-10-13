@@ -7,7 +7,6 @@ import {
   startPlanGenerationAttempt,
   type StartPlanGenerationAttemptDeps,
 } from '@/features/plans/start-plan-generation-attempt';
-import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { planGenerationStartCommandSchema } from '@/lib/jobs-worker/contract';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -36,7 +35,6 @@ const dbClient = {} as AttemptsDbClient;
 
 const mocks = {
   reserveAttemptSlot: vi.fn(),
-  workflowStart: vi.fn(),
   dispatch:
     vi.fn<(...args: unknown[]) => Promise<PlanGenerationDispatchResult>>(),
   finalizeFailure: vi.fn(),
@@ -50,34 +48,17 @@ const lifecycleService = {
 function deps(): StartPlanGenerationAttemptDeps {
   return {
     reserveAttemptSlot: mocks.reserveAttemptSlot,
-    workflowStart: mocks.workflowStart,
-    workflowFn: planGenerationWorkflow,
     dispatch: mocks.dispatch,
     finalizeFailure: mocks.finalizeFailure,
     clock: () => 1_000,
   };
 }
 
-function startOn(runtime: 'vercel' | 'cloudflare') {
+function start() {
   return startPlanGenerationAttempt(
-    { lifecycleService, dbClient, correlationId: 'req-1', runtime, input },
+    { lifecycleService, dbClient, correlationId: 'req-1', input },
     deps(),
   );
-}
-
-/** A Workflow SDK run whose `returnValue` records any read. */
-function runWithWatchedReturnValue() {
-  const read = vi.fn();
-  return {
-    run: {
-      runId: 'wrun_plan',
-      get returnValue() {
-        read();
-        return new Promise(() => {});
-      },
-    },
-    read,
-  };
 }
 
 const expectedWorkflowInput = {
@@ -102,10 +83,9 @@ describe('startPlanGenerationAttempt', () => {
   });
 
   it('reserves with the retry status guard before starting', async () => {
-    const { run } = runWithWatchedReturnValue();
-    mocks.workflowStart.mockResolvedValue(run);
+    mocks.dispatch.mockResolvedValue({ kind: 'duplicate' });
 
-    await startOn('vercel');
+    await start();
 
     expect(mocks.reserveAttemptSlot).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -118,73 +98,34 @@ describe('startPlanGenerationAttempt', () => {
     );
   });
 
-  it.each(['vercel', 'cloudflare'] as const)(
-    'settles a reservation rejection on %s without starting anything',
-    async (runtime) => {
-      const rejection = {
-        reserved: false as const,
-        reason: 'in_progress' as const,
-      };
-      mocks.reserveAttemptSlot.mockResolvedValue(rejection);
-      mocks.settleReservationRejection.mockResolvedValue({
-        status: 'retryable_failure',
-        classification: 'rate_limit',
-        error: new Error('in progress'),
-      });
-
-      const result = await startOn(runtime);
-
-      expect(result).toEqual({
-        kind: 'not_started',
-        classification: 'rate_limit',
-      });
-      expect(mocks.settleReservationRejection).toHaveBeenCalledWith(
-        input,
-        rejection,
-        { startedAt: 1_000, clock: expect.any(Function) },
-      );
-      expect(mocks.workflowStart).not.toHaveBeenCalled();
-      expect(mocks.dispatch).not.toHaveBeenCalled();
-      expect(mocks.finalizeFailure).not.toHaveBeenCalled();
-    },
-  );
-
-  describe('PLAN_GENERATION_RUNTIME=vercel', () => {
-    it('starts the Vercel workflow and returns without reading run.returnValue', async () => {
-      const { run, read } = runWithWatchedReturnValue();
-      mocks.workflowStart.mockResolvedValue(run);
-
-      const result = await startOn('vercel');
-
-      expect(result).toEqual({ kind: 'started', attemptId: ATTEMPT_ID });
-      expect(mocks.workflowStart).toHaveBeenCalledWith(planGenerationWorkflow, [
-        expectedWorkflowInput,
-      ]);
-      expect(read).not.toHaveBeenCalled();
-      expect(mocks.dispatch).not.toHaveBeenCalled();
-      expect(mocks.finalizeFailure).not.toHaveBeenCalled();
+  it('settles a reservation rejection without starting anything', async () => {
+    const rejection = {
+      reserved: false as const,
+      reason: 'in_progress' as const,
+    };
+    mocks.reserveAttemptSlot.mockResolvedValue(rejection);
+    mocks.settleReservationRejection.mockResolvedValue({
+      status: 'retryable_failure',
+      classification: 'rate_limit',
+      error: new Error('in progress'),
     });
 
-    it('settles the reserved attempt as a retryable failure when start throws', async () => {
-      const startError = new Error('workflow unavailable');
-      mocks.workflowStart.mockRejectedValue(startError);
+    const result = await start();
 
-      const result = await startOn('vercel');
-
-      expect(result).toEqual({
-        kind: 'not_started',
-        classification: 'provider_error',
-      });
-      expect(mocks.finalizeFailure).toHaveBeenCalledWith(dbClient, {
-        reservation,
-        planId: PLAN_ID,
-        userId: USER_ID,
-        error: startError,
-      });
+    expect(result).toEqual({
+      kind: 'not_started',
+      classification: 'rate_limit',
     });
+    expect(mocks.settleReservationRejection).toHaveBeenCalledWith(
+      input,
+      rejection,
+      { startedAt: 1_000, clock: expect.any(Function) },
+    );
+    expect(mocks.dispatch).not.toHaveBeenCalled();
+    expect(mocks.finalizeFailure).not.toHaveBeenCalled();
   });
 
-  describe('PLAN_GENERATION_RUNTIME=cloudflare', () => {
+  describe('jobs Worker hand-off', () => {
     it.each([
       [{ kind: 'accepted', instanceId: `plan-${ATTEMPT_ID}` }],
       [{ kind: 'duplicate' }],
@@ -193,11 +134,10 @@ describe('startPlanGenerationAttempt', () => {
       async (dispatched) => {
         mocks.dispatch.mockResolvedValue(dispatched);
 
-        const result = await startOn('cloudflare');
+        const result = await start();
 
         expect(result).toEqual({ kind: 'started', attemptId: ATTEMPT_ID });
         expect(mocks.dispatch).toHaveBeenCalledWith(expectedWorkflowInput);
-        expect(mocks.workflowStart).not.toHaveBeenCalled();
         expect(mocks.finalizeFailure).not.toHaveBeenCalled();
       },
     );
@@ -205,7 +145,7 @@ describe('startPlanGenerationAttempt', () => {
     it('dispatches a body the Worker contract accepts', async () => {
       mocks.dispatch.mockResolvedValue({ kind: 'duplicate' });
 
-      await startOn('cloudflare');
+      await start();
 
       const sent = mocks.dispatch.mock.calls[0]?.[0];
       const wire = JSON.parse(JSON.stringify({ v: 1, ...(sent as object) }));
@@ -223,7 +163,7 @@ describe('startPlanGenerationAttempt', () => {
       async (dispatched, message) => {
         mocks.dispatch.mockResolvedValue(dispatched);
 
-        const result = await startOn('cloudflare');
+        const result = await start();
 
         expect(result).toEqual({
           kind: 'not_started',
@@ -237,14 +177,13 @@ describe('startPlanGenerationAttempt', () => {
             message: expect.stringMatching(message),
           }),
         });
-        expect(mocks.workflowStart).not.toHaveBeenCalled();
       },
     );
   });
 
   it('settles through the lifecycle service by default', async () => {
     const settleReservedAttemptFailure = vi.fn();
-    mocks.workflowStart.mockRejectedValue(new Error('down'));
+    mocks.dispatch.mockResolvedValue({ kind: 'failed' });
 
     await startPlanGenerationAttempt(
       {
@@ -253,7 +192,6 @@ describe('startPlanGenerationAttempt', () => {
         } as unknown as PlanLifecycleService,
         dbClient,
         correlationId: 'req-1',
-        runtime: 'vercel',
         input,
       },
       { ...deps(), finalizeFailure: undefined },

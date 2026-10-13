@@ -21,13 +21,6 @@ const DRAFT_GATE =
 const DOCS_CONFIG_PATH = '.circleci/docs-config.yml';
 const CODE_CONFIG_PATH = '.circleci/code-config.yml';
 const SHARED_CONFIG_PATH = '.circleci/shared-config.yml';
-const VERCEL_CONFIG = JSON.parse(
-  readFileSync(join(REPO_ROOT, 'vercel.json'), 'utf8'),
-) as {
-  $schema: string;
-  crons: Array<{ path: string; schedule: string }>;
-};
-
 type ContinuationSelection = {
   parameters: Record<string, boolean>;
   configs: Set<string>;
@@ -267,22 +260,5 @@ describe('CircleCI cheap-path continuation mapping', () => {
 
     expect(selected.parameters['code-changed']).toBe(true);
     expect(selected.configs.has(CODE_CONFIG_PATH)).toBe(true);
-  });
-});
-
-describe('Vercel native Git configuration', () => {
-  it('keeps the native schema and email crons without deployment settings', () => {
-    expect(VERCEL_CONFIG.$schema).toBe('https://openapi.vercel.sh/vercel.json');
-    expect(VERCEL_CONFIG).not.toHaveProperty('git');
-    expect(VERCEL_CONFIG.crons).toEqual([
-      {
-        path: '/api/cron/notifications/email?runKind=daily',
-        schedule: '0 14 * * *',
-      },
-      {
-        path: '/api/cron/notifications/email?runKind=weekly',
-        schedule: '30 14 * * 1',
-      },
-    ]);
   });
 });

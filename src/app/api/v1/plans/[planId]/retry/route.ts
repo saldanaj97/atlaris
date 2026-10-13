@@ -103,7 +103,7 @@ export function createRetryHandler(deps?: {
  * POST /api/v1/plans/:planId/retry
  *
  * Retries generation for a failed plan: reserves the next attempt and starts
- * it on `PLAN_GENERATION_RUNTIME`. Returns `202 { planId, attemptId }`; the
+ * it on the jobs Worker. Returns `202 { planId, attemptId }`; the
  * plan page polls `GET /api/v1/plans/:planId/status` for the outcome. The
  * route is a thin adapter for HTTP-level validation (ownership, plan status).
  */

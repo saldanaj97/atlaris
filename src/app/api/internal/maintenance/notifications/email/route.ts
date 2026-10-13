@@ -1,9 +1,8 @@
-import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
 import {
-  EmailNotificationDeliveryRunActionError,
-  startEmailNotificationDeliveryWorkflow,
-  type StartEmailNotificationDeliveryWorkflowResult,
-} from '@/features/notifications/email/start-email-notification-delivery-workflow';
+  dispatchEmailDeliveryToWorker,
+  type EmailDeliveryDispatchResult,
+} from '@/features/jobs/email-delivery-dispatch';
+import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
 import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import {
   ConflictError,
@@ -25,7 +24,7 @@ const DISABLED_RESULT = { ok: true as const, outcome: 'disabled' as const };
 
 export type EmailNotificationDeliveryRouteDeps = {
   readonly resolveDeliveryEnabled?: () => Promise<boolean>;
-  readonly startWorkflow?: typeof startEmailNotificationDeliveryWorkflow;
+  readonly dispatch?: typeof dispatchEmailDeliveryToWorker;
   readonly now?: () => Date;
 };
 
@@ -34,8 +33,7 @@ export function createEmailNotificationDeliveryPostRoute(
 ) {
   const resolveDeliveryEnabled =
     deps.resolveDeliveryEnabled ?? resolveEmailNotificationDeliveryEnabled;
-  const startWorkflow =
-    deps.startWorkflow ?? startEmailNotificationDeliveryWorkflow;
+  const dispatch = deps.dispatch ?? dispatchEmailDeliveryToWorker;
   const now = deps.now ?? (() => new Date());
 
   return createMaintenancePostRoute({
@@ -85,22 +83,37 @@ export function createEmailNotificationDeliveryPostRoute(
         return json(DISABLED_RESULT);
       }
 
-      let result: StartEmailNotificationDeliveryWorkflowResult;
-      try {
-        result = await startWorkflow(parsed.data);
-      } catch (error) {
-        if (error instanceof EmailNotificationDeliveryRunActionError) {
+      const dispatched: EmailDeliveryDispatchResult = await dispatch(
+        parsed.data,
+      );
+      switch (dispatched.kind) {
+        case 'accepted':
+          break;
+        case 'invalid_run_state':
           throw new ConflictError(
             'Email delivery run action is not valid for its current state.',
           );
+        case 'disabled':
+          return json(DISABLED_RESULT);
+        case 'failed':
+          throw new ServiceUnavailableError(
+            'Email notification workflow could not be started.',
+          );
+        default: {
+          const _exhaustive: never = dispatched;
+          return _exhaustive;
         }
-        throw error;
       }
-      if (result.outcome === 'failed_requires_resume') {
+      if (dispatched.outcome === 'failed_requires_resume') {
         throw new ServiceUnavailableError(
           'Email notification workflow could not be started.',
         );
       }
+      const result = {
+        outcome: dispatched.outcome,
+        runId: dispatched.runId,
+        workflowRunId: dispatched.instanceId,
+      };
       logger.info(
         {
           source: 'email_notifications',
