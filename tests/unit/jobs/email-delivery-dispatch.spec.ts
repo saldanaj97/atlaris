@@ -142,6 +142,7 @@ describe('dispatchEmailDeliveryToWorker', () => {
 
   it.each([
     [{ kind: 'rejected', status: 503, code: 'workflow_start_failed' }],
+    [{ kind: 'rejected', status: 503, code: 'workflow_instance_abandoned' }],
     [{ kind: 'rejected', status: 400, code: undefined }],
     [{ kind: 'rejected', status: 401, code: undefined }],
     [{ kind: 'rejected', status: 409, code: 'other' }],
