@@ -15,8 +15,9 @@ import {
 import { getSessionSafe } from '@/lib/auth/server';
 import { devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
-import { resolveSiteGate } from '@/lib/proxy/site-gate';
+import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
 import { currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 /**
  * Server component wrapper for the site header.
@@ -48,9 +49,10 @@ export default async function SiteHeader({
   /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
   loadAccountProfile?: boolean;
 } = {}) {
+  const bypassSiteGateCache = (await cookies()).has(FLAG_OVERRIDES_COOKIE);
   const [{ session }, siteGate] = await Promise.all([
     getSessionSafe(),
-    resolveSiteGate(),
+    resolveSiteGate({ bypassCache: bypassSiteGateCache }),
   ]);
   // Marketing pages stay live while a site gate is on. Render them signed out
   // so Clerk's account menu can't open a path around the gate redirect.

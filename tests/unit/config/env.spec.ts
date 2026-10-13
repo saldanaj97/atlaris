@@ -586,6 +586,18 @@ describe('Environment Configuration', () => {
         expect(appEnv.maintenanceMode).toBe(false);
       });
     });
+
+    describe('launchWaitlist', () => {
+      it('should return false when LAUNCH_WAITLIST is unset', () => {
+        expect(appEnv.launchWaitlist).toBe(false);
+      });
+
+      it('should return true when LAUNCH_WAITLIST is true', () => {
+        vi.stubEnv('LAUNCH_WAITLIST', 'true');
+
+        expect(appEnv.launchWaitlist).toBe(true);
+      });
+    });
   });
 
   describe('sentryEnv', () => {

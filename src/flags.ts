@@ -20,11 +20,10 @@ export const maintenanceMode = flag<boolean>({
 
 /**
  * Pre-launch gate: marketing pages stay live, app and auth routes go to /waitlist.
- * Fail-open: missing/unavailable evaluation must not close the app.
+ * No defaultValue: evaluation errors throw so the site gate falls back to LAUNCH_WAITLIST.
  */
 export const launchWaitlist = flag<boolean>({
   key: 'launch-waitlist',
-  defaultValue: false,
   adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
   description:
     'Send app and auth traffic to the launch waitlist page before launch.',

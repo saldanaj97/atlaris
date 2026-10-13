@@ -7,6 +7,11 @@ const mocks = vi.hoisted(() => ({
   getOptionalCheckoutBillingSignatureMock: vi.fn(),
   resolveSiteGateMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
+  cookiesHasMock: vi.fn(),
+}));
+
+vi.mock('next/headers', () => ({
+  cookies: async () => ({ has: mocks.cookiesHasMock }),
 }));
 
 vi.mock('@/app/(landing)/pricing/components/PricingCards.module.css', () => ({
@@ -32,6 +37,7 @@ vi.mock('@/features/billing/checkout-return-server', () => ({
 }));
 
 vi.mock('@/lib/proxy/site-gate', () => ({
+  FLAG_OVERRIDES_COOKIE: 'vercel-flag-overrides',
   resolveSiteGate: mocks.resolveSiteGateMock,
 }));
 
@@ -60,6 +66,7 @@ describe('PricingPage', () => {
     );
     mocks.shouldUseClerkUiMock.mockReturnValue(true);
     mocks.resolveSiteGateMock.mockResolvedValue(null);
+    mocks.cookiesHasMock.mockReturnValue(false);
   });
 
   afterEach(() => {
@@ -108,6 +115,22 @@ describe('PricingPage', () => {
       expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
         expect.objectContaining({ appClosed: true }),
       );
+    },
+  );
+
+  it.each([false, true])(
+    'bypasses the site gate cache only when the flag override cookie is present (%s)',
+    async (hasOverrides) => {
+      mocks.cookiesHasMock.mockReturnValue(hasOverrides);
+
+      await renderPricingPage();
+
+      expect(mocks.cookiesHasMock).toHaveBeenCalledWith(
+        'vercel-flag-overrides',
+      );
+      expect(mocks.resolveSiteGateMock).toHaveBeenCalledWith({
+        bypassCache: hasOverrides,
+      });
     },
   );
 

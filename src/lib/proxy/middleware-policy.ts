@@ -19,7 +19,6 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/health/worker',
-  '/api/internal/jobs/regeneration/process',
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
 
@@ -59,6 +58,10 @@ function isSignedEmailUnsubscribeRoute(path: string): boolean {
   return path === PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH;
 }
 
+function isInternalWorkerRoute(path: string): boolean {
+  return path === '/api/internal' || path.startsWith('/api/internal/');
+}
+
 export function isProtectedRoute(pathname: string): boolean {
   const path = stripTrailingSlash(pathname);
   // Payment/auth provider webhooks bypass Clerk; route-level signatures apply.
@@ -71,7 +74,7 @@ export function isProtectedRoute(pathname: string): boolean {
   }
   // Internal worker/maintenance routes bypass Clerk; each route must enforce
   // its own worker token auth (see assertInternalWorkerAccess).
-  if (path === '/api/internal' || path.startsWith('/api/internal/')) {
+  if (isInternalWorkerRoute(path)) {
     return false;
   }
   // Worker health probes authenticate via route-level worker token, not Clerk.
@@ -85,6 +88,20 @@ function isSiteGatePage(path: string): boolean {
   return (Object.values(SITE_GATE_PAGES) as string[]).includes(path);
 }
 
+/** Paths the site gate never redirects, so the proxy can skip flag evaluation. */
+export function isSiteGateExempt(pathname: string): boolean {
+  const path = stripTrailingSlash(pathname);
+  return (
+    MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
+      path.startsWith(prefix),
+    ) ||
+    // Internal worker/maintenance routes enforce their own worker token auth.
+    isInternalWorkerRoute(path) ||
+    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path) ||
+    (MAINTENANCE_MODE_MARKETING_PATHS as readonly string[]).includes(path)
+  );
+}
+
 /** Redirect target while a site gate is on (or off), or null when the route is allowed. */
 export function resolveSiteGateRedirectPath(
   gate: SiteGate | null,
@@ -92,12 +109,7 @@ export function resolveSiteGateRedirectPath(
   options?: { allowGatePagePreview?: boolean },
 ): SiteGatePage | '/landing' | '/' | null {
   const path = stripTrailingSlash(pathname);
-  if (
-    MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
-      path.startsWith(prefix),
-    ) ||
-    (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path)
-  ) {
+  if (isSiteGateExempt(path)) {
     return null;
   }
 
@@ -107,10 +119,7 @@ export function resolveSiteGateRedirectPath(
   }
 
   const target = SITE_GATE_PAGES[gate];
-  if (
-    path === target ||
-    (MAINTENANCE_MODE_MARKETING_PATHS as readonly string[]).includes(path)
-  ) {
+  if (path === target) {
     return null;
   }
   // `/` sends signed-in users to the dashboard; keep everyone on the landing page.

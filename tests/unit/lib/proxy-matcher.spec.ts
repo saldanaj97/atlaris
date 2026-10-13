@@ -23,6 +23,13 @@ describe('proxy matcher', () => {
     expect(matchesProxyMatcher('/favicon.ico')).toBe(false);
   });
 
+  it('excludes text and XML files outside the API', () => {
+    expect(matchesProxyMatcher('/robots.txt')).toBe(false);
+    expect(matchesProxyMatcher('/sitemap.xml')).toBe(false);
+    expect(matchesProxyMatcher('/api/foo.xml')).toBe(true);
+    expect(matchesProxyMatcher('/plans')).toBe(true);
+  });
+
   it('only excludes the PostHog ingest path and its descendants', () => {
     expect(matchesProxyMatcher('/ingest')).toBe(false);
     expect(matchesProxyMatcher('/ingest/array')).toBe(false);

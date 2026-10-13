@@ -26,6 +26,7 @@ interface AppEnv {
   readonly isTest: boolean;
   readonly url: string;
   readonly maintenanceMode: boolean;
+  readonly launchWaitlist: boolean;
 }
 
 export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
@@ -82,6 +83,9 @@ export function createAppEnv(env: EnvSource, access: ServerEnvAccess): AppEnv {
     },
     get maintenanceMode(): boolean {
       return toBoolean(access.getServerOptional('MAINTENANCE_MODE'), false);
+    },
+    get launchWaitlist(): boolean {
+      return toBoolean(access.getServerOptional('LAUNCH_WAITLIST'), false);
     },
   };
 }
