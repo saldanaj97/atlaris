@@ -16,7 +16,7 @@ Cleanup operations:
 
 | Variable                   | Purpose                                                                           | Production expectation                                                            |
 | -------------------------- | --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| `PLAN_CLEANUP_ENABLED`     | Master switch for the plan cleanup HTTP endpoint (defaults to `false` when unset) | Set `true` in Vercel Production                                                   |
+| `PLAN_CLEANUP_ENABLED`     | Master switch for the manual plan cleanup HTTP endpoint only (defaults to `false` when unset); the Worker cron uses `JOB_PLAN_CLEANUP_ENABLED` | Set `true` in Vercel Production                                                   |
 | `MAINTENANCE_WORKER_TOKEN` | Bearer token for internal route auth                                              | Set in Vercel Production for manual runs                                          |
 
 ## Scheduled cleanup (Cloudflare Worker)
@@ -110,5 +110,5 @@ Verification steps:
 
 1. **Plans stuck in generating:** verify the Worker cron is running, manually trigger the internal endpoint, and inspect application logs for `stuck_plans_cleanup_partial_failure` errors.
 2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm Bearer or `x-maintenance-worker-token` on manual triggers.
-3. **Emergency pause:** set `PLAN_CLEANUP_ENABLED=false` while investigating. Stuck plans will accumulate until cleanup is re-enabled.
+3. **Emergency pause:** set `JOB_PLAN_CLEANUP_ENABLED=false` (or `JOBS_PAUSED=true` to pause every Worker job) on the jobs Worker. This is a Cloudflare dashboard or wrangler step you run yourself. `PLAN_CLEANUP_ENABLED=false` only disables the manual Vercel route. Stuck plans accumulate until cleanup is re-enabled.
 4. **Partial cleanup failure (500):** inspect logs for `stuck_plans_cleanup_partial_failure`; this indicates a locked plan was not updated — investigate concurrent generation state changes or DB issues before re-triggering.
