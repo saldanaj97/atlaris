@@ -8,6 +8,7 @@ import {
   reconcileClerkBillingEntitlements,
 } from '@/features/billing/clerk-billing/reconciliation';
 import { createLogger } from '@/lib/logging/logger';
+import { ClerkAPIResponseError } from '@clerk/nextjs/errors';
 import { describe, expect, it, vi } from 'vitest';
 
 type ServiceRoleDb = typeof serviceRoleDb;
@@ -97,6 +98,13 @@ function makePaidPaymentAttemptEvent(): WebhookEvent {
       status: 'paid',
     },
   } as unknown as WebhookEvent;
+}
+
+function clerkApiError(status: number, code: string) {
+  return new ClerkAPIResponseError('Clerk API error', {
+    data: [{ code, message: code, long_message: code }],
+    status,
+  });
 }
 
 function makeLogger() {
@@ -407,6 +415,62 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.execute).not.toHaveBeenCalled();
     expect(db.update).not.toHaveBeenCalled();
     expect(db.delete).toHaveBeenCalledTimes(1);
+  });
+
+  it('acknowledges a billing event whose Clerk payer was deleted', async () => {
+    const db = makeDb({});
+    const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(
+      clerkApiError(404, 'resource_not_found'),
+    );
+    const logger = makeLogger();
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_payer_deleted', {
+        clerkClient,
+        db,
+        logger,
+      }),
+    ).resolves.toEqual({
+      status: 'inserted',
+      result: 'skipped_payer_deleted',
+    });
+
+    expect(db.transaction).toHaveBeenCalledTimes(1);
+    expect(db.execute).not.toHaveBeenCalled();
+    expect(db.update).not.toHaveBeenCalled();
+    expect(db.insert).toHaveBeenCalledTimes(2);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        eventId: 'evt_payer_deleted',
+        payerUserId: 'user_missing',
+      }),
+      'Clerk Billing payer not found in Clerk; acknowledged without projection',
+    );
+  });
+
+  it.each([
+    ['a Clerk 500', () => clerkApiError(500, 'internal_clerk_error')],
+    ['a Clerk 429', () => clerkApiError(429, 'too_many_requests')],
+    ['a Clerk 404 for another resource', () => clerkApiError(404, 'not_found')],
+    ['a network failure', () => new TypeError('fetch failed')],
+  ])('leaves %s on refresh retryable', async (_label, makeError) => {
+    const error = makeError();
+    const db = makeDb({});
+    const clerkClient = makeClerkClient();
+    clerkClient.billing.getUserBillingSubscription.mockRejectedValueOnce(error);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(makeBillingEvent(), 'evt_retryable', {
+        clerkClient,
+        db,
+        logger: makeLogger(),
+      }),
+    ).rejects.toBe(error);
+
+    expect(db.transaction).not.toHaveBeenCalled();
+    expect(db.insert).toHaveBeenCalledTimes(1);
+    expect(db.update).not.toHaveBeenCalled();
   });
 
   it('times out a hung Clerk refresh without completing the webhook', async () => {

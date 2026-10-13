@@ -69,6 +69,7 @@ type ClerkWebhookProjectionSource =
 
 type ClerkWebhookApplyResult =
   | ClerkBillingApplyResult
+  | 'skipped_payer_deleted'
   | ClerkUserProjectionApplyResult;
 
 export type ApplyVerifiedClerkBillingEventResult =
@@ -121,6 +122,26 @@ async function withBoundedTimeout<T>(
       clearTimeout(timer);
     }
   }
+}
+
+function isClerkResourceNotFound(error: unknown): boolean {
+  if (
+    !error ||
+    typeof error !== 'object' ||
+    !('status' in error) ||
+    error.status !== 404 ||
+    !('errors' in error) ||
+    !Array.isArray(error.errors)
+  ) {
+    return false;
+  }
+  return error.errors.some(
+    (entry: unknown) =>
+      !!entry &&
+      typeof entry === 'object' &&
+      'code' in entry &&
+      entry.code === 'resource_not_found',
+  );
 }
 
 function postgresErrorCode(error: unknown): string | undefined {
@@ -292,12 +313,25 @@ async function finalizeClerkWebhookEvent(
       ? args.projectionSource.source
       : null;
 
+  let payerDeleted = false;
   if (billingSource !== null && billingSource.payerUserId !== null) {
-    billingSource = await refreshClerkBillingSource(billingSource, deps);
+    try {
+      billingSource = await refreshClerkBillingSource(billingSource, deps);
+    } catch (error) {
+      // A deleted Clerk payer can never refresh; acknowledge instead of retrying.
+      if (!isClerkResourceNotFound(error)) {
+        throw error;
+      }
+      payerDeleted = true;
+    }
   }
 
   return db.transaction(async (tx) => {
-    if (billingSource !== null && billingSource.payerUserId !== null) {
+    if (
+      !payerDeleted &&
+      billingSource !== null &&
+      billingSource.payerUserId !== null
+    ) {
       await acquireClerkBillingPayerLock(tx, billingSource.payerUserId, deps);
     }
 
@@ -346,6 +380,17 @@ async function finalizeClerkWebhookEvent(
     }
 
     if (args.projectionSource.kind === 'billing') {
+      if (payerDeleted) {
+        deps.logger.warn(
+          {
+            eventId: args.eventId,
+            payerUserId: args.projectionSource.source.payerUserId,
+            type: args.event.type,
+          },
+          'Clerk Billing payer not found in Clerk; acknowledged without projection',
+        );
+        return { status: 'inserted', result: 'skipped_payer_deleted' };
+      }
       const result = await applyClerkBillingSource(
         billingSource ?? args.projectionSource.source,
         {

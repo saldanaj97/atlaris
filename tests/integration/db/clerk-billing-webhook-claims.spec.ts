@@ -8,6 +8,7 @@ import {
   ClerkBillingRefreshTimeoutError,
   reconcileClerkBillingEntitlements,
 } from '@/features/billing/clerk-billing/reconciliation';
+import { ClerkAPIResponseError } from '@clerk/nextjs/errors';
 import {
   clerkWebhookEventClaims,
   clerkWebhookEvents,
@@ -682,6 +683,56 @@ describe('Clerk billing webhook claims', () => {
         logger: logger(),
       }),
     ).resolves.toEqual({ status: 'inserted', result: 'updated' });
+  });
+
+  it('completes a deleted Clerk payer once and skips its redelivery', async () => {
+    await seedBillingUser();
+    const eventId = 'evt_claim_payer_deleted';
+    const deletedGet = vi.fn().mockRejectedValue(
+      new ClerkAPIResponseError('Not Found', {
+        data: [
+          {
+            code: 'resource_not_found',
+            message: 'not found',
+            long_message: 'not found',
+          },
+        ],
+        status: 404,
+      }),
+    );
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
+        clerkClient: { billing: { getUserBillingSubscription: deletedGet } },
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({
+      status: 'inserted',
+      result: 'skipped_payer_deleted',
+    });
+    await expect(currentTier('billing_claim_user')).resolves.toBe('starter');
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEvents.eventId })
+        .from(clerkWebhookEvents)
+        .where(eq(clerkWebhookEvents.eventId, eventId)),
+    ).resolves.toEqual([{ eventId }]);
+    await expect(
+      db
+        .select({ eventId: clerkWebhookEventClaims.eventId })
+        .from(clerkWebhookEventClaims)
+        .where(eq(clerkWebhookEventClaims.eventId, eventId)),
+    ).resolves.toEqual([]);
+
+    await expect(
+      applyVerifiedClerkBillingEvent(billingEvent(), eventId, {
+        clerkClient: { billing: { getUserBillingSubscription: deletedGet } },
+        db,
+        logger: logger(),
+      }),
+    ).resolves.toEqual({ status: 'duplicate' });
+    expect(deletedGet).toHaveBeenCalledTimes(1);
   });
 
   it('lets the legacy ledger win without allowing a stale claimant to project', async () => {
