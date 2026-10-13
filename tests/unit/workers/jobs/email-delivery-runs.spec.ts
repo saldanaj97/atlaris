@@ -167,8 +167,24 @@ describe('handleEmailDeliveryRunsCommand', () => {
       duplicate: true,
       runId: RUN_ID,
       status: 'running',
+      instanceId: 'cf:other',
     });
     expect(workflow.create).not.toHaveBeenCalled();
+  });
+
+  it('reports a null instanceId for an existing run that no instance has claimed', async () => {
+    runs.reserve.mockResolvedValue({
+      outcome: 'existing',
+      run: runRow({ status: 'completed', workflowRunId: null }),
+    });
+    const { deps } = makeDeps();
+
+    const response = await handleEmailDeliveryRunsCommand(post(START), deps);
+
+    await expect(response.json()).resolves.toMatchObject({
+      status: 'completed',
+      instanceId: null,
+    });
   });
 
   it('treats an existing instance as a duplicate and leaves the run alone', async () => {

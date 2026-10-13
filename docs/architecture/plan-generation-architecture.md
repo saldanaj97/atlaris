@@ -5,13 +5,13 @@
 
 ## Overview
 
-Plan generation starts with `POST /api/v1/plans` (create) or `POST /api/v1/plans/:planId/retry` (retry). The request creates the plan (create only), reserves a generation attempt, hands the attempt to the runtime that `PLAN_GENERATION_RUNTIME` names, and returns `202 { planId, attemptId }`. Generation never runs on the request. The client opens the plan page, which polls `GET /api/v1/plans/:planId/status` until the plan is `ready` or `failed`.
+Plan generation starts with `POST /api/v1/plans` (create) or `POST /api/v1/plans/:planId/retry` (retry). The request creates the plan (create only), reserves a generation attempt, hands the attempt to the jobs Worker, and returns `202 { planId, attemptId }`. Generation never runs on the request. The client opens the plan page, which polls `GET /api/v1/plans/:planId/status` until the plan is `ready` or `failed`.
 
 At runtime, the pipeline combines:
 
 - Clerk Auth for user identity
 - request-scoped RLS database access via `getDb()`
-- a Vercel Workflow SDK run or a Cloudflare Workflow instance per attempt (`PLAN_GENERATION_RUNTIME`)
+- a Cloudflare Workflow instance per attempt on the jobs Worker
 - OpenRouter-backed streaming model generation
 - strict parsing and pacing before persistence
 - generation execution without DB settlement (orchestrator)
@@ -25,12 +25,11 @@ User submits create form
   → auth + aiGeneration rate limit
   → validate and normalize input
   → durable generation-window checks
-  → read PLAN_GENERATION_RUNTIME (invalid value: 500, nothing created)
   → create learning_plans row
   → reserve attempt slot
-  → start the attempt: vercel → planGenerationWorkflow, cloudflare → signed POST /v1/plan-generation/start
+  → start the attempt: signed POST /v1/plan-generation/start to the jobs Worker
   → 202 { planId, attemptId }; client navigates to /plans/:planId
-  → (runtime) call AI provider → parse → pace → lifecycle finalizes attempt, content, plan status, and usage in one transaction
+  → (Worker) call AI provider → parse → pace → lifecycle finalizes attempt, content, plan status, and usage in one transaction
   → plan page polls GET /api/v1/plans/:planId/status until ready or failed
 ```
 
@@ -63,7 +62,7 @@ This separation between external auth identity and internal app user row is not 
 | File                                                       | Responsibility                                                                        |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------- |
 | `src/features/plans/session/plan-generation-session.ts`    | Session boundary: `startCreate` / `startRetry`, error mapping                         |
-| `src/features/plans/start-plan-generation-attempt.ts`      | Reserve the attempt and hand it to `PLAN_GENERATION_RUNTIME`; settle when not started |
+| `src/features/plans/start-plan-generation-attempt.ts`      | Reserve the attempt and hand it to the jobs Worker; settle when not started    |
 | `src/features/jobs/plan-generation-dispatch.ts`            | Signed `POST /v1/plan-generation/start` to the jobs Worker; never throws              |
 | `src/features/plans/session/usePlanGenerationSession.ts`   | Client create/retry request (`starting` → `started` on 202)                           |
 | `src/app/(app)/plans/[id]/components/PlanPendingState.tsx` | Plan page: status polling (`usePlanStatus`) and retry (`useRetryGeneration`)          |
@@ -104,23 +103,22 @@ This separation between external auth identity and internal app user row is not 
 1. authenticated user rate limiting for `aiGeneration` (`requestBoundary.route`)
 2. request validation and normalization (`parseCreatePlanRequest`, `createLearningPlanSchema`)
 3. durable generation-window checks (`checkPlanGenerationRateLimit` using `src/shared/constants/generation.ts`)
-4. `PLAN_GENERATION_RUNTIME` read, before anything is created, so an invalid value cannot strand a plan or a reservation
-5. plan-row creation (`lifecycleService.createPlan`)
-6. attempt reservation (`reserveAttemptSlot`)
-7. the runtime start (`startPlanGenerationAttempt`), then `202 { planId, attemptId }` with the generation-window rate-limit headers
+4. plan-row creation (`lifecycleService.createPlan`)
+5. attempt reservation (`reserveAttemptSlot`)
+6. the Worker start (`startPlanGenerationAttempt`), then `202 { planId, attemptId }` with the generation-window rate-limit headers
 
-`POST /api/v1/plans/:planId/retry` runs the same steps, except that steps 2 and 5 become ownership and status checks: only `failed` and `pending_retry` plans may retry (`400 VALIDATION_ERROR` otherwise), and the reservation re-checks those statuses inside its transaction.
+`POST /api/v1/plans/:planId/retry` runs the same steps, except that steps 2 and 4 become ownership and status checks: only `failed` and `pending_retry` plans may retry (`400 VALIDATION_ERROR` otherwise), and the reservation re-checks those statuses inside its transaction.
 
 | Start outcome                                                                                                                          | Settlement                                                                                    | Response                                                            |
 | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| Vercel `start()` resolved, or the Worker answered `202` or `200 duplicate`                                                             | None; the runtime owns the attempt                                                            | `202 { planId, attemptId }`                                         |
+| The Worker answered `202` or `200 duplicate`                                                                                           | None; the Worker owns the attempt                                                             | `202 { planId, attemptId }`                                         |
 | Reservation rejected (cap, concurrent attempt, status changed)                                                                         | `settleReservationRejection`                                                                  | Status from `PLAN_CREATION_FAILURE_HTTP_MAP` for the classification |
-| Vercel `start()` threw; Worker `503 jobs_paused` / `job_disabled`; any other Worker non-2xx, timeout, network error, or missing config | `settleReservedAttemptFailure` as a retryable `provider_error` (the plan leaves `generating`) | `503 GENERATION_FAILED`                                             |
+| Worker `503 jobs_paused` / `job_disabled`; any other Worker non-2xx, timeout, network error, or missing config                         | `settleReservedAttemptFailure` as a retryable `provider_error` (the plan leaves `generating`) | `503 GENERATION_FAILED`                                             |
 | Unexpected error after the plan exists                                                                                                 | The plan is marked failed (`onUnhandledError`)                                                | `503 GENERATION_FAILED`                                             |
 
 Every not-started response uses the canonical error shape `{ error, code, classification, details: { planId, retryable } }`. `error` and `code` come from the classification's failure presentation (`getFailurePresentation`). `details.planId` lets the client open the plan page with "Generation failed. You can retry from the plan page.".
 
-On `vercel` the request returns as soon as `start()` resolves and never reads `run.returnValue`. A Vercel run that throws after it started is therefore not settled by the request: the stuck-plan cleanup (`cleanupStuckPlans`, 15 minutes) marks the plan failed. On `cloudflare` the Workflow's `fail` step settles it right away.
+The request returns as soon as the Worker accepts the command. A Workflow instance that throws after it started is settled by its `fail` step right away; the Worker's stuck-plan cleanup (`cleanupStuckPlans`, every 15 minutes) is the backstop.
 
 ### 2) Run generation execution
 
@@ -186,20 +184,13 @@ These classifications drive logging, user messaging, and retry decisions.
 
 ## Durable workflows
 
-Both runtimes run the same lifecycle halves for a reserved attempt. `PLAN_GENERATION_RUNTIME` (`jobsWorkerEnv.planGenerationRuntime`) picks one per request:
+Plan create and retry attempts always run on the jobs Worker. The app sends the signed `POST /v1/plan-generation/start` through `dispatchPlanGenerationToWorker`, and the Worker runs the Cloudflare Workflow `PlanGenerationWorkflow`. There is no runtime switch and no Vercel Workflow path for create and retry. Plan **regeneration** is separate: it still runs on the Vercel Workflow SDK (see [Workflow SDK](./workflow-sdk.md)).
 
-| Value            | Start                                                                      | Runs                                           |
-| ---------------- | -------------------------------------------------------------------------- | ---------------------------------------------- |
-| unset / `vercel` | `workflow/api.start(planGenerationWorkflow, …)`                            | Vercel Workflow SDK (`planGenerationWorkflow`) |
-| `cloudflare`     | `dispatchPlanGenerationToWorker` → signed `POST /v1/plan-generation/start` | Cloudflare Workflow `PlanGenerationWorkflow`   |
+Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For correlation, see [Workflow SDK](./workflow-sdk.md).
 
-Any other value is an `EnvValidationError` (HTTP 500) before a plan or attempt exists. **Rollback:** unset `PLAN_GENERATION_RUNTIME` (or set `vercel`) and redeploy; new attempts start on Vercel while running Worker instances finish and settle through lifecycle finalization.
+### Cloudflare Workflow path (B6)
 
-Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For file layout and correlation, see [Workflow SDK](./workflow-sdk.md).
-
-### Cloudflare Workflow path (B6, staging first)
-
-The jobs Worker (`workers/jobs`) runs plan create/retry generation as the Cloudflare Workflow `PlanGenerationWorkflow` (`atlaris-plan-generation-<env>`, binding `PLAN_GENERATION_WORKFLOW`) when the app sets `PLAN_GENERATION_RUNTIME=cloudflare`. Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
+The jobs Worker (`workers/jobs`) runs plan create/retry generation as the Cloudflare Workflow `PlanGenerationWorkflow` (`atlaris-plan-generation-<env>`, binding `PLAN_GENERATION_WORKFLOW`). Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
 
 **Start.** Signed `POST /v1/plan-generation/start` with `{ v: 1, ...PlanGenerationWorkflowInput }` (`planGenerationStartCommandSchema`, `src/lib/jobs-worker/contract.ts`): `planId`, `userId`, `tier`, `input`, `generationPurpose` (`initial` only), `modelOverride`, `correlationId`, the reservation from `toSerializableReservation`, and the optional `allowedGenerationStatuses` / `requiredGenerationStatus`. The app reserves the attempt first (`startPlanGenerationAttempt`) and sends the command through `dispatchPlanGenerationToWorker`: one attempt, 10-second timeout, no retry (Decision 4). Responses: `202 { accepted, instanceId }`, `200 { accepted, duplicate: true }` when the instance already exists, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `503 { code: "workflow_start_failed" }`. Handler: `workers/jobs/src/http/plan-generation-start.ts`. Instance ID: `plan-<attemptId>`.
 
@@ -208,47 +199,47 @@ The jobs Worker (`workers/jobs`) runs plan create/retry generation as the Cloudf
 | Step              | Work                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | Retries                           |
 | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
 | `record-workflow` | `mergeAttemptWorkflowMetadata` writes `{ provider: 'cloudflare-workflow', runId: <instanceId>, startedAt }` to `generation_attempts.metadata.workflow`.                                                                                                                                                                                                                                                                                                               | 3, exponential                    |
-| `generate`        | Switch off → stop before the provider (`disabled`). Otherwise `PlanLifecycleService.runGenerationWithReservation`, the provider half of the Vercel step: replay check (an attempt already `success` or `failure` ends the run), OpenRouter call under the adaptive timeout, parse, pace. Provider and parse failures come back classified as on Vercel. Returns the paced modules, provider metadata, and usage. Step timeout: AI base + extension timeout plus 60 s. | 0 (never repeats a provider call) |
-| `finalize`        | `PlanLifecycleService.settleGenerationResult`, the settlement half of the Vercel step: `finalizeSuccess` / `finalizeFailure` in one transaction with usage exactly as today, then the first two modules' lessons start through `createWorkflowModuleLessonStarter` (the lessons Workflow). A `disabled` run settles the attempt as a retryable `provider_error` (Decision 7). A retry first repeats the replay check and stops if its commit landed.                  | 2 (transient DB only)             |
-| `fail`            | Runs after any thrown step. Unless the attempt is already finalized, settles it as a retryable `provider_error`, as the app does when a Vercel run fails.                                                                                                                                                                                                                                                                                                             | 3                                 |
+| `generate`        | Switch off → stop before the provider (`disabled`). Otherwise `PlanLifecycleService.runGenerationWithReservation`, the provider half of a generation attempt: replay check (an attempt already `success` or `failure` ends the run), OpenRouter call under the adaptive timeout, parse, pace. Provider and parse failures come back classified. Returns the paced modules, provider metadata, and usage. Step timeout: AI base + extension timeout plus 60 s. | 0 (never repeats a provider call) |
+| `finalize`        | `PlanLifecycleService.settleGenerationResult`, the settlement half: `finalizeSuccess` / `finalizeFailure` in one transaction with usage exactly as today, then the first two modules' lessons start through `createWorkflowModuleLessonStarter` (the lessons Workflow). A `disabled` run settles the attempt as a retryable `provider_error` (Decision 7). A retry first repeats the replay check and stops if its commit landed.                  | 2 (transient DB only)             |
+| `fail`            | Runs after any thrown step. Unless the attempt is already finalized, settles it as a retryable `provider_error`.                                                                                                                                                                                                                                                                                                             | 3                                 |
 
-Parse failures are never retried: invalid JSON settles as a retryable `provider_error` and a schema failure as a permanent `validation` failure with usage, the same classification and messaging as on Vercel. Each step opens its own database pool (`withStepDb`); Worker paths never use the service-role singleton. Each step execution writes one log line `{ job: "plan-generation", step, instanceId, planId, attemptId, outcome, errorKind?, taskCount? }` for per-step CPU measurement (Decision 9).
+Parse failures are never retried: invalid JSON settles as a retryable `provider_error` and a schema failure as a permanent `validation` failure with usage, the app's standard classification and messaging. Each step opens its own database pool (`withStepDb`); Worker paths never use the service-role singleton. Each step execution writes one log line `{ job: "plan-generation", step, instanceId, planId, attemptId, outcome, errorKind?, taskCount? }` for per-step CPU measurement (Decision 9).
 
-**Runtime marker.** `generation_attempts.metadata.workflow.provider` is `workflow-sdk` (Vercel) or `cloudflare-workflow` (Worker); `runId` is the Vercel run ID or the Cloudflare instance ID. Settlement passes the marker back as `workflowMetadata`, so the finalized attempt keeps it with `completedAt`.
+**Runtime marker.** `generation_attempts.metadata.workflow.provider` is `cloudflare-workflow` for create and retry (`workflow-sdk` for regeneration attempts and older rows); `runId` is the Cloudflare instance ID or the Vercel run ID. Settlement passes the marker back as `workflowMetadata`, so the finalized attempt keeps it with `completedAt`.
 
 **Settings.** Worker switch `JOB_PLAN_GENERATION_ENABLED` (dashboard variable; off unless `true`) and `JOBS_PAUSED`; lessons after success also need `JOB_MODULE_LESSONS_ENABLED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The step timeout follows the Worker's `AI_TIMEOUT_*` variables (app defaults when unset).
 
-**Staging cutover.** Set `JOB_PLAN_GENERATION_ENABLED=true` on the staging Worker, then set `PLAN_GENERATION_RUNTIME=cloudflare` (with `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`) on the app's staging environment. Run create and retry journeys with the real provider and record CPU per step from Workers Logs (Decision 9). **Rollback:** unset `PLAN_GENERATION_RUNTIME`; running Worker instances finish and settle through lifecycle finalization. Production waits for explicit approval.
+**Availability.** The app needs `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, and the Worker needs `JOB_PLAN_GENERATION_ENABLED=true`. When the Worker is paused, the switch is off, or the command fails, the start settles the reserved attempt as a retryable `provider_error` and the request returns `503 GENERATION_FAILED`.
 
 ## Module lesson generation (separate pipeline)
 
 This path is **not** the streamed plan creator. It fills structured lesson content for **one module** in a single provider batch (all tasks in that module), after the plan exists and tasks are laid out.
 
-Production uses a **durable workflow**: the POST handler runs load/preflight, then a service-role **provisional claim** before `workflow/api.start`, and returns quickly. On start failure the start helper reverts that claim. The workflow claim step attaches `workflow.runId` (or describes a concurrent outcome). Provider work and persist happen inside workflow steps. The client polls a status endpoint until the module leaves `generating`.
+Production uses a **durable workflow on the jobs Worker**: the POST handler runs load/preflight, then a service-role **provisional claim** before the signed `POST /v1/module-lessons/start`, and returns quickly. On start failure the start helper reverts that claim. The Workflow's claim step attaches `workflow.runId` (or describes a concurrent outcome). Provider work and persist happen inside Workflow steps. The client polls a status endpoint until the module leaves `generating`.
 
 ### Entry points
 
 | Method | Path                                                              | Role                                                        |
 | ------ | ----------------------------------------------------------------- | ----------------------------------------------------------- |
-| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, provisional claim, start workflow          |
+| `POST` | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` | Auth, preflight, provisional claim, start Worker workflow   |
 | `GET`  | `/api/v1/plans/:planId/modules/:moduleId/lesson-content/status`   | Ownership-scoped poll for status + optional `workflowRunId` |
 
 - Handler factory: `createModuleLessonContentGenerateHandler` in `src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts`
 - Start orchestration: `startModuleLessonGeneration` in `src/features/lesson-content/start-module-lesson-generation-workflow.ts`
-- Workflow: `moduleLessonGenerationWorkflow` → `claimModuleLessonGenerationStep` → `runModuleLessonGenerationStep` (`src/features/lesson-content/workflows/`)
-- Post-claim work: `runModuleLessonGenerationWork` in `src/features/lesson-content/run-module-lesson-generation-work.ts`
+- Workflow: `ModuleLessonsWorkflow` on the jobs Worker (`workers/jobs/src/workflows/module-lessons/run.ts`)
+- Shared domain phases and `runModuleLessonGenerationWork`: `src/features/lesson-content/run-module-lesson-generation-work.ts`
 - Client poll: `useModuleLessonGeneration` in `src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts` (≈2.5s interval, backoff after 20 polls, max interval 60s)
 
-Tests and the POST handler use `startModuleLessonGeneration` (`src/features/lesson-content/start-module-lesson-generation-workflow.ts`): flag fail-closed; `loadModuleLessonGenerationContext(params.dbClient, …)` + `classifyModuleLessonGenerationPreflight`; service-role provisional `claimModuleLessonGenerationOrDescribe` (`deps.dbClient ?? serviceRoleDb`; the generate handler does not pass `deps.dbClient`); then `workflow/api.start(moduleLessonGenerationWorkflow, …)`. A thrown start reverts the provisional claim via `revertModuleLessonGeneratingToNotGenerated`. Preflight `already_ready` / `in_flight` / `locked` / `not_found`, or claim `already_ready` / `in_flight` / `not_found`, return without starting. There is no sync `generateModuleLessons` helper.
+Tests and the POST handler use `startModuleLessonGeneration` (`src/features/lesson-content/start-module-lesson-generation-workflow.ts`): flag fail-closed; `loadModuleLessonGenerationContext(params.dbClient, …)` + `classifyModuleLessonGenerationPreflight`; service-role provisional `claimModuleLessonGenerationOrDescribe` (`deps.dbClient ?? serviceRoleDb`; the generate handler does not pass `deps.dbClient`); then `dispatchModuleLessonsToWorker`. A refused or failed command reverts the provisional claim via `revertModuleLessonGeneratingToNotGenerated`. Preflight `already_ready` / `in_flight` / `locked` / `not_found`, or claim `already_ready` / `in_flight` / `not_found`, return without starting. There is no sync `generateModuleLessons` helper.
 
 ### Preconditions and guards
 
 - **Ownership:** generate and status routes call `requireOwnedPlanById` before work.
 - **Unlock rule:** `loadModuleLessonGenerationContext` sets `isUnlocked: true` when the module exists. Sequential earlier-module completion is not a generate gate, so modules are clickable.
-- **Preflight on POST:** `loadModuleLessonGenerationContext(params.dbClient, …)` then `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` (only when a loaded context reports `isUnlocked: false`) / `already_ready` / `in_flight` / `eligible` using the request RLS client. The `locked` branch is not based on earlier-module completion. Non-`eligible` results return immediately — no claim and no `workflow/api.start`.
-- **Provisional claim (start helper, before `workflow/api.start`):** `claimModuleLessonGenerationOrDescribe` on `deps.dbClient ?? serviceRoleDb` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `batchRequestId` (no `workflow.runId` yet). Concurrent `generating` → `in_flight`; `ready` → `already_ready`; missing owned ready plan → `not_found`. Those kinds return without starting.
-- **Workflow-step claim:** `claimModuleLessonGenerationStep` reloads via `serviceRoleDb` and calls `claimModuleLessonGenerationOrDescribe` again with `{ batchRequestId, workflow: { runId, startedAt } }`, which attaches `modules.lessonGenerationMetadata.workflow.runId` on the already-`generating` row (or CAS-claims if still claimable).
-- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST and again inside the workflow step: missing/failed evaluation and disabled both skip provider work (POST returns `disabled` HTTP 503; the step reverts a claimed row when the flag drops mid-run).
+- **Preflight on POST:** `loadModuleLessonGenerationContext(params.dbClient, …)` then `classifyModuleLessonGenerationPreflight` returns `not_found` / `locked` (only when a loaded context reports `isUnlocked: false`) / `already_ready` / `in_flight` / `eligible` using the request RLS client. The `locked` branch is not based on earlier-module completion. Non-`eligible` results return immediately — no claim and no Worker command.
+- **Provisional claim (start helper, before the Worker command):** `claimModuleLessonGenerationOrDescribe` on `deps.dbClient ?? serviceRoleDb` CAS-moves `lesson_generation_status` from `not_generated` or `failed` → `generating` and writes `batchRequestId` (no `workflow.runId` yet). Concurrent `generating` → `in_flight`; `ready` → `already_ready`; missing owned ready plan → `not_found`. Those kinds return without starting.
+- **Workflow-step claim:** the Worker's `claim` step reloads and calls `claimModuleLessonGenerationOrDescribe` again with `{ batchRequestId, workflow: { provider: 'cloudflare-workflow', runId, startedAt } }`, which attaches `modules.lessonGenerationMetadata.workflow.runId` on the already-`generating` row (or CAS-claims if still claimable).
+- **Feature flag:** Vercel Flag `module-lesson-generation` via `resolveModuleLessonGenerationEnabled()` (`src/flags.ts`, `src/features/lesson-content/generation-flag.ts`). Fail-closed on POST: missing/failed evaluation and disabled both skip provider work (POST returns `disabled` HTTP 503). The Worker's own `JOB_MODULE_LESSONS_ENABLED` switch is re-checked in its steps and reverts a claimed row when it drops mid-run.
 - **Rate limit:** generate uses `{ rateLimit: 'lessonGeneration' }` — see `src/lib/api/user-rate-limit.ts` (currently 5 requests per rolling hour per user). Status uses the `read` limiter.
 - **Product quota:** none. Lesson generation is not metered as a billing entitlement. `usage_metrics.lesson_modules_generated` remains an observational column (defaults to 0; do not drop). Progressive enqueue generates the first two ordered modules after plan finalization and queues module N+2 after ≥50% completion of module N.
 
@@ -257,9 +248,9 @@ Tests and the POST handler use `startModuleLessonGeneration` (`src/features/less
 1. POST: `requestBoundary` + ownership + `startModuleLessonGeneration({ dbClient: db, … })` (`params.dbClient` is the request RLS client).
 2. Start helper: flag fail-closed → load (`params.dbClient`) → preflight. Non-`eligible` (`already_ready` / `in_flight` / `locked` / `not_found`) return without claiming or starting.
 3. Eligible: service-role provisional claim (`batchRequestId` only). Non-`claimed` returns that kind without starting.
-4. `workflow/api.start(moduleLessonGenerationWorkflow, …)`. On throw: `revertModuleLessonGeneratingToNotGenerated` (`batchRequestId`) → `workflow_start_failed` (handler maps to **502**). On success: **202** `generating` with `workflowRunId`. If `run.returnValue` later rejects: revert with `workflowRunId` + `batchRequestId`.
-5. Workflow claim step (service-role): load context again → preflight short-circuits → `claimModuleLessonGenerationOrDescribe` with `{ batchRequestId, workflow: { runId, startedAt } }`.
-6. Workflow run step: re-check flag → entitlement/content access → build prompts (`module-lesson-prompts.ts`) → provider batch + parse (`parse-module-lesson-batch.ts`: the task count must match; lessons map to tasks by position in DB order, echoed task ids that match no task are repaired and counted in a `repairedTaskIdCount` warn log, and an id naming another task rejects the batch) → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata). No lesson-generation product quota reservation.
+4. `dispatchModuleLessonsToWorker`. On `disabled` or `failed`: `revertModuleLessonGeneratingToNotGenerated` (`batchRequestId`) → `disabled` or `workflow_start_failed` (handler maps to **503** / **502**). On acceptance: **202** `generating` with `workflowRunId` (the instance ID). A Workflow that fails later settles through its `fail` step.
+5. Workflow claim step: load context again → preflight short-circuits → `claimModuleLessonGenerationOrDescribe` with `{ batchRequestId, workflow: { runId, startedAt } }`.
+6. Workflow `generate` and `parse-commit` steps: re-check the switch → entitlement/content access → build prompts (`module-lesson-prompts.ts`) → provider batch + parse (`parse-module-lesson-batch.ts`: the task count must match; lessons map to tasks by position in DB order, echoed task ids that match no task are repaired and counted in a `repairedTaskIdCount` warn log, and an id naming another task rejects the batch) → `commitModuleLessonBatchSuccess` (per-task `lesson_content`, module `ready`, usage metadata). No lesson-generation product quota reservation.
 7. On provider/parser failure after claim: `commitModuleLessonGenerationFailure` sets module `failed` (`lesson_generation_error` left `NULL`; diagnostics stay in server logs).
 8. Client polls GET status until `ready` / `failed` / `not_generated` (after observed generating or matching `workflowRunId`), matching the POST `workflowRunId` before treating a reverted `not_generated` as terminal.
 
@@ -281,17 +272,17 @@ Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, mod
 
 For correlation and step layout, see [Workflow SDK](./workflow-sdk.md).
 
-### Cloudflare Workflow path (B5, staging first)
+### Cloudflare Workflow path (B5)
 
-The jobs Worker (`workers/jobs`) can run the same generation as the Cloudflare Workflow `ModuleLessonsWorkflow` (`atlaris-module-lessons-<env>`, binding `MODULE_LESSONS_WORKFLOW`). The app routes starts here when `MODULE_LESSONS_RUNTIME=cloudflare` (see **App routing** below); unset or `vercel` keeps Vercel Workflow. Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
+The jobs Worker (`workers/jobs`) runs generation as the Cloudflare Workflow `ModuleLessonsWorkflow` (`atlaris-module-lessons-<env>`, binding `MODULE_LESSONS_WORKFLOW`). The app always starts it through the Worker (see **App routing** below). Design: [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md), Decisions 4, 6, 7, and 9.
 
 **Starts.**
 
 - **Signed command:** `POST /v1/module-lessons/start` with `{ v: 1, planId, moduleId, userId, batchRequestId, correlationId, modelOverride? }` (`moduleLessonsStartCommandSchema`, `src/lib/jobs-worker/contract.ts`), signed like every jobs command. The app makes the provisional claim first; the Workflow adopts it. Responses: `202 { accepted, instanceId }`, `200 { accepted, duplicate: true }` when the instance already exists, `400` invalid body, `401` bad signature, `503 { code: "jobs_paused" | "job_disabled" }`, `503 { code: "workflow_start_failed" }`. Handler: `workers/jobs/src/http/module-lessons-start.ts`.
-- **Regeneration consumer:** `createWorkflowModuleLessonStarter` (`workers/jobs/src/jobs/regeneration-consumer.ts`) calls `startModuleLessonGeneration` with the invocation's database client and the Worker switch, and creates the instance instead of `workflow/api.start`. A thrown create reverts the provisional claim, as on Vercel.
+- **Regeneration consumer:** `createWorkflowModuleLessonStarter` (`workers/jobs/src/jobs/regeneration-consumer.ts`) calls `startModuleLessonGeneration` with the invocation's database client and the Worker switch, and creates the instance directly through an injected `dispatch` (no HTTP hop). A thrown create reports `failed`, which reverts the provisional claim.
 - **Instance ID:** `lessons-<moduleId>-<batchRequestId>`, or `lessons-<moduleId>-<first 32 hex of SHA-256(batchRequestId)>` when the batch ID has other characters or the ID would pass 100 characters (`workers/jobs/src/workflows/module-lessons/instance-id.ts`).
 
-**App routing.** `startModuleLessonGeneration` keeps the flag check, preflight, and provisional claim (`batchRequestId = correlationId`), then branches on `jobsWorkerEnv.moduleLessonsRuntime`. With `cloudflare` it calls `dispatchModuleLessonsToWorker` (`src/features/jobs/module-lessons-dispatch.ts`) instead of `workflow/api.start`, so the generate route and progressive enqueue both follow it:
+**App routing.** `startModuleLessonGeneration` keeps the flag check, preflight, and provisional claim (`batchRequestId = correlationId`), then calls `dispatchModuleLessonsToWorker` (`src/features/jobs/module-lessons-dispatch.ts`), so the generate route and progressive enqueue both follow it:
 
 | Worker answer                                                                      | Start result                               | Generate route                        | Claim                               |
 | ---------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------- | ----------------------------------- |
@@ -300,7 +291,7 @@ The jobs Worker (`workers/jobs`) can run the same generation as the Cloudflare W
 | `503 jobs_paused` / `job_disabled`                                                 | `disabled`                                 | 503 `disabled`                        | Reverted                            |
 | Other non-2xx, timeout, network, missing `JOBS_WORKER_URL` / `JOBS_SIGNING_SECRET` | `workflow_start_failed`                    | 502 `provider_failure`                | Reverted                            |
 
-One attempt, 10-second timeout, no retry (Decision 4). **Rollback:** unset `MODULE_LESSONS_RUNTIME` (or set `vercel`) and redeploy; new starts go to Vercel Workflow while running Worker instances finish on their own.
+One attempt, 10-second timeout, no retry (Decision 4).
 
 **Steps** (`workers/jobs/src/workflows/module-lessons/run.ts`). Names are final once deployed; never rename, reorder, or remove them.
 
@@ -311,17 +302,17 @@ One attempt, 10-second timeout, no retry (Decision 4). **Rollback:** unset `MODU
 | `parse-commit` | `parseModuleLessonBatchText`, then `commitModuleLessonBatchSuccess`. A `ParserError` throws `NonRetryableError`. A retry that finds the module already `ready` under this instance stops without a second write.                                                                                                                                                 | 2 (transient DB only)             |
 | `fail`         | Runs after any thrown step. After `claim`: revert. Later: only while this instance owns the `generating` row, `recordModuleLessonGenerationFailure` (module `failed`; revert instead when that write fails and the provider never started).                                                                                                                      | 3                                 |
 
-Each step opens its own database pool (`withInvocationDb`); Worker paths never use the service-role singleton. The domain phases it calls (`checkModuleLessonGenerationGate`, `resolveModuleLessonProvider`, `generateModuleLessonRawBatch`, `persistModuleLessonBatch`, `recordModuleLessonGenerationFailure`) are the same ones `runModuleLessonGenerationWork` composes for the Vercel step.
+Each step opens its own database pool (`withInvocationDb`); Worker paths never use the service-role singleton. The domain phases it calls (`checkModuleLessonGenerationGate`, `resolveModuleLessonProvider`, `generateModuleLessonRawBatch`, `persistModuleLessonBatch`, `recordModuleLessonGenerationFailure`) are the same ones `runModuleLessonGenerationWork` composes in one call.
 
-**Runtime marker.** `modules.lessonGenerationMetadata.workflow.provider` is `workflow-sdk` (Vercel) or `cloudflare-workflow` (Worker); `runId` is the Vercel run ID or the Cloudflare instance ID. The status route returns `runId` as `workflowRunId` either way.
+**Runtime marker.** `modules.lessonGenerationMetadata.workflow.provider` is `cloudflare-workflow` (`workflow-sdk` on rows written before the Vercel path was retired); `runId` is the Cloudflare instance ID. The status route returns `runId` as `workflowRunId`.
 
 **Settings.** Worker switch `JOB_MODULE_LESSONS_ENABLED` (dashboard variable; off unless `true`) and `JOBS_PAUSED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The app's Vercel Flag `module-lesson-generation` does not reach the Worker.
 
-**Staging cutover.** Set `JOB_MODULE_LESSONS_ENABLED=true` on the staging Worker, set `MODULE_LESSONS_RUNTIME=cloudflare` (with `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`) on the app's staging environment, then run at least 20 modules of varying task counts with the real provider and record CPU per step from Workers Logs (Decision 9). Production waits for that gate.
+**Availability.** The app needs `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, and the Worker needs `JOB_MODULE_LESSONS_ENABLED=true`. Record CPU per step from Workers Logs (Decision 9).
 
 ### Client polling (status route)
 
-Workflow-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.
+Worker-backed and concurrent in-flight paths return **HTTP 202** while work continues. The module UI does not wait on a long-lived generate response.
 
 - **Status endpoint:** `GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status` (`rateLimit: 'read'`).
 - **Hook:** `useModuleLessonGeneration` polls that URL while the module is `generating` **or** after the client has requested generation (including immediately after a 202, when the start helper has already provisionally claimed). Interval starts at ≈2.5s, backs off after 20 polls, max 60s.

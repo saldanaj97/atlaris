@@ -40,7 +40,6 @@ const NAMED_SERVICE_ROLE_OWNERS = new Set([
   'lib/db/queries/admin/jobs-metrics.ts',
   'lib/db/queries/admin/retention.ts',
   'features/lesson-content/start-module-lesson-generation-workflow.ts',
-  'features/notifications/email/start-email-notification-delivery-workflow.ts',
 ]);
 
 const SERVICE_ROLE_DEFAULTS = [

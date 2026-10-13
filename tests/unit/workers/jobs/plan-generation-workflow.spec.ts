@@ -520,7 +520,7 @@ describe('runPlanGenerationWorkflow', () => {
         mocks.provider.generate.mockRejectedValue(new Error('upstream 500')),
     ],
   ])(
-    'settles %s with the same input as the Vercel step',
+    'settles %s with the same input as the one-call lifecycle method',
     async (_label, arrangeProvider) => {
       const { deps } = makeDeps();
       arrangeProvider();
@@ -528,7 +528,7 @@ describe('runPlanGenerationWorkflow', () => {
 
       attemptRow = { status: 'in_progress', classification: null };
       arrangeProvider();
-      // What `runPlanGenerationStep` runs, with this instance's marker.
+      // What `processGenerationAttemptWithReservation` runs in one call, with this instance's marker.
       await createPlanLifecycleService({
         dbClient: makeDb(),
         startModuleLessons: deps.startModuleLessons,

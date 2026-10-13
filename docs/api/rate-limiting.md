@@ -22,7 +22,7 @@ Hobby/Pro projects have **1 Rate Limit slot** and **3 custom WAF slots**. The in
 | Custom WAF Rules               | **1 / 3** — `/ingest` unsupported-method deny; leave the remaining two unused         |
 | Optional `/ingest` method rule | Dashboard-managed method allowlist (GET, HEAD, POST, OPTIONS) as defense in depth     |
 
-This dashboard rule is **not** represented in `vercel.json`. That file remains repository configuration for cron schedules only. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
+This dashboard rule is **not** encoded in the repository. Inspecting the repo cannot confirm or mutate the live Firewall dashboard.
 
 Live verification on 2026-08-21 confirmed the published configuration is active: the rate rule is a fixed window of 100 requests per 60 seconds per IP on `^/ingest(?:/|$)`, and the method rule denies methods outside GET, HEAD, POST, and OPTIONS. A fresh-window direct test against the public production domain sent 105 harmless HEAD requests in five seconds and received 100 application responses followed by 5 HTTP 429 responses. A direct PUT returned 403.
 
@@ -51,7 +51,7 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 | `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                  |
 | `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                      |
 | `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)         |
-| `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs, notification cron |
+| `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs |
 
 ### Plan Generation Rate Limit
 
@@ -65,7 +65,7 @@ Source of truth for durable generation limits is `src/shared/constants/generatio
 
 ### Vercel edge (`/ingest/*`)
 
-Dashboard-managed Rate Limit on the PostHog ingest proxy path (`^/ingest(?:/|$)`). This is the only Vercel Rate Limit slot. A separate dashboard method rule denies methods outside GET, HEAD, POST, and OPTIONS on the same path. Neither rule is encoded in application source or `vercel.json`.
+Dashboard-managed Rate Limit on the PostHog ingest proxy path (`^/ingest(?:/|$)`). This is the only Vercel Rate Limit slot. A separate dashboard method rule denies methods outside GET, HEAD, POST, and OPTIONS on the same path. Neither rule is encoded in application source.
 
 ### Application IP limiter
 
@@ -174,7 +174,7 @@ For unauthenticated or machine-authenticated routes:
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
 
 checkIpRateLimit(request, 'publicApi'); // unsubscribe POST
-checkIpRateLimit(request, 'internal'); // notification cron / workers
+checkIpRateLimit(request, 'internal'); // internal workers / maintenance
 ```
 
 `checkIpRateLimit` throws `RateLimitError` when the window is exceeded. Routes that already use `withErrorBoundary` map that to the canonical 429 payload. The canonical error response includes the headers supplied by `RateLimitError`. Successful IP-limited responses do not automatically include rate-limit headers.
@@ -302,7 +302,6 @@ Available only in development and test; otherwise these routes return `404`.
 - `POST /api/internal/maintenance/notifications/email`
 - `POST /api/internal/maintenance/plans/cleanup`
 - `POST /api/internal/maintenance/retention/cleanup`
-- `GET /api/cron/notifications/email`
 
 Maintenance POSTs apply `internal` through `createMaintenancePostRoute` in `src/lib/api/internal/maintenance-route.ts`.
 
@@ -357,6 +356,5 @@ Do not add Redis (or another distributed limiter) until production traffic shows
 - `src/lib/api/errors.ts` — `RateLimitError` class
 - `src/lib/api/internal/maintenance-route.ts` — Applies the `internal` IP limiter to maintenance POSTs
 - `src/shared/constants/generation.ts` — Durable generation limit constants
-- `vercel.json` — Cron schedules only; does not record Firewall rules
 - `tests/unit/api/user-rate-limit.spec.ts` — User limiter unit tests
 - `tests/unit/api/ip-rate-limit.spec.ts` — IP limiter unit tests

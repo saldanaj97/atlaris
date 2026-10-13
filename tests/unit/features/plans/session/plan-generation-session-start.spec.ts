@@ -11,9 +11,7 @@ import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
 } from '@/features/plans/session/plan-generation-session';
-import { planGenerationWorkflow } from '@/features/plans/workflows/plan-generation.workflow';
 import { AppError } from '@/lib/api/errors';
-import { EnvValidationError } from '@/lib/config/env/shared';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -84,26 +82,22 @@ const mocks = {
   createPlan: vi.fn(),
   settleReservationRejection: vi.fn(),
   reserveAttemptSlot: vi.fn(),
-  workflowStart: vi.fn(),
   dispatch: vi.fn(),
   finalizeFailure: vi.fn(),
 };
 
-function buildBoundary(runtime: () => 'vercel' | 'cloudflare') {
+function buildBoundary() {
   const lifecycleService = {
     createPlan: mocks.createPlan,
     settleReservationRejection: mocks.settleReservationRejection,
   } as unknown as PlanLifecycleService;
   const startDeps: StartPlanGenerationAttemptDeps = {
     reserveAttemptSlot: mocks.reserveAttemptSlot,
-    workflowStart: mocks.workflowStart,
-    workflowFn: planGenerationWorkflow,
     dispatch: mocks.dispatch,
     finalizeFailure: mocks.finalizeFailure,
   };
   return createPlanGenerationSessionBoundary({
     createLifecycleService: () => lifecycleService,
-    runtime,
     startDeps,
   });
 }
@@ -147,11 +141,10 @@ function startRetry(
   });
 }
 
-/** The `modelOverride` the started Vercel workflow received. */
+/** The `modelOverride` the Worker dispatch received. */
 function startedModelOverride(): string | null {
-  const [, [workflowInput]] = mocks.workflowStart.mock.calls[0] as [
-    unknown,
-    [{ modelOverride: string | null }],
+  const [workflowInput] = mocks.dispatch.mock.calls[0] as [
+    { modelOverride: string | null },
   ];
   return workflowInput.modelOverride;
 }
@@ -177,37 +170,24 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     mocks.reserveAttemptSlot.mockResolvedValue(
       makeAttemptReservation({ attemptId: ATTEMPT_ID }),
     );
-    mocks.workflowStart.mockResolvedValue({ runId: 'wrun_plan' });
+    mocks.dispatch.mockResolvedValue({
+      kind: 'accepted',
+      instanceId: 'plan-1',
+    });
   });
 
   it('creates the plan, starts its first attempt, and returns both IDs', async () => {
-    const started = await startCreate(buildBoundary(() => 'vercel'));
+    const started = await startCreate(buildBoundary());
 
     expect(started).toEqual({ planId: PLAN_ID, attemptId: ATTEMPT_ID });
     expect(mocks.createPlan).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'internal-user', topic: 'TypeScript' }),
     );
-    const [, [workflowInput]] = mocks.workflowStart.mock.calls[0] as [
-      unknown,
-      [{ correlationId: string; input: ProcessGenerationInput['input'] }],
+    const [workflowInput] = mocks.dispatch.mock.calls[0] as [
+      { correlationId: string; input: ProcessGenerationInput['input'] },
     ];
     expect(workflowInput.correlationId).toBe('req-1');
     expect(workflowInput.input).toMatchObject({ topic: 'TypeScript' });
-  });
-
-  it('reads PLAN_GENERATION_RUNTIME before creating a plan', async () => {
-    const boundary = buildBoundary(() => {
-      throw new EnvValidationError(
-        'PLAN_GENERATION_RUNTIME must be one of: vercel, cloudflare',
-        'PLAN_GENERATION_RUNTIME',
-      );
-    });
-
-    await expect(startCreate(boundary)).rejects.toBeInstanceOf(
-      EnvValidationError,
-    );
-    expect(mocks.createPlan).not.toHaveBeenCalled();
-    expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
   });
 
   it('keeps plan-creation rejections as today (no reservation)', async () => {
@@ -216,9 +196,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
       existingPlanId: 'existing-plan',
     });
 
-    const error = await expectAppError(
-      startCreate(buildBoundary(() => 'vercel')),
-    );
+    const error = await expectAppError(startCreate(buildBoundary()));
 
     expect(error.status()).toBe(409);
     expect(error.code()).toBe('DUPLICATE_PLAN');
@@ -236,9 +214,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
       error: new Error('in progress'),
     });
 
-    const error = await expectAppError(
-      startCreate(buildBoundary(() => 'cloudflare')),
-    );
+    const error = await expectAppError(startCreate(buildBoundary()));
 
     expect(error.status()).toBe(429);
     expect(error.code()).toBe('RATE_LIMITED');
@@ -253,9 +229,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
   it('returns a retryable provider error with the plan ID when the Worker refuses', async () => {
     mocks.dispatch.mockResolvedValue({ kind: 'disabled', code: 'jobs_paused' });
 
-    const error = await expectAppError(
-      startCreate(buildBoundary(() => 'cloudflare')),
-    );
+    const error = await expectAppError(startCreate(buildBoundary()));
 
     expect(mocks.finalizeFailure).toHaveBeenCalledTimes(1);
     expect(error.status()).toBe(503);
@@ -271,9 +245,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     const boom = new Error('reservation transaction failed');
     mocks.reserveAttemptSlot.mockRejectedValue(boom);
 
-    const error = await expectAppError(
-      startCreate(buildBoundary(() => 'vercel')),
-    );
+    const error = await expectAppError(startCreate(buildBoundary()));
 
     expect(safeMarkPlanFailedWithDbClient).toHaveBeenCalledWith(
       PLAN_ID,
@@ -288,7 +260,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
 
   it('forwards a valid ?model= override to the started attempt', async () => {
     await startCreate(
-      buildBoundary(() => 'vercel'),
+      buildBoundary(),
       `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_QUERY_MODEL)}`,
       STARTER_SAVED_MODEL,
     );
@@ -298,7 +270,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
 
   it('ignores an invalid ?model= override and falls back to the saved preference', async () => {
     await startCreate(
-      buildBoundary(() => 'vercel'),
+      buildBoundary(),
       'http://localhost/api/v1/plans?model=invalid/model-id',
       PRO_QUERY_MODEL,
     );
@@ -319,12 +291,15 @@ describe('PlanGenerationSessionBoundary.startRetry', () => {
     mocks.reserveAttemptSlot.mockResolvedValue(
       makeAttemptReservation({ attemptId: ATTEMPT_ID }),
     );
-    mocks.workflowStart.mockResolvedValue({ runId: 'wrun_retry' });
+    mocks.dispatch.mockResolvedValue({
+      kind: 'accepted',
+      instanceId: 'plan-2',
+    });
   });
 
   it('reserves with the retry status guard and forwards the saved preference', async () => {
     const started = await startRetry(
-      buildBoundary(() => 'vercel'),
+      buildBoundary(),
       retryUrl,
       STARTER_SAVED_MODEL,
     );
@@ -345,7 +320,7 @@ describe('PlanGenerationSessionBoundary.startRetry', () => {
 
   it('prefers a valid ?model= override over the saved preference', async () => {
     await startRetry(
-      buildBoundary(() => 'vercel'),
+      buildBoundary(),
       `${retryUrl}?model=${encodeURIComponent(STARTER_QUERY_MODEL)}`,
       STARTER_SAVED_MODEL,
     );

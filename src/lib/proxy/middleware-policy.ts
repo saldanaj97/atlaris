@@ -19,7 +19,6 @@ const MAINTENANCE_MODE_BYPASS_PREFIXES = [
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/health/worker',
-  '/api/cron/notifications/email',
   '/api/internal/jobs/regeneration/process',
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
@@ -77,10 +76,6 @@ export function isProtectedRoute(pathname: string): boolean {
   }
   // Worker health probes authenticate via route-level worker token, not Clerk.
   if (path === '/api/health/worker') {
-    return false;
-  }
-  // Vercel Cron authenticates at the route boundary with CRON_SECRET.
-  if (path === '/api/cron/notifications/email') {
     return false;
   }
   return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));

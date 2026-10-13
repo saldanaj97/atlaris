@@ -17,28 +17,12 @@ import {
   usageMetrics,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { createId } from '@tests/fixtures/ids';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { createTestUser } from '@tests/fixtures/users';
+import { createInlineModuleLessonsWorker } from '@tests/helpers/inline-module-lessons-worker';
 import { eq, inArray } from 'drizzle-orm';
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { describe, expect, it, vi } from 'vitest';
-
-const getWorkflowMetadata = vi.hoisted(() => vi.fn());
-
-vi.mock('workflow', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('workflow')>();
-  return {
-    ...actual,
-    getWorkflowMetadata,
-  };
-});
-
-const workflowRunIds = new AsyncLocalStorage<string>();
-getWorkflowMetadata.mockImplementation(() => ({
-  workflowRunId: workflowRunIds.getStore() ?? 'missing-workflow-run-id',
-}));
 
 describe('cleanupStuckPlans (integration)', () => {
   it('restores last-good stuck plans and fails never-usable stuck plans', async () => {
@@ -267,7 +251,7 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
 
     setModuleLessonGenerationEnabledForTests(true);
     vi.stubEnv('MOCK_AI_SCENARIO', 'provider_error');
-    let workflowResult: { kind: string } | undefined;
+    const worker = createInlineModuleLessonsWorker();
     const startResult = await startModuleLessonGeneration(
       {
         dbClient: db,
@@ -279,20 +263,11 @@ describe('cleanupAbandonedModuleLessonGenerations (integration)', () => {
       {
         dbClient: db,
         isGenerationEnabled: async () => true,
-        workflowStart: async (workflowFn, args) => {
-          const runId = createId('wrun');
-          workflowResult = await workflowRunIds.run(runId, () =>
-            workflowFn(args[0]),
-          );
-          return {
-            runId,
-            returnValue: Promise.resolve(workflowResult),
-          };
-        },
+        dispatch: worker.dispatch,
       },
     );
     expect(startResult.kind).toBe('workflow_started');
-    expect(workflowResult?.kind).toBe('failed');
+    expect(worker.outcome()?.kind).toBe('failed');
     vi.unstubAllEnvs();
     setModuleLessonGenerationEnabledForTests(undefined);
 
