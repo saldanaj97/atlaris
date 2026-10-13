@@ -6,21 +6,19 @@ This document provides a comprehensive list of AI models available in Atlaris vi
 
 Persistable catalog (Settings picker). The runtime default `openrouter/free` ("Free Models Router") is also in `AVAILABLE_MODELS` but is **not** stored in `user_preferences.preferred_ai_model`.
 
-| Model ID                                   | Name                        | Provider  | Tier | Context Window | Cost (input) | Cost (output) |
-| :----------------------------------------- | :-------------------------- | :-------- | :--- | :------------- | :----------- | :------------ |
-| `google/gemini-2.0-flash-exp:free`         | Gemini 2.0 Flash            | Google    | free | 1.05M tokens   | $0/M         | $0/M          |
-| `openai/gpt-oss-20b:free`                  | gpt-oss-20b                 | OpenAI    | free | 131K tokens    | $0/M         | $0/M          |
-| `alibaba/tongyi-deepresearch-30b-a3b:free` | Tongyi DeepResearch 30B A3B | Alibaba   | free | 131K tokens    | $0/M         | $0/M          |
-| `anthropic/claude-haiku-4.5`               | Claude Haiku 4.5            | Anthropic | free | 200K tokens    | $1/M         | $5/M          |
-| `google/gemini-2.5-flash-lite`             | Gemini 2.5 Flash Lite       | Google    | pro  | 1.05M tokens   | $0.10/M      | $0.40/M       |
-| `google/gemini-3-flash-preview`            | Gemini 3 Flash Preview      | Google    | pro  | 1.05M tokens   | $0.50/M      | $1/M          |
-| `google/gemini-3-pro-preview`              | Gemini 3 Pro Preview        | Google    | pro  | 1.05M tokens   | $2/M         | $12/M         |
-| `anthropic/claude-sonnet-4.5`              | Claude Sonnet 4.5           | Anthropic | pro  | 1M tokens      | $3/M         | $15/M         |
-| `openai/gpt-4o-mini-2024-07-18`            | GPT-4o-mini 2024-07-18      | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
-| `openai/gpt-4o-mini-search-preview`        | GPT-4o-mini Search Preview  | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
-| `openai/gpt-4o`                            | GPT-4o                      | OpenAI    | pro  | 128K tokens    | $2.50/M      | $10/M         |
-| `openai/gpt-5.1`                           | GPT-5.1                     | OpenAI    | pro  | 400K tokens    | $1.25/M      | $10/M         |
-| `openai/gpt-5.2`                           | GPT-5.2                     | OpenAI    | pro  | 400K tokens    | $1.75/M      | $14/M         |
+Retired ids (removed from the catalog on 2026-10-13 because OpenRouter no longer serves them): `google/gemini-3-pro-preview`, `google/gemini-2.0-flash-exp:free`, `openai/gpt-oss-20b:free`, `alibaba/tongyi-deepresearch-30b-a3b:free`, `openai/gpt-4o-mini-search-preview`. A saved preference or override that still holds one is rejected as `invalid_model` and resolves to the tier × operation default (Pro regeneration: `google/gemini-3.1-pro-preview`). The legacy `preferred_ai_model` PostgreSQL enum keeps its historical values.
+
+| Model ID                        | Name                   | Provider  | Tier | Context Window | Cost (input) | Cost (output) |
+| :------------------------------ | :--------------------- | :-------- | :--- | :------------- | :----------- | :------------ |
+| `anthropic/claude-haiku-4.5`    | Claude Haiku 4.5       | Anthropic | free | 200K tokens    | $1/M         | $5/M          |
+| `google/gemini-2.5-flash-lite`  | Gemini 2.5 Flash Lite  | Google    | pro  | 1.05M tokens   | $0.10/M      | $0.40/M       |
+| `google/gemini-3-flash-preview` | Gemini 3 Flash Preview | Google    | pro  | 1.05M tokens   | $0.50/M      | $1/M          |
+| `google/gemini-3.1-pro-preview` | Gemini 3.1 Pro Preview | Google    | pro  | 1.05M tokens   | $2/M         | $12/M         |
+| `anthropic/claude-sonnet-4.5`   | Claude Sonnet 4.5      | Anthropic | pro  | 1M tokens      | $3/M         | $15/M         |
+| `openai/gpt-4o-mini-2024-07-18` | GPT-4o-mini 2024-07-18 | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
+| `openai/gpt-4o`                 | GPT-4o                 | OpenAI    | pro  | 128K tokens    | $2.50/M      | $10/M         |
+| `openai/gpt-5.1`                | GPT-5.1                | OpenAI    | pro  | 400K tokens    | $1.25/M      | $10/M         |
+| `openai/gpt-5.2`                | GPT-5.2                | OpenAI    | pro  | 400K tokens    | $1.75/M      | $14/M         |
 
 ## Subscription Tiers
 
@@ -55,7 +53,6 @@ We integrate with multiple top-tier AI providers via OpenRouter to ensure high a
 - **Google**: Known for massive context windows and fast "Flash" models.
 - **Anthropic**: Renowned for nuanced reasoning and safety.
 - **OpenAI**: Industry standard for general-purpose intelligence and multimodal capabilities.
-- **Alibaba**: Specialized models for deep research and analysis.
 
 ## Model Selection
 

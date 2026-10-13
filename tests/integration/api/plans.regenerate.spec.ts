@@ -373,14 +373,14 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       });
 
       const { request, context } = await createRequest(planId, {
-        overrides: { model: 'google/gemini-3-pro-preview' },
+        overrides: { model: 'google/gemini-3.1-pro-preview' },
       });
 
       const res = await POST(request, context);
       expect(res.status).toBe(202);
       expect(mockRequestPlanRegeneration).toHaveBeenCalledWith(
         expect.objectContaining({
-          overrides: { model: 'google/gemini-3-pro-preview' },
+          overrides: { model: 'google/gemini-3.1-pro-preview' },
         }),
         expect.objectContaining({
           dbClient: expect.anything(),
@@ -416,7 +416,7 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
       const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
 
       const { request, context } = await createRequest(planId, {
-        overrides: { model: 'google/gemini-3-pro-preview' },
+        overrides: { model: 'google/gemini-3.1-pro-preview' },
       });
 
       const res = await POST(request, context);

@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveStreamModelResolution } from '@/features/plans/session/model-resolution';
 import { logger } from '@/lib/logging/logger';
@@ -15,15 +15,10 @@ const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
 ).find(
   ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
-const FREE_QUERY_OVERRIDE_MODEL = AVAILABLE_MODELS.find(
-  ({ tier, id }) => tier === 'free' && id !== AI_DEFAULT_MODEL,
-)?.id;
+// The free router is the only Free-labelled catalog model.
+const FREE_QUERY_OVERRIDE_MODEL = AI_DEFAULT_MODEL;
 
-if (
-  !STARTER_PERSISTABLE_MODEL ||
-  !PRO_PERSISTABLE_MODEL ||
-  !FREE_QUERY_OVERRIDE_MODEL
-) {
+if (!STARTER_PERSISTABLE_MODEL || !PRO_PERSISTABLE_MODEL) {
   throw new Error('Expected model fixtures for model-resolution tests');
 }
 

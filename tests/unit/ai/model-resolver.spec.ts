@@ -14,10 +14,18 @@ import { describe, expect, it, vi } from 'vitest';
 const STARTER_DEFAULT = 'google/gemini-2.5-flash-lite';
 const STARTER_OVERRIDE = 'openai/gpt-4o-mini-2024-07-18';
 const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
-const PRO_REGEN_DEFAULT = 'google/gemini-3-pro-preview';
+const PRO_REGEN_DEFAULT = 'google/gemini-3.1-pro-preview';
 const PRO_LESSON_DEFAULT = 'google/gemini-3-flash-preview';
 const HAIKU_MODEL_ID = 'anthropic/claude-haiku-4.5';
-const OTHER_FREE_CATALOG_ID = 'google/gemini-2.0-flash-exp:free';
+const OTHER_CATALOG_ID = 'google/gemini-2.5-flash-lite';
+/** Former catalog ids that OpenRouter no longer serves; may remain in saved rows. */
+const RETIRED_MODEL_IDS = [
+  'google/gemini-3-pro-preview',
+  'google/gemini-2.0-flash-exp:free',
+  'openai/gpt-oss-20b:free',
+  'alibaba/tongyi-deepresearch-30b-a3b:free',
+  'openai/gpt-4o-mini-search-preview',
+] as const;
 
 describe('Model resolver', () => {
   type ResolutionExpectation = Pick<
@@ -132,12 +140,12 @@ describe('Model resolver', () => {
         'initial_outline',
       );
 
-      const otherFree = resolveWithMockProvider(
+      const otherCatalog = resolveWithMockProvider(
         'free',
-        OTHER_FREE_CATALOG_ID,
+        OTHER_CATALOG_ID,
         'lesson',
       );
-      expectResolution(otherFree.result, {
+      expectResolution(otherCatalog.result, {
         modelId: AI_DEFAULT_MODEL,
         fallback: true,
         fallbackReason: 'tier_denied',
@@ -267,18 +275,45 @@ describe('Model resolver', () => {
       ).toBe(PRO_LESSON_DEFAULT);
     });
 
-    it('allows a Free-labelled catalog model on Pro', () => {
+    it('allows the Free-labelled router on Pro', () => {
       const { result } = resolveWithMockProvider(
         'pro',
-        OTHER_FREE_CATALOG_ID,
+        AI_DEFAULT_MODEL,
         'initial_outline',
       );
 
       expectResolution(result, {
-        modelId: OTHER_FREE_CATALOG_ID,
+        modelId: AI_DEFAULT_MODEL,
         fallback: false,
       });
     });
+
+    it.each(RETIRED_MODEL_IDS)(
+      'falls back to the regeneration default before the provider for retired id %s',
+      (retiredId) => {
+        const { result, providerGetter } = resolveWithMockProvider(
+          'pro',
+          retiredId,
+          'regeneration',
+        );
+
+        expectResolution(result, {
+          modelId: PRO_REGEN_DEFAULT,
+          fallback: true,
+          fallbackReason: 'invalid_model',
+        });
+        expect(providerGetter).toHaveBeenCalledWith(
+          PRO_REGEN_DEFAULT,
+          'pro',
+          'regeneration',
+        );
+        expect(providerGetter).not.toHaveBeenCalledWith(
+          retiredId,
+          expect.anything(),
+          expect.anything(),
+        );
+      },
+    );
 
     it('falls back to the operation default for invalid ids', () => {
       const { result } = resolveWithMockProvider(

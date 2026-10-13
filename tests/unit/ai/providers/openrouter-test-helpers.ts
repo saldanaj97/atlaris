@@ -3,7 +3,7 @@ import type { GenerationInput } from '@/features/ai/types/provider.types';
 
 import { vi } from 'vitest';
 
-export const OPENROUTER_TEST_MODEL = 'google/gemini-2.0-flash-exp:free';
+export const OPENROUTER_TEST_MODEL = 'google/gemini-3-flash-preview';
 
 export const OPENROUTER_SAMPLE_INPUT: GenerationInput = {
   topic: 'TypeScript Fundamentals',
