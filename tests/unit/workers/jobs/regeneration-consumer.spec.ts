@@ -239,6 +239,7 @@ describe('createWorkflowModuleLessonStarter', () => {
   const PLAN_ID = '0b5e2c1d-6f4a-4e3b-9c8d-7a6b5c4d3e2f';
   const MODULE_ID = '1c6f3d2e-7a5b-4f4c-8d9e-8b7c6d5e4f30';
   const USER_ID = '2d7a4e3f-8b6c-4a5d-9e0f-9c8d7e6f5a41';
+  const logger = { error: vi.fn() };
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -269,6 +270,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
+      logger,
     });
     const params = startParams();
 
@@ -302,6 +304,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
+      logger,
     });
 
     await start(startParams('req:abc/def 123'));
@@ -318,6 +321,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => false,
+      logger,
     });
 
     await expect(start(startParams())).resolves.toEqual({ kind: 'disabled' });
@@ -334,12 +338,23 @@ describe('createWorkflowModuleLessonStarter', () => {
     const start = createWorkflowModuleLessonStarter({
       workflow,
       isEnabled: () => true,
+      logger,
     });
     const params = startParams();
 
     await expect(start(params)).resolves.toMatchObject({
       kind: 'workflow_start_failed',
     });
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.objectContaining({
+        err: expect.objectContaining({ message: 'create failed' }),
+        planId: PLAN_ID,
+        moduleId: MODULE_ID,
+        correlationId: 'attempt-1',
+        id: `lessons-${MODULE_ID}-attempt-1`,
+      }),
+      'Failed to create the module lessons Workflow instance',
+    );
     expect(lessonQueries.revert).toHaveBeenCalledWith(params.dbClient, {
       userId: USER_ID,
       planId: PLAN_ID,

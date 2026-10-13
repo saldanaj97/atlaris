@@ -59,6 +59,7 @@ export function createWorkflowModuleLessonStarter(deps: {
   readonly workflow: Pick<Workflow<ModuleLessonsWorkflowParams>, 'create'>;
   /** `isJobEnabled(env, 'MODULE_LESSONS')`. */
   readonly isEnabled: () => boolean;
+  readonly logger: Pick<Logger, 'error'>;
 }): RegenerationRunContext['startModuleLessons'] {
   return (params) =>
     startModuleLessonGeneration(params, {
@@ -82,7 +83,18 @@ export function createWorkflowModuleLessonStarter(deps: {
         );
         try {
           await deps.workflow.create({ id, params: command });
-        } catch {
+        } catch (error) {
+          deps.logger.error(
+            {
+              job: REGENERATION_JOB_TAG,
+              err: error,
+              planId: command.planId,
+              moduleId: command.moduleId,
+              correlationId: command.correlationId,
+              id,
+            },
+            'Failed to create the module lessons Workflow instance',
+          );
           return { kind: 'failed' };
         }
         return { kind: 'accepted', instanceId: id };

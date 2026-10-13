@@ -197,6 +197,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         startModuleLessons: createWorkflowModuleLessonStarter({
           workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
           isEnabled: () => isJobEnabled(workerEnv, 'MODULE_LESSONS'),
+          logger,
         }),
       },
     );
