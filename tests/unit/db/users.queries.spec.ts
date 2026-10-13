@@ -122,46 +122,37 @@ describe('users queries', () => {
   });
 
   it('returns the row a concurrent first sign-in inserted when the email insert races', async () => {
+    const existing = buildUserFixture();
     const { dbClient } = makeRacingInsertClient(emailUniqueViolation(), [
-      {
-        user: buildUserFixture({
-          id: 'internal-user-6',
-          authUserId: 'auth-user-6',
-        }),
-        preferences: null,
-      },
+      { user: existing, preferences: null },
     ]);
 
     const user = await getOrCreateUser(
-      { authUserId: 'auth-user-6', email: 'user6@example.com' },
+      { authUserId: existing.authUserId, email: existing.email },
       dbClient,
     );
 
-    expect(user?.id).toBe('internal-user-6');
+    expect(user?.id).toBe(existing.id);
   });
 
   it('re-raises an email violation when no row exists for the auth identity', async () => {
+    const { authUserId, email } = buildUserFixture();
     const violation = emailUniqueViolation();
     const { dbClient } = makeRacingInsertClient(violation, []);
 
-    await expect(
-      getOrCreateUser(
-        { authUserId: 'auth-user-7', email: 'taken@example.com' },
-        dbClient,
-      ),
-    ).rejects.toBe(violation);
+    await expect(getOrCreateUser({ authUserId, email }, dbClient)).rejects.toBe(
+      violation,
+    );
   });
 
   it('re-raises other insert failures without re-reading', async () => {
+    const { authUserId, email } = buildUserFixture();
     const failure = new Error('connection terminated');
     const { dbClient, select } = makeRacingInsertClient(failure, []);
 
-    await expect(
-      getOrCreateUser(
-        { authUserId: 'auth-user-8', email: 'user8@example.com' },
-        dbClient,
-      ),
-    ).rejects.toBe(failure);
+    await expect(getOrCreateUser({ authUserId, email }, dbClient)).rejects.toBe(
+      failure,
+    );
     expect(select).not.toHaveBeenCalled();
   });
 });
