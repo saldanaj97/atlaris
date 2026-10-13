@@ -90,7 +90,7 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 | Response | Meaning |
 | --- | --- |
 | `202 { accepted, instanceId, runId }` | Workflow started |
-| `200 { accepted, duplicate: true, … }` | The run already exists in a state that needs no new instance, the instance already exists, or `replay_reviewed` still has unresolved `manual_review` rows |
+| `200 { accepted, duplicate: true, runId, … }` | The run already exists (an existing run also returns `status` and `instanceId`, its persisted `workflow_run_id`, null if unclaimed) in a state that needs no new instance, the instance already exists, or `replay_reviewed` still has unresolved `manual_review` rows |
 | `400 { error: "invalid_body" }` | Body, date, Monday rule, or future `start` date invalid |
 | `409 { code: "invalid_run_state" }` | Action does not fit the run's state |
 | `503 { code: "jobs_paused" \| "job_disabled" \| "workflow_start_failed" }` | Switch off, or the instance could not be created (the run is marked `failed`; `resume` it) |
@@ -177,6 +177,6 @@ This action resets the run cursor but retains the logical date and domain delive
 
 ## Deployment checks
 
-Before enabling delivery, apply the run-table migration, deploy the Worker and the application, configure `RESEND_API_KEY`, `RESEND_FROM`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and production HTTPS `APP_URL`, confirm the Worker's email Workflow schedules, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, workflow, monitor, and ledger correlation.
+Before enabling delivery, apply the run-table migration, deploy the Worker and the application, configure `RESEND_API_KEY`, `RESEND_FROM`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, and production HTTPS `APP_URL`, confirm the Worker's email Workflow schedules, and make a disabled-path check. Then exercise one opted-in safe account and verify the run, Workflow instance, and ledger correlation, and check Workers Logs and Sentry exceptions (`job: email-delivery`) for the run.
 
 `20260710151930_create_email_notification_delivery_runs` deliberately retains its Supabase CLI-generated version even though the prerequisite delivery-ledger migration is future-dated. The staging and production migration workflows include both migrations in the explicit `expand` safe list. Confirm the workflow logs list both before enabling the application path.

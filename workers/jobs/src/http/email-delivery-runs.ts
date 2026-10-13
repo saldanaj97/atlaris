@@ -190,6 +190,7 @@ export async function handleEmailDeliveryRunsCommand(
       duplicate: true,
       runId: run.id,
       status: run.status,
+      instanceId: run.workflowRunId,
     });
   }
 

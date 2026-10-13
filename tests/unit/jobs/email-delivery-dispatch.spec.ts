@@ -65,7 +65,13 @@ describe('dispatchEmailDeliveryToWorker', () => {
         send: sendReturning({
           kind: 'accepted',
           status: 200,
-          body: { accepted: true, duplicate: true, runId: 'run-1', status },
+          body: {
+            accepted: true,
+            duplicate: true,
+            runId: 'run-1',
+            status,
+            instanceId: 'cf:instance-1',
+          },
         }),
         config,
         log: makeLog(),
@@ -75,7 +81,7 @@ describe('dispatchEmailDeliveryToWorker', () => {
         kind: 'accepted',
         outcome: expectedOutcome,
         runId: 'run-1',
-        instanceId: null,
+        instanceId: 'cf:instance-1',
       });
     },
   );
