@@ -20,7 +20,7 @@ Already decided (not reopened here): all background execution moves to Cloudflar
 | 6 | Deploy order | Expand migration → Worker → app, as separate merges → contract migration. The Worker accepts old and new command shapes during a change |
 | 7 | Cutover | One owner per job at all times, with fixed observation windows. Worker job switches are dashboard-managed variables that default to off, plus a global `JOBS_PAUSED`. The Worker does not follow the app's `MAINTENANCE_MODE`. B4's production cutover follows B5's CPU gate |
 | 8 | Cron and Queue | Two Worker Cron Triggers per environment (4 of 5 account-wide) plus Workflow `schedules` for email. Regeneration uses a Cloudflare Queue for intake, delayed retry, and a concurrency cap; `job_queue` stays the record, and a 15-minute sweep re-sends lost work |
-| 9 | CPU | Cron jobs are low risk; email is medium (subrequests); every AI job is high risk on the 10 ms Free limit. Measure on staging starting in B4 and decide Workers Paid before any AI job's production cutover |
+| 9 | CPU | Resolved: the account is on Workers Paid (30 s CPU per invocation). Measured AI runs use about 0.2–0.8 s of CPU, so the 10 ms Free-plan gate no longer applies |
 
 ### Findings that change the parent issue's assumptions
 
@@ -448,6 +448,8 @@ Why a Queue rather than polling: today the enqueue path already starts work imme
 
 ## Decision 9: CPU-time risk and measurement plan
 
+**Status (2026-10-12): resolved on Workers Paid.** The account is on Workers Paid, with a 30-second CPU limit per invocation. Measured module-lesson runs used about 200–500 ms of CPU per invocation, and plan generation about 0.8 s. Both fit Paid with wide headroom; neither fits Free. The Free-plan analysis and gate below are kept as the record of how the decision was reached.
+
 ### Free-plan limits that matter
 
 - 10 ms CPU per invocation, per Cron Trigger, and per Workflow step [workers-limits][wf-limits].
@@ -477,8 +479,8 @@ AI Workflow steps also need explicit step configuration. Workflows retry a faile
 3. **B4, the first AI job.** Before any AI production cutover, run at least 20 staging regenerations with the real OpenRouter provider (not the mock) across small, typical, and largest plan sizes. Collect p50, p95, and max CPU per invocation from Workers Logs, plus any `exceededCpu` or `exceededResources` outcomes (Workers Logs, `wrangler tail` [wf-limits]). Use DevTools CPU profiling under `wrangler dev` to find hotspots [cpu-profiling].
 4. **B5.** Repeat for lesson generation (at least 20 modules of varying task counts). This is the formal Free vs Paid gate in the parent plan, and it now also gates B4's production cutover.
    - **How it is measured.** The lessons Workflow splits the CPU-heavy work across steps: `claim` (load, preflight, claim), `generate` (provider marker, OpenRouter call, buffering the stream into at most 200,000 characters), and `parse-commit` (JSON parse, Zod validation, one transactional write). `fail` runs only after a thrown step. Each step execution writes one log line `{ job: "module-lessons", step, instanceId, planId, moduleId, taskCount, rawChars?, outcome }`. Workers Logs records CPU and wall time per step invocation; filter on the Workflow and match each record to its step line by instance ID and step name. Record p50, p95, and max CPU per step name, with `taskCount` and `rawChars` for size, plus any `exceededCpu` outcomes.
-   - **Results.** _Not yet measured._
-5. **Gate.** Stay on Free only if no measured run hit `exceededCpu` and the maximum step CPU is at or below 7 ms (30% headroom, because tolerance for overruns is not guaranteed). Otherwise, with the user's approval at that step, upgrade to Workers Paid ($5 per month minimum [pricing]) and set `limits.cpu_ms` (Paid default 30 seconds, maximum 5 minutes) [workers-limits].
+   - **Results.** Module lessons used about 200–500 ms of CPU per invocation; plan generation used about 0.8 s. Both are far above the 10 ms Free limit and far below the 30 s Paid limit.
+5. **Gate (superseded: the account is on Workers Paid).** Stay on Free only if no measured run hit `exceededCpu` and the maximum step CPU is at or below 7 ms (30% headroom, because tolerance for overruns is not guaranteed). Otherwise, with the user's approval at that step, upgrade to Workers Paid ($5 per month minimum [pricing]) and set `limits.cpu_ms` (Paid default 30 seconds, maximum 5 minutes) [workers-limits].
 
 **Paid also lifts:**
 
@@ -503,7 +505,7 @@ In-code timing cannot replace these numbers: `Date.now()` and `performance.now()
 | Worker requests and Workflow executions | 100,000 per day | About 200 cron invocations per day plus commands, consumer runs, and Workflow steps | [workers-limits][wf-limits] |
 | Worker Cron Triggers | 5 per account | 4 | [workers-limits] |
 | Workflow schedules | 100 per account | 4 | [wf-limits] |
-| CPU | 10 ms per invocation and per step | Decision 9 | [workers-limits] |
+| CPU | 10 ms per invocation and per step | Superseded: the account is on Workers Paid (30 s); see Decision 9 | [workers-limits] |
 | Subrequests | 50 external, 1,000 internal | Email page ≤ 20 sends | [workers-limits] |
 | Hyperdrive | 100,000 queries per day; about 20 origin connections per config; 60 s per statement; 10 configs | Hundreds per day for cleanup; email about 5 per recipient | [hd-pricing][hd-limits] |
 | Queues | 10,000 operations per day; 24-hour retention | About 3 per regeneration | [queues-pricing][queues-limits] |

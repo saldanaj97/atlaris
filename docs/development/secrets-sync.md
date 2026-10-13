@@ -18,6 +18,14 @@ The script maps targets to Environment **IDs**, so renaming an Environment in 1P
 2. Preview the change: `pnpm secrets:sync <provider> <environment> --dry-run`. It lists each name as `add`, `update`, or `skip` with the reason. Existing values on Vercel are encrypted, so an unchanged value still shows as `update`.
 3. Apply: run the same command without `--dry-run`. Production asks for confirmation; `--yes` skips it.
 
+### Before `pnpm secrets:sync vercel production`
+
+Confirm that the 1Password Environment `atlaris-vercel-prod` holds **production** values before you apply. The script copies whatever the Environment holds; it cannot tell a development key from a production one. On 2026-10-08 a sync pushed the Clerk **development** webhook signing secret to Vercel Production, and every production billing webhook failed signature verification until 2026-10-13. In 1Password, check at least the values that differ per environment, such as the Clerk keys and `CLERK_WEBHOOK_SIGNING_SECRET`.
+
+### Not covered by the sync
+
+GitHub environment secrets are set in GitHub, not from 1Password, so they can drift from the values the app and Workers use. Today that means `REGENERATION_WORKER_TOKEN` and `MAINTENANCE_WORKER_TOKEN`. When you rotate either token, update GitHub by hand in the same change.
+
 ## How values are written
 
 - **Workers:** `wrangler secret bulk`, with the values as JSON on stdin.
@@ -26,7 +34,7 @@ The script maps targets to Environment **IDs**, so renaming an Environment in 1P
 ## When changes take effect
 
 - **Workers:** immediately. `wrangler secret bulk` deploys a new version with the same code; Git deploys keep the secrets.
-- **Vercel:** on the next deployment. Add `--redeploy` to redeploy the latest ready deployment of that environment (preview needs `--git-branch`). Production asks first.
+- **Vercel:** on the next deployment. Add `--redeploy` to redeploy the latest ready deployment of that environment (preview needs `--git-branch`). Production asks first. The script names the deployment it rebuilds, then streams the Vercel CLI's build output live; a rebuild takes a few minutes.
 
 ## What is never written
 
