@@ -432,17 +432,20 @@ async function confirm(question: string): Promise<boolean> {
 
 /**
  * Request body for `cf workers secrets bulk --file`: cf sends the file as-is
- * as a JSON Merge Patch, so each name maps to an API secret object.
+ * as a JSON Merge Patch. The API needs the top-level `secrets` key; without
+ * it Cloudflare returns 200 and deploys a version that writes nothing.
  */
 export function cloudflareSecretsPatch(
   values: Readonly<Record<string, string>>,
 ) {
-  return Object.fromEntries(
-    Object.entries(values).map(([name, text]) => [
-      name,
-      { type: 'secret_text', text },
-    ]),
-  );
+  return {
+    secrets: Object.fromEntries(
+      Object.entries(values).map(([name, text]) => [
+        name,
+        { name, type: 'secret_text', text },
+      ]),
+    ),
+  };
 }
 
 /**
