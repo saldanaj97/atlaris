@@ -1,4 +1,9 @@
 import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
+import { ManageSubscriptionButton } from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
+import {
+  AUTO_RENEWAL_NOTICE,
+  hasManageableSubscription,
+} from '@/app/(app)/settings/billing/components/subscription-management';
 import {
   LedgerRow,
   LedgerStackedRow,
@@ -11,6 +16,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ROUTES } from '@/features/navigation/routes';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { Briefcase } from 'lucide-react';
 import Link from 'next/link';
 
@@ -75,6 +81,10 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
   }
 
   const tierName = formatPlanTierName(snapshot.tier);
+  const canManageSubscription =
+    shouldUseClerkUi() && hasManageableSubscription(snapshot);
+  const showRenewalNotice =
+    hasManageableSubscription(snapshot) && !snapshot.cancelAtPeriodEnd;
 
   return (
     <div className='space-y-4'>
@@ -93,9 +103,12 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
             {tierName} Plan
           </p>
         </div>
-        <Button asChild variant='outline' size='sm'>
-          <Link href={ROUTES.PRICING}>View plans</Link>
-        </Button>
+        <div className='flex flex-wrap items-center gap-2'>
+          {canManageSubscription ? <ManageSubscriptionButton /> : null}
+          <Button asChild variant='outline' size='sm'>
+            <Link href={ROUTES.PRICING}>View plans</Link>
+          </Button>
+        </div>
       </div>
       <div className='divide-y divide-border/40 dark:divide-border/30'>
         <LedgerRow label='Status'>
@@ -107,6 +120,9 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
           <span className='text-foreground'>{nextBilling}</span>
         </LedgerRow>
       </div>
+      {showRenewalNotice ? (
+        <p className='text-sm text-muted-foreground'>{AUTO_RENEWAL_NOTICE}</p>
+      ) : null}
     </div>
   );
 }

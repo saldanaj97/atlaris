@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   loadBillingSnapshotMock: vi.fn(),
+  shouldUseClerkUiMock: vi.fn(),
 }));
 
 vi.mock(
@@ -13,6 +14,16 @@ vi.mock(
     loadBillingSnapshot: mocks.loadBillingSnapshotMock,
   }),
 );
+
+vi.mock('@clerk/nextjs/experimental', () => ({
+  SubscriptionDetailsButton: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='clerk-subscription-details'>{children}</div>
+  ),
+}));
+
+vi.mock('@/lib/auth/local-identity', () => ({
+  shouldUseClerkUi: mocks.shouldUseClerkUiMock,
+}));
 
 async function renderPlanCard(locale = 'en-US'): Promise<void> {
   const { ProfilePlanCard } =
@@ -24,6 +35,7 @@ async function renderPlanCard(locale = 'en-US'): Promise<void> {
 describe('ProfilePlanCard', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mocks.shouldUseClerkUiMock.mockReturnValue(true);
     mocks.loadBillingSnapshotMock.mockResolvedValue({
       tier: 'free',
       subscriptionStatus: 'active',
@@ -124,5 +136,39 @@ describe('ProfilePlanCard', () => {
     expect(screen.getByText('Access ends')).toBeVisible();
     expect(screen.getByText(accessEnds)).toBeVisible();
     expect(screen.queryByText('Next billing date')).not.toBeInTheDocument();
+  });
+
+  it('lets paid subscribers manage or cancel and states the auto-renewal terms', async () => {
+    mocks.loadBillingSnapshotMock.mockResolvedValueOnce({
+      tier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date('2026-08-15T00:00:00.000Z'),
+      cancelAtPeriodEnd: false,
+      usage: {
+        tier: 'starter',
+        activePlans: { current: 1, limit: 5 },
+        regenerations: { used: 0, limit: 10 },
+      },
+    });
+
+    await renderPlanCard();
+
+    expect(
+      screen.getByRole('button', { name: 'Manage or cancel subscription' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Renews automatically each month until you cancel. Cancellation takes effect at the end of the current billing period.',
+      ),
+    ).toBeVisible();
+  });
+
+  it('hides the cancel button and renewal notice for free users', async () => {
+    await renderPlanCard();
+
+    expect(
+      screen.queryByRole('button', { name: 'Manage or cancel subscription' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Renews automatically/)).not.toBeInTheDocument();
   });
 });
