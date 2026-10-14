@@ -1,0 +1,9 @@
+{
+  "name": "@atlaris/jobs",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "cf": "1.0.0-beta.14",
+    "wrangler": "^4.143.0"
+  }
+}

@@ -1,10 +1,14 @@
 {
   "extends": "../../../workers/jobs/tsconfig.json",
   "compilerOptions": {
-    "types": ["../../../workers/jobs/worker-configuration.d.ts", "node"]
+    "types": [
+      "../../../workers/jobs/.cloudflare/types/index.d.ts",
+      "node"
+    ]
   },
   "include": [
-    "../../../workers/jobs/worker-configuration.d.ts",
+    "../../../workers/jobs/.cloudflare/types/index.d.ts",
+    "../../../workers/jobs/cloudflare.config.ts",
     "../../../workers/jobs/src/**/*.ts",
     "**/*.ts"
   ]

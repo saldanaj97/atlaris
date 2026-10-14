@@ -1,10 +1,10 @@
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
-import ts from 'typescript';
 
 /**
  * Pushes one 1Password Environment to one deployment target
@@ -13,8 +13,11 @@ import ts from 'typescript';
  */
 
 const WORKER_DIR = 'workers/jobs';
-const WRANGLER = resolve('node_modules/.bin/wrangler');
-const WRANGLER_CONFIG = resolve(WORKER_DIR, 'wrangler.jsonc');
+const CF = resolve(WORKER_DIR, 'node_modules/.bin/cf');
+const WORKER_CONFIG = resolve(WORKER_DIR, 'cloudflare.config.ts');
+
+/** Deployed Worker name for a mode; matches `name` in cloudflare.config.ts. */
+const workerName = (environment: string) => `atlaris-jobs-${environment}`;
 
 /** Links the Vercel CLI to the atlaris project from any worktree or CI runner. */
 const VERCEL_LINK = {
@@ -26,7 +29,7 @@ export type Provider = 'cloudflare' | 'vercel';
 
 export type SyncTarget = {
   readonly provider: Provider;
-  /** Wrangler `--env` or Vercel environment. */
+  /** Worker mode (`cloudflare.config.ts`) or Vercel environment. */
   readonly environment: 'staging' | 'production' | 'preview';
   /** 1Password Environment ID (stable across renames). */
   readonly environmentId: string;
@@ -71,7 +74,11 @@ const INTEGRATION_MANAGED = [
 ];
 /** Workers Builds build secrets, not runtime secrets. */
 const WORKER_BUILD_ONLY = new Set(['SENTRY_AUTH_TOKEN']);
-/** Dashboard-managed job switches (design note, Decision 7). */
+/**
+ * Job switches are Worker secrets declared in cloudflare.config.ts. An operator
+ * flips them with `cf workers secrets update`; they are never synced from
+ * 1Password (design note, Decision 7).
+ */
 const WORKER_SWITCH = /^(?:JOBS_PAUSED|JOB_[A-Z0-9_]+_ENABLED)$/;
 const VARIABLE_NAME = /^[A-Z_][A-Z0-9_]*$/;
 
@@ -168,24 +175,44 @@ export function parseEnvironmentOutput(output: string): Record<string, string> {
   );
 }
 
-/** `vars` declared for a Wrangler environment; a secret may not reuse their names. */
-export function readWranglerVarNames(
-  configText: string,
+/** The slice of `cf/config` types this script reads (`ConfigContext`, `ConfigInput`). */
+type ConfigContext = { mode: string | undefined; isPreview: boolean };
+type ConfigInput<T> = T | Promise<T> | ((ctx: ConfigContext) => T | Promise<T>);
+type WorkerConfig = { env?: Record<string, { type: string }> };
+
+async function resolveConfigInput<T>(
+  input: ConfigInput<T>,
+  ctx: ConfigContext,
+): Promise<T> {
+  return typeof input === 'function'
+    ? (input as (ctx: ConfigContext) => T | Promise<T>)(ctx)
+    : input;
+}
+
+/**
+ * Names declared as `bindings.text()` vars in cloudflare.config.ts for a mode;
+ * a secret may not reuse them. The config is loaded by URL so the root
+ * typecheck does not pull in the Worker package's `cf/config` types.
+ */
+export async function readDeclaredVarNames(
   environment: string,
-): Set<string> {
-  const { config, error } = ts.parseConfigFileTextToJson(
-    'wrangler.jsonc',
-    configText,
-  );
-  if (error) {
+): Promise<Set<string>> {
+  const ctx: ConfigContext = { mode: environment, isPreview: false };
+  const { default: config } = (await import(
+    pathToFileURL(WORKER_CONFIG).href
+  )) as { default: ConfigInput<{ worker?: ConfigInput<WorkerConfig> }> };
+  const resolved = await resolveConfigInput(config, ctx);
+  const worker = await resolveConfigInput(resolved.worker ?? {}, ctx);
+  if (!worker.env) {
     throw new SecretsSyncUsageError(
-      'Could not parse workers/jobs/wrangler.jsonc.',
+      `workers/jobs/cloudflare.config.ts declares no Worker env for mode "${environment}".`,
     );
   }
-  const vars = (
-    config as { env?: Record<string, { vars?: Record<string, unknown> }> }
-  ).env?.[environment]?.vars;
-  return new Set(Object.keys(vars ?? {}));
+  return new Set(
+    Object.entries(worker.env)
+      .filter(([, binding]) => binding.type === 'text')
+      .map(([name]) => name),
+  );
 }
 
 export type PlanEntry = {
@@ -201,8 +228,8 @@ export function planSync(input: {
   readonly existing: ReadonlySet<string>;
   /** Vercel: names an integration owns on this environment. */
   readonly integrationOwned?: ReadonlySet<string>;
-  /** Cloudflare: names declared as `vars` in wrangler.jsonc. */
-  readonly wranglerVars?: ReadonlySet<string>;
+  /** Cloudflare: names declared as `bindings.text()` vars in cloudflare.config.ts. */
+  readonly declaredVars?: ReadonlySet<string>;
 }): PlanEntry[] {
   return [...input.names].sort().map((name): PlanEntry => {
     if (
@@ -220,13 +247,17 @@ export function planSync(input: {
         return { name, action: 'skip', reason: 'Workers Builds build secret' };
       }
       if (WORKER_SWITCH.test(name)) {
-        return { name, action: 'skip', reason: 'dashboard-managed job switch' };
-      }
-      if (input.wranglerVars?.has(name)) {
         return {
           name,
           action: 'skip',
-          reason: 'declared in wrangler.jsonc vars',
+          reason: 'job switch; flip with `cf workers secrets update`',
+        };
+      }
+      if (input.declaredVars?.has(name)) {
+        return {
+          name,
+          action: 'skip',
+          reason: 'declared in cloudflare.config.ts',
         };
       }
     }
@@ -299,21 +330,46 @@ async function readEnvironment(target: SyncTarget) {
   return parseEnvironmentOutput(result.stdout);
 }
 
-async function cloudflareSecretNames(
+/**
+ * `cf workers secrets list` prints the API `result` as a JSON array of
+ * `{ name, type }` when stdout is a pipe (cf unwraps the response envelope and
+ * only colors a TTY). Anything else is refused rather than guessed at.
+ */
+export function parseSecretNames(stdout: string): Set<string> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stdout);
+  } catch {
+    parsed = undefined;
+  }
+  if (
+    !Array.isArray(parsed) ||
+    !parsed.every(
+      (entry): entry is { name: string } =>
+        typeof (entry as { name?: unknown } | null)?.name === 'string',
+    )
+  ) {
+    throw new SecretsSyncUsageError(
+      'Unexpected output from `cf workers secrets list`; expected a JSON array of { name, type }.',
+    );
+  }
+  return new Set(parsed.map((secret) => secret.name));
+}
+
+export async function cloudflareSecretNames(
   environment: string,
 ): Promise<Set<string>> {
   const result = await run(
-    WRANGLER,
-    ['secret', 'list', '--env', environment, '--format', 'json'],
+    CF,
+    ['workers', 'secrets', 'list', '--worker', workerName(environment)],
     { cwd: WORKER_DIR },
   );
   if (result.code !== 0) {
     throw new SecretsSyncUsageError(
-      `wrangler secret list failed:\n${result.stderr.trim()}`,
+      `cf workers secrets list failed:\n${result.stderr.trim()}`,
     );
   }
-  const secrets = JSON.parse(result.stdout) as { name: string }[];
-  return new Set(secrets.map((secret) => secret.name));
+  return parseSecretNames(result.stdout);
 }
 
 type VercelEnvEntry = {
@@ -374,21 +430,58 @@ async function confirm(question: string): Promise<boolean> {
   }
 }
 
-async function applyCloudflare(
+/**
+ * Request body for `cf workers secrets bulk --file`: cf sends the file as-is
+ * as a JSON Merge Patch, so each name maps to an API secret object.
+ */
+export function cloudflareSecretsPatch(
+  values: Readonly<Record<string, string>>,
+) {
+  return Object.fromEntries(
+    Object.entries(values).map(([name, text]) => [
+      name,
+      { type: 'secret_text', text },
+    ]),
+  );
+}
+
+/**
+ * Upserts the secrets in one `cf workers secrets bulk` call. `--file` is the
+ * only way to keep values off the command line (cf reads a path, not stdin), so
+ * the patch lives in a private temp file that is removed afterwards.
+ */
+export async function applyCloudflare(
   target: SyncTarget,
   values: Record<string, string>,
 ): Promise<number> {
-  const result = await run(
-    WRANGLER,
-    ['secret', 'bulk', '--env', target.environment],
-    { cwd: WORKER_DIR, input: JSON.stringify(values) },
-  );
-  if (result.code !== 0) {
-    console.error(
-      `[secrets] wrangler secret bulk failed:\n${result.stderr.trim()}`,
+  const dir = mkdtempSync(join(tmpdir(), 'atlaris-secrets-'));
+  try {
+    const file = join(dir, 'secrets.json');
+    writeFileSync(file, JSON.stringify(cloudflareSecretsPatch(values)), {
+      mode: 0o600,
+    });
+    const result = await run(
+      CF,
+      [
+        'workers',
+        'secrets',
+        'bulk',
+        '--worker',
+        workerName(target.environment),
+        '--file',
+        file,
+      ],
+      { cwd: WORKER_DIR },
     );
+    if (result.code !== 0) {
+      console.error(
+        `[secrets] cf workers secrets bulk failed:\n${result.stderr.trim()}`,
+      );
+    }
+    return result.code;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
   }
-  return result.code;
 }
 
 /**
@@ -518,10 +611,7 @@ export async function runSecretsSync(argv: readonly string[]): Promise<number> {
           provider: 'cloudflare',
           names: Object.keys(source),
           existing: await cloudflareSecretNames(target.environment),
-          wranglerVars: readWranglerVarNames(
-            readFileSync(WRANGLER_CONFIG, 'utf8'),
-            target.environment,
-          ),
+          declaredVars: await readDeclaredVarNames(target.environment),
         })
       : planSync({
           provider: 'vercel',

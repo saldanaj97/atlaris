@@ -26,7 +26,7 @@ import {
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { regenerationEnqueueCommandSchema } from '@/lib/jobs-worker/contract';
 
-/** Request these in wrangler.jsonc; the consumer relies on `max_retries`. */
+/** Request these in cloudflare.config.ts (`maxRetries` there); the consumer relies on `max_retries`. */
 export const REGENERATION_QUEUE_CONSUMER_SETTINGS = {
   max_batch_size: 1,
   max_batch_timeout: 0,
