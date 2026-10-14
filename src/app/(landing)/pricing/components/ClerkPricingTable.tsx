@@ -7,6 +7,7 @@ import {
   type PricingPlan,
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
+import { RenewalConsent } from './RenewalDisclosure';
 import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
@@ -66,6 +67,8 @@ const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
 const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
 const CHECKOUT_PLAN_SLUG_PARAM = 'checkoutPlanSlug';
 const CHECKOUT_PERIOD_PARAM = 'checkoutPeriod';
+/** Set when the visitor ticked the renewal checkbox before signing in, so the resumed checkout stays enabled. */
+const CHECKOUT_CONSENT_PARAM = 'checkoutConsent';
 
 const PLAN_RANK: Record<string, number> = {
   [CLERK_BILLING_PLAN_SLUGS.free]: 0,
@@ -77,12 +80,15 @@ function buildCheckoutSignInRedirect(
   planId: string,
   planSlug: string,
   period: BillingPeriod,
+  agreed: boolean,
 ): string {
-  return `/pricing?${new URLSearchParams({
+  const params = new URLSearchParams({
     [CHECKOUT_PLAN_PARAM]: planId,
     [CHECKOUT_PLAN_SLUG_PARAM]: planSlug,
     [CHECKOUT_PERIOD_PARAM]: period,
-  }).toString()}`;
+  });
+  if (agreed) params.set(CHECKOUT_CONSENT_PARAM, '1');
+  return `/pricing?${params.toString()}`;
 }
 
 function clearCheckoutParams(): void {
@@ -90,6 +96,7 @@ function clearCheckoutParams(): void {
   url.searchParams.delete(CHECKOUT_PLAN_PARAM);
   url.searchParams.delete(CHECKOUT_PLAN_SLUG_PARAM);
   url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
+  url.searchParams.delete(CHECKOUT_CONSENT_PARAM);
   window.history.replaceState(window.history.state, '', url);
 }
 
@@ -176,6 +183,9 @@ export function ClerkPricingTable({
     null,
   );
   const [pendingCheckout, setPendingCheckout] = useState<string | null>(null);
+  const [agreedActions, setAgreedActions] = useState<Record<string, boolean>>(
+    {},
+  );
   const actionButtons = useRef(new Map<string, HTMLButtonElement>());
   const resumedCheckout = useRef<string | null>(null);
 
@@ -211,6 +221,8 @@ export function ClerkPricingTable({
           CHECKOUT_PLAN_SLUG_PARAM,
         );
         const requestedPeriod = url.searchParams.get(CHECKOUT_PERIOD_PARAM);
+        const requestedConsent =
+          url.searchParams.get(CHECKOUT_CONSENT_PARAM) === '1';
         if (!requestedPlanId && !requestedPlanSlug && !requestedPeriod) return;
 
         const requestedPlan = nextPlans.find(
@@ -230,7 +242,15 @@ export function ClerkPricingTable({
                 : 'annual';
           setPeriod(nextPeriod);
           if (isLoaded && userId) {
-            setPendingCheckout(`${requestedPlan.slug}:${nextPeriod}`);
+            const resumedKey = `${requestedPlan.slug}:${nextPeriod}`;
+            // Consent only carries over when the visitor ticked it before signing in.
+            if (requestedConsent) {
+              setAgreedActions((current) => ({
+                ...current,
+                [resumedKey]: true,
+              }));
+            }
+            setPendingCheckout(resumedKey);
           }
           return;
         }
@@ -342,33 +362,59 @@ export function ClerkPricingTable({
           );
         }
 
+        const agreed = agreedActions[actionKey] === true;
         const redirect = buildCheckoutSignInRedirect(
           plan.id,
           plan.slug,
           planPeriod,
+          agreed,
         );
-        return userId ? (
-          <CheckoutButton
-            checkoutProps={{ appearance }}
-            newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
-            planId={plan.id}
-            planPeriod={planPeriod}
-          >
-            <button className={actionClassName} ref={actionRef} type='button'>
-              {label}
-            </button>
-          </CheckoutButton>
-        ) : (
-          <SignInButton
-            forceRedirectUrl={redirect}
-            mode='modal'
-            signUpForceRedirectUrl={redirect}
-            withSignUp
-          >
-            <button className={actionClassName} type='button'>
-              {label}
-            </button>
-          </SignInButton>
+        return (
+          <>
+            <RenewalConsent
+              agreed={agreed}
+              onAgreedChange={(next) =>
+                setAgreedActions((current) => ({
+                  ...current,
+                  [actionKey]: next,
+                }))
+              }
+              period={planPeriod}
+              plan={plan}
+            />
+            {userId ? (
+              <CheckoutButton
+                checkoutProps={{ appearance }}
+                newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+                planId={plan.id}
+                planPeriod={planPeriod}
+              >
+                <button
+                  className={actionClassName}
+                  disabled={!agreed}
+                  ref={actionRef}
+                  type='button'
+                >
+                  {label}
+                </button>
+              </CheckoutButton>
+            ) : (
+              <SignInButton
+                forceRedirectUrl={redirect}
+                mode='modal'
+                signUpForceRedirectUrl={redirect}
+                withSignUp
+              >
+                <button
+                  className={actionClassName}
+                  disabled={!agreed}
+                  type='button'
+                >
+                  {label}
+                </button>
+              </SignInButton>
+            )}
+          </>
         );
       }}
     />

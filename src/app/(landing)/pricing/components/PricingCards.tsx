@@ -27,7 +27,7 @@ type PricingCardsProps = {
   ) => ReactNode;
 };
 
-function formatPricingMoney(money: PricingMoney | null): string {
+export function formatPricingMoney(money: PricingMoney | null): string {
   if (!money) return '$0';
   const symbol = money.currencySymbol?.trim() || '$';
   const formatted = money.amountFormatted?.trim();
