@@ -102,7 +102,7 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
+Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-65 and JCS-97 were closed on 2026-10-14 without a separate integrated visual-acceptance pass.
 
 | File | Description |
 |------|-------------|
