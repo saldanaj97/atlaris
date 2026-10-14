@@ -103,7 +103,7 @@ describe('CircleCI test result collection', () => {
 
     for (const path of [
       'test-results/security/junit.xml',
-      'test-results/workflow/node.xml',
+      'test-results/dependency-remediation/node.xml',
     ]) {
       expect(CODE_CONFIG).toContain(path);
     }

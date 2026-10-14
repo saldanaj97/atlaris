@@ -101,7 +101,7 @@ Vercel's required GitHub status is the authoritative Next.js build and deploymen
 - Unit tests
 - Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
 - RLS security tests
-- Dependency remediation tests (the required `workflow-tests` job; no Workflow vitest suite)
+- Dependency remediation tests (the required `dependency-remediation-tests` job)
 
 **Purpose:** Fast feedback on PRs before merge. GitHub rulesets require the `Vercel` status plus the six CircleCI validation job names, not a GitHub Actions aggregator.
 
