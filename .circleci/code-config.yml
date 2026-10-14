@@ -339,7 +339,6 @@ jobs:
           no_output_timeout: 20m
           command: |
             mkdir -p test-results/unit
-            echo "cpus: nproc=$(nproc) node=$(node -p 'os.availableParallelism()') (vitest unit maxWorkers is pinned to 4 in CI)"
             if [ "${BASE_REF}" = "main" ]; then
               circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
             else

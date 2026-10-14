@@ -47,10 +47,6 @@ const circleciCoverageRunner = circleciCoverage
   ? { runner: '@circleci/vitest-circleci-coverage/runner' }
   : {};
 
-// CircleCI's Docker executor reports the host's CPU count, so Vitest would
-// spawn far more unit workers than the 4 vCPUs the `large` class provides.
-const unitMaxWorkers = process.env.CI ? 4 : undefined;
-
 function getIntegrationMaxWorkers(): number {
   const configured = Number.parseInt(
     process.env.INTEGRATION_MAX_WORKERS ?? '4',
@@ -163,7 +159,6 @@ export default defineConfig({
           isolate: true,
           sequence: { concurrent: !circleciCoverage, groupOrder: 0 },
           pool: 'threads',
-          maxWorkers: unitMaxWorkers,
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.ts'],
           setupFiles: ['tests/unit/setup.node.ts'],
@@ -179,7 +174,6 @@ export default defineConfig({
           isolate: true,
           sequence: { concurrent: !circleciCoverage, groupOrder: 0 },
           pool: 'threads',
-          maxWorkers: unitMaxWorkers,
           testTimeout: 20_000,
           include: ['tests/unit/**/*.{test,spec}.tsx'],
           setupFiles: ['tests/unit/setup.ts'],
