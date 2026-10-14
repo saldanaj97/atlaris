@@ -6,18 +6,22 @@ import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { basename, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseEnv } from 'node:util';
 
-// Wrangler runs from the Worker directory, as Workers Builds does (root
-// directory `workers/jobs`). From the repo root, `--config` resolves the
-// config's `tsconfig` twice and the build fails.
+// `cf` finds cloudflare.config.ts (and wrangler.config.ts) in its working
+// directory, so both binaries run from the Worker directory, as Workers Builds
+// does (root directory `workers/jobs`). Only the bundle gate uses wrangler: cf
+// has no bundle metafile.
 const WORKER_DIR = 'workers/jobs';
-const WRANGLER = resolve('node_modules/.bin/wrangler');
+const CF = resolve(WORKER_DIR, 'node_modules/.bin/cf');
+const WRANGLER = resolve(WORKER_DIR, 'node_modules/.bin/wrangler');
 const ENV_FILE = '.env.local';
 const HYPERDRIVE_LOCAL_ENV =
   'CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE';
+/** Read by workers/jobs/wrangler.config.ts: `cf dev` has no inspector flag. */
+const INSPECTOR_PORT_ENV = 'ATLARIS_JOBS_DEV_INSPECTOR_PORT';
 
 /** Bundled modules that must never reach the Worker (design note, Decision 1). */
 const FORBIDDEN_INPUT =
@@ -47,7 +51,7 @@ const USAGE = [
   'Usage:',
   '  pnpm workers dev     Run the jobs Worker locally against this worktree’s database',
   '  pnpm workers check   Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules, or startup CPU over budget',
-  '  pnpm workers types   Regenerate workers/jobs/worker-configuration.d.ts',
+  '  pnpm workers types   Regenerate workers/jobs/.cloudflare/types/index.d.ts',
 ].join('\n');
 
 type Metafile = {
@@ -115,17 +119,58 @@ export function readLocalDatabaseUrl(envFileContent: string): string {
   return url;
 }
 
-function runWrangler(
+/**
+ * `cf dev` for the local (no-mode) Worker. The listen address and the inspector
+ * port come from workers/jobs/wrangler.config.ts; `cf dev --host` would only set
+ * the upstream host.
+ */
+export function workerDevCommand(
+  { port, inspector }: { port: number; inspector: number },
+  databaseUrl: string,
+  baseEnv: NodeJS.ProcessEnv = process.env,
+): { args: string[]; env: NodeJS.ProcessEnv } {
+  return {
+    args: ['dev', '--port', String(port)],
+    env: {
+      ...baseEnv,
+      [HYPERDRIVE_LOCAL_ENV]: databaseUrl,
+      [INSPECTOR_PORT_ENV]: String(inspector),
+    },
+  };
+}
+
+/** Bundles for staging without uploading, and writes the esbuild metafile. */
+export function bundleDryRunArgs(outdir: string, metafile: string): string[] {
+  return [
+    'deploy',
+    '--dry-run',
+    '--experimental-new-config',
+    '--env',
+    'staging',
+    '--outdir',
+    outdir,
+    '--metafile',
+    metafile,
+  ];
+}
+
+/** Builds the staging Worker and writes a V8 CPU profile of its startup. */
+export function startupProfileArgs(profile: string): string[] {
+  return ['workers', 'check', '--mode', 'staging', '--outfile', profile];
+}
+
+function runTool(
+  binary: string,
   args: string[],
   env: NodeJS.ProcessEnv = process.env,
 ): Promise<number> {
   return new Promise((resolvePromise) => {
-    const child = spawn(WRANGLER, args, {
+    const child = spawn(binary, args, {
       cwd: WORKER_DIR,
       stdio: 'inherit',
       env,
     });
-    // Stop wrangler (and its workerd) with this process, not only on Ctrl-C.
+    // Stop the tool (and its workerd) with this process, not only on Ctrl-C.
     const forward = (signal: NodeJS.Signals) => child.kill(signal);
     process.on('SIGINT', forward);
     process.on('SIGTERM', forward);
@@ -135,7 +180,9 @@ function runWrangler(
       resolvePromise(code ?? 1);
     });
     child.on('error', (error) => {
-      console.error(`[workers] Could not start wrangler: ${error.message}`);
+      console.error(
+        `[workers] Could not start ${basename(binary)}: ${error.message}`,
+      );
       resolvePromise(1);
     });
   });
@@ -148,38 +195,24 @@ async function dev(): Promise<number> {
     );
   }
   const databaseUrl = readLocalDatabaseUrl(readFileSync(ENV_FILE, 'utf8'));
-  const { port, inspector } = workerDevPorts(process.cwd());
-  console.log(`[workers] Jobs Worker: http://127.0.0.1:${port}`);
-
-  return runWrangler(
-    [
-      'dev',
-      '--ip',
-      '127.0.0.1',
-      '--port',
-      String(port),
-      '--inspector-port',
-      String(inspector),
-      '--test-scheduled',
-    ],
-    { ...process.env, [HYPERDRIVE_LOCAL_ENV]: databaseUrl },
+  const ports = workerDevPorts(process.cwd());
+  console.log(`[workers] Jobs Worker: http://127.0.0.1:${ports.port}`);
+  console.log(
+    `[workers] Run a cron: curl "http://127.0.0.1:${ports.port}/cdn-cgi/local/scheduled?cron=*/15+*+*+*+*"`,
   );
+
+  const { args, env } = workerDevCommand(ports, databaseUrl);
+  return runTool(CF, args, env);
 }
 
 async function check(): Promise<number> {
   const outdir = mkdtempSync(join(tmpdir(), 'atlaris-jobs-bundle-'));
   const metafilePath = join(outdir, 'meta.json');
   try {
-    const code = await runWrangler([
-      'deploy',
-      '--dry-run',
-      '--env',
-      'staging',
-      '--outdir',
-      outdir,
-      '--metafile',
-      metafilePath,
-    ]);
+    const code = await runTool(
+      WRANGLER,
+      bundleDryRunArgs(outdir, metafilePath),
+    );
     if (code !== 0) return code;
 
     const metafile = JSON.parse(readFileSync(metafilePath, 'utf8')) as Metafile;
@@ -196,14 +229,7 @@ async function check(): Promise<number> {
     const samples: number[] = [];
     for (let run = 1; run <= STARTUP_PROFILE_RUNS; run += 1) {
       const profilePath = join(outdir, `startup-${run}.cpuprofile`);
-      const startupCode = await runWrangler([
-        'check',
-        'startup',
-        '--env',
-        'staging',
-        '--outfile',
-        profilePath,
-      ]);
+      const startupCode = await runTool(CF, startupProfileArgs(profilePath));
       if (startupCode !== 0) return startupCode;
       samples.push(
         startupCpuMs(
@@ -237,7 +263,7 @@ export async function runWorkersCli(argv: readonly string[]): Promise<number> {
     case 'check':
       return check();
     case 'types':
-      return runWrangler(['types', '--strict-vars=false']);
+      return runTool(CF, ['workers', 'types']);
     default:
       throw new WorkersCliUsageError(USAGE);
   }

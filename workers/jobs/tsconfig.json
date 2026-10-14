@@ -1,18 +1,29 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "lib": ["esnext"],
-    "types": ["./worker-configuration.d.ts", "node"],
+    "lib": [
+      "esnext"
+    ],
+    "types": [
+      "./.cloudflare/types/index.d.ts",
+      "node"
+    ],
     "plugins": [],
     "incremental": false,
     "rootDir": "../..",
     "paths": {
-      "@/*": ["../../src/*"],
-      "@supabase/*": ["../../supabase/*"]
+      "@/*": [
+        "../../src/*"
+      ],
+      "@supabase/*": [
+        "../../supabase/*"
+      ]
     }
   },
   "include": [
-    "worker-configuration.d.ts",
+    ".cloudflare/types/index.d.ts",
+    "cloudflare.config.ts",
+    "wrangler.config.ts",
     "src/**/*.ts"
   ],
   "exclude": []

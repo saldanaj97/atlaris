@@ -1,7 +1,8 @@
 # Copy to workers/jobs/.dev.vars for `pnpm workers dev` (gitignored).
-# Names only; never commit values. Deployed Workers get secrets from the
-# dashboard (B1) and switches from Settings -> Variables and Secrets.
-# When wrangler.jsonc lists secrets.required, only those keys load from here.
+# Names only; never commit values. Secrets are declared with bindings.secret()
+# in cloudflare.config.ts; deployed Workers get them from the dashboard (B1).
+# In the deployed modes (staging/production) the job switches below are Worker
+# secrets too; locally they come from this file.
 
-# Job switches (dashboard-managed in deployed environments):
+# Job switches:
 # JOBS_PAUSED=false

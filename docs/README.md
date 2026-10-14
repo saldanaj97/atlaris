@@ -36,7 +36,7 @@ System design, pipelines, and operational runbooks.
 | [auth-and-data-layer.md](./architecture/auth-and-data-layer.md) | Auth, authorization, RLS / tenant isolation |
 | [clerk-billing-architecture.md](./architecture/clerk-billing-architecture.md) | Clerk Billing and identity webhooks, projections, quotas, checkout sync |
 | [cloudflare-b1-checklist.md](./architecture/cloudflare-b1-checklist.md) | User-executed setup checklist for JCS-120 B1 (`atlaris.app` DNS move, Hyperdrive, Queues, Workers, custom domains, secrets, Sentry project, rate limiting) |
-| [cloudflare-jobs-runtime.md](./architecture/cloudflare-jobs-runtime.md) | Cloudflare Workers job runtime design (JCS-126): layout, Hyperdrive, config, app ↔ Worker contract, cutover, CPU gate |
+| [cloudflare-jobs-runtime.md](./architecture/cloudflare-jobs-runtime.md) | Cloudflare Workers job runtime design (JCS-126): layout, Hyperdrive, cf CLI config (`cloudflare.config.ts`), switch secrets, app ↔ Worker contract, cutover, CPU gate |
 | [email-notification-delivery-runbook.md](./architecture/email-notification-delivery-runbook.md) | Email notification scheduler runbook |
 | [internal-worker-routes.md](./architecture/internal-worker-routes.md)                           | Internal `/api/internal/` manual maintenance routes and token auth                                                                                         |
 | [plan-cleanup-runbook.md](./architecture/plan-cleanup-runbook.md) | Stuck-plan and orphaned-attempt maintenance |
@@ -85,7 +85,7 @@ Local development, env, deploy, and logging.
 | [supabase-native-spike.md](./development/supabase-native-spike.md) | JCS-121 spike: Supabase native (Docker-free) local stack evidence and go/no-go |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
 | [secrets-sync.md](./development/secrets-sync.md) | `pnpm secrets:sync`: push 1Password Environments to Workers and Vercel; production Worker workflow |
-| [workers-local-dev.md](./development/workers-local-dev.md) | Cloudflare jobs Worker local loop: `pnpm workers dev`, health check, cron trigger, `.dev.vars` |
+| [workers-local-dev.md](./development/workers-local-dev.md) | Cloudflare jobs Worker local loop: `pnpm workers dev` (`cf dev`), health check, cron trigger, `.dev.vars`, types and bundle gates |
 
 ## `security/`
 

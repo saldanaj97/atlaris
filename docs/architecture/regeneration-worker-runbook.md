@@ -65,9 +65,11 @@ Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature
 | App (Vercel)                   | `JOBS_WORKER_URL`              | Worker origin (`https://workers-staging.atlaris.app`, `https://workers.atlaris.app`) |
 | App (Vercel) and Worker secret | `JOBS_SIGNING_SECRET`          | Shared HMAC key per environment                                                      |
 | Worker secret (optional)       | `JOBS_SIGNING_SECRET_PREVIOUS` | Old key during rotation                                                              |
-| Worker variable (dashboard)    | `JOB_REGENERATION_ENABLED`     | Consumer, sweep, and enqueue command on/off (absent = off)                           |
-| Worker variable (dashboard)    | `JOBS_PAUSED`                  | Pauses every job                                                                     |
+| Worker secret (switch)         | `JOB_REGENERATION_ENABLED`     | Consumer, sweep, and enqueue command on/off (absent = off)                           |
+| Worker secret (switch)         | `JOBS_PAUSED`                  | Pauses every job                                                                     |
 | Worker secret                  | `OPENROUTER_API_KEY`           | Provider calls from the consumer                                                     |
+
+Flip a Worker switch yourself from `workers/jobs`: `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <true|false>`. Switches are declared as secrets in `workers/jobs/cloudflare.config.ts`, so a deploy keeps them; never set them from Git or as plain-text dashboard variables. Set `JOBS_SIGNING_SECRET_PREVIOUS` the same way during rotation; it is not declared in the config, and a deploy keeps existing secrets.
 
 ### Enabling and rollback
 
