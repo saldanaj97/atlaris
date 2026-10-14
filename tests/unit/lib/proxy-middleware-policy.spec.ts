@@ -109,12 +109,17 @@ describe('middleware policy', () => {
     expect(resolveSiteGateRedirectPath(null, '/')).toBe(null);
   });
 
-  it.each(['/landing', '/landing/', '/pricing', '/pricing/', '/about'])(
-    'keeps marketing page %s live during maintenance',
-    (pathname) => {
-      expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(null);
-    },
-  );
+  it.each([
+    '/landing',
+    '/landing/',
+    '/pricing',
+    '/pricing/',
+    '/about',
+    '/terms',
+    '/privacy',
+  ])('keeps marketing page %s live during maintenance', (pathname) => {
+    expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(null);
+  });
 
   it('sends / to the landing page during maintenance', () => {
     expect(resolveSiteGateRedirectPath('maintenance', '/')).toBe('/landing');
@@ -136,12 +141,16 @@ describe('middleware policy', () => {
     );
   });
 
-  it.each(['/landing', '/pricing', '/about', '/waitlist'])(
-    'keeps %s live while the launch waitlist is on',
-    (pathname) => {
-      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
-    },
-  );
+  it.each([
+    '/landing',
+    '/pricing',
+    '/about',
+    '/terms',
+    '/privacy',
+    '/waitlist',
+  ])('keeps %s live while the launch waitlist is on', (pathname) => {
+    expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
+  });
 
   it.each(['/auth/sign-in', '/auth/sign-up', '/dashboard', '/maintenance'])(
     'redirects %s to /waitlist while the launch waitlist is on',

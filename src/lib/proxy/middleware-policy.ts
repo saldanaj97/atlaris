@@ -33,6 +33,8 @@ const MAINTENANCE_MODE_MARKETING_PATHS = [
   '/landing',
   '/pricing',
   '/about',
+  '/terms',
+  '/privacy',
 ] as const;
 
 const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
