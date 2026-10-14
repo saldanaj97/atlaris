@@ -121,7 +121,7 @@ For direct file targeting:
 ```bash
 pnpm test unit --changed
 pnpm test integration --changed
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts   # .ts specs run in Node; use --project unit-dom for .tsx (jsdom)
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```
 

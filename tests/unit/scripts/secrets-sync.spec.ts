@@ -145,9 +145,15 @@ describe('parseSecretNames', () => {
 });
 
 describe('cloudflareSecretsPatch', () => {
-  it('wraps each value as an API secret object', () => {
+  it('nests each value under secrets as an API secret object', () => {
     expect(cloudflareSecretsPatch({ OPENROUTER_API_KEY: 'sk-1' })).toEqual({
-      OPENROUTER_API_KEY: { type: 'secret_text', text: 'sk-1' },
+      secrets: {
+        OPENROUTER_API_KEY: {
+          name: 'OPENROUTER_API_KEY',
+          type: 'secret_text',
+          text: 'sk-1',
+        },
+      },
     });
   });
 });
@@ -311,9 +317,12 @@ describe.sequential('Cloudflare secrets through cf', () => {
     ]);
     expect(call!.args.join(' ')).not.toContain('sk-never-on-the-command-line');
     expect(call!.body).toEqual({
-      OPENROUTER_API_KEY: {
-        type: 'secret_text',
-        text: 'sk-never-on-the-command-line',
+      secrets: {
+        OPENROUTER_API_KEY: {
+          name: 'OPENROUTER_API_KEY',
+          type: 'secret_text',
+          text: 'sk-never-on-the-command-line',
+        },
       },
     });
     expect(call!.mode).toBe(0o600);

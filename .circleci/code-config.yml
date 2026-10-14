@@ -330,7 +330,6 @@ jobs:
 
   unit-tests:
     executor: node
-    parallelism: 4
     environment:
       NODE_ENV: test
       SKIP_DB_TEST_SETUP: 'true'
@@ -504,13 +503,10 @@ jobs:
       - run:
           name: Integration tests
           no_output_timeout: 25m
+          # develop only: PRs into main already ran the full suite via integration-light.
           command: |
             mkdir -p test-results/integration
-            if [ "${CIRCLE_BRANCH}" = "develop" ]; then
-              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
-            else
-              circleci testsuite run "integration tests" --analyze-tests=none --run-tests=all
-            fi
+            circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
       - summarize-vitest:
           results-file: test-results/integration/results.json
 
@@ -625,7 +621,7 @@ workflows:
             - detect-changes
           filters:
             branches:
-              only: [main, develop]
+              only: develop
       - integration-impact-analysis:
           requires:
             - detect-changes

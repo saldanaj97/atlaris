@@ -54,6 +54,7 @@
     "screenshots",
     "*.tsbuildinfo",
     "next-env.d.ts",
+    "workers/jobs/.cloudflare",
     ".env*"
   ]
 }

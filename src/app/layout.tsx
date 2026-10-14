@@ -8,6 +8,7 @@ import { PostHogUserIdentifier } from '@/shared/analytics/PostHogUserIdentifier'
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Sora, Work_Sans } from 'next/font/google';
+import { headers } from 'next/headers';
 
 import './globals.css';
 
@@ -116,13 +117,16 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // src/proxy.ts sets x-nonce per request (absent when it skips CSP). Reading
+  // it opts the layout into dynamic rendering, which nonce-based CSP requires.
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const appContent = (
-    <ThemeProvider>
+    <ThemeProvider nonce={nonce}>
       {children}
       <Toaster />
     </ThemeProvider>

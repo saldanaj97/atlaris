@@ -140,7 +140,7 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 pnpm test                     # Run changed unit + integration-class tests
 pnpm test unit                # Run all unit tests
 pnpm test unit --changed      # Run unit tests for changed files only
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit --project unit-dom tests/unit  # Unit watch mode
 pnpm test integration --changed # Run changed integration tests
 pnpm test integration         # Run the full DB/API integration suite (heavier; use sparingly)
 pnpm test security            # Run RLS policy tests
@@ -158,8 +158,9 @@ DB-backed suites use Testcontainers unless `--native-db` / `ATLARIS_TEST_DB=nati
 Use native Vitest arguments for single-file or watch runs:
 
 ```bash
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # watch
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts      # .ts specs (Node)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit-dom tests/unit/path/to/file.spec.tsx # .tsx specs (jsdom)
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit --project unit-dom tests/unit  # watch
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```
 

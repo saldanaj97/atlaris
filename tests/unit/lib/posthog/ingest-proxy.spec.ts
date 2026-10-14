@@ -138,6 +138,29 @@ describe('proxyIngestRequest', () => {
     expect(response.headers.get('cf-ray')).toBeNull();
   });
 
+  it('drops Content-Encoding and Content-Length from the downstream response because fetch already decoded the body', async () => {
+    vi.mocked(globalThis.fetch).mockResolvedValue(
+      new Response('{"flags":{}}', {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Encoding': 'gzip',
+          'Content-Length': '31',
+        },
+      }),
+    );
+
+    const response = await proxyIngestRequest(
+      jsonBodyRequest('http://localhost/ingest/flags/?v=2', '{}'),
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get('content-encoding')).toBeNull();
+    expect(response.headers.get('content-length')).toBeNull();
+    expect(response.headers.get('content-type')).toBe('application/json');
+    expect(await response.text()).toBe('{"flags":{}}');
+  });
+
   it('forwards a capture POST to the configured ingest origin', async () => {
     const response = await proxyIngestRequest(
       jsonBodyRequest(

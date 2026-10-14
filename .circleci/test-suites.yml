@@ -1,29 +1,29 @@
 ---
 name: unit tests
+# `unit` runs .ts specs in Node and `unit-dom` runs .tsx specs in jsdom
+# (see vitest.config.ts); both projects belong to this one suite.
 discover: >-
-  pnpm exec vitest list --config vitest.config.ts --project unit --filesOnly tests/unit
+  pnpm exec vitest list --config vitest.config.ts --project unit --project unit-dom --filesOnly tests/unit
   | sed -E 's/^\[[^]]+\] //'
 run: >-
-  pnpm exec vitest run --config vitest.config.ts --project unit
+  pnpm exec vitest run --config vitest.config.ts --project unit --project unit-dom
   --reporter=default
   --reporter=json
   --reporter=junit
   --outputFile.json=test-results/unit/results.json
   --outputFile.junit="<< outputs.junit >>"
   << test.atoms >>
+# Single-pass analysis: @circleci/vitest-circleci-coverage records per-test V8
+# coverage for every atom in one Vitest run (enabled by CIRCLECI_COVERAGE in
+# vitest.config.ts), instead of one lcov run per atom.
 analysis: >-
-  coverage_dir=$(mktemp -d) &&
-  pnpm exec vitest run --config vitest.config.ts --project unit
-  --coverage
-  --coverage.reporter=lcov
-  --coverage.reportsDirectory="${coverage_dir}"
-  << test.atoms >> &&
-  mv "${coverage_dir}/lcov.info" "<< outputs.lcov >>"
+  CIRCLECI_COVERAGE="<< outputs.circleci-coverage >>"
+  pnpm exec vitest run --config vitest.config.ts --project unit --project unit-dom
+  << test.atoms >>
 outputs:
   junit: test-results/unit/junit.xml
 options:
   test-impact-analysis: true
-  dynamic-test-splitting: true
   impact-key: atlaris-unit-tests
   full-test-run-paths:
     - .circleci/**
@@ -39,6 +39,7 @@ options:
     - tests/mocks/**
     - tests/setup/**
     - tests/unit/setup.ts
+    - tests/unit/setup.node.ts
 ---
 name: integration tests
 discover: >-
@@ -57,19 +58,13 @@ run: >-
   --outputFile.json=test-results/integration/results.json
   --outputFile.junit="<< outputs.junit >>"
   << test.atoms >>
-# Analysis runs atoms concurrently; the integration global setup rebuilds one
-# shared template database, so serialize runs with a mkdir lock.
+# Single-pass analysis (see the unit suite): one Vitest run covers every atom,
+# so the global setup rebuilds the shared template database once and the
+# per-atom mkdir lock is no longer needed.
 analysis: >-
-  lock=/tmp/atlaris-integration-analysis.lock;
-  until mkdir "${lock}" 2>/dev/null; do sleep 1; done;
-  trap 'rmdir "${lock}"' EXIT;
-  coverage_dir=$(mktemp -d) &&
+  CIRCLECI_COVERAGE="<< outputs.circleci-coverage >>"
   pnpm exec vitest run --config vitest.config.ts --project integration
-  --coverage
-  --coverage.reporter=lcov
-  --coverage.reportsDirectory="${coverage_dir}"
-  << test.atoms >> &&
-  mv "${coverage_dir}/lcov.info" "<< outputs.lcov >>"
+  << test.atoms >>
 outputs:
   junit: test-results/integration/junit.xml
 options:
