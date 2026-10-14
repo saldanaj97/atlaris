@@ -10,11 +10,7 @@ const PROTECTED_PREFIXES = [
 ] as const;
 
 /** Public routes required by platform integrations (not user app surfaces). */
-const MAINTENANCE_MODE_BYPASS_PREFIXES = [
-  '/.well-known/vercel/flags',
-  /** Workflow SDK runtime callbacks; proxy applies callback auth before Clerk. */
-  '/.well-known/workflow',
-] as const;
+const MAINTENANCE_MODE_BYPASS_PREFIXES = ['/.well-known/vercel/flags'] as const;
 
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = [

@@ -1,6 +1,5 @@
 import type { RegenerationOrchestrationDeps } from './deps';
 import type { PlanRegenerationJobPayload } from './schema';
-import type { ProcessPlanRegenerationJobResult } from './types';
 import type { Job } from '@/features/jobs/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { PlanRegenerationWorkflowTerminalResult } from '@/features/plans/workflows/plan-regeneration.types';
@@ -15,16 +14,9 @@ import { assertNever, serializeErrorForLog } from '@/lib/errors';
 import { learningPlans } from '@supabase/schema';
 import { eq } from 'drizzle-orm';
 
-const INVALID_JOB_PAYLOAD_MESSAGE = 'Invalid plan regeneration job payload.';
 const PLAN_NOT_FOUND_MESSAGE = 'Plan not found for queued regeneration.';
-const IMMUTABLE_OVERRIDE_MESSAGE =
-  'Queued regeneration overrides cannot change topic or notes.';
 
 export type RegenerationPlanRow = typeof learningPlans.$inferSelect;
-
-type ValidatedJobPayload =
-  | { ok: true; payload: PlanRegenerationJobPayload }
-  | { ok: false; result: ProcessPlanRegenerationJobResult };
 
 type ValidatedJobPayloadWithoutFail =
   | { ok: true; payload: PlanRegenerationJobPayload }
@@ -79,45 +71,6 @@ export async function validateQueuedRegenerationPayloadForJob(
   }
 
   return { ok: true, payload: parsed.data };
-}
-
-export async function validateQueuedRegenerationPayload(
-  job: Job,
-  deps: RegenerationOrchestrationDeps,
-): Promise<ValidatedJobPayload> {
-  if (rawRegenerationOverridesHaveImmutableFields(job.data)) {
-    await deps.queue.failJob(job.id, IMMUTABLE_OVERRIDE_MESSAGE, {
-      retryable: false,
-    });
-    return { ok: false, result: { kind: 'invalid-payload', jobId: job.id } };
-  }
-
-  const parsed = planRegenerationJobPayloadSchema.safeParse(job.data);
-  if (!parsed.success) {
-    await deps.queue.failJob(job.id, INVALID_JOB_PAYLOAD_MESSAGE, {
-      retryable: false,
-    });
-    return { ok: false, result: { kind: 'invalid-payload', jobId: job.id } };
-  }
-
-  const payload = parsed.data;
-
-  if (job.planId !== payload.planId) {
-    deps.logger.error(
-      {
-        jobId: job.id,
-        jobPlanId: job.planId,
-        payloadPlanId: payload.planId,
-      },
-      'Queued plan regeneration job metadata mismatch',
-    );
-    await deps.queue.failJob(job.id, INVALID_JOB_PAYLOAD_MESSAGE, {
-      retryable: false,
-    });
-    return { ok: false, result: { kind: 'invalid-payload', jobId: job.id } };
-  }
-
-  return { ok: true, payload };
 }
 
 export async function loadAuthorizedRegenerationPlan(

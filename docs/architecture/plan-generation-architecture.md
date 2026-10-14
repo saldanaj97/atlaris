@@ -184,9 +184,9 @@ These classifications drive logging, user messaging, and retry decisions.
 
 ## Durable workflows
 
-Plan create and retry attempts always run on the jobs Worker. The app sends the signed `POST /v1/plan-generation/start` through `dispatchPlanGenerationToWorker`, and the Worker runs the Cloudflare Workflow `PlanGenerationWorkflow`. There is no runtime switch and no Vercel Workflow path for create and retry. Plan **regeneration** is separate: it still runs on the Vercel Workflow SDK (see [Workflow SDK](./workflow-sdk.md)).
+Plan create and retry attempts always run on the jobs Worker. The app sends the signed `POST /v1/plan-generation/start` through `dispatchPlanGenerationToWorker`, and the Worker runs the Cloudflare Workflow `PlanGenerationWorkflow`. There is no runtime switch and no Vercel Workflow path for create and retry. Plan **regeneration** is separate: it runs through a Cloudflare Queue consumer on the same Worker (see [Regeneration worker runbook](./regeneration-worker-runbook.md)); it has no Workflow instance.
 
-Workflow run IDs are stored on `generation_attempts.metadata.workflow`. For correlation, see [Workflow SDK](./workflow-sdk.md).
+Workflow run IDs are stored on `generation_attempts.metadata.workflow`. To trace a run, read that row and look up the Cloudflare instance ID in the Cloudflare Workflows dashboard or Workers Logs.
 
 ### Cloudflare Workflow path (B6)
 
@@ -205,7 +205,7 @@ The jobs Worker (`workers/jobs`) runs plan create/retry generation as the Cloudf
 
 Parse failures are never retried: invalid JSON settles as a retryable `provider_error` and a schema failure as a permanent `validation` failure with usage, the app's standard classification and messaging. Each step opens its own database pool (`withStepDb`); Worker paths never use the service-role singleton. Each step execution writes one log line `{ job: "plan-generation", step, instanceId, planId, attemptId, outcome, errorKind?, taskCount? }` for per-step CPU measurement (Decision 9).
 
-**Runtime marker.** `generation_attempts.metadata.workflow.provider` is `cloudflare-workflow` for create and retry (`workflow-sdk` for regeneration attempts and older rows); `runId` is the Cloudflare instance ID or the Vercel run ID. Settlement passes the marker back as `workflowMetadata`, so the finalized attempt keeps it with `completedAt`.
+**Runtime marker.** `generation_attempts.metadata.workflow.provider` is `cloudflare-workflow` for create and retry (`cloudflare-queue` for regeneration attempts, `workflow-sdk` on older rows); `runId` is the Cloudflare instance ID, the queue message ID for regeneration, or the Vercel run ID on older rows. Settlement passes the marker back as `workflowMetadata`, so the finalized attempt keeps it with `completedAt`.
 
 **Settings.** Worker switch `JOB_PLAN_GENERATION_ENABLED` (dashboard variable; off unless `true`) and `JOBS_PAUSED`; lessons after success also need `JOB_MODULE_LESSONS_ENABLED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The step timeout follows the Worker's `AI_TIMEOUT_*` variables (app defaults when unset).
 
@@ -270,7 +270,7 @@ Generate JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/sch
 
 Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId? }` with `Cache-Control: no-store`.
 
-For correlation and step layout, see [Workflow SDK](./workflow-sdk.md).
+For correlation, read `modules.lessonGenerationMetadata.workflow.runId` (the Cloudflare instance ID) and look it up in the Cloudflare Workflows dashboard or Workers Logs.
 
 ### Cloudflare Workflow path (B5)
 
@@ -352,8 +352,8 @@ If someone imports the service-role DB into a request handler, they are not bein
 
 ## Related documents
 
-- [Workflow SDK](./workflow-sdk.md) — feature flags, Preview testing (`pnpm deploy:preview`), correlation metadata, and tests
-- [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration (`POST .../regenerate`) and workflow-backed drain
+- [Cloudflare Workers job runtime](./cloudflare-jobs-runtime.md) — Worker design, Workflows, and Queue
+- [Regeneration worker runbook](./regeneration-worker-runbook.md) — queued plan regeneration (`POST .../regenerate`) on the Cloudflare Queue
 - `docs/architecture/auth-and-data-layer.md`
 - `docs/api/rate-limiting.md`
 - `docs/database/schema-overview.md`

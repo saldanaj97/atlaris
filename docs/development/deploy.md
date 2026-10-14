@@ -94,7 +94,6 @@ bash scripts/db/attest-effective-privileges.sh contract
 
 It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants. Full checklist and allowlist paths: [client-usage.md — Privilege model and attestation](../database/client-usage.md#privilege-model-and-attestation).
 4. Set worker tokens in the target environment for enabled internal routes:
-   - `REGENERATION_WORKER_TOKEN` for regeneration drains
    - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
    - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
 5. Verify plan cleanup when `JOB_PLAN_CLEANUP_ENABLED=true` on the jobs Worker:

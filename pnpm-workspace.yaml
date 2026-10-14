@@ -40,9 +40,6 @@ trustPolicyExclude:
   - semver@6.3.1
   - undici-types@6.21.0
 overrides:
-  "@workflow/core>nanoid": 5.1.16
-  "@workflow/builders>esbuild": 0.28.1
-  "@workflow/cli>esbuild": 0.28.1
   "@esbuild-kit/core-utils>esbuild": ^0.25.0
   "@esbuild-kit/esm-loader>esbuild": ^0.25.0
   js-cookie: ^3.0.7
