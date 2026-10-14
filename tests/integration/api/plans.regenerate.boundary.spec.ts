@@ -12,14 +12,11 @@ import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { desc, eq } from 'drizzle-orm';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const workflowStartMock = vi.hoisted(() =>
-  vi.fn(async () => ({
-    runId: 'wrun_regeneration',
-    returnValue: Promise.resolve({ kind: 'completed' }),
-  })),
-);
+const dispatchMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock('workflow/api', () => ({ start: workflowStartMock }));
+vi.mock('@/features/jobs/regeneration-dispatch', () => ({
+  dispatchRegenerationToWorker: dispatchMock,
+}));
 
 const BASE_URL = 'http://localhost/api/v1/plans';
 
@@ -45,6 +42,7 @@ async function countJobsForPlan(planId: string): Promise<number> {
 describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
   beforeEach(() => {
     clearAllUserRateLimiters();
+    dispatchMock.mockClear();
   });
 
   it('returns 404 and does not enqueue for a plan owned by another user', async () => {
@@ -209,6 +207,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
 
     expect(first.status).toBe(202);
     expect(await countJobsForPlan(plan.id)).toBe(1);
+    expect(dispatchMock).toHaveBeenCalledOnce();
 
     const secondRequest = await createRequest(plan.id, {
       overrides: { skillLevel: 'beginner' },
@@ -227,7 +226,8 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(jobs).toHaveLength(1);
     const [job] = jobs;
     expect(job?.jobType).toBe('plan_regeneration');
-    expect(['pending', 'processing']).toContain(job?.status);
+    expect(job?.status).toBe('pending');
+    expect(dispatchMock).toHaveBeenCalledOnce();
   });
 
   it.each(['2026-2-01', '2026-02-30', '2026-02-01T00:00:00.000Z'])(

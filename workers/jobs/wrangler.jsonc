@@ -27,9 +27,7 @@
   "alias": {
     "@sentry/nextjs": "@sentry/cloudflare",
     "flags/next": "./src/runtime/flags-next.ts",
-    "@flags-sdk/vercel": "./src/runtime/flags-sdk-vercel.ts",
-    "workflow": "./src/runtime/workflow.ts",
-    "workflow/api": "./src/runtime/workflow-api.ts"
+    "@flags-sdk/vercel": "./src/runtime/flags-sdk-vercel.ts"
   },
   // Plan regeneration (B4): no dead-letter queue; job_queue stays the record
   // and the */15 sweep re-sends lost work (design note, Decision 8).

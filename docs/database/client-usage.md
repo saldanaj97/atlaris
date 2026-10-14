@@ -21,7 +21,7 @@ import { getDb } from '@supabase/runtime';
 import { db } from '@supabase/service-role';
 ```
 
-- **Use in**: Tests, internal operations, migrations, seeding, **first-user provisioning**, workflow steps, regeneration drain, and other feature-owned server write boundaries after auth checks
+- **Use in**: Tests, internal operations, migrations, seeding, **first-user provisioning**, Cloudflare Workflow steps, the regeneration queue consumer, and other feature-owned server write boundaries after auth checks
 - **Behavior**: Bypasses RLS completely
 - **Location**: `supabase/service-role.ts`
 

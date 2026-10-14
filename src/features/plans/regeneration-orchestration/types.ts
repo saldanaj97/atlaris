@@ -56,29 +56,4 @@ export type RequestPlanRegenerationResult =
       reason: string;
       upgradeUrl?: string;
     }
-  | { kind: 'content-locked' }
-  | {
-      kind: 'workflow-start-failed';
-      jobId: string;
-      planId: string;
-      retryable: boolean;
-    };
-
-export type ProcessPlanRegenerationJobResult =
-  | { kind: 'no-job' }
-  | { kind: 'completed'; jobId: string; planId: string }
-  | {
-      kind: 'retryable-failure';
-      jobId: string;
-      planId: string;
-      willRetry: boolean;
-    }
-  | { kind: 'permanent-failure'; jobId: string; planId?: string }
-  | { kind: 'already-finalized'; jobId: string; planId: string }
-  /**
-   * Single variant on purpose: separate "not found" vs "unauthorized" would let callers
-   * infer whether a plan id exists. Keep this combined; do not split the union.
-   */
-  | { kind: 'plan-not-found-or-unauthorized'; jobId: string; planId: string }
-  | { kind: 'invalid-payload'; jobId: string }
-  | { kind: 'workflow-in-flight'; jobId: string; planId: string };
+  | { kind: 'content-locked' };

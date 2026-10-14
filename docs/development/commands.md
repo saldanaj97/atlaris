@@ -14,8 +14,8 @@ See [deploy.md](./deploy.md) for rollout notes that need ordered app-vs-migratio
 > **Note**: Do not auto-run these commands; listed for reference only.
 
 ```bash
-pnpm dev              # Portless + Next.js Webpack + Workflow SDK
-pnpm dev --ui         # Portless + Turbopack UI-only (no Workflow SDK callbacks)
+pnpm dev              # Portless + Next.js Webpack
+pnpm dev --ui         # Portless + Turbopack UI-only
 pnpm dev --db         # Start/ensure Supabase, then run the normal pnpm dev path
 pnpm dev doctor       # Read-only local toolchain, Portless, and 1Password diagnostics
 pnpm deploy:preview   # Deploy the current worktree to Vercel's Preview environment
@@ -50,7 +50,7 @@ pnpm dev                 # start the app through Portless after fixture setup
 Starting the app does not reset, seed, or mutate billing fixtures. Use the DB
 commands explicitly when local product-testing state needs to change.
 
-Use `pnpm deploy:preview` to test Workflow SDK feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
+Use `pnpm deploy:preview` to test feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
 ### Post-push Production rehearsal
 
@@ -141,20 +141,17 @@ pnpm test                     # Run changed unit + integration-class tests
 pnpm test unit                # Run all unit tests
 pnpm test unit --changed      # Run unit tests for changed files only
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Unit watch mode
-pnpm test integration --changed # Run changed integration + Workflow SDK tests
+pnpm test integration --changed # Run changed integration tests
 pnpm test integration         # Run the full DB/API integration suite (heavier; use sparingly)
-pnpm test workflow            # Run Workflow SDK wiring + production entrypoints (Testcontainers by default)
 pnpm test security            # Run RLS policy tests
 pnpm test smoke               # Run Playwright smoke coverage
 pnpm test e2e                 # Run the E2E Vitest project
-pnpm test all                 # Run lint, typecheck, unit, integration, workflow, and security suites
+pnpm test all                 # Run lint, typecheck, unit, integration, and security suites
 pnpm test all --e2e           # Full suite plus E2E tests
 pnpm test integration --native-db # Any DB-backed suite on the native Supabase `test` stack (no Docker); same as ATLARIS_TEST_DB=native
 ```
 
 DB-backed suites use Testcontainers unless `--native-db` / `ATLARIS_TEST_DB=native` is set. See [local-database.md](./local-database.md#automated-test-databases).
-
-Workflow SDK test layout and env flags: [Workflow SDK](../architecture/workflow-sdk.md#testing) · [tests/AGENTS.md](../../tests/AGENTS.md#workflow-sdk-tests).
 
 ### Targeted Vitest commands
 
@@ -164,7 +161,6 @@ Use native Vitest arguments for single-file or watch runs:
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # watch
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
-NODE_ENV=test pnpm vitest run --config vitest.workflow.config.ts tests/workflow/path/to/file.workflow.spec.ts
 ```
 
 ## Local API Testing Guidance

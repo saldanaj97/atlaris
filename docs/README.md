@@ -38,14 +38,13 @@ System design, pipelines, and operational runbooks.
 | [cloudflare-b1-checklist.md](./architecture/cloudflare-b1-checklist.md) | User-executed setup checklist for JCS-120 B1 (`atlaris.app` DNS move, Hyperdrive, Queues, Workers, custom domains, secrets, Sentry project, rate limiting) |
 | [cloudflare-jobs-runtime.md](./architecture/cloudflare-jobs-runtime.md) | Cloudflare Workers job runtime design (JCS-126): layout, Hyperdrive, config, app ↔ Worker contract, cutover, CPU gate |
 | [email-notification-delivery-runbook.md](./architecture/email-notification-delivery-runbook.md) | Email notification scheduler runbook |
-| [internal-worker-routes.md](./architecture/internal-worker-routes.md) | Internal `/api/internal/` workers and token auth |
+| [internal-worker-routes.md](./architecture/internal-worker-routes.md)                           | Internal `/api/internal/` manual maintenance routes and token auth                                                                                         |
 | [plan-cleanup-runbook.md](./architecture/plan-cleanup-runbook.md) | Stuck-plan and orphaned-attempt maintenance |
 | [plan-generation-architecture.md](./architecture/plan-generation-architecture.md) | Plan generation pipeline (`POST /api/v1/plans` create + retry on the jobs Worker, status polling) |
-| [regeneration-worker-runbook.md](./architecture/regeneration-worker-runbook.md) | Queued plan regeneration drain runbook |
+| [regeneration-worker-runbook.md](./architecture/regeneration-worker-runbook.md)                 | Queued plan regeneration runbook: signed enqueue, Cloudflare Queue consumer, sweep, switches, rollback                                                     |
 | [retention-cleanup-runbook.md](./architecture/retention-cleanup-runbook.md) | DB retention cleanup (tokens, webhooks, jobs) |
 | [usage-analytics-metric-contract.md](./architecture/usage-analytics-metric-contract.md) | Usage analytics metric contract (shipped `/analytics/usage`) |
 | [user-preferences.md](./architecture/user-preferences.md) | Settings ledger, AI/email prefs, analytics timezone |
-| [workflow-sdk.md](./architecture/workflow-sdk.md) | Workflow SDK durable execution (plan regeneration only) |
 
 ## `ci/`
 
@@ -153,8 +152,7 @@ docs/
 │   ├── regeneration-worker-runbook.md
 │   ├── retention-cleanup-runbook.md
 │   ├── usage-analytics-metric-contract.md
-│   ├── user-preferences.md
-│   └── workflow-sdk.md
+│   └── user-preferences.md
 ├── ci/
 │   └── branching-strategy.md
 ├── ci-cd/

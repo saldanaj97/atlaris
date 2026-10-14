@@ -5,10 +5,10 @@ import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
 import { makeAttemptReservation } from '../../../fixtures/attempts';
 import {
+  PLAN_REGENERATION_FAILURE_MESSAGE,
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
 } from '@/features/jobs/regeneration-run';
-import { PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE } from '@/features/plans/start-plan-regeneration-workflow';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -448,7 +448,7 @@ describe('runPlanRegeneration quota settlement', () => {
     expect(mocks.failJob).toHaveBeenNthCalledWith(
       2,
       JOB_ID,
-      PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+      PLAN_REGENERATION_FAILURE_MESSAGE,
       { retryable: false },
     );
   });
@@ -471,7 +471,7 @@ describe('terminalizeAbandonedRegenerationRun', () => {
     ).resolves.toBe(true);
     expect(mocks.failJob).toHaveBeenCalledWith(
       JOB_ID,
-      PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE,
+      PLAN_REGENERATION_FAILURE_MESSAGE,
       { retryable: false },
     );
   });

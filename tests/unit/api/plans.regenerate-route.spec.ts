@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   requestPlanRegeneration: vi.fn(),
   baseDeps: { dbClient: {}, marker: 'default-deps' },
-  runtime: { value: 'vercel' as 'vercel' | 'cloudflare' },
 }));
 
 vi.mock('@/features/plans/regeneration-orchestration/request', () => ({
@@ -12,14 +11,6 @@ vi.mock('@/features/plans/regeneration-orchestration/request', () => ({
 
 vi.mock('@/features/plans/regeneration-orchestration/deps', () => ({
   createDefaultRegenerationOrchestrationDeps: vi.fn(() => mocks.baseDeps),
-}));
-
-vi.mock('@/lib/config/env/jobs-worker', () => ({
-  jobsWorkerEnv: {
-    get regenerationRuntime() {
-      return mocks.runtime.value;
-    },
-  },
 }));
 
 vi.mock('@/lib/posthog-server', () => ({
@@ -71,7 +62,7 @@ function regenerate(): Promise<Response> {
   );
 }
 
-describe('POST /api/v1/plans/:planId/regenerate runtime selection', () => {
+describe('POST /api/v1/plans/:planId/regenerate', () => {
   beforeEach(() => {
     mocks.requestPlanRegeneration.mockReset();
     mocks.requestPlanRegeneration.mockResolvedValue({
@@ -87,23 +78,7 @@ describe('POST /api/v1/plans/:planId/regenerate runtime selection', () => {
     });
   });
 
-  it('keeps the Vercel workflow path by default (no dispatch)', async () => {
-    mocks.runtime.value = 'vercel';
-
-    const response = await regenerate();
-
-    expect(response.status).toBe(202);
-    const [, deps] = mocks.requestPlanRegeneration.mock.calls[0] as [
-      unknown,
-      Record<string, unknown>,
-    ];
-    expect(deps).toBe(mocks.baseDeps);
-    expect(deps).not.toHaveProperty('dispatch');
-  });
-
-  it('hands the job to the jobs Worker when REGENERATION_RUNTIME=cloudflare', async () => {
-    mocks.runtime.value = 'cloudflare';
-
+  it('hands the job to the jobs Worker', async () => {
     const response = await regenerate();
 
     expect(response.status).toBe(202);

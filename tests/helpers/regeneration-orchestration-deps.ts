@@ -33,10 +33,8 @@ export function makeRegenerationOrchestrationDeps(
         id: 'job-1',
         deduplicated: false,
       })),
-      getNextJob: vi.fn(),
       completeJob: vi.fn(async () => null),
       failJob: vi.fn(async () => null),
-      updateRegenerationJobPayload: vi.fn(async () => null),
     },
     quota: {
       peekUsage: vi.fn(async () => ({

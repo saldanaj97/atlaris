@@ -15,8 +15,6 @@ import {
   completeJob,
   enqueueJobWithResult,
   failJob,
-  getNextJob,
-  updateJobPayloadIfRunIdMissing,
 } from '@/features/jobs/queue';
 import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
@@ -34,14 +32,8 @@ export interface RegenerationOrchestrationDeps {
   queue: {
     enabled: () => boolean;
     enqueueWithResult: typeof enqueueJobWithResult;
-    getNextJob: typeof getNextJob;
     completeJob: typeof completeJob;
     failJob: typeof failJob;
-    /**
-     * First-writer runId claim used by attach. Must be the CAS variant that
-     * refuses to overwrite an existing workflow.runId.
-     */
-    updateRegenerationJobPayload: typeof updateJobPayloadIfRunIdMissing;
   };
   quota: {
     /**
@@ -92,12 +84,15 @@ export interface RegenerationOrchestrationDeps {
     ) => Promise<PlanGenerationRateLimitResult>;
   };
   logger: Pick<typeof logger, 'debug' | 'info' | 'error' | 'warn'>;
+}
+
+/** Deps for the enqueue request, which also hands the job to the jobs Worker. */
+export interface RegenerationRequestDeps extends RegenerationOrchestrationDeps {
   /**
-   * Set when `REGENERATION_RUNTIME=cloudflare`: enqueue hands the job to the
-   * jobs Worker instead of attaching a Vercel workflow. Must not throw; a failed
-   * hand-off leaves the job pending for the Worker's sweep.
+   * Must not throw; a failed hand-off leaves the job pending for the Worker's
+   * sweep.
    */
-  dispatch?: (input: RegenerationDispatchInput) => Promise<void>;
+  dispatch: (input: RegenerationDispatchInput) => Promise<void>;
 }
 
 export type RegenerationDispatchInput = {
@@ -114,10 +109,8 @@ export function createDefaultRegenerationOrchestrationDeps(
     queue: {
       enabled: () => regenerationQueueEnv.enabled,
       enqueueWithResult: enqueueJobWithResult,
-      getNextJob,
       completeJob,
       failJob,
-      updateRegenerationJobPayload: updateJobPayloadIfRunIdMissing,
     },
     quota: {
       peekUsage: (userId, tier, client) =>

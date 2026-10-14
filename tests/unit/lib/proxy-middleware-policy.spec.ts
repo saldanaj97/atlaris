@@ -66,12 +66,6 @@ describe('middleware policy', () => {
       resolveSiteGateRedirectPath('maintenance', '/.well-known/vercel/flags'),
     ).toBe(null);
     expect(
-      resolveSiteGateRedirectPath(
-        'maintenance',
-        '/.well-known/workflow/v1/flow',
-      ),
-    ).toBe(null);
-    expect(
       resolveSiteGateRedirectPath('maintenance', '/api/health/worker'),
     ).toBe(null);
     expect(
