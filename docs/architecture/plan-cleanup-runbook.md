@@ -25,7 +25,7 @@ The `atlaris-jobs` Worker owns the schedule: Cron `*/15 * * * *` runs `runPlanCl
 
 | Item | Value |
 | --- | --- |
-| Switch | `JOB_PLAN_CLEANUP_ENABLED=true` (Worker variable, off when absent); `JOBS_PAUSED=true` pauses it |
+| Switch | `JOB_PLAN_CLEANUP_ENABLED=true` (Worker secret, off when absent); `JOBS_PAUSED=true` pauses it |
 | Old owner | The GitHub Actions scheduler (`plan-cleanup-scheduler.yml`) was removed in B7a (JCS-134) |
 | Failures | Reported to Sentry (`atlaris-jobs`) with tags `job=plan-cleanup`, `runtime=cloudflare-worker`; the invocation is marked failed. No cron monitor |
 | Manual fallback | The HTTP route below stays available for manual operations |
@@ -110,5 +110,5 @@ Verification steps:
 
 1. **Plans stuck in generating:** verify the Worker cron is running, manually trigger the internal endpoint, and inspect application logs for `stuck_plans_cleanup_partial_failure` errors.
 2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm Bearer or `x-maintenance-worker-token` on manual triggers.
-3. **Emergency pause:** set `JOB_PLAN_CLEANUP_ENABLED=false` (or `JOBS_PAUSED=true` to pause every Worker job) on the jobs Worker. This is a Cloudflare dashboard or wrangler step you run yourself. `PLAN_CLEANUP_ENABLED=false` only disables the manual Vercel route. Stuck plans accumulate until cleanup is re-enabled.
+3. **Emergency pause:** set `JOB_PLAN_CLEANUP_ENABLED=false` (or `JOBS_PAUSED=true` to pause every Worker job) on the jobs Worker. You run this yourself from `workers/jobs`: `pnpm exec cf workers secrets update JOB_PLAN_CLEANUP_ENABLED --worker atlaris-jobs-<staging|production> --text false` (the switches are Worker secrets, never set from Git). `PLAN_CLEANUP_ENABLED=false` only disables the manual Vercel route. Stuck plans accumulate until cleanup is re-enabled.
 4. **Partial cleanup failure (500):** inspect logs for `stuck_plans_cleanup_partial_failure`; this indicates a locked plan was not updated — investigate concurrent generation state changes or DB issues before re-triggering.

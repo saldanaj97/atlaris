@@ -111,7 +111,7 @@ Do not use the transaction pooler (port `6543`) for Hyperdrive.
 4. Select **Create**. Hyperdrive tests the connection before it saves.
    - If the connection test fails, repeat with the **Session pooler** string from A2. Supabase Free direct connections are IPv6-only.
    - If both fail, stop and report the error text. A "connection refused" error can mean Supabase Network Restrictions are on; do not change them without a decision.
-5. Turn query caching off: open the configuration → **Settings** → caching → **Disable**. If the dashboard has no caching control, run in a terminal: `npx wrangler login`, then `npx wrangler hyperdrive update <HYPERDRIVE_ID> --caching-disabled`.
+5. Turn query caching off: open the configuration → **Settings** → caching → **Disable**. If the dashboard has no caching control, run in a terminal from `workers/jobs`: `pnpm exec cf auth login`, then `pnpm exec cf hyperdrive update <HYPERDRIVE_ID> --caching-disabled`.
 
 **Verify:** the configuration is listed, its settings show caching disabled, and the origin host matches `atlaris-dev`.
 
@@ -159,7 +159,7 @@ The Worker reports to its own Sentry project, separate from the app's `atlaris` 
 
 1. In Sentry org `jcs-software`, open **Projects** → **Create Project**.
 2. Choose platform **Cloudflare Workers** and name the project `atlaris-jobs`. Do not add alert rules now; cron monitors are created by the Worker's first check-ins.
-3. Open the new project → **Settings** → **Client Keys (DSN)** and copy the DSN. A DSN is not a secret; it goes into `wrangler.jsonc` as `SENTRY_DSN` for both environments.
+3. Open the new project → **Settings** → **Client Keys (DSN)** and copy the DSN. A DSN is not a secret; it goes into `workers/jobs/cloudflare.config.ts` as `SENTRY_DSN` for both deployed modes.
 4. Create the build token:
    - Open **Settings** → **Organization Tokens** → **Create New Token**.
    - Name it `cloudflare-workers-builds`.
@@ -190,9 +190,9 @@ No redeploy is needed now; the app does not read these until B4. The hostnames c
 
 ## Part B: Staging Worker (run when the orchestrator says B2's Worker code is on the staging branch and A0 is Active)
 
-The staging branch is the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`; after that merge it becomes `develop` (decided 2026-10-05). The build and deploy commands below were confirmed by B2 (`pnpm workers check` runs the same `wrangler deploy --dry-run` from `workers/jobs`).
+The staging branch is the Track B parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`; after that merge it becomes `develop` (decided 2026-10-05). The build and deploy commands below were confirmed by B2; the deploy command now uses the `cf` CLI instead of wrangler. `pnpm workers check` builds from `workers/jobs`: a `wrangler deploy --dry-run` feeds the forbidden-module check and `cf workers check --mode staging` runs the startup-CPU check.
 
-B2's `wrangler.jsonc` declares the custom domain `workers-staging.atlaris.app` and `workers_dev: false`. The deploy attaches the domain; B5 verifies it.
+`workers/jobs/cloudflare.config.ts` declares the custom domain `workers-staging.atlaris.app` and `workersDev: false` for `--mode staging`. The deploy attaches the domain; B5 verifies it.
 
 ### B1. Create the Worker from the repository
 
@@ -205,7 +205,9 @@ B2's `wrangler.jsonc` declares the custom domain `workers-staging.atlaris.app` a
    | Project (Worker) name | `atlaris-jobs-staging` |
    | Root directory | `workers/jobs` |
    | Build command | `cd ../.. && pnpm install --frozen-lockfile` |
-   | Deploy command | `npx wrangler deploy --env staging --var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` |
+   | Deploy command | `pnpm exec cf deploy --mode staging` |
+
+   `SENTRY_RELEASE` is not a deploy flag: `cloudflare.config.ts` sets it from `WORKERS_CI_COMMIT_SHA` at deploy time.
 
 4. Select **Save and Deploy**. A first build can start right away and fail until steps B2–B4 are done. That is expected.
 
@@ -243,7 +245,7 @@ On the Worker, open **Settings** → **Variables and Secrets** → **Add**. Choo
 
 Select **Deploy**.
 
-Do not add any `JOB_*_ENABLED` or `JOBS_PAUSED` variables now. Each later phase sets its own switch at cutover; absent means off.
+Do not add any `JOB_*_ENABLED` or `JOBS_PAUSED` secrets now. Each later phase sets its own switch at cutover with `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-staging --text true` from `workers/jobs`; absent means off.
 
 **Verify:** all four names are listed with hidden values.
 
@@ -267,7 +269,7 @@ Do not add any `JOB_*_ENABLED` or `JOBS_PAUSED` variables now. Each later phase 
 1. On the Worker, open **Settings** → **Domains & Routes**.
 2. Confirm `workers-staging.atlaris.app` is listed as a **Custom Domain** and `workers.dev` is disabled.
 3. If the custom domain is missing: **Add** → **Custom Domain** → `workers-staging.atlaris.app` → **Add Custom Domain**.
-4. If `workers.dev` is still enabled: select **Disable** on its row. The next deploy keeps both settings, because they match `wrangler.jsonc`.
+4. If `workers.dev` is still enabled: select **Disable** on its row. The next deploy keeps both settings, because they match `workers/jobs/cloudflare.config.ts`.
 
 **Verify:**
 
@@ -317,7 +319,7 @@ Repeat B1–B5 with these changes. Do **not** create a second rate-limiting rule
 | Setting | Production value |
 | --- | --- |
 | Worker name | `atlaris-jobs-production` |
-| Deploy command | `npx wrangler deploy --env production --var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` (confirm with the receipt) |
+| Deploy command | `pnpm exec cf deploy --mode production` (confirm with the receipt) |
 | Production branch | `main` |
 | `JOBS_SIGNING_SECRET` | Production value from A6 |
 | Other secrets | Production values from A6 |

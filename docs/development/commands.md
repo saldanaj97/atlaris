@@ -68,9 +68,9 @@ Do not promote the rehearsal or treat it as a traffic gate. Only JCS-52's native
 The background jobs Worker in `workers/jobs/`. Local loop and `.dev.vars`: [workers-local-dev.md](./workers-local-dev.md).
 
 ```bash
-pnpm workers dev          # Run the Worker locally (wrangler dev) against this worktree's database
+pnpm workers dev          # Run the Worker locally (cf dev) against this worktree's database
 pnpm workers check        # Bundle for staging; fail on Next, Vercel, Clerk, or workflow modules, or startup CPU over budget
-pnpm workers types        # Regenerate workers/jobs/worker-configuration.d.ts after a wrangler.jsonc change
+pnpm workers types        # Regenerate workers/jobs/.cloudflare/types/index.d.ts after a cloudflare.config.ts change
 pnpm check:type:workers   # Typecheck the Worker and its unit tests (part of pnpm typecheck)
 ```
 

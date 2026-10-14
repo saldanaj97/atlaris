@@ -2,7 +2,7 @@
 
 **Audience:** Developers and the orchestrator implementing Track B (JCS-120) phases B1–B7.
 **Last Updated:** October 2026
-**Status:** Accepted design for JCS-126 (B0); review decisions recorded 2026-10-05. One question remains open (see the end). No Worker code, Wrangler configuration, or Cloudflare resources exist yet.
+**Status:** Accepted design for JCS-126 (B0); review decisions recorded 2026-10-05. One question remains open (see the end). At acceptance no Worker code, Wrangler configuration, or Cloudflare resources existed; the Worker has since shipped, and since 2026-10-14 (PR #764) it is configured with the `cf` CLI (`workers/jobs/cloudflare.config.ts`).
 
 This note fixes how the `workers/jobs` Worker is laid out, reaches Supabase, loads configuration, receives work from the Next.js app, reports problems, deploys, and takes over each background job. The user-executed setup that follows from it is in [cloudflare-b1-checklist.md](./cloudflare-b1-checklist.md).
 
@@ -12,13 +12,13 @@ Already decided (not reopened here): all background execution moves to Cloudflar
 
 | # | Topic | Decision |
 | --- | --- | --- |
-| 1 | Repo layout | `workers/jobs/` with its own `wrangler.jsonc` and `tsconfig.json`; Wrangler's esbuild bundles root `@/` and `@supabase/` imports; Next/Vercel-only modules are replaced with Wrangler `alias`; the Worker talks to Postgres with node-postgres + Drizzle through Hyperdrive, one pool per invocation |
-| 2 | Environments | `staging` → Worker `atlaris-jobs-staging` + Supabase `atlaris-dev`, deployed from the Track B parent branch until Track B first merges into `develop`, then from `develop`; `production` → `atlaris-jobs-production` + `atlaris-prod` from `main`; Workers served on custom domains `workers-staging.atlaris.app` and `workers.atlaris.app` after the `atlaris.app` zone moves to Cloudflare; Hyperdrive connects as `postgres`; the top level is local-only |
+| 1 | Repo layout | `workers/jobs/` with `cloudflare.config.ts` (the Worker, per mode), `wrangler.config.ts` (bundler settings), and its own `tsconfig.json`; Wrangler's esbuild bundles root `@/` and `@supabase/` imports; Next/Vercel-only modules are replaced with Wrangler `alias`; the Worker talks to Postgres with node-postgres + Drizzle through Hyperdrive, one pool per invocation |
+| 2 | Environments | `staging` → Worker `atlaris-jobs-staging` + Supabase `atlaris-dev`, deployed from the Track B parent branch until Track B first merges into `develop`, then from `develop`; `production` → `atlaris-jobs-production` + `atlaris-prod` from `main`; Workers served on custom domains `workers-staging.atlaris.app` and `workers.atlaris.app` after the `atlaris.app` zone moves to Cloudflare; Hyperdrive connects as `postgres`; the config without `--mode` is local-only |
 | 3 | Config | Worker variables and secrets reuse the app's env names; `process.env` is filled from them automatically, so `src/lib/config/env/*` validates them unchanged; one Worker-only module validates bindings and switches |
 | 4 | App ↔ Worker | App sends HMAC-signed HTTPS commands to the Worker's custom domain (`POST /v1/<command>`), behind one zone rate-limiting rule; the Worker uses its own Queue and Workflow bindings; the app reads status from Postgres only |
 | 5 | Observability | `@sentry/cloudflare` in a separate Sentry project, `atlaris-jobs`, with release = commit SHA so it matches the app's release; Workers Logs; the Workflows dashboard replaces Vercel workflow observability; the existing cron monitor slugs move to the new project |
 | 6 | Deploy order | Expand migration → Worker → app, as separate merges → contract migration. The Worker accepts old and new command shapes during a change |
-| 7 | Cutover | One owner per job at all times, with fixed observation windows. Worker job switches are dashboard-managed variables that default to off, plus a global `JOBS_PAUSED`. The Worker does not follow the app's `MAINTENANCE_MODE`. B4's production cutover follows B5's CPU gate |
+| 7 | Cutover | One owner per job at all times, with fixed observation windows. Worker job switches are Worker secrets (declared in `cloudflare.config.ts`, flipped with `cf workers secrets update`) that default to off, plus a global `JOBS_PAUSED`. The Worker does not follow the app's `MAINTENANCE_MODE`. B4's production cutover follows B5's CPU gate |
 | 8 | Cron and Queue | Two Worker Cron Triggers per environment (4 of 5 account-wide) plus Workflow `schedules` for email. Regeneration uses a Cloudflare Queue for intake, delayed retry, and a concurrency cap; `job_queue` stays the record, and a 15-minute sweep re-sends lost work |
 | 9 | CPU | Resolved: the account is on Workers Paid (30 s CPU per invocation). Measured AI runs use about 0.2–0.8 s of CPU, so the 10 ms Free-plan gate no longer applies |
 
@@ -31,15 +31,15 @@ Already decided (not reopened here): all background execution moves to Cloudflar
 
 ## Current job inventory
 
-| Job                                     | Trigger today                                                                                                                                                                                                                                                                                                                                                      | Schedule                                                                                                                                                                        | Code entry                                                                                                                                                                                                                                             | Auth today                                                              | Cloudflare target                                                                       | Phase |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----- |
-| Stuck-plan and orphaned-attempt cleanup | Worker cron (owner since B3a; `JOB_PLAN_CLEANUP_ENABLED`, paused by `JOBS_PAUSED`). History: GitHub Actions called `POST /api/internal/maintenance/plans/cleanup`; that scheduler was removed in B7a and the route stays for manual runs                                                                                                                           | `*/15 * * * *` (`workers/jobs/wrangler.jsonc`)                                                                                                                                  | `runPlanCleanup` (`workers/jobs/src/index.ts`, `workers/jobs/src/jobs/plan-cleanup.ts`) → `runPlanCleanupMaintenance` (`src/features/plans/cleanup.ts`). Evidence: Workers Logs "Completed plan cleanup" and tagged Sentry exceptions; no cron monitor | Signed Worker cron (no token). Manual route: `MAINTENANCE_WORKER_TOKEN` | Cron `*/15 * * * *`                                                                     | B3a   |
-| Retention cleanup                       | Worker cron (`JOB_RETENTION_CLEANUP_ENABLED`, paused by `JOBS_PAUSED`). History: Supabase `pg_cron` job `retention-cleanup`, now absent from `cron.job`                                                                                                                                                                                                            | `0 3 * * *` (`workers/jobs/wrangler.jsonc`)                                                                                                                                     | `workers/jobs/src/jobs/retention-cleanup.ts` → `private.cleanup_retained_db_rows()`. Evidence: Workers Logs "Completed retention cleanup"                                                                                                              | none (in-database function via Hyperdrive)                              | Cron `0 3 * * *`                                                                        | B3a   |
-| Email daily and weekly                  | Worker Workflow `schedules` (`JOB_EMAIL_DELIVERY_ENABLED`, paused by `JOBS_PAUSED`). The manual route starts a Worker run through `POST /v1/email-delivery/runs`. History: Vercel Cron → `GET /api/cron/notifications/email` → Vercel Workflow, removed in B7a                                                                                                     | `0 14 * * *`, `30 14 * * MON` (`workers/jobs/wrangler.jsonc`). History: the removed `vercel.json` used `30 14 * * 1`, where `1` means Monday on Vercel but Sunday on Cloudflare | Worker `EmailDeliveryWorkflow` (`workers/jobs/src/workflows/email-delivery/`). Evidence: Workers Logs, Workflow instance history, and Sentry exceptions tagged `job: email-delivery`; no cron monitor                                                  | Worker schedule (no token). Manual route: `MAINTENANCE_WORKER_TOKEN`    | Workflow with `schedules`                                                               | B3b   |
-| Plan regeneration                       | `POST /api/v1/plans/:planId/regenerate` inserts the `job_queue` row and sends a signed `POST /v1/regeneration/enqueue` to the Worker; a failed hand-off leaves the row `pending` for the sweep. History: the Vercel workflow started at enqueue, with a 15-minute GitHub Actions drain (`regeneration-worker-scheduler.yml`) as fallback; both were removed in B7b | `*/15 * * * *` sweep in the Worker cron (`workers/jobs/wrangler.jsonc`)                                                                                                         | `dispatchRegenerationToWorker` → Worker queue consumer → `runPlanRegeneration` claim → reserve → process → finalize (`src/features/jobs/regeneration-run.ts`)                                                                                          | HMAC-signed command (`JOBS_SIGNING_SECRET`)                             | Queue + consumer, sweep in the `*/15` cron                                              | B4    |
-| Module lesson generation                | `POST …/lesson-content/generate` → signed `POST /v1/module-lessons/start` (the Vercel `workflow/api.start` path and `MODULE_LESSONS_RUNTIME` were removed in B7a); progressive enqueue after plan finalization                                                                                                                                                     | on demand                                                                                                                                                                       | `startModuleLessonGeneration`, Worker `ModuleLessonsWorkflow`                                                                                                                                                                                          | user session                                                            | Workflow                                                                                | B5    |
-| Plan create/retry                       | `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`: reserve in-process, send the signed start command to the Worker (`PLAN_GENERATION_RUNTIME` and the Vercel workflow were removed in B7a), return `202`; the client polls status                                                                                                                        | on demand                                                                                                                                                                       | `startPlanGenerationAttempt` (`src/features/plans/start-plan-generation-attempt.ts`)                                                                                                                                                                   | user session                                                            | Workflow                                                                                | B6    |
-| Clerk Billing reconciliation            | Manual `POST /api/internal/maintenance/billing/reconcile-clerk`                                                                                                                                                                                                                                                                                                    | manual                                                                                                                                                                          | `src/features/billing/clerk-billing/reconciliation.ts` (imports `@clerk/nextjs/server`)                                                                                                                                                                | `MAINTENANCE_WORKER_TOKEN`                                              | Stays on Vercel: manual repair, not a background job, and depends on the Next Clerk SDK | —     |
+| Job                                     | Trigger today                                                                                                                                                                                                                                                                                                                                                      | Schedule                                                                                                                                                                              | Code entry                                                                                                                                                                                                                                             | Auth today                                                              | Cloudflare target                                                                       | Phase |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | ----- |
+| Stuck-plan and orphaned-attempt cleanup | Worker cron (owner since B3a; `JOB_PLAN_CLEANUP_ENABLED`, paused by `JOBS_PAUSED`). History: GitHub Actions called `POST /api/internal/maintenance/plans/cleanup`; that scheduler was removed in B7a and the route stays for manual runs                                                                                                                           | `*/15 * * * *` (`workers/jobs/cloudflare.config.ts`)                                                                                                                                  | `runPlanCleanup` (`workers/jobs/src/index.ts`, `workers/jobs/src/jobs/plan-cleanup.ts`) → `runPlanCleanupMaintenance` (`src/features/plans/cleanup.ts`). Evidence: Workers Logs "Completed plan cleanup" and tagged Sentry exceptions; no cron monitor | Signed Worker cron (no token). Manual route: `MAINTENANCE_WORKER_TOKEN` | Cron `*/15 * * * *`                                                                     | B3a   |
+| Retention cleanup                       | Worker cron (`JOB_RETENTION_CLEANUP_ENABLED`, paused by `JOBS_PAUSED`). History: Supabase `pg_cron` job `retention-cleanup`, now absent from `cron.job`                                                                                                                                                                                                            | `0 3 * * *` (`workers/jobs/cloudflare.config.ts`)                                                                                                                                     | `workers/jobs/src/jobs/retention-cleanup.ts` → `private.cleanup_retained_db_rows()`. Evidence: Workers Logs "Completed retention cleanup"                                                                                                              | none (in-database function via Hyperdrive)                              | Cron `0 3 * * *`                                                                        | B3a   |
+| Email daily and weekly                  | Worker Workflow `schedules` (`JOB_EMAIL_DELIVERY_ENABLED`, paused by `JOBS_PAUSED`). The manual route starts a Worker run through `POST /v1/email-delivery/runs`. History: Vercel Cron → `GET /api/cron/notifications/email` → Vercel Workflow, removed in B7a                                                                                                     | `0 14 * * *`, `30 14 * * MON` (`workers/jobs/cloudflare.config.ts`). History: the removed `vercel.json` used `30 14 * * 1`, where `1` means Monday on Vercel but Sunday on Cloudflare | Worker `EmailDeliveryWorkflow` (`workers/jobs/src/workflows/email-delivery/`). Evidence: Workers Logs, Workflow instance history, and Sentry exceptions tagged `job: email-delivery`; no cron monitor                                                  | Worker schedule (no token). Manual route: `MAINTENANCE_WORKER_TOKEN`    | Workflow with `schedules`                                                               | B3b   |
+| Plan regeneration                       | `POST /api/v1/plans/:planId/regenerate` inserts the `job_queue` row and sends a signed `POST /v1/regeneration/enqueue` to the Worker; a failed hand-off leaves the row `pending` for the sweep. History: the Vercel workflow started at enqueue, with a 15-minute GitHub Actions drain (`regeneration-worker-scheduler.yml`) as fallback; both were removed in B7b | `*/15 * * * *` sweep in the Worker cron (`workers/jobs/cloudflare.config.ts`)                                                                                                         | `dispatchRegenerationToWorker` → Worker queue consumer → `runPlanRegeneration` claim → reserve → process → finalize (`src/features/jobs/regeneration-run.ts`)                                                                                          | HMAC-signed command (`JOBS_SIGNING_SECRET`)                             | Queue + consumer, sweep in the `*/15` cron                                              | B4    |
+| Module lesson generation                | `POST …/lesson-content/generate` → signed `POST /v1/module-lessons/start` (the Vercel `workflow/api.start` path and `MODULE_LESSONS_RUNTIME` were removed in B7a); progressive enqueue after plan finalization                                                                                                                                                     | on demand                                                                                                                                                                             | `startModuleLessonGeneration`, Worker `ModuleLessonsWorkflow`                                                                                                                                                                                          | user session                                                            | Workflow                                                                                | B5    |
+| Plan create/retry                       | `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`: reserve in-process, send the signed start command to the Worker (`PLAN_GENERATION_RUNTIME` and the Vercel workflow were removed in B7a), return `202`; the client polls status                                                                                                                        | on demand                                                                                                                                                                             | `startPlanGenerationAttempt` (`src/features/plans/start-plan-generation-attempt.ts`)                                                                                                                                                                   | user session                                                            | Workflow                                                                                | B6    |
+| Clerk Billing reconciliation            | Manual `POST /api/internal/maintenance/billing/reconcile-clerk`                                                                                                                                                                                                                                                                                                    | manual                                                                                                                                                                                | `src/features/billing/clerk-billing/reconciliation.ts` (imports `@clerk/nextjs/server`)                                                                                                                                                                | `MAINTENANCE_WORKER_TOKEN`                                              | Stays on Vercel: manual repair, not a background job, and depends on the Next Clerk SDK | —     |
 
 Removed in B7a (JCS-134): the Vercel Workflow paths for plan create/retry, module lessons, and email delivery, the `PLAN_GENERATION_RUNTIME` and `MODULE_LESSONS_RUNTIME` switches, the Vercel email crons (`vercel.json`) with `GET /api/cron/notifications/email` and `CRON_SECRET`, and `plan-cleanup-scheduler.yml`.
 
@@ -70,10 +70,12 @@ The walk is a guide. The authoritative check is the bundle that Wrangler produce
 
 ```text
 workers/jobs/
-├── wrangler.jsonc              # name "atlaris-jobs"; env.staging, env.production
-├── tsconfig.json               # extends ../../tsconfig.json; Workers types; same @/ and @supabase/ paths
-├── worker-configuration.d.ts   # generated by `wrangler types`, committed
-├── .dev.vars.example           # variable names only
+├── cloudflare.config.ts          # the Worker per mode (cf CLI): local "atlaris-jobs", staging, production
+├── wrangler.config.ts            # bundler aliases, tsconfig, dev listen address, types.generate: false
+├── package.json                  # workspace package @atlaris/jobs; cf and wrangler devDependencies
+├── tsconfig.json                 # extends ../../tsconfig.json; Workers types; same @/ and @supabase/ paths
+├── .cloudflare/types/index.d.ts  # generated by `pnpm workers types` (`cf workers types`), committed
+├── .dev.vars.example             # variable names only
 └── src/
     ├── index.ts                # Sentry.withSentry({ fetch, scheduled, queue }); re-exports Workflow classes
     ├── env.ts                  # Env type; zod check of Worker-only bindings, JOBS_SIGNING_SECRET, switches
@@ -87,18 +89,18 @@ workers/jobs/
 
 - **Router.** `src/index.ts` exports `fetch` (signed commands and `/healthz`), `scheduled` (switch on `controller.cron`), and `queue` (regeneration consumer), wrapped in `Sentry.withSentry`, plus each Workflow class wrapped in `Sentry.instrumentWorkflowWithSentry` [sentry-wrangler].
 - **Shared contract.** Command schemas and request signing live in `src/lib/jobs-contract/`, imported by both the app and the Worker, so one definition exists.
-- **Import resolution.** Wrangler bundles with esbuild [bundling]. `wrangler.jsonc` sets `tsconfig` to `workers/jobs/tsconfig.json` [wrangler-config], which repeats the root mappings (`@/*` → `../../src/*`, `@supabase/*` → `../../supabase/*`; root mapping in `tsconfig.json:19-23`). The root `tsconfig.json` excludes `workers/`, and the Worker gets its own `tsc -p workers/jobs` check, because the root program is typed for DOM and Node (`tsconfig.json:4,17`) while the Worker uses Workers types.
-- **Runtime edges.** Wrangler `alias` [wrangler-config] replaces the package specifiers in the compatibility table. App source is not forked. B2 checks esbuild's alias handling of subpaths (`workflow` vs `workflow/api`) and pins the exact targets.
+- **Import resolution.** Wrangler bundles with esbuild [bundling]; `cf` runs it from `workers/jobs`. `wrangler.config.ts` sets `tsconfig` to `./tsconfig.json` (`workers/jobs/tsconfig.json`) [wrangler-config], which repeats the root mappings (`@/*` → `../../src/*`, `@supabase/*` → `../../supabase/*`; root mapping in `tsconfig.json:19-23`). The root `tsconfig.json` excludes `workers/`, and the Worker gets its own `tsc -p workers/jobs` check, because the root program is typed for DOM and Node (`tsconfig.json:4,17`) while the Worker uses Workers types.
+- **Runtime edges.** Wrangler `alias` (in `wrangler.config.ts`) [wrangler-config] replaces the package specifiers in the compatibility table. App source is not forked. B2 checks esbuild's alias handling of subpaths (`workflow` vs `workflow/api`) and pins the exact targets.
 - **Database.** The Worker uses `pg` (node-postgres) with `drizzle-orm/node-postgres`. Each invocation or Workflow step creates `new Pool({ connectionString: env.HYPERDRIVE.connectionString, max: 5 })` and ends it with `ctx.waitUntil(pool.end())`. A `Pool` (not a single `Client`) keeps today's behavior where `db.transaction` gets its own connection while other queries proceed. `max: 5` stays under the six connections per invocation that may wait for a response [workers-limits].
 - **Service-role seam.** `supabase/service-role.ts` gains a scoped provider (AsyncLocalStorage). Inside a Worker invocation, the existing `db` export resolves to that invocation's client; everywhere else it stays the lazy Postgres.js singleton. `SERVICE_ROLE_DB_MARKER` (`supabase/service-role.ts:104-117`) keeps working. This keeps domain modules that import `db` directly (for example `src/features/jobs/queue.ts:32`) unchanged.
 - **Driver-neutral queries.** `DbClient` (`src/lib/db/types.ts:1-4`) is typed from `drizzle-orm/postgres-js`. B2 retypes it to Drizzle's driver-neutral Postgres database type and routes every `execute()` result through one helper, because node-postgres returns `{ rows }` while call sites cast to arrays today (`src/lib/db/queries/admin/retention.ts:18-26`, `email-delivery-content.ts:34`, `module-lesson-generation.ts:513`, `user-preferences.ts:142-289`, `plan-list.ts:265-285`). This lands in B2, before B3a's retention job needs it.
-- **Dependencies B2 requests** (the orchestrator owns `package.json`): `wrangler`, `@sentry/cloudflare@10.70.0`, `pg` (at least 8.16.3 for Hyperdrive [hd-supabase]), `@types/pg`.
+- **Dependencies B2 requests** (the orchestrator owns `package.json`): `wrangler`, `@sentry/cloudflare@10.70.0`, `pg` (at least 8.16.3 for Hyperdrive [hd-supabase]), `@types/pg`. Since PR #764 (2026-10-14), `cf` (1.0.0-beta.14) and `wrangler` are devDependencies of the `@atlaris/jobs` workspace package (`workers/jobs/package.json`), so `cf` resolves `wrangler` from the Worker directory, as Workers Builds does.
 - **Tests.** Worker handler logic is tested with the existing Vitest setup (`tests/unit/workers/jobs/**`, Node, mocked bindings). The shared query layer's DB-backed tests gain a node-postgres run on the native test stack. Workers-runtime behavior is proven on staging, not by a second test harness.
-- **Bundle gate (every phase).** `wrangler deploy --dry-run --outdir <tmp> --env staging` [wrangler-cmds], then fail if the output contains `next/`, `@vercel/`, `@clerk/`, or the Vercel `workflow` runtime. Since 2026-10-13 the gate also fails when local startup CPU exceeds a budget, after Workers Builds deploys started failing Cloudflare's startup validation (error 10021); see [workers-local-dev.md](../development/workers-local-dev.md#startup-cpu-budget).
+- **Bundle gate (every phase).** `pnpm workers check` bundles the staging Worker with a Wrangler dry run (`wrangler deploy --dry-run --experimental-new-config --env staging --outdir <tmp> --metafile <file>` [wrangler-cmds]; this step still uses Wrangler because `cf` writes no bundle metafile), then fails if the metafile lists `next/`, `@vercel/`, `@clerk/`, or the Vercel `workflow` runtime. Since 2026-10-13 the gate also fails when local startup CPU exceeds a budget (`cf workers check --mode staging` profiles startup three times; the best run must stay within 200 ms), after Workers Builds deploys started failing Cloudflare's startup validation (error 10021); see [workers-local-dev.md](../development/workers-local-dev.md#startup-cpu-budget).
 
 ### Evidence
 
-- Workers Builds runs commands in the configured root directory, and the Wrangler file there must carry the Worker's name (environment suffixes are matched automatically) [builds-config][builds-troubleshoot]. Monorepos set one root directory per Worker [builds-monorepo]. Workers Builds ignores Wrangler custom builds [builds-config].
+- Workers Builds runs commands in the configured root directory, and the Wrangler file there must carry the Worker's name (environment suffixes are matched automatically) [builds-config][builds-troubleshoot]. Monorepos set one root directory per Worker [builds-monorepo]. Workers Builds ignores Wrangler custom builds [builds-config]. (These pages describe Wrangler config files. Since 2026-10-14, PR #764, the Worker deploys from `cloudflare.config.ts` with `cf deploy --mode <mode>` from the same root directory; each mode sets the full Worker name.)
 - Cloudflare: "Pairing Drizzle ORM with the Postgres.js driver over Hyperdrive is not currently supported. Switch your driver to node-postgres" [hd-drizzle]. The mechanism is visible in this repo: drizzle-orm 0.45.2 calls `client.unsafe(query, params)` without options (`node_modules/drizzle-orm/postgres-js/session.js:33,43,65,103,106`), and postgres 3.4.9 defaults `unsafe` to `prepare: false` (`node_modules/postgres/src/index.js:119-123`). Hyperdrive warns that `prepare: false` with Postgres.js "can cause queries to hang or fail intermittently" [hd-postgresjs].
 - Clients must be per request: "Create a new database client on every request instead of caching it in a global variable" [hd-troubleshoot].
 - Hyperdrive pools in transaction mode; `SET` lasts one query or transaction [hd-pooling]. Job code only uses transaction-local state: `set_config(…, true)` and `pg_advisory_xact_lock` (`src/lib/db/queries/helpers/plan-lifecycle-lock.ts:14-18`, `plan-generation-status.ts:40`, `rls-jwt-claims.ts:51`). The RLS client's session-level `SET ROLE` (`supabase/rls.ts:101-123`) would not survive pooling, so the Worker never imports it. Jobs use the service-role client by design (`supabase/service-role.ts:8-15`).
@@ -108,8 +110,8 @@ workers/jobs/
 - **Keep Postgres.js + Drizzle and force `prepare: true` with a wrapper around `unsafe()`.** Cloudflare marks the pairing unsupported; a wrapper relies on undocumented behavior and would fail intermittently, not loudly.
 - **Skip Hyperdrive and connect Postgres.js straight to Supavisor.** Every invocation would pay TLS and SCRAM setup against a 10 ms CPU budget, and it contradicts the decided Hyperdrive design.
 - **Move the whole app to node-postgres.** Not needed for Track B; Vercel keeps Postgres.js. Revisit only if running two drivers causes drift.
-- **Make `workers/jobs` a pnpm workspace package.** `pnpm-workspace.yaml` has no `packages` list today, so this converts the repo into a workspace for no gain: the Worker imports root `src/` either way.
-- **Build with Vite and `@cloudflare/vite-plugin`.** Sentry recommends it because it instruments bundled DB and AI clients at build time [sentry-cf], but it replaces `wrangler dev` with `vite dev` and adds a build layer. Switch if DB and AI spans in Sentry become necessary.
+- **Make `workers/jobs` a pnpm workspace package.** `pnpm-workspace.yaml` has no `packages` list today, so this converts the repo into a workspace for no gain: the Worker imports root `src/` either way. *2026-10-14 (PR #764):* reversed; `pnpm-workspace.yaml` now lists `workers/jobs` as the package `@atlaris/jobs`, so `cf` and `wrangler` resolve from the Worker directory, where Workers Builds runs them.
+- **Build with Vite and `@cloudflare/vite-plugin`.** Sentry recommends it because it instruments bundled DB and AI clients at build time [sentry-cf], but it replaces `cf dev` with `vite dev` and adds a build layer. Switch if DB and AI spans in Sentry become necessary.
 
 ### Open risks
 
@@ -121,71 +123,92 @@ workers/jobs/
 
 ### Decision
 
-| | Local (top level) | `staging` | `production` |
+| | Local (no `--mode`) | `staging` (`--mode staging`) | `production` (`--mode production`) |
 | --- | --- | --- | --- |
 | Worker name | `atlaris-jobs` (never deployed) | `atlaris-jobs-staging` | `atlaris-jobs-production` |
 | Workers Builds branch | — | `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`, then `develop` | `main` |
 | Supabase project | Worktree native stack (Track A) | `atlaris-dev` | `atlaris-prod` |
 | Hyperdrive config (binding `HYPERDRIVE`) | `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | `atlaris-jobs-db-staging` | `atlaris-jobs-db-production` |
-| Regeneration queue (binding `REGENERATION_QUEUE`) | emulated by `wrangler dev` | `atlaris-regeneration-staging` | `atlaris-regeneration-production` |
+| Regeneration queue (binding `REGENERATION_QUEUE`) | emulated by `cf dev` | `atlaris-regeneration-staging` | `atlaris-regeneration-production` |
 | Workflows | local | `atlaris-email-delivery-staging`, `atlaris-module-lessons-staging`, `atlaris-plan-generation-staging` | same names with `-production` |
 | Worker Cron Triggers | none | `*/15 * * * *`, `0 3 * * *` | `*/15 * * * *`, `0 3 * * *` |
 | Public hostname (`JOBS_WORKER_URL` in the app) | `http://127.0.0.1:<port>` | `https://workers-staging.atlaris.app` | `https://workers.atlaris.app` |
-| `workers.dev` | — | disabled (`workers_dev: false`) | disabled (`workers_dev: false`) |
+| `workers.dev` | — | disabled (`workersDev: false`) | disabled (`workersDev: false`) |
 | `APP_URL` | local app URL | `https://staging.atlaris.app` | `https://atlaris.app` |
 | Sentry environment | `development` | `staging` | `production` |
 
+- **Config and deploy (PR #764, 2026-10-14).** `workers/jobs/cloudflare.config.ts` (`cf/config`, cf CLI 1.0.0-beta.14) defines the Worker for each mode: no `--mode` is the local-only `atlaris-jobs` that `pnpm workers dev` runs and nothing deploys, `--mode staging` is `atlaris-jobs-staging`, and `--mode production` is `atlaris-jobs-production`. Workers Builds uses root directory `workers/jobs`, build command `cd ../.. && pnpm install --frozen-lockfile`, and deploy command `pnpm exec cf deploy --mode staging` (staging) or `pnpm exec cf deploy --mode production` (production). Switching the dashboard deploy command from the old `--env` form is a manual release-owner step.
 - **Staging deploy branch (decided 2026-10-05).** Track B PRs merge into the parent branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers`, and Workers Builds deploys only from the configured production branch [builds-branch]. The staging Worker's production branch is therefore the Track B parent branch until Track B first merges into `develop`; the user then switches it to `develop` under **Settings** → **Build** → **Branch control**.
 - **Database role (decided 2026-10-05).** Both Hyperdrive configurations connect as `postgres`, matching the service-role client the jobs use today (`supabase/service-role.ts:52-55`). A least-privilege job role is a possible follow-up outside Track B: it needs a migration and a privilege audit, because retention calls a `SECURITY DEFINER` function revoked from `anon` and `authenticated` (`supabase/migrations/20260522223908_schedule_retention_cleanup.sql:34-35`).
-- **Public endpoint (decided 2026-10-05).** Each Worker is served on a Workers Custom Domain in the `atlaris.app` zone: `workers-staging.atlaris.app` → `atlaris-jobs-staging`, and `workers.atlaris.app` → `atlaris-jobs-production`. `workers.dev` is off on both (`workers_dev: false`).
+- **Public endpoint (decided 2026-10-05).** Each Worker is served on a Workers Custom Domain in the `atlaris.app` zone: `workers-staging.atlaris.app` → `atlaris-jobs-staging`, and `workers.atlaris.app` → `atlaris-jobs-production`. `workers.dev` is off on both (`workersDev: false`).
   - **Why the whole zone moves.** A Custom Domain needs an active Cloudflare zone; Cloudflare then creates the DNS record and certificate itself, and it refuses a hostname that already has a CNAME record or sits in a zone you do not own [custom-domains]. A CNAME from Vercel DNS to `workers.dev` is therefore not an option. Cloudflare's subdomain setup (a zone for `jobs.atlaris.app` alone) is Enterprise-only [dns-subdomain]. So the entire `atlaris.app` zone moves to Cloudflare on the Free plan; a full setup is the only one Free supports [dns-full-setup].
   - **What changes and what does not.** Only the nameservers change at the registrar (Squarespace; today `ns1.vercel-dns.com` and `ns2.vercel-dns.com`). Vercel keeps hosting the app. Every record that points at Vercel stays **DNS only** (grey cloud), so app traffic is not proxied through Cloudflare [dns-full-setup].
   - **Side benefit.** The zone's single Free rate-limiting rule can protect `/v1/*` on the Worker hostnames (Decision 4).
   - **Order.** The zone move is checklist Part A0 and must be active before B2's first deploy.
-- **B2 sequencing.** `wrangler.jsonc` ships with `"workers_dev": false` and one custom-domain route per environment (`{ "pattern": "<host>", "custom_domain": true }` [custom-domains]). Wrangler treats its routes as the source of truth and overrides dashboard route edits on the next deploy [wrangler-config], so the deploy attaches the domain. The checklist only verifies it, or attaches it by hand if the token lacks permission. Every `/healthz` check uses the custom hostnames. B2's first deploy needs the `atlaris.app` zone **Active** in Cloudflare (checklist A0) and no existing `workers` or `workers-staging` records.
+- **B2 sequencing.** `cloudflare.config.ts` sets `workersDev: false` and one custom domain per deployed mode (`domains: ['<host>']` [custom-domains]), so the deploy attaches the domain. (B2 shipped this as a `{ "pattern": "<host>", "custom_domain": true }` route in `wrangler.jsonc`, which Wrangler treated as the source of truth and overrode dashboard route edits on the next deploy [wrangler-config].) The checklist only verifies it, or attaches it by hand if the token lacks permission. Every `/healthz` check uses the custom hostnames. B2's first deploy needs the `atlaris.app` zone **Active** in Cloudflare (checklist A0) and no existing `workers` or `workers-staging` records.
 - Supabase project names come from Track A's environment table (`docs/development/local-database.md` on `feature/jcs-119-…`): staging is `atlaris-dev`, production is `atlaris-prod`. Staging is the `develop` Vercel Preview with non-production services (`docs/ci-cd/pipeline-and-deployment-strategy.md:36`).
-- Bindings, variables, queues, Workflows, and `secrets` are non-inheritable and are written out per environment; `triggers` is inheritable, so the top level declares no crons [wrangler-config].
+- `cloudflare.config.ts` lists bindings, vars, secrets, queues, and Workflows separately for each mode (`deployedWorker()` and `localWorker()`). Only the deployed modes declare the Cron Triggers, so the local Worker has no crons.
 - Workflow names are account-wide, so each carries the environment suffix (max 64 characters [wf-limits]).
-- Non-secret variables live in `wrangler.jsonc` per environment: `NODE_ENV=production` (staging and production; the app's env modules read it at runtime through `process.env`), `WORKER_ENV`, `APP_URL`, `SENTRY_DSN` (the `atlaris-jobs` project's DSN, the same value in both environments; a DSN is not a secret), `LOG_LEVEL`, `RESEND_FROM`, `RESEND_REPLY_TO`, and the AI tuning variables the app sets in the same Vercel environment (B4/B5 list them).
-- Secrets per environment (created in B1; listed with `secrets.required` so a deploy fails if one is missing [wrangler-config]): `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`. Each phase adds a secret to `secrets.required` only when its code reads it. There is no `POSTGRES_URL` secret: the database credential lives only in the Hyperdrive configuration.
-- Dashboard-managed job switches (Decision 7) are not in `wrangler.jsonc`; `keep_vars: true` keeps them across Git deploys [wrangler-cmds].
+- Non-secret variables are `bindings.text(...)` entries in `cloudflare.config.ts`, per mode: `NODE_ENV=production` (staging and production; the app's env modules read it at runtime through `process.env`), `WORKER_ENV`, `APP_URL`, `SENTRY_DSN` (the `atlaris-jobs` project's DSN, the same value in both environments; a DSN is not a secret), `SENTRY_RELEASE` (Decision 5), `LOG_LEVEL`, `RESEND_FROM`, `RESEND_REPLY_TO`. No AI tuning variables are declared, so the app's defaults apply.
+- Secrets per environment (created in B1; declared with `bindings.secret()` in `cloudflare.config.ts`, `DEPLOYED_SECRETS`): `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`. `pnpm secrets:sync cloudflare <env>` writes them: it lists with `cf workers secrets list` and writes with `cf workers secrets bulk`. There is no `POSTGRES_URL` secret: the database credential lives only in the Hyperdrive configuration.
+- Job switches (Decision 7) are Worker secrets too, declared in `cloudflare.config.ts` (`JOB_SWITCHES`) so a deploy keeps them; their values never come from Git. `cf deploy` always keeps existing secrets, including undeclared ones, but has no keep-vars option: a plain-text variable that `cloudflare.config.ts` does not declare is dropped on the next deploy. Operator-only values that stay outside Git (`JOBS_SIGNING_SECRET_PREVIOUS` during rotation, staging's `EMAIL_TEST_RECIPIENT_ALLOWLIST`) are therefore Worker secrets set with `cf workers secrets update`, not plain-text variables set in the dashboard. A secret cannot reuse the name of an existing plain-text binding (API error 10053).
 
-Illustrative `wrangler.jsonc` shape (B2 owns the real file):
+Abridged shape of the Worker config (the files are the source of truth). `workers/jobs/cloudflare.config.ts` defines the Worker per mode:
 
-```jsonc
+```ts
+import { bindings, defineConfig, exports, triggers } from 'cf/config';
+
+export default defineConfig((ctx) => ({
+  worker:
+    ctx.mode === 'staging' || ctx.mode === 'production'
+      ? deployedWorker(ctx.mode) // atlaris-jobs-staging / atlaris-jobs-production
+      : localWorker(), // atlaris-jobs: `pnpm workers dev`, never deployed
+}));
+
+// deployedWorker(mode) returns, abridged:
 {
-  "$schema": "../../node_modules/wrangler/config-schema.json",
-  "name": "atlaris-jobs",
-  "main": "src/index.ts",
-  "compatibility_date": "2026-10-05",
-  "tsconfig": "./tsconfig.json",
-  "keep_vars": true,
-  "workers_dev": false,
-  "preview_urls": false,
-  "observability": { "enabled": true, "head_sampling_rate": 1 },
-  "alias": { "@sentry/nextjs": "@sentry/cloudflare" /* plus the runtime/ targets B2 verifies */ },
-  "env": {
-    "staging": {
-      "routes": [{ "pattern": "workers-staging.atlaris.app", "custom_domain": true }],
-      "vars": { "NODE_ENV": "production", "WORKER_ENV": "staging", "APP_URL": "<staging app URL>", "SENTRY_DSN": "<atlaris-jobs DSN>", "LOG_LEVEL": "info" },
-      "hyperdrive": [{ "binding": "HYPERDRIVE", "id": "<staging Hyperdrive ID>" }],
-      "queues": {
-        "producers": [{ "binding": "REGENERATION_QUEUE", "queue": "atlaris-regeneration-staging" }],
-        "consumers": [{ "queue": "atlaris-regeneration-staging", "max_batch_size": 1, "max_batch_timeout": 0, "max_retries": 3, "max_concurrency": 2 }]
-      },
-      "workflows": [
-        { "name": "atlaris-email-delivery-staging", "binding": "EMAIL_DELIVERY_WORKFLOW", "class_name": "EmailDeliveryWorkflow", "schedules": ["0 14 * * *", "30 14 * * MON"] },
-        { "name": "atlaris-module-lessons-staging", "binding": "MODULE_LESSONS_WORKFLOW", "class_name": "ModuleLessonsWorkflow" },
-        { "name": "atlaris-plan-generation-staging", "binding": "PLAN_GENERATION_WORKFLOW", "class_name": "PlanGenerationWorkflow" }
-      ],
-      "triggers": { "crons": ["*/15 * * * *", "0 3 * * *"] },
-      "version_metadata": { "binding": "CF_VERSION_METADATA" },
-      "secrets": { "required": ["JOBS_SIGNING_SECRET"] }
-    },
-    "production": { /* same keys with -production names, the production Hyperdrive ID, and
-                       "routes": [{ "pattern": "workers.atlaris.app", "custom_domain": true }] */ }
-  }
+  name: `atlaris-jobs-${mode}`,
+  entrypoint: 'src/index.ts',
+  compatibilityDate: '2026-09-26',
+  workersDev: false,
+  previewUrls: false,
+  observability: { enabled: true, headSamplingRate: 1 },
+  domains: ['workers-staging.atlaris.app'], // production: workers.atlaris.app
+  triggers: [
+    triggers.scheduled({ schedule: '*/15 * * * *' }),
+    triggers.scheduled({ schedule: '0 3 * * *' }),
+    triggers.queue({ name: `atlaris-regeneration-${mode}`, maxBatchSize: 1, maxBatchTimeout: 0, maxRetries: 3, maxConcurrency: 2 }),
+  ],
+  env: {
+    NODE_ENV: bindings.text('production'),
+    WORKER_ENV: bindings.text(mode),
+    APP_URL: bindings.text('<app URL>'),
+    SENTRY_DSN: bindings.text('<atlaris-jobs DSN>'),
+    SENTRY_RELEASE: bindings.text(commitSha), // WORKERS_CI_COMMIT_SHA, only when set
+    LOG_LEVEL: bindings.text('info'), // plus RESEND_FROM and RESEND_REPLY_TO
+    JOBS_SIGNING_SECRET: bindings.secret(), // plus the other DEPLOYED_SECRETS and every JOB_SWITCHES name
+    HYPERDRIVE: bindings.hyperdrive({ id: '<Hyperdrive ID>' }),
+    REGENERATION_QUEUE: bindings.queue({ name: `atlaris-regeneration-${mode}` }),
+    EMAIL_DELIVERY_WORKFLOW: bindings.workflow({ name: `atlaris-email-delivery-${mode}`, worker: name, exportName: 'EmailDeliveryWorkflow' }),
+    // plus MODULE_LESSONS_WORKFLOW and PLAN_GENERATION_WORKFLOW
+    CF_VERSION_METADATA: bindings.versionMetadata(),
+  },
+  exports: {
+    EmailDeliveryWorkflow: exports.workflow({ name: `atlaris-email-delivery-${mode}`, schedules: ['0 14 * * *', '30 14 * * MON'] }),
+    // plus ModuleLessonsWorkflow and PlanGenerationWorkflow
+  },
 }
+```
+
+`workers/jobs/wrangler.config.ts` holds the bundler settings:
+
+```ts
+export default defineWranglerConfig({
+  alias: { '@sentry/nextjs': '@sentry/cloudflare' /* plus the runtime/ targets */ },
+  tsconfig: './tsconfig.json',
+  types: { generate: false }, // only `pnpm workers types` writes .cloudflare/types/index.d.ts
+  dev: { ip: '127.0.0.1' /* plus the per-worktree inspectorPort */ },
+});
 ```
 
 With compatibility date 2026-08-04 or later, `nodejs_compat` is on by default [process]. Each binding is added by the phase that first uses it; B2 starts with `HYPERDRIVE`, the `*/15` cron, and `CF_VERSION_METADATA`.
@@ -193,17 +216,17 @@ With compatibility date 2026-08-04 or later, `nodejs_compat` is on by default [p
 ### Local development loop
 
 1. `pnpm db start` (Track A) starts the worktree's native Supabase stack and writes `POSTGRES_URL` into the worktree `.env.local`; ports are dynamic (20000–32767).
-2. The Worker dev script (B2) reads that `POSTGRES_URL`, refuses non-local hosts (same rule as `pnpm db start`), exports it as `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`, and runs `wrangler dev` at the top level on a per-worktree port. With a local connection string, the Worker connects straight to the database and Hyperdrive pooling and caching do not apply [hd-local].
-3. Local secrets go in `workers/jobs/.dev.vars` (gitignored); with `secrets.required` set, only the listed keys load [env-local]. Local AI runs with `AI_PROVIDER=mock`.
-4. Crons: `curl "http://127.0.0.1:<port>/cdn-cgi/local/scheduled?cron=*/15+*+*+*+*"` [cron-triggers]. Workflows: `wrangler workflows trigger <name> --local` or Local Explorer [wf-local]. Queues run under `wrangler dev` (delay settings need Wrangler 3.38.0 or later) [queues-batching].
+2. `pnpm workers dev` (`scripts/workers/cli.ts`) reads that `POSTGRES_URL`, refuses non-local hosts (same rule as `pnpm db start`), exports it as `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE`, and runs `cf dev` with no `--mode` (the local-only `atlaris-jobs` Worker) on a per-worktree port. The dev server listens on 127.0.0.1 (`dev.ip` in `wrangler.config.ts`; `cf dev --host` sets only the upstream host), and the inspector port is also per worktree. With a local connection string, the Worker connects straight to the database and Hyperdrive pooling and caching do not apply [hd-local].
+3. Local secrets go in `workers/jobs/.dev.vars` (gitignored; template `workers/jobs/.dev.vars.example`, names only) [env-local]. Local AI runs with `AI_PROVIDER=mock`.
+4. Crons: `curl "http://127.0.0.1:<port>/cdn-cgi/local/scheduled?cron=*/15+*+*+*+*"` [cron-triggers]. Workflows: Local Explorer [wf-local], or the Worker's signed start commands (Decision 4). Queues run under `cf dev` [queues-batching].
 5. The local app reaches the local Worker through `JOBS_WORKER_URL=http://127.0.0.1:<port>` and the same `JOBS_SIGNING_SECRET` in `.env.local` and `.dev.vars`.
-6. Never use `wrangler dev --remote`; it runs against deployed resources and real data [hd-local].
+6. Never run remote dev (formerly `wrangler dev --remote`; do not pass `--remote` to `cf dev` either); it runs against deployed resources and real data [hd-local].
 
-Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which writes the loopback `POSTGRES_URL`. B2 confirms `wrangler dev` (workerd) runs on one Codex and one Cursor Cloud VM.
+Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which writes the loopback `POSTGRES_URL`. B2 confirms the Worker dev server (workerd) runs on one Codex and one Cursor Cloud VM.
 
 ### Alternatives rejected
 
-- **A `dev` Cloudflare environment.** Local `wrangler dev` covers development, and every deployed environment costs Cron Triggers from the shared limit of 5.
+- **A `dev` Cloudflare environment.** Local `cf dev` covers development, and every deployed environment costs Cron Triggers from the shared limit of 5.
 - **Hyperdrive to the Supavisor transaction pooler (port 6543).** Hyperdrive already pools in transaction mode; stacking two transaction poolers adds prepared-statement problems for no gain.
 
 ### Open risks
@@ -222,13 +245,13 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 
 1. **Same names.** Worker variables and secrets use the app's environment names (`OPENROUTER_API_KEY`, `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET`, `APP_URL`, `NODE_ENV`, `LOG_LEVEL`, …).
 2. **No copying.** Since compatibility date 2025-04-01, `process.env` holds the Worker's variables, secrets, and version metadata (`nodejs_compat_populate_process_env`) [process]. `getProcessEnvSource()` (`src/lib/config/env/shared.ts:35-37`) therefore sees them, and every existing env module (`ai.ts`, `app.ts`, `email.ts`, `maintenance.ts`, `queue.ts`, …) keeps doing its own parsing and validation unchanged.
-3. **One Worker-only module.** `workers/jobs/src/env.ts` validates only what the app does not have: the `HYPERDRIVE`, queue, Workflow, and `CF_VERSION_METADATA` bindings (objects, not strings, so never in `process.env`); `JOBS_SIGNING_SECRET`; and the switch variables. Handlers pass the typed `env` down; deep code that needs a binding may use `import { env } from "cloudflare:workers"` [bindings].
+3. **One Worker-only module.** `workers/jobs/src/env.ts` validates only what the app does not have: the `HYPERDRIVE`, queue, Workflow, and `CF_VERSION_METADATA` bindings (objects, not strings, so never in `process.env`); `JOBS_SIGNING_SECRET`; and the job switches. Handlers pass the typed `env` down; deep code that needs a binding may use `import { env } from "cloudflare:workers"` [bindings].
 
 ### Evidence
 
 - `process.env` population and the warning not to replace the `process.env` object: [process]. Global-scope `env` access: [bindings].
 - `createServerEnvAccess` caches values per isolate in production (`src/lib/config/env/shared.ts:178-239`). Changing a secret or variable deploys a new version [secrets], which starts new isolates, so cached values do not go stale.
-- `process.env.NODE_ENV` is replaced at build time (`production` for `wrangler deploy`, `development` for `wrangler dev`) [bundling], but `parseNodeEnv` reads it through `process.env` at runtime (`src/lib/config/env/shared.ts:65-78`). That is why `NODE_ENV` is also a Worker variable.
+- `process.env.NODE_ENV` is replaced at build time (`production` for a deploy, `development` for the dev server) [bundling], but `parseNodeEnv` reads it through `process.env` at runtime (`src/lib/config/env/shared.ts:65-78`). That is why `NODE_ENV` is also a Worker variable.
 
 ### Alternatives rejected
 
@@ -246,7 +269,7 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 
 - **Transport.** The app calls `POST {JOBS_WORKER_URL}/v1/<command>` over HTTPS with a JSON body `{ "v": 1, …payload }`. `JOBS_WORKER_URL` is the Worker's custom domain for that environment: `https://workers-staging.atlaris.app` (Vercel Preview, `develop` only) or `https://workers.atlaris.app` (Production). See Decision 2.
 - **Signature.** Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature: v1=<hex>`, where `<hex>` is HMAC-SHA256 with `JOBS_SIGNING_SECRET` over `<timestamp>.<METHOD>.<path>.<hex SHA-256 of body>`.
-- **Verification.** The Worker rejects timestamps more than 300 seconds off, compares in constant time (same digest-compare approach as `workflowCallbackTokensMatch`, `src/lib/proxy/workflow-callback-auth.ts:81-99`), accepts an optional `JOBS_SIGNING_SECRET_PREVIOUS` during rotation, and returns `401` with no detail on failure. Both runtimes have Web Crypto.
+- **Verification.** The Worker rejects timestamps more than 300 seconds off, compares in constant time (same digest-compare approach as `workflowCallbackTokensMatch`, `src/lib/proxy/workflow-callback-auth.ts:81-99`), accepts an optional `JOBS_SIGNING_SECRET_PREVIOUS` during rotation (a Worker secret set with `cf workers secrets update`; Decision 2), and returns `401` with no detail on failure. Both runtimes have Web Crypto.
 - **Commands.**
 
   | Command | Phase | Payload (besides `v`) | Worker action | Idempotency |
@@ -282,7 +305,7 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
   - **Proposed rule:** `jobs-worker-v1`, URI path starts with `/v1/`, more than 100 requests in 10 seconds per IP → Block for 10 seconds. The threshold stays high because every legitimate command comes from Vercel's shared egress IPs.
   - **Scope.** The Free rule cannot match on host, so it covers `/v1/` on every proxied hostname in the zone, which means both Worker hostnames. App hostnames are DNS-only and never pass through it.
   - **Residual risk.** On Free the rule mitigates but does not eliminate a distributed flood: many IPs each staying under the threshold still reach the Worker. Workers Paid (no daily request cap) removes the exposure; revisit at the post-B5 Paid decision.
-  - Switching endpoints later is Wrangler configuration, DNS, and the app's `JOBS_WORKER_URL`, not code.
+  - Switching endpoints later is Worker configuration (`cloudflare.config.ts`), DNS, and the app's `JOBS_WORKER_URL`, not code.
 - Clock skew over 300 seconds between Vercel and Cloudflare would reject commands (unlikely).
 
 ## Decision 5: Observability
@@ -290,12 +313,12 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 ### Decision
 
 - **Sentry (decided 2026-10-05: separate project).** `@sentry/cloudflare` with `withSentry` on the entry and `instrumentWorkflowWithSentry` on each Workflow class [sentry-wrangler], reporting to a new project `atlaris-jobs` in org `jcs-software`. The app keeps its own project (`jcs-software/atlaris`, `next.config.ts:120-122`). Tag events `runtime: cloudflare-worker`.
-  - The DSN is the Worker variable `SENTRY_DSN`, set in `wrangler.jsonc` per environment. Both environments use the same DSN; a DSN is not a secret.
+  - The DSN is the plain-text binding `SENTRY_DSN`, set in `cloudflare.config.ts` for each deployed mode (empty in the local Worker). Both environments use the same DSN; a DSN is not a secret.
   - `environment` (`staging` or `production`) separates the two Workers inside the project.
-  - `release` comes from `SENTRY_RELEASE`, set at deploy time with `--var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` [wrangler-cmds][builds-config]; the SDK reads `SENTRY_RELEASE` first, then `CF_VERSION_METADATA.id` [sentry-cf]. B2 uses the same commit-SHA format as the app's release, so a Worker release and an app release from one commit can be matched by SHA across the two projects.
+  - `release` comes from `SENTRY_RELEASE`, which `cloudflare.config.ts` sets from `WORKERS_CI_COMMIT_SHA` at deploy time when Workers Builds provides it [builds-config] (this replaced a `--var SENTRY_RELEASE:$WORKERS_CI_COMMIT_SHA` deploy flag [wrangler-cmds]; `cf deploy` has no such flag); the SDK reads `SENTRY_RELEASE` first, then `CF_VERSION_METADATA.id` [sentry-cf]. B2 uses the same commit-SHA format as the app's release, so a Worker release and an app release from one commit can be matched by SHA across the two projects.
   - Reuse `beforeSendSentryEvent` (`src/lib/observability/sentry-filters.ts`) and keep `sendDefaultPii` off, as on the server today.
 - **Cron monitors.** The slugs `plan-cleanup-maintenance` (`src/app/api/internal/maintenance/plans/cleanup/route.ts:6-15`) and `email-notification-delivery-daily`/`-weekly` (`src/features/notifications/email/delivery-monitor.ts:5-24`) are created in `atlaris-jobs` by the Worker's first check-in with monitor config [sentry-crons]. Sentry environments keep staging and production apart. Add `retention-cleanup`, which `pg_cron` never had. During each observation window the app project's monitor (old owner) and the `atlaris-jobs` monitor (new owner) exist side by side; the old one is removed with its owner in B7. `withMonitor` and `captureCheckIn` work in Workers [sentry-crons].
-- **Workers Logs.** `observability.enabled: true`. The logger writes JSON to the console, which Workers Logs indexes [workers-logs]. Invocation logs include CPU time and wall time [workers-limits].
+- **Workers Logs.** `observability.enabled: true` in `cloudflare.config.ts`. The logger writes JSON to the console, which Workers Logs indexes [workers-logs]. Invocation logs include CPU time and wall time [workers-limits].
 - **Workflows.** The Workflows dashboard (instance list, status, step history) replaces Vercel workflow observability. Correlate through the instance ID stored in Postgres (Decision 4). Sentry derives a deterministic trace ID from the instance ID [sentry-workflows].
 - **Source maps.** Workers Builds uploads them to the `atlaris-jobs` project with a `SENTRY_AUTH_TOKEN` build secret (B2; created in B1 with access to that project).
 
@@ -313,7 +336,7 @@ Codex and Cursor Cloud agents use the same loop after `pnpm db agent up`, which 
 ### Open risks
 
 - Without the Vite plugin, Sentry gets no automatic spans for Postgres or OpenRouter calls [sentry-wrangler] (see Decision 1 alternatives).
-- 200,000 log events per day are shared by both environments; B2 sets `head_sampling_rate` if staging traffic grows.
+- 200,000 log events per day are shared by both environments; `observability.headSamplingRate` in `cloudflare.config.ts` (currently 1) is the lever if staging traffic grows.
 
 ## Decision 6: Deploy ordering and rollback
 
@@ -357,10 +380,11 @@ A Workers rollback restores code only; bindings and connected resources do not c
 
 ### Decision
 
-**Switches.** Each job has a Worker variable `JOB_<NAME>_ENABLED` (`PLAN_CLEANUP`, `RETENTION_CLEANUP`, `EMAIL_DELIVERY`, `REGENERATION`, `MODULE_LESSONS`, `PLAN_GENERATION`). It is off unless set to `true`, parsed with the app's `toBoolean` rules (`src/lib/config/env/shared.ts:116-129`).
+**Switches.** Each job has a Worker secret `JOB_<NAME>_ENABLED` (`PLAN_CLEANUP`, `RETENTION_CLEANUP`, `EMAIL_DELIVERY`, `REGENERATION`, `MODULE_LESSONS`, `PLAN_GENERATION`). It is off unless set to `true`, parsed with the app's `toBoolean` rules (`src/lib/config/env/shared.ts:116-129`).
 
 - `JOBS_PAUSED=true` pauses everything. When absent, jobs are not paused.
-- Switches are plain-text variables managed only in the dashboard (Worker → Settings → Variables and Secrets), never in `wrangler.jsonc`. With `keep_vars: true`, Git deploys leave them alone [wrangler-cmds], and saving a variable deploys a new version immediately [env-vars].
+- In the deployed modes the switches are Worker secrets, declared in `cloudflare.config.ts` (`JOB_SWITCHES`) so a deploy keeps them, and never set from Git or as plain-text variables. Flip one from `workers/jobs` with `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <value>`; the update creates a new Worker version [secrets]. A `JOB_*_ENABLED` switch is on only when its value is `true`, and an absent one is off; an absent `JOBS_PAUSED` means not paused. Locally the switches come from `.dev.vars`.
+- *2026-10-14 (PR #764):* the switches were plain-text variables managed in the dashboard and kept across Git deploys by `keep_vars: true` [wrangler-cmds][env-vars]. `cf deploy` has no keep-vars option and drops plain-text variables that `cloudflare.config.ts` does not declare, so they became declared Worker secrets. The semantics are unchanged. A secret cannot reuse the name of an existing plain-text binding (API error 10053), so a leftover plain-text switch is converted in place with one Worker settings API change (`PATCH /accounts/<account>/workers/scripts/<worker>/settings`, the switch rewritten as `secret_text` with its value and every other binding sent as `{ "type": "inherit" }`), never delete-then-create: an absent `JOBS_PAUSED` means not paused. Staging was converted this way on 2026-10-14 (version `fb4e13ae`).
 - The `flags/next` alias resolves the app's flag keys to these switches: `email-notification-delivery` → `JOB_EMAIL_DELIVERY_ENABLED`; `module-lesson-generation` → `JOB_MODULE_LESSONS_ENABLED`; `maintenance-mode` → always `false`.
 
 **When paused or disabled:**
@@ -402,9 +426,9 @@ A Workers rollback restores code only; bindings and connected resources do not c
 ### Alternatives rejected
 
 - **Evaluate Vercel Flags in the Worker.** `@vercel/flags-core` imports `@vercel/oidc`, `@vercel/functions`, and `next/cache` and has not been shown to run on workerd. It would also add a Vercel API call to every check.
-- **Switches in `wrangler.jsonc` vars.** Each change would need a PR and a build, too slow for an emergency stop.
-- **A database switch table.** Needs a migration and an operator path for a capability the dashboard variable already gives.
-- **Removing Cron Triggers in the dashboard to pause.** Wrangler manages triggers and restores them on the next deploy [cron-triggers].
+- **Switches as `bindings.text` vars in `cloudflare.config.ts`.** Each change would need a PR and a build, too slow for an emergency stop.
+- **A database switch table.** Needs a migration and an operator path for a capability the Worker secret already gives.
+- **Removing Cron Triggers in the dashboard to pause.** The deploy restores the triggers declared in `cloudflare.config.ts` on the next deploy [cron-triggers].
 
 ## Decision 8: Cron budget and regeneration
 
@@ -478,7 +502,7 @@ AI Workflow steps also need explicit step configuration. Workflows retry a faile
 
 1. **B2 baseline.** On staging (Free), record CPU time for the heartbeat cron and one Hyperdrive query from Workers Logs invocation logs, which carry CPU and wall time [workers-limits].
 2. **B3a/B3b.** Record CPU per cleanup tick and per email page step on staging; tune the page size for both CPU and subrequests.
-3. **B4, the first AI job.** Before any AI production cutover, run at least 20 staging regenerations with the real OpenRouter provider (not the mock) across small, typical, and largest plan sizes. Collect p50, p95, and max CPU per invocation from Workers Logs, plus any `exceededCpu` or `exceededResources` outcomes (Workers Logs, `wrangler tail` [wf-limits]). Use DevTools CPU profiling under `wrangler dev` to find hotspots [cpu-profiling].
+3. **B4, the first AI job.** Before any AI production cutover, run at least 20 staging regenerations with the real OpenRouter provider (not the mock) across small, typical, and largest plan sizes. Collect p50, p95, and max CPU per invocation from Workers Logs, plus any `exceededCpu` or `exceededResources` outcomes (Workers Logs, `wrangler tail` [wf-limits]; `cf` has no streaming tail, and `cf o11y telemetry live-tail` only prepares the websocket). Use DevTools CPU profiling under `pnpm workers dev` (inspector port per worktree) to find hotspots [cpu-profiling].
 4. **B5.** Repeat for lesson generation (at least 20 modules of varying task counts). This is the formal Free vs Paid gate in the parent plan, and it now also gates B4's production cutover.
    - **How it is measured.** The lessons Workflow splits the CPU-heavy work across steps: `claim` (load, preflight, claim), `generate` (provider marker, OpenRouter call, buffering the stream into at most 200,000 characters), and `parse-commit` (JSON parse, Zod validation, one transactional write). `fail` runs only after a thrown step. Each step execution writes one log line `{ job: "module-lessons", step, instanceId, planId, moduleId, taskCount, rawChars?, outcome }`. Workers Logs records CPU and wall time per step invocation; filter on the Workflow and match each record to its step line by instance ID and step name. Record p50, p95, and max CPU per step name, with `taskCount` and `rawChars` for size, plus any `exceededCpu` outcomes.
    - **Results.** Module lessons used about 200–500 ms of CPU per invocation; plan generation used about 0.8 s. Both are far above the 10 ms Free limit and far below the 30 s Paid limit.
@@ -498,7 +522,7 @@ In-code timing cannot replace these numbers: `Date.now()` and `performance.now()
 ### Open risks
 
 - Mock-provider runs understate CPU because their output is small and fixed; only real-provider staging runs count for the gate.
-- Global-scope startup grows with the bundle (Zod schemas, Drizzle schema, OpenRouter SDK). `wrangler deploy` reports `startup_time_ms` [workers-limits]; B2 records it.
+- Global-scope startup grows with the bundle (Zod schemas, Drizzle schema, OpenRouter SDK). B2 records `startup_time_ms` from the deploy output [workers-limits], and `pnpm workers check` gates local startup CPU (Decision 1).
 
 ## Free-plan budget (account-wide; staging and production share it)
 
@@ -518,7 +542,7 @@ In-code timing cannot replace these numbers: `Date.now()` and `performance.now()
 
 ## Exact Cloudflare resources for B1
 
-B1 creates only what is listed under "Created by the user". Everything under "Created by deploy" comes from `wrangler.jsonc` through Workers Builds. The step-by-step procedure is in [cloudflare-b1-checklist.md](./cloudflare-b1-checklist.md).
+B1 creates only what is listed under "Created by the user". Everything under "Created by deploy" comes from `workers/jobs/cloudflare.config.ts` through Workers Builds. The step-by-step procedure is in [cloudflare-b1-checklist.md](./cloudflare-b1-checklist.md).
 
 ### Created by the user (B1)
 
@@ -529,8 +553,8 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 | Hyperdrive configuration | `atlaris-jobs-db-production` | production | Hyperdrive → Create configuration | Supabase `atlaris-prod`, same rules | Hyperdrive ID; connection type |
 | Queue | `atlaris-regeneration-staging` | staging | Queues → Create queue | Defaults (Free retention is fixed at 24 hours) | Name confirmation |
 | Queue | `atlaris-regeneration-production` | production | Queues → Create queue | Defaults | Name confirmation |
-| Worker, Git-connected | `atlaris-jobs-staging` | staging | Workers & Pages → Create application → Import a repository | Repo `saldanaj97/atlaris`; root directory `workers/jobs`; production branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`, then `develop`; deploy command with `--env staging`; preview builds off; custom domain `workers-staging.atlaris.app` (attached by deploy, verified in Domains & Routes); `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
-| Worker, Git-connected | `atlaris-jobs-production` | production | Same | Root `workers/jobs`; branch `main`; deploy command with `--env production`; preview builds off; custom domain `workers.atlaris.app`; `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
+| Worker, Git-connected | `atlaris-jobs-staging` | staging | Workers & Pages → Create application → Import a repository | Repo `saldanaj97/atlaris`; root directory `workers/jobs`; production branch `feature/jcs-120-move-atlaris-background-jobs-to-cloudflare-workers` until Track B first merges into `develop`, then `develop`; build command `cd ../.. && pnpm install --frozen-lockfile`; deploy command `pnpm exec cf deploy --mode staging`; preview builds off; custom domain `workers-staging.atlaris.app` (attached by deploy, verified in Domains & Routes); `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
+| Worker, Git-connected | `atlaris-jobs-production` | production | Same | Root `workers/jobs`; branch `main`; build command `cd ../.. && pnpm install --frozen-lockfile`; deploy command `pnpm exec cf deploy --mode production`; preview builds off; custom domain `workers.atlaris.app`; `workers.dev` disabled | Custom domain attached yes/no; first build ID and result |
 | Rate-limiting rule | `jobs-worker-v1` | both (zone-wide) | `atlaris.app` zone → Security rules → Create rule → Rate limiting rules | URI path starts with `/v1/`; per IP; more than 100 requests in 10 s → Block for 10 s [waf-rl-create] | Rule deployed yes/no; burst-test result |
 | Worker secrets | `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `RESEND_API_KEY`, `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` | each Worker | Worker → Settings → Variables and Secrets → Add → Secret | Values from the table below | Names only |
 | Build variables | `PNPM_VERSION=11.9.0`, `NODE_VERSION=24`, `SKIP_DEPENDENCY_INSTALL=true`; build secret `SENTRY_AUTH_TOKEN` | each Worker | Worker → Settings → Build → Build variables and secrets | `package.json:5-8` requires pnpm 11 and Node 24; the build image defaults to pnpm 10.11.1 [build-image] | Names only |
@@ -550,7 +574,7 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 | Item | Value | Copy back |
 | --- | --- | --- |
 | Project | `atlaris-jobs` in org `jcs-software`, platform Cloudflare Workers | Project slug |
-| DSN | Becomes `SENTRY_DSN` in `wrangler.jsonc` for both environments (not a secret) | The DSN |
+| DSN | Becomes `SENTRY_DSN` in `cloudflare.config.ts` for both environments (not a secret) | The DSN |
 | Auth token | `SENTRY_AUTH_TOKEN` above; must have access to `atlaris-jobs` | "created" (no value) |
 
 ### App-side settings (Vercel, user-performed)
@@ -570,8 +594,8 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 | Workflow | `atlaris-module-lessons-<env>` (`MODULE_LESSONS_WORKFLOW`, `ModuleLessonsWorkflow`) | B5 |
 | Workflow | `atlaris-plan-generation-<env>` (`PLAN_GENERATION_WORKFLOW`, `PlanGenerationWorkflow`) | B6 |
 | Bindings | `HYPERDRIVE`, `CF_VERSION_METADATA` | B2 |
-| Custom domains and their DNS records and certificates | `workers-staging.atlaris.app`, `workers.atlaris.app` (from `routes` with `custom_domain: true`) | B2 |
-| Switch variables | `JOBS_PAUSED`, `JOB_*_ENABLED` (dashboard, at each cutover) | B3a–B6 |
+| Custom domains and their DNS records and certificates | `workers-staging.atlaris.app`, `workers.atlaris.app` (from `domains` in `cloudflare.config.ts`) | B2 |
+| Switch secrets | `JOBS_PAUSED`, `JOB_*_ENABLED` (declared in `cloudflare.config.ts`; values set with `cf workers secrets update` at each cutover) | B3a–B6 |
 
 ## Open questions for the user
 
@@ -591,7 +615,7 @@ B1 creates only what is listed under "Created by the user". Everything under "Cr
 
 ## Sources
 
-All pages read on 2026-10-05 as Markdown (`index.md`) from developers.cloudflare.com unless noted.
+All pages read on 2026-10-05 as Markdown (`index.md`) from developers.cloudflare.com unless noted. `[wrangler-config]`, `[wrangler-cmds]`, and `[environments]` describe Wrangler, which the Worker's config and commands moved off on 2026-10-14 (PR #764, cf CLI); they record the design-time reading, not the current commands.
 
 | Label | Page |
 | --- | --- |

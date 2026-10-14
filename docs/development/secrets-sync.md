@@ -28,27 +28,27 @@ GitHub environment secrets are set in GitHub, not from 1Password, so they can dr
 
 ## How values are written
 
-- **Workers:** `wrangler secret bulk`, with the values as JSON on stdin.
+- **Workers:** `cf workers secrets bulk --worker <name> --file <path>`, run from `workers/jobs/`. The values go through a private (`0600`) temp file that is removed afterwards, so they never reach the command line. The script lists the existing names first with `cf workers secrets list`.
 - **Vercel:** one upsert per variable through `vercel api` (beta) on `POST /v10/projects/<id>/env`, with the value in the request body on stdin. `vercel env add` is not used: it can't target all Preview branches without an interactive prompt, and it exits 0 without writing when that prompt gets no answer. Existing entries keep their type; new ones are `sensitive`. A write counts only when the API response names the variable.
 
 ## When changes take effect
 
-- **Workers:** immediately. `wrangler secret bulk` deploys a new version with the same code; Git deploys keep the secrets.
+- **Workers:** immediately. `cf workers secrets bulk` deploys a new version with the same code; `cf deploy` (Git deploys) keeps the secrets.
 - **Vercel:** on the next deployment. Add `--redeploy` to redeploy the latest ready deployment of that environment (preview needs `--git-branch`). Production asks first. The script names the deployment it rebuilds, then streams the Vercel CLI's build output live; a rebuild takes a few minutes.
 
 ## What is never written
 
-| Names                                                         | Why                                                                                          |
-| ------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `POSTGRES_*`, `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`          | Written by the Supabase ↔ Vercel integration (including preview branches)                    |
-| `FLAGS`                                                       | Written by the Vercel Flags integration                                                      |
-| `VERCEL_*`                                                    | Reserved for Vercel system variables                                                         |
-| Any Vercel variable whose existing entry is integration-owned | Same reason; detected from `vercel env ls` (for example the Sentry integration's `SENTRY_*`) |
-| Worker: `SENTRY_AUTH_TOKEN`                                   | A Workers Builds build secret; set it in the build settings                                  |
-| Worker: `JOBS_PAUSED`, `JOB_*_ENABLED`                        | Dashboard-managed switches (design note, Decision 7)                                         |
-| Worker: names declared under `vars` in `wrangler.jsonc`       | A secret may not reuse a var's name; change the var in Git                                   |
+| Names                                                                 | Why                                                                                          |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `POSTGRES_*`, `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`                  | Written by the Supabase ↔ Vercel integration (including preview branches)                    |
+| `FLAGS`                                                               | Written by the Vercel Flags integration                                                      |
+| `VERCEL_*`                                                            | Reserved for Vercel system variables                                                         |
+| Any Vercel variable whose existing entry is integration-owned         | Same reason; detected from `vercel env ls` (for example the Sentry integration's `SENTRY_*`) |
+| Worker: `SENTRY_AUTH_TOKEN`                                           | A Workers Builds build secret; set it in the build settings                                  |
+| Worker: `JOBS_PAUSED`, `JOB_*_ENABLED`                                | Operator-flipped switches; set with `cf workers secrets update` (design note, Decision 7)    |
+| Worker: names declared with `bindings.text` in `cloudflare.config.ts` | A secret may not reuse a var's name; change the var in Git                                   |
 
-Workers reach Supabase through Hyperdrive, not secrets. If the database password rotates, update the Hyperdrive config (`wrangler hyperdrive update`).
+Workers reach Supabase through Hyperdrive, not secrets. If the database password rotates, update the Hyperdrive configuration's origin password in the Cloudflare dashboard (`cf hyperdrive update` has no password flag).
 
 ## Production Worker workflow
 
