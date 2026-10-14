@@ -6,7 +6,7 @@ export type JobSwitchVars = {
 } & Partial<Record<`JOB_${JobName}_ENABLED`, string>>;
 
 /**
- * Bindings and vars from `wrangler.jsonc`, plus the deploy-time
+ * Bindings and vars from `cloudflare.config.ts`, plus the deploy-time
  * `SENTRY_RELEASE` and the dashboard-managed job switches.
  */
 export type WorkerEnv = Env &

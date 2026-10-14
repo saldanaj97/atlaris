@@ -1,9 +1,13 @@
 import {
+  applyCloudflare,
+  cloudflareSecretNames,
+  cloudflareSecretsPatch,
   formatPlan,
   parseEnvironmentOutput,
+  parseSecretNames,
   parseSyncArgs,
   planSync,
-  readWranglerVarNames,
+  readDeclaredVarNames,
   redeployVercel,
   SecretsSyncUsageError,
   SYNC_TARGETS,
@@ -11,18 +15,31 @@ import {
 } from '../../../scripts/secrets/sync';
 import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, statSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 // Replaces the whole module, named and default exports alike, so no test can
-// start a real `vercel` or `op` process.
+// start a real `cf`, `vercel`, or `op` process.
 vi.mock('node:child_process', () => {
   const spawn = vi.fn();
   return { spawn, default: { spawn } };
 });
 
-const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
+/** A child process that prints `stdout`, `stderr`, and exits with `code`. */
+function fakeChild(code: number, stdout = '', stderr = '') {
+  const child = Object.assign(new EventEmitter(), {
+    stdout: new EventEmitter(),
+    stderr: new EventEmitter(),
+    stdin: { end: vi.fn() },
+  });
+  queueMicrotask(() => {
+    if (stdout) child.stdout.emit('data', Buffer.from(stdout));
+    if (stderr) child.stderr.emit('data', Buffer.from(stderr));
+    child.emit('close', code);
+  });
+  return child;
+}
 
 describe('parseSyncArgs', () => {
   it('resolves each provider and environment to its 1Password Environment', () => {
@@ -81,16 +98,63 @@ describe('parseEnvironmentOutput', () => {
   });
 });
 
-describe('readWranglerVarNames', () => {
-  it('reads the vars of one Wrangler environment from the real config', () => {
-    const config = readFileSync(
-      join(REPO_ROOT, 'workers', 'jobs', 'wrangler.jsonc'),
-      'utf8',
-    );
-    const staging = readWranglerVarNames(config, 'staging');
-    expect(staging.has('RESEND_FROM')).toBe(true);
-    expect(staging.has('JOBS_SIGNING_SECRET')).toBe(false);
-    expect(readWranglerVarNames(config, 'missing').size).toBe(0);
+describe('readDeclaredVarNames', () => {
+  it.each(['staging', 'production'])(
+    'reads the text vars of %s from the real cloudflare.config.ts, not its secrets',
+    async (environment) => {
+      const declared = await readDeclaredVarNames(environment);
+      for (const name of [
+        'NODE_ENV',
+        'WORKER_ENV',
+        'APP_URL',
+        'RESEND_FROM',
+        'LOG_LEVEL',
+      ]) {
+        expect(declared.has(name)).toBe(true);
+      }
+      for (const name of [
+        'JOBS_SIGNING_SECRET',
+        'JOBS_PAUSED',
+        'JOB_PLAN_GENERATION_ENABLED',
+        'HYPERDRIVE',
+      ]) {
+        expect(declared.has(name)).toBe(false);
+      }
+    },
+  );
+});
+
+describe('parseSecretNames', () => {
+  it('reads names from the JSON array cf prints', () => {
+    expect(
+      parseSecretNames(
+        '[\n  { "name": "JOBS_SIGNING_SECRET", "type": "secret_text" },\n  { "name": "JOBS_PAUSED", "type": "secret_text" }\n]',
+      ),
+    ).toEqual(new Set(['JOBS_SIGNING_SECRET', 'JOBS_PAUSED']));
+    expect(parseSecretNames('[]').size).toBe(0);
+  });
+
+  it.each([
+    ['non-JSON output', 'Error: not authenticated'],
+    ['an unwrapped envelope', '{"success":true,"result":[]}'],
+    ['entries without a name', '[{"type":"secret_text"}]'],
+    ['null entries', '[null]'],
+  ])('refuses %s', (_label, stdout) => {
+    expect(() => parseSecretNames(stdout)).toThrow(SecretsSyncUsageError);
+  });
+});
+
+describe('cloudflareSecretsPatch', () => {
+  it('nests each value under secrets as an API secret object', () => {
+    expect(cloudflareSecretsPatch({ OPENROUTER_API_KEY: 'sk-1' })).toEqual({
+      secrets: {
+        OPENROUTER_API_KEY: {
+          name: 'OPENROUTER_API_KEY',
+          type: 'secret_text',
+          text: 'sk-1',
+        },
+      },
+    });
   });
 });
 
@@ -100,7 +164,7 @@ describe('planSync', () => {
       provider: 'cloudflare',
       names: ['OPENROUTER_API_KEY', 'JOBS_SIGNING_SECRET'],
       existing: new Set(['JOBS_SIGNING_SECRET']),
-      wranglerVars: new Set(),
+      declaredVars: new Set(),
     });
     expect(plan).toEqual([
       { name: 'JOBS_SIGNING_SECRET', action: 'update' },
@@ -108,7 +172,7 @@ describe('planSync', () => {
     ]);
   });
 
-  it('never writes build secrets, job switches, or wrangler vars to a Worker', () => {
+  it('never writes build secrets, job switches, or declared vars to a Worker', () => {
     const plan = planSync({
       provider: 'cloudflare',
       names: [
@@ -118,7 +182,7 @@ describe('planSync', () => {
         'RESEND_FROM',
       ],
       existing: new Set(),
-      wranglerVars: new Set(['RESEND_FROM']),
+      declaredVars: new Set(['RESEND_FROM']),
     });
     expect(plan.map((entry) => entry.action)).toEqual([
       'skip',
@@ -126,6 +190,12 @@ describe('planSync', () => {
       'skip',
       'skip',
     ]);
+    expect(plan.find((entry) => entry.name === 'JOBS_PAUSED')?.reason).toMatch(
+      /cf workers secrets update/,
+    );
+    expect(plan.find((entry) => entry.name === 'RESEND_FROM')?.reason).toBe(
+      'declared in cloudflare.config.ts',
+    );
   });
 
   it('never writes integration-managed or reserved names', () => {
@@ -175,21 +245,113 @@ describe('writtenKey', () => {
   });
 });
 
-describe.sequential('redeployVercel', () => {
-  /** A child process that prints `stdout` and exits with `code`. */
-  function fakeChild(code: number, stdout = '') {
-    const child = Object.assign(new EventEmitter(), {
-      stdout: new EventEmitter(),
-      stderr: new EventEmitter(),
-      stdin: { end: vi.fn() },
-    });
-    queueMicrotask(() => {
-      if (stdout) child.stdout.emit('data', Buffer.from(stdout));
-      child.emit('close', code);
-    });
-    return child;
-  }
+describe.sequential('Cloudflare secrets through cf', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(spawn).mockReset();
+  });
 
+  it('lists the secrets of the Worker for the environment', async () => {
+    vi.mocked(spawn).mockImplementation((() =>
+      fakeChild(
+        0,
+        '[{"name":"JOBS_SIGNING_SECRET","type":"secret_text"}]',
+      )) as unknown as typeof spawn);
+
+    await expect(cloudflareSecretNames('staging')).resolves.toEqual(
+      new Set(['JOBS_SIGNING_SECRET']),
+    );
+
+    const [command, args, options] = vi.mocked(spawn).mock.calls.at(-1)!;
+    expect(command).toMatch(/workers\/jobs\/node_modules\/\.bin\/cf$/);
+    expect(args).toEqual([
+      'workers',
+      'secrets',
+      'list',
+      '--worker',
+      'atlaris-jobs-staging',
+    ]);
+    expect(options).toMatchObject({ cwd: 'workers/jobs' });
+  });
+
+  it('reports a failed listing with cf stderr', async () => {
+    vi.mocked(spawn).mockImplementation((() =>
+      fakeChild(1, '', 'Worker not found')) as unknown as typeof spawn);
+
+    await expect(cloudflareSecretNames('production')).rejects.toThrow(
+      /cf workers secrets list failed:\nWorker not found/,
+    );
+  });
+
+  it('writes the secrets through a private temp file that is removed afterwards', async () => {
+    const seen: {
+      args: string[];
+      body: unknown;
+      mode: number;
+      file: string;
+    }[] = [];
+    vi.mocked(spawn).mockImplementation(((_command: string, args: string[]) => {
+      const file = args[args.indexOf('--file') + 1]!;
+      seen.push({
+        args,
+        body: JSON.parse(readFileSync(file, 'utf8')),
+        mode: statSync(file).mode & 0o777,
+        file,
+      });
+      return fakeChild(0);
+    }) as unknown as typeof spawn);
+
+    const code = await applyCloudflare(SYNC_TARGETS['cloudflare production']!, {
+      OPENROUTER_API_KEY: 'sk-never-on-the-command-line',
+    });
+
+    expect(code).toBe(0);
+    expect(seen).toHaveLength(1);
+    const [call] = seen;
+    expect(call!.args.slice(0, 5)).toEqual([
+      'workers',
+      'secrets',
+      'bulk',
+      '--worker',
+      'atlaris-jobs-production',
+    ]);
+    expect(call!.args.join(' ')).not.toContain('sk-never-on-the-command-line');
+    expect(call!.body).toEqual({
+      secrets: {
+        OPENROUTER_API_KEY: {
+          name: 'OPENROUTER_API_KEY',
+          type: 'secret_text',
+          text: 'sk-never-on-the-command-line',
+        },
+      },
+    });
+    expect(call!.mode).toBe(0o600);
+    expect(existsSync(dirname(call!.file))).toBe(false);
+  });
+
+  it('returns the cf exit code and still removes the temp file', async () => {
+    let file = '';
+    vi.mocked(spawn).mockImplementation(((_command: string, args: string[]) => {
+      file = args[args.indexOf('--file') + 1]!;
+      return fakeChild(3, '', 'API error');
+    }) as unknown as typeof spawn);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    const code = await applyCloudflare(SYNC_TARGETS['cloudflare staging']!, {
+      RESEND_API_KEY: 're_secret',
+    });
+
+    expect(code).toBe(3);
+    expect(error).toHaveBeenCalledWith(
+      '[secrets] cf workers secrets bulk failed:\nAPI error',
+    );
+    expect(existsSync(dirname(file))).toBe(false);
+  });
+});
+
+describe.sequential('redeployVercel', () => {
   const deployments = JSON.stringify({
     deployments: [
       { url: 'building.vercel.app', state: 'BUILDING' },
@@ -197,7 +359,12 @@ describe.sequential('redeployVercel', () => {
     ],
   });
 
-  afterEach(() => vi.restoreAllMocks());
+  // restoreAllMocks leaves the spawn call history alone, and the assertions
+  // below index into it.
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(spawn).mockReset();
+  });
 
   it('names the deployment and announces the build before streaming the redeploy', async () => {
     const events: string[] = [];
