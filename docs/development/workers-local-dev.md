@@ -68,7 +68,7 @@ Keep heavy work out of module scope. Load large dependencies that only one job p
 Worker logic is unit-tested with the existing Vitest setup under `tests/unit/workers/` (Node, mocked bindings):
 
 ```bash
-pnpm vitest run --config vitest.config.ts --project unit tests/unit/workers
+SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/workers
 ```
 
 Workers-runtime behavior is proven with `pnpm workers dev` locally and on staging, not with a second test harness.

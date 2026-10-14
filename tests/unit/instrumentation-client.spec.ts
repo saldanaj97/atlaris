@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+// Client instrumentation branches on `typeof window`; the `unit` project is Node.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { posthogInitMock, sentryInitMock } = vi.hoisted(() => ({

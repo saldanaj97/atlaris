@@ -80,6 +80,22 @@ describe('CircleCI Smarter Testing selection', () => {
     ).not.toContain('parallelism');
   });
 
+  it('runs both unit Vitest projects and analyses impact in a single pass', () => {
+    const unitSuite = TEST_SUITES.split('---\nname: integration tests')[0];
+
+    expect(unitSuite).toContain(
+      '--project unit --project unit-dom --filesOnly',
+    );
+    expect(unitSuite).toContain(
+      'vitest run --config vitest.config.ts --project unit --project unit-dom',
+    );
+    expect(unitSuite).toContain(
+      'CIRCLECI_COVERAGE="<< outputs.circleci-coverage >>"',
+    );
+    expect(TEST_SUITES).not.toContain('outputs.lcov');
+    expect(TEST_SUITES).toContain('- tests/unit/setup.node.ts');
+  });
+
   it('selects PR integration tests by impact and refreshes impact data on develop', () => {
     const integrationLight = CODE_CONFIG.match(
       /\n  integration-light:\n([\s\S]*?)\n  security-tests:/,
@@ -91,6 +107,20 @@ describe('CircleCI Smarter Testing selection', () => {
     expect(CODE_CONFIG).toContain(
       'circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none',
     );
+  });
+
+  it('runs the trunk integration suite on develop only', () => {
+    const trunkIntegration = CODE_CONFIG.match(
+      /\n      - integration-tests:\n([\s\S]*?)\n      - integration-impact-analysis:/,
+    )?.[1];
+
+    expect(trunkIntegration).toContain('only: develop');
+    expect(trunkIntegration).not.toContain('main');
+    expect(
+      CODE_CONFIG.match(
+        /\n  integration-tests:\n([\s\S]*?)\n  integration-impact-analysis:/,
+      )?.[1],
+    ).not.toContain('--run-tests=all');
   });
 });
 
