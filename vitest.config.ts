@@ -38,6 +38,15 @@ const testAliases = {
 
 const integrationMaxWorkers = getIntegrationMaxWorkers();
 
+// CircleCI Smarter Testing analysis: `CIRCLECI_COVERAGE=<file>` turns on the
+// per-test V8 coverage runner/reporter from @circleci/vitest-circleci-coverage.
+// Per-test coverage needs tests to run one at a time inside a file, so the unit
+// projects drop `sequence.concurrent` while analysis is on.
+const circleciCoverage = process.env.CIRCLECI_COVERAGE !== undefined;
+const circleciCoverageRunner = circleciCoverage
+  ? { runner: '@circleci/vitest-circleci-coverage/runner' }
+  : {};
+
 function getIntegrationMaxWorkers(): number {
   const configured = Number.parseInt(
     process.env.INTEGRATION_MAX_WORKERS ?? '4',
@@ -51,6 +60,9 @@ export default defineConfig({
   test: {
     // Allow CI shards to pass when the filter excludes all files
     passWithNoTests: true,
+    ...(circleciCoverage
+      ? { reporters: ['@circleci/vitest-circleci-coverage/reporter'] }
+      : {}),
     coverage: {
       provider: 'v8',
       reportsDirectory: 'coverage',
@@ -96,6 +108,7 @@ export default defineConfig({
           ],
           maxConcurrency: 1,
           alias: testAliases,
+          ...circleciCoverageRunner,
         },
       },
       {
@@ -136,18 +149,36 @@ export default defineConfig({
           alias: testAliases,
         },
       },
+      // Unit tests are split by environment: `.ts` specs run in plain Node
+      // (no jsdom, no React Testing Library), `.tsx` specs run in jsdom.
       {
         test: {
           name: 'unit',
           globals: true,
-          environment: 'jsdom',
+          environment: 'node',
           isolate: true,
-          sequence: { concurrent: true, groupOrder: 0 },
+          sequence: { concurrent: !circleciCoverage, groupOrder: 0 },
           pool: 'threads',
           testTimeout: 20_000,
-          include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
+          include: ['tests/unit/**/*.{test,spec}.ts'],
+          setupFiles: ['tests/unit/setup.node.ts'],
+          alias: testAliases,
+          ...circleciCoverageRunner,
+        },
+      },
+      {
+        test: {
+          name: 'unit-dom',
+          globals: true,
+          environment: 'jsdom',
+          isolate: true,
+          sequence: { concurrent: !circleciCoverage, groupOrder: 0 },
+          pool: 'threads',
+          testTimeout: 20_000,
+          include: ['tests/unit/**/*.{test,spec}.tsx'],
           setupFiles: ['tests/unit/setup.ts'],
           alias: testAliases,
+          ...circleciCoverageRunner,
         },
       },
     ],

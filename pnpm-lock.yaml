@@ -83,7 +83,7 @@ importers:
         version: 1.2.16(@types/react-dom@19.2.5(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       '@sentry/cloudflare':
         specifier: 10.70.0
-        version: 10.70.0(supports-color@8.1.1)(wrangler@4.146.0(@types/node@24.13.3)(bufferutil@4.1.0)(utf-8-validate@6.0.6))
+        version: 10.70.0(wrangler@4.146.0(@types/node@24.13.3)(bufferutil@4.1.0)(utf-8-validate@6.0.6))
       '@sentry/nextjs':
         specifier: ^10.70.0
         version: 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(next@16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react@19.2.8)(supports-color@8.1.1)(webpack@5.103.0(lightningcss@1.32.0))
@@ -154,6 +154,9 @@ importers:
         specifier: ^4.4.3
         version: 4.4.3
     devDependencies:
+      '@circleci/vitest-circleci-coverage':
+        specifier: ^0.3.707
+        version: 0.3.707(@vitest/coverage-v8@4.1.11)(vitest@4.1.11)
       '@clerk/testing':
         specifier: ^2.2.31
         version: 2.2.31(@playwright/test@1.62.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -417,6 +420,17 @@ packages:
 
   '@cacheable/utils@2.5.0':
     resolution: {integrity: sha512-buipgOVDkkPXNR5+xBpDw7Zk2n1EvU7qBJCNUcL7rhQ//kfpOXPAvQ511Os0vpLYJ1pZnvudNytkQt2hst3wqA==}
+
+  '@circleci/v8-coverage-collector@0.2.355':
+    resolution: {integrity: sha512-YbVCas9nX+bloUMXzgn1cp0P8IZAiqF+DTik/+xwrJLsJXIIMQuw7UMxD04ErSrzz9Z11YUIqpeS78y2H0ss4g==}
+    engines: {node: '>=20.0.0'}
+
+  '@circleci/vitest-circleci-coverage@0.3.707':
+    resolution: {integrity: sha512-LmYO9dHLxRe1oMzr35d0mPDCf2TcxOMXn84ZoQWjFeS5g7xhirGhRTw9Aifa3Ds+ses3ePQEIVzWknYYhfBpfg==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      '@vitest/coverage-v8': '>=4.1.4'
+      vitest: '>=4.1.4'
 
   '@clerk/backend@3.16.13':
     resolution: {integrity: sha512-L6+48rB8WVoxoiFDKv49KWxc58aGwuYnbuHBxNdqgTZO6PTyEH3KLpnqI/WaCqIxQW56MJE24EJREsU8WlWrWw==}
@@ -5870,7 +5884,7 @@ snapshots:
       semifies: 1.0.0
       source-map: 0.6.1
 
-  '@apm-js-collab/tracing-hooks@0.13.0(supports-color@8.1.1)':
+  '@apm-js-collab/tracing-hooks@0.13.0':
     dependencies:
       '@apm-js-collab/code-transformer': 0.18.1
       debug: 4.4.3(supports-color@8.1.1)
@@ -6084,6 +6098,14 @@ snapshots:
     dependencies:
       hashery: 1.5.1
       keyv: 5.6.0
+
+  '@circleci/v8-coverage-collector@0.2.355': {}
+
+  '@circleci/vitest-circleci-coverage@0.3.707(@vitest/coverage-v8@4.1.11)(vitest@4.1.11)':
+    dependencies:
+      '@circleci/v8-coverage-collector': 0.2.355
+      '@vitest/coverage-v8': 4.1.11(vitest@4.1.11)
+      vitest: 4.1.11(@opentelemetry/api@1.9.1)(@types/node@24.13.3)(@vitest/coverage-v8@4.1.11)(jsdom@27.4.0(@noble/hashes@2.2.0)(bufferutil@4.1.0)(supports-color@8.1.1)(utf-8-validate@6.0.6))(vite@7.3.6(@types/node@24.13.3)(jiti@2.7.0)(lightningcss@1.32.0)(terser@5.51.2)(tsx@4.23.13)(yaml@2.8.3))
 
   '@clerk/backend@3.16.13(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':
     dependencies:
@@ -7694,11 +7716,11 @@ snapshots:
       - encoding
       - supports-color
 
-  '@sentry/cloudflare@10.70.0(supports-color@8.1.1)(wrangler@4.146.0(@types/node@24.13.3)(bufferutil@4.1.0)(utf-8-validate@6.0.6))':
+  '@sentry/cloudflare@10.70.0(wrangler@4.146.0(@types/node@24.13.3)(bufferutil@4.1.0)(utf-8-validate@6.0.6))':
     dependencies:
       '@opentelemetry/api': 1.9.1
       '@sentry/core': 10.70.0
-      '@sentry/server-utils': 10.70.0(supports-color@8.1.1)
+      '@sentry/server-utils': 10.70.0
       magic-string: 0.30.21
     optionalDependencies:
       wrangler: 4.146.0(@types/node@24.13.3)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -7726,7 +7748,7 @@ snapshots:
       '@sentry/node': 10.70.0(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(supports-color@8.1.1)
       '@sentry/opentelemetry': 10.70.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))
       '@sentry/react': 10.70.0(react@19.2.8)
-      '@sentry/server-utils': 10.70.0(supports-color@8.1.1)
+      '@sentry/server-utils': 10.70.0
       '@sentry/vercel-edge': 10.70.0
       '@sentry/webpack-plugin': 5.4.0(rollup@4.62.4)(webpack@5.103.0(lightningcss@1.32.0))
       next: 16.3.8(@babel/core@7.29.7(supports-color@8.1.1))(@opentelemetry/api@1.9.1)(@playwright/test@1.62.1)(@types/node@24.13.3)(babel-plugin-react-compiler@1.0.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -7762,7 +7784,7 @@ snapshots:
       '@sentry/core': 10.70.0
       '@sentry/node-core': 10.70.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/instrumentation@0.220.0(@opentelemetry/api@1.9.1)(supports-color@8.1.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))
       '@sentry/opentelemetry': 10.70.0(@opentelemetry/api@1.9.1)(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))
-      '@sentry/server-utils': 10.70.0(supports-color@8.1.1)
+      '@sentry/server-utils': 10.70.0
       import-in-the-middle: 3.3.3
     transitivePeerDependencies:
       - '@opentelemetry/core'
@@ -7794,10 +7816,10 @@ snapshots:
       '@sentry/browser-utils': 10.70.0
       '@sentry/core': 10.70.0
 
-  '@sentry/server-utils@10.70.0(supports-color@8.1.1)':
+  '@sentry/server-utils@10.70.0':
     dependencies:
       '@apm-js-collab/code-transformer-bundler-plugins': 0.7.4
-      '@apm-js-collab/tracing-hooks': 0.13.0(supports-color@8.1.1)
+      '@apm-js-collab/tracing-hooks': 0.13.0
       '@sentry/conventions': 0.16.0
       '@sentry/core': 10.70.0
       meriyah: 6.1.4

@@ -76,6 +76,8 @@ function unitPhase(changed: boolean): TestPhase {
           VITEST_CONFIG,
           '--project',
           'unit',
+          '--project',
+          'unit-dom',
           ...(changed ? changedArgs() : []),
           'tests/unit',
         ],

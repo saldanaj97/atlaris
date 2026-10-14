@@ -35,6 +35,8 @@ describe('pnpm test dispatcher', () => {
       'vitest.config.ts',
       '--project',
       'unit',
+      '--project',
+      'unit-dom',
       'tests/unit',
     ]);
     expect(unit.env).toEqual({ SKIP_DB_TEST_SETUP: 'true', NODE_ENV: 'test' });

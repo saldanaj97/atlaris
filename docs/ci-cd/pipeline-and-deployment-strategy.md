@@ -53,20 +53,22 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
 - Draft PRs do not run `ci-pr`; the gate starts when the PR is marked ready for review and reruns on later updates.
 - Runs: lint, type-check, dependency audit, unit tests, PR integration tests (`integration-light`: impacted tests from the `integration tests` Smarter Testing suite, all tests for PRs into `main`), RLS security tests, and dependency remediation tests (the `dependency-remediation-tests` job)
-- `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
+- `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis. The `unit tests` suite spans two Vitest projects: `unit` (`.spec.ts`, Node environment) and `unit-dom` (`.spec.tsx`, jsdom). PR `unit-tests` runs `circleci testsuite run` on a single container (Node's `os.availableParallelism()` already reports the executor's 4 vCPUs, so Vitest sizes its pool correctly without a `maxWorkers` pin); JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
 - `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `dependency-remediation-tests` (runs only `node --test .github/scripts/dependency-remediation.test.mjs`) (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
 ### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
 
 - Trigger: **All pushes** that are not `pull_request` events, with jobs filtered to `develop` and `main`. Keep the CircleCI GitHub App **All pushes** trigger so this workflow still starts on trunk.
-- Runs: integration tests (`integration-tests`: impacted tests on `develop`, all tests on `main`, via the `integration tests` Smarter Testing suite) and RLS security tests (`security-tests`) after merge
+- Runs: integration tests (`integration-tests`: impacted tests via the `integration tests` Smarter Testing suite, on `develop` only) and RLS security tests (`security-tests`, `develop` and `main`) after merge
+- `main` pushes no longer re-run the integration suite: every PR into `main` already ran it in full (`integration-light` with `--run-tests=all`), so the trunk run was a third copy of the same tests per promotion cycle
 - There is no CircleCI `merge_group` trigger. Do not treat merge-queue SHAs as gated here.
 - Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
 - Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
-- On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
-- On `develop`, `integration-impact-analysis` does the same for the `integration tests` suite. Its analysis command takes a lock so atoms run one at a time, because each integration run rebuilds one shared template database.
+- On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection.
+- On `develop`, `integration-impact-analysis` does the same for the `integration tests` suite.
+- Both `analysis` commands run in single-pass mode: `@circleci/vitest-circleci-coverage` records per-test V8 coverage for all impacted atoms in one Vitest run (`CIRCLECI_COVERAGE=<< outputs.circleci-coverage >>`). The earlier lcov mode ran one Vitest process per atom (~7s each), so a widely imported change re-analyzed 300+ atoms for 35+ minutes.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
 Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
@@ -133,7 +135,7 @@ Vercel's native Git integration is separate from CircleCI: every branch push cre
 
 ### Merge to `main`
 
-- Runs CircleCI `ci-trunk` (`integration-tests` + `security-tests`; those jobs skip when `detect-changes` finds no integration-path files)
+- Runs CircleCI `ci-trunk` (`security-tests` only; it skips when `detect-changes` finds no integration-path files. The integration suite already ran in full on the promotion PR)
 - Requires an operator to run `production-db-migrations.yaml` phase `expand` before exercising a Production-targeted binary that needs new schema
 - Vercel's Git integration creates the Production deployment for the `main` push; before JCS-52 is available, use the post-push unaliased rehearsal from a clean `main` checkout after that exact SHA exists on `origin/main`. The rehearsal does not govern native Production alias/domain assignment ([staged-production-deployment.md](./staged-production-deployment.md))
 - JCS-52 will add native Vercel Deployment Checks enforced by Deployment Protection; only that combination can gate live alias assignment. After the Production deployment and health verification, dispatch phase `contract` when needed
