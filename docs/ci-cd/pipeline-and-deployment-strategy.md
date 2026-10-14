@@ -53,7 +53,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Trigger: GitHub App `pull_request` events (`opened` / `synchronize` / `reopened` / `ready_for_review`) whose head is not `main`. That includes ordinary feature/hotfix PRs into `develop` and `develop` → `main` promotion PRs.
 - Draft PRs do not run `ci-pr`; the gate starts when the PR is marked ready for review and reruns on later updates.
 - Runs: lint, type-check, dependency audit, unit tests, PR integration tests (`integration-light`: impacted tests from the `integration tests` Smarter Testing suite, all tests for PRs into `main`), RLS security tests, and dependency remediation tests (the `dependency-remediation-tests` job)
-- `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis and dynamic splitting. PR `unit-tests` runs `circleci testsuite run`; JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
+- `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis. PR `unit-tests` runs `circleci testsuite run` on a single container (parallelism was removed: each extra container repeated checkout and `pnpm install` for ~20s of tests); JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
 - `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `dependency-remediation-tests` (runs only `node --test .github/scripts/dependency-remediation.test.mjs`) (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
@@ -65,7 +65,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Codecov upload is still absent. There is no `All Checks Passed (trunk)` aggregator; workflow status is the gate.
 - Integration/security jobs use a CircleCI Postgres sidecar (`SKIP_TESTCONTAINERS=true`), not Testcontainers
 - `detect-changes` can skip those jobs when no integration-path files changed; the workflow still starts
-- On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection and dynamic splitting.
+- On `develop`, `unit-impact-analysis` refreshes the Smarter Testing impact map with `--analyze-tests=impacted --run-tests=none`; PR runs then use that map for impacted-test selection.
 - On `develop`, `integration-impact-analysis` does the same for the `integration tests` suite. Its analysis command takes a lock so atoms run one at a time, because each integration run rebuilds one shared template database.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
