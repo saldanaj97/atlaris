@@ -1,3 +1,8 @@
+/**
+ * Lightweight guardrails: high-risk modules stay aligned with DB/RLS seams documented in
+ * supabase/AGENTS.md (architecture tests, not behavioral coverage).
+ */
+
 import type { Node } from 'oxc-parser';
 
 import {
@@ -5,10 +10,6 @@ import {
   parseTypeScriptModule,
   walkAst,
 } from '@tests/helpers/oxc-ast';
-/**
- * Lightweight guardrails: high-risk modules stay aligned with DB/RLS seams documented in
- * supabase/AGENTS.md (architecture tests, not behavioral coverage).
- */
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
