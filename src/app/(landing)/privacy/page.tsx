@@ -40,10 +40,10 @@ export default function PrivacyPage(): ReactElement {
     <LegalDocument overline='Legal' title='Privacy Policy'>
       <LegalSection id='privacy-who' heading='1. Who we are'>
         <p>
-          Atlaris is operated by Juan Carlos Saldana Jr., an individual doing
-          business as &quot;Atlaris&quot;. This policy explains what personal
-          information we collect when you use Atlaris, how we use it, and the
-          choices you have. It should be read with our{' '}
+          Atlaris is operated by Juan Carlos Saldana Jr., a sole proprietor
+          based in Texas. This policy explains what personal information we
+          collect when you use Atlaris, how we use it, and the choices you have.
+          It should be read with our{' '}
           <Link href={ROUTES.TERMS}>Terms of Service</Link>. Contact:{' '}
           <LegalContactLink />.
         </p>
@@ -167,15 +167,14 @@ export default function PrivacyPage(): ReactElement {
       <LegalSection id='privacy-retention' heading='6. Retention and deletion'>
         <p>
           We keep your information while your account is active. You can delete
-          your account from your account settings or by emailing{' '}
-          <LegalContactLink />. When an account is deleted, your sign-in
-          identity is removed from our authentication provider, the email
-          address on your Atlaris account record is cleared, and the account is
-          marked as deleted. To have your learning plans and other associated
-          data erased as well, email us and we will do so, except for records we
-          must keep for legal, tax, or fraud-prevention reasons. Copies in
-          backups or at our providers may persist for a limited time until they
-          expire in the ordinary course.
+          your account at any time by emailing <LegalContactLink />. When an
+          account is deleted, your sign-in identity is removed from our
+          authentication provider, the email address on your Atlaris account
+          record is cleared, and the account is marked as deleted. To have your
+          learning plans and other associated data erased as well, email us and
+          we will do so, except for records we must keep for legal, tax, or
+          fraud-prevention reasons. Copies in backups or at our providers may
+          persist for a limited time until they expire in the ordinary course.
         </p>
       </LegalSection>
 

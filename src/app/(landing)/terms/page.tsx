@@ -42,10 +42,10 @@ export default function TermsPage(): ReactElement {
         <p>
           These Terms of Service govern your use of Atlaris, a service that
           creates personalized learning plans with the help of artificial
-          intelligence. Atlaris is operated by Juan Carlos Saldana Jr., an
-          individual doing business as &quot;Atlaris&quot; (&quot;Atlaris&quot;,
-          &quot;we&quot;, &quot;us&quot;). By creating an account or using the
-          service, you agree to these terms and to our{' '}
+          intelligence. Atlaris is operated by Juan Carlos Saldana Jr., a sole
+          proprietor based in Texas (&quot;Atlaris&quot;, &quot;we&quot;,
+          &quot;us&quot;). By creating an account or using the service, you
+          agree to these terms and to our{' '}
           <Link href={ROUTES.PRIVACY}>Privacy Policy</Link>. If you do not
           agree, do not use Atlaris.
         </p>
@@ -119,14 +119,15 @@ export default function TermsPage(): ReactElement {
         <p>
           Atlaris offers free and paid plans. Current plans and prices are shown
           on the <Link href={ROUTES.PRICING}>pricing page</Link>. Paid plans are
-          billed monthly through Clerk Billing, and payments are processed by
+          billed through Clerk Billing on the schedule shown at checkout
+          (monthly, or yearly where offered), and payments are processed by
           Stripe. There is currently no free trial.
         </p>
         <p>
-          Paid subscriptions renew automatically each month until you cancel.
-          You can cancel at any time online at Settings &rarr; Billing.
-          Cancellation takes effect at the end of the current billing period,
-          and your paid plan stays active until then.
+          Paid subscriptions renew automatically at the end of each billing
+          period until you cancel. You can cancel at any time online at Settings
+          &rarr; Billing. Cancellation takes effect at the end of the current
+          billing period, and your paid plan stays active until then.
         </p>
         <p>
           Fees are non-refundable, including for partial billing periods, except
