@@ -68,11 +68,16 @@ const selectContinuation = (paths: string[]): ContinuationSelection => {
 };
 
 describe('CircleCI Smarter Testing selection', () => {
-  it('routes unit selection, splitting, and impact refresh through Smarter Testing', () => {
+  it('routes unit selection and impact refresh through Smarter Testing on one container', () => {
     expect(CODE_CONFIG).toContain('circleci testsuite run "unit tests"');
     expect(CODE_CONFIG).toContain('--analyze-tests=impacted --run-tests=none');
     expect(TEST_SUITES).toContain('test-impact-analysis: true');
-    expect(TEST_SUITES).toContain('dynamic-test-splitting: true');
+    expect(TEST_SUITES).not.toContain('dynamic-test-splitting');
+    expect(
+      CODE_CONFIG.match(
+        /\n  unit-tests:\n([\s\S]*?)\n  unit-impact-analysis:/,
+      )?.[1],
+    ).not.toContain('parallelism');
   });
 
   it('selects PR integration tests by impact and refreshes impact data on develop', () => {
