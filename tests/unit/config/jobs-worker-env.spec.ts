@@ -5,35 +5,6 @@ import { describe, expect, it } from 'vitest';
 const base = { NODE_ENV: 'test' };
 
 describe('jobsWorkerEnv', () => {
-  it('defaults regeneration to the Vercel runtime', () => {
-    expect(createJobsWorkerEnvForTests(base).regenerationRuntime).toBe(
-      'vercel',
-    );
-    expect(
-      createJobsWorkerEnvForTests({ ...base, REGENERATION_RUNTIME: '  ' })
-        .regenerationRuntime,
-    ).toBe('vercel');
-  });
-
-  it.each([
-    ['cloudflare', 'cloudflare'],
-    [' Cloudflare ', 'cloudflare'],
-    ['vercel', 'vercel'],
-  ])('reads REGENERATION_RUNTIME=%j', (value, expected) => {
-    expect(
-      createJobsWorkerEnvForTests({ ...base, REGENERATION_RUNTIME: value })
-        .regenerationRuntime,
-    ).toBe(expected);
-  });
-
-  it('rejects an unknown runtime instead of silently falling back', () => {
-    expect(
-      () =>
-        createJobsWorkerEnvForTests({ ...base, REGENERATION_RUNTIME: 'cf' })
-          .regenerationRuntime,
-    ).toThrow(EnvValidationError);
-  });
-
   it('normalizes JOBS_WORKER_URL to its origin', () => {
     expect(
       createJobsWorkerEnvForTests({

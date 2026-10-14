@@ -10,14 +10,6 @@ function matchesProxyMatcher(pathname: string): boolean {
 }
 
 describe('proxy matcher', () => {
-  it('includes workflow callback routes', () => {
-    expect(matchesProxyMatcher('/.well-known/workflow/v1/flow')).toBe(true);
-    expect(matchesProxyMatcher('/.well-known/workflow/v1/step')).toBe(true);
-    expect(matchesProxyMatcher('/.well-known/workflow/v1/webhook/token')).toBe(
-      true,
-    );
-  });
-
   it('still excludes static assets and next internals', () => {
     expect(matchesProxyMatcher('/_next/static/chunk.js')).toBe(false);
     expect(matchesProxyMatcher('/favicon.ico')).toBe(false);

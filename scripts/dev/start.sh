@@ -23,7 +23,6 @@ fi
 bundler=--webpack
 if [[ "$mode" == --ui ]]; then
   bundler=--turbopack
-  printf 'UI-only mode: Turbopack does not run local Workflow SDK callbacks.\n'
 fi
 
 # op owns injection and masks child output. Only its child loses the service

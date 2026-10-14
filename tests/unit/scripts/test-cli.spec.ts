@@ -23,8 +23,7 @@ describe('pnpm test dispatcher', () => {
       'integration --changed',
     ]);
     expect(firstCommand(plan[0]).args).toContain('--changed');
-    expect(plan[1].commands).toHaveLength(2);
-    expect(plan[1].stopOnFailure).toBe(true);
+    expect(plan[1].commands).toHaveLength(1);
   });
 
   it('preserves full and changed unit/integration suite commands', () => {
@@ -41,10 +40,11 @@ describe('pnpm test dispatcher', () => {
     expect(unit.env).toEqual({ SKIP_DB_TEST_SETUP: 'true', NODE_ENV: 'test' });
 
     const integrationChanged = parseTestArgs(['integration', '--changed'])[0];
+    expect(integrationChanged.commands).toHaveLength(1);
     expect(integrationChanged.commands[0]?.args).toContain('--changed');
-    expect(integrationChanged.commands[1]?.args).toContain('--changed');
-    expect(integrationChanged.commands[1]?.args).toContain('--passWithNoTests');
-    expect(integrationChanged.commands[1]?.args.at(-1)).toBe('tests/workflow');
+    expect(integrationChanged.commands[0]?.args.at(-1)).toBe(
+      'tests/integration',
+    );
   });
 
   it('supports the aggregate suite and optional e2e phase', () => {
@@ -52,11 +52,10 @@ describe('pnpm test dispatcher', () => {
       'check',
       'unit',
       'integration',
-      'workflow',
       'security',
     ]);
     expect(parseTestArgs(['all', '--e2e']).map((phase) => phase.label)).toEqual(
-      ['check', 'unit', 'integration', 'workflow', 'security', 'e2e'],
+      ['check', 'unit', 'integration', 'security', 'e2e'],
     );
   });
 
@@ -125,27 +124,13 @@ describe('pnpm test dispatcher', () => {
   });
 
   it('rejects unsupported suite options', () => {
-    expect(() => parseTestArgs(['workflow', '--changed'])).toThrow(
+    expect(() => parseTestArgs(['security', '--changed'])).toThrow(
       TestCliUsageError,
     );
     expect(() => parseTestArgs(['all', '--changed'])).toThrow(
       TestCliUsageError,
     );
     expect(() => parseTestArgs(['unknown'])).toThrow(TestCliUsageError);
-  });
-
-  it('short-circuits the changed integration workflow phase', async () => {
-    const seen: string[] = [];
-    const exitCode = await runTestPlan(
-      parseTestArgs(['integration', '--changed']),
-      async (command) => {
-        seen.push(command.args.join(' '));
-        return 7;
-      },
-    );
-
-    expect(exitCode).toBe(7);
-    expect(seen).toHaveLength(1);
   });
 
   it('preserves a direct suite exit code instead of normalizing it', async () => {
@@ -162,6 +147,6 @@ describe('pnpm test dispatcher', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(seen).toHaveLength(3);
+    expect(seen).toHaveLength(2);
   });
 });

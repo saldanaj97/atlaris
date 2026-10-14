@@ -1,7 +1,6 @@
-import type { RegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
+import type { RegenerationRequestDeps } from '@/features/plans/regeneration-orchestration/deps';
 import type { RegenerationOwnedPlan } from '@/features/plans/regeneration-orchestration/types';
 
-import { resetPlanRegenerationCancellationMarkersForTests } from '@/features/plans/cancel-plan-regeneration-workflow';
 import { requestPlanRegeneration } from '@/features/plans/regeneration-orchestration/request';
 import { RateLimitError } from '@/lib/api/errors';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
@@ -9,51 +8,7 @@ import {
   makeRegenerationOrchestrationDeps,
   type RegenerationOrchestrationDepsOverrides,
 } from '@tests/helpers/regeneration-orchestration-deps';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-
-const startPlanRegenerationWorkflowMock = vi.hoisted(() => vi.fn());
-const cancelPlanRegenerationWorkflowMock = vi.hoisted(() =>
-  vi.fn(async () => true),
-);
-const recordRegenerationWorkflowAttachUncertainMock = vi.hoisted(() => vi.fn());
-
-vi.mock(
-  '@/features/plans/start-plan-regeneration-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/features/plans/start-plan-regeneration-workflow')
-      >();
-    return {
-      ...actual,
-      startPlanRegenerationWorkflow: startPlanRegenerationWorkflowMock,
-    };
-  },
-);
-
-vi.mock(
-  '@/features/plans/cancel-plan-regeneration-workflow',
-  async (importOriginal) => {
-    const actual =
-      await importOriginal<
-        typeof import('@/features/plans/cancel-plan-regeneration-workflow')
-      >();
-    return {
-      ...actual,
-      cancelPlanRegenerationWorkflow: cancelPlanRegenerationWorkflowMock,
-    };
-  },
-);
-
-vi.mock('@/lib/logging/ops-alerts', async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import('@/lib/logging/ops-alerts')>();
-  return {
-    ...actual,
-    recordRegenerationWorkflowAttachUncertain:
-      recordRegenerationWorkflowAttachUncertainMock,
-  };
-});
+import { describe, expect, it, vi } from 'vitest';
 
 const fakeDb = makeDbClient();
 
@@ -70,18 +25,21 @@ const ownedPlan: RegenerationOwnedPlan = {
 
 function buildDeps(
   overrides: RegenerationOrchestrationDepsOverrides = {},
-): RegenerationOrchestrationDeps {
-  return makeRegenerationOrchestrationDeps({
-    ...overrides,
-    dbClient: overrides.dbClient ?? fakeDb,
-    queue: { ...overrides.queue },
-    quota: { ...overrides.quota },
-    plans: {
-      getActiveRegenerationJob: vi.fn(async () => null),
-      findOwnedPlan: vi.fn(async () => ownedPlan),
-      ...overrides.plans,
-    },
-  });
+): RegenerationRequestDeps {
+  return {
+    ...makeRegenerationOrchestrationDeps({
+      ...overrides,
+      dbClient: overrides.dbClient ?? fakeDb,
+      queue: { ...overrides.queue },
+      quota: { ...overrides.quota },
+      plans: {
+        getActiveRegenerationJob: vi.fn(async () => null),
+        findOwnedPlan: vi.fn(async () => ownedPlan),
+        ...overrides.plans,
+      },
+    }),
+    dispatch: vi.fn(async () => undefined),
+  };
 }
 
 describe('requestPlanRegeneration', () => {
@@ -242,7 +200,6 @@ describe('requestPlanRegeneration', () => {
   });
 
   it('enqueues a Starter long plan when date overrides bring duration within cap', async () => {
-    startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
     const longPlan: RegenerationOwnedPlan = {
       ...ownedPlan,
       startDate: '2026-01-01',
@@ -341,273 +298,33 @@ describe('requestPlanRegeneration', () => {
     );
   });
 
-  describe('workflow-enabled enqueue', () => {
-    beforeEach(() => {
-      resetPlanRegenerationCancellationMarkersForTests();
-      startPlanRegenerationWorkflowMock.mockReset();
-      cancelPlanRegenerationWorkflowMock.mockReset();
-      cancelPlanRegenerationWorkflowMock.mockResolvedValue(true);
-      recordRegenerationWorkflowAttachUncertainMock.mockReset();
-      startPlanRegenerationWorkflowMock.mockResolvedValue({
-        started: true,
-        runId: 'wrun_enqueue',
-      });
-    });
+  it('persists an optional model override on the queued job payload', async () => {
+    const deps = buildDeps();
 
-    afterEach(() => {});
-
-    it('starts workflow once, persists runId, and skips inline drain', async () => {
-      const updateRegenerationJobPayload = vi.fn(
-        async (
-          _jobId: string,
-          payload: Parameters<
-            RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
-          >[1],
-        ) =>
-          ({
-            id: 'job-1',
-            data: payload,
-          }) as Awaited<
-            ReturnType<
-              RegenerationOrchestrationDeps['queue']['updateRegenerationJobPayload']
-            >
-          >,
-      );
-      const deps = buildDeps({
-        queue: { updateRegenerationJobPayload },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'enqueued',
-        jobId: 'job-1',
-      });
-      expect(startPlanRegenerationWorkflowMock).toHaveBeenCalledTimes(1);
-      expect(updateRegenerationJobPayload).toHaveBeenCalledWith(
-        'job-1',
-        expect.objectContaining({
-          planId: ownedPlan.id,
-          workflow: expect.objectContaining({
-            provider: 'workflow-sdk',
-            runId: 'wrun_enqueue',
-            startedAt: expect.any(String),
-          }),
-        }),
-      );
-    });
-
-    it('persists an optional model override on the queued job payload', async () => {
-      const deps = buildDeps();
-
-      await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-          overrides: { model: 'google/gemini-3.1-pro-preview' },
-        },
-        deps,
-      );
-
-      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
-        'plan_regeneration',
-        ownedPlan.id,
-        'user-1',
-        {
-          planId: ownedPlan.id,
-          overrides: { model: 'google/gemini-3.1-pro-preview' },
-        },
-        7,
-      );
-    });
-
-    it('marks workflow start failure retryable without settling quota', async () => {
-      startPlanRegenerationWorkflowMock.mockResolvedValue({ started: false });
-      const failJob = vi.fn(async () => null);
-      const deps = buildDeps({
-        queue: { failJob },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        jobId: 'job-1',
+    await requestPlanRegeneration(
+      {
+        userId: 'user-1',
         planId: ownedPlan.id,
-        retryable: true,
-      });
-      expect(failJob).toHaveBeenCalledWith(
-        'job-1',
-        'Failed to start plan regeneration workflow.',
-        { retryable: true },
-      );
-    });
+        overrides: { model: 'google/gemini-3.1-pro-preview' },
+      },
+      deps,
+    );
 
-    it('marks persist failure non-retryable and emits ops telemetry when cancel fails', async () => {
-      cancelPlanRegenerationWorkflowMock.mockResolvedValue(false);
-      const persistError = new Error('runId persist failed');
-      const updateRegenerationJobPayload = vi.fn(async () => {
-        throw persistError;
-      });
-      const failJob = vi.fn(async () => null);
-      const deps = buildDeps({
-        queue: { failJob, updateRegenerationJobPayload },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        jobId: 'job-1',
+    expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+      'plan_regeneration',
+      ownedPlan.id,
+      'user-1',
+      {
         planId: ownedPlan.id,
-        retryable: false,
-      });
-      expect(failJob).toHaveBeenCalledWith(
-        'job-1',
-        'Failed to persist plan regeneration workflow run id.',
-        { retryable: false },
-      );
-      expect(failJob).toHaveBeenCalledTimes(1);
-      expect(
-        recordRegenerationWorkflowAttachUncertainMock,
-      ).toHaveBeenCalledWith(
-        expect.objectContaining({
-          jobId: 'job-1',
-          planId: ownedPlan.id,
-          userId: 'user-1',
-          workflowRunId: 'wrun_enqueue',
-          cancellationSucceeded: false,
-        }),
-        persistError,
-      );
-    });
-
-    it('does not settle quota when a started workflow is canceled after run id persistence fails', async () => {
-      const persistError = new Error('runId persist failed');
-      const updateRegenerationJobPayload = vi.fn(async () => {
-        throw persistError;
-      });
-      const failJob = vi.fn(async () => null);
-      const deps = buildDeps({
-        queue: { failJob, updateRegenerationJobPayload },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        jobId: 'job-1',
-        planId: ownedPlan.id,
-        retryable: false,
-      });
-      expect(failJob).toHaveBeenCalledWith(
-        'job-1',
-        'Failed to persist plan regeneration workflow run id.',
-        { retryable: false },
-      );
-      expect(
-        recordRegenerationWorkflowAttachUncertainMock,
-      ).not.toHaveBeenCalled();
-    });
-
-    it('returns a structured persist failure when job terminalization fails', async () => {
-      const persistError = new Error('runId persist failed');
-      const updateRegenerationJobPayload = vi.fn(async () => {
-        throw persistError;
-      });
-      const failJob = vi.fn(async () => {
-        throw new Error('database unavailable');
-      });
-      const deps = buildDeps({
-        queue: { failJob, updateRegenerationJobPayload },
-      });
-
-      const result = await requestPlanRegeneration(
-        {
-          userId: 'user-1',
-          planId: ownedPlan.id,
-        },
-        deps,
-      );
-
-      expect(result).toMatchObject({
-        kind: 'workflow-start-failed',
-        jobId: 'job-1',
-        planId: ownedPlan.id,
-        retryable: false,
-      });
-      expect(failJob).toHaveBeenCalledTimes(1);
-    });
-
-    it('does not settle quota when workflow attach throws unexpectedly', async () => {
-      const workflowError = new Error('unexpected attach failure');
-      startPlanRegenerationWorkflowMock.mockRejectedValue(workflowError);
-      const failJob = vi.fn(async () => null);
-      const deps = buildDeps({
-        queue: { failJob },
-      });
-
-      await expect(
-        requestPlanRegeneration(
-          {
-            userId: 'user-1',
-            planId: ownedPlan.id,
-          },
-          deps,
-        ),
-      ).rejects.toThrow('unexpected attach failure');
-
-      expect(failJob).toHaveBeenCalledWith(
-        'job-1',
-        'Failed to attach plan regeneration workflow.',
-        { retryable: false },
-      );
-      expect(
-        recordRegenerationWorkflowAttachUncertainMock,
-      ).toHaveBeenCalledWith(
-        {
-          jobId: 'job-1',
-          planId: ownedPlan.id,
-          userId: 'user-1',
-          correlationId: 'regen-job-1',
-        },
-        workflowError,
-      );
-    });
+        overrides: { model: 'google/gemini-3.1-pro-preview' },
+      },
+      7,
+    );
   });
 
-  describe('jobs Worker dispatch (REGENERATION_RUNTIME=cloudflare)', () => {
-    beforeEach(() => {
-      startPlanRegenerationWorkflowMock.mockReset();
-    });
-
-    it('hands the inserted job to dispatch instead of starting a workflow', async () => {
-      const dispatch = vi.fn(async () => undefined);
-      const deps = { ...buildDeps(), dispatch };
+  describe('jobs Worker dispatch', () => {
+    it('hands the inserted job to the jobs Worker', async () => {
+      const deps = buildDeps();
 
       const result = await requestPlanRegeneration(
         { userId: 'user-1', planId: ownedPlan.id },
@@ -619,29 +336,23 @@ describe('requestPlanRegeneration', () => {
         jobId: 'job-1',
         status: 'pending',
       });
-      expect(dispatch).toHaveBeenCalledWith({
+      expect(deps.dispatch).toHaveBeenCalledWith({
         jobId: 'job-1',
         planId: ownedPlan.id,
         userId: 'user-1',
       });
-      expect(startPlanRegenerationWorkflowMock).not.toHaveBeenCalled();
-      expect(deps.queue.updateRegenerationJobPayload).not.toHaveBeenCalled();
       expect(deps.queue.failJob).not.toHaveBeenCalled();
     });
 
     it('does not dispatch a deduplicated job', async () => {
-      const dispatch = vi.fn(async () => undefined);
-      const deps = {
-        ...buildDeps({
-          queue: {
-            enqueueWithResult: vi.fn(async () => ({
-              id: 'dup-job',
-              deduplicated: true,
-            })),
-          },
-        }),
-        dispatch,
-      };
+      const deps = buildDeps({
+        queue: {
+          enqueueWithResult: vi.fn(async () => ({
+            id: 'dup-job',
+            deduplicated: true,
+          })),
+        },
+      });
 
       await expect(
         requestPlanRegeneration(
@@ -652,7 +363,7 @@ describe('requestPlanRegeneration', () => {
         kind: 'queue-dedupe-conflict',
         existingJobId: 'dup-job',
       });
-      expect(dispatch).not.toHaveBeenCalled();
+      expect(deps.dispatch).not.toHaveBeenCalled();
     });
   });
 });

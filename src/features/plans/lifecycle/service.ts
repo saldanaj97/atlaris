@@ -387,7 +387,7 @@ export class PlanLifecycleService {
 
   /**
    * Same as {@link processGenerationAttempt} but reuses an existing reservation
-   * (for Workflow SDK replay after claim).
+   * (for workflow replay after claim).
    *
    * Safe for workflow replay because it does not call `reserveAttemptSlot`
    * again; the generation port validates the reservation against current DB

@@ -56,7 +56,7 @@ Quickstart:
 
 ```bash
 pnpm install
-pnpm dev              # Portless + Webpack + Workflow SDK
+pnpm dev              # Portless + Webpack
 pnpm dev --ui         # Portless + Turbopack UI-only mode
 pnpm dev --db         # Start Supabase, then Portless + Webpack
 pnpm dev doctor       # Diagnose the local toolchain and Portless/1Password setup
@@ -104,7 +104,7 @@ supabase/
 
 ## Testing
 
-The default `pnpm test` command runs a lightweight changed-only bundle: unit tests plus integration-class tests filtered to changed files. Integration-class coverage includes DB/API integration tests and the Workflow SDK Vitest harness.
+The default `pnpm test` command runs a lightweight changed-only bundle: unit tests plus integration-class tests filtered to changed files. Integration-class coverage includes DB/API integration tests.
 
 Use the explicit scoped commands for day-to-day work, and prefer targeted integration runs instead of the full suite whenever possible:
 
@@ -112,7 +112,6 @@ Use the explicit scoped commands for day-to-day work, and prefer targeted integr
 pnpm test
 pnpm test unit --changed
 pnpm test integration --changed
-pnpm test workflow
 pnpm test smoke
 pnpm test all
 ```
@@ -128,8 +127,6 @@ NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration te
 
 Integration tests normally rely on Testcontainers. If you intentionally want to point at an existing Supabase-compatible database, set `SKIP_TESTCONTAINERS=true` and provide a valid `POSTGRES_URL`.
 
-Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and correlation: [docs/architecture/workflow-sdk.md](docs/architecture/workflow-sdk.md).
-
 ## Environment and logging
 
 - Do not access `process.env` directly outside `src/lib/config/env.ts`
@@ -139,7 +136,7 @@ Workflow SDK Preview validation (`pnpm deploy:preview`), feature flags, and corr
 ## Related documentation
 
 - `AGENTS.md`
-- `docs/architecture/workflow-sdk.md`
+- `docs/architecture/cloudflare-jobs-runtime.md`
 - `docs/third-party-services/portless-overview.md`
 - `docs/third-party-services/1password-local-dev.md`
 - `docs/architecture/auth-and-data-layer.md`

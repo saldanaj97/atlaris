@@ -8,7 +8,6 @@ import { spawn } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 
 const VITEST_CONFIG = 'vitest.config.ts';
-const WORKFLOW_VITEST_CONFIG = 'vitest.workflow.config.ts';
 const NATIVE_DB_FLAG = '--native-db';
 
 type EnvironmentOverrides = Partial<NodeJS.ProcessEnv>;
@@ -22,7 +21,6 @@ export type TestCommand = {
 export type TestPhase = {
   label: string;
   commands: readonly TestCommand[];
-  stopOnFailure?: boolean;
 };
 
 export class TestCliUsageError extends Error {
@@ -39,7 +37,6 @@ function usage(): never {
       '  pnpm test',
       '  pnpm test unit [--changed]',
       '  pnpm test integration [--changed]',
-      '  pnpm test workflow',
       '  pnpm test security',
       '  pnpm test smoke [options]',
       '  pnpm test e2e',
@@ -89,51 +86,20 @@ function unitPhase(changed: boolean): TestPhase {
 }
 
 function integrationPhase(changed: boolean): TestPhase {
-  const commands: TestCommand[] = [
-    vitestCommand(
-      [
-        '--config',
-        VITEST_CONFIG,
-        '--project',
-        'integration',
-        ...(changed ? changedArgs() : []),
-        'tests/integration',
-      ],
-      { NODE_ENV: 'test' },
-    ),
-  ];
-
-  if (changed) {
-    commands.push(
+  return {
+    label: changed ? 'integration --changed' : 'integration',
+    commands: [
       vitestCommand(
         [
           '--config',
-          WORKFLOW_VITEST_CONFIG,
-          ...changedArgs(),
-          '--passWithNoTests',
-          'tests/workflow',
+          VITEST_CONFIG,
+          '--project',
+          'integration',
+          ...(changed ? changedArgs() : []),
+          'tests/integration',
         ],
         { NODE_ENV: 'test' },
       ),
-    );
-  }
-
-  return {
-    label: changed ? 'integration --changed' : 'integration',
-    commands,
-    // The old integration-changed package script joined these commands with
-    // `&&`; preserve that short-circuit while keeping the phase aggregate.
-    stopOnFailure: changed,
-  };
-}
-
-function workflowPhase(): TestPhase {
-  return {
-    label: 'workflow',
-    commands: [
-      vitestCommand(['--config', WORKFLOW_VITEST_CONFIG, 'tests/workflow'], {
-        NODE_ENV: 'test',
-      }),
     ],
   };
 }
@@ -194,7 +160,6 @@ function allPlan(includeE2e: boolean): TestPhase[] {
     checkPhase(),
     unitPhase(false),
     integrationPhase(false),
-    workflowPhase(),
     securityPhase(),
     ...(includeE2e ? [e2ePhase()] : []),
   ];
@@ -261,9 +226,6 @@ function parseSuitePlan(args: readonly string[]): TestPhase[] {
       return [unitPhase(parseChangedOption(options))];
     case 'integration':
       return [integrationPhase(parseChangedOption(options))];
-    case 'workflow':
-      if (options.length > 0) usage();
-      return [workflowPhase()];
     case 'security':
       if (options.length > 0) usage();
       return [securityPhase()];
@@ -313,7 +275,6 @@ async function runPhase(
     if (exitCode === 0) continue;
 
     firstFailure ??= exitCode;
-    if (phase.stopOnFailure) return exitCode;
   }
 
   return firstFailure ?? 0;

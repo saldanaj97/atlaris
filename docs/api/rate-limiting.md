@@ -297,7 +297,6 @@ Available only in development and test; otherwise these routes return `404`.
 
 ### IP: Internal (`internal`)
 
-- `POST /api/internal/jobs/regeneration/process`
 - `POST /api/internal/maintenance/billing/reconcile-clerk`
 - `POST /api/internal/maintenance/notifications/email`
 - `POST /api/internal/maintenance/plans/cleanup`

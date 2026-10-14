@@ -95,7 +95,7 @@ Smoke is intentionally small (three specs, one browser worker, `video: 'off'`), 
 
 | Component | Typical impact | Notes |
 | --- | --- | --- |
-| `next dev --turbopack` | Largest | One Next 16 dev server with React Compiler + Workflow plugin; on-demand compilation during auth journeys can spike further |
+| `next dev --turbopack`           | Largest        | One Next 16 dev server with React Compiler; on-demand compilation during auth journeys can spike further                                   |
 | Docker Postgres (Testcontainers) | Moderate | One `postgres:17-alpine` container per run; with `--native-db` the native `test` stack (about 339 MB idle) replaces it and needs no Docker |
 | Chromium + Node orchestration | Small | Single worker; traces/screenshots only on failure |
 

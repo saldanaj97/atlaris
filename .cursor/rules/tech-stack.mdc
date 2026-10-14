@@ -37,7 +37,7 @@ Use this as concise project context. Do not treat hosted service versions as kno
 - Email delivery: SDK package `resend` `6.18.0`.
 - Sentry observability: SDK package `@sentry/nextjs` `10.70.0`; `next.config.ts` wraps the app with Sentry config.
 - OpenRouter AI: SDK package `@openrouter/sdk` `0.13.67`.
-- Workflow durable jobs: SDK package `workflow` `4.8.0`; Next config uses `workflow/next`.
+- Background jobs: Cloudflare jobs Worker (`workers/jobs`) with Cloudflare Queues and Workflows.
 - Vercel Flags: `flags` `4.3.0`; Vercel adapter `@flags-sdk/vercel` `1.4.6`.
 - Vercel telemetry packages: `@vercel/analytics` `2.0.1`, `@vercel/speed-insights` `2.0.0`.
 
