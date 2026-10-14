@@ -2,10 +2,17 @@
  * Lightweight guardrails: high-risk modules stay aligned with DB/RLS seams documented in
  * supabase/AGENTS.md (architecture tests, not behavioral coverage).
  */
+
+import type { Node } from 'oxc-parser';
+
+import {
+  moduleExportNameText,
+  parseTypeScriptModule,
+  walkAst,
+} from '@tests/helpers/oxc-ast';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
@@ -94,23 +101,32 @@ function isRuntimeSpecifier(specifier: string): boolean {
   return /(^|\/)supabase\/runtime(\.ts)?$/.test(specifier);
 }
 
-function enclosingFunctionName(node: ts.Node): string {
-  let current: ts.Node | undefined = node.parent;
-  while (current) {
-    if (ts.isFunctionDeclaration(current) && current.name) {
-      return current.name.text;
+function enclosingFunctionName(ancestors: readonly Node[]): string {
+  for (let i = ancestors.length - 1; i >= 0; i--) {
+    const current = ancestors[i];
+    const parent = ancestors[i - 1];
+    if (current.type === 'FunctionDeclaration' && current.id) {
+      return current.id.name;
     }
     if (
-      (ts.isFunctionExpression(current) || ts.isArrowFunction(current)) &&
-      ts.isVariableDeclaration(current.parent) &&
-      ts.isIdentifier(current.parent.name)
+      (current.type === 'FunctionExpression' ||
+        current.type === 'ArrowFunctionExpression') &&
+      parent?.type === 'VariableDeclarator' &&
+      parent.init === current &&
+      parent.id.type === 'Identifier'
     ) {
-      return current.parent.name.text;
+      return parent.id.name;
     }
-    if (ts.isMethodDeclaration(current) && ts.isIdentifier(current.name)) {
-      return current.name.text;
+    if (
+      (((current.type === 'MethodDefinition' ||
+        current.type === 'TSAbstractMethodDefinition') &&
+        current.kind === 'method') ||
+        (current.type === 'Property' && current.method)) &&
+      !current.computed &&
+      current.key.type === 'Identifier'
+    ) {
+      return current.key.name;
     }
-    current = current.parent;
   }
   return '<module>';
 }
@@ -119,81 +135,64 @@ function findRuntimeGetDbImports(
   sourceText: string,
   fileName: string,
 ): string[] {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
+  const program = parseTypeScriptModule(sourceText, fileName);
   const hits: string[] = [];
 
-  function visit(node: ts.Node): void {
+  walkAst(program, (node) => {
     if (
-      ts.isImportDeclaration(node) &&
-      node.moduleSpecifier !== undefined &&
-      ts.isStringLiteral(node.moduleSpecifier) &&
-      isRuntimeSpecifier(node.moduleSpecifier.text)
+      node.type !== 'ImportDeclaration' ||
+      !isRuntimeSpecifier(node.source.value)
     ) {
-      const clause = node.importClause;
-      if (!clause || clause.isTypeOnly) {
-        return;
-      }
-      if (clause.namedBindings) {
-        if (ts.isNamespaceImport(clause.namedBindings)) {
-          hits.push(`namespace import ${clause.namedBindings.name.text}`);
-        } else if (ts.isNamedImports(clause.namedBindings)) {
-          for (const el of clause.namedBindings.elements) {
-            if (el.isTypeOnly) {
-              continue;
-            }
-            const exportedName = el.propertyName?.text ?? el.name.text;
-            if (exportedName === 'getDb') {
-              hits.push('named getDb import');
-            }
-          }
-        }
-      }
-      if (clause.name) {
-        hits.push(`default import ${clause.name.text}`);
+      return true;
+    }
+    if (node.specifiers.length === 0 || node.importKind === 'type') {
+      return false;
+    }
+    for (const spec of node.specifiers) {
+      if (spec.type === 'ImportNamespaceSpecifier') {
+        hits.push(`namespace import ${spec.local.name}`);
+      } else if (
+        spec.type === 'ImportSpecifier' &&
+        spec.importKind !== 'type' &&
+        moduleExportNameText(spec.imported) === 'getDb'
+      ) {
+        hits.push('named getDb import');
       }
     }
-    ts.forEachChild(node, visit);
-  }
+    for (const spec of node.specifiers) {
+      if (spec.type === 'ImportDefaultSpecifier') {
+        hits.push(`default import ${spec.local.name}`);
+      }
+    }
+    return false;
+  });
 
-  visit(sourceFile);
   return hits;
 }
 
 function findGetDbCallSites(sourceText: string, fileName: string): string[] {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
+  const program = parseTypeScriptModule(sourceText, fileName);
   const sites: string[] = [];
 
-  function isGetDbCallee(expr: ts.Expression): boolean {
-    if (ts.isIdentifier(expr) && expr.text === 'getDb') {
+  function isGetDbCallee(expr: Node): boolean {
+    if (expr.type === 'Identifier' && expr.name === 'getDb') {
       return true;
     }
     return (
-      ts.isPropertyAccessExpression(expr) &&
-      ts.isIdentifier(expr.name) &&
-      expr.name.text === 'getDb'
+      expr.type === 'MemberExpression' &&
+      !expr.computed &&
+      expr.property.type === 'Identifier' &&
+      expr.property.name === 'getDb'
     );
   }
 
-  function visit(node: ts.Node): void {
-    if (ts.isCallExpression(node) && isGetDbCallee(node.expression)) {
-      sites.push(enclosingFunctionName(node));
+  walkAst(program, (node, ancestors) => {
+    if (node.type === 'CallExpression' && isGetDbCallee(node.callee)) {
+      sites.push(enclosingFunctionName(ancestors));
     }
-    ts.forEachChild(node, visit);
-  }
+    return true;
+  });
 
-  visit(sourceFile);
   return sites;
 }
 

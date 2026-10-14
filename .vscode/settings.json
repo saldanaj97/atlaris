@@ -7,8 +7,7 @@
     "**/dist": true,
     "**/.pnpm-store": true
   },
-  "typescript.native-preview.tsdk": "/Users/juansaldana/Dev/Projects/atlaris/node_modules/@typescript/native-preview",
-  "typescript.tsdk": "node_modules/typescript/lib",
+  "js/ts.tsdk.path": "node_modules/typescript/lib",
   "oxc.enable.oxlint": true,
   "oxc.fmt.configPath": ".oxfmtrc.json",
   "editor.formatOnSave": true,
