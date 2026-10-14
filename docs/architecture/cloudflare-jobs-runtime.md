@@ -337,7 +337,7 @@ Workflow code rules: Workflows re-run `run()` from the top when they resume and 
 | B2 | Workers dashboard → Deployments → Rollback [rollbacks] | Revert PR | No user-facing work yet |
 | B3a | Switch off; restore the old owner (GitHub variable `PLAN_CLEANUP_ENABLED=true`; rerun the `cron.schedule` statement from the retention migration) | Revert PR | Old owners stay until B7 |
 | B3b | Switch off; Vercel Flag `email-notification-delivery` on | Revert PR | The run key `(run_kind, scheduler_date_utc)` and the delivery ledger prevent duplicate sends (`docs/architecture/email-notification-delivery-runbook.md`) |
-| B4 | Switch off (consumer retries with delay, then drops; rows stay `pending`); Vercel Instant Rollback of the app; GitHub variable `REGENERATION_QUEUE_ENABLED=true` | Revert PR | `job_queue` CAS claims stop double processing |
+| B4 | Switch off (consumer retries with delay, then drops; rows stay `pending`); app `REGENERATION_QUEUE_ENABLED=false` to stop new requests. Since B7b there is no Vercel or GitHub fallback to restore: returning to it means reverting the B7b PR | Revert PR | `job_queue` CAS claims stop double processing |
 | B5 | Switch off (running instances revert their claim, as on a flag drop today); Vercel Instant Rollback | Revert PR | |
 | B6 | Vercel Instant Rollback (restores the stream route and its client bundle); switch off | Revert PR | Running instances finish; attempts settle through lifecycle finalization |
 | B7 | Revert PR | Revert PR | Deleted schedulers come back from Git; old owners must be re-enabled by hand |
@@ -393,7 +393,7 @@ A Workers rollback restores code only; bindings and connected resources do not c
 | Plan cleanup | GitHub repo variable `PLAN_CLEANUP_ENABLED=false` (scheduler workflow removed in B7a) | `JOB_PLAN_CLEANUP_ENABLED=true` |
 | Retention | `SELECT cron.unschedule('retention-cleanup');` per environment (retention runbook). B3a also ships it as a migration so new databases match | `JOB_RETENTION_CLEANUP_ENABLED=true` before the next 03:00 UTC |
 | Email | Vercel Flag `email-notification-delivery` off (stops the cron route before it reserves work) | `JOB_EMAIL_DELIVERY_ENABLED=true` |
-| Regeneration | GitHub repo variable `REGENERATION_QUEUE_ENABLED=false`, then deploy the app version that enqueues through the Worker | `JOB_REGENERATION_ENABLED=true` before that app deploy |
+| Regeneration | GitHub repo variable `REGENERATION_QUEUE_ENABLED=false`, then deploy the app version that enqueues through the Worker (done 2026-10-13; B7b removed the GitHub drain, so the variable no longer controls anything) | `JOB_REGENERATION_ENABLED=true` before that app deploy |
 | Module lessons | Deploy the app version that starts lessons through the Worker | `JOB_MODULE_LESSONS_ENABLED=true` before that app deploy |
 | Plan create/retry | Deploy the app version with the new create route | `JOB_PLAN_GENERATION_ENABLED=true` before that app deploy |
 
