@@ -64,6 +64,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@circleci/vitest-circleci-coverage": "^0.3.707",
     "@clerk/testing": "^2.2.31",
     "@google/design.md": "^0.4.0",
     "@playwright/test": "^1.62.1",
