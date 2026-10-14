@@ -143,7 +143,7 @@ export async function loadEmailNotificationDeliveryRunByKey(
 }
 
 /**
- * Claims a queued run for one Workflow SDK run. Replays by the same workflow
+ * Claims a queued run for one workflow run. Replays by the same workflow
  * are accepted; all other owners are rejected without modifying state.
  */
 async function attachEmailNotificationWorkflowRun(
@@ -196,7 +196,7 @@ async function attachEmailNotificationWorkflowRun(
 }
 
 /**
- * Claims a queued run from inside its Workflow SDK entrypoint. The workflow
+ * Claims a queued run from inside its workflow entrypoint. The workflow
  * step attaches its own ID; accepting the same ID makes step replays
  * idempotent and closes the start-to-first-step race.
  */

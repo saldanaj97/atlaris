@@ -24,7 +24,7 @@ Confirm that the 1Password Environment `atlaris-vercel-prod` holds **production*
 
 ### Not covered by the sync
 
-GitHub environment secrets are set in GitHub, not from 1Password, so they can drift from the values the app and Workers use. Today that means `REGENERATION_WORKER_TOKEN` and `MAINTENANCE_WORKER_TOKEN`. When you rotate either token, update GitHub by hand in the same change.
+GitHub environment secrets are set in GitHub, not from 1Password, so they can drift from the values the app and Workers use. No GitHub workflow currently reads an app or Worker token, so rotating a token needs no GitHub change; delete leftover GitHub secrets for the retired schedulers by hand.
 
 ## How values are written
 

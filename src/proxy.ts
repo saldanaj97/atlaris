@@ -1,10 +1,4 @@
-import {
-  appEnv,
-  devAuthEnv,
-  isHostedDeployEnv,
-  localProductTestingEnv,
-  readWorkflowCallbackTokenConfig,
-} from '@/lib/config/env';
+import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import { getCorrelationId } from '@/lib/proxy/correlation';
 import {
   isProviderWebhookRoute,
@@ -21,10 +15,6 @@ import {
   createCspNonce,
 } from '@/lib/proxy/security-headers';
 import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
-import {
-  isWorkflowCallbackPath,
-  resolveWorkflowCallbackAccess,
-} from '@/lib/proxy/workflow-callback-auth';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse, type NextFetchEvent } from 'next/server';
 
@@ -87,38 +77,6 @@ async function handleProxyRequest(
   protectRequest: ProtectRequest,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
-
-  if (isWorkflowCallbackPath(pathname)) {
-    const tokenConfig = readWorkflowCallbackTokenConfig();
-    // Fail-fast on misconfigured token (e.g. whitespace-only); all workflow routes 503 until fixed.
-    if (tokenConfig.status === 'invalid') {
-      return new NextResponse(null, { status: 503 });
-    }
-
-    const callbackAccess = await resolveWorkflowCallbackAccess(
-      {
-        method: request.method,
-        pathname,
-        searchParams: request.nextUrl.searchParams,
-        headers: request.headers,
-      },
-      {
-        isProduction: appEnv.isProduction,
-        isHostedVercelDeploy: isHostedDeployEnv(process.env),
-        callbackToken: tokenConfig.token,
-      },
-    );
-
-    if (callbackAccess.status === 'allow') {
-      return nextWithProxyContext(request, { skipCsp: true });
-    }
-
-    if (callbackAccess.status === 'misconfigured') {
-      return new NextResponse(null, { status: 503 });
-    }
-
-    return new NextResponse(null, { status: 401 });
-  }
 
   // Payment/auth provider webhooks bypass all checks including maintenance mode.
   if (isProviderWebhookRoute(pathname)) {
@@ -216,7 +174,7 @@ export default proxy;
 
 export const config = {
   matcher: [
-    // Catch-all for app routes including /.well-known/workflow. Skip /ingest so
+    // Catch-all for app routes. Skip /ingest so
     // the public PostHog proxy stays outside Clerk; that route owns validation.
     '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)).*)',
     '/(api|trpc)(.*)',

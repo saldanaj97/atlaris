@@ -1,18 +1,12 @@
 /**
- * Runtime-neutral plan regeneration run for the Cloudflare jobs Worker's queue
- * consumer (docs/architecture/regeneration-worker-runbook.md).
+ * Plan regeneration run for the Cloudflare jobs Worker's queue consumer
+ * (docs/architecture/regeneration-worker-runbook.md): claim (CAS) → reserve
+ * attempt → process → finalize.
  *
- * Mirrors `planRegenerationWorkflow` and its steps
- * (`src/features/plans/workflows/plan-regeneration.steps.ts`): claim (CAS) →
- * reserve attempt → process → finalize. The steps import the Vercel Workflow
- * SDK, which cannot run on Workers, so this copy stays until B7 removes the
- * Vercel path. Keep the two in sync while both exist.
- *
- * Differences from the steps: `job_queue.payload.workflow` and the attempt's
- * workflow metadata carry `provider: 'cloudflare-queue'` with the queue
- * message ID as `runId`; fatal outcomes terminalize the job here (the Vercel
- * path does that when `run.returnValue` rejects); finalization starts module
- * lessons through the injected `startModuleLessons`.
+ * `job_queue.payload.workflow` and the attempt's workflow metadata carry
+ * `provider: 'cloudflare-queue'` with the queue message ID as `runId`; fatal
+ * outcomes terminalize the job here; finalization starts module lessons
+ * through the injected `startModuleLessons`.
  */
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
@@ -53,7 +47,6 @@ import {
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
-import { PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE } from '@/features/plans/start-plan-regeneration-workflow';
 import {
   findAttemptWithWorkflowIdempotencyKey,
   reserveAttemptSlot,
@@ -62,6 +55,9 @@ import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { jobQueue } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
+
+export const PLAN_REGENERATION_FAILURE_MESSAGE =
+  'Queued plan regeneration failed.';
 
 const PROVIDER = 'cloudflare-queue' as const;
 const GENERATION_PURPOSE = 'regeneration' as const;
@@ -677,8 +673,7 @@ export async function runPlanRegeneration(
     if (!(error instanceof RegenerationRunFatalError)) {
       throw error;
     }
-    // Same terminal write as the Vercel path when a workflow run rejects.
-    await failJob(input.jobId, PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE, {
+    await failJob(input.jobId, PLAN_REGENERATION_FAILURE_MESSAGE, {
       retryable: false,
     });
     return {
@@ -691,9 +686,8 @@ export async function runPlanRegeneration(
 
 /**
  * Called after the queue's last delivery of a message failed unexpectedly.
- * Fails the job only when this run still owns it, matching the Vercel path's
- * terminal write when a workflow run rejects. A job that was never claimed
- * stays `pending` for the sweep. Returns whether the job was terminalized.
+ * Fails the job only when this run still owns it. A job that was never
+ * claimed stays `pending` for the sweep. Returns whether the job was terminalized.
  */
 export async function terminalizeAbandonedRegenerationRun(
   jobId: string,
@@ -703,7 +697,7 @@ export async function terminalizeAbandonedRegenerationRun(
   if (job?.status !== 'processing' || job.data.workflow?.runId !== runId) {
     return false;
   }
-  await failJob(jobId, PLAN_REGENERATION_WORKFLOW_FAILURE_MESSAGE, {
+  await failJob(jobId, PLAN_REGENERATION_FAILURE_MESSAGE, {
     retryable: false,
   });
   return true;

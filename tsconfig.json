@@ -15,7 +15,7 @@
     "incremental": true,
     "rootDir": ".",
     "types": ["node", "react", "react-dom", "@testing-library/jest-dom"],
-    "plugins": [{ "name": "next" }, { "name": "workflow" }],
+    "plugins": [{ "name": "next" }],
     "paths": {
       "@/*": ["./src/*"],
       "@tests/*": ["./tests/*"],

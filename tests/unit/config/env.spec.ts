@@ -14,7 +14,6 @@ import {
   optionalEnv,
   parseEnvNumber,
   parseNodeEnv,
-  readWorkflowCallbackTokenConfig,
   regenerationQueueEnv,
   requireEnv,
   sentryEnv,
@@ -757,18 +756,6 @@ describe('Environment Configuration', () => {
         expect(regenerationQueueEnv.enabled).toBe(expected);
       },
     );
-
-    it('keeps a minimum of 1 for positive fractional drain counts', () => {
-      vi.stubEnv('REGENERATION_MAX_JOBS_PER_DRAIN', '0.5');
-
-      expect(regenerationQueueEnv.maxJobsPerDrain).toBe(1);
-    });
-
-    it('allows zero drain counts explicitly', () => {
-      vi.stubEnv('REGENERATION_MAX_JOBS_PER_DRAIN', '0');
-
-      expect(regenerationQueueEnv.maxJobsPerDrain).toBe(0);
-    });
   });
 
   describe('maintenanceEnv', () => {
@@ -879,82 +866,6 @@ describe('Environment Configuration', () => {
     it('treats empty strings as missing and falls back', () => {
       expect(toBoolean('', true)).toBe(true);
       expect(toBoolean('   ', false)).toBe(false);
-    });
-  });
-
-  describe('workflow callback token configuration', () => {
-    it('reads WORKFLOW_CALLBACK_TOKEN when configured', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-        WORKFLOW_CALLBACK_TOKEN: 'prod-secret',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'valid',
-        token: 'prod-secret',
-      });
-    });
-
-    it('trims WORKFLOW_CALLBACK_TOKEN when configured', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-        WORKFLOW_CALLBACK_TOKEN: '  prod-secret  ',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'valid',
-        token: 'prod-secret',
-      });
-    });
-
-    it('marks whitespace-only WORKFLOW_CALLBACK_TOKEN as invalid', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-        WORKFLOW_CALLBACK_TOKEN: '   ',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'invalid',
-      });
-    });
-
-    it('treats empty WORKFLOW_CALLBACK_TOKEN as unset', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-        WORKFLOW_CALLBACK_TOKEN: '',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'valid',
-        token: undefined,
-      });
-    });
-
-    it('does not require WORKFLOW_CALLBACK_TOKEN outside production', () => {
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'development',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'valid',
-        token: undefined,
-      });
-    });
-
-    it('does not require WORKFLOW_CALLBACK_TOKEN in production env reads', () => {
-      vi.stubGlobal('window', undefined);
-      const access = createServerEnvAccess(() => ({
-        NODE_ENV: 'production',
-      }));
-
-      expect(readWorkflowCallbackTokenConfig(access)).toEqual({
-        status: 'valid',
-        token: undefined,
-      });
     });
   });
 

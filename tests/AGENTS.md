@@ -28,7 +28,6 @@ ALWAYS refer to these docs for testing standards and patterns when writing, audi
 tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
 ├── integration/       # DB + service (sequential, isolated)
-├── workflow/          # Workflow SDK runtime smoke (separate Vitest config)
 ├── e2e/               # User journeys (sequential)
 ├── playwright/        # Browser smoke tests (Playwright + disposable DB)
 ├── security/          # RLS policy verification (sequential)
@@ -54,7 +53,6 @@ Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases`
 | ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
 | Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
 | Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Workflow    | Workflow SDK harness  | In-process SDK runtime                | Yes                 | 90s     |
 | E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
 | Smoke       | Playwright            | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |
@@ -68,9 +66,8 @@ pnpm test unit --changed               # Changed unit tests
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit tests/unit  # Watch unit tests
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts  # Single unit test file
 NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts  # Single integration file (Testcontainers)
-pnpm test integration --changed       # Changed integration tests + Workflow SDK changed phase
+pnpm test integration --changed       # Changed integration tests
 pnpm test integration                 # Full DB/API integration suite
-pnpm test workflow                    # Workflow SDK wiring + production entrypoints (Testcontainers)
 pnpm test security                    # RLS policy tests (Testcontainers; requires Docker)
 pnpm test smoke                       # Playwright smoke: ephemeral DB; full run uses sequential invocations (one Next server at a time)
 pnpm test smoke -- --project smoke-anon  # Anon-only (lowest RAM; single anon server)
@@ -80,7 +77,7 @@ pnpm test integration --native-db     # Any DB-backed suite on the native Supaba
 pnpm test smoke --native-db --smoke-step=db  # DB-only smoke infra validation without Docker
 ```
 
-**Prerequisite for integration, workflow, e2e, and security tests:** Docker must be running for the default Testcontainers path, or use the native test database below.
+**Prerequisite for integration, e2e, and security tests:** Docker must be running for the default Testcontainers path, or use the native test database below.
 **Prerequisite for smoke tests:** Docker (or the native test database) and Playwright Chromium (`pnpm exec playwright install chromium`).
 
 ## Test Database: Testcontainers (default) or native Supabase stack
@@ -101,16 +98,6 @@ Supabase images differ from `postgres:17-alpine` in two ways the bootstrap handl
 - `postgres` is not a superuser but already has `BYPASSRLS`, so `grantRlsPermissions` only runs `ALTER ROLE postgres BYPASSRLS` when the role lacks it. Tests connect as `postgres` on both paths, so tables and grants follow the real privilege model.
 - pg_cron is available but can only be created in `cron.database_name` (`postgres`), so the retention migration would fail in `atlaris_test_*` databases. `withUnschedulablePgCronHidden` hides pg_cron from `pg_available_extensions` for the migration only, and the migration skips scheduling as it does on `postgres:17-alpine`. While that shim is active, `public` is searched before `pg_catalog`, so column defaults bind to pgcrypto's `public.gen_random_uuid()` (same behavior) instead of the built-in one.
 
-## Workflow SDK Tests
-
-See [Workflow SDK architecture](../docs/architecture/workflow-sdk.md) for feature flags, Preview validation (`pnpm deploy:preview`), run correlation, and the full test command matrix.
-
-- Treat `tests/workflow/` as integration-class coverage because it exercises the Workflow SDK runtime boundary against an isolated Testcontainers database.
-- Keep `vitest.workflow.config.ts` separate from DB/API integration tests; its harness owns production workflow discovery and its own Testcontainers lifecycle.
-- Use `pnpm test integration --changed` for changed DB/API and workflow coverage, or `pnpm test all` for both complete suites.
-- Use `pnpm test workflow` for targeted Workflow SDK iteration.
-- Keep unit tests for workflow helpers, wrappers, and orchestration under `tests/unit/**`; reserve `tests/workflow/**` for runtime wiring and SDK behavior.
-
 ## Browser Smoke Ownership
 
 - `pnpm test smoke` is the only supported entrypoint for committed browser smoke coverage.
@@ -130,7 +117,7 @@ SKIP_TESTCONTAINERS=true POSTGRES_URL="..." pnpm vitest run --project integratio
 
 ## DB Lifecycle (Integration/E2E/Security)
 
-`tests/setup/db.ts` runs `waitForInlineRegenerationDrains()` then `resetDbForIntegrationTestFile()` in `beforeEach` to avoid leaked regeneration drains racing the next test, then truncates all tables. Guardrails prevent truncating non-test databases.
+`tests/setup/db.ts` runs `resetDbForIntegrationTestFile()` in `beforeEach`, which truncates all tables. Guardrails prevent truncating non-test databases.
 
 Integration Vitest workers default to **4** (`vitest.config.ts`); override with `INTEGRATION_MAX_WORKERS` (e.g. `2` for a slower, lighter run). External PostgreSQL (`SKIP_TESTCONTAINERS=true`) still clones one `atlaris_test_wN` database per worker.
 

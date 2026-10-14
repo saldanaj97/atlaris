@@ -534,20 +534,12 @@ jobs:
           no_output_timeout: 30m
           command: circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none
 
+  # Keeps the required `workflow-tests` check name; the Vercel Workflow
+  # suite it once ran was removed with the SDK.
   workflow-tests:
     docker:
       - image: cimg/node:24.19
-      - image: postgres:17-alpine
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
     resource_class: medium
-    environment:
-      NODE_ENV: test
-      SKIP_TESTCONTAINERS: 'true'
-      POSTGRES_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-      POSTGRES_URL_NON_POOLING: postgresql://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - checkout
       - init-env
@@ -567,31 +559,8 @@ jobs:
               -e 's|</testsuites>|</testsuite></testsuites>|' \
               test-results/workflow/node.xml > test-results/workflow/node.xml.tmp
             mv test-results/workflow/node.xml.tmp test-results/workflow/node.xml
-      - run:
-          name: Wait for PostgreSQL
-          command: |
-            pnpm exec tsx --eval "
-              import {
-                resolveExternalPostgresUrl,
-                waitForPostgres,
-              } from './tests/setup/testcontainers.ts'
-              waitForPostgres(resolveExternalPostgresUrl()).catch((error) => {
-                console.error(error)
-                process.exit(1)
-              })
-            "
-      - run:
-          name: Production workflow tests
-          command: |
-            pnpm vitest run --config vitest.workflow.config.ts tests/workflow \
-              --reporter=default \
-              --reporter=json \
-              --reporter=junit \
-              --outputFile.json=test-results/workflow/results.json \
-              --outputFile.junit=test-results/workflow/vitest.xml
-          no_output_timeout: 15m
-      - store-test-outputs:
-          results-file: test-results/workflow/results.json
+      - store_test_results:
+          path: test-results
 
 workflows:
   # PR merge gate. pull_request events on non-main heads run ci-pr;

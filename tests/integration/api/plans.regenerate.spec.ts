@@ -125,29 +125,6 @@ describe('POST /api/v1/plans/:id/regenerate', () => {
     );
   });
 
-  it('maps workflow-start-failed to its stable 503 error boundary', async () => {
-    const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
-    mockRequestPlanRegeneration.mockResolvedValue({
-      kind: 'workflow-start-failed',
-      jobId: 'job-1',
-      planId,
-      retryable: true,
-    });
-
-    const { request, context } = await createRequest(planId, {
-      overrides: { skillLevel: 'advanced' },
-    });
-
-    const response = await POST(request, context);
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toMatchObject({
-      error: 'Failed to start plan regeneration workflow.',
-      code: 'WORKFLOW_START_FAILED',
-      details: { jobId: 'job-1', planId, retryable: true },
-    });
-  });
-
   it('maps active-job-conflict to 409 with job id', async () => {
     const planId = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';
     mockRequestPlanRegeneration.mockResolvedValue({

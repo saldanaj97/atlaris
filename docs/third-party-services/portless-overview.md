@@ -9,7 +9,7 @@ argument parsing and wraps Next.js itself, so use these commands rather than
 calling Portless around `pnpm dev`:
 
 ```bash
-pnpm dev              # https://atlaris.localhost, Webpack + Workflow SDK
+pnpm dev              # https://atlaris.localhost, Webpack
 pnpm dev --ui         # https://atlaris.localhost, UI-only Turbopack
 pnpm dev --db         # start/ensure Supabase, then normal Webpack dev
 pnpm dev doctor       # read-only local diagnostics

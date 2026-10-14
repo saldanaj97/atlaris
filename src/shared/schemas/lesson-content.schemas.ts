@@ -84,7 +84,7 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
 export const ModuleLessonGenerationMetadataSchema = z.strictObject({
   version: z.literal(1),
   batchRequestId: z.string().max(128).optional(),
-  /** Which runtime owns the run: Vercel Workflow SDK or a Cloudflare Workflow. */
+  /** Which runtime owns the run. `workflow-sdk` remains only for historical rows. */
   workflow: z
     .discriminatedUnion('provider', [
       WorkflowSdkMetadataSchema,

@@ -3,14 +3,6 @@ import {
   flag,
 } from '../../../../workers/jobs/src/runtime/flags-next';
 import { vercelAdapter } from '../../../../workers/jobs/src/runtime/flags-sdk-vercel';
-import {
-  getStepMetadata,
-  getWorkflowMetadata,
-} from '../../../../workers/jobs/src/runtime/workflow';
-import {
-  getRun,
-  start,
-} from '../../../../workers/jobs/src/runtime/workflow-api';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -71,16 +63,5 @@ describe('flags/next alias', () => {
 
   it('never lets the Vercel adapter decide', () => {
     expect(() => vercelAdapter().decide()).toThrow(/not available/);
-  });
-});
-
-describe('workflow aliases', () => {
-  it('fail loudly when the Vercel Workflow SDK is called', async () => {
-    expect(() => getWorkflowMetadata()).toThrow(
-      /not available on the jobs Worker/,
-    );
-    expect(() => getStepMetadata()).toThrow(/not available on the jobs Worker/);
-    await expect(start()).rejects.toThrow(/not available on the jobs Worker/);
-    await expect(getRun()).rejects.toThrow(/not available on the jobs Worker/);
   });
 });

@@ -3,7 +3,6 @@ import type { NextConfig } from 'next';
 import { isHostedDeployEnv } from './src/lib/config/env/shared';
 import { withSentryConfig } from '@sentry/nextjs';
 import path from 'node:path';
-import { withWorkflow } from 'workflow/next';
 
 const vercelFlagsDefinitionsShim = path.join(
   process.cwd(),
@@ -102,18 +101,7 @@ const nextConfig: NextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
-// workflow 4.8 removed workflows.lazyDiscovery (eager-only; vercel/workflow#2545).
-// Next's detached telemetry uploader reloads this config in the dev phase.
-// Skip Workflow there so it cannot leave an orphaned watcher/build service.
-// Remove after upgrading to a release containing vercel/next.js#97718.
-const isDetachedTelemetry = process.argv[1]
-  ?.replaceAll('\\', '/')
-  .endsWith('/next/dist/telemetry/detached-flush.js');
-const workflowNextConfig = isDetachedTelemetry
-  ? nextConfig
-  : withWorkflow(nextConfig);
-
-export default withSentryConfig(workflowNextConfig, {
+export default withSentryConfig(nextConfig, {
   // For all available options, see:
   // https://www.npmjs.com/package/@sentry/webpack-plugin#options
 

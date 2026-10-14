@@ -140,7 +140,7 @@ Separate smoke evidence categories when recording results:
 | Persisted application state | Only if an explicitly approved write test was run |
 | Native live-domain assignment | Current alias target observed outside this rehearsal |
 
-Do **not** exercise destructive or scheduled operational paths. Any write-capable Workflow SDK acceptance is a separate, explicitly approved test with a controlled Production test identity, verified terminal state, and clear cleanup ownership.
+Do **not** exercise destructive or scheduled operational paths. Any write-capable acceptance is a separate, explicitly approved test with a controlled Production test identity, verified terminal state, and clear cleanup ownership.
 
 On failure: do not promote the rehearsal or alter native `main` aliases, preserve deployment/log evidence, and fix forward through a new committed SHA with a new rehearsal.
 

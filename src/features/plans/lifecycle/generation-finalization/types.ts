@@ -19,7 +19,7 @@ import type { GenerationPurpose } from '@/shared/types/generation-purpose';
  */
 export type GenerationFinalizationStoreDeps = {
   readonly afterSuccessfulAttemptPersist?: () => void | Promise<void>;
-  /** Starts lessons for the first modules; defaults to the Vercel workflow starter. */
+  /** Starts lessons for the first modules; defaults to the jobs Worker dispatch. */
   readonly startModuleLessons?: EnqueueModuleLessonGenerationsDeps['start'];
 };
 

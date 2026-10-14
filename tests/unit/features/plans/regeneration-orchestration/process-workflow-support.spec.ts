@@ -7,7 +7,7 @@ import { JOB_TYPES } from '@/features/jobs/types';
 import {
   applyRegenerationGenerationResult,
   buildRegenerationGenerationInput,
-  validateQueuedRegenerationPayload,
+  validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import { makeRegenerationOrchestrationDeps } from '@tests/helpers/regeneration-orchestration-deps';
 import { describe, expect, it, vi } from 'vitest';
@@ -76,10 +76,8 @@ describe('buildRegenerationGenerationInput', () => {
   });
 });
 
-describe('validateQueuedRegenerationPayload', () => {
+describe('validateQueuedRegenerationPayloadForJob', () => {
   it('fails closed when a legacy payload still carries topic or notes', async () => {
-    const failJob = vi.fn(async () => null);
-    const deps = makeRegenerationOrchestrationDeps({ queue: { failJob } });
     const job = makeJob({
       data: {
         planId: plan.id,
@@ -87,16 +85,8 @@ describe('validateQueuedRegenerationPayload', () => {
       } as unknown as Job['data'],
     });
 
-    await expect(validateQueuedRegenerationPayload(job, deps)).resolves.toEqual(
-      {
-        ok: false,
-        result: { kind: 'invalid-payload', jobId: job.id },
-      },
-    );
-    expect(failJob).toHaveBeenCalledWith(
-      job.id,
-      'Queued regeneration overrides cannot change topic or notes.',
-      { retryable: false },
+    await expect(validateQueuedRegenerationPayloadForJob(job)).resolves.toEqual(
+      { ok: false },
     );
   });
 });

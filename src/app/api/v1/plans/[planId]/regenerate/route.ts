@@ -14,7 +14,6 @@ import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { getPlanGenerationRateLimitHeaders } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import { jobsWorkerEnv } from '@/lib/config/env/jobs-worker';
 import { captureAfterResponse } from '@/lib/posthog-server';
 import {
   API_ERROR_CODES,
@@ -95,16 +94,16 @@ export const POST: PlainHandler = requestBoundary.route(
 
     assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
 
-    const deps = createDefaultRegenerationOrchestrationDeps(db);
     const result = await requestPlanRegeneration(
       {
         userId: actor.id,
         planId,
         overrides,
       },
-      jobsWorkerEnv.regenerationRuntime === 'cloudflare'
-        ? { ...deps, dispatch: dispatchRegenerationToWorker }
-        : deps,
+      {
+        ...createDefaultRegenerationOrchestrationDeps(db),
+        dispatch: dispatchRegenerationToWorker,
+      },
     );
 
     switch (result.kind) {
@@ -167,16 +166,6 @@ export const POST: PlainHandler = requestBoundary.route(
         });
       case 'content-locked':
         throwPlanEntitlementRequired();
-      case 'workflow-start-failed':
-        throw new AppError('Failed to start plan regeneration workflow.', {
-          status: 503,
-          code: 'WORKFLOW_START_FAILED',
-          details: {
-            jobId: result.jobId,
-            planId: result.planId,
-            retryable: result.retryable,
-          },
-        });
       case 'enqueued': {
         captureAfterResponse(actor, 'plan_regeneration_requested', {
           plan_id: planId,
