@@ -545,7 +545,7 @@ jobs:
       - run:
           name: Dependency remediation tests
           command: |
-            mkdir -p test-results/workflow
+            mkdir -p test-results/dependency-remediation
             node --test \
               --test-reporter=spec \
               --test-reporter-destination=stdout \
