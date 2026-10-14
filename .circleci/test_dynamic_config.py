@@ -5,12 +5,12 @@ from pathlib import Path
 
 CONFIG_DIR = Path(__file__).parent
 REQUIRED_CHECKS = {
+    "dependency-remediation-tests",
     "integration-light",
     "lint-and-type-check",
     "security-tests",
     "unit-tests",
     "vulnerability-scan",
-    "workflow-tests",
 }
 
 

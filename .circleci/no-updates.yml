@@ -29,6 +29,6 @@ workflows:
       - no-updates:
           name: vulnerability-scan
       - no-updates:
-          name: workflow-tests
+          name: dependency-remediation-tests
       - no-updates:
           name: security-tests

@@ -21,6 +21,6 @@ workflows:
       - docs-only:
           name: vulnerability-scan
       - docs-only:
-          name: workflow-tests
+          name: dependency-remediation-tests
       - docs-only:
           name: security-tests

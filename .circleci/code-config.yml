@@ -534,9 +534,7 @@ jobs:
           no_output_timeout: 30m
           command: circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none
 
-  # Keeps the required `workflow-tests` check name; the Vercel Workflow
-  # suite it once ran was removed with the SDK.
-  workflow-tests:
+  dependency-remediation-tests:
     docker:
       - image: cimg/node:24.19
     resource_class: medium
@@ -547,18 +545,18 @@ jobs:
       - run:
           name: Dependency remediation tests
           command: |
-            mkdir -p test-results/workflow
+            mkdir -p test-results/dependency-remediation
             node --test \
               --test-reporter=spec \
               --test-reporter-destination=stdout \
               --test-reporter=junit \
-              --test-reporter-destination=test-results/workflow/node.xml \
+              --test-reporter-destination=test-results/dependency-remediation/node.xml \
               .github/scripts/dependency-remediation.test.mjs
             sed \
               -e 's|<testsuites>|<testsuites><testsuite name="dependency-remediation">|' \
               -e 's|</testsuites>|</testsuite></testsuites>|' \
-              test-results/workflow/node.xml > test-results/workflow/node.xml.tmp
-            mv test-results/workflow/node.xml.tmp test-results/workflow/node.xml
+              test-results/dependency-remediation/node.xml > test-results/dependency-remediation/node.xml.tmp
+            mv test-results/dependency-remediation/node.xml.tmp test-results/dependency-remediation/node.xml
       - store_test_results:
           path: test-results
 
@@ -594,7 +592,7 @@ workflows:
       - security-tests:
           requires:
             - detect-changes
-      - workflow-tests:
+      - dependency-remediation-tests:
           requires:
             - detect-changes
 
