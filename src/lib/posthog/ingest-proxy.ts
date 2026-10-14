@@ -47,7 +47,6 @@ const ALLOWED_CONTENT_ENCODINGS = new Set(['gzip']);
 const ALLOWED_COMPRESSION_QUERY = new Set(['gzip-js', 'base64']);
 const RESPONSE_HEADER_ALLOWLIST = new Set([
   'cache-control',
-  'content-encoding',
   'content-type',
   'etag',
   'last-modified',
