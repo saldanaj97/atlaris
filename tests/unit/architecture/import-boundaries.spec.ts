@@ -1,6 +1,16 @@
+import type {
+  ExportAllDeclaration,
+  ExportNamedDeclaration,
+  ImportDeclaration,
+} from 'oxc-parser';
+
+import {
+  moduleExportNameText,
+  parseTypeScriptModule,
+  walkAst,
+} from '@tests/helpers/oxc-ast';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { extname, join, relative, resolve } from 'node:path';
-import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
 
 const REPO_ROOT = join(import.meta.dirname, '..', '..', '..');
@@ -89,53 +99,56 @@ type ParsedImport = {
 
 function pushImportDeclarationResult(
   results: ParsedImport[],
-  node: ts.ImportDeclaration,
-  specifier: string,
+  node: ImportDeclaration,
 ): void {
   const named = new Set<string>();
   let isNamespace = false;
-  let isExportAll = false;
+  const isExportAll = false;
 
-  const clause = node.importClause;
-  if (clause?.isTypeOnly) {
-    results.push({ specifier, named, isNamespace, isExportAll });
+  if (node.importKind === 'type') {
+    results.push({
+      specifier: node.source.value,
+      named,
+      isNamespace,
+      isExportAll,
+    });
     return;
   }
 
-  if (clause?.namedBindings) {
-    if (ts.isNamespaceImport(clause.namedBindings)) {
+  for (const spec of node.specifiers) {
+    if (spec.type === 'ImportNamespaceSpecifier') {
       isNamespace = true;
-    } else if (ts.isNamedImports(clause.namedBindings)) {
-      for (const el of clause.namedBindings.elements) {
-        if (el.isTypeOnly) {
-          continue;
-        }
-        const exportedName = el.propertyName?.text ?? el.name.text;
-        named.add(exportedName);
-      }
+    } else if (spec.type === 'ImportSpecifier' && spec.importKind !== 'type') {
+      named.add(moduleExportNameText(spec.imported));
     }
   }
 
-  results.push({ specifier, named, isNamespace, isExportAll });
+  results.push({
+    specifier: node.source.value,
+    named,
+    isNamespace,
+    isExportAll,
+  });
 }
 
 function pushExportDeclarationResult(
   results: ParsedImport[],
-  node: ts.ExportDeclaration,
+  node: ExportNamedDeclaration | ExportAllDeclaration,
   specifier: string,
 ): void {
   const named = new Set<string>();
   let isNamespace = false;
   let isExportAll = false;
 
-  if (node.exportClause === undefined) {
-    isExportAll = true;
-  } else if (ts.isNamespaceExport(node.exportClause)) {
-    isNamespace = true;
-  } else if (ts.isNamedExports(node.exportClause)) {
-    for (const el of node.exportClause.elements) {
-      const exportedName = el.propertyName?.text ?? el.name.text;
-      named.add(exportedName);
+  if (node.type === 'ExportAllDeclaration') {
+    if (node.exported === null) {
+      isExportAll = true;
+    } else {
+      isNamespace = true;
+    }
+  } else {
+    for (const el of node.specifiers) {
+      named.add(moduleExportNameText(el.local));
     }
   }
 
@@ -143,35 +156,25 @@ function pushExportDeclarationResult(
 }
 
 function parseImports(sourceText: string, fileName: string): ParsedImport[] {
-  const sourceFile = ts.createSourceFile(
-    fileName,
-    sourceText,
-    ts.ScriptTarget.Latest,
-    true,
-    fileName.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
-  );
-
+  const program = parseTypeScriptModule(sourceText, fileName);
   const results: ParsedImport[] = [];
 
-  function visit(node: ts.Node): void {
-    if (
-      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
-      node.moduleSpecifier !== undefined &&
-      ts.isStringLiteral(node.moduleSpecifier)
-    ) {
-      const specifier = node.moduleSpecifier.text;
-      if (ts.isImportDeclaration(node)) {
-        pushImportDeclarationResult(results, node, specifier);
-      } else {
-        pushExportDeclarationResult(results, node, specifier);
-      }
-      return;
+  walkAst(program, (node) => {
+    if (node.type === 'ImportDeclaration') {
+      pushImportDeclarationResult(results, node);
+      return false;
     }
+    if (
+      (node.type === 'ExportNamedDeclaration' ||
+        node.type === 'ExportAllDeclaration') &&
+      node.source !== null
+    ) {
+      pushExportDeclarationResult(results, node, node.source.value);
+      return false;
+    }
+    return true;
+  });
 
-    ts.forEachChild(node, visit);
-  }
-
-  visit(sourceFile);
   return results;
 }
 
