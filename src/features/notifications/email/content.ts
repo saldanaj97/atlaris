@@ -60,6 +60,10 @@ function escapeHtmlAttribute(value: string): string {
     .replaceAll('>', '&gt;');
 }
 
+/** CAN-SPAM requires a valid physical postal address in every commercial email. */
+export const SENDER_POSTAL_ADDRESS =
+  'Atlaris, 1013 Darnel Dr., Mesquite, TX 75149, USA';
+
 function withFooter(
   bodyText: string,
   unsubscribeUrl: string,
@@ -67,9 +71,9 @@ function withFooter(
   text: string;
   html: string;
 } {
-  const footer = `You're receiving this because you opted in to Atlaris email notifications.\nUnsubscribe: ${unsubscribeUrl}`;
+  const footer = `You're receiving this because you opted in to Atlaris email notifications.\nUnsubscribe: ${unsubscribeUrl}\n${SENDER_POSTAL_ADDRESS}`;
   const text = `${bodyText}\n\n${footer}`;
-  const html = `<p>${escapeHtml(bodyText).replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${escapeHtmlAttribute(unsubscribeUrl)}">Unsubscribe</a></p>`;
+  const html = `<p>${escapeHtml(bodyText).replaceAll('\n', '<br/>')}</p><hr/><p style="font-size:12px;color:#666">You're receiving this because you opted in to Atlaris email notifications.<br/><a href="${escapeHtmlAttribute(unsubscribeUrl)}">Unsubscribe</a><br/>${escapeHtml(SENDER_POSTAL_ADDRESS)}</p>`;
   return { text, html };
 }
 

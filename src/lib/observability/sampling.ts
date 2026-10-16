@@ -2,13 +2,11 @@
  * Observability sampling configuration for Sentry.
  *
  * Tuned for launch readiness: conservative in production to reduce
- * third-party read costs (replay storage, trace ingest, log shipping),
+ * third-party read costs (trace ingest, log shipping),
  * generous in development for full debugging visibility.
  *
  * Sampling budget (production):
  *   Errors/exceptions  → 100 % (always captured, non-negotiable)
- *   Error replays      → 100 % (highest-value replay signal)
- *   Session replays    →  10 % (enough for UX insight, caps Sentry replay cost)
  *   API route traces   →  20 % (primary performance signal)
  *   Default traces     →   5 % (background pages, navigations)
  *   Health / static    →   0 % (zero diagnostic value)
@@ -37,34 +35,6 @@ export function getEnvironment(): Environment {
   if (env === 'production') return 'production';
   if (env === 'test') return 'test';
   return 'development';
-}
-
-// ---------------------------------------------------------------------------
-// Replay sample rates
-// ---------------------------------------------------------------------------
-
-/**
- * Session replay sample rate (non-error sessions).
- * Production: 10 % — sufficient for UX analysis while keeping replay costs low.
- * Development: 100 % — full visibility for local debugging.
- */
-export function getReplaySessionSampleRate(): number {
-  switch (getEnvironment()) {
-    case 'production':
-      return 0.1;
-    case 'development':
-      return 1.0;
-    case 'test':
-      return 0;
-  }
-}
-
-/**
- * Error-triggered replay sample rate.
- * Always 100 % — every error replay is high-value for root-cause analysis.
- */
-export function getReplayErrorSampleRate(): number {
-  return 1.0;
 }
 
 // ---------------------------------------------------------------------------

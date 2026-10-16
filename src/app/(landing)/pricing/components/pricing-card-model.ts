@@ -32,3 +32,13 @@ export function resolvePlanPeriod(
   if ((plan.fee?.amount ?? 0) > 0) return 'month';
   return planHasAnnual(plan) ? 'annual' : 'month';
 }
+
+export function formatPricingMoney(money: PricingMoney | null): string {
+  if (!money) return '$0';
+  const symbol = money.currencySymbol?.trim() || '$';
+  const formatted = money.amountFormatted?.trim();
+  if (formatted) {
+    return `${symbol}${formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted}`;
+  }
+  return `${symbol}${(money.amount / 100).toFixed(money.amount % 100 === 0 ? 0 : 2)}`;
+}

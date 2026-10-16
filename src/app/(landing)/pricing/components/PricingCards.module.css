@@ -316,6 +316,65 @@
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Automatic-renewal disclosure and consent above paid subscribe buttons */
+.renewalConsent {
+  display: grid;
+  gap: 0.75rem;
+  margin-bottom: 0.9rem;
+}
+
+.renewalDisclosure {
+  margin-bottom: 0.9rem;
+  font-family: var(--font-family-base);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--foreground);
+}
+
+.renewalConsent .renewalDisclosure {
+  margin-bottom: 0;
+}
+
+.renewalCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.renewalCheckbox {
+  flex: none;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin-top: 0.15rem;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+.renewalCheckbox:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.renewalCheckboxLabel {
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  line-height: 1.45;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.renewalLink {
+  color: var(--primary);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.renewalLink:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
 /* Side cards — outline pill CTAs */
 .checkoutButton {
   display: grid;

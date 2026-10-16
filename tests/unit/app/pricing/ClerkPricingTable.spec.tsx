@@ -470,7 +470,7 @@ describe('ClerkPricingTable', () => {
     window.history.replaceState(
       {},
       '',
-      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=annual&checkoutConsent=1',
     );
     mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
 
@@ -486,7 +486,7 @@ describe('ClerkPricingTable', () => {
     window.history.replaceState(
       {},
       '',
-      '/pricing?checkoutPlan=shared_plan&checkoutPeriod=month',
+      '/pricing?checkoutPlan=shared_plan&checkoutPeriod=month&checkoutConsent=1',
     );
     mocks.getPlans.mockResolvedValue({
       data: [
@@ -505,6 +505,181 @@ describe('ClerkPricingTable', () => {
     await waitFor(() =>
       expect(mocks.openCheckout).toHaveBeenCalledWith('shared_plan', 'month'),
     );
+  });
+
+  it('does not resume checkout when the renewal checkbox was not ticked before sign-in', async () => {
+    window.history.replaceState(
+      {},
+      '',
+      '/pricing?checkoutPlan=plan_starter&checkoutPeriod=month',
+    );
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
+
+    await renderPricingTable();
+
+    const checkbox = await screen.findByRole('checkbox', {
+      name: /automatic monthly renewal/i,
+    });
+    await waitFor(() => expect(window.location.search).toBe(''));
+    expect(checkbox).not.toBeChecked();
+    expect(
+      screen.getByRole('button', { name: 'Begin with Starter' }),
+    ).toBeDisabled();
+    expect(mocks.openCheckout).not.toHaveBeenCalled();
+  });
+
+  describe('automatic renewal disclosure and consent', () => {
+    it('discloses the plan price and renewal terms above a disabled checkout until the visitor agrees', async () => {
+      mocks.getPlans.mockResolvedValue({
+        data: [
+          {
+            ...STARTER_PLAN,
+            fee: { amount: 2500, amountFormatted: '25.00', currency: 'USD' },
+          },
+        ],
+      });
+      const user = userEvent.setup();
+
+      await renderPricingTable();
+
+      const card = await screen.findByRole('article', { name: 'Starter' });
+      expect(
+        within(card).getByText(
+          /\$25 USD billed monthly\. Renews automatically every month until you cancel\. Cancel anytime in Settings → Billing; cancellation takes effect at the end of the billing period\. No refunds\./,
+        ),
+      ).toBeVisible();
+      for (const link of within(card).getAllByRole('link', {
+        name: 'Terms of Service',
+      })) {
+        expect(link).toHaveAttribute('href', '/terms');
+      }
+
+      const checkbox = within(card).getByRole('checkbox', {
+        name: /I agree to automatic monthly renewal and the Terms of Service/,
+      });
+      const button = within(card).getByRole('button', {
+        name: 'Begin with Starter',
+      });
+      expect(checkbox).not.toBeChecked();
+      expect(checkbox).toBeRequired();
+      expect(checkbox).toHaveAccessibleDescription(/\$25 USD billed monthly/);
+      expect(button).toBeDisabled();
+
+      await user.click(button);
+      expect(mocks.openCheckout).not.toHaveBeenCalled();
+
+      await user.click(checkbox);
+      expect(button).toBeEnabled();
+      await user.click(button);
+      expect(mocks.openCheckout).toHaveBeenCalledWith('plan_starter', 'month');
+
+      await user.click(checkbox);
+      expect(button).toBeDisabled();
+    });
+
+    it('toggles the checkbox from the keyboard and tracks consent per plan', async () => {
+      mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN, PRO_PLAN] });
+      const user = userEvent.setup();
+
+      await renderPricingTable();
+
+      const starter = await screen.findByRole('article', { name: 'Starter' });
+      const pro = screen.getByRole('article', { name: 'Pro' });
+      const starterCheckbox = within(starter).getByRole('checkbox');
+      starterCheckbox.focus();
+      await user.keyboard(' ');
+
+      expect(starterCheckbox).toBeChecked();
+      expect(
+        within(starter).getByRole('button', { name: 'Begin with Starter' }),
+      ).toBeEnabled();
+      expect(within(pro).getByRole('checkbox')).not.toBeChecked();
+      expect(
+        within(pro).getByRole('button', { name: 'Begin with Pro' }),
+      ).toBeDisabled();
+    });
+
+    it('describes annual billing and resets consent when the period changes', async () => {
+      mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
+      const user = userEvent.setup();
+
+      await renderPricingTable();
+
+      await user.click(await screen.findByRole('checkbox'));
+      await user.click(screen.getByRole('button', { name: 'Yearly' }));
+
+      const card = screen.getByRole('article', { name: 'Starter' });
+      expect(
+        within(card).getByText(
+          /\$96 USD billed yearly\. Renews automatically every year until you cancel\./,
+        ),
+      ).toBeVisible();
+      expect(
+        within(card).getByRole('checkbox', {
+          name: /automatic yearly renewal/,
+        }),
+      ).not.toBeChecked();
+      expect(
+        within(card).getByRole('button', { name: 'Begin with Starter' }),
+      ).toBeDisabled();
+    });
+
+    it('gates the signed-out sign-up path and keeps consent through the sign-in redirect', async () => {
+      mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+      mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
+      const user = userEvent.setup();
+
+      await renderPricingTable();
+
+      const button = await screen.findByRole('button', {
+        name: 'Begin with Starter',
+      });
+      expect(
+        screen.getByText(/billed monthly\. Renews automatically/),
+      ).toBeVisible();
+      expect(button).toBeDisabled();
+
+      await user.click(screen.getByRole('checkbox'));
+
+      expect(button).toBeEnabled();
+      expect(screen.getByTestId('sign-in-checkout')).toHaveAttribute(
+        'data-redirect',
+        '/pricing?checkoutPlan=plan_starter&checkoutPlanSlug=starter_plan&checkoutPeriod=month&checkoutConsent=1',
+      );
+    });
+
+    it('omits consent from the free plan, the current plan, and the closed-app links', async () => {
+      mocks.getSubscription.mockResolvedValue({
+        subscriptionItems: [
+          {
+            plan: { hasBaseFee: true, slug: 'starter_plan' },
+            status: 'active',
+          },
+        ],
+      });
+      mocks.getPlans.mockResolvedValue({
+        data: [FREE_PLAN, { ...STARTER_PLAN, annualFee: null }],
+      });
+
+      await renderPricingTable();
+
+      expect(
+        await screen.findByRole('button', { name: 'Current plan' }),
+      ).toBeEnabled();
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/renews automatically/i),
+      ).not.toBeInTheDocument();
+    });
+
+    it('does not show renewal consent when the app is closed', async () => {
+      mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN, STARTER_PLAN] });
+
+      await renderPricingTable({ appClosed: true });
+
+      await screen.findByRole('link', { name: 'Begin with Starter' });
+      expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
+    });
   });
 
   it('uses Clerk subscription actions for the current plan and downgrades', async () => {

@@ -2,6 +2,11 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ReactElement } from 'react';
 
 import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
+import { ManageSubscriptionButton } from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
+import {
+  AUTO_RENEWAL_NOTICE,
+  hasManageableSubscription,
+} from '@/app/(app)/settings/billing/components/subscription-management';
 import { PRICING_PLAN_FEATURES } from '@/app/(landing)/pricing/pricing-plan-features';
 import { Button } from '@/components/ui/button';
 import {
@@ -12,6 +17,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { ROUTES } from '@/features/navigation/routes';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { ArrowRight, Check, Crown } from 'lucide-react';
 import Link from 'next/link';
 
@@ -126,6 +132,11 @@ export async function ProfilePlanCard({
       ? '—'
       : formatBillingPeriodDate(snapshot.subscriptionPeriodEnd, locale);
 
+  const canManageSubscription =
+    shouldUseClerkUi() && hasManageableSubscription(snapshot);
+  const showRenewalNotice =
+    hasManageableSubscription(snapshot) && !snapshot.cancelAtPeriodEnd;
+
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
       <CardHeader>
@@ -155,12 +166,17 @@ export async function ProfilePlanCard({
                 </p>
               </div>
             </div>
-            <Button asChild variant='outline'>
-              <Link href={ROUTES.PRICING}>
-                View plans
-                <ArrowRight aria-hidden='true' className='size-5' />
-              </Link>
-            </Button>
+            <div className='flex flex-wrap items-center gap-[8px]'>
+              {canManageSubscription ? (
+                <ManageSubscriptionButton size='default' />
+              ) : null}
+              <Button asChild variant='outline'>
+                <Link href={ROUTES.PRICING}>
+                  View plans
+                  <ArrowRight aria-hidden='true' className='size-5' />
+                </Link>
+              </Button>
+            </div>
           </div>
           <dl className='grid gap-[12px] border-t border-border pt-[16px]'>
             <div className='flex min-w-0 items-baseline justify-between gap-[16px]'>
@@ -178,6 +194,11 @@ export async function ProfilePlanCard({
               </dd>
             </div>
           </dl>
+          {showRenewalNotice ? (
+            <p className='text-sm leading-[22px] text-muted-foreground'>
+              {AUTO_RENEWAL_NOTICE}
+            </p>
+          ) : null}
           <ul className='grid gap-[12px] @min-[32rem]:grid-cols-2'>
             {features.map((feature) => (
               <li key={feature} className='flex min-w-0 items-start gap-[8px]'>

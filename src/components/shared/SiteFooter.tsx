@@ -7,6 +7,10 @@ const marketingLinks = [
   { label: 'Pricing', href: ROUTES.PRICING },
   { label: 'About', href: ROUTES.ABOUT },
 ] as const;
+const legalLinks = [
+  { label: 'Terms', href: ROUTES.TERMS },
+  { label: 'Privacy', href: ROUTES.PRIVACY },
+] as const;
 const SUPPORT_EMAIL = 'support@atlaris.app';
 
 interface SiteFooterProps {
@@ -41,7 +45,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
   return (
     <footer className='border-t border-border px-6 py-9 sm:px-8'>
       <div className='mx-auto flex max-w-7xl flex-col justify-between gap-10 sm:min-h-46'>
-        <div className='grid gap-10 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)]'>
+        <div className='grid gap-10 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]'>
           <div>
             <BrandLogo size='sm' />
             <p className='mt-3 max-w-xs text-sm leading-snug text-muted-foreground'>
@@ -51,12 +55,27 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
 
           <nav
             aria-label='Footer'
-            className='grid grid-cols-2 gap-8 sm:col-span-2 sm:grid-cols-2'
+            className='grid grid-cols-2 gap-8 sm:col-span-3 sm:grid-cols-3'
           >
             <div>
               <p className='text-xs font-medium text-foreground'>Explore</p>
               <ul className='mt-2 space-y-1.5 pointer-coarse:space-y-1'>
                 {marketingLinks.map((item) => (
+                  <li key={item.href}>
+                    <Link
+                      href={item.href}
+                      className='inline-flex items-center justify-center text-xs leading-[1.125] text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none pointer-coarse:min-h-11 pointer-coarse:min-w-11'
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+            <div>
+              <p className='text-xs font-medium text-foreground'>Legal</p>
+              <ul className='mt-2 space-y-1.5 pointer-coarse:space-y-1'>
+                {legalLinks.map((item) => (
                   <li key={item.href}>
                     <Link
                       href={item.href}

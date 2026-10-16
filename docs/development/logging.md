@@ -4,7 +4,7 @@ This document defines the logging architecture for Atlaris, ensuring proper sepa
 
 ## Sentry Integration
 
-Sentry is the app's error, trace, replay, log, and application-metrics sink:
+Sentry is the app's error, trace, log, and application-metrics sink:
 
 - **Server**: Pino logs are forwarded via `Sentry.pinoIntegration()` in `sentry.server.config.ts`
 - **Client**: `clientLogger` uses `Sentry.logger` directly
