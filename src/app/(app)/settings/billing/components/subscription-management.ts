@@ -1,5 +1,5 @@
 export const AUTO_RENEWAL_NOTICE =
-  'Renews automatically each month until you cancel. Cancellation takes effect at the end of the current billing period.';
+  'Renews automatically at the end of each billing period until you cancel. Cancellation takes effect at the end of the current billing period.';
 
 const MANAGEABLE_STATUSES = new Set(['active', 'trialing', 'past_due']);
 

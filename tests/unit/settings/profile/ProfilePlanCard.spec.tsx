@@ -158,7 +158,7 @@ describe('ProfilePlanCard', () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        'Renews automatically each month until you cancel. Cancellation takes effect at the end of the current billing period.',
+        'Renews automatically at the end of each billing period until you cancel. Cancellation takes effect at the end of the current billing period.',
       ),
     ).toBeVisible();
   });

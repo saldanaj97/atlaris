@@ -108,7 +108,7 @@ describe('BillingCards', () => {
     ).toBeVisible();
     expect(
       screen.getByText(
-        'Renews automatically each month until you cancel. Cancellation takes effect at the end of the current billing period.',
+        'Renews automatically at the end of each billing period until you cancel. Cancellation takes effect at the end of the current billing period.',
       ),
     ).toBeVisible();
     expect(screen.getByText('Next billing date')).toBeVisible();
