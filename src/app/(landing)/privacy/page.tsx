@@ -126,7 +126,7 @@ export default function PrivacyPage(): ReactElement {
           <li>
             <strong>Cloudflare:</strong> Workers that run background jobs, such
             as plan generation and regeneration, and Turnstile bot protection on
-            sign-up and sign-in.
+            sign-up.
           </li>
           <li>
             <strong>PostHog:</strong> product analytics. When you sign in, your
@@ -167,14 +167,15 @@ export default function PrivacyPage(): ReactElement {
       <LegalSection id='privacy-retention' heading='6. Retention and deletion'>
         <p>
           We keep your information while your account is active. You can delete
-          your account at any time by emailing <LegalContactLink />. When an
-          account is deleted, your sign-in identity is removed from our
-          authentication provider, the email address on your Atlaris account
-          record is cleared, and the account is marked as deleted. To have your
-          learning plans and other associated data erased as well, email us and
-          we will do so, except for records we must keep for legal, tax, or
-          fraud-prevention reasons. Copies in backups or at our providers may
-          persist for a limited time until they expire in the ordinary course.
+          your account at any time from Manage account &rarr; Security in the
+          account menu, or by emailing <LegalContactLink />. When an account is
+          deleted, your sign-in identity is removed from our authentication
+          provider, the email address on your Atlaris account record is cleared,
+          and the account is marked as deleted. To have your learning plans and
+          other associated data erased as well, email us and we will do so,
+          except for records we must keep for legal, tax, or fraud-prevention
+          reasons. Copies in backups or at our providers may persist for a
+          limited time until they expire in the ordinary course.
         </p>
       </LegalSection>
 
