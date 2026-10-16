@@ -1,11 +1,11 @@
-import type {
-  BillingPeriod,
-  PricingMoney,
-  PricingPlan,
-} from './pricing-card-model';
 import type { ChangeEvent } from 'react';
 
-import { formatPricingMoney } from './PricingCards';
+import {
+  formatPricingMoney,
+  type BillingPeriod,
+  type PricingMoney,
+  type PricingPlan,
+} from './pricing-card-model';
 import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
