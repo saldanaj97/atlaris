@@ -187,7 +187,7 @@ export async function ProfilePlanCard({
             </div>
           </dl>
           {showRenewalNotice ? (
-            <p className='text-sm leading-[22px] text-muted-foreground'>
+            <p className='type-body text-muted-foreground'>
               {AUTO_RENEWAL_NOTICE}
             </p>
           ) : null}

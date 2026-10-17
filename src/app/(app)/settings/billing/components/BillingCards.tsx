@@ -118,7 +118,7 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
         </LedgerRow>
       </div>
       {showRenewalNotice ? (
-        <p className='text-sm text-muted-foreground'>{AUTO_RENEWAL_NOTICE}</p>
+        <p className='type-body text-muted-foreground'>{AUTO_RENEWAL_NOTICE}</p>
       ) : null}
     </div>
   );
