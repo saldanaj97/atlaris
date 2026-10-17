@@ -6,6 +6,7 @@ import {
   applyClerkUserProjectionSource,
   clerkUserDeletionProjectionSource,
 } from '@/features/auth/clerk-user-projection';
+import { deletePostHogPersonForDeletedUser } from '@/features/auth/posthog-person-deletion';
 import { clerkBillingSourceFromBackendSubscription } from '@/features/billing/clerk-billing/projection';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
@@ -69,8 +70,9 @@ async function renewingPaidItemIds(
  * Deletes the signed-in account. Paid Clerk Billing items end first, because
  * deleting the Clerk user alone leaves the subscription renewing. The Clerk
  * user is deleted only after a re-fetch shows no paid item left, then the
- * local row is tombstoned and its data erased. The user.deleted webhook
- * repeats the last step if this process stops after the Clerk delete.
+ * local row is tombstoned and its data erased, and the PostHog person is
+ * deleted. The user.deleted webhook repeats the last two steps if this
+ * process stops after the Clerk delete.
  */
 export async function deleteAccount({
   authUserId,
@@ -113,6 +115,7 @@ export async function deleteAccount({
       { db: tx, logger },
     ),
   );
+  await deletePostHogPersonForDeletedUser(authUserId, { db, logger, now });
 
   logger.info(
     { authUserId, canceledItemCount: paidItemIds.length },
