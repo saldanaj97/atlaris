@@ -352,10 +352,13 @@ function opBaseEnv(): Record<string, string> {
   );
 }
 
-/** Env of a Node child started by `op run` with `opArgs`, as JSON. */
+/**
+ * Env of a Node child started by `op run` with `opArgs`, as JSON. Runs
+ * `OP_EXECUTABLE` when set, such as a service-account wrapper, else `op`.
+ */
 async function opRunEnv(opArgs: readonly string[], source: string) {
   const result = await run(
-    'op',
+    process.env.OP_EXECUTABLE || 'op',
     [
       'run',
       ...opArgs,
@@ -369,13 +372,13 @@ async function opRunEnv(opArgs: readonly string[], source: string) {
   );
   if (result.code !== 0) {
     throw new SecretsSyncUsageError(
-      `Could not read 1Password Environment "${source}". Sign in with \`op signin\` (or set OP_SERVICE_ACCOUNT_TOKEN in CI). \`op run --environment\` needs CLI 2.41.0 or later.\n${result.stderr.trim()}`,
+      `Could not read 1Password Environment "${source}". Sign in with \`op signin\`, point OP_EXECUTABLE at a service-account wrapper, or set OP_SERVICE_ACCOUNT_TOKEN in CI. \`op run --environment\` needs CLI 2.41.0 or later.\n${result.stderr.trim()}`,
     );
   }
   return JSON.parse(result.stdout) as Record<string, string>;
 }
 
-async function readEnvironment(target: SyncTarget) {
+export async function readEnvironment(target: SyncTarget) {
   const loaded = await opRunEnv(
     ['--environment', target.environmentId],
     target.source,
