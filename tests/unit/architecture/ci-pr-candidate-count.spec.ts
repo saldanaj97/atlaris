@@ -68,11 +68,15 @@ const selectContinuation = (paths: string[]): ContinuationSelection => {
 };
 
 describe('CircleCI Smarter Testing selection', () => {
+  const [unitSuite, integrationSuite] = TEST_SUITES.split(
+    '---\nname: integration tests',
+  );
+
   it('routes unit selection and impact refresh through Smarter Testing on one container', () => {
     expect(CODE_CONFIG).toContain('circleci testsuite run "unit tests"');
     expect(CODE_CONFIG).toContain('--analyze-tests=impacted --run-tests=none');
     expect(TEST_SUITES).toContain('test-impact-analysis: true');
-    expect(TEST_SUITES).not.toContain('dynamic-test-splitting');
+    expect(unitSuite).not.toContain('dynamic-test-splitting');
     expect(
       CODE_CONFIG.match(
         /\n  unit-tests:\n([\s\S]*?)\n  unit-impact-analysis:/,
@@ -81,8 +85,6 @@ describe('CircleCI Smarter Testing selection', () => {
   });
 
   it('runs both unit Vitest projects and analyses impact in a single pass', () => {
-    const unitSuite = TEST_SUITES.split('---\nname: integration tests')[0];
-
     expect(unitSuite).toContain(
       '--project unit --project unit-dom --filesOnly',
     );
@@ -107,6 +109,7 @@ describe('CircleCI Smarter Testing selection', () => {
     expect(CODE_CONFIG).toContain(
       'circleci testsuite run "integration tests" --analyze-tests=impacted --run-tests=none',
     );
+    expect(integrationSuite).toContain('dynamic-test-splitting: true');
   });
 
   it('runs the trunk integration suite on develop only', () => {
