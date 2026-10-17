@@ -25,19 +25,24 @@ outputs:
 options:
   test-impact-analysis: true
   impact-key: atlaris-unit-tests
+  # `**` matches one directory level only here, so list each nested depth.
   full-test-run-paths:
-    - .circleci/**
+    - .circleci/*
     - package.json
     - pnpm-lock.yaml
     - pnpm-workspace.yaml
     - tsconfig.json
     - '*.config.*'
     - middleware.ts
-    - public/**
-    - supabase/**
-    - tests/helpers/**
-    - tests/mocks/**
-    - tests/setup/**
+    - public/*
+    - public/*/*
+    - supabase/*
+    - supabase/*/*
+    - supabase/*/*/*
+    - tests/helpers/*
+    - tests/helpers/*/*
+    - tests/mocks/*/*
+    - tests/setup/*
     - tests/unit/setup.ts
     - tests/unit/setup.node.ts
 ---
@@ -71,17 +76,21 @@ options:
   test-impact-analysis: true
   store-test-results: true
   impact-key: atlaris-integration-tests
+  # `**` matches one directory level only here, so list each nested depth.
   full-test-run-paths:
-    - .circleci/**
+    - .circleci/*
     - package.json
     - pnpm-lock.yaml
     - pnpm-workspace.yaml
     - tsconfig.json
     - '*.config.*'
     - middleware.ts
-    - supabase/**
+    - supabase/*
+    - supabase/*/*
+    - supabase/*/*/*
     - tests/fixtures/**
     - tests/integration/**/*-helpers.ts
-    - tests/helpers/**
-    - tests/mocks/**
-    - tests/setup/**
+    - tests/helpers/*
+    - tests/helpers/*/*
+    - tests/mocks/*/*
+    - tests/setup/*
