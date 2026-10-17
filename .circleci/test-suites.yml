@@ -2,8 +2,10 @@
 name: unit tests
 # `unit` runs .ts specs in Node and `unit-dom` runs .tsx specs in jsdom
 # (see vitest.config.ts); both projects belong to this one suite.
+# `pnpm --silent exec`: outside CI, pnpm 11 may auto-install before exec and
+# print install chatter to stdout, which `discover` would read as test atoms.
 discover: >-
-  pnpm exec vitest list --config vitest.config.ts --project unit --project unit-dom --filesOnly tests/unit
+  pnpm --silent exec vitest list --config vitest.config.ts --project unit --project unit-dom --filesOnly tests/unit
   | sed -E 's/^\[[^]]+\] //'
 run: >-
   pnpm exec vitest run --config vitest.config.ts --project unit --project unit-dom
@@ -47,8 +49,9 @@ options:
     - tests/unit/setup.node.ts
 ---
 name: integration tests
+# `pnpm --silent exec`: see the unit suite.
 discover: >-
-  pnpm exec vitest list --config vitest.config.ts --project integration --filesOnly tests/integration
+  pnpm --silent exec vitest list --config vitest.config.ts --project integration --filesOnly tests/integration
   | sed -E 's/^\[[^]]+\] //'
 run: >-
   pnpm exec vitest run --config vitest.config.ts --project integration
@@ -74,6 +77,8 @@ outputs:
   junit: test-results/integration/junit.xml
 options:
   test-impact-analysis: true
+  # Splits atoms across nodes where the job sets parallelism > 1 (integration-tests on develop).
+  dynamic-test-splitting: true
   store-test-results: true
   impact-key: atlaris-integration-tests
   # `**` matches one directory level only here, so list each nested depth.
