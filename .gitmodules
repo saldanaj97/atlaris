@@ -18,3 +18,7 @@
 	path = .agents/skill-sources/posthog-ai-plugin
 	url = https://github.com/PostHog/ai-plugin.git
 	branch = main
+[submodule ".agents/skill-sources/circleci-skills"]
+	path = .agents/skill-sources/circleci-skills
+	url = https://github.com/CircleCI-Public/skills.git
+	branch = main
