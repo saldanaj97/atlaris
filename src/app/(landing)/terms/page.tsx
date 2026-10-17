@@ -142,10 +142,11 @@ export default function TermsPage(): ReactElement {
         heading='8. Suspension and termination'
       >
         <p>
-          You can stop using Atlaris and delete your account at any time. We may
-          suspend or terminate your access if you violate these terms, if your
-          use creates risk or legal exposure for us or others, or if we
-          discontinue the service.
+          You can stop using Atlaris and delete your account at any time.
+          Deleting your account ends any paid subscription immediately, without
+          a refund for the current billing period. We may suspend or terminate
+          your access if you violate these terms, if your use creates risk or
+          legal exposure for us or others, or if we discontinue the service.
         </p>
       </LegalSection>
 

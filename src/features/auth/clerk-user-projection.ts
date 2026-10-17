@@ -2,10 +2,23 @@ import type { DbTransaction } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
-import { users } from '@supabase/schema';
+import {
+  aiUsageEvents,
+  emailNotificationDeliveries,
+  jobQueue,
+  learningActivityEvents,
+  learningPlans,
+  oauthStateTokens,
+  taskProgress,
+  usageMetrics,
+  userEmailNotificationPreferences,
+  userEmailNotificationSettings,
+  userPreferences,
+  users,
+} from '@supabase/schema';
 import { and, asc, eq, gt, isNull, lt, lte, or } from 'drizzle-orm';
 
-type UserProjectionDb = Pick<DbTransaction, 'select' | 'update'>;
+type UserProjectionDb = Pick<DbTransaction, 'select' | 'update' | 'delete'>;
 
 type ClerkUserEmailAddress = {
   id: string;
@@ -46,6 +59,7 @@ export type ClerkUserProjectionSource =
     }
   | {
       readonly kind: 'deleted';
+      readonly origin: 'webhook' | 'reconciliation' | 'account_deletion';
       readonly type: 'user.deleted';
       readonly authUserId: string;
       readonly clerkDeletedAt: Date;
@@ -140,6 +154,7 @@ export function clerkUserProjectionSourceFromWebhook(
     return typeof authUserId === 'string' && authUserId !== ''
       ? {
           kind: 'deleted',
+          origin: 'webhook',
           type: event.type,
           authUserId,
           clerkDeletedAt: receivedAt,
@@ -169,16 +184,52 @@ export function clerkUserProjectionSourceFromBackendUser(
 export function clerkUserDeletionProjectionSource(
   authUserId: string,
   clerkDeletedAt = new Date(),
+  origin: 'reconciliation' | 'account_deletion' = 'reconciliation',
 ): ClerkUserProjectionSource {
   if (authUserId.trim() === '') {
     throw new Error('Cannot tombstone a Clerk user without an id');
   }
   return {
     kind: 'deleted',
+    origin,
     type: 'user.deleted',
     authUserId,
     clerkDeletedAt,
   };
+}
+
+/** Every table with a user_id foreign key to users. Plan children cascade. */
+export const USER_SCOPED_ERASE_TABLES = [
+  learningPlans,
+  taskProgress,
+  learningActivityEvents,
+  usageMetrics,
+  aiUsageEvents,
+  userPreferences,
+  userEmailNotificationSettings,
+  userEmailNotificationPreferences,
+  jobQueue,
+  emailNotificationDeliveries,
+] as const;
+
+/**
+ * Erases the account's personal data and leaves the users row as a
+ * tombstone, so later Clerk events for this id stay acknowledged.
+ */
+async function eraseLocalUserData(
+  db: UserProjectionDb,
+  user: { id: string; authUserId: string },
+): Promise<void> {
+  for (const table of USER_SCOPED_ERASE_TABLES) {
+    await db.delete(table).where(eq(table.userId, user.id));
+  }
+  await db
+    .delete(oauthStateTokens)
+    .where(eq(oauthStateTokens.authUserId, user.authUserId));
+  await db
+    .update(users)
+    .set({ name: null, updatedAt: new Date() })
+    .where(eq(users.id, user.id));
 }
 
 function projectedApplyResult(
@@ -233,6 +284,9 @@ export async function applyClerkUserProjectionSource(
   }
 
   if (source.kind === 'deleted') {
+    // Reconciliation tombstones on a Clerk 404 alone; only an observed
+    // deletion (webhook or in-app delete) erases the account's data.
+    const eraseData = source.origin !== 'reconciliation';
     const [updated] = await deps.db
       .update(users)
       .set({
@@ -243,12 +297,24 @@ export async function applyClerkUserProjectionSource(
       .where(and(eq(users.id, user.id), isNull(users.clerkDeletedAt)))
       .returning({ id: users.id });
 
+    // Erase even when already tombstoned: a reconciliation tombstone may
+    // have landed before the observed deletion.
+    if (eraseData) {
+      await eraseLocalUserData(deps.db, user);
+    }
+
     if (!updated) {
       return 'skipped_deleted_user';
     }
 
     deps.logger.info(
-      { authUserId: user.authUserId, type: source.type, userId: user.id },
+      {
+        authUserId: user.authUserId,
+        erased: eraseData,
+        origin: source.origin,
+        type: source.type,
+        userId: user.id,
+      },
       'Clerk user deletion tombstone applied',
     );
     return 'updated';

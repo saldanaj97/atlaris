@@ -1,4 +1,5 @@
 import SiteHeader from '@/components/shared/SiteHeader';
+import { AuthError, DeletedAuthUserError } from '@/lib/api/errors';
 import { render, screen } from '@testing-library/react';
 import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -142,6 +143,33 @@ describe('SiteHeader', () => {
     expect(mocks.currentUser).not.toHaveBeenCalled();
     expect(screen.getByTestId('site-header-chrome')).toHaveTextContent(':pro');
   });
+
+  it('renders a just-deleted account as signed out', async () => {
+    mocks.requestBoundaryComponent.mockRejectedValue(
+      new DeletedAuthUserError(),
+    );
+
+    render(await SiteHeader({ loadAccountProfile: false }));
+
+    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+      'data-authenticated',
+      'false',
+    );
+  });
+
+  it.each([new AuthError(), new Error('entitlement lookup failed')])(
+    'keeps the session authenticated when the entitlement lookup fails with %s',
+    async (error) => {
+      mocks.requestBoundaryComponent.mockRejectedValue(error);
+
+      render(await SiteHeader({ loadAccountProfile: false }));
+
+      expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+        'data-authenticated',
+        'true',
+      );
+    },
+  );
 
   it.each(['maintenance', 'waitlist'] as const)(
     'renders signed-in visitors as signed out behind the %s gate',

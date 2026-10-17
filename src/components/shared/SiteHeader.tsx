@@ -6,6 +6,7 @@ import {
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
+import { DeletedAuthUserError } from '@/lib/api/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import {
   getShellAuthUserId,
@@ -72,13 +73,12 @@ export default async function SiteHeader({
       'Clerk UI eligibility check failed; header renders account link fallback',
     );
   }
-  const navItems = authUserId ? authenticatedNavItems : unauthenticatedNavItems;
-
   // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
   let canCreatePlan: boolean | undefined;
   let userName: string | undefined;
   let userImageUrl: string | undefined;
+  let accountDeleted = false;
   if (authUserId) {
     const entitlementPromise = requestBoundary
       .component(({ actor }) => ({
@@ -90,6 +90,12 @@ export default async function SiteHeader({
         canCreatePlan = result?.canCreatePlan;
       })
       .catch((err: unknown) => {
+        // A just-deleted account keeps a valid session token for up to a
+        // minute. Render it signed out instead of offering the dashboard.
+        if (err instanceof DeletedAuthUserError) {
+          accountDeleted = true;
+          return;
+        }
         // Non-critical for shell render: tier badge omitted; log for ops visibility.
         logger.warn(
           {
@@ -135,13 +141,18 @@ export default async function SiteHeader({
     await Promise.all([entitlementPromise, profilePromise]);
   }
 
+  const isAuthenticated = Boolean(authUserId) && !accountDeleted;
+  const navItems = isAuthenticated
+    ? authenticatedNavItems
+    : unauthenticatedNavItems;
+
   return (
     <header className='fixed top-0 left-0 z-50 w-full pt-[env(safe-area-inset-top,0px)] pr-[env(safe-area-inset-right,0px)] pl-[env(safe-area-inset-left,0px)]'>
       <SiteHeaderChrome
         navItems={navItems}
         tier={tier}
         canCreatePlan={canCreatePlan}
-        isAuthenticated={Boolean(authUserId)}
+        isAuthenticated={isAuthenticated}
         showClerkUserButton={showClerkUserButton}
         userName={userName}
         userImageUrl={userImageUrl}
