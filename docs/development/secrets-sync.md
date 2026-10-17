@@ -14,7 +14,7 @@ The script maps targets to Environment **IDs**, so renaming an Environment in 1P
 
 ## Running it
 
-1. Sign in to the 1Password CLI (`op signin`, unlocked by the desktop app). The script reads the Environment through `op run --environment`, which needs CLI `2.41.0` or later.
+1. Sign in to the 1Password CLI (`op signin`, unlocked by the desktop app), or export `OP_EXECUTABLE` pointing at a service-account wrapper such as the one from [1Password local development](../third-party-services/1password-local-dev.md). The script reads the Environment through `$OP_EXECUTABLE run --environment` (plain `op` when unset), which needs CLI `2.41.0` or later. A service account must be able to read the target's Environment.
 2. Preview the change: `pnpm secrets:sync <provider> <environment> --dry-run`. It lists each name as `add`, `update`, or `skip` with the reason. Existing values on Vercel are encrypted, so an unchanged value still shows as `update`.
 3. Apply: run the same command without `--dry-run`. Production asks for confirmation; `--yes` skips it.
 
