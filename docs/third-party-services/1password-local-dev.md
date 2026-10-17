@@ -2,8 +2,7 @@
 
 Laptop `pnpm dev` loads app secrets with `op run --environment <id>`. Authentication
 uses a **tightly scoped 1Password service account**. The token lives in the macOS
-keychain, not the repository. Cloud agents stay on
-[1password-agents-setup.md](./1password-agents-setup.md).
+keychain, not the repository.
 
 ## What you create once
 
