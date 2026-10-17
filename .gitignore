@@ -14,6 +14,8 @@ workers/jobs/.cloudflare/output/
 
 # testing
 /coverage
+# local Smarter Testing impact data (circleci testsuite doctor / --local)
+/.circleci/impact-*.json
 /test-results/
 /tests/.testcontainers-env.*.json
 /tests/test-results/*
