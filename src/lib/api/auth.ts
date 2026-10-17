@@ -11,7 +11,7 @@ import type {
 } from '@/lib/db/queries/types/users.types';
 import type { DbClient } from '@/lib/db/types';
 
-import { AuthError } from './errors';
+import { AuthError, DeletedAuthUserError } from './errors';
 import { provisionUserFromVerifiedAuthSession } from '@/features/auth/user-provisioning';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
 import { auth, getSessionSafe } from '@/lib/auth/server';
@@ -79,7 +79,7 @@ async function ensureUserRecord(
   const existing = await getUserByAuthId(authUserId, dbClient);
   if (existing) {
     if (existing.clerkDeletedAt !== null) {
-      throw new AuthError('Auth user has been deleted.');
+      throw new DeletedAuthUserError();
     }
     return existing;
   }

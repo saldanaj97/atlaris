@@ -1,9 +1,11 @@
 import type { ReactElement } from 'react';
 
 import { SettingsLedgerPanel } from '@/app/(app)/settings/components/LedgerPrimitives';
+import { DeleteAccountSection } from '@/app/(app)/settings/profile/components/DeleteAccountSection';
 import { ProfileForm } from '@/app/(app)/settings/profile/components/ProfileForm';
 import { ProfilePlanCardSkeleton } from '@/app/(app)/settings/profile/components/ProfileFormSkeleton';
 import { ProfilePlanCard } from '@/app/(app)/settings/profile/components/ProfilePlanCard';
+import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { getSupportedLocale } from '@/lib/i18n/locale';
 import { headers } from 'next/headers';
 import { Suspense } from 'react';
@@ -17,6 +19,7 @@ export default async function SettingsProfilePage(): Promise<ReactElement> {
       <Suspense fallback={<ProfilePlanCardSkeleton />}>
         <ProfilePlanCard locale={locale} />
       </Suspense>
+      {shouldUseClerkUi() ? <DeleteAccountSection /> : null}
     </SettingsLedgerPanel>
   );
 }

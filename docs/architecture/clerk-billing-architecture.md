@@ -46,7 +46,7 @@ Prefix matching in `src/features/billing/clerk-billing/projection.ts`:
 | `subscription.`                | All items on the subscription                                       |
 | `paymentAttempt.`              | Items plus payment attempt status                                   |
 | `user.created`, `user.updated` | Current exact verified primary email and Clerk update watermark     |
-| `user.deleted`                 | Clear email and permanently tombstone the local identity projection |
+| `user.deleted`                 | Clear email and name, permanently tombstone the local identity projection, and erase the user's data |
 
 Other types are ignored (`status: 'ignored'`). Subscribe the Clerk endpoint to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
 
@@ -86,7 +86,9 @@ Webhook applies refresh from Clerk Billing API (`refreshFromClerk: true`) before
 
 ### Identity projection
 
-The identity projection is intentionally narrow. `user.created` and `user.updated` use only Clerk's **exact** primary email when its verification status is `verified`; there is no fallback to another address. A missing or unverified primary address stores `NULL`. The provider's `updated_at` timestamp prevents stale deliveries from replacing newer data. A `user.deleted` event clears the email and sets `clerk_deleted_at`; later lifecycle updates cannot resurrect that row.
+The identity projection is intentionally narrow. `user.created` and `user.updated` use only Clerk's **exact** primary email when its verification status is `verified`; there is no fallback to another address. A missing or unverified primary address stores `NULL`. The provider's `updated_at` timestamp prevents stale deliveries from replacing newer data. A `user.deleted` event clears the email and sets `clerk_deleted_at`; later lifecycle updates cannot resurrect that row. It also clears the name and deletes every row with a `user_id` foreign key to `users` (`USER_SCOPED_ERASE_TABLES` in `src/features/auth/clerk-user-projection.ts`) plus the user's `oauth_state_tokens`. The reconciliation script's Clerk-404 tombstone does not erase; a later observed deletion still does.
+
+Users delete their account from Settings → Profile, not Clerk's account portal (turn off **Allow users to delete their accounts** in each Clerk instance). The server action requires Clerk strict reverification, ends every renewing paid subscription item with `endNow`, re-fetches to confirm none remain, deletes the Clerk user, then applies the same tombstone and erase. Clerk does not cancel billing when a user is deleted, so deletion stops if a paid item is still active.
 
 The event ledger acknowledges no-row `user.created` and `user.updated` events as `skipped_no_user`. A no-row `user.deleted` event is left unacknowledged so Clerk can retry it if provisioning races the deletion. On first authenticated use, Atlaris provisions the current Clerk identity instead. A unique-email conflict never transfers an address between local users; the transaction rolls back and Clerk retries the delivery.
 

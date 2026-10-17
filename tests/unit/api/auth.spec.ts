@@ -5,6 +5,7 @@ import {
   withServerActionContext,
 } from '@/lib/api/auth';
 import { getRequestContext } from '@/lib/api/context';
+import { AuthError, DeletedAuthUserError } from '@/lib/api/errors';
 import { db as serviceDb } from '@supabase/service-role';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -92,5 +93,25 @@ describe('auth helpers', () => {
         return currentUser.authUserId;
       }),
     ).resolves.toBe('auth_2');
+  });
+
+  it('rejects a tombstoned user with DeletedAuthUserError, which is an AuthError', async () => {
+    setTestUser('auth_deleted');
+    mockGetUserByAuthId.mockResolvedValue(
+      buildUserFixture({
+        authUserId: 'auth_deleted',
+        clerkDeletedAt: new Date('2026-10-16T12:00:00.000Z'),
+      }),
+    );
+    const run = vi.fn();
+
+    const error = await runServerComponentContext(run).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(DeletedAuthUserError);
+    expect(error).toBeInstanceOf(AuthError);
+    expect(run).not.toHaveBeenCalled();
+    expect(mocks.provisionUser).not.toHaveBeenCalled();
   });
 });
