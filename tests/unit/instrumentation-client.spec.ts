@@ -10,7 +10,6 @@ const { posthogInitMock, sentryInitMock } = vi.hoisted(() => ({
 vi.mock('@sentry/nextjs', () => ({
   captureRouterTransitionStart: vi.fn(),
   init: sentryInitMock,
-  replayIntegration: vi.fn(() => ({})),
 }));
 
 vi.mock('posthog-js', () => ({
@@ -49,7 +48,19 @@ describe('client PostHog instrumentation', () => {
 
     expect(posthogInitMock).toHaveBeenCalledWith(
       'phc_test',
-      expect.objectContaining({ api_host: '/ingest' }),
+      expect.objectContaining({
+        api_host: '/ingest',
+        disable_session_recording: true,
+      }),
     );
+  });
+
+  it('does not configure Sentry session replay', async () => {
+    await loadInstrumentationClient();
+
+    const options = sentryInitMock.mock.calls[0]?.[0] ?? {};
+    expect(options).not.toHaveProperty('integrations');
+    expect(options).not.toHaveProperty('replaysSessionSampleRate');
+    expect(options).not.toHaveProperty('replaysOnErrorSampleRate');
   });
 });

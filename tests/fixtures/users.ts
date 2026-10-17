@@ -102,6 +102,7 @@ export function buildUserFixture(
     clerkUserUpdatedAt: null,
     clerkBillingUpdatedAt: null,
     clerkDeletedAt: null,
+    posthogDeletedAt: null,
     name: null,
     subscriptionTier: 'free',
     ...resolveSubscriptionLifecycle({

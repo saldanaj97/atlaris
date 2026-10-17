@@ -66,7 +66,9 @@ export default function SiteHeaderChrome({
     pathname === ROUTES.LANDING ||
     pathname === ROUTES.PRICING ||
     pathname === ROUTES.ABOUT ||
-    pathname === ROUTES.WAITLIST;
+    pathname === ROUTES.WAITLIST ||
+    pathname === ROUTES.TERMS ||
+    pathname === ROUTES.PRIVACY;
   const isAppShell = isAuthenticated && isSupportedAppPath(pathname);
   const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
   const { open: desktopSidebarOpen, setOpen: setDesktopSidebarOpen } =
