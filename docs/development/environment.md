@@ -244,10 +244,6 @@ The native stack runs no REST API, so the local app needs no Supabase URL or API
 needs `OP_ENVIRONMENT_ID` in `~/.config/atlaris/dev.sh` or the shell. Setup:
 [1Password local development](../third-party-services/1password-local-dev.md).
 
-### Cloud agents (1Password Environments)
-
-Codex / Cursor cloud agents can materialize `.env.local` from a 1Password Environment via `scripts/agents/codex-1password-env.sh`. Required cloud secrets: `OP_ENVIRONMENT_ID`, `OP_SERVICE_ACCOUNT_TOKEN`. This path is separate from Vercel hosted env templates. Full steps and overwrite rules: [1Password agents setup](../third-party-services/1password-agents-setup.md). Seeded shape reference: `.env.agents.example`.
-
 ## Logging
 
 ### Critical Rule: Server vs Client
@@ -337,7 +333,6 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 ## Related Files
 
 - `docs/development/logging.md` - Comprehensive logging architecture guide
-- `docs/third-party-services/1password-agents-setup.md` - Cloud agent env bootstrap from 1Password
 - `docs/architecture/email-notification-delivery-runbook.md` - Email delivery ops + preference model
 - `src/flags.ts` - Vercel Flags declarations
 - `src/lib/config/env.ts` - Stable environment-config compatibility barrel; facet modules under `src/lib/config/env/` own definitions and validation

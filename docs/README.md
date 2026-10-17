@@ -122,7 +122,6 @@ External tool and CLI references used in local/dev workflows.
 
 | File | Description |
 |------|-------------|
-| [1password-agents-setup.md](./third-party-services/1password-agents-setup.md) | 1Password Environments bootstrap for cloud agents |
 | [1password-local-dev.md](./third-party-services/1password-local-dev.md) | Laptop `pnpm dev` service-account wrapper and keychain setup |
 | [clerk-cli-docs.md](./third-party-services/clerk-cli-docs.md) | Clerk CLI install and usage |
 | [portless-commands.md](./third-party-services/portless-commands.md) | Portless CLI commands |
@@ -182,7 +181,6 @@ docs/
 │   ├── smoke-test-results-2026-04-01.md
 │   └── test-standards.md
 └── third-party-services/
-    ├── 1password-agents-setup.md
     ├── 1password-local-dev.md
     ├── clerk-cli-docs.md
     ├── portless-commands.md

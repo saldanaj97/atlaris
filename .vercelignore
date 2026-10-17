@@ -5,5 +5,4 @@
 !.env.local.example
 !.env.preview.example
 !.env.production.example
-!.env.agents.example
 /.dev-env.local.sh
