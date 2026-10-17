@@ -57,6 +57,13 @@ export class AuthError extends AppError {
   }
 }
 
+/** The session is still valid but the local user row is tombstoned. */
+export class DeletedAuthUserError extends AuthError {
+  constructor() {
+    super('Auth user has been deleted.');
+  }
+}
+
 export class ForbiddenError extends AppError {
   constructor(message = 'Forbidden', details?: unknown) {
     super(message, { status: 403, code: 'FORBIDDEN', details });

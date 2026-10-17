@@ -16,6 +16,8 @@ export type WorkerEnv = Env &
     JOBS_SIGNING_SECRET_PREVIOUS?: string;
     /** Dashboard-managed; outside production only these addresses get email. */
     EMAIL_TEST_RECIPIENT_ALLOWLIST?: string;
+    /** Production-only; synced from 1Password `atlaris-worker-production`. */
+    POSTHOG_PERSONAL_API_KEY?: string;
   };
 
 const optionalString = z.string().optional();
@@ -46,6 +48,7 @@ const workerEnvSchema = z.object({
     (value) => typeof value === 'object' && value !== null && 'create' in value,
   ),
   EMAIL_TEST_RECIPIENT_ALLOWLIST: optionalString,
+  POSTHOG_PERSONAL_API_KEY: optionalString,
   JOBS_PAUSED: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),

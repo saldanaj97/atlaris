@@ -1,6 +1,7 @@
 import type { PlainHandler } from '@/lib/api/auth';
 import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
+import { deletePostHogPersonForDeletedUser } from '@/features/auth/posthog-person-deletion';
 import { applyVerifiedClerkBillingEvent } from '@/features/billing/clerk-billing/reconciliation';
 import { RateLimitError, toErrorResponse } from '@/lib/api/errors';
 import { checkIpRateLimit } from '@/lib/api/ip-rate-limit';
@@ -117,6 +118,14 @@ export const POST: PlainHandler = withErrorBoundary(async (req: Request) => {
   const result = await applyVerifiedClerkBillingEvent(event, eventId, {
     logger,
   });
+
+  // Covers deletions made outside the app, such as from the Clerk dashboard.
+  if (event.type === 'user.deleted' && result.status === 'inserted') {
+    const authUserId = event.data.id;
+    if (authUserId) {
+      await deletePostHogPersonForDeletedUser(authUserId, { logger });
+    }
+  }
 
   if (result.status === 'in_flight') {
     return respond(

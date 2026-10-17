@@ -167,15 +167,16 @@ export default function PrivacyPage(): ReactElement {
       <LegalSection id='privacy-retention' heading='6. Retention and deletion'>
         <p>
           We keep your information while your account is active. You can delete
-          your account at any time from Manage account &rarr; Security in the
-          account menu, or by emailing <LegalContactLink />. When an account is
-          deleted, your sign-in identity is removed from our authentication
-          provider, the email address on your Atlaris account record is cleared,
-          and the account is marked as deleted. To have your learning plans and
-          other associated data erased as well, email us and we will do so,
-          except for records we must keep for legal, tax, or fraud-prevention
-          reasons. Copies in backups or at our providers may persist for a
-          limited time until they expire in the ordinary course.
+          your account at any time from Settings &rarr; Profile, or by emailing{' '}
+          <LegalContactLink />. Deleting your account ends any paid
+          subscription, removes your sign-in identity from our authentication
+          provider, and erases your learning plans, progress, settings, and
+          usage records. We keep a minimal record that the account existed and
+          was deleted, without your email address or name, so we can process
+          related billing events, along with records we must keep for legal,
+          tax, or fraud-prevention reasons. Copies in backups or at our
+          providers may persist for a limited time until they expire in the
+          ordinary course.
         </p>
       </LegalSection>
 
