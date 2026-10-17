@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => {
     applyVerifiedClerkBillingEvent: vi.fn(),
     checkIpRateLimit: vi.fn(),
     createLoggingRequestContext: vi.fn(),
+    deletePostHogPersonForDeletedUser: vi.fn(),
     logger,
     verifyWebhook: vi.fn(),
   };
@@ -35,6 +36,10 @@ vi.mock('@/lib/logging/request-context', () => ({
   createLoggingRequestContext: mocks.createLoggingRequestContext,
 }));
 
+vi.mock('@/features/auth/posthog-person-deletion', () => ({
+  deletePostHogPersonForDeletedUser: mocks.deletePostHogPersonForDeletedUser,
+}));
+
 vi.mock('@clerk/nextjs/webhooks', () => ({
   verifyWebhook: mocks.verifyWebhook,
 }));
@@ -52,6 +57,7 @@ describe('Clerk billing webhook POST', () => {
     mocks.applyVerifiedClerkBillingEvent.mockReset();
     mocks.checkIpRateLimit.mockReset();
     mocks.createLoggingRequestContext.mockReset();
+    mocks.deletePostHogPersonForDeletedUser.mockReset();
     mocks.logger.warn.mockReset();
     mocks.verifyWebhook.mockReset();
     mocks.createLoggingRequestContext.mockReturnValue({
@@ -200,4 +206,31 @@ describe('Clerk billing webhook POST', () => {
 
     expect(response.status).toBe(500);
   });
+
+  it.each([
+    [{ status: 'inserted', result: 'skipped_deleted_user' }, 1],
+    [{ status: 'duplicate' }, 0],
+  ])(
+    'deletes the PostHog person for a user.deleted event (%o)',
+    async (result, calls) => {
+      mocks.verifyWebhook.mockResolvedValue({
+        type: 'user.deleted',
+        data: { id: 'user_deleted' },
+      });
+      mocks.applyVerifiedClerkBillingEvent.mockResolvedValue(result);
+
+      const response = await POST(request({ 'svix-id': 'evt_1' }));
+
+      expect(response.status).toBe(200);
+      expect(mocks.deletePostHogPersonForDeletedUser).toHaveBeenCalledTimes(
+        calls,
+      );
+      if (calls) {
+        expect(mocks.deletePostHogPersonForDeletedUser).toHaveBeenCalledWith(
+          'user_deleted',
+          { logger: mocks.logger },
+        );
+      }
+    },
+  );
 });

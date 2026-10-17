@@ -3,12 +3,7 @@
 
 import { isPostHogEnabledInCurrentEnvironment } from '@/lib/config/env/posthog';
 import { toBoolean } from '@/lib/config/env/shared';
-import {
-  getReplayErrorSampleRate,
-  getReplaySessionSampleRate,
-  shouldEnableLogs,
-  tracesSampler,
-} from '@/lib/observability/sampling';
+import { shouldEnableLogs, tracesSampler } from '@/lib/observability/sampling';
 import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
 import { normalizePostHogSdkHost } from '@/lib/posthog-rewrite-destinations';
 import * as Sentry from '@sentry/nextjs';
@@ -30,9 +25,6 @@ if (isSentryEnabled) {
   Sentry.init({
     dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',
 
-    // Session replay — see src/lib/observability/sampling.ts for per-env rates.
-    integrations: [Sentry.replayIntegration()],
-
     // Context-aware trace sampling (replaces flat tracesSampleRate).
     tracesSampler,
 
@@ -44,11 +36,6 @@ if (isSentryEnabled) {
     // Application Metrics are enabled explicitly so browser instrumentation can
     // use Sentry.metrics.count/gauge/distribution consistently across SDK upgrades.
     enableMetrics: true,
-
-    // Replay: 10 % sessions in prod (cost control), 100 % error replays (always).
-    // See src/lib/observability/sampling.ts for full rationale.
-    replaysSessionSampleRate: getReplaySessionSampleRate(),
-    replaysOnErrorSampleRate: getReplayErrorSampleRate(),
 
     // Intentionally gated: enable PII forwarding only with explicit opt-in via env.
     // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
@@ -71,6 +58,8 @@ if (isPostHogEnabled && posthogToken) {
     defaults: '2026-01-30',
     // Capture unhandled exceptions via PostHog Error Tracking
     capture_exceptions: true,
+    // Session recording is intentionally off (legal/CIPA); do not enable it.
+    disable_session_recording: true,
     // Debug logging in development
     debug: process.env.NODE_ENV === 'development',
   });

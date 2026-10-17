@@ -13,6 +13,7 @@ import { handleFetch } from './http/router';
 import { unauthorizedResponse, verifySignedRequest } from './http/signature';
 import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
 import { runPlanCleanup } from './jobs/plan-cleanup';
+import { runPostHogDeletion } from './jobs/posthog-deletion';
 import {
   createWorkflowModuleLessonStarter,
   handleRegenerationBatch,
@@ -170,12 +171,23 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         ]);
         return;
       case RETENTION_CLEANUP_CRON:
-        await runRetentionCleanup({
-          enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
-          logger,
-          withDb,
-          captureException: Sentry.captureException,
-        });
+        await runIndependently([
+          () =>
+            runRetentionCleanup({
+              enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
+              logger,
+              withDb,
+              captureException: Sentry.captureException,
+            }),
+          () =>
+            runPostHogDeletion({
+              enabled: isJobEnabled(workerEnv, 'POSTHOG_DELETION'),
+              apiKey: workerEnv.POSTHOG_PERSONAL_API_KEY,
+              logger,
+              withDb,
+              captureException: Sentry.captureException,
+            }),
+        ]);
         return;
       default:
         logger.warn({ cron: controller.cron }, 'No job for this cron');

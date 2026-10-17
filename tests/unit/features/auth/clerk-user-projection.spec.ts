@@ -2,10 +2,13 @@ import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
   applyClerkUserProjectionSource,
+  clerkUserDeletionProjectionSource,
   clerkUserProjectionSourceFromBackendUser,
   clerkUserProjectionSourceFromWebhook,
   reconcileClerkUserIdentities,
+  USER_SCOPED_ERASE_TABLES,
 } from '@/features/auth/clerk-user-projection';
+import { oauthStateTokens } from '@supabase/schema';
 import { describe, expect, it, vi } from 'vitest';
 
 function userUpdatedEvent(
@@ -114,6 +117,7 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
 
     expect(source).toEqual({
       kind: 'deleted',
+      origin: 'webhook',
       type: 'user.deleted',
       authUserId: 'user_identity_fixture',
       clerkDeletedAt: receivedAt,
@@ -327,7 +331,7 @@ describe('source-aware equal-watermark projection', () => {
     const localUser = {
       id: 'local_user',
       authUserId: 'user_current',
-      email: 'current@example.com',
+      email: 'authoritative@example.com',
       clerkUserUpdatedAt,
       clerkDeletedAt: null,
     };
@@ -344,38 +348,6 @@ describe('source-aware equal-watermark projection', () => {
     ).resolves.toBe('ignored');
     expect(applied.db.update).not.toHaveBeenCalled();
   });
-
-  it.each([
-    ['first@example.com', 'second@example.com'],
-    ['second@example.com', 'first@example.com'],
-  ])(
-    'rejects equal-watermark webhook payloads in either arrival order',
-    async (firstEmail, secondEmail) => {
-      const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
-      const localUser = {
-        id: 'local_user',
-        authUserId: 'user_current',
-        email: 'authoritative@example.com',
-        clerkUserUpdatedAt,
-        clerkDeletedAt: null,
-      };
-      const applied = applyDb(localUser);
-
-      for (const email of [firstEmail, secondEmail]) {
-        await expect(
-          applyClerkUserProjectionSource(
-            webhookSource(email, clerkUserUpdatedAt),
-            {
-              db: applied.db as never,
-              logger: { info: vi.fn(), warn: vi.fn() },
-            },
-          ),
-        ).resolves.toBe('ignored');
-      }
-
-      expect(applied.db.update).not.toHaveBeenCalled();
-    },
-  );
 
   it('allows a strictly newer webhook email update', async () => {
     const clerkUserUpdatedAt = new Date('2026-08-11T10:10:00.000Z');
@@ -405,4 +377,109 @@ describe('source-aware equal-watermark projection', () => {
       }),
     );
   });
+});
+
+function eraseDb(
+  clerkDeletedAt: Date | null,
+  tombstoneUpdateRows: readonly { id: string }[],
+) {
+  const localUser = {
+    id: 'local_user',
+    authUserId: 'user_current',
+    email: 'current@example.com',
+    clerkUserUpdatedAt: null,
+    clerkDeletedAt,
+  };
+  const deletedTables: unknown[] = [];
+  const selectLimit = vi.fn().mockResolvedValue([localUser]);
+  const selectWhere = vi.fn().mockReturnValue({ limit: selectLimit });
+  const selectFrom = vi.fn().mockReturnValue({ where: selectWhere });
+  const updateWhere = vi.fn().mockReturnValue({
+    returning: vi.fn().mockResolvedValue(tombstoneUpdateRows),
+  });
+
+  return {
+    db: {
+      select: vi.fn().mockReturnValue({ from: selectFrom }),
+      update: vi.fn().mockReturnValue({
+        set: vi.fn().mockReturnValue({ where: updateWhere }),
+      }),
+      delete: vi.fn((table: unknown) => {
+        deletedTables.push(table);
+        return { where: vi.fn().mockResolvedValue(undefined) };
+      }),
+    },
+    deletedTables,
+  };
+}
+
+describe('deletion erase gating by origin', () => {
+  const deletedAt = new Date('2026-10-16T12:00:00.000Z');
+  const sources = {
+    webhook: () =>
+      ({
+        kind: 'deleted',
+        origin: 'webhook',
+        type: 'user.deleted',
+        authUserId: 'user_current',
+        clerkDeletedAt: deletedAt,
+      }) as const,
+    account_deletion: () =>
+      clerkUserDeletionProjectionSource(
+        'user_current',
+        deletedAt,
+        'account_deletion',
+      ),
+    reconciliation: () =>
+      clerkUserDeletionProjectionSource(
+        'user_current',
+        deletedAt,
+        'reconciliation',
+      ),
+  };
+  const logger = () => ({ info: vi.fn(), warn: vi.fn() });
+
+  it.each([
+    ['fresh', null, [{ id: 'local_user' }], 'updated'],
+    ['already tombstoned', deletedAt, [], 'skipped_deleted_user'],
+  ] as const)(
+    'erases user-scoped rows for observed deletions of a %s user',
+    async (_label, clerkDeletedAt, updateRows, expected) => {
+      for (const origin of ['webhook', 'account_deletion'] as const) {
+        const { db, deletedTables } = eraseDb(clerkDeletedAt, updateRows);
+
+        await expect(
+          applyClerkUserProjectionSource(sources[origin](), {
+            db: db as never,
+            logger: logger(),
+          }),
+        ).resolves.toBe(expected);
+
+        expect(deletedTables).toEqual([
+          ...USER_SCOPED_ERASE_TABLES,
+          oauthStateTokens,
+        ]);
+      }
+    },
+  );
+
+  it.each([
+    ['fresh', null, [{ id: 'local_user' }], 'updated'],
+    ['already tombstoned', deletedAt, [], 'skipped_deleted_user'],
+  ] as const)(
+    'never erases user-scoped rows for a reconciliation tombstone of a %s user',
+    async (_label, clerkDeletedAt, updateRows, expected) => {
+      const { db, deletedTables } = eraseDb(clerkDeletedAt, updateRows);
+
+      await expect(
+        applyClerkUserProjectionSource(sources.reconciliation(), {
+          db: db as never,
+          logger: logger(),
+        }),
+      ).resolves.toBe(expected);
+
+      expect(db.delete).not.toHaveBeenCalled();
+      expect(deletedTables).toEqual([]);
+    },
+  );
 });

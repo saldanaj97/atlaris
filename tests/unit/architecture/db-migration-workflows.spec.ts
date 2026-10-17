@@ -422,8 +422,8 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 60,
-      tag: '20260828002855_add_clerk_billing_projection_watermark',
+      idx: 61,
+      tag: '20261017151324_add_users_posthog_deleted_at',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',
@@ -455,6 +455,9 @@ describe('Supabase migration workflows', () => {
     );
     expect(expandMigrations).toContain(
       'supabase/migrations/20260828002855_add_clerk_billing_projection_watermark.sql',
+    );
+    expect(expandMigrations).toContain(
+      'supabase/migrations/20261017151324_add_users_posthog_deleted_at.sql',
     );
     expect(expandMigrations).not.toContain(
       'supabase/migrations/20260811100400_revoke_users_authenticated_insert.sql',

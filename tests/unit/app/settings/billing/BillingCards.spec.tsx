@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   getBillingAccountSnapshotMock: vi.fn(),
   redirectMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
+  shouldUseClerkUiMock: vi.fn(),
 }));
 
 vi.mock('@/features/billing/account-snapshot', () => ({
@@ -20,6 +21,16 @@ vi.mock('@/lib/api/request-boundary', () => ({
 
 vi.mock('next/navigation', () => ({
   redirect: mocks.redirectMock,
+}));
+
+vi.mock('@clerk/nextjs/experimental', () => ({
+  SubscriptionDetailsButton: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid='clerk-subscription-details'>{children}</div>
+  ),
+}));
+
+vi.mock('@/lib/auth/local-identity', () => ({
+  shouldUseClerkUi: mocks.shouldUseClerkUiMock,
 }));
 
 async function renderBillingCards(): Promise<void> {
@@ -43,6 +54,7 @@ describe('BillingCards', () => {
         db: {} as never,
       }),
     );
+    mocks.shouldUseClerkUiMock.mockReturnValue(true);
     mocks.getBillingAccountSnapshotMock.mockResolvedValue({
       tier: 'pro',
       subscriptionStatus: 'active',
@@ -86,6 +98,74 @@ describe('BillingCards', () => {
     expect(
       screen.queryByLabelText(/Monthly lesson generations/i),
     ).not.toBeInTheDocument();
+  });
+
+  it('lets paid subscribers manage or cancel and states the auto-renewal terms', async () => {
+    await renderBillingCards();
+
+    expect(
+      screen.getByRole('button', { name: 'Manage or cancel subscription' }),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        'Renews automatically at the end of each billing period until you cancel. Cancellation takes effect at the end of the current billing period.',
+      ),
+    ).toBeVisible();
+    expect(screen.getByText('Next billing date')).toBeVisible();
+  });
+
+  it('hides the cancel button and renewal notice for free users', async () => {
+    mocks.getBillingAccountSnapshotMock.mockResolvedValueOnce({
+      tier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+      usage: {
+        tier: 'free',
+        activePlans: { current: 0, limit: 1 },
+        regenerations: { used: 0, limit: 0 },
+      },
+    });
+
+    await renderBillingCards();
+
+    expect(
+      screen.queryByRole('button', { name: 'Manage or cancel subscription' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Renews automatically/)).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toBeVisible();
+  });
+
+  it('omits the Clerk cancel button in local non-Clerk mode', async () => {
+    mocks.shouldUseClerkUiMock.mockReturnValue(false);
+
+    await renderBillingCards();
+
+    expect(
+      screen.queryByRole('button', { name: 'Manage or cancel subscription' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'View plans' })).toBeVisible();
+  });
+
+  it('drops the renewal notice once the subscription is set to cancel', async () => {
+    mocks.getBillingAccountSnapshotMock.mockResolvedValueOnce({
+      tier: 'pro',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date('2026-07-01T00:00:00.000Z'),
+      cancelAtPeriodEnd: true,
+      usage: {
+        tier: 'pro',
+        activePlans: { current: 2, limit: 5 },
+        regenerations: { used: 3, limit: 10 },
+      },
+    });
+
+    await renderBillingCards();
+
+    expect(
+      screen.getByRole('button', { name: 'Manage or cancel subscription' }),
+    ).toBeVisible();
+    expect(screen.queryByText(/Renews automatically/)).not.toBeInTheDocument();
   });
 
   it('redirects signed-out users back to settings', async () => {

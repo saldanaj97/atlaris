@@ -4,6 +4,7 @@ import type { BillingPeriod, PricingPlan } from './pricing-card-model';
 
 import { PRICING_PLAN_FEATURES } from '../pricing-plan-features';
 import { PricingCards } from './PricingCards';
+import { RenewalDisclosure } from './RenewalDisclosure';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { useState } from 'react';
 
@@ -24,7 +25,7 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Starter',
     description: 'For building a steady practice.',
     features: PRICING_PLAN_FEATURES.starter,
-    fee: { amount: 1000 },
+    fee: { amount: 2500, amountFormatted: '25.00' },
     annualFee: null,
     annualMonthlyFee: null,
   },
@@ -34,7 +35,7 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     name: 'Pro',
     description: 'For deeper, longer-running work.',
     features: PRICING_PLAN_FEATURES.pro,
-    fee: { amount: 2000 },
+    fee: { amount: 10000, amountFormatted: '100.00' },
     annualFee: null,
     annualMonthlyFee: null,
   },
@@ -52,10 +53,15 @@ export function LocalPricingPreview() {
         onPeriodChange={setPeriod}
         period={period}
         plans={LOCAL_PRICING_PLANS}
-        renderAction={(_plan, _period, actionClassName) => (
-          <button className={actionClassName} disabled type='button'>
-            Preview only
-          </button>
+        renderAction={(plan, planPeriod, actionClassName) => (
+          <>
+            {(plan.fee?.amount ?? 0) > 0 ? (
+              <RenewalDisclosure period={planPeriod} plan={plan} />
+            ) : null}
+            <button className={actionClassName} disabled type='button'>
+              Preview only
+            </button>
+          </>
         )}
       />
     </div>
