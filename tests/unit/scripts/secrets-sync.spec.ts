@@ -3,7 +3,7 @@ import {
   cloudflareSecretNames,
   cloudflareSecretsPatch,
   formatPlan,
-  parseEnvironmentOutput,
+  environmentVariables,
   parseSecretNames,
   parseSyncArgs,
   planSync,
@@ -83,15 +83,27 @@ describe('parseSyncArgs', () => {
   });
 });
 
-describe('parseEnvironmentOutput', () => {
-  it('parses KEY=value lines, including quoted values', () => {
+describe('environmentVariables', () => {
+  it('keeps only variables the Environment added or changed', () => {
     expect(
-      parseEnvironmentOutput('A_KEY=one\nRESEND_FROM="Atlaris <a@b.c>"\n'),
-    ).toEqual({ A_KEY: 'one', RESEND_FROM: 'Atlaris <a@b.c>' });
+      environmentVariables(
+        {
+          HOME: '/h',
+          PATH: '/env-path',
+          A_KEY: 'one',
+          RESEND_FROM: 'Atlaris <a@b.c>',
+        },
+        { HOME: '/h', PATH: '/bin' },
+      ),
+    ).toEqual({
+      PATH: '/env-path',
+      A_KEY: 'one',
+      RESEND_FROM: 'Atlaris <a@b.c>',
+    });
   });
 
   it('rejects names that are not environment variable names, without echoing values', () => {
-    const run = () => parseEnvironmentOutput('lower=secret-value\n');
+    const run = () => environmentVariables({ lower: 'secret-value' }, {});
     expect(run).toThrow(SecretsSyncUsageError);
     expect(run).toThrow(/lower/);
     expect(run).not.toThrow(/secret-value/);

@@ -4,7 +4,6 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createInterface } from 'node:readline/promises';
 import { pathToFileURL } from 'node:url';
-import { parseEnv } from 'node:util';
 
 /**
  * Pushes one 1Password Environment to one deployment target
@@ -159,9 +158,18 @@ export function parseSyncArgs(argv: readonly string[]): SyncOptions {
   return { target, dryRun, gitBranch, redeploy, yes };
 }
 
-/** Parses `op environment read` output and rejects malformed names (values are never echoed). */
-export function parseEnvironmentOutput(output: string): Record<string, string> {
-  const values = parseEnv(output);
+/**
+ * Picks the Environment's variables out of two `op run` env dumps: one with
+ * `--environment` and a baseline without it. Rejects malformed names (values
+ * are never echoed).
+ */
+export function environmentVariables(
+  loaded: Record<string, string>,
+  baseline: Record<string, string>,
+): Record<string, string> {
+  const values = Object.fromEntries(
+    Object.entries(loaded).filter(([name, value]) => baseline[name] !== value),
+  );
   const invalid = Object.keys(values).filter(
     (name) => !VARIABLE_NAME.test(name),
   );
@@ -170,9 +178,7 @@ export function parseEnvironmentOutput(output: string): Record<string, string> {
       `Unexpected variable names in the 1Password Environment: ${invalid.join(', ')}`,
     );
   }
-  return Object.fromEntries(
-    Object.entries(values).map(([name, value]) => [name, value ?? '']),
-  );
+  return values;
 }
 
 /** The slice of `cf/config` types this script reads (`ConfigContext`, `ConfigInput`). */
@@ -279,12 +285,21 @@ type RunResult = { code: number; stdout: string; stderr: string };
 function run(
   command: string,
   args: readonly string[],
-  options: { cwd?: string; input?: string; env?: Record<string, string> } = {},
+  options: {
+    cwd?: string;
+    input?: string;
+    env?: Record<string, string>;
+    /** Use only `env`, without the parent's environment. */
+    isolateEnv?: boolean;
+  } = {},
 ): Promise<RunResult> {
+  const env = options.isolateEnv
+    ? ({ ...options.env } as NodeJS.ProcessEnv)
+    : { ...process.env, ...options.env };
   return new Promise((resolvePromise) => {
     const child = spawn(command, args, {
       cwd: options.cwd,
-      env: { ...process.env, ...options.env },
+      env,
       stdio: ['pipe', 'pipe', 'pipe'],
     });
     let stdout = '';
@@ -320,14 +335,53 @@ function runVisible(
   });
 }
 
-async function readEnvironment(target: SyncTarget) {
-  const result = await run('op', ['environment', 'read', target.environmentId]);
+/**
+ * The only parent variables `op run` gets: enough to sign in through the
+ * desktop app or a service account. Keeping the rest out stops a shell export
+ * that matches an Environment value from hiding that variable in the diff.
+ */
+function opBaseEnv(): Record<string, string> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] =>
+        entry[1] !== undefined &&
+        (['HOME', 'PATH', 'USER', 'TMPDIR'].includes(entry[0]) ||
+          entry[0].startsWith('OP_') ||
+          entry[0].startsWith('XDG_')),
+    ),
+  );
+}
+
+/** Env of a Node child started by `op run` with `opArgs`, as JSON. */
+async function opRunEnv(opArgs: readonly string[], source: string) {
+  const result = await run(
+    'op',
+    [
+      'run',
+      ...opArgs,
+      '--no-masking',
+      '--',
+      process.execPath,
+      '-e',
+      'process.stdout.write(JSON.stringify(process.env))',
+    ],
+    { env: opBaseEnv(), isolateEnv: true },
+  );
   if (result.code !== 0) {
     throw new SecretsSyncUsageError(
-      `Could not read 1Password Environment "${target.source}". Sign in with \`op signin\` (or set OP_SERVICE_ACCOUNT_TOKEN in CI).\n${result.stderr.trim()}`,
+      `Could not read 1Password Environment "${source}". Sign in with \`op signin\` (or set OP_SERVICE_ACCOUNT_TOKEN in CI). \`op run --environment\` needs CLI 2.41.0 or later.\n${result.stderr.trim()}`,
     );
   }
-  return parseEnvironmentOutput(result.stdout);
+  return JSON.parse(result.stdout) as Record<string, string>;
+}
+
+async function readEnvironment(target: SyncTarget) {
+  const loaded = await opRunEnv(
+    ['--environment', target.environmentId],
+    target.source,
+  );
+  const baseline = await opRunEnv([], target.source);
+  return environmentVariables(loaded, baseline);
 }
 
 /**
