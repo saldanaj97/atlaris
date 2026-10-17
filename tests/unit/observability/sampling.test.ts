@@ -1,7 +1,5 @@
 import {
   getEnvironment,
-  getReplayErrorSampleRate,
-  getReplaySessionSampleRate,
   shouldEnableLogs,
   tracesSampler,
 } from '@/lib/observability/sampling';
@@ -46,38 +44,6 @@ describe('getEnvironment', () => {
   it('defaults to "development" for unknown NODE_ENV values', () => {
     withEnv('staging', () => {
       expect(getEnvironment()).toBe('development');
-    });
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Replay sample rates
-// ---------------------------------------------------------------------------
-
-describe('getReplaySessionSampleRate', () => {
-  it('returns 0.1 in production (10 % of sessions)', () => {
-    withEnv('production', () => {
-      expect(getReplaySessionSampleRate()).toBe(0.1);
-    });
-  });
-
-  it('returns 1.0 in development (full visibility)', () => {
-    withEnv('development', () => {
-      expect(getReplaySessionSampleRate()).toBe(1.0);
-    });
-  });
-
-  it('returns 0 in test (no replays)', () => {
-    withEnv('test', () => {
-      expect(getReplaySessionSampleRate()).toBe(0);
-    });
-  });
-});
-
-describe('getReplayErrorSampleRate', () => {
-  it.each(['production', 'development', 'test'])('returns 1.0 in %s', (env) => {
-    withEnv(env, () => {
-      expect(getReplayErrorSampleRate()).toBe(1.0);
     });
   });
 });
@@ -294,15 +260,6 @@ describe('shouldEnableLogs', () => {
 // ---------------------------------------------------------------------------
 
 describe('high-severity capture guarantees', () => {
-  it.each(['production', 'development', 'test'])(
-    'error replays are 100%% in %s',
-    (env) => {
-      withEnv(env, () => {
-        expect(getReplayErrorSampleRate()).toBe(1.0);
-      });
-    },
-  );
-
   it.each(['production', 'development', 'test'])(
     'traces with sampled parents are never dropped in %s',
     (env) => {

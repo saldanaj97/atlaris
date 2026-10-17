@@ -177,7 +177,6 @@ describe('legacy Cursor Cloud PostgreSQL safety boundary', () => {
 
     expect(config.install).toContain('nvm install 24');
     expect(config.start).toContain('nvm use 24');
-    expect(config.start).toContain('codex-1password-env.sh');
   });
 
   it('checks effective column grants, all application RLS, and canonical seed identity', async () => {

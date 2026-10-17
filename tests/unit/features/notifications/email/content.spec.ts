@@ -5,6 +5,7 @@ import {
   qualifyStreakReminder,
   qualifyWeeklySummary,
   requiredActivityDateWindow,
+  SENDER_POSTAL_ADDRESS,
   STREAK_REMINDER_THRESHOLD,
 } from '@/features/notifications/email/content';
 import { addDays } from '@/shared/analytics/learning-activity-time';
@@ -121,6 +122,10 @@ describe('email content eligibility', () => {
     expect(contents[0]?.message.headers?.['List-Unsubscribe']).toContain(
       'https://atlaris.app/unsub',
     );
+    for (const content of contents) {
+      expect(content.message.text).toContain(SENDER_POSTAL_ADDRESS);
+      expect(content.message.html).toContain(SENDER_POSTAL_ADDRESS);
+    }
   });
 
   it('escapes HTML in daily reminder plan topics', () => {

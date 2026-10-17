@@ -99,6 +99,8 @@ PostHog is analytics ingest today (`posthog-js`, `posthog-node`, application-own
 
 The app initializes PostHog, identifies users, captures browser events, and captures server events only when `NODE_ENV=production` and the deployment is explicitly Vercel Production. `VERCEL_TARGET_ENV` takes precedence over `VERCEL_ENV`; a custom target such as `staging`, or the standard `VERCEL_ENV=preview`, disables PostHog even though Vercel sets `NODE_ENV=production` for those deployments. The browser receives the corresponding values as `NEXT_PUBLIC_VERCEL_TARGET_ENV` and `NEXT_PUBLIC_VERCEL_ENV` from `next.config.ts`. Missing deployment markers fail closed. Local development, tests, Preview, and Staging therefore do not initialize the SDK or issue application-owned PostHog captures.
 
+`POSTHOG_PERSONAL_API_KEY` (server-only) is a personal API key scoped to project `551450` with `person:write`. It lives in `atlaris-vercel-prod` and `atlaris-worker-production` only. Account deletion uses it to delete the user's PostHog person, events, and recordings (`src/features/auth/posthog-person-deletion.ts`). The in-app delete and the Clerk `user.deleted` webhook both try right away, so deletions from the Clerk dashboard are covered too, and set `users.posthog_deleted_at` when PostHog accepts. A missing key or a failed call is logged and does not block the deletion. The jobs Worker's daily `0 3 * * *` cron (`JOB_POSTHOG_DELETION_ENABLED`) retries every tombstoned user whose `posthog_deleted_at` is still null, and reports a failure to Sentry tagged `job:posthog-deletion`.
+
 ### Adding New Variables
 
 If you need a new variable:
@@ -244,10 +246,6 @@ The native stack runs no REST API, so the local app needs no Supabase URL or API
 needs `OP_ENVIRONMENT_ID` in `~/.config/atlaris/dev.sh` or the shell. Setup:
 [1Password local development](../third-party-services/1password-local-dev.md).
 
-### Cloud agents (1Password Environments)
-
-Codex / Cursor cloud agents can materialize `.env.local` from a 1Password Environment via `scripts/agents/codex-1password-env.sh`. Required cloud secrets: `OP_ENVIRONMENT_ID`, `OP_SERVICE_ACCOUNT_TOKEN`. This path is separate from Vercel hosted env templates. Full steps and overwrite rules: [1Password agents setup](../third-party-services/1password-agents-setup.md). Seeded shape reference: `.env.agents.example`.
-
 ## Logging
 
 ### Critical Rule: Server vs Client
@@ -337,7 +335,6 @@ If you think you need a direct `console.*` call, consider updating the centraliz
 ## Related Files
 
 - `docs/development/logging.md` - Comprehensive logging architecture guide
-- `docs/third-party-services/1password-agents-setup.md` - Cloud agent env bootstrap from 1Password
 - `docs/architecture/email-notification-delivery-runbook.md` - Email delivery ops + preference model
 - `src/flags.ts` - Vercel Flags declarations
 - `src/lib/config/env.ts` - Stable environment-config compatibility barrel; facet modules under `src/lib/config/env/` own definitions and validation

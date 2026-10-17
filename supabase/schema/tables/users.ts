@@ -27,6 +27,9 @@ export const users = pgTable(
       withTimezone: true,
     }),
     clerkDeletedAt: timestamp('clerk_deleted_at', { withTimezone: true }),
+    // Set when PostHog accepts the deleted user's person deletion; the jobs
+    // Worker retries tombstoned rows where it is still null.
+    posthogDeletedAt: timestamp('posthog_deleted_at', { withTimezone: true }),
     name: text('name'),
     subscriptionTier: subscriptionTier('subscription_tier')
       .notNull()

@@ -21,6 +21,12 @@ describe('SiteFooter', () => {
       within(navigation).getByRole('link', { name: 'About' }),
     ).toHaveAttribute('href', '/about');
     expect(
+      within(navigation).getByRole('link', { name: 'Terms' }),
+    ).toHaveAttribute('href', '/terms');
+    expect(
+      within(navigation).getByRole('link', { name: 'Privacy' }),
+    ).toHaveAttribute('href', '/privacy');
+    expect(
       within(footer).getByRole('link', { name: 'support@atlaris.app' }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
     expect(

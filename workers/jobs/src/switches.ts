@@ -10,6 +10,7 @@ export const JOB_NAMES = [
   'REGENERATION',
   'MODULE_LESSONS',
   'PLAN_GENERATION',
+  'POSTHOG_DELETION',
 ] as const;
 
 export type JobName = (typeof JOB_NAMES)[number];
