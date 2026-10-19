@@ -1,11 +1,12 @@
 import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { failJob, enqueueJob, getNextJob } from '@/features/jobs/queue';
+import { enqueueJobWithResult, failJob } from '@/features/jobs/queue';
 import { JOB_TYPES } from '@/features/jobs/types';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
 import { jobQueue, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createPlan } from '@tests/fixtures/plans';
+import { claimPendingRegenerationJob } from '@tests/helpers/db/jobs';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, eq } from 'drizzle-orm';
@@ -20,12 +21,15 @@ async function createProcessingRegenerationJob(scenario: string) {
     subscriptionTier: 'pro',
   });
   const plan = await createPlan(userId);
-  const jobId = await enqueueJob(JOB_TYPES.PLAN_REGENERATION, plan.id, userId, {
-    planId: plan.id,
-  });
-  const claimed = await getNextJob([JOB_TYPES.PLAN_REGENERATION]);
+  const { id: jobId } = await enqueueJobWithResult(
+    JOB_TYPES.PLAN_REGENERATION,
+    plan.id,
+    userId,
+    { planId: plan.id },
+  );
+  const claimed = await claimPendingRegenerationJob(jobId);
 
-  expect(claimed?.id).toBe(jobId);
+  expect(claimed?.status).toBe('processing');
 
   return { jobId, planId: plan.id, userId };
 }
@@ -83,8 +87,8 @@ describe('regeneration provider-start quota settlement', () => {
       .update(jobQueue)
       .set({ scheduledFor: new Date() })
       .where(eq(jobQueue.id, fixture.jobId));
-    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(
-      fixture.jobId,
+    expect((await claimPendingRegenerationJob(fixture.jobId))?.status).toBe(
+      'processing',
     );
 
     const retrySettlement = await reserveRegenerationQuotaAtProviderStart({

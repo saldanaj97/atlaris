@@ -2,11 +2,7 @@ import type { DbClient } from '@/lib/db/types';
 
 import { makeDbClient } from '../../fixtures/db-mocks';
 import { buildUserFixture } from '../../fixtures/users';
-import {
-  createUser,
-  getOrCreateUser,
-  getUserByAuthId,
-} from '@/lib/db/queries/users';
+import { getOrCreateUser, getUserByAuthId } from '@/lib/db/queries/users';
 import { describe, expect, it, vi } from 'vitest';
 
 function makeRacingInsertClient(
@@ -65,34 +61,6 @@ describe('users queries', () => {
     expect(user?.id).toBe('internal-user-3-db');
     expect(user?.analyticsTimezone).toBe('America/Chicago');
     expect(select).toHaveBeenCalledTimes(1);
-  });
-
-  it('uses the explicit client for createUser', async () => {
-    const returning = vi.fn().mockResolvedValue([
-      {
-        id: 'internal-user-4',
-        authUserId: 'auth-user-4',
-        email: 'user4@example.com',
-        name: 'User Four',
-      },
-    ]);
-    const values = vi.fn().mockReturnValue({ returning });
-    const insert = vi.fn().mockReturnValue({ values });
-    const dbClient = makeDbClient({
-      insert: insert as unknown as DbClient['insert'],
-    });
-
-    const user = await createUser(
-      {
-        authUserId: 'auth-user-4',
-        email: 'user4@example.com',
-        name: 'User Four',
-      },
-      dbClient,
-    );
-
-    expect(user?.id).toBe('internal-user-4');
-    expect(insert).toHaveBeenCalledTimes(1);
   });
 
   it('defaults actor preference values when no preference row exists', async () => {

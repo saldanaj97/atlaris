@@ -5,10 +5,6 @@ import type {
   PlanSummary,
 } from '@/shared/types/db.types';
 
-import {
-  buildDashboardProgressTotals,
-  type DashboardProgressTotals,
-} from '@/features/plans/read-projection/dashboard-progress';
 import { formatRelativePast } from '@/lib/date/relative-time';
 
 type DatedActivity = {
@@ -118,26 +114,6 @@ export function getDashboardHeroDescription(activePlan?: PlanSummary): string {
   }
 
   return `You’re ${progressPercent}% through ${activePlan.plan.topic}. Keep the momentum going.`;
-}
-
-export function getDashboardGreeting(
-  name: string | null | undefined,
-  activePlan?: PlanSummary,
-): string {
-  return `${getDashboardHeroTitle(name)} ${getDashboardHeroDescription(activePlan)}`;
-}
-
-export function getDashboardProgressStats(
-  summaries: PlanSummary[],
-): DashboardProgressTotals {
-  return buildDashboardProgressTotals(
-    summaries.map((summary) => ({
-      completedModules: summary.completedModules,
-      totalModules: summary.modules.length,
-      completedTasks: summary.completedTasks,
-      totalTasks: summary.totalTasks,
-    })),
-  );
 }
 
 export function getOrderedPlanModules(plan: PlanSummary): Module[] {

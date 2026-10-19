@@ -49,16 +49,13 @@ describe('pnpm test dispatcher', () => {
     );
   });
 
-  it('supports the aggregate suite and optional e2e phase', () => {
+  it('supports the aggregate suite', () => {
     expect(parseTestArgs(['all']).map((phase) => phase.label)).toEqual([
       'check',
       'unit',
       'integration',
       'security',
     ]);
-    expect(parseTestArgs(['all', '--e2e']).map((phase) => phase.label)).toEqual(
-      ['check', 'unit', 'integration', 'security', 'e2e'],
-    );
   });
 
   it('forwards smoke runner options without changing suite semantics', () => {
@@ -80,9 +77,7 @@ describe('pnpm test dispatcher', () => {
   });
 
   it('leaves the database choice to the environment by default', () => {
-    const commands = parseTestArgs(['all', '--e2e']).flatMap(
-      (phase) => phase.commands,
-    );
+    const commands = parseTestArgs(['all']).flatMap((phase) => phase.commands);
 
     for (const command of commands) {
       expect(command.env?.ATLARIS_TEST_DB).toBeUndefined();
@@ -133,6 +128,8 @@ describe('pnpm test dispatcher', () => {
       TestCliUsageError,
     );
     expect(() => parseTestArgs(['unknown'])).toThrow(TestCliUsageError);
+    expect(() => parseTestArgs(['e2e'])).toThrow(TestCliUsageError);
+    expect(() => parseTestArgs(['all', '--e2e'])).toThrow(TestCliUsageError);
   });
 
   it('preserves a direct suite exit code instead of normalizing it', async () => {

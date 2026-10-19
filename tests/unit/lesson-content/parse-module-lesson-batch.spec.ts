@@ -1,6 +1,6 @@
 import { ParserError } from '@/features/ai/parser';
 import {
-  parseModuleLessonBatchFromStream,
+  bufferModuleLessonBatchStream,
   parseModuleLessonBatchText,
 } from '@/features/lesson-content/parse-module-lesson-batch';
 import { logger } from '@/lib/logging/logger';
@@ -227,14 +227,16 @@ describe('parseModuleLessonBatchText', () => {
   });
 });
 
-describe('parseModuleLessonBatchFromStream', () => {
-  it('accumulates stream chunks then parses', async () => {
+describe('bufferModuleLessonBatchStream', () => {
+  it('accumulates stream chunks into parseable text', async () => {
     const json = JSON.stringify(validPayload());
     const chunks = [json.slice(0, 4), json.slice(4)];
     async function* gen() {
       for (const c of chunks) yield c;
     }
-    const out = await parseModuleLessonBatchFromStream(gen(), [taskA, taskB]);
+    const buffer = await bufferModuleLessonBatchStream(gen());
+    expect(buffer).toBe(json);
+    const out = parseModuleLessonBatchText(buffer, [taskA, taskB]);
     expect(out.version).toBe(1);
     expect(out.tasks[0].taskId).toBe(taskA);
   });

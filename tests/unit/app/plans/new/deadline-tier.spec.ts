@@ -1,9 +1,9 @@
 import {
   buildDeadlineOptionsForTier,
-  CUSTOM_DEADLINE_VALUE,
   isDeadlinePresetEnabled,
   isSelectedDeadlineAllowedForTier,
 } from '@/app/(app)/plans/new/components/plan-form/deadline-tier';
+import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { describe, expect, it } from 'vitest';
 
 describe('deadline options for actor tier', () => {

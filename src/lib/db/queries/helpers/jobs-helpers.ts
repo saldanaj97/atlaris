@@ -17,16 +17,6 @@ const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
   new Set(Object.values(JOB_TYPES) as JobType[]),
 );
 
-/**
- * Clamps a numeric limit to [0, max], truncating non-integers. Non-finite values become max.
- */
-export function clampLimit(limit: number, max: number): number {
-  if (!Number.isFinite(limit)) {
-    return max;
-  }
-  return Math.max(0, Math.min(Math.trunc(limit), max));
-}
-
 /** Shared predicate for "active" regeneration job (pending or processing) for a plan/user. */
 export function activeRegenerationJobWhere(planId: string, userId: string) {
   return and(
@@ -80,17 +70,6 @@ function mapValidatedRowToJob(row: JobQueueRow, jobType: JobType): Job {
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };
-}
-
-export function assertValidJobTypes(
-  values: readonly unknown[],
-): asserts values is JobType[] {
-  const allValid = values.every(
-    (v) => typeof v === 'string' && ALLOWED_JOB_TYPES.has(v as JobType),
-  );
-  if (!allValid) {
-    throw new Error('Invalid job type(s) received');
-  }
 }
 
 /**

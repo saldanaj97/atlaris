@@ -1,4 +1,4 @@
-export type { PlanDetailsCardStats, PlanOverviewStats } from './types';
+export type { PlanOverviewStats } from './types';
 export {
   buildTaskStatusMap,
   deriveActiveModuleId,
@@ -8,6 +8,5 @@ export {
   deriveLessonState,
   deriveModuleCompletionSummary,
   deriveModuleProgressState,
-  derivePlanDetailsCardStats,
   derivePlanOverviewStats,
 } from './visible-state';

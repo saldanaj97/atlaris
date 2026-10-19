@@ -1,9 +1,6 @@
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
-import {
-  buildModelPricingSnapshot,
-  parseModelPricingSnapshot,
-} from '@/features/ai/model-pricing-snapshot';
+import { buildModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
 
@@ -66,54 +63,6 @@ describe('buildModelPricingSnapshot', () => {
           model: 'unknown/unknown-model-xyz',
         }),
       ),
-    ).toBeNull();
-  });
-
-  it('parses a valid stored snapshot', () => {
-    const parsed = parseModelPricingSnapshot({
-      version: 1,
-      source: 'local_catalog',
-      requestedModelId: 'openai/gpt-4o',
-      pricedModelId: 'openai/gpt-4o',
-      inputTokens: 100,
-      outputTokens: 200,
-      inputCostUsdPerMillion: 2.5,
-      outputCostUsdPerMillion: 10,
-    });
-
-    expect(parsed).toMatchObject({
-      version: 1,
-      source: 'local_catalog',
-      requestedModelId: 'openai/gpt-4o',
-    });
-  });
-
-  it('rejects malformed stored snapshots', () => {
-    expect(
-      parseModelPricingSnapshot({
-        version: 1,
-        source: 'local_catalog',
-        requestedModelId: 'openai/gpt-4o',
-        pricedModelId: 'openai/gpt-4o',
-        inputTokens: -1,
-        outputTokens: 200,
-        inputCostUsdPerMillion: 2.5,
-        outputCostUsdPerMillion: 10,
-      }),
-    ).toBeNull();
-
-    expect(
-      parseModelPricingSnapshot({
-        version: 1,
-        source: 'local_catalog',
-        requestedModelId: 'openai/gpt-4o',
-        pricedModelId: 'openai/gpt-4o',
-        inputTokens: 100,
-        outputTokens: 200,
-        inputCostUsdPerMillion: 2.5,
-        outputCostUsdPerMillion: 10,
-        extra: true,
-      }),
     ).toBeNull();
   });
 });

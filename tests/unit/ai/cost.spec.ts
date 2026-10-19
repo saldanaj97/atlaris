@@ -1,12 +1,9 @@
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-
 import {
   AVAILABLE_MODELS,
   getModelById,
   getModelsForTier,
 } from '@/features/ai/ai-models';
 import {
-  calculateCostFromUsage,
   computeCostCents,
   DEFAULT_OUTPUT_TOKEN_CEILING,
   getOutputTokenCeiling,
@@ -74,77 +71,6 @@ describe('computeCostCents', () => {
       // Cost should be positive for non-trivial usage on paid models
       expect(cost).toBeGreaterThan(0);
     }
-  });
-});
-
-// ─── calculateCostFromUsage ──────────────────────────────────────
-
-describe('calculateCostFromUsage', () => {
-  it('derives cost deterministically from canonical usage', () => {
-    const usage: CanonicalAIUsage = {
-      inputTokens: 1_000_000,
-      outputTokens: 500_000,
-      totalTokens: 1_500_000,
-      model: 'openai/gpt-4o',
-      provider: 'openrouter',
-      estimatedCostCents: 999, // should be ignored — recalculated from model pricing
-      providerCostMicrousd: null,
-      isPartial: false,
-      missingFields: [],
-    };
-    // 1M input at $2.5/M + 500K output at $10/M = 250 + 500 = 750 cents
-    expect(calculateCostFromUsage(usage)).toBe(750);
-  });
-
-  it('throws for unknown model regardless of estimatedCostCents', () => {
-    const usage: CanonicalAIUsage = {
-      inputTokens: 100_000,
-      outputTokens: 50_000,
-      totalTokens: 150_000,
-      model: 'totally-unknown-model',
-      provider: 'openrouter',
-      estimatedCostCents: 500,
-      providerCostMicrousd: null,
-      isPartial: false,
-      missingFields: [],
-    };
-    expect(() => calculateCostFromUsage(usage)).toThrow(
-      /Unknown model "totally-unknown-model"/,
-    );
-  });
-
-  it('is deterministic — repeated calls return same value', () => {
-    const usage: CanonicalAIUsage = {
-      inputTokens: 50_000,
-      outputTokens: 25_000,
-      totalTokens: 75_000,
-      model: 'openai/gpt-4o',
-      provider: 'openrouter',
-      estimatedCostCents: 0,
-      providerCostMicrousd: null,
-      isPartial: false,
-      missingFields: [],
-    };
-    const first = calculateCostFromUsage(usage);
-    const second = calculateCostFromUsage(usage);
-    const third = calculateCostFromUsage(usage);
-    expect(first).toBe(second);
-    expect(second).toBe(third);
-  });
-
-  it('returns 0 for free models', () => {
-    const usage: CanonicalAIUsage = {
-      inputTokens: 500_000,
-      outputTokens: 200_000,
-      totalTokens: 700_000,
-      model: 'openrouter/free',
-      provider: 'openrouter',
-      estimatedCostCents: 0,
-      providerCostMicrousd: null,
-      isPartial: false,
-      missingFields: [],
-    };
-    expect(calculateCostFromUsage(usage)).toBe(0);
   });
 });
 
