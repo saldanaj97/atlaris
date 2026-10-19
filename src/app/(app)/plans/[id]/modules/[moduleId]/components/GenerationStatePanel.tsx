@@ -3,7 +3,6 @@ import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projec
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
-import { cn } from '@/lib/utils';
 import { Loader2 } from 'lucide-react';
 
 function getGenerationStatusLabel(
@@ -43,32 +42,22 @@ function GenerationDescription({
 
   return (
     <div className='min-w-0'>
-      <h3 className='text-xl leading-7 font-semibold text-foreground'>
-        Detailed lesson content
-      </h3>
+      <h3 className='type-card text-foreground'>Detailed lesson content</h3>
       {isFailed ? (
-        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+        <p className='mt-2 type-body text-muted-foreground'>
           Generation failed. Retry to create fresh lesson content for this
           module.
         </p>
       ) : (
-        <p className='mt-2 text-sm leading-[22px] text-muted-foreground'>
+        <p className='mt-2 type-body text-muted-foreground'>
           Generation is running for the full module. You can keep reviewing
           lessons, resources, and progress while content is prepared.
         </p>
       )}
       <div className='mt-4 flex flex-wrap items-center gap-2'>
-        <Badge
-          variant={isFailed ? 'destructive' : 'outline'}
-          className={cn(
-            !isFailed &&
-              'border-link/40 bg-action-soft text-link hover:bg-action-soft',
-          )}
-        >
-          {badge}
-        </Badge>
+        <Badge variant={isFailed ? 'destructive' : 'info'}>{badge}</Badge>
         {generationTakingLong && !isFailed ? (
-          <p className='text-sm font-medium text-warning'>
+          <p className='type-label text-warning'>
             Generation taking longer than expected
           </p>
         ) : null}
@@ -99,7 +88,7 @@ function GenerationAction({
   }
 
   return (
-    <div className='flex items-center gap-2 text-sm font-medium text-primary'>
+    <div className='flex items-center gap-2 type-label text-primary'>
       <span className='animate-spin motion-reduce:animate-none'>
         <Loader2 className='size-4' />
       </span>

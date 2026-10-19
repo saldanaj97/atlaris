@@ -2,6 +2,8 @@
 
 Index of every folder and file under `docs/`. Paths are relative to this file.
 
+**In-flight work is not in `docs/`.** Plans and status for active tickets (`JCS-*`) live in Linear and on the tsk board (`tsk list --json`). Session recaps are local and untracked: `.daily-recap/` (daily notes) and `.agents/recaps/<date>/` (orchestration waves), both linked from the main checkout. Check those before searching the repo for a ticket's plan.
+
 ## Root
 
 | File | Description |
@@ -85,6 +87,7 @@ Local development, env, deploy, and logging.
 | [supabase-native-spike.md](./development/supabase-native-spike.md) | JCS-121 spike: Supabase native (Docker-free) local stack evidence and go/no-go |
 | [logging.md](./development/logging.md) | Server/client logging and Sentry |
 | [secrets-sync.md](./development/secrets-sync.md) | `pnpm secrets:sync`: push 1Password Environments to Workers and Vercel; production Worker workflow |
+| [shadcn-lint.md](./development/shadcn-lint.md) | `@shadcn/lint` rules, `no-restyle` contracts, and what to do when lint blocks a class |
 | [workers-local-dev.md](./development/workers-local-dev.md) | Cloudflare jobs Worker local loop: `pnpm workers dev` (`cf dev`), health check, cron trigger, `.dev.vars`, types and bundle gates |
 
 ## `security/`
@@ -99,7 +102,7 @@ Security audits and supply-chain policy.
 
 ## `styles/`
 
-Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
+Canonical design specification. Shared foundations and JCS-65 implementation slices are adopted; JCS-65 and JCS-97 were closed on 2026-10-14 without a separate integrated visual-acceptance pass.
 
 | File | Description |
 |------|-------------|
@@ -168,6 +171,7 @@ docs/
 │   ├── supabase-native-spike.md
 │   ├── logging.md
 │   ├── secrets-sync.md
+│   ├── shadcn-lint.md
 │   └── workers-local-dev.md
 ├── security/
 │   ├── codex-scan-verification-2026-08-20.md

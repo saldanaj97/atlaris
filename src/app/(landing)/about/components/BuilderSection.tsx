@@ -36,7 +36,7 @@ export function BuilderSection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-builder-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               Built for the hours you have.
@@ -45,7 +45,7 @@ export function BuilderSection() {
               </span>
             </h2>
             <p
-              className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+              className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 2 } as CSSProperties}
             >
               Atlaris stays small on purpose. The product centers structured
@@ -53,7 +53,7 @@ export function BuilderSection() {
               points back to useful work.
             </p>
             <p
-              className={`mt-4 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+              className={`mt-4 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 3 } as CSSProperties}
             >
               Atlaris began as a simple idea: name a goal once, get a route that

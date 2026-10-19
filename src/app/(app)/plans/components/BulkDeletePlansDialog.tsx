@@ -224,7 +224,7 @@ export function BulkDeletePlansDialog({
         {errorMessage ? (
           <p
             role='alert'
-            className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 text-sm text-danger'
+            className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 type-body text-danger'
           >
             {errorMessage}
           </p>

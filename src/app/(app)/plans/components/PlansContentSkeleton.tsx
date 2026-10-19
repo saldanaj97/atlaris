@@ -1,3 +1,4 @@
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
@@ -31,7 +32,15 @@ export function PlansChromeSkeleton() {
 /** Skeleton for the plan card library below the hero. */
 export function PlansContentSkeleton() {
   return (
-    <div className='space-y-6' aria-busy='true' aria-label='Loading plans'>
+    <div className='space-y-3' aria-busy='true' aria-label='Loading plans'>
+      <LoadingStatus>Loading plans</LoadingStatus>
+      <div className='flex min-h-11 items-center justify-between gap-3'>
+        <div className='flex items-center gap-2'>
+          <Skeleton className='size-5' />
+          <Skeleton className='h-4 w-28' />
+        </div>
+        <Skeleton className='h-4 w-14' />
+      </div>
       <div className='grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'>
         {[1, 2, 3, 4, 5, 6].map((item) => (
           <PlanCardSkeleton key={`plan-card-skeleton-${item}`} />
@@ -44,22 +53,29 @@ export function PlansContentSkeleton() {
 function PlanCardSkeleton() {
   return (
     <div className='overflow-hidden rounded-lg border border-panel-border bg-panel'>
-      <div className='space-y-4 p-4 sm:p-5'>
-        <div className='flex items-center justify-between gap-2'>
-          <Skeleton className='h-6 w-20' />
+      <div className='p-4 sm:p-5'>
+        <div className='flex items-start justify-between gap-2'>
+          <Skeleton className='h-6 w-3/4' />
           <Skeleton className='size-8 rounded-[8px]' />
         </div>
-        <div className='space-y-2'>
-          <Skeleton className='h-5 w-3/4' />
-          <Skeleton className='h-4 w-full' />
-          <Skeleton className='h-4 w-2/3' />
+        <div className='mt-2 flex items-center gap-2'>
+          <Skeleton className='h-5 w-16 rounded-full' />
+          <Skeleton className='h-4 w-24' />
         </div>
-        <Skeleton className='h-2 w-full' />
-        <div className='grid grid-cols-2 gap-4 border-t border-border/70 pt-4'>
-          <Skeleton className='h-8 w-20' />
-          <Skeleton className='h-8 w-24' />
+        <div className='mt-5 space-y-2'>
+          <div className='flex items-center justify-between'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-4 w-8' />
+          </div>
+          <Skeleton className='h-2 w-full' />
         </div>
-        <Skeleton className='h-10 w-full rounded-[8px]' />
+        <div className='mt-5 flex items-center justify-between gap-3 border-t border-border/70 pt-2'>
+          <div className='flex min-h-11 items-center gap-2'>
+            <Skeleton className='size-5' />
+            <Skeleton className='h-4 w-12' />
+          </div>
+          <Skeleton className='h-8 w-32' />
+        </div>
       </div>
     </div>
   );

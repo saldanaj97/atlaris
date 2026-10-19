@@ -1,8 +1,10 @@
 import { ROUTES } from '@/features/navigation/routes';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
+  routerRefreshMock: vi.fn(),
   getBillingAccountSnapshotMock: vi.fn(),
   redirectMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
@@ -10,6 +12,7 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/features/billing/account-snapshot', () => ({
+  BillingSnapshotNotFoundError: class BillingSnapshotNotFoundError extends Error {},
   getBillingAccountSnapshot: mocks.getBillingAccountSnapshotMock,
 }));
 
@@ -21,6 +24,7 @@ vi.mock('@/lib/api/request-boundary', () => ({
 
 vi.mock('next/navigation', () => ({
   redirect: mocks.redirectMock,
+  useRouter: () => ({ refresh: mocks.routerRefreshMock }),
 }));
 
 vi.mock('@clerk/nextjs/experimental', () => ({
@@ -181,5 +185,25 @@ describe('BillingCards', () => {
     expect(mocks.redirectMock).toHaveBeenCalledWith(
       `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.SETTINGS.BILLING)}`,
     );
+  });
+
+  it('offers a retry that refreshes the route when the billing snapshot is unavailable', async () => {
+    const { BillingSnapshotNotFoundError } =
+      await import('@/features/billing/account-snapshot');
+    mocks.getBillingAccountSnapshotMock.mockRejectedValue(
+      new BillingSnapshotNotFoundError('missing snapshot'),
+    );
+    const user = userEvent.setup();
+
+    await renderBillingCards();
+
+    expect(screen.getAllByRole('alert')).toHaveLength(2);
+    expect(
+      screen.queryByText('Unavailable right now.'),
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
+
+    expect(mocks.routerRefreshMock).toHaveBeenCalledOnce();
   });
 });

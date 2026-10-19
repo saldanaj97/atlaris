@@ -36,12 +36,12 @@ export function InstrumentsSection() {
             </SectionOverline>
             <h2
               id='landing-instruments-heading'
-              className='mt-5 max-w-[14ch] font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl'
+              className='mt-5 max-w-[14ch] type-display-section text-balance text-foreground'
             >
               Make progress{' '}
               <span className='text-primary italic'>with purpose.</span>
             </h2>
-            <p className='mt-5 max-w-md font-sans text-base leading-relaxed text-muted-foreground'>
+            <p className='mt-5 max-w-md type-reading text-muted-foreground'>
               Follow a clear learning path, complete hands-on projects, and
               build skills that actually move you forward.
             </p>
@@ -49,7 +49,7 @@ export function InstrumentsSection() {
               {PROGRESS_POINTS.map((point) => (
                 <li
                   key={point}
-                  className='inline-flex w-full items-center gap-2 font-sans text-sm text-foreground'
+                  className='inline-flex w-full items-center gap-2 type-body text-foreground'
                 >
                   <Check className='size-4 text-primary' aria-hidden='true' />
                   {point}

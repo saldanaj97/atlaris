@@ -89,13 +89,10 @@ function LessonProgressPanel({
     <aside aria-labelledby={headingId} className='min-w-0 xl:sticky xl:top-24'>
       <div className='overflow-hidden rounded-lg border border-panel-border bg-panel-muted shadow-sm max-xl:rounded-none max-xl:border-0 max-xl:bg-transparent max-xl:shadow-none'>
         <div className='min-w-0 px-4 py-4 max-xl:sr-only sm:px-5'>
-          <h2
-            id={headingId}
-            className='text-xl leading-7 font-semibold text-foreground'
-          >
+          <h2 id={headingId} className='type-card text-foreground'>
             Lesson progress
           </h2>
-          <p className='mt-2 text-sm leading-[22px] text-muted-foreground tabular-nums'>
+          <p className='mt-2 type-body text-muted-foreground tabular-nums'>
             {totalLessons > 0
               ? `${completedLessons} of ${totalLessons} lesson${totalLessons === 1 ? '' : 's'}${
                   completionPercent !== null ? ` · ${completionPercent}%` : ''
@@ -105,7 +102,7 @@ function LessonProgressPanel({
         </div>
 
         {totalLessons === 0 ? (
-          <p className='px-4 py-5 text-sm text-muted-foreground max-xl:px-0 max-xl:pt-3 sm:px-5'>
+          <p className='px-4 py-5 type-body text-muted-foreground max-xl:px-0 max-xl:pt-3 sm:px-5'>
             Lesson progress will appear when this module has lessons.
           </p>
         ) : (
@@ -116,7 +113,7 @@ function LessonProgressPanel({
                 aria-label={`Lesson progress: ${completionPercent}%`}
                 className='h-2'
               />
-              <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
+              <span className='shrink-0 type-meta text-muted-foreground tabular-nums'>
                 {completionPercent}%
               </span>
             </div>
@@ -130,7 +127,7 @@ function LessonProgressPanel({
                   const isCurrent =
                     lesson.id === firstUnlockedIncompleteLessonId;
                   const rowClassName = cn(
-                    'flex min-h-11 min-w-0 max-w-full items-center gap-3 rounded-lg border px-3 py-2 text-sm transition-colors motion-reduce:transition-none',
+                    'flex min-h-11 min-w-0 max-w-full items-center gap-3 rounded-lg border px-3 py-2 type-label transition-colors motion-reduce:transition-none',
                     isCurrent
                       ? 'border-primary/20 bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground',
@@ -165,7 +162,7 @@ function LessonProgressPanel({
                                 : ', available'}
                         </span>
                       </span>
-                      <span className='shrink-0 text-xs tabular-nums'>
+                      <span className='shrink-0 type-meta tabular-nums'>
                         {formatMinutes(lesson.estimatedMinutes)}
                       </span>
                     </>
@@ -264,7 +261,7 @@ export function ModuleLessonsClient({
             setOutlineOpen(event.currentTarget.open);
           }}
         >
-          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-panel-border bg-panel-muted px-4 py-3 text-sm text-foreground shadow-sm [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
+          <summary className='flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-panel-border bg-panel-muted px-4 py-3 type-body text-foreground shadow-sm [&::-webkit-details-marker]:hidden [&::marker]:content-none'>
             <span className='font-semibold'>Lesson progress</span>
             {totalLessons > 0 ? (
               <span className='text-muted-foreground tabular-nums'>
@@ -302,11 +299,11 @@ export function ModuleLessonsClient({
           <div className='mb-6 flex min-w-0 items-baseline justify-between gap-4 border-b border-border pb-2'>
             <h2
               id='lessons-heading'
-              className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'
+              className='type-eyebrow text-muted-foreground'
             >
               Lessons
             </h2>
-            <span className='shrink-0 text-xs text-muted-foreground tabular-nums'>
+            <span className='shrink-0 type-meta text-muted-foreground tabular-nums'>
               {totalLessons > 0
                 ? `${completedLessons}/${totalLessons} completed`
                 : 'No lessons yet'}

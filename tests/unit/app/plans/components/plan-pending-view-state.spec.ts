@@ -131,7 +131,7 @@ describe('buildPlanPendingViewState', () => {
 
     expect(viewState.isRetrying).toBe(true);
     expect(viewState.panelKind).toBe('failure');
-    expect(getStatusBadgeVariant(viewState)).toBe('default');
+    expect(getStatusBadgeVariant(viewState)).toBe('info');
   });
 
   it('uses the interrupted fallback when a cancelled retry has no concrete error', () => {

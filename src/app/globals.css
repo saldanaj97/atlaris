@@ -201,6 +201,8 @@
 }
 
 @theme inline {
+  /* Font sizes come from the type-* role utilities; drop Tailwind's text-xs..9xl scale. */
+  --text-*: initial;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -393,6 +395,130 @@
   }
 }
 
+/* Type roles from docs/styles/design-system.md §04. Literal values mirror the
+ * generated --at-semantic-type-* tokens, which only exist under the dark theme.
+ * Title and display roles scale fluidly between 375px and 1280px viewports. */
+@utility type-display {
+  font-family: var(--font-family-display);
+  font-size: clamp(2.5rem, 1.88rem + 2.65vw, 4rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+}
+
+@utility type-display-compact {
+  font-family: var(--font-family-display);
+  font-size: 2.5rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.04rem;
+}
+
+@utility type-display-section {
+  font-family: var(--font-family-display);
+  font-size: clamp(1.875rem, 1.72rem + 0.66vw, 2.25rem);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+}
+
+@utility type-title-hero {
+  font-family: var(--font-family-heading);
+  font-size: clamp(2rem, 1.3rem + 3vw, 2.5rem);
+  font-weight: 600;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+@utility type-title {
+  font-family: var(--font-family-heading);
+  font-size: clamp(1.75rem, 1.4rem + 1.5vw, 2rem);
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+}
+
+@utility type-title-compact {
+  font-family: var(--font-family-heading);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.285714286;
+  letter-spacing: -0.04rem;
+}
+
+@utility type-section {
+  font-family: var(--font-family-heading);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.333333333;
+  letter-spacing: -0.015rem;
+}
+
+@utility type-card {
+  font-family: var(--font-family-heading);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 0;
+}
+
+@utility type-reading {
+  font-family: var(--font-family-base);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.625;
+  letter-spacing: 0;
+}
+
+@utility type-body {
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.571428571;
+  letter-spacing: 0;
+}
+
+@utility type-label {
+  font-family: var(--font-family-base);
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.428571429;
+  letter-spacing: 0;
+}
+
+@utility type-input {
+  font-family: var(--font-family-base);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+@utility type-meta {
+  font-family: var(--font-family-base);
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+@utility type-eyebrow {
+  font-family: var(--font-family-base);
+  font-size: 0.75rem;
+  font-weight: 600;
+  line-height: 1.333333333;
+  letter-spacing: 0.1rem;
+  text-transform: uppercase;
+}
+
+@utility type-code {
+  font-family: var(--font-mono);
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.571428571;
+  letter-spacing: 0;
+}
+
 @utility animate-dashboard-unfold {
   animation-name: dashboard-unfold;
   animation-duration: var(--motion-duration-reveal);
@@ -417,6 +543,36 @@
 
 @utility progress-indicator-determinate {
   transform: translateX(var(--progress-offset));
+}
+
+@keyframes plan-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-plan-card-enter {
+  animation-name: plan-card-enter;
+  animation-duration: var(--motion-duration-reveal);
+  animation-delay: var(--plan-card-delay, 0ms);
+  animation-timing-function: var(--motion-easing-enter);
+  /* Backwards only: hide during the stagger delay, then release transform so hover lift still applies. */
+  animation-fill-mode: backwards;
+}
+
+.animate-plan-card-enter[data-reveal='pending'] {
+  opacity: 0;
+  animation-name: none;
+}
+
+.animate-plan-card-enter[data-reveal='visible'] {
+  animation-delay: 0ms;
 }
 
 @keyframes usage-analytics-point-label-in {
@@ -499,7 +655,13 @@
 
   .animate-dashboard-unfold,
   .animate-dashboard-trace,
-  .animate-dashboard-ledger-row {
+  .animate-dashboard-ledger-row,
+  .animate-plan-card-enter,
+  .animate-usage-analytics-point-label-in {
     animation-name: none;
+  }
+
+  .animate-plan-card-enter[data-reveal='pending'] {
+    opacity: 1;
   }
 }

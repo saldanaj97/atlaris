@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 
+import { sora, workSans } from './fonts';
 import { ThemeProvider } from '@/app/ThemeProvider';
 import { VercelTelemetry } from '@/app/VercelTelemetry';
 import { Toaster } from '@/components/ui/sonner';
@@ -7,20 +8,9 @@ import { shouldUseClerkUi } from '@/lib/auth/local-identity';
 import { PostHogUserIdentifier } from '@/shared/analytics/PostHogUserIdentifier';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Sora, Work_Sans } from 'next/font/google';
 import { headers } from 'next/headers';
 
 import './globals.css';
-
-const workSans = Work_Sans({
-  subsets: ['latin'],
-  variable: '--font-work-sans',
-});
-
-const sora = Sora({
-  subsets: ['latin'],
-  variable: '--font-sora',
-});
 
 const metadataDescription =
   'Name a goal. Atlaris charts the plan and remembers where you left off.';
@@ -143,7 +133,7 @@ export default async function RootLayout({
       >
         <a
           href='#main-content'
-          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 text-sm font-medium text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 type-label text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
         >
           Skip to main content
         </a>

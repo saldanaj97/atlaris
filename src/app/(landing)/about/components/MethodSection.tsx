@@ -37,7 +37,7 @@ export function MethodSection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-method-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               What the AI does.
@@ -47,7 +47,7 @@ export function MethodSection() {
             </h2>
           </div>
           <p
-            className={`max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+            className={`max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
             style={{ '--i': 2 } as CSSProperties}
           >
             You give Atlaris a goal, your level, the hours you have each week,
@@ -74,7 +74,7 @@ export function MethodSection() {
             <MethodList title='It does not' items={IT_DOES_NOT} />
           </div>
         </div>
-        <p className='mt-4 text-center font-sans text-xs text-muted-foreground'>
+        <p className='mt-4 text-center type-meta text-muted-foreground'>
           Plans are private to your account. Email reminders stay off until you
           turn them on.
         </p>
@@ -92,8 +92,8 @@ function MethodList({
 }) {
   return (
     <div>
-      <h3 className='font-serif text-sm font-medium text-primary'>{title}</h3>
-      <ul className='mt-4 space-y-3 font-sans text-sm leading-relaxed text-muted-foreground'>
+      <h3 className='type-label font-serif text-primary'>{title}</h3>
+      <ul className='mt-4 space-y-3 type-body text-muted-foreground'>
         {items.map((item) => (
           <li key={item}>{item}</li>
         ))}

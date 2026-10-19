@@ -11,6 +11,7 @@ import {
 } from '@/app/(app)/plans/plan-status-theme';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,19 +21,20 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import {
-  ArrowRight,
-  Check,
-  Clock3,
-  MoreVertical,
-  Sparkles,
-  Trash2,
-} from 'lucide-react';
+import { ArrowRight, MoreVertical, Sparkles, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { type RefObject, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 
 interface PlanRowProps {
   plan: PlanListItem;
+  /** Position in the rendered page; staggers the entry animation. */
+  index?: number;
   referenceTimestamp: string;
   selected?: boolean;
   selectable?: boolean;
@@ -58,6 +60,46 @@ function planActionLabel(status: PlanListItem['status']): string {
   }
 }
 
+type PlanCardRevealState = 'pending' | 'visible' | undefined;
+
+/**
+ * Cards already on screen at load keep the load stagger (state stays
+ * undefined). Cards below the fold are hidden until they scroll into view.
+ */
+function usePlanCardReveal(ref: RefObject<HTMLElement | null>) {
+  const [revealState, setRevealState] = useState<PlanCardRevealState>();
+
+  useEffect(() => {
+    const element = ref.current;
+    if (
+      !element ||
+      typeof IntersectionObserver === 'undefined' ||
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    ) {
+      return;
+    }
+
+    let isFirstCallback = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      if (!entry) return;
+      const wasFirstCallback = isFirstCallback;
+      isFirstCallback = false;
+
+      if (entry.isIntersecting) {
+        if (!wasFirstCallback) setRevealState('visible');
+        observer.disconnect();
+      } else if (wasFirstCallback) {
+        setRevealState('pending');
+      }
+    });
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [ref]);
+
+  return revealState;
+}
+
 function PlanProgress({
   plan,
   progressPercent,
@@ -66,14 +108,18 @@ function PlanProgress({
   progressPercent: number;
 }) {
   if (plan.access === 'locked') {
-    return null;
+    return (
+      <p className='type-body text-muted-foreground'>
+        This plan is locked for your current access level.
+      </p>
+    );
   }
 
   if (plan.totalTasks <= 0) {
     if (plan.status === 'generating') {
       return (
         <div className='rounded-[8px] border border-border bg-panel-muted/60 p-3'>
-          <p className='text-sm text-muted-foreground'>
+          <p className='type-body text-muted-foreground'>
             Your learning path is being prepared.
           </p>
         </div>
@@ -83,7 +129,7 @@ function PlanProgress({
     if (plan.status === 'failed') {
       return (
         <div className='rounded-[8px] border border-danger/30 bg-danger-subtle p-3'>
-          <p className='text-sm text-danger'>
+          <p className='type-body text-danger'>
             We couldn&apos;t generate this plan.
           </p>
         </div>
@@ -91,7 +137,7 @@ function PlanProgress({
     }
 
     return (
-      <p className='text-sm text-muted-foreground'>
+      <p className='type-body text-muted-foreground'>
         Progress will appear when tasks are ready.
       </p>
     );
@@ -99,8 +145,10 @@ function PlanProgress({
 
   return (
     <div className='space-y-2'>
-      <div className='flex items-center justify-between gap-3 text-xs text-muted-foreground'>
-        <span>Progress</span>
+      <div className='flex items-center justify-between gap-3 type-body'>
+        <span className='text-muted-foreground tabular-nums'>
+          {plan.completedTasks} of {plan.totalTasks} tasks
+        </span>
         <span className='font-medium text-foreground tabular-nums'>
           {progressPercent}%
         </span>
@@ -117,6 +165,7 @@ function PlanProgress({
 
 export function PlanRow({
   plan,
+  index = 0,
   referenceTimestamp,
   selected = false,
   selectable = true,
@@ -134,54 +183,41 @@ export function PlanRow({
   );
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const actionsTriggerRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const revealState = usePlanCardReveal(cardRef);
   const planHref = `${ROUTES.PLANS.ROOT}/${plan.id}`;
   const isLocked = plan.access === 'locked';
 
   return (
-    <li
+    <Card
+      as='li'
+      ref={cardRef}
+      variant='interactive'
       data-state={selected ? 'selected' : undefined}
-      className={cn(
-        'group flex min-w-0 flex-col overflow-hidden rounded-lg border border-panel-border bg-panel text-panel-foreground shadow-sm transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-primary/45 hover:shadow-md motion-reduce:transform-none motion-reduce:transition-none',
-        selected && 'border-primary/70 ring-2 ring-primary/20',
-      )}
+      data-reveal={revealState}
+      style={
+        {
+          '--plan-card-delay': `${Math.min(index, 8) * 40}ms`,
+        } as CSSProperties
+      }
+      className='group gap-0 overflow-hidden py-0 animate-plan-card-enter'
     >
       <div className='flex min-h-0 flex-1 flex-col p-4 sm:p-5'>
         <div className='flex items-start justify-between gap-2'>
-          <div className='flex min-w-0 items-center gap-2'>
-            <label className='inline-flex min-h-[44px] min-w-[44px] items-center justify-center'>
-              <input
-                type='checkbox'
-                checked={selected}
-                disabled={!selectable}
-                aria-label={
-                  selectable
-                    ? `Select ${plan.topic}`
-                    : `Cannot select ${plan.topic} while it is generating`
-                }
-                onChange={(event) =>
-                  onSelectionChange?.(plan.id, event.currentTarget.checked)
-                }
-                className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
-              />
-            </label>
-            {/* oxlint-disable shadcn/require-static-classes -- This imported status recipe contains complete static classes for each plan state. */}
-            <Badge
-              variant='outline'
-              className={getPlanStatusBadgeClassName(plan.status)}
-            >
-              <span
-                className={cn(
-                  'size-1.5 rounded-full',
-                  getPlanStatusDotClassName(plan.status),
-                )}
-                aria-hidden='true'
-              />
-              {PLAN_STATUS_LABELS[plan.status]}
-            </Badge>
-            {/* oxlint-enable shadcn/require-static-classes */}
-          </div>
+          <h2 className='min-w-0 type-card wrap-break-word text-foreground'>
+            {isLocked ? (
+              plan.topic
+            ) : (
+              <Link
+                href={planHref}
+                className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel'
+              >
+                {plan.topic}
+              </Link>
+            )}
+          </h2>
 
-          <div>
+          <div className='-mt-1 -mr-2 shrink-0'>
             <DeletePlanDialog
               planId={plan.id}
               planTopic={plan.topic}
@@ -217,85 +253,66 @@ export function PlanRow({
           </div>
         </div>
 
-        <div className='mt-3 min-w-0'>
-          <h2 className='text-lg leading-6 font-semibold wrap-break-word text-foreground'>
-            {isLocked ? (
-              plan.topic
-            ) : (
-              <Link
-                href={planHref}
-                className='rounded-sm transition-colors outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-ring/50'
-              >
-                {plan.topic}
-              </Link>
-            )}
-          </h2>
-          {isLocked ? (
-            <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
-              This plan is locked for your current access level.
-            </p>
-          ) : (
-            <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
-              {plan.status === 'failed'
-                ? "We couldn't generate this plan."
-                : plan.status === 'generating'
-                  ? 'Your personalized learning path is being created.'
-                  : 'Keep your next learning step close.'}
-            </p>
-          )}
+        <div className='mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 type-meta text-muted-foreground'>
+          {/* oxlint-disable shadcn/require-static-classes -- This imported status recipe contains complete static classes for each plan state. */}
+          <Badge
+            variant='outline'
+            className={getPlanStatusBadgeClassName(plan.status)}
+          >
+            <span
+              className={cn(
+                'size-1.5 rounded-full',
+                getPlanStatusDotClassName(plan.status),
+              )}
+              aria-hidden='true'
+            />
+            {PLAN_STATUS_LABELS[plan.status]}
+          </Badge>
+          {/* oxlint-enable shadcn/require-static-classes */}
+          <span aria-hidden='true'>·</span>
+          <span>
+            Updated <time dateTime={updatedAt}>{lastActivity}</time>
+          </span>
         </div>
 
-        <div className='mt-5'>
+        <div className='mt-5 mb-5'>
           <PlanProgress plan={plan} progressPercent={progressPercent} />
         </div>
 
-        {!isLocked ? (
-          <dl className='mt-5 grid grid-cols-2 gap-x-4 gap-y-4 border-t border-border/70 pt-4 text-sm'>
-            <div className='min-w-0'>
-              <dt className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                <Check aria-hidden='true' className='size-3.5' />
-                Tasks
-              </dt>
-              <dd className='mt-1 font-medium text-foreground tabular-nums'>
-                {plan.completedTasks} / {plan.totalTasks}
-              </dd>
-            </div>
-            <div className='min-w-0'>
-              <dt className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                <Clock3 aria-hidden='true' className='size-3.5' />
-                Updated
-              </dt>
-              <dd className='mt-1 truncate font-medium text-foreground'>
-                <time dateTime={updatedAt}>{lastActivity}</time>
-              </dd>
-            </div>
-          </dl>
-        ) : (
-          <dl className='mt-5 border-t border-border/70 pt-4 text-sm'>
-            <div>
-              <dt className='flex items-center gap-1.5 text-xs text-muted-foreground'>
-                <Clock3 aria-hidden='true' className='size-3.5' />
-                Updated
-              </dt>
-              <dd className='mt-1 font-medium text-foreground'>
-                <time dateTime={updatedAt}>{lastActivity}</time>
-              </dd>
-            </div>
-          </dl>
-        )}
+        <div className='mt-auto flex items-center justify-between gap-3 border-t border-border/70 pt-2'>
+          <label className='-ml-3 inline-flex min-h-[44px] items-center gap-2 px-3 type-label text-muted-foreground has-disabled:cursor-not-allowed has-disabled:opacity-60'>
+            <input
+              type='checkbox'
+              checked={selected}
+              disabled={!selectable}
+              aria-label={
+                selectable
+                  ? `Select ${plan.topic}`
+                  : `Cannot select ${plan.topic} while it is generating`
+              }
+              onChange={(event) =>
+                onSelectionChange?.(plan.id, event.currentTarget.checked)
+              }
+              className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+            />
+            Select
+          </label>
 
-        <div className='mt-auto pt-5'>
           {isLocked ? (
-            <Button asChild variant='outline' className='w-full'>
-              <Link href={ROUTES.PRICING}>Upgrade to unlock</Link>
+            <Button asChild variant='ghost' size='sm' className='-mr-2'>
+              <Link href={ROUTES.PRICING}>
+                Upgrade to unlock
+                <ArrowRight aria-hidden='true' />
+              </Link>
             </Button>
           ) : (
-            <Button asChild variant='outline' className='w-full'>
+            <Button asChild variant='ghost' size='sm' className='-mr-2'>
               <Link href={planHref}>
                 {plan.status === 'generating' ? (
                   <Sparkles aria-hidden='true' />
                 ) : null}
                 {planActionLabel(plan.status)}
+                <span className='sr-only'> {plan.topic}</span>
                 <ArrowRight
                   aria-hidden='true'
                   className='transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
@@ -305,6 +322,6 @@ export function PlanRow({
           )}
         </div>
       </div>
-    </li>
+    </Card>
   );
 }
