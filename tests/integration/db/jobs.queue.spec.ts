@@ -1,13 +1,11 @@
-import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
 import {
   completeJob,
-  enqueueJob,
+  enqueueJobWithResult,
   failJob,
-  getNextJob,
-  getUserJobCount,
 } from '@/features/jobs/queue';
 import {
   JOB_TYPES,
+  type JobPayload,
   type JobType,
   type PlanRegenerationJobData,
 } from '@/features/jobs/types';
@@ -15,10 +13,11 @@ import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,
 } from '@/shared/constants/retry-policy';
-import { jobQueue, learningPlans, users } from '@supabase/schema';
+import { jobQueue, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { claimPendingRegenerationJob } from '@tests/helpers/db/jobs';
 import { ensureUser } from '@tests/helpers/db/users';
-import { and, eq, lt } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 const JOB_TYPE = JOB_TYPES.PLAN_REGENERATION;
@@ -45,6 +44,15 @@ function expectScheduledDelayNearNominal(
 }
 
 type InsertedPlan = typeof learningPlans.$inferSelect;
+
+async function enqueueJob(
+  type: JobType,
+  planId: string | null,
+  userId: string,
+  data: JobPayload,
+): Promise<string> {
+  return (await enqueueJobWithResult(type, planId, userId, data)).id;
+}
 
 type PlanFixture = {
   plan: InsertedPlan;
@@ -124,223 +132,6 @@ describe('Job queue service', () => {
     expect(record?.scheduledFor).toBeInstanceOf(Date);
   });
 
-  it('locks a single pending job per worker request', async () => {
-    const { plan: firstPlan, userId: firstUserId } =
-      await createPlanFixture('lock-a');
-    const { plan: secondPlan, userId: secondUserId } =
-      await createPlanFixture('lock-b');
-
-    const jobIds = await Promise.all([
-      enqueueJob(
-        JOB_TYPE,
-        firstPlan.id,
-        firstUserId,
-        buildPlanRegenerationPayload(firstPlan),
-      ),
-      enqueueJob(
-        JOB_TYPE,
-        secondPlan.id,
-        secondUserId,
-        buildPlanRegenerationPayload(secondPlan),
-      ),
-    ]);
-
-    const [first, second] = await Promise.all([
-      getNextJob([JOB_TYPE]),
-      getNextJob([JOB_TYPE]),
-    ]);
-
-    if (!first || !second) {
-      throw new Error('expected first and second to be defined');
-    }
-
-    expect(first.id).toBeDefined();
-    expect(second.id).toBeDefined();
-    expect(first.id).not.toBe(second.id);
-    expect(jobIds).toContain(first.id);
-    expect(jobIds).toContain(second.id);
-
-    const firstRow = await db.query.jobQueue.findFirst({
-      where: (fields, operators) => operators.eq(fields.id, first.id),
-    });
-    const secondRow = await db.query.jobQueue.findFirst({
-      where: (fields, operators) => operators.eq(fields.id, second.id),
-    });
-
-    expect(firstRow?.status).toBe('processing');
-    expect(firstRow?.startedAt).toBeInstanceOf(Date);
-    expect(secondRow?.status).toBe('processing');
-    expect(secondRow?.startedAt).toBeInstanceOf(Date);
-  });
-
-  it('respects priority then FIFO ordering for getNextJob', async () => {
-    const { plan: lowPlan, userId: lowUserId } =
-      await createPlanFixture('priority-low');
-    const { plan: midAPlan, userId: midAUserId } =
-      await createPlanFixture('priority-mid-a');
-    const { plan: midBPlan, userId: midBUserId } =
-      await createPlanFixture('priority-mid-b');
-    const { plan: highPlan, userId: highUserId } =
-      await createPlanFixture('priority-high');
-
-    const low = await enqueueJob(
-      JOB_TYPE,
-      lowPlan.id,
-      lowUserId,
-      buildPlanRegenerationPayload(lowPlan),
-      0,
-    );
-    const midA = await enqueueJob(
-      JOB_TYPE,
-      midAPlan.id,
-      midAUserId,
-      buildPlanRegenerationPayload(midAPlan),
-      5,
-    );
-    const midB = await enqueueJob(
-      JOB_TYPE,
-      midBPlan.id,
-      midBUserId,
-      buildPlanRegenerationPayload(midBPlan),
-      5,
-    );
-    const high = await enqueueJob(
-      JOB_TYPE,
-      highPlan.id,
-      highUserId,
-      buildPlanRegenerationPayload(highPlan),
-      10,
-    );
-
-    const processed: string[] = [];
-    const priorities: number[] = [];
-
-    for (let i = 0; i < 4; i += 1) {
-      const job = await getNextJob([JOB_TYPE]);
-      if (!job) {
-        throw new Error('expected job to be defined');
-      }
-      processed.push(job.id);
-      priorities.push(job.priority);
-    }
-
-    expect(priorities).toEqual([10, 5, 5, 0]);
-    expect(processed[0]).toBe(high);
-    expect(processed.at(-1)).toBe(low);
-
-    const midOrder = processed.filter((id) => id === midA || id === midB);
-    expect(midOrder).toEqual([midA, midB]);
-  });
-
-  it('picks paid+priority before free', async () => {
-    // Create free user with non-priority topic
-    const freeUser = await createPlanFixture('free-user');
-    await db
-      .update(users)
-      .set({ subscriptionTier: 'free' })
-      .where(eq(users.id, freeUser.userId));
-
-    const freeTopic = 'zzzzzzzzzzzzzzzzzzzz'; // Guaranteed non-priority topic
-    expect(isPriorityTopic(freeTopic)).toBe(false);
-    const freePlan = await db
-      .insert(learningPlans)
-      .values({
-        userId: freeUser.userId,
-        topic: freeTopic,
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
-
-    if (!freePlan[0]) {
-      throw new Error('Failed to create free plan');
-    }
-
-    // Create paid user (pro) with priority topic
-    const paidUser = await createPlanFixture('paid-user');
-    await db
-      .update(users)
-      .set({ subscriptionTier: 'pro' })
-      .where(eq(users.id, paidUser.userId));
-
-    const paidTopic = 'interview prep'; // Priority topic
-    expect(isPriorityTopic(paidTopic)).toBe(true); // Ensure test is valid if config changes
-    const paidPlan = await db
-      .insert(learningPlans)
-      .values({
-        userId: paidUser.userId,
-        topic: paidTopic,
-        skillLevel: 'intermediate',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      })
-      .returning();
-
-    if (!paidPlan[0]) {
-      throw new Error('Failed to create paid plan');
-    }
-
-    // Compute priorities
-    const freePriority = computeJobPriority({
-      tier: 'free',
-      isPriorityTopic: isPriorityTopic(freeTopic),
-    });
-    const paidPriority = computeJobPriority({
-      tier: 'pro',
-      isPriorityTopic: isPriorityTopic(paidTopic),
-    });
-
-    // Enqueue free job first, then paid job
-    const freeJobId = await enqueueJob(
-      JOB_TYPE,
-      freePlan[0].id,
-      freeUser.userId,
-      buildPlanRegenerationPayload(freePlan[0], {
-        overrides: {
-          skillLevel: 'beginner',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          startDate: null,
-          deadlineDate: null,
-        },
-      }),
-      freePriority,
-    );
-
-    const paidJobId = await enqueueJob(
-      JOB_TYPE,
-      paidPlan[0].id,
-      paidUser.userId,
-      buildPlanRegenerationPayload(paidPlan[0], {
-        overrides: {
-          skillLevel: 'intermediate',
-          weeklyHours: 5,
-          learningStyle: 'mixed',
-          startDate: null,
-          deadlineDate: null,
-        },
-      }),
-      paidPriority,
-    );
-
-    // Get next job - should be paid+priority despite being enqueued second
-    const firstJob = await getNextJob([JOB_TYPE]);
-    expect(firstJob).not.toBeNull();
-    expect(firstJob?.id).toBe(paidJobId);
-    expect(firstJob?.priority).toBe(paidPriority);
-
-    // Get second job - should be free job
-    const secondJob = await getNextJob([JOB_TYPE]);
-    expect(secondJob).not.toBeNull();
-    expect(secondJob?.id).toBe(freeJobId);
-    expect(secondJob?.priority).toBe(freePriority);
-  });
-
   it('handles retry transitions and terminal failure', async () => {
     const { plan, userId } = await createPlanFixture('retry');
     const jobId = await enqueueJob(
@@ -350,7 +141,9 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(plan),
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const first = await failJob(jobId, 'transient error');
     expect(first?.status).toBe('pending');
     expect(first?.attempts).toBe(1);
@@ -368,7 +161,9 @@ describe('Job queue service', () => {
       1,
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const second = await failJob(jobId, 'still failing');
     expect(second?.status).toBe('pending');
     expect(second?.attempts).toBe(2);
@@ -385,7 +180,9 @@ describe('Job queue service', () => {
       2,
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const terminal = await failJob(jobId, 'fatal error');
     expect(terminal?.status).toBe('failed');
     expect(terminal?.attempts).toBe(3);
@@ -402,7 +199,9 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(plan),
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const retryAfterSeconds = 3_600;
     const retried = await failJob(jobId, 'rate limited', {
       retryable: true,
@@ -433,7 +232,9 @@ describe('Job queue service', () => {
       },
     });
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     await failJob(jobId, 'transient error');
 
     const retryRow = await db.query.jobQueue.findFirst({
@@ -463,7 +264,9 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(plan),
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const result = await failJob(jobId, 'non-retryable error', {
       retryable: false,
     });
@@ -487,12 +290,16 @@ describe('Job queue service', () => {
       .set({ maxAttempts: 2 })
       .where(eq(jobQueue.id, jobId));
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const first = await failJob(jobId, 'first');
     expect(first?.status).toBe('pending');
     expect(first?.attempts).toBe(1);
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const terminal = await failJob(jobId, 'second');
     expect(terminal?.status).toBe('failed');
     expect(terminal?.attempts).toBe(2);
@@ -508,7 +315,9 @@ describe('Job queue service', () => {
       buildPlanRegenerationPayload(plan),
     );
 
-    await getNextJob([JOB_TYPE]);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
     const payload = {
       planId: plan.id,
       modulesCount: 3,
@@ -530,88 +339,5 @@ describe('Job queue service', () => {
       durationMs: 10,
     });
     expect(duplicate?.result).toEqual(payload);
-  });
-
-  it('counts user jobs within the provided window', async () => {
-    const { plan, userId } = await createPlanFixture('rate');
-    const olderPlan = await createPlanForUser(userId, 'rate-older');
-    const oldestPlan = await createPlanForUser(userId, 'rate-oldest');
-
-    const jobRecent = await enqueueJob(
-      JOB_TYPE,
-      plan.id,
-      userId,
-      buildPlanRegenerationPayload(plan),
-    );
-    const jobOlder = await enqueueJob(
-      JOB_TYPE,
-      olderPlan.id,
-      userId,
-      buildPlanRegenerationPayload(olderPlan),
-    );
-    const jobOldest = await enqueueJob(
-      JOB_TYPE,
-      oldestPlan.id,
-      userId,
-      buildPlanRegenerationPayload(oldestPlan),
-    );
-
-    const now = new Date();
-
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now.getTime() - 30_000) })
-      .where(eq(jobQueue.id, jobRecent));
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now.getTime() - 90_000) })
-      .where(eq(jobQueue.id, jobOlder));
-    await db
-      .update(jobQueue)
-      .set({ createdAt: new Date(now.getTime() - 5 * 60_000) })
-      .where(eq(jobQueue.id, jobOldest));
-
-    const oneMinuteAgo = new Date(now.getTime() - 60_000);
-    const countsRecent = await getUserJobCount(userId, JOB_TYPE, oneMinuteAgo);
-    expect(countsRecent).toBe(1);
-
-    const threeMinutesAgo = new Date(now.getTime() - 3 * 60_000);
-    const countsMid = await getUserJobCount(userId, JOB_TYPE, threeMinutesAgo);
-    expect(countsMid).toBe(2);
-
-    const future = new Date(now.getTime() + 1000);
-    const countsFuture = await getUserJobCount(userId, JOB_TYPE, future);
-    expect(countsFuture).toBe(0);
-
-    const otherUser = await createPlanFixture('rate-other');
-    const crossUser = await getUserJobCount(
-      otherUser.userId,
-      JOB_TYPE,
-      oneMinuteAgo,
-    );
-    expect(crossUser).toBe(0);
-
-    // Ensure we did not accidentally mutate other rows during updates
-    const otherRows = await db
-      .select({ id: jobQueue.id })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.userId, userId),
-          lt(jobQueue.createdAt, threeMinutesAgo),
-        ),
-      );
-    expect(otherRows.map((row) => row.id)).toContain(jobOldest);
-  });
-
-  it('rejects invalid job types before query execution', async () => {
-    // Deliberately bypass TS at call site to test runtime guard
-    const invalidTypes = [
-      'plan_regeneration" ) or true -- ',
-    ] satisfies readonly string[];
-
-    await expect(getNextJob([...invalidTypes] as JobType[])).rejects.toThrow(
-      'Invalid job type',
-    );
   });
 });

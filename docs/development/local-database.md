@@ -95,7 +95,7 @@ Diagnose with `pnpm db agent status`; do not add a hosted URL to make it pass. V
 
 ## Automated test databases
 
-Local automated tests (integration, RLS/security, workflow, e2e, smoke) default to Testcontainers PostgreSQL 17, which needs Docker. To run without Docker, use the native test stack:
+Local automated tests (integration, RLS/security, smoke) default to Testcontainers PostgreSQL 17, which needs Docker. To run without Docker, use the native test stack:
 
 ```bash
 pnpm test integration --native-db   # or: ATLARIS_TEST_DB=native pnpm test integration
@@ -103,7 +103,7 @@ pnpm test integration --native-db   # or: ATLARIS_TEST_DB=native pnpm test integ
 
 This starts or resumes a named `test` stack for the current worktree (separate from the dev stack, so dev data is never touched), points the tests at it, and keeps it running afterward. Stop it with `pnpm exec supabase stop --stack test`; remove its data with `pnpm exec supabase stack destroy --stack test --yes`. Details and the Supabase-image differences the bootstrap handles: [tests/AGENTS.md](../../tests/AGENTS.md#test-database-testcontainers-default-or-native-supabase-stack).
 
-Measured on 2026-10-05 with Docker stopped: integration 88 files / 521 tests in 39 s, security 51 tests in 18 s, workflow 11 tests in 24 s.
+Measured on 2026-10-05 with Docker stopped: integration 88 files / 521 tests in 39 s, security 51 tests in 18 s.
 
 CircleCI is unchanged. `ci-pr` / `ci-trunk` database-backed jobs attach a `postgres:17-alpine` secondary container on the Docker executor and set `SKIP_TESTCONTAINERS=true` with:
 

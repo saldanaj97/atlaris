@@ -1,9 +1,5 @@
 import { toPlanCalendarDate } from '@/features/plans/calendar-date';
 import {
-  createLearningPlanNotesSchema,
-  topicSchema,
-} from '@/shared/schemas/learning-plans.schemas';
-import {
   LEARNING_STYLE_ENUM,
   SKILL_LEVEL_ENUM,
   weeklyHoursSchema,
@@ -46,42 +42,3 @@ export const planRegenerationOverridesSchema = z
       });
     }
   });
-
-export const onboardingFormObject = z.object({
-  topic: topicSchema,
-  skillLevel: z
-    .string()
-    .trim()
-    .min(1, 'Please choose a skill level.')
-    .transform((value) => value.toLowerCase()),
-  weeklyHours: z.union([
-    weeklyHoursSchema,
-    z.string().trim().min(1, 'Please select your weekly availability.'),
-  ]),
-  learningStyle: z.string().trim().min(1, 'Please choose a learning style.'),
-  notes: createLearningPlanNotesSchema,
-  startDate: z
-    .string()
-    .trim()
-    .optional()
-    .refine(
-      (value) => !value || /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Start date must be in YYYY-MM-DD format.',
-    )
-    .refine(
-      (value) => !value || !Number.isNaN(Date.parse(value)),
-      'Start date must be a valid date.',
-    ),
-  deadlineDate: z
-    .string()
-    .trim()
-    .min(1, 'Please select a deadline date.')
-    .refine(
-      (value) => /^\d{4}-\d{2}-\d{2}$/.test(value),
-      'Deadline date must be in YYYY-MM-DD format.',
-    )
-    .refine(
-      (value) => !Number.isNaN(Date.parse(value)),
-      'Deadline date must be a valid date.',
-    ),
-});

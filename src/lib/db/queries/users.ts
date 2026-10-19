@@ -67,28 +67,6 @@ export async function getUserByAuthId(
   return row ? toActorUser(row.user, row.preferences) : undefined;
 }
 
-/**
- * Creates a new user record.
- *
- * @param userData - User fields (authUserId, email, optional name)
- * @param dbClient - Required RLS or service-role client
- * @returns The created user record, or undefined on failure
- */
-export async function createUser(
-  userData: CreateUserData,
-  dbClient: UsersDbClient,
-): Promise<DbUser | undefined> {
-  const insertData = {
-    authUserId: userData.authUserId,
-    email: userData.email,
-    name: userData.name,
-    clerkUserUpdatedAt: userData.clerkUserUpdatedAt,
-  };
-
-  const result = await dbClient.insert(users).values(insertData).returning();
-  return result[0];
-}
-
 function isUniqueViolation(error: unknown): boolean {
   if (!error || typeof error !== 'object') {
     return false;

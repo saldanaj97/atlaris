@@ -1724,7 +1724,7 @@ pnpm exec designmd lint DESIGN.md
 pnpm test unit
 ```
 
-Run relevant integration/security tests when the changed composition touches those contracts; use `pnpm test integration` and `pnpm test security`. Build and smoke checks are `pnpm build` and `pnpm test smoke`. Do not treat `pnpm test e2e` as a synonym for Playwright: at this baseline it invokes Vitest. The local-first sequence should catch obvious failures before a CI push; no new CI job or cloud deployment is part of this package.
+Run relevant integration/security tests when the changed composition touches those contracts; use `pnpm test integration` and `pnpm test security`. Build and smoke checks are `pnpm build` and `pnpm test smoke`. The local-first sequence should catch obvious failures before a CI push; no new CI job or cloud deployment is part of this package.
 
 The former UI baseline capture script is no longer part of the public command surface. Use the committed browser smoke lane for launch-blocker confidence, and record any separate visual review with deliberate route, theme, viewport, browser and accessibility evidence rather than treating a canned capture as comprehensive. The historical capture details remain in G06 as provenance only; do not point any test tooling at production.
 

@@ -10,8 +10,8 @@ if (!process.env.NODE_ENV) {
   Object.assign(process.env, { NODE_ENV: 'test' });
 }
 
-// Sonner must be mocked from setup (hoisted). Side-effect imports from
-// tests/mocks/unit/sonner.unit.ts are not hoisted and break toast spies.
+// Sonner must be mocked from setup (hoisted). Side-effect imports of a mock
+// module are not hoisted and break toast spies.
 vi.mock('sonner', () => ({
   toast: {
     error: vi.fn(),

@@ -18,7 +18,7 @@ export type ActorUser = Omit<
 /** Inferred insert type for the `users` table (use for create operations). */
 type DbUserInsert = InferInsertModel<typeof users>;
 
-/** Input data for createUser (authUserId, email, optional name). */
+/** Input data for getOrCreateUser (authUserId, email, optional name). */
 export type CreateUserData = Pick<
   DbUserInsert,
   'authUserId' | 'email' | 'name' | 'clerkUserUpdatedAt'

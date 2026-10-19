@@ -39,8 +39,7 @@ function usage(): never {
       '  pnpm test integration [--changed]',
       '  pnpm test security',
       '  pnpm test smoke [options]',
-      '  pnpm test e2e',
-      '  pnpm test all [--e2e]',
+      '  pnpm test all',
       '',
       `Add ${NATIVE_DB_FLAG} to any suite to use the native Supabase "test" stack`,
       `instead of Testcontainers (same as ${TEST_DB_ENV}=${NATIVE_TEST_DB}).`,
@@ -118,18 +117,6 @@ function securityPhase(): TestPhase {
   };
 }
 
-function e2ePhase(): TestPhase {
-  return {
-    label: 'e2e',
-    commands: [
-      vitestCommand(
-        ['--config', VITEST_CONFIG, '--project', 'e2e', 'tests/e2e'],
-        { NODE_ENV: 'test' },
-      ),
-    ],
-  };
-}
-
 function smokePhase(args: readonly string[]): TestPhase {
   const forwardedArgs = args[0] === '--' ? args.slice(1) : args;
   return {
@@ -157,13 +144,12 @@ function defaultPlan(): TestPhase[] {
   return [unitPhase(true), integrationPhase(true)];
 }
 
-function allPlan(includeE2e: boolean): TestPhase[] {
+function allPlan(): TestPhase[] {
   return [
     checkPhase(),
     unitPhase(false),
     integrationPhase(false),
     securityPhase(),
-    ...(includeE2e ? [e2ePhase()] : []),
   ];
 }
 
@@ -233,15 +219,9 @@ function parseSuitePlan(args: readonly string[]): TestPhase[] {
       return [securityPhase()];
     case 'smoke':
       return [smokePhase(options)];
-    case 'e2e':
-      if (options.length > 0) usage();
-      return [e2ePhase()];
     case 'all':
-      if (options.length === 0) return allPlan(false);
-      if (options.length === 1 && options[0] === '--e2e') {
-        return allPlan(true);
-      }
-      usage();
+      if (options.length > 0) usage();
+      return allPlan();
   }
 
   usage();

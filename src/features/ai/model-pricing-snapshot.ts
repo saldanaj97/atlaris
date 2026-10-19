@@ -1,12 +1,8 @@
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { ModelPricingSnapshotV1 } from '@/shared/types/model-pricing-snapshot.types';
 
 import { getModelById } from '@/features/ai/ai-models';
 import { isRuntimeOnlyModelId } from '@/features/ai/model-preferences';
-import {
-  type ModelPricingSnapshot,
-  ModelPricingSnapshotSchema,
-  type ModelPricingSnapshotV1,
-} from '@/shared/types/model-pricing-snapshot.types';
 
 /**
  * Builds a catalog-backed pricing snapshot for `ai_usage_events.model_pricing_snapshot`.
@@ -46,19 +42,4 @@ export function buildModelPricingSnapshot(
     inputCostUsdPerMillion: catalog.inputCostPerMillion,
     outputCostUsdPerMillion: catalog.outputCostPerMillion,
   };
-}
-
-/**
- * Validates JSON read from `ai_usage_events.model_pricing_snapshot` before
- * downstream code treats it as trusted pricing provenance.
- */
-export function parseModelPricingSnapshot(
-  value: unknown,
-): ModelPricingSnapshot | null {
-  if (value == null) {
-    return null;
-  }
-
-  const parsed = ModelPricingSnapshotSchema.safeParse(value);
-  return parsed.success ? parsed.data : null;
 }

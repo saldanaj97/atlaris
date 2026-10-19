@@ -12,8 +12,6 @@
  * @module features/ai/cost
  */
 
-import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
-
 import { getModelById } from '@/features/ai/ai-models';
 import { logger } from '@/lib/logging/logger';
 
@@ -75,16 +73,6 @@ export function computeCostCents(
     (outputTokens / 1_000_000) * model.outputCostPerMillion;
 
   return Math.round(totalUsd * 100);
-}
-
-/**
- * Derive cost deterministically from a {@link CanonicalAIUsage} shape.
- *
- * Recalculates from the model pricing registry rather than trusting the
- * pre-computed `estimatedCostCents` field, ensuring auditability.
- */
-export function calculateCostFromUsage(usage: CanonicalAIUsage): number {
-  return computeCostCents(usage.model, usage.inputTokens, usage.outputTokens);
 }
 
 /**

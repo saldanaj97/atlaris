@@ -28,14 +28,13 @@ ALWAYS refer to these docs for testing standards and patterns when writing, audi
 tests/
 ├── unit/              # Pure logic, no IO (fast, parallel)
 ├── integration/       # DB + service (sequential, isolated)
-├── e2e/               # User journeys (sequential)
 ├── playwright/        # Browser smoke tests (Playwright + disposable DB)
 ├── security/          # RLS policy verification (sequential)
 ├── fixtures/          # Test data factories (users, plans, ids)
 ├── helpers/           # DB reset, test utilities
-├── mocks/             # shared/, unit/, e2e/
+├── mocks/             # shared/
 ├── setup/             # test-env.ts, testcontainers.ts
-└── setup.ts           # Global setup (integration/e2e/security)
+└── setup.ts           # Global setup (integration/security)
 ```
 
 ## Import paths
@@ -43,19 +42,18 @@ tests/
 Use the same path aliases as the rest of the repo instead of long `../../../../` chains:
 
 - **`@/`** — application code under `src/` (e.g. components under test, shared modules). Matches production import style.
-- **`@tests/`** — anything under `tests/` (fixtures, `helpers/`, `mocks/`, shared test utilities). Example: `@tests/helpers/deferred-promise`, `@tests/mocks/unit/client-logger.unit`, `@tests/fixtures/plans`.
+- **`@tests/`** — anything under `tests/` (fixtures, `helpers/`, `mocks/`, shared test utilities). Example: `@tests/helpers/deferred-promise`, `@tests/fixtures/plans`.
 
 Aliases are defined in `tsconfig.json` (`paths`) and in Vitest’s `testAliases` (`vitest.config.ts`) so unit tests resolve them reliably. When a file must load side-effect mocks **before** other imports, keep that order; Prettier does not organize imports, so do not add import-sorting tooling casually.
 
 ## Test Types
 
-| Type        | Setup                 | Concurrency                           | DB                  | Timeout |
-| ----------- | --------------------- | ------------------------------------- | ------------------- | ------- |
-| Unit        | `tests/unit/setup.ts` | Parallel                              | No                  | 20s     |
-| Integration | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| E2E         | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Security    | `tests/setup.ts`      | Sequential                            | Yes                 | 90s     |
-| Smoke       | Playwright            | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |
+| Type        | Setup                                                                     | Concurrency                                       | DB                  | Timeout |
+| ----------- | ------------------------------------------------------------------------- | ------------------------------------------------- | ------------------- | ------- |
+| Unit        | `tests/unit/setup.node.ts` (`.ts`), `tests/unit/setup.ts` (`.tsx`, jsdom) | Parallel                                          | No                  | 20s     |
+| Integration | `tests/setup.ts`                                                          | Sequential                                        | Yes                 | 90s     |
+| Security    | `tests/setup.ts`                                                          | Sequential                                        | Yes                 | 90s     |
+| Smoke       | Playwright                                                                | Serial runner; full run splits projects by server | Disposable Postgres | 180s    |
 
 ## Commands
 
@@ -77,7 +75,7 @@ pnpm test integration --native-db     # Any DB-backed suite on the native Supaba
 pnpm test smoke --native-db --smoke-step=db  # DB-only smoke infra validation without Docker
 ```
 
-**Prerequisite for integration, e2e, and security tests:** Docker must be running for the default Testcontainers path, or use the native test database below.
+**Prerequisite for integration and security tests:** Docker must be running for the default Testcontainers path, or use the native test database below.
 **Prerequisite for smoke tests:** Docker (or the native test database) and Playwright Chromium (`pnpm exec playwright install chromium`).
 
 ## Test Database: Testcontainers (default) or native Supabase stack
@@ -115,7 +113,7 @@ To skip Testcontainers and use an existing local database (e.g. CI):
 SKIP_TESTCONTAINERS=true POSTGRES_URL="..." pnpm vitest run --project integration tests/integration/db/plans.spec.ts
 ```
 
-## DB Lifecycle (Integration/E2E/Security)
+## DB Lifecycle (Integration/Security)
 
 `tests/setup/db.ts` runs `resetDbForIntegrationTestFile()` in `beforeEach`, which truncates all tables. Guardrails prevent truncating non-test databases.
 

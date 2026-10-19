@@ -63,7 +63,7 @@ expect(query.params).toEqual([planId, userId, 'ready']);
 ### Transaction Mocks
 
 ```typescript
-// Global setup in tests/unit/setup.ts prevents real DB access.
+// Global setup in tests/unit/setup.node.ts prevents real DB access.
 // Override in individual tests when you need a real mock tx:
 const mockTransaction = vi.fn(async (fn) => {
   const mockTx = {
@@ -218,7 +218,7 @@ interface NormalizedTaskData {
 
 ### 2. Global DB Mock Setup
 
-**File:** `tests/unit/setup.ts`
+**File:** `tests/unit/setup.node.ts` (also loaded by the `unit-dom` setup, `tests/unit/setup.ts`)
 
 The project globally mocks `@supabase/service-role` to prevent accidental real database access in unit tests. This is a **safety net**, not the primary mocking strategy — prefer injecting mock clients via function parameters (see [test-standards.md §3](./test-standards.md#prefer-dependency-injection-over-module-mocking)).
 
@@ -261,13 +261,13 @@ vi.mock('@supabase/service-role', () => ({
   test: {
     name: 'unit',
     globals: true,
-    environment: 'jsdom',
+    environment: 'node',
     isolate: true,
     sequence: { concurrent: true },
     pool: 'threads',
     testTimeout: 20_000,
-    include: ['tests/unit/**/*.{test,spec}.{ts,tsx}'],
-    setupFiles: ['tests/unit/setup.ts'],
+    include: ['tests/unit/**/*.{test,spec}.ts'],
+    setupFiles: ['tests/unit/setup.node.ts'],
     alias: testAliases,
   },
 }
@@ -490,7 +490,7 @@ describe('deletePlan', () => {
 | Inject mocks         | Pass an explicit mock `dbClient`; do not inject ambient `getDb` / request-context bags    |
 | Validate SQL         | Capture where clauses, inspect via `PgDialect.sqlToQuery()`                               |
 | Test data            | `buildUserFixture()`, `createTestPlan()`, `createId()`                                    |
-| Safety net           | `tests/unit/setup.ts` globally mocks `@supabase/service-role`                             |
+| Safety net           | `tests/unit/setup.node.ts` globally mocks `@supabase/service-role`                        |
 | Transactions         | Override `transaction` mock per-test with a `mockTx` that has the operations you need     |
 
 ---
@@ -502,7 +502,7 @@ describe('deletePlan', () => {
 | Attempt types        | `src/lib/db/queries/types/attempts.types.ts`         |
 | Query helper impl    | `src/lib/db/queries/helpers/attempts-persistence.ts` |
 | Unit test examples   | `tests/unit/db/*.spec.ts`                            |
-| Global DB mock setup | `tests/unit/setup.ts`                                |
+| Global DB mock setup | `tests/unit/setup.node.ts`                           |
 | Vitest config        | `vitest.config.ts`                                   |
 | User fixtures        | `tests/fixtures/users.ts`                            |
 | Plan fixtures        | `tests/fixtures/owned-plan-record.ts`                |

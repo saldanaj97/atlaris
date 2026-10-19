@@ -113,27 +113,6 @@ export default defineConfig({
       },
       {
         test: {
-          name: 'e2e',
-          globals: true,
-          environment: 'jsdom',
-          isolate: true,
-          sequence: { concurrent: false, groupOrder: 3 },
-          pool: 'threads',
-          maxWorkers: 1,
-          testTimeout: 90_000,
-          include: ['tests/e2e/**/*.{test,spec}.{ts,tsx}'],
-          globalSetup: ['tests/setup/testcontainers.ts'],
-          setupFiles: [
-            'tests/setup/test-env.ts',
-            'tests/setup.ts',
-            'tests/setup/db.ts',
-          ],
-          maxConcurrency: 1,
-          alias: testAliases,
-        },
-      },
-      {
-        test: {
           name: 'security',
           globals: true,
           environment: 'jsdom',

@@ -7,8 +7,6 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import '../../../mocks/unit/sonner.unit';
-
 const refreshMock = vi.fn();
 
 vi.mock('next/navigation', () => ({

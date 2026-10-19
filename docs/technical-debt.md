@@ -97,10 +97,11 @@ Constants live in `supabase/schema/constants.ts`; drift is caught by
   provenance would be wrong (partial usage, unknown model, router/alias models
   such as `openrouter/free`).
 
-Normalization, gating, and the shared `CanonicalAIUsage` → `recordUsage` mapper
-live in `src/features/ai/usage.ts`, `src/features/ai/model-pricing-snapshot.ts`,
-and `src/lib/db/usage.ts`. Generation usage is recorded transactionally in
-generation finalization via the same mapper.
+Normalization, gating, and the shared `CanonicalAIUsage` →
+`canonicalUsageToRecordParams` mapper live in `src/features/ai/usage.ts`,
+`src/features/ai/model-pricing-snapshot.ts`, and `supabase/usage.ts`. Generation
+usage is recorded transactionally with `recordUsageInTx` in generation
+finalization via the same mapper.
 
 Persistable vs runtime-only models and tier-aware listing remain in
 [`src/features/ai/model-preferences.ts`](../src/features/ai/model-preferences.ts),

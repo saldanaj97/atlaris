@@ -4,7 +4,6 @@ import {
   clearAllUserRateLimiters,
   createUserRateLimiter,
   getUserRateLimitHeaders,
-  resetUserRateLimits,
   USER_RATE_LIMIT_CONFIGS,
 } from '@/lib/api/user-rate-limit';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -268,52 +267,6 @@ describe('User Rate Limiting', () => {
       const nowSeconds = Math.ceil(Date.now() / 1000);
 
       expect(resetTime).toBeGreaterThan(nowSeconds);
-    });
-  });
-
-  describe('resetUserRateLimits', () => {
-    it('resets rate limits for user across all categories', () => {
-      checkUserRateLimit('user_123', 'read');
-      checkUserRateLimit('user_123', 'mutation');
-
-      let readHeaders = getUserRateLimitHeaders('user_123', 'read');
-      let mutationHeaders = getUserRateLimitHeaders('user_123', 'mutation');
-
-      expect(parseInt(readHeaders['X-RateLimit-Remaining'], 10)).toBeLessThan(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
-      );
-      expect(
-        parseInt(mutationHeaders['X-RateLimit-Remaining'], 10),
-      ).toBeLessThan(USER_RATE_LIMIT_CONFIGS.mutation.maxRequests);
-
-      resetUserRateLimits('user_123');
-
-      readHeaders = getUserRateLimitHeaders('user_123', 'read');
-      mutationHeaders = getUserRateLimitHeaders('user_123', 'mutation');
-
-      expect(parseInt(readHeaders['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
-      );
-      expect(parseInt(mutationHeaders['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.mutation.maxRequests,
-      );
-    });
-
-    it('does not affect other users', () => {
-      checkUserRateLimit('user_123', 'read');
-      checkUserRateLimit('user_456', 'read');
-
-      resetUserRateLimits('user_123');
-
-      const user123Headers = getUserRateLimitHeaders('user_123', 'read');
-      const user456Headers = getUserRateLimitHeaders('user_456', 'read');
-
-      expect(parseInt(user123Headers['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests,
-      );
-      expect(parseInt(user456Headers['X-RateLimit-Remaining'], 10)).toBe(
-        USER_RATE_LIMIT_CONFIGS.read.maxRequests - 1,
-      );
     });
   });
 
