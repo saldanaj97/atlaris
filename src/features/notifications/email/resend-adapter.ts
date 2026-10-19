@@ -140,7 +140,7 @@ export function createResendEmailSender(
  * Transport/server ambiguity — including SDK `application_error` with null
  * statusCode — must stay `unknown` so the leased pending row is retained.
  */
-function classifyResend(error: ErrorResponse): {
+export function classifyResend(error: ErrorResponse): {
   failureClass: string;
   outcome: ProviderOutcome;
 } {
@@ -231,12 +231,4 @@ function classifyResend(error: ErrorResponse): {
   return error.statusCode === null
     ? { ...classification, outcome: 'unknown' }
     : classification;
-}
-
-export function classifyResendOutcome(error: ErrorResponse): ProviderOutcome {
-  return classifyResend(error).outcome;
-}
-
-export function classifyResendError(error: ErrorResponse): string {
-  return classifyResend(error).failureClass;
 }

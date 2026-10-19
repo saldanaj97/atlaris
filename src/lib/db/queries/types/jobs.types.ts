@@ -17,13 +17,4 @@ export interface JobEnqueueResult {
   deduplicated: boolean;
 }
 
-export interface JobStats {
-  pendingCount: number;
-  processingCount: number;
-  completedCount: number;
-  failedCount: number;
-  averageProcessingTimeMs: number | null;
-  failureRate: number;
-}
-
 export type ErrorHistoryEntry = JobErrorHistoryEntry;

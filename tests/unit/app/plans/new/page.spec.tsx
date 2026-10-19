@@ -14,9 +14,6 @@ import { createDeferredPromise } from '@tests/helpers/deferred-promise';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import '@tests/mocks/unit/client-logger.unit';
-import '@tests/mocks/unit/sonner.unit';
-
 const pushMock = vi.fn<(href: string) => void>();
 
 vi.mock('next/navigation', () => ({

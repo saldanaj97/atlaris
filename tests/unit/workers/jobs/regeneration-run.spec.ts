@@ -15,7 +15,6 @@ const mocks = vi.hoisted(() => ({
   claimJob: vi.fn(),
   loadJob: vi.fn(),
   updateJobPayload: vi.fn(),
-  updateJobPayloadIfRunIdMissing: vi.fn(),
   failJob: vi.fn(),
   completeJob: vi.fn(),
   createPlanLifecycleService: vi.fn(),
@@ -34,7 +33,6 @@ vi.mock('@/features/jobs/queue', () => ({
   claimRegenerationJob: mocks.claimJob,
   loadJobById: mocks.loadJob,
   updateJobPayload: mocks.updateJobPayload,
-  updateJobPayloadIfRunIdMissing: mocks.updateJobPayloadIfRunIdMissing,
   failJob: mocks.failJob,
 }));
 

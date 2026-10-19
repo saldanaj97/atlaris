@@ -13,8 +13,6 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import '../../../mocks/unit/sonner.unit';
-
 const MOCK_PROFILE = buildProfile();
 
 function mockFetchSuccess(data: unknown = MOCK_PROFILE): void {

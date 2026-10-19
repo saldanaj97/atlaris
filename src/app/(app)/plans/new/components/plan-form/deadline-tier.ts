@@ -6,8 +6,6 @@ import { DEADLINE_OPTIONS } from './constants';
 import { CUSTOM_DEADLINE_VALUE } from '@/features/plans/plan-form-payload';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 
-export { CUSTOM_DEADLINE_VALUE };
-
 export function isDeadlinePresetEnabled(
   tier: SubscriptionTier,
   weeks: number,

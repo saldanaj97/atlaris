@@ -14,9 +14,6 @@ import {
   vi,
 } from 'vitest';
 
-import '../../mocks/unit/client-logger.unit';
-import '../../mocks/unit/sonner.unit';
-
 const FREE_MODELS: AvailableModel[] = [
   createTestModel({
     id: 'test-free-model-1',

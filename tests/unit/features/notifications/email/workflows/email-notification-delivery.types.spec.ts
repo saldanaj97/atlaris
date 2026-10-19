@@ -1,19 +1,10 @@
 import {
   createEmailNotificationDeliveryReferenceTimestamp,
   getEmailNotificationDeliveryLedgerKeys,
-  resolveEmailNotificationDeliveryRunKind,
 } from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import { describe, expect, it } from 'vitest';
 
 describe('email notification delivery workflow types', () => {
-  it('maps only the configured Vercel schedules to their code-owned run kinds', () => {
-    expect(resolveEmailNotificationDeliveryRunKind('0 14 * * *')).toBe('daily');
-    expect(resolveEmailNotificationDeliveryRunKind('30 14 * * 1')).toBe(
-      'weekly',
-    );
-    expect(resolveEmailNotificationDeliveryRunKind('0 0 * * *')).toBeNull();
-  });
-
   it('pins the logical reference timestamp to the requested UTC schedule time', () => {
     expect(
       createEmailNotificationDeliveryReferenceTimestamp('daily', '2026-07-10'),

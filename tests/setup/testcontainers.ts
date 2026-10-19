@@ -1,6 +1,6 @@
 /**
  * Vitest globalSetup: spins up a PostgreSQL Testcontainer before any
- * integration / e2e / security tests and tears it down when they finish.
+ * integration / security tests and tears it down when they finish.
  *
  * The container:
  *   - Uses Postgres 17 (matching docker-compose.test.yml)

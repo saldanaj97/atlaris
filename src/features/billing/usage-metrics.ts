@@ -2,7 +2,6 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { UsageMetricsLoadError } from './errors';
-import { resolveUserTier } from './tier';
 import { ValidationError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
@@ -67,8 +66,6 @@ async function selectUsageMetricsForMonth(
  * Caller contract: `tier` MUST come from the same `users` row as this request
  * (e.g. read alongside the billing projection in `getBillingAccountSnapshot`).
  * Passing a stale or unrelated tier will silently yield the wrong limits.
- *
- * Prefer `getUsageSummary` for callers that do not already have a resolved tier.
  */
 export async function getUsageSummaryForTier(args: {
   userId: string;
@@ -112,17 +109,6 @@ export async function getUsageSummaryForTier(args: {
       limit: limits.monthlyRegenerations,
     },
   };
-}
-
-/**
- * Get usage summary for a user; auto-resolves tier from the `users` row.
- */
-export async function getUsageSummary(
-  userId: string,
-  dbClient: DbClient,
-): Promise<UsageSummary> {
-  const tier = await resolveUserTier(userId, dbClient);
-  return getUsageSummaryForTier({ userId, tier, dbClient });
 }
 
 export async function ensureUsageMetricsExist(

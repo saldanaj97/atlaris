@@ -1,98 +1,26 @@
-import { createUser, getUserByAuthId } from '@/lib/db/queries/users';
+import { getUserByAuthId } from '@/lib/db/queries/users';
+import { users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { describe, expect, it } from 'vitest';
 
+async function insertUser(values: {
+  authUserId: string;
+  email: string;
+  name?: string;
+}) {
+  const [user] = await db.insert(users).values(values).returning();
+  return user;
+}
+
 describe('User Queries', () => {
-  describe('createUser', () => {
-    it('should create a new user with all fields', async () => {
-      const userData = {
-        authUserId: 'auth_test_user_1',
-        email: 'test@example.com',
-        name: 'Test User',
-      };
-
-      const user = await createUser(userData, db);
-
-      expect(user).toBeDefined();
-      expect(user?.authUserId).toBe(userData.authUserId);
-      expect(user?.email).toBe(userData.email);
-      expect(user?.name).toBe(userData.name);
-      expect(user?.id).toBeDefined();
-      expect(user?.createdAt).toBeInstanceOf(Date);
-    });
-
-    it('should create a user without optional name field', async () => {
-      const userData = {
-        authUserId: 'auth_test_user_2',
-        email: 'test2@example.com',
-      };
-
-      const user = await createUser(userData, db);
-
-      expect(user).toBeDefined();
-      expect(user?.authUserId).toBe(userData.authUserId);
-      expect(user?.email).toBe(userData.email);
-      expect(user?.name).toBeNull();
-    });
-
-    it('should generate unique user IDs for different users', async () => {
-      const user1 = await createUser(
-        {
-          authUserId: 'auth_user_1',
-          email: 'user1@example.com',
-        },
-        db,
-      );
-
-      const user2 = await createUser(
-        {
-          authUserId: 'auth_user_2',
-          email: 'user2@example.com',
-        },
-        db,
-      );
-
-      expect(user1?.id).toBeDefined();
-      expect(user2?.id).toBeDefined();
-      expect(user1?.id).not.toBe(user2?.id);
-    });
-
-    it('should set createdAt timestamp on user creation', async () => {
-      // Use a small tolerance (1 second) to account for clock drift between test runner and DB
-      const tolerance = 1000;
-      const before = new Date(Date.now() - tolerance);
-
-      const user = await createUser(
-        {
-          authUserId: 'auth_timestamp_test',
-          email: 'timestamp@example.com',
-        },
-        db,
-      );
-
-      const after = new Date(Date.now() + tolerance);
-
-      expect(user).toBeDefined();
-      if (!user) {
-        throw new Error('Expected user to be defined');
-      }
-      expect(user.createdAt).toBeInstanceOf(Date);
-      expect(user.createdAt.getTime()).toBeGreaterThanOrEqual(before.getTime());
-      expect(user.createdAt.getTime()).toBeLessThanOrEqual(after.getTime());
-    });
-  });
-
   describe('getUserByAuthId', () => {
     it('should retrieve existing user by Auth ID', async () => {
       // Create a user first
-      const createdUser = await createUser(
-        {
-          authUserId: 'auth_find_test',
-          email: 'find@example.com',
-          name: 'Find Test User',
-        },
-        db,
-      );
+      const createdUser = await insertUser({
+        authUserId: 'auth_find_test',
+        email: 'find@example.com',
+        name: 'Find Test User',
+      });
 
       // Retrieve the user
       const foundUser = await getUserByAuthId('auth_find_test', db);
@@ -112,29 +40,20 @@ describe('User Queries', () => {
 
     it('should return correct user when multiple users exist', async () => {
       // Create multiple users
-      await createUser(
-        {
-          authUserId: 'auth_user_a',
-          email: 'usera@example.com',
-        },
-        db,
-      );
+      await insertUser({
+        authUserId: 'auth_user_a',
+        email: 'usera@example.com',
+      });
 
-      const targetUser = await createUser(
-        {
-          authUserId: 'auth_user_b',
-          email: 'userb@example.com',
-        },
-        db,
-      );
+      const targetUser = await insertUser({
+        authUserId: 'auth_user_b',
+        email: 'userb@example.com',
+      });
 
-      await createUser(
-        {
-          authUserId: 'auth_user_c',
-          email: 'userc@example.com',
-        },
-        db,
-      );
+      await insertUser({
+        authUserId: 'auth_user_c',
+        email: 'userc@example.com',
+      });
 
       // Find specific user
       const found = await getUserByAuthId('auth_user_b', db);
@@ -146,21 +65,15 @@ describe('User Queries', () => {
 
     it('should enforce cross-tenant isolation by Auth ID', async () => {
       // Create two users
-      await createUser(
-        {
-          authUserId: 'auth_user_tenant_a',
-          email: 'tenanta@example.com',
-        },
-        db,
-      );
+      await insertUser({
+        authUserId: 'auth_user_tenant_a',
+        email: 'tenanta@example.com',
+      });
 
-      await createUser(
-        {
-          authUserId: 'auth_user_tenant_b',
-          email: 'tenantb@example.com',
-        },
-        db,
-      );
+      await insertUser({
+        authUserId: 'auth_user_tenant_b',
+        email: 'tenantb@example.com',
+      });
 
       // Each user should only be retrievable by their own Auth ID
       const userA = await getUserByAuthId('auth_user_tenant_a', db);
@@ -178,47 +91,35 @@ describe('User Queries', () => {
       const uniqueAuthId = `auth_unique_test_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 
       // Create first user
-      await createUser(
-        {
-          authUserId: uniqueAuthId,
-          email: 'first@example.com',
-        },
-        db,
-      );
+      await insertUser({
+        authUserId: uniqueAuthId,
+        email: 'first@example.com',
+      });
 
       // Attempt to create duplicate
       await expect(
-        createUser(
-          {
-            authUserId: uniqueAuthId,
-            email: 'second@example.com',
-          },
-          db,
-        ),
+        insertUser({
+          authUserId: uniqueAuthId,
+          email: 'second@example.com',
+        }),
       ).rejects.toThrow(/Failed query:|unique|duplicate|23505/i);
     });
 
     it('should enforce email format constraints', async () => {
-      const user = await createUser(
-        {
-          authUserId: 'auth_email_test',
-          email: 'valid@example.com',
-        },
-        db,
-      );
+      const user = await insertUser({
+        authUserId: 'auth_email_test',
+        email: 'valid@example.com',
+      });
 
       expect(user?.email).toBe('valid@example.com');
     });
 
     it('should handle users with null name field', async () => {
-      const user = await createUser(
-        {
-          authUserId: 'auth_null_name',
-          email: 'nullname@example.com',
-          name: undefined,
-        },
-        db,
-      );
+      const user = await insertUser({
+        authUserId: 'auth_null_name',
+        email: 'nullname@example.com',
+        name: undefined,
+      });
 
       expect(user?.name).toBeNull();
     });
@@ -228,13 +129,10 @@ describe('User Queries', () => {
     it('should handle retrieving user from table with many users', async () => {
       // Create multiple users
       const userPromises = Array.from({ length: 10 }, (_, i) =>
-        createUser(
-          {
-            authUserId: `auth_perf_user_${i}`,
-            email: `perfuser${i}@example.com`,
-          },
-          db,
-        ),
+        insertUser({
+          authUserId: `auth_perf_user_${i}`,
+          email: `perfuser${i}@example.com`,
+        }),
       );
 
       await Promise.all(userPromises);
