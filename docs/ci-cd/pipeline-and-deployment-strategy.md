@@ -14,7 +14,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ## The short version
 
 - Start work from `develop`.
-- Open PRs into `develop` (or `main` only for true hotfixes).
+- Open PRs into `develop` (or `main` only for true hotfixes). No long-lived track branches: unfinished work lands behind a flag in `src/flags.ts`.
+- Promote `develop` to `main` in batches (at most daily, or per milestone) and merge the promotion with a merge commit, never squash or rebase. See [branching-strategy.md](../ci/branching-strategy.md#batched-promotions).
 - PRs run CircleCI `ci-pr` checks.
 - CircleCI owns code and test validation; Vercel's Git integration is the authoritative Next.js build and deployment validation.
 - Vercel deploys branch pushes as Preview and `main` pushes as Production.
