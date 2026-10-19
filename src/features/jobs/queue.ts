@@ -25,7 +25,6 @@ import {
   getJobById,
   insertJobRecord,
   updateRegenerationJobPayload,
-  updateRegenerationJobPayloadIfRunIdMissing,
 } from '@/lib/db/queries/jobs';
 import { db } from '@supabase/service-role';
 
@@ -58,13 +57,6 @@ export async function updateJobPayload(
   payload: JobPayload,
 ): Promise<Job | null> {
   return updateRegenerationJobPayload(jobId, payload, db);
-}
-
-export async function updateJobPayloadIfRunIdMissing(
-  jobId: string,
-  payload: JobPayload,
-): Promise<Job | null> {
-  return updateRegenerationJobPayloadIfRunIdMissing(jobId, payload, db);
 }
 
 export async function completeJob(

@@ -13,5 +13,4 @@ export {
   failJobRecord,
   insertJobRecord,
   updateRegenerationJobPayload,
-  updateRegenerationJobPayloadIfRunIdMissing,
 } from '@/lib/db/queries/jobs/mutations';
