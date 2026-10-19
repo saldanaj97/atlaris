@@ -80,7 +80,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
           <Button variant='ghost' size='sm' asChild>
             <Link href='/dashboard'>
               <ArrowLeft className='size-4' aria-hidden='true' />
-              Back to Dashboard
+              Back to dashboard
             </Link>
           </Button>
 

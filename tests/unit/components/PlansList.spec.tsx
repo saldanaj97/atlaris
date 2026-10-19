@@ -14,9 +14,9 @@ import {
   PLAN_LIST_PAGE_SIZE,
   PLAN_LIST_SORTS,
 } from '@/features/plans/read-projection/types';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockPush = vi.fn();
 const mockRefresh = vi.fn();
@@ -48,6 +48,10 @@ describe('PlansList', () => {
     vi.mocked(toast.success).mockReset();
     vi.mocked(toast.error).mockReset();
     vi.stubGlobal('fetch', vi.fn());
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   const statusCounts: PlanListStatusCounts = {
@@ -243,13 +247,54 @@ describe('PlansList', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders plan cards without cover artwork', () => {
+  it('reveals below-the-fold plan cards when they scroll into view', () => {
+    const observers: Array<{
+      callback: IntersectionObserverCallback;
+      elements: Element[];
+    }> = [];
+    class FakeIntersectionObserver {
+      private readonly record: (typeof observers)[number];
+      constructor(callback: IntersectionObserverCallback) {
+        this.record = { callback, elements: [] };
+        observers.push(this.record);
+      }
+      observe = (element: Element) => {
+        this.record.elements.push(element);
+      };
+      unobserve = vi.fn();
+      disconnect = vi.fn();
+    }
+    vi.stubGlobal('IntersectionObserver', FakeIntersectionObserver);
+    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: false }));
+
     renderPlansList();
 
-    expect(document.querySelector('img')).toBeNull();
-    expect(
-      screen.getByRole('heading', { name: activePlan.topic }),
-    ).toBeInTheDocument();
+    const card = screen
+      .getByRole('heading', { name: 'Master React Hooks' })
+      .closest('li');
+    expect(card).not.toBeNull();
+    expect(card).not.toHaveAttribute('data-reveal');
+
+    const observer = observers.find(({ elements }) => elements.includes(card!));
+    expect(observer).toBeDefined();
+    const fire = (isIntersecting: boolean) =>
+      act(() => {
+        observer!.callback(
+          [
+            {
+              isIntersecting,
+              target: card!,
+            } as unknown as IntersectionObserverEntry,
+          ],
+          {} as IntersectionObserver,
+        );
+      });
+
+    fire(false);
+    expect(card).toHaveAttribute('data-reveal', 'pending');
+
+    fire(true);
+    expect(card).toHaveAttribute('data-reveal', 'visible');
   });
 
   it('keeps search and sort query-backed in the library chrome', () => {
@@ -355,8 +400,9 @@ describe('PlansList', () => {
       .getByRole('heading', { name: 'Locked Research' })
       .closest('li');
     expect(card).not.toBeNull();
-    expect(within(card!).getByText('Updated')).toBeInTheDocument();
-    expect(within(card!).queryByText('Added')).not.toBeInTheDocument();
+    expect(card).toHaveTextContent(/Updated/);
+    expect(card).not.toHaveTextContent(/Added/);
+    expect(card).not.toHaveTextContent(/tasks|%/);
     expect(card!.querySelector('time')).toHaveAttribute(
       'dateTime',
       lockedPlan.updatedAt!,
@@ -550,11 +596,12 @@ describe('PlansList', () => {
       .closest('li');
     expect(card).not.toBeNull();
     expect(within(card!).getByText('Active')).toBeInTheDocument();
-    expect(within(card!).getByText('Progress')).toBeInTheDocument();
     expect(within(card!).getByText('40%')).toBeInTheDocument();
-    expect(within(card!).getByText('Tasks')).toBeInTheDocument();
-    expect(within(card!).getByText('8 / 20')).toBeInTheDocument();
-    expect(within(card!).getByText('Updated')).toBeInTheDocument();
+    expect(within(card!).getByText('8 of 20 tasks')).toBeInTheDocument();
+    expect(
+      within(card!).getByRole('progressbar', { name: '40% complete' }),
+    ).toBeInTheDocument();
+    expect(card).toHaveTextContent(/Updated/);
     expect(
       within(card!).getByRole('link', { name: /Continue learning/ }),
     ).toHaveAttribute('href', '/plans/plan-1');

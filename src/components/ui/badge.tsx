@@ -4,7 +4,7 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import * as React from 'react';
 
 const badgeVariants = cva(
-  'inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 text-xs leading-4 font-medium transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-danger aria-invalid:ring-2 aria-invalid:ring-danger overflow-hidden [&>svg]:pointer-events-none [&>svg]:size-3',
+  'inline-flex w-fit shrink-0 items-center justify-center gap-1 whitespace-nowrap rounded-full border px-2 py-0.5 type-meta font-medium transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background aria-invalid:border-danger aria-invalid:ring-2 aria-invalid:ring-danger overflow-hidden [&>svg]:pointer-events-none [&>svg]:size-3',
   {
     variants: {
       variant: {
@@ -16,6 +16,9 @@ const badgeVariants = cva(
           'border-danger bg-danger-subtle text-danger [a&]:hover:bg-danger-subtle/80 focus-visible:ring-danger',
         outline:
           'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
+        /** In-progress or informational status, such as generation running. */
+        info: 'border-link/40 bg-action-soft text-link',
+        warning: 'border-warning/40 bg-warning/10 text-warning',
         /** Product app: opaque surface. Prefer for dashboard/settings. */
         product:
           'border border-panel-border bg-panel text-panel-foreground [a&]:hover:bg-panel-muted/90',

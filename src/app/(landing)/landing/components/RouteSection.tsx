@@ -42,14 +42,14 @@ export function RouteSection() {
           </SectionOverline>
           <h2
             id='landing-route-heading'
-            className={`mt-5 font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             Everything you need to{' '}
             <span className='text-primary italic'>stay on track.</span>
           </h2>
           <p
-            className={`mx-auto mt-5 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+            className={`mx-auto mt-5 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
             style={{ '--i': 2 } as CSSProperties}
           >
             From guided learning plans to practical projects, Atlaris gives you
@@ -69,12 +69,10 @@ export function RouteSection() {
               <span className='grid size-10 place-items-center rounded-xl border border-border/60 bg-panel-muted text-primary'>
                 <Icon className='size-5' aria-hidden='true' />
               </span>
-              <h3 className='mt-6 font-serif text-lg font-semibold tracking-[-0.02em] text-foreground'>
+              <h3 className='mt-6 type-card font-serif text-foreground'>
                 {title}
               </h3>
-              <p className='mt-2 text-sm leading-relaxed text-muted-foreground'>
-                {copy}
-              </p>
+              <p className='mt-2 type-body text-muted-foreground'>{copy}</p>
             </article>
           ))}
         </div>
@@ -82,7 +80,7 @@ export function RouteSection() {
 
       <RevealAnimation>
         <ul
-          className={`mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-3 text-sm text-muted-foreground ${styles.revealItem}`}
+          className={`mx-auto mt-10 flex max-w-3xl flex-wrap justify-center gap-x-6 gap-y-3 type-body text-muted-foreground ${styles.revealItem}`}
         >
           {[
             'Step-by-step guidance',

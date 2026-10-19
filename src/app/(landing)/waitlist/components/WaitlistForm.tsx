@@ -63,11 +63,11 @@ function WaitlistFields({
         </Button>
       </div>
       {failed ? (
-        <p id={errorId} role='alert' className='mt-2 text-sm text-danger'>
+        <p id={errorId} role='alert' className='mt-2 type-body text-danger'>
           We couldn’t add you right now. Check the address and try again.
         </p>
       ) : null}
-      <p className='mt-3 text-xs text-muted-foreground'>{note}</p>
+      <p className='mt-3 type-meta text-muted-foreground'>{note}</p>
     </form>
   );
 }
@@ -79,7 +79,7 @@ export function WaitlistForm() {
 
   if (status === 'joined') {
     return (
-      <output className='mt-8 block max-w-md rounded-[8px] border border-primary/35 bg-panel px-4 py-3 text-sm text-foreground'>
+      <output className='mt-8 block max-w-md rounded-[8px] border border-primary/35 bg-panel px-4 py-3 type-body text-foreground'>
         You’re on the waitlist. We’ll email your invite when Atlaris opens.
       </output>
     );

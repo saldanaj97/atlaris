@@ -5,15 +5,15 @@ import { describe, expect, it, vi } from 'vitest';
 
 describe('UsageAnalyticsError', () => {
   it('refreshes analytics data when recovery is selected', async () => {
-    const reset = vi.fn();
+    const retry = vi.fn();
     const user = userEvent.setup();
 
     render(
-      <UsageAnalyticsError error={new Error('load failed')} reset={reset} />,
+      <UsageAnalyticsError error={new Error('load failed')} retry={retry} />,
     );
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(reset).toHaveBeenCalledOnce();
+    expect(retry).toHaveBeenCalledOnce();
   });
 });

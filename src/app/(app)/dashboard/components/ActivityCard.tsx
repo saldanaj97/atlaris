@@ -57,10 +57,10 @@ export function ActivityCard({
       </span>
 
       <div className='min-w-0'>
-        <p className='text-[11px] font-medium tracking-[0.08em] text-muted-foreground uppercase'>
+        <p className='type-eyebrow text-muted-foreground'>
           {presentation.label}
         </p>
-        <p className='mt-0.5 truncate text-sm font-medium text-foreground'>
+        <p className='mt-0.5 truncate type-label text-foreground'>
           {activity.title}
         </p>
       </div>
@@ -68,7 +68,7 @@ export function ActivityCard({
       <div className='text-right'>
         <time
           dateTime={activity.occurredAt}
-          className='text-xs text-muted-foreground tabular-nums'
+          className='type-meta text-muted-foreground tabular-nums'
         >
           {activity.timestamp}
         </time>

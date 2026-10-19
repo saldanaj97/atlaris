@@ -24,15 +24,14 @@ export function CreatePlanPageClient({
       <PageHero
         className='rounded-lg border border-panel-border bg-panel px-5 py-6 sm:px-8 sm:py-5'
         contentClassName='max-w-3xl'
-        overline='Create your plan'
         title={
           <>
             What do you want to <span className='text-primary'>learn?</span>
           </>
         }
-        titleClassName='font-heading mt-2.5 max-w-xl text-[32px] leading-10 tracking-[-0.02em] text-balance text-foreground'
+        titleClassName='type-title max-w-xl text-balance text-foreground'
         description='Name the goal, your level, and the time you actually have. Atlaris charts the route.'
-        descriptionClassName='mt-2.5 max-w-xl text-base leading-[26px] text-muted-foreground'
+        descriptionClassName='mt-2.5 max-w-xl type-reading text-muted-foreground'
       />
 
       <div className='grid items-start gap-4 lg:grid-cols-[minmax(0,40rem)_minmax(16rem,18rem)]'>
@@ -51,7 +50,7 @@ export function CreatePlanPageClient({
               The route stays grounded in the constraints you choose.
             </CardDescription>
           </div>
-          <ul className='space-y-3 text-sm text-foreground'>
+          <ul className='space-y-3 type-body text-foreground'>
             {PLAN_CONSTRAINTS.map((item) => (
               <li key={item} className='flex items-start gap-2'>
                 <span

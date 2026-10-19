@@ -12,7 +12,7 @@ import { StartTonightCard } from '@/app/(app)/dashboard/components/StartTonightC
 import { WeeklyPaceCard } from '@/app/(app)/dashboard/components/WeeklyPaceCard';
 import { YourProgressCard } from '@/app/(app)/dashboard/components/YourProgressCard';
 import { Card } from '@/components/ui/card';
-import { SectionOverline } from '@/components/ui/section-overline';
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ROUTES } from '@/features/navigation/routes';
 import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
@@ -30,21 +30,17 @@ function DashboardHero({
   title: ReactNode;
   description: ReactNode;
 }) {
+  // A string fits in a paragraph; other nodes may contain block content.
+  const Description = typeof description === 'string' ? 'p' : 'div';
+
   return (
-    <header>
-      <SectionOverline>Current focus</SectionOverline>
-      <h1 className='font-heading mt-2 max-w-3xl text-[28px] leading-[1.15] tracking-[-0.02em] text-balance text-foreground sm:text-[32px]'>
+    <header className='mb-8 pt-6 pb-4 sm:pt-8 sm:pb-5'>
+      <h1 className='max-w-3xl type-title text-balance text-foreground'>
         {title}
       </h1>
-      {typeof description === 'string' ? (
-        <p className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
-          {description}
-        </p>
-      ) : (
-        <div className='mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground sm:text-base'>
-          {description}
-        </div>
-      )}
+      <Description className='mt-2 max-w-3xl type-body text-muted-foreground sm:type-reading'>
+        {description}
+      </Description>
     </header>
   );
 }
@@ -132,6 +128,7 @@ export async function DashboardContent() {
 export function DashboardContentSkeleton() {
   return (
     <section aria-label='Loading dashboard' aria-busy='true'>
+      <LoadingStatus>Loading dashboard</LoadingStatus>
       <div className='space-y-4'>
         <DashboardHero
           title={<Skeleton className='h-8 w-72 max-w-full' />}
@@ -161,24 +158,30 @@ export function DashboardContentSkeleton() {
           </Card>
         </div>
 
+        {/* Generic card pair: a new user sees Activity feed here, others see Learning route. */}
         <div className={DASHBOARD_GRID}>
           <Card
             as='section'
             aria-label='Learning route loading'
-            className='p-5 sm:p-6'
+            className='h-full p-5 sm:p-6'
           >
-            <Skeleton className='h-6 w-48' />
-            <Skeleton className='mt-2 h-4 w-56 bg-muted' />
-            <Skeleton className='mt-6 h-1.5 w-full rounded-full bg-secondary' />
+            <Skeleton className='h-7 w-48' />
+            <Skeleton className='mt-2 h-5 w-56 bg-muted' />
+            <Skeleton className='mt-6 h-16 w-full bg-secondary' />
+            <Skeleton className='mt-5 h-1.5 w-full rounded-full bg-secondary' />
           </Card>
           <Card
             as='aside'
             aria-label='Weekly pace loading'
-            className='p-5 sm:p-6'
+            className='h-full p-5 sm:p-6'
           >
-            <Skeleton className='h-6 w-24' />
-            <Skeleton className='mt-8 h-9 w-28' />
-            <Skeleton className='mt-2 h-4 w-32 bg-muted' />
+            <Skeleton className='h-7 w-24' />
+            <Skeleton className='mt-2 h-5 w-36 bg-muted' />
+            <Skeleton className='mt-6 h-9 w-40' />
+            <div className='mt-6 border-t border-border/50 pt-4'>
+              <Skeleton className='h-6 w-48 bg-muted' />
+              <Skeleton className='mt-1 h-5 w-full bg-muted' />
+            </div>
           </Card>
         </div>
 

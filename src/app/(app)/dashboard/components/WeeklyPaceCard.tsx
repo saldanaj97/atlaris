@@ -10,19 +10,14 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
         aria-labelledby={TITLE_ID}
         className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
       >
-        <h2
-          id={TITLE_ID}
-          className='text-lg font-semibold text-foreground sm:text-xl'
-        >
+        <h2 id={TITLE_ID} className='type-card text-foreground'>
           This week
         </h2>
-        <p className='mt-2 text-sm text-muted-foreground'>
+        <p className='mt-2 type-body text-muted-foreground'>
           Weekly learning pace
         </p>
-        <p className='mt-6 text-xl font-semibold text-foreground'>
-          No pace set yet
-        </p>
-        <p className='mt-2 text-sm text-muted-foreground'>
+        <p className='mt-6 type-card text-foreground'>No pace set yet</p>
+        <p className='mt-2 type-body text-muted-foreground'>
           Your weekly learning pace will appear with an active plan.
         </p>
       </Card>
@@ -35,23 +30,22 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
       aria-labelledby={TITLE_ID}
       className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
     >
-      <h2
-        id={TITLE_ID}
-        className='text-lg font-semibold text-foreground sm:text-xl'
-      >
+      <h2 id={TITLE_ID} className='type-card text-foreground'>
         This week
       </h2>
-      <p className='mt-2 text-sm text-muted-foreground'>Weekly learning pace</p>
+      <p className='mt-2 type-body text-muted-foreground'>
+        Weekly learning pace
+      </p>
 
-      <p className='mt-6 text-3xl font-semibold text-foreground tabular-nums'>
+      <p className='mt-6 type-title text-foreground tabular-nums'>
         {weeklyHours} hr{weeklyHours === 1 ? '' : 's'} planned
       </p>
 
       <div className='mt-6 border-t border-border/50 pt-4'>
-        <p className='text-base font-medium text-foreground'>
+        <p className='type-reading font-medium text-foreground'>
           Progress tracking coming soon
         </p>
-        <p className='mt-1 text-sm text-muted-foreground'>
+        <p className='mt-1 type-body text-muted-foreground'>
           Completed learning time will appear here once it can be measured.
         </p>
       </div>

@@ -11,6 +11,8 @@ interface EmptyPlansListProps {
   searchQuery: string;
   filterStatus: FilterStatus;
   isFirstRun?: boolean;
+  /** Library URL with search and status cleared; keeps the current sort. */
+  clearFiltersHref?: string;
 }
 
 export function EmptyPlansList({
@@ -18,8 +20,10 @@ export function EmptyPlansList({
   searchQuery,
   filterStatus,
   isFirstRun = false,
+  clearFiltersHref = ROUTES.PLANS.ROOT,
 }: EmptyPlansListProps) {
   const hasFilters = Boolean(searchQuery) || filterStatus !== 'all';
+  const showClearFilters = hasFilters && !isFirstRun;
   const title = isFirstRun ? 'No learning plans yet' : 'No plans found';
   const description = isFirstRun
     ? 'Name a goal. Atlaris charts the modules, tasks, and resources.'
@@ -34,14 +38,26 @@ export function EmptyPlansList({
       description={description}
       className='flex min-h-72 animate-in flex-col items-center justify-center rounded-xl border border-dashed border-border bg-panel/40 px-6 py-12 text-center duration-500 fill-mode-both fade-in motion-reduce:animate-none'
       action={
-        canCreatePlan === undefined ? null : (
-          <Button asChild>
-            <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
-              {canCreatePlan ? <Plus /> : null}
-              {canCreatePlan ? 'New plan' : 'Upgrade'}
-            </Link>
-          </Button>
-        )
+        showClearFilters || canCreatePlan !== undefined ? (
+          <>
+            {showClearFilters ? (
+              <Button asChild>
+                <Link href={clearFiltersHref}>Clear filters</Link>
+              </Button>
+            ) : null}
+            {canCreatePlan === undefined ? null : (
+              <Button
+                asChild
+                variant={showClearFilters ? 'outline' : 'default'}
+              >
+                <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
+                  {canCreatePlan ? <Plus /> : null}
+                  {canCreatePlan ? 'New plan' : 'Upgrade'}
+                </Link>
+              </Button>
+            )}
+          </>
+        ) : null
       }
     />
   );

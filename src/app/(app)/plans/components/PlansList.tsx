@@ -134,15 +134,15 @@ function PlansStatusRail({
                     sort: query.sort,
                   })}
                   aria-current={isCurrent ? 'page' : undefined}
-                  className={`flex min-h-[40px] items-center gap-2 border-b-2 px-3 text-sm whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
+                  className={`flex min-h-[40px] items-center gap-2 border-b-2 px-3 type-label whitespace-nowrap transition-colors [@media(pointer:coarse)]:min-h-[44px] ${
                     isCurrent
-                      ? 'border-primary font-medium text-foreground'
+                      ? 'border-primary text-foreground'
                       : 'border-transparent text-muted-foreground hover:text-foreground'
                   }`}
                 >
                   {option.label}
                   <span
-                    className={`rounded-full px-1.5 py-0.5 text-xs tabular-nums ${
+                    className={`rounded-full px-1.5 py-0.5 type-meta tabular-nums ${
                       isCurrent
                         ? 'bg-background/70 text-foreground'
                         : 'bg-background/40 text-muted-foreground'
@@ -168,7 +168,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
         className='relative w-full min-w-0 flex-1'
       >
         <Search
-          className='pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground'
+          className='pointer-events-none absolute top-1/2 left-3 size-5 -translate-y-1/2 text-muted-foreground'
           aria-hidden='true'
         />
         {query.status !== 'all' ? (
@@ -181,10 +181,11 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
           id={PLANS_LIBRARY_SEARCH_ID}
           ref={plansLibrarySearchFocusRef}
           type='search'
+          variant='search'
           name='search'
           placeholder='Search your plans...'
           aria-label='Search learning plans'
-          className='min-h-[40px] w-full border-border/70 bg-background/40 pl-[36px]'
+          className='min-h-10 w-full bg-background/40'
           defaultValue={query.search}
         />
       </form>
@@ -195,7 +196,7 @@ function PlansSearch({ query }: { query: PlanListQuery }) {
             status: 'all',
             sort: query.sort,
           })}
-          className='shrink-0 self-start text-xs font-medium text-link hover:text-link-hover hover:underline sm:self-auto'
+          className='shrink-0 self-start type-label text-link hover:text-link-hover hover:underline sm:self-auto'
         >
           Clear {plansLibraryFilterLabel(query.status).toLowerCase()} filter
         </Link>
@@ -284,7 +285,7 @@ function BulkPlanActionsToolbar({
     >
       <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
         <div className='space-y-1'>
-          <p className='text-sm font-medium text-foreground'>
+          <p className='type-label text-foreground'>
             <span
               key={selectedCount}
               className='inline-block animate-in tabular-nums animation-duration-200 fill-mode-both fade-in slide-in-from-bottom-1 motion-reduce:animate-none'
@@ -294,7 +295,7 @@ function BulkPlanActionsToolbar({
             selected
           </p>
           {toolbarMessage ? (
-            <p aria-live='polite' className='text-sm text-destructive'>
+            <p aria-live='polite' className='type-body text-destructive'>
               {toolbarMessage}
             </p>
           ) : null}
@@ -346,7 +347,7 @@ function PlansGrid({
   return (
     <div className='space-y-3'>
       <div className='flex items-center justify-between gap-3'>
-        <label className='inline-flex min-h-[44px] items-center gap-2 text-sm text-muted-foreground'>
+        <label className='inline-flex min-h-11 items-center gap-2 type-label text-muted-foreground'>
           <input
             type='checkbox'
             checked={allSelected}
@@ -362,11 +363,11 @@ function PlansGrid({
               }
               onDeselectAll();
             }}
-            className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+            className='size-5 shrink-0 rounded-lg border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
           />
           Select all on page
         </label>
-        <p className='text-xs text-muted-foreground'>
+        <p className='type-meta text-muted-foreground'>
           {page.totalItems} {page.totalItems === 1 ? 'plan' : 'plans'}
         </p>
       </div>
@@ -374,10 +375,11 @@ function PlansGrid({
         aria-label='Learning plans'
         className='grid min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3'
       >
-        {page.items.map((plan) => (
+        {page.items.map((plan, index) => (
           <PlanRow
             key={plan.id}
             plan={plan}
+            index={index}
             referenceTimestamp={page.referenceTimestamp}
             selected={selectedPlanIds.has(plan.id)}
             selectable={isPlanBulkDeletable(plan)}
@@ -508,6 +510,11 @@ export function PlansList({ page, query }: PlansListProps) {
           canCreatePlan={page.canCreatePlan}
           searchQuery={query.search}
           filterStatus={query.status}
+          clearFiltersHref={plansHref({
+            search: '',
+            status: 'all',
+            sort: query.sort,
+          })}
         />
       ) : (
         <PlansGrid
@@ -524,7 +531,7 @@ export function PlansList({ page, query }: PlansListProps) {
       {page.totalPages > 1 ? (
         <nav
           aria-label='Plans pagination'
-          className='flex flex-col gap-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
+          className='flex flex-col gap-3 type-meta text-muted-foreground sm:flex-row sm:items-center sm:justify-between'
         >
           <span className='tabular-nums'>
             Page {page.page} of {page.totalPages}

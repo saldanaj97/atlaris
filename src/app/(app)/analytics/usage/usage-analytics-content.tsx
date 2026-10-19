@@ -13,9 +13,9 @@ import {
   type UsageAnalyticsMetricTrend,
 } from './usage-analytics-formatters';
 import { Badge } from '@/components/ui/badge';
+import { LoadingStatus } from '@/components/ui/loading-status';
 import { PageHero } from '@/components/ui/page-hero';
 import { Progress } from '@/components/ui/progress';
-import { SectionOverline } from '@/components/ui/section-overline';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 import {
@@ -63,7 +63,6 @@ export function UsageAnalyticsContent({
 
       <section aria-labelledby='usage-completion-heading' className='space-y-4'>
         <SectionHeading
-          eyebrow='Overview'
           id='usage-completion-heading'
           title='Current completion'
           description='Progress across plans you can access, based on the tasks and modules you have completed.'
@@ -82,7 +81,6 @@ export function UsageAnalyticsContent({
 
       <section aria-labelledby='usage-activity-heading' className='space-y-4'>
         <SectionHeading
-          eyebrow='Activity'
           id='usage-activity-heading'
           title='Learning activity'
           description='Recorded progress changes and streaks in your analytics timezone.'
@@ -105,18 +103,16 @@ export function UsageAnalyticsContent({
         <Surface padding='none' className='overflow-hidden'>
           <div className='flex flex-col gap-4 border-b border-border/60 px-5 py-5 sm:flex-row sm:items-start sm:justify-between sm:px-6'>
             <div className='min-w-0'>
-              <p className='text-[11px] font-medium tracking-[0.14em] text-muted-foreground uppercase'>
-                Trend
-              </p>
+              <p className='type-eyebrow text-muted-foreground'>Trend</p>
               <h2
                 id={EIGHT_WEEK_PULSE_TITLE_ID}
-                className='mt-1 text-xl font-semibold text-foreground'
+                className='mt-1 type-card text-foreground'
               >
                 Eight-week pulse
               </h2>
               <p
                 id={EIGHT_WEEK_PULSE_DESCRIPTION_ID}
-                className='mt-1 text-sm text-muted-foreground'
+                className='mt-1 type-body text-muted-foreground'
               >
                 Progress changes by plan and week.
               </p>
@@ -140,7 +136,7 @@ export function UsageAnalyticsContent({
           </div>
 
           <div className='px-5 pb-5 sm:px-6'>
-            <p className='border-t border-border/60 pt-4 text-sm text-muted-foreground'>
+            <p className='border-t border-border/60 pt-4 type-body text-muted-foreground'>
               {!model.plans.length
                 ? 'No plans yet. The pulse will appear when a plan records progress.'
                 : !model.history.hasActivity
@@ -159,29 +155,25 @@ function AnalyticsHero() {
   return (
     <PageHero
       dissolve
-      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col justify-center px-0 py-8 sm:min-h-[14rem] sm:py-10'
-      overline='Analytics'
-      overlineClassName='tracking-[0.14em] text-muted-foreground'
+      contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col px-0 pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'
       title={
         <>
           Learning <span className='text-primary'>analytics</span>
         </>
       }
-      titleClassName='font-heading mt-3 text-[32px] leading-[1.15] tracking-[-0.03em] text-balance text-foreground sm:text-[40px]'
+      titleClassName='type-title-hero text-balance text-foreground'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
-      descriptionClassName='mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base'
+      descriptionClassName='mt-3 max-w-xl type-body text-muted-foreground sm:type-reading'
     />
   );
 }
 
 function SectionHeading({
-  eyebrow,
   id,
   title,
   description,
   aside,
 }: {
-  eyebrow: string;
   id: string;
   title: string;
   description: string;
@@ -190,18 +182,15 @@ function SectionHeading({
   return (
     <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
       <div className='min-w-0'>
-        <SectionOverline className='tracking-[0.14em] text-muted-foreground'>
-          {eyebrow}
-        </SectionOverline>
-        <h2 id={id} className='mt-1 text-xl font-semibold text-foreground'>
+        <h2 id={id} className='type-card text-foreground'>
           {title}
         </h2>
-        <p className='mt-1 max-w-2xl text-sm text-muted-foreground'>
+        <p className='mt-1 max-w-2xl type-body text-muted-foreground'>
           {description}
         </p>
       </div>
       {typeof aside === 'string' ? (
-        <p className='shrink-0 text-sm text-muted-foreground'>{aside}</p>
+        <p className='shrink-0 type-body text-muted-foreground'>{aside}</p>
       ) : (
         aside
       )}
@@ -245,11 +234,9 @@ function MetricTile({
         ) : null}
       </div>
 
-      <p className='mt-5 text-sm text-muted-foreground'>{label}</p>
-      <p className='mt-1 text-3xl font-semibold text-foreground tabular-nums'>
-        {value}
-      </p>
-      <p className='mt-2 text-sm text-muted-foreground'>{detail}</p>
+      <p className='mt-5 type-body text-muted-foreground'>{label}</p>
+      <p className='mt-1 type-title text-foreground tabular-nums'>{value}</p>
+      <p className='mt-2 type-body text-muted-foreground'>{detail}</p>
 
       {progress !== undefined ? (
         <Progress
@@ -260,7 +247,9 @@ function MetricTile({
         />
       ) : null}
 
-      <p className='mt-auto pt-4 text-xs text-muted-foreground'>{comparison}</p>
+      <p className='mt-auto pt-4 type-meta text-muted-foreground'>
+        {comparison}
+      </p>
     </Surface>
   );
 }
@@ -296,17 +285,17 @@ export function UsageAnalyticsContentSkeleton() {
       aria-busy='true'
       className='space-y-8'
     >
-      <div className='min-h-[12rem] py-8 sm:min-h-[14rem] sm:py-10'>
-        <Skeleton className='h-4 w-28 bg-secondary' />
-        <Skeleton className='mt-5 h-10 w-full max-w-md' />
+      <LoadingStatus>Loading usage analytics</LoadingStatus>
+
+      <div className='min-h-[12rem] pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'>
+        <Skeleton className='h-10 w-full max-w-md' />
         <Skeleton className='mt-3 h-4 w-full max-w-xl bg-muted' />
       </div>
 
       <div className='space-y-4'>
         <div>
-          <Skeleton className='h-3 w-20 bg-muted' />
-          <Skeleton className='mt-2 h-6 w-40' />
-          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+          <Skeleton className='h-7 w-40' />
+          <Skeleton className='mt-1 h-5 w-full max-w-lg bg-muted' />
         </div>
         <div className='grid gap-4 md:grid-cols-3'>
           {[1, 2, 3].map((id) => (
@@ -317,9 +306,8 @@ export function UsageAnalyticsContentSkeleton() {
 
       <div className='space-y-4'>
         <div>
-          <Skeleton className='h-3 w-20 bg-muted' />
-          <Skeleton className='mt-2 h-6 w-40' />
-          <Skeleton className='mt-2 h-4 w-full max-w-lg bg-muted' />
+          <Skeleton className='h-7 w-40' />
+          <Skeleton className='mt-1 h-5 w-full max-w-lg bg-muted' />
         </div>
         <div className='grid gap-4 sm:grid-cols-2 lg:grid-cols-4'>
           {[1, 2, 3, 4].map((id) => (

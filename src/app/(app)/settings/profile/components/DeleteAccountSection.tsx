@@ -67,9 +67,7 @@ export function DeleteAccountSection(): ReactElement {
   return (
     <Card as='section' className='gap-[24px] shadow-none'>
       <CardHeader>
-        <CardTitle as='h3' className='text-xl leading-[28px]'>
-          Delete account
-        </CardTitle>
+        <CardTitle as='h3'>Delete account</CardTitle>
         <CardDescription>
           Permanently delete your account, your learning plans, and your
           progress.
@@ -106,7 +104,7 @@ export function DeleteAccountSection(): ReactElement {
             {errorMessage ? (
               <p
                 role='alert'
-                className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 text-sm text-danger'
+                className='rounded-lg border border-danger bg-danger-subtle px-3 py-2 type-body text-danger'
               >
                 {errorMessage}
               </p>

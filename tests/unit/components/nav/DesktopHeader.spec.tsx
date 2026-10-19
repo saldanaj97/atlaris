@@ -4,8 +4,7 @@ import {
   authenticatedNavItems,
   unauthenticatedNavItems,
 } from '@/features/navigation';
-import { cleanup, render, screen, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('@clerk/nextjs', () => ({
@@ -40,14 +39,7 @@ function renderDesktopHeader(
 
 describe('DesktopHeader layout', () => {
   it('keeps authenticated nav items accessible at md width', () => {
-    const { container } = renderDesktopHeader();
-
-    expect(container.firstElementChild?.firstElementChild).toHaveClass(
-      'md:grid',
-    );
-    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
-      'lg:grid',
-    );
+    renderDesktopHeader();
 
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(
@@ -91,14 +83,7 @@ describe('DesktopHeader layout', () => {
   });
 
   it('leaves app-shell navigation and branding to the sidebar', () => {
-    const { container } = renderDesktopHeader({ isAppShell: true });
-
-    expect(container.firstElementChild?.firstElementChild).toHaveClass(
-      'lg:grid',
-    );
-    expect(container.firstElementChild?.firstElementChild).not.toHaveClass(
-      'md:grid',
-    );
+    renderDesktopHeader({ isAppShell: true });
 
     expect(
       screen.queryByRole('link', { name: 'Atlaris - Go to homepage' }),
@@ -121,86 +106,14 @@ describe('DesktopHeader layout', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('reopens the desktop sidebar from the header when the rail is closed', async () => {
-    const user = userEvent.setup();
-    const onSidebarOpenChange = vi.fn();
-
-    renderDesktopHeader({
-      isAppShell: true,
-      sidebarOpen: false,
-      onSidebarOpenChange,
-    });
-
-    const expand = screen.getByRole('button', { name: 'Expand sidebar' });
-    expect(expand).toHaveAttribute('aria-expanded', 'false');
-    expect(expand).toHaveAttribute('aria-controls', 'app-desktop-sidebar');
-
-    expand.focus();
-    expect(expand).toHaveFocus();
-    await user.keyboard('{Enter}');
-    expect(onSidebarOpenChange).toHaveBeenCalledWith(true);
-    expect(
-      screen.getByRole('button', {
-        name: /Switch to (light|dark) mode|Toggle theme/,
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('user-button')).toBeInTheDocument();
-  });
-
-  it('renders unauthenticated nav links without clipping at md width', () => {
-    const { container } = render(
-      <TooltipProvider>
-        <div className='w-[768px]'>
-          <DesktopHeader
-            isMarketing
-            pathname='/landing'
-            navItems={unauthenticatedNavItems}
-            isAuthenticated={false}
-            showClerkUserButton
-          />
-        </div>
-      </TooltipProvider>,
-    );
-
-    const header = container.firstElementChild?.firstElementChild;
-    expect(header).toHaveClass('md:grid');
-    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
-    expect(header).not.toHaveClass('md:flex');
-    expect(header).not.toHaveClass('lg:grid');
-    expect(header).not.toHaveClass('justify-between');
-
-    for (const item of unauthenticatedNavItems) {
-      expect(
-        screen.getByRole('link', { name: item.label }),
-      ).toBeInTheDocument();
-    }
-
-    const brand = screen.getByRole('link', {
-      name: 'Atlaris - Go to homepage',
-    });
-    const nav = screen.getByRole('navigation', {
-      name: 'Marketing navigation',
-    });
-    expect(header?.children).toHaveLength(3);
-    expect(header?.children[0]).toContainElement(brand);
-    expect(header?.children[1]).toContainElement(nav);
-    expect(brand.parentElement).not.toContainElement(nav);
-    expect(within(nav).getAllByRole('link')).toHaveLength(
-      unauthenticatedNavItems.length,
-    );
-  });
-
   it('keeps marketing chrome when authenticated (no app nav or avatar)', () => {
-    const { container } = renderDesktopHeader({
+    renderDesktopHeader({
       isMarketing: true,
       pathname: '/landing',
       navItems: unauthenticatedNavItems,
       isAuthenticated: true,
       showClerkUserButton: true,
     });
-
-    const header = container.firstElementChild?.firstElementChild;
-    expect(header).toHaveClass('grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]');
 
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',

@@ -25,7 +25,6 @@ export function ModuleDetailClient({
     module,
     planId,
     planTopic,
-    totalModules,
     previousModuleId,
     nextModuleId,
     previousModulesComplete,
@@ -74,7 +73,6 @@ export function ModuleDetailClient({
         module={module}
         planId={planId}
         planTopic={planTopic}
-        totalModules={totalModules}
         previousModuleId={previousModuleId}
         nextModuleId={nextModuleId}
         statuses={statuses}

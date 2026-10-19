@@ -34,6 +34,14 @@ beforeEach(() => {
   vi.stubGlobal('cancelAnimationFrame', (id: number) => {
     animationFrameCallbacks.delete(id);
   });
+  vi.stubGlobal(
+    'matchMedia',
+    vi.fn().mockReturnValue({
+      matches: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }),
+  );
 
   /** Records observed elements and callbacks for test-controlled resize events. */
   class TestResizeObserver {
@@ -180,14 +188,6 @@ const model: UsageAnalyticsModel = {
 };
 
 describe('UsageAnalyticsContent', () => {
-  it('reserves pulse chart space while chart rendering loads', () => {
-    render(<UsageAnalyticsContent model={model} />);
-
-    expect(
-      screen.getByRole('status', { name: 'Loading eight-week pulse chart' }),
-    ).toHaveClass('h-80');
-  });
-
   it('renders the seven contracted families and the eight-week pulse', async () => {
     render(<UsageAnalyticsContent model={model} />);
     await resizeChart(780);

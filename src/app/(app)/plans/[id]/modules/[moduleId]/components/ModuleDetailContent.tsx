@@ -9,7 +9,7 @@ import { loadModuleForPage } from '@/app/(app)/plans/[id]/modules/[moduleId]/mod
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { ROUTES } from '@/features/navigation/routes';
 import { logger } from '@/lib/logging/logger';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 
 export { ModuleDetailContentSkeleton };
 
@@ -47,12 +47,11 @@ export async function ModuleDetailContent({
       }
 
       case 'NOT_FOUND':
-        return (
-          <ModuleDetailPageError
-            message='This module does not exist or you do not have access to it.'
-            planId={planId}
-          />
-        );
+        // Missing and not-owned modules share this code; render the module-scoped not-found UI.
+        // This runs after streaming starts, so the response stays 200 with a noindex
+        // tag (a soft 404). Accepted because these pages sit behind auth; a real 404
+        // would need a pre-stream check in proxy.
+        return notFound();
 
       case 'FORBIDDEN':
         return (

@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 
 type PlanRouteErrorContentProps = {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
   logMessage: string;
   title: string;
   message: string;
@@ -16,7 +16,7 @@ type PlanRouteErrorContentProps = {
 
 export function PlanRouteErrorContent({
   error,
-  reset,
+  retry,
   logMessage,
   title,
   message,
@@ -30,17 +30,17 @@ export function PlanRouteErrorContent({
   }, [error, logMessage]);
 
   return (
-    <div className='flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center p-4'>
+    <div className='py-10'>
       <RouteErrorState
         title={title}
         message={message}
         actions={
           <div className='flex flex-col gap-3 sm:flex-row sm:justify-center'>
-            <Button onClick={reset} variant='default'>
-              Try Again
+            <Button onClick={retry} variant='default'>
+              Try again
             </Button>
             <Button asChild variant='outline'>
-              <Link href='/plans'>Back to Plans</Link>
+              <Link href='/plans'>Back to plans</Link>
             </Button>
           </div>
         }

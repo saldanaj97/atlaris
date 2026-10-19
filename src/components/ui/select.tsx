@@ -36,7 +36,7 @@ function SelectTrigger({
       data-slot='select-trigger'
       data-size={size}
       className={cn(
-        "flex w-fit min-w-0 max-w-full items-center justify-between gap-[8px] rounded-[8px] border border-input bg-card px-[12px] py-[8px] text-base leading-[24px] whitespace-normal [overflow-wrap:anywhere] shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-muted-foreground focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 aria-invalid:border-danger aria-invalid:hover:border-danger focus-visible:aria-invalid:border-danger data-placeholder:text-muted-foreground data-[size=default]:min-h-[40px] data-[size=sm]:min-h-[32px] data-[size=sm]:text-sm data-[size=sm]:leading-[20px] [@media(pointer:coarse)]:min-h-[44px] *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:whitespace-normal *:data-[slot=select-value]:[overflow-wrap:anywhere] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[20px] data-[size=sm]:[&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground",
+        "flex w-fit min-w-0 max-w-full items-center justify-between gap-[8px] rounded-[8px] border border-input bg-card px-[12px] py-[8px] type-input whitespace-normal [overflow-wrap:anywhere] shadow-xs transition-[color,border-color,box-shadow] outline-none hover:border-muted-foreground focus-visible:border-ring focus-visible:ring-[2px] focus-visible:ring-ring focus-visible:ring-offset-[2px] focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:text-disabled-foreground disabled:opacity-100 aria-invalid:border-danger aria-invalid:hover:border-danger focus-visible:aria-invalid:border-danger data-placeholder:text-muted-foreground data-[size=default]:min-h-[40px] data-[size=sm]:min-h-[32px] data-[size=sm]:type-label [@media(pointer:coarse)]:min-h-[44px] *:data-[slot=select-value]:min-w-0 *:data-[slot=select-value]:flex-1 *:data-[slot=select-value]:whitespace-normal *:data-[slot=select-value]:[overflow-wrap:anywhere] *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[20px] data-[size=sm]:[&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground",
         className,
       )}
       {...props}
@@ -94,7 +94,7 @@ function SelectLabel({
     <SelectPrimitive.Label
       data-slot='select-label'
       className={cn(
-        'px-[8px] py-[4px] text-xs text-muted-foreground',
+        'px-[8px] py-[4px] type-meta text-muted-foreground',
         className,
       )}
       {...props}
@@ -111,7 +111,7 @@ function SelectItem({
     <SelectPrimitive.Item
       data-slot='select-item'
       className={cn(
-        "relative flex min-h-[40px] w-full cursor-default items-center gap-[8px] rounded-[8px] py-[8px] pr-[32px] pl-[8px] text-sm outline-none select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[8px]",
+        "relative flex min-h-[40px] w-full cursor-default items-center gap-[8px] rounded-[8px] py-[8px] pr-[32px] pl-[8px] type-body outline-none select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground [&>span:last-child]:flex [&>span:last-child]:items-center [&>span:last-child]:gap-[8px]",
         className,
       )}
       {...props}

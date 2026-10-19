@@ -41,7 +41,7 @@ export function PreferenceControls({
 
   return (
     <fieldset className='m-0 min-w-0'>
-      <legend className='mb-3 text-sm leading-5 font-medium text-foreground'>
+      <legend className='mb-3 type-label text-foreground'>
         Plan preferences
       </legend>
       <div className='grid min-w-0 grid-cols-1 gap-4 md:grid-cols-2'>

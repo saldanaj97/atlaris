@@ -10,7 +10,7 @@ Earlier section text is preserved with its originating reference IDs. Use the so
 
 This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopts the shared cool-black/lavender foundations through `src/app/globals.css`, generated dark tokens and the existing shared page primitives. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
 
-JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 recorded the launch copy and information-architecture map. JCS-98 removed the superseded After Hours agent rule and the `docs/styles/style-guide.md` compatibility pointer so those files cannot appear current. JCS-97 still owns integrated visual acceptance across pages and shared components. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
+JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 recorded the launch copy and information-architecture map. JCS-98 removed the superseded After Hours agent rule and the `docs/styles/style-guide.md` compatibility pointer so those files cannot appear current. JCS-97 (integrated visual acceptance) was closed on 2026-10-14 without a separate acceptance pass. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
 
 **Original package context:** the handbook below was authored against `f8994dc7144ca8ce64354771c8fd95082cdd52a6`. Statements about the old `DESIGN.md` precedence in §§00.3 and 27 describe that snapshot; the repository adoption notes above and §27.10 supersede that documentation conflict and identify the runtime slice implemented here. References to `tokens/atlaris.tokens.json`, generated CSS/catalogs, package scripts, HTML/PDF specimens, JSON registries and earlier stage files describe the original external reference package. Those companion files remain outside the repository. The supplied compiler can generate tokens externally as described below; do not reconstruct a competing token source from these tables. Package/handbook checks are separate from application checks. Use the inherited source registers below for the retained chapter reference IDs.
 
@@ -350,6 +350,8 @@ All nominal pixel sizes assume a 16px root. The authoring file uses rem sizes an
 | --------------- | ----------- | ------------------- | ------ | -------- | ------------------------- |
 | display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.        |
 | display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts. |
+| display-section | Sora        | 30–36 / ×1.08       | 600    | −0.035em | Marketing section heading. |
+| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.    |
 | title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.        |
 | title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title. |
 | section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.     |
@@ -367,6 +369,8 @@ Keep headings semantic: an h2 does not become an h1 to obtain a larger visual si
 Use a **70ch default reading measure**, within the audit’s 65–75ch range. Long titles wrap; numbers use tabular figures where alignment matters. Do not truncate a user’s essential task or action label. Code can scroll inside its own region; ordinary prose must reflow. [A01 §5; W09]
 
 ### Repository binding
+
+Each role ships as a `type-<role>` utility in `src/app/globals.css` (for example `type-body`, `type-title`). One class sets family, size, line height, weight and tracking; `type-eyebrow` also sets uppercase. Use the role instead of combining `text-*`, `leading-*`, `tracking-*` and `font-*` values. Single-property modifiers such as `font-medium` or `font-mono` may follow a role, and `cn()` drops type classes that precede a role. Display and title roles scale fluidly between 375px and 1280px viewports: `type-display` 40–64px, `type-display-section` 30–36px, `type-title-hero` 32–40px, `type-title` 28–32px. The one documented exception is the 10px tier badge on the account avatar, where a 12px role would cover the avatar.
 
 When integrating with `next/font`, bind the UI and display family tokens to the existing `--font-work-sans` and `--font-sora` variables on the same theme-owning element. Literal family names may not select Next’s generated font faces. Keep the current font loader; do not introduce client-side Google requests to the production app just because the standalone specimen has an optional comparison loader.
 
@@ -887,9 +891,9 @@ Surface is a presentational wrapper around a div, with existing variants `defaul
 
 | Role                | Draft treatment                                                               | Interaction rule                                                        |
 | ------------------- | ----------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Default surface     | Opaque surface, subtle border, 12px radius                                    | No hover affordance unless a real action exists.                        |
+| Default surface     | Opaque surface, quiet `panel-border` frame, 12px radius                       | No hover affordance unless a real action exists.                        |
 | Muted surface       | Raised fill, restrained boundary                                              | Supplemental content, not disabled content.                             |
-| Inset               | Canvas-family fill, subtle border                                             | Nested detail, code or supporting values.                               |
+| Inset               | Canvas-family fill, quiet `panel-border` frame                                | Nested detail, code or supporting values.                               |
 | Interactive surface | Surface → raised hover; control-strength boundary when it identifies a target | Real link/button semantics; do not make a div clickable by style alone. |
 
 A card with a primary link and an actions menu must not become one giant link containing a nested button. Keep title link, selection control and action menu independently reachable. Whole-card link overlays must not intercept those controls. No hover-only reveal for critical actions on touch.
