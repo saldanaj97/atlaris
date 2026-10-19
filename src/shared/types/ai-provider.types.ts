@@ -19,7 +19,6 @@ export type GenerationInput = {
  * module order for deterministic mock payloads and later parser checks.
  */
 export type ModuleLessonBatchGenerationInput = {
-  systemPrompt: string;
   userPrompt: string;
   taskIds: readonly string[];
 };

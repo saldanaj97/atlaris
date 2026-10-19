@@ -21,7 +21,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `clerkAuthEnv` - Clerk publishable and secret keys
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `aiTimeoutEnv` - AI generation timeout settings
-- `openRouterEnv` - OpenRouter transport configuration
+- `openRouterEnv` - OpenRouter transport configuration and the required preset slugs `OPENROUTER_PLAN_PRESET` and `OPENROUTER_LESSON_PRESET`. The plan and lesson system prompts live only in those OpenRouter presets (the repo has no fallback copy), so a real provider call without a valid slug fails before any request is sent. The mock provider needs neither.
 - `devAuthEnv` - Development auth overrides
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)

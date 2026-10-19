@@ -22,7 +22,6 @@ import { safeNormalizeUsage } from '@/features/ai/usage';
 import { resolveUserTier } from '@/features/billing/tier';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import {
-  buildModuleLessonBatchSystemPrompt,
   buildModuleLessonBatchUserPrompt,
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
@@ -119,7 +118,6 @@ export function buildModuleLessonBatchInput(
   promptInput: ModuleLessonBatchPromptInput,
 ): ModuleLessonBatchInput {
   return {
-    systemPrompt: buildModuleLessonBatchSystemPrompt(),
     userPrompt: buildModuleLessonBatchUserPrompt(promptInput),
     taskIds: promptInput.tasks.map((t) => t.taskId),
   };

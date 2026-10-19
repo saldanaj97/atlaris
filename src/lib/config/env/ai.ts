@@ -64,6 +64,10 @@ interface OpenRouterEnv {
   readonly siteUrl: string | undefined;
   readonly appName: string | undefined;
   readonly baseUrl: string;
+  /** OpenRouter preset slug holding the plan-generation system prompt. */
+  readonly planPreset: string | undefined;
+  /** OpenRouter preset slug holding the lesson-generation system prompt. */
+  readonly lessonPreset: string | undefined;
 }
 
 /**
@@ -203,6 +207,12 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
         access.getServerOptional('OPENROUTER_BASE_URL') ??
         OPENROUTER_DEFAULT_BASE_URL
       );
+    },
+    get planPreset() {
+      return access.getServerOptional('OPENROUTER_PLAN_PRESET');
+    },
+    get lessonPreset() {
+      return access.getServerOptional('OPENROUTER_LESSON_PRESET');
     },
   };
 

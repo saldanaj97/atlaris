@@ -11,7 +11,7 @@ import type { chatSend } from '@openrouter/sdk/funcs/chatSend';
 import type { ChatRequest } from '@openrouter/sdk/models';
 
 import { getOutputTokenCeiling } from '@/features/ai/cost';
-import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
   ProviderInvalidResponseError,
@@ -339,7 +339,24 @@ function resolveOpenRouterContentStream(
   return { stream: toStream(content), isStreaming: false };
 }
 
-type OpenRouterChatMessage = { role: 'system' | 'user'; content: string };
+type OpenRouterChatMessage = { role: 'user'; content: string };
+
+const PRESET_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
+ * System prompts live only in OpenRouter presets, so a request without a valid
+ * preset slug must not be sent.
+ */
+function requirePresetSlug(value: string | undefined, envName: string): string {
+  const slug = value?.trim();
+  if (!slug) {
+    throw new Error(`${envName} is not set`);
+  }
+  if (!PRESET_SLUG_PATTERN.test(slug)) {
+    throw new Error(`${envName} must be an OpenRouter preset slug`);
+  }
+  return slug;
+}
 
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouterClient;
@@ -373,6 +390,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
 
   private executeJsonObjectChat(
     messages: readonly OpenRouterChatMessage[],
+    presetSlug: string,
     options: GenerationOptions | undefined,
     requestSpanName: string,
   ): Promise<ProviderGenerateResult> {
@@ -405,10 +423,13 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           const responseFormat = { type: 'json_object' as const };
           const tokenCeiling = getRouteTokenCeiling(this.routeModels);
           const messagePayload = [...messages];
+          const presetSuffix = `@preset/${presetSlug}`;
           const requestBody =
             this.routeModels.length > 1
               ? {
-                  models: this.routeModels,
+                  models: this.routeModels.map(
+                    (model) => `${model}${presetSuffix}`,
+                  ),
                   messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
@@ -416,7 +437,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                   maxTokens: tokenCeiling,
                 }
               : {
-                  model: this.model,
+                  model: `${this.model}${presetSuffix}`,
                   messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
@@ -476,7 +497,10 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     input: GenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    const systemPrompt = buildSystemPrompt();
+    const presetSlug = requirePresetSlug(
+      openRouterEnv.planPreset,
+      'OPENROUTER_PLAN_PRESET',
+    );
     const userPrompt = buildUserPrompt({
       topic: input.topic,
       notes: input.notes,
@@ -488,28 +512,32 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     });
 
     const messages: OpenRouterChatMessage[] = [
-      { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ];
 
     return this.executeJsonObjectChat(
       messages,
+      presetSlug,
       options,
       `request ${this.routeModels.join(' > ')}`,
     );
   }
 
-  generateModuleLessonBatch(
+  async generateModuleLessonBatch(
     input: ModuleLessonBatchGenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
+    const presetSlug = requirePresetSlug(
+      openRouterEnv.lessonPreset,
+      'OPENROUTER_LESSON_PRESET',
+    );
     const messages: OpenRouterChatMessage[] = [
-      { role: 'system', content: input.systemPrompt },
       { role: 'user', content: input.userPrompt },
     ];
 
     return this.executeJsonObjectChat(
       messages,
+      presetSlug,
       options,
       `request module-lesson-batch ${this.routeModels.join(' > ')}`,
     );

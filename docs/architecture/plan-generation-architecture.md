@@ -207,7 +207,7 @@ Parse failures are never retried: invalid JSON settles as a retryable `provider_
 
 **Runtime marker.** `generation_attempts.metadata.workflow.provider` is `cloudflare-workflow` for create and retry (`cloudflare-queue` for regeneration attempts, `workflow-sdk` on older rows); `runId` is the Cloudflare instance ID, the queue message ID for regeneration, or the Vercel run ID on older rows. Settlement passes the marker back as `workflowMetadata`, so the finalized attempt keeps it with `completedAt`.
 
-**Settings.** Worker switch `JOB_PLAN_GENERATION_ENABLED` (Worker secret; off unless `true`) and `JOBS_PAUSED`; lessons after success also need `JOB_MODULE_LESSONS_ENABLED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The step timeout follows the Worker's `AI_TIMEOUT_*` variables (app defaults when unset).
+**Settings.** Worker switch `JOB_PLAN_GENERATION_ENABLED` (Worker secret; off unless `true`) and `JOBS_PAUSED`; lessons after success also need `JOB_MODULE_LESSONS_ENABLED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `OPENROUTER_PLAN_PRESET`. The step timeout follows the Worker's `AI_TIMEOUT_*` variables (app defaults when unset).
 
 **Availability.** The app needs `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, and the Worker needs `JOB_PLAN_GENERATION_ENABLED=true`. When the Worker is paused, the switch is off, or the command fails, the start settles the reserved attempt as a retryable `provider_error` and the request returns `503 GENERATION_FAILED`.
 
@@ -306,7 +306,7 @@ Each step opens its own database pool (`withInvocationDb`); Worker paths never u
 
 **Runtime marker.** `modules.lessonGenerationMetadata.workflow.provider` is `cloudflare-workflow` (`workflow-sdk` on rows written before the Vercel path was retired); `runId` is the Cloudflare instance ID. The status route returns `runId` as `workflowRunId`.
 
-**Settings.** Worker switch `JOB_MODULE_LESSONS_ENABLED` (Worker secret; off unless `true`) and `JOBS_PAUSED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`. The app's Vercel Flag `module-lesson-generation` does not reach the Worker.
+**Settings.** Worker switch `JOB_MODULE_LESSONS_ENABLED` (Worker secret; off unless `true`) and `JOBS_PAUSED`. Secrets: `JOBS_SIGNING_SECRET`, `OPENROUTER_API_KEY`, `OPENROUTER_LESSON_PRESET`. The app's Vercel Flag `module-lesson-generation` does not reach the Worker.
 
 **Availability.** The app needs `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, and the Worker needs `JOB_MODULE_LESSONS_ENABLED=true`. Record CPU per step from Workers Logs (Decision 9).
 

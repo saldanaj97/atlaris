@@ -4,12 +4,7 @@ import {
 } from '@/features/ai/constants';
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 import {
-  MAX_LESSON_BLOCKS_PER_TASK,
   MAX_LESSON_BLOCK_TEXT_LENGTH,
-  MAX_LESSON_BLOCK_TITLE_LENGTH,
-  MAX_LESSON_LIST_ITEMS,
-  MAX_LESSON_LIST_ITEM_LENGTH,
-  MAX_MODULE_LESSON_BATCH_TASKS,
   MAX_MODULE_TITLE_LENGTH,
   MAX_TASK_TITLE_LENGTH,
 } from '@supabase/schema/constants';
@@ -74,49 +69,6 @@ function suggestedLessonBodyBudgetChars(estimatedMinutes: number): number {
     Math.round(estimatedMinutes) * LESSON_BODY_BUDGET_CHARS_PER_MINUTE;
   const cap = MAX_LESSON_BLOCK_TEXT_LENGTH * LESSON_BODY_BUDGET_CAP_MULTIPLIER;
   return Math.min(Math.max(scaled, LESSON_BODY_BUDGET_MIN_CHARS), cap);
-}
-
-/**
- * System prompt: JSON-only module-lesson batch contract aligned with `ModuleLessonBatchProviderOutputSchema`.
- */
-export function buildModuleLessonBatchSystemPrompt(): string {
-  const blockTypes = [
-    'heading',
-    'paragraph',
-    'example',
-    'practice',
-    'takeaways',
-    'completion_criteria',
-  ].join(', ');
-
-  return [
-    'You are an expert instructional designer.',
-    'Output strictly JSON only — no markdown, no code fences, no commentary.',
-    '',
-    'Top-level JSON object shape:',
-    '{"version":1,"tasks":[{"taskId":"<uuid>","content":{"version":1,"blocks":[...]}}]}',
-    '',
-    '- `version` must be the integer 1 at both outer and inner `content` objects.',
-    '- `tasks`: array covering exactly the supplied task ids — one entry per id, no extras, no omissions, no duplicate `taskId`.',
-    '- Preserve task order: `tasks[i].taskId` must equal the i-th supplied task id (same sequence as USER INPUT task list).',
-    '',
-    'Each block in `content.blocks` is a discriminated object with `"type"` as:',
-    `- ${blockTypes}`,
-    '',
-    'Schema-aligned caps (do not exceed):',
-    `- At most ${MAX_MODULE_LESSON_BATCH_TASKS} tasks in \`tasks\` (caller supplies fewer for single module).`,
-    `- At most ${MAX_LESSON_BLOCKS_PER_TASK} blocks per task \`content.blocks\`.`,
-    `- \`heading.text\`, \`paragraph.text\`, \`practice.text\`: max ${MAX_LESSON_BLOCK_TEXT_LENGTH} chars each.`,
-    `- \`example.title\`: max ${MAX_LESSON_BLOCK_TITLE_LENGTH} chars; \`example.text\`: max ${MAX_LESSON_BLOCK_TEXT_LENGTH} chars.`,
-    `- \`takeaways.items\` and \`completion_criteria.items\`: at most ${MAX_LESSON_LIST_ITEMS} strings, each max ${MAX_LESSON_LIST_ITEM_LENGTH} chars.`,
-    '',
-    'Content rules for lesson bodies:',
-    '- No HTML tags.',
-    '- No URLs or link markdown.',
-    '- Keep tone clear and teachable; align depth to each task title and estimated minutes.',
-    '',
-    'Return only the JSON object — nothing before or after it.',
-  ].join('\n');
 }
 
 /**
