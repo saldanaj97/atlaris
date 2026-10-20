@@ -1,6 +1,6 @@
 # Supply-chain policy
 
-**Last updated:** 2026-08-03
+**Last updated:** 2026-10-20
 
 Atlaris keeps the pnpm lockfile committed, installs it with `--frozen-lockfile`, and blocks production/high dependency findings. The policy is defined in [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml) and uses pnpm 11.9.0:
 
@@ -69,6 +69,18 @@ A lockfile-only remediation classified as a strict stable patch may enter the sa
 Waiting seven days is the default. A security fix younger than seven days may add an **exact** `package@version` entry to `minimumReleaseAgeExclude` only when the advisory cannot safely wait. Automation proves that the selector is exact, is tied to the audited package, and resolves the advisory's fixed version; it does not make the risk-acceptance decision or infer an exact publish time. The entry must not be a package-wide selector, range, or unrelated cleanup.
 
 `pnpm-workspace.yaml` is owned by `@saldanaj97` in `.github/CODEOWNERS`. A fresh exception therefore requires the code-owner approval enforced by the active `develop`/`main` rulesets and can never auto-merge. The PR body lists every exact exception and its advisory evidence, plus a review checklist. Before approving, the code owner must verify the registry publish timestamp, record the release age and why the high/critical exposure cannot wait, and confirm the fixed version. Remove an exception in a later human-reviewed cleanup PR once the release is older than seven days and the frozen-install/audit checks pass.
+
+### Active non-security exception: `tsrs` shadow typecheck
+
+A non-security exception needs the same exact selectors, code-owner approval, and removal date as a security one, plus a written reason here. One is active:
+
+| Field | Value |
+| --- | --- |
+| Packages | `tsrs@0.18.0-ts7.1.0-dev.20260929` and its `@tsrs/{darwin-arm64,linux-x64-gnu,linux-x64-musl,linux-arm64-gnu,linux-arm64-musl}` binaries at the same version (dev-only, direct) |
+| `minimumReleaseAgeExclude` | All six exact versions. Published 2026-10-19 (registry timestamps); they reach seven days on 2026-10-26 |
+| `trustPolicyExclude` | `tsrs@0.18.0-ts7.1.0-dev.20260929` only. pnpm reports a trust downgrade against the package's older history (2024 releases from a different publisher and a staged bootstrap publish). This version is published by GitHub Actions trusted publishing with SLSA v1 provenance from `oxc-project/tsrs` |
+| Reason | Evaluates tsrs as a `tsc` replacement through the non-blocking CircleCI step `tsrs shadow typecheck (non-blocking)`. No production code path runs it |
+| Removal | Remove the six `minimumReleaseAgeExclude` entries in a cleanup PR on or after 2026-10-26. Remove the `trustPolicyExclude` entry when tsrs is upgraded or dropped; any newer version needs its own review |
 
 ## Manifest-required and otherwise unfixable advisories
 
