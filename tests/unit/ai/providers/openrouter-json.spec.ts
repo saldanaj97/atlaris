@@ -34,4 +34,19 @@ describe('extractFirstJsonObject', () => {
       ProviderInvalidResponseError,
     );
   });
+
+  it('does not return an inner fragment of a truncated object', () => {
+    expect(() =>
+      extractFirstJsonObject('{"modules":[{"title":"Intro"},{"title":"Nex'),
+    ).toThrow(ProviderInvalidResponseError);
+    expect(() =>
+      extractFirstJsonObject('```json\n{"modules":[{"title":"Intro"}'),
+    ).toThrow(ProviderInvalidResponseError);
+  });
+
+  it('does not return an inner fragment of a malformed object', () => {
+    expect(() =>
+      extractFirstJsonObject('{"modules":[{"title":"Intro"},]}'),
+    ).toThrow(ProviderInvalidResponseError);
+  });
 });

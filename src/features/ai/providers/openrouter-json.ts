@@ -40,14 +40,17 @@ function parseFirstObject(text: string): unknown {
   let start = text.indexOf('{');
   while (start !== -1) {
     const end = findBalancedObjectEnd(text, start);
-    if (end !== undefined) {
-      try {
-        return JSON.parse(text.slice(start, end)) as unknown;
-      } catch {
-        // Not JSON (prose braces); try the next opening brace.
-      }
+    if (end === undefined) {
+      // Unclosed (truncated output): every later brace is nested inside it, so
+      // parsing one would return a fragment of the real object.
+      return undefined;
     }
-    start = text.indexOf('{', start + 1);
+    try {
+      return JSON.parse(text.slice(start, end)) as unknown;
+    } catch {
+      // Not JSON (prose braces); skip past it rather than into it.
+    }
+    start = text.indexOf('{', end);
   }
   return undefined;
 }
