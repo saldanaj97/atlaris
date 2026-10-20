@@ -165,16 +165,31 @@ export type GroundedOperationPolicy =
       readonly research?: ResearchLimits;
     };
 
-/** OpenRouter preset per request role; the advisor rides on another request. */
-export const GROUNDED_PRESET_SLUG_BY_OPERATION = {
+/** OpenRouter presets added for grounded generation. */
+export const GROUNDED_PRESET_SLUGS = {
   research: 'atlaris-grounded-research',
-  initial_outline: 'atlaris-grounded-outline',
-  regeneration: 'atlaris-grounded-outline',
-  lesson: 'atlaris-grounded-lesson',
-  outline_verify: 'atlaris-grounded-outline-verify',
-  lesson_verify: 'atlaris-grounded-lesson-verify',
-  advisor: null,
-} as const satisfies Record<GroundedOperation, string | null>;
+  verifier: 'atlaris-grounded-verifier',
+  repair: 'atlaris-grounded-repair',
+} as const;
+
+export type GroundedPreset =
+  | { readonly slug: string }
+  /** The existing `openRouterEnv.planPreset` or `lessonPreset`. */
+  | { readonly existing: 'plan' | 'lesson' };
+
+/**
+ * OpenRouter preset per operation. The advisor's instructions go in its tool
+ * parameters on the repair request, which uses the repair preset.
+ */
+export const GROUNDED_PRESET_BY_OPERATION = {
+  research: { slug: GROUNDED_PRESET_SLUGS.research },
+  initial_outline: { existing: 'plan' },
+  regeneration: { existing: 'plan' },
+  lesson: { existing: 'lesson' },
+  outline_verify: { slug: GROUNDED_PRESET_SLUGS.verifier },
+  lesson_verify: { slug: GROUNDED_PRESET_SLUGS.verifier },
+  advisor: { slug: GROUNDED_PRESET_SLUGS.repair },
+} as const satisfies Record<GroundedOperation, GroundedPreset>;
 
 /** Free writer models, tried in this order. Replaces `openrouter/free`. */
 export const FREE_GROUNDED_WRITER_MODEL_IDS = [

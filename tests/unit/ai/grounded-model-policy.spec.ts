@@ -6,7 +6,8 @@ import {
   getGroundedOperationPolicy,
   getModelOperationPolicy,
   GROUNDED_OPERATIONS,
-  GROUNDED_PRESET_SLUG_BY_OPERATION,
+  GROUNDED_PRESET_BY_OPERATION,
+  GROUNDED_PRESET_SLUGS,
   type GroundedOperation,
   hasGroundedRegenerationQuota,
   PRO_GROUNDED_REVIEW_CATALOG,
@@ -219,16 +220,28 @@ describe('hasGroundedRegenerationQuota', () => {
   });
 });
 
-describe('GROUNDED_PRESET_SLUG_BY_OPERATION', () => {
-  it('names a valid preset slug for every role with its own request', () => {
-    for (const operation of GROUNDED_OPERATIONS) {
-      const slug = GROUNDED_PRESET_SLUG_BY_OPERATION[operation];
-      if (operation === 'advisor') {
-        expect(slug).toBeNull();
-      } else {
-        expect(slug).toMatch(/^[a-z0-9][a-z0-9-]*$/);
-      }
+describe('GROUNDED_PRESET_BY_OPERATION', () => {
+  it('adds three valid preset slugs', () => {
+    expect(Object.values(GROUNDED_PRESET_SLUGS)).toEqual([
+      'atlaris-grounded-research',
+      'atlaris-grounded-verifier',
+      'atlaris-grounded-repair',
+    ]);
+    for (const slug of Object.values(GROUNDED_PRESET_SLUGS)) {
+      expect(slug).toMatch(/^[a-z0-9][a-z0-9-]*$/);
     }
+  });
+
+  it('keeps the existing plan and lesson presets for writers', () => {
+    expect(GROUNDED_PRESET_BY_OPERATION).toEqual({
+      research: { slug: 'atlaris-grounded-research' },
+      initial_outline: { existing: 'plan' },
+      regeneration: { existing: 'plan' },
+      lesson: { existing: 'lesson' },
+      outline_verify: { slug: 'atlaris-grounded-verifier' },
+      lesson_verify: { slug: 'atlaris-grounded-verifier' },
+      advisor: { slug: 'atlaris-grounded-repair' },
+    });
   });
 });
 
