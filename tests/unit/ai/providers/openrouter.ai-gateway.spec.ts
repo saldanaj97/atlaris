@@ -116,6 +116,9 @@ describe('OpenRouterProvider AI Gateway routing', () => {
         preset: OPENROUTER_TEST_PLAN_PRESET,
       }),
       'cf-aig-skip-cache': 'true',
+      'cf-aig-max-attempts': '2',
+      'cf-aig-retry-delay': '1000',
+      'cf-aig-backoff': 'constant',
       'cf-aig-collect-log-payload': 'false',
     });
   });
@@ -158,6 +161,9 @@ describe('OpenRouterProvider AI Gateway routing', () => {
         preset: OPENROUTER_TEST_LESSON_PRESET,
       }),
       'cf-aig-skip-cache': 'true',
+      'cf-aig-max-attempts': '2',
+      'cf-aig-retry-delay': '1000',
+      'cf-aig-backoff': 'constant',
     });
   });
 });

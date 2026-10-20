@@ -402,6 +402,12 @@ function buildAiGatewayHeaders(
     'cf-aig-metadata': JSON.stringify({ stage, preset: presetSlug }),
     // Regenerations resend identical requests and must get a fresh answer.
     'cf-aig-skip-cache': 'true',
+    // One quick retry, overriding the dashboard. Streamed calls fail before the
+    // stream starts (429, 5xx), so a retry cannot repeat a running generation.
+    // No cf-aig-request-timeout: a timeout retry could.
+    'cf-aig-max-attempts': '2',
+    'cf-aig-retry-delay': '1000',
+    'cf-aig-backoff': 'constant',
     ...(gateway.logPayloads ? {} : { 'cf-aig-collect-log-payload': 'false' }),
   };
 }
