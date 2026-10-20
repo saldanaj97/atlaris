@@ -68,6 +68,7 @@ Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature
 | Worker secret (switch)         | `JOB_REGENERATION_ENABLED`     | Consumer, sweep, and enqueue command on/off (absent = off)                           |
 | Worker secret (switch)         | `JOBS_PAUSED`                  | Pauses every job                                                                     |
 | Worker secret                  | `OPENROUTER_API_KEY`           | Provider calls from the consumer                                                     |
+| Worker secret                  | `OPENROUTER_PLAN_PRESET`       | OpenRouter preset holding the plan system prompt (required)                          |
 
 Flip a Worker switch yourself from `workers/jobs`: `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <true|false>`. Switches are declared as secrets in `workers/jobs/cloudflare.config.ts`, so a deploy keeps them; never set them from Git or as plain-text dashboard variables. Set `JOBS_SIGNING_SECRET_PREVIOUS` the same way during rotation; it is not declared in the config, and a deploy keeps existing secrets.
 

@@ -1,88 +1,9 @@
 import { createPromptParams } from '../../fixtures/prompts';
-import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { buildUserPrompt } from '@/features/ai/prompts';
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 import { describe, expect, it } from 'vitest';
 
 describe('AI Prompt Builder', () => {
-  describe('buildSystemPrompt', () => {
-    it('should return a non-empty string', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toBeDefined();
-      expect(typeof prompt).toBe('string');
-      expect(prompt.length).toBeGreaterThan(0);
-    });
-
-    it('should include JSON schema instructions', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('JSON');
-      expect(prompt).toContain('modules');
-      expect(prompt).toContain('Module');
-      expect(prompt).toContain('Task');
-    });
-
-    it('should include required fields for Module', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('title');
-      expect(prompt).toContain('description');
-      expect(prompt).toContain('estimated_minutes');
-      expect(prompt).toContain('tasks');
-    });
-
-    it('should include required fields for Task', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('title');
-      expect(prompt).toContain('estimated_minutes');
-    });
-
-    it('should specify module count constraints', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('3-6 modules');
-    });
-
-    it('should specify task count constraints', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('3-6 tasks');
-    });
-
-    it('should include time estimate guidelines', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('Time Estimate Guidelines');
-      expect(prompt).toContain('Beginner');
-      expect(prompt).toContain('Intermediate');
-      expect(prompt).toContain('Advanced');
-    });
-
-    it('should avoid requiring task resources in the schema', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).not.toMatch(/Resource Requirements:/i);
-      expect(prompt).not.toMatch(/\bresources\s+required\b/i);
-      const taskSchemaSnippet = prompt.match(/Task:\s*\{([^}]*)\}/)?.[1] ?? '';
-      expect(taskSchemaSnippet).not.toMatch(/\bresources\??\s*:/i);
-    });
-
-    it('should prohibit markdown and code fences', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('NOT include markdown');
-      expect(prompt).toContain('code fences');
-    });
-
-    it('should emphasize JSON-only output', () => {
-      const prompt = buildSystemPrompt();
-
-      expect(prompt).toContain('JSON only');
-      expect(prompt).toContain('strictly JSON');
-    });
-  });
-
   describe('buildUserPrompt', () => {
     const basicParams = createPromptParams();
 

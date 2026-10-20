@@ -1,6 +1,6 @@
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
-import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { buildUserPrompt } from '@/features/ai/prompts';
 import { describe, expect, it } from 'vitest';
 
 describe('Prompts with deadline and start date context', () => {
@@ -50,22 +50,6 @@ describe('Prompts with deadline and start date context', () => {
 
     expect(prompt).toContain('Start date: 2025-01-15');
     expect(prompt).not.toContain('Deadline:');
-  });
-
-  it('includes deadline constraint in system prompt', () => {
-    const prompt = buildSystemPrompt();
-
-    expect(prompt).toContain(
-      'If start and deadline dates are provided, distribute learning to fit within the timeline',
-    );
-  });
-
-  it('maintains other constraints in system prompt', () => {
-    const prompt = buildSystemPrompt();
-
-    expect(prompt).toContain('3-6 modules total');
-    expect(prompt).toContain('3-6 tasks');
-    expect(prompt).toContain('JSON only');
   });
 
   it('includes all core fields in user prompt', () => {

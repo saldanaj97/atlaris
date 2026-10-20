@@ -372,6 +372,28 @@ describe('Environment Configuration', () => {
       expect(aiTimeoutEnv.baseMs).toBe(7000);
       expect(aiTimeoutEnv.extensionThresholdMs).toBe(2000);
     });
+
+    it('picks the OpenRouter key for a tier, falling back to the shared key', () => {
+      const env: Record<string, string> = {
+        OPENROUTER_API_KEY: 'shared-key',
+        OPENROUTER_API_KEY_STARTER: 'starter-key',
+        OPENROUTER_API_KEY_PRO: '',
+      };
+      const access = createServerEnvAccess(() => env);
+      const { openRouterEnv } = createAiEnvFacets(access);
+
+      expect(openRouterEnv.apiKeyForTier('starter')).toBe('starter-key');
+      expect(openRouterEnv.apiKeyForTier('pro')).toBe('shared-key');
+      expect(openRouterEnv.apiKeyForTier('free')).toBe('shared-key');
+      expect(openRouterEnv.apiKeyForTier()).toBe('shared-key');
+    });
+
+    it('returns no OpenRouter key when neither key is set', () => {
+      const access = createServerEnvAccess(() => ({}));
+      const { openRouterEnv } = createAiEnvFacets(access);
+
+      expect(openRouterEnv.apiKeyForTier('pro')).toBeUndefined();
+    });
   });
 
   describe('optionalEnv', () => {

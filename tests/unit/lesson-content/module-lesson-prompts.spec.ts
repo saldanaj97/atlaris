@@ -1,5 +1,4 @@
 import {
-  buildModuleLessonBatchSystemPrompt,
   buildModuleLessonBatchUserPrompt,
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
@@ -41,16 +40,6 @@ describe('module lesson batch prompts', () => {
         estimatedMinutes: estimatedMinutesB,
       },
     ],
-  });
-
-  it('system prompt mandates JSON shape, block kinds, caps, and strict task order', () => {
-    const prompt = buildModuleLessonBatchSystemPrompt();
-    expect(prompt).toContain('Output strictly JSON only');
-    expect(prompt).toContain('"version":1');
-    expect(prompt).toContain('heading');
-    expect(prompt).toContain('completion_criteria');
-    expect(prompt).toContain('Preserve task order');
-    expect(prompt).toContain('no duplicate `taskId`');
   });
 
   it('user prompt wraps untrusted input in delimiters and repeats task ids in DB order', () => {
