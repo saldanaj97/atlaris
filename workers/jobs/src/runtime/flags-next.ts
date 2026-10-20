@@ -3,12 +3,22 @@
 // app flag key resolves to a dashboard-managed Worker switch instead.
 import type { JobSwitchVars } from '../env';
 
-import { isJobEnabled, type JobName } from '../switches';
+import {
+  groundedGenerationTiers,
+  isJobEnabled,
+  type JobName,
+} from '../switches';
 
-/** App flag key → Worker switch; `null` means always off on the Worker. */
-export const FLAG_SWITCHES: Readonly<Record<string, JobName | null>> = {
+/**
+ * App flag key → Worker switch; `null` means always off on the Worker.
+ * `GROUNDED_GENERATION` reads the per-tier `GROUNDED_GENERATION_<TIER>` switches.
+ */
+export const FLAG_SWITCHES: Readonly<
+  Record<string, JobName | 'GROUNDED_GENERATION' | null>
+> = {
   'email-notification-delivery': 'EMAIL_DELIVERY',
   'module-lesson-generation': 'MODULE_LESSONS',
+  'grounded-generation': 'GROUNDED_GENERATION',
   // The Worker does not follow the app's maintenance mode (Decision 7).
   'maintenance-mode': null,
   // A user-traffic gate on the app; no job reads it.
@@ -28,8 +38,10 @@ export function flag<T>(declaration: FlagDeclaration): () => Promise<T> {
     );
   }
   const job = FLAG_SWITCHES[declaration.key];
-  return async () =>
-    (job === null
-      ? false
-      : isJobEnabled(process.env as JobSwitchVars, job)) as T;
+  return async () => {
+    const env = process.env as JobSwitchVars;
+    if (job === null) return false as T;
+    if (job === 'GROUNDED_GENERATION') return groundedGenerationTiers(env) as T;
+    return isJobEnabled(env, job) as T;
+  };
 }

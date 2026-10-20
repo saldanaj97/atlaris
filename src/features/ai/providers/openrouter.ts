@@ -6,6 +6,7 @@ import type {
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { OpenRouterCore } from '@openrouter/sdk/core';
 import type { chatSend } from '@openrouter/sdk/funcs/chatSend';
 import type { ChatRequest } from '@openrouter/sdk/models';
@@ -63,6 +64,11 @@ type AiGatewayConfig = {
 
 export type OpenRouterProviderConfig = {
   apiKey?: string;
+  /**
+   * Picks `OPENROUTER_API_KEY_<TIER>` when no `apiKey` is given. Grounded
+   * stages pass it; the legacy pipeline does not, so it keeps one key.
+   */
+  tier?: SubscriptionTier;
   model: string;
   fallbackModels?: readonly string[];
   siteUrl?: string;
@@ -430,7 +436,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     if (client) {
       this.client = client;
     } else {
-      const apiKey = cfg.apiKey ?? openRouterEnv.apiKey;
+      const apiKey = cfg.apiKey ?? openRouterEnv.apiKeyForTier(cfg.tier);
       if (!apiKey) {
         throw new Error('OPENROUTER_API_KEY is not set');
       }

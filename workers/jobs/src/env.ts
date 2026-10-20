@@ -1,9 +1,12 @@
-import { JOB_NAMES, type JobName } from './switches';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
+
+import { GROUNDED_GENERATION_TIERS, JOB_NAMES, type JobName } from './switches';
 import { z } from 'zod';
 
 export type JobSwitchVars = {
   JOBS_PAUSED?: string;
-} & Partial<Record<`JOB_${JobName}_ENABLED`, string>>;
+} & Partial<Record<`JOB_${JobName}_ENABLED`, string>> &
+  Partial<Record<`GROUNDED_GENERATION_${Uppercase<SubscriptionTier>}`, string>>;
 
 /**
  * Bindings and vars from `cloudflare.config.ts`, plus the deploy-time
@@ -52,6 +55,12 @@ const workerEnvSchema = z.object({
   JOBS_PAUSED: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),
+  ),
+  ...Object.fromEntries(
+    GROUNDED_GENERATION_TIERS.map((tier) => [
+      `GROUNDED_GENERATION_${tier.toUpperCase()}`,
+      optionalString,
+    ]),
   ),
 });
 

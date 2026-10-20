@@ -6,6 +6,7 @@ import {
   toSerializableReservation,
 } from '@/features/plans/workflows/plan-generation.types';
 import {
+  moduleLessonsStartCommandSchema,
   planGenerationStartCommandSchema,
   toPlanGenerationWorkflowInput,
 } from '@/lib/jobs-worker/contract';
@@ -70,5 +71,26 @@ describe('plan-generation start command', () => {
     expect(fromSerializableReservation(received.reservation)).toEqual(
       reservation,
     );
+  });
+});
+
+describe('module-lessons start command', () => {
+  const command = {
+    v: 1,
+    planId: '0b5e2c1d-6f4a-4e3b-9c8d-7a6b5c4d3e2f',
+    moduleId: '7c1d2e3f-4a5b-4c6d-8e9f-0a1b2c3d4e5f',
+    userId: '2d7a4e3f-8b6c-4a5d-9e0f-9c8d7e6f5a41',
+    batchRequestId: 'batch-1',
+    correlationId: 'req-1',
+  };
+
+  it('carries no tier; the Workflow resolves it from userId', () => {
+    expect(moduleLessonsStartCommandSchema.safeParse(command).success).toBe(
+      true,
+    );
+    expect(
+      moduleLessonsStartCommandSchema.safeParse({ ...command, tier: 'pro' })
+        .success,
+    ).toBe(false);
   });
 });
