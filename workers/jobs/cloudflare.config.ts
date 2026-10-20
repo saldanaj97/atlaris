@@ -20,6 +20,12 @@ const SENTRY_DSN =
 const DEPLOYED_SECRETS = [
   'JOBS_SIGNING_SECRET',
   'OPENROUTER_API_KEY',
+  'OPENROUTER_PLAN_PRESET',
+  'OPENROUTER_LESSON_PRESET',
+  // Cloudflare AI Gateway in front of OpenRouter: the gateway's /openrouter URL
+  // and its authentication token.
+  'OPENROUTER_BASE_URL',
+  'CF_AI_GATEWAY_TOKEN',
   'RESEND_API_KEY',
   'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
 ] as const;

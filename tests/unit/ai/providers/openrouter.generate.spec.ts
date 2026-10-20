@@ -2,7 +2,9 @@ import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
+  OPENROUTER_TEST_LESSON_PRESET,
   OPENROUTER_TEST_MODEL,
+  OPENROUTER_TEST_PLAN_PRESET,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
@@ -14,6 +16,8 @@ describe('OpenRouterProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+    vi.stubEnv('OPENROUTER_PLAN_PRESET', OPENROUTER_TEST_PLAN_PRESET);
+    vi.stubEnv('OPENROUTER_LESSON_PRESET', OPENROUTER_TEST_LESSON_PRESET);
   });
 
   afterEach(() => {
@@ -194,15 +198,12 @@ describe('OpenRouterProvider', () => {
 
       expect(send).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'anthropic/claude-3-opus',
+          model: `anthropic/claude-3-opus@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
           temperature: 0.7,
           stream: true,
           responseFormat: { type: 'json_object' },
           maxTokens: expect.any(Number),
-          messages: expect.arrayContaining([
-            expect.objectContaining({ role: 'system' }),
-            expect.objectContaining({ role: 'user' }),
-          ]),
+          messages: [expect.objectContaining({ role: 'user' })],
         }),
         expect.any(Object),
       );
@@ -287,6 +288,87 @@ describe('OpenRouterProvider', () => {
       );
 
       expect(userMessage.content).toContain('Notes: Focus on type safety');
+    });
+
+    it('applies the plan preset to every route model', async () => {
+      const { client, send } = createOpenRouterMockClient();
+      send.mockResolvedValueOnce({
+        choices: [
+          { message: { content: JSON.stringify(VALID_PLAN_RESPONSE) } },
+        ],
+      });
+
+      const provider = new OpenRouterProvider(
+        { model: 'openai/gpt-4o', fallbackModels: [AI_DEFAULT_MODEL] },
+        client,
+      );
+      const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+      const requestBody = send.mock.calls[0][0] as { models: string[] };
+      expect(requestBody.models).toEqual([
+        `openai/gpt-4o@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+        `${AI_DEFAULT_MODEL}@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+      ]);
+      expect(result.metadata.model).toBe('openai/gpt-4o');
+    });
+
+    it.each([
+      ['missing', ''],
+      ['not a slug', 'plan@preset/other'],
+    ])('rejects a %s plan preset without sending', async (_label, value) => {
+      vi.stubEnv('OPENROUTER_PLAN_PRESET', value);
+      const { client, send } = createOpenRouterMockClient();
+      const provider = new OpenRouterProvider(
+        { model: OPENROUTER_TEST_MODEL },
+        client,
+      );
+
+      await expect(provider.generate(OPENROUTER_SAMPLE_INPUT)).rejects.toThrow(
+        'OPENROUTER_PLAN_PRESET',
+      );
+      expect(send).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('generateModuleLessonBatch', () => {
+    const lessonInput = {
+      userPrompt: 'lesson user prompt',
+      taskIds: ['task-1'],
+    };
+
+    it('sends only the user prompt with the lesson preset', async () => {
+      const { client, send } = createOpenRouterMockClient();
+      send.mockResolvedValueOnce({
+        choices: [{ message: { content: '{"version":1,"tasks":[]}' } }],
+      });
+
+      const provider = new OpenRouterProvider(
+        { model: OPENROUTER_TEST_MODEL },
+        client,
+      );
+      await provider.generateModuleLessonBatch(lessonInput);
+
+      expect(send).toHaveBeenCalledWith(
+        expect.objectContaining({
+          model: `${OPENROUTER_TEST_MODEL}@preset/${OPENROUTER_TEST_LESSON_PRESET}`,
+          messages: [{ role: 'user', content: 'lesson user prompt' }],
+        }),
+        expect.any(Object),
+      );
+    });
+
+    it('rejects a missing lesson preset without sending', async () => {
+      vi.stubEnv('OPENROUTER_LESSON_PRESET', '');
+      const { client, send } = createOpenRouterMockClient();
+      const provider = new OpenRouterProvider(
+        { model: OPENROUTER_TEST_MODEL },
+        client,
+      );
+
+      await expect(
+        provider.generateModuleLessonBatch(lessonInput),
+      ).rejects.toThrow('OPENROUTER_LESSON_PRESET is not set');
+      expect(send).not.toHaveBeenCalled();
     });
   });
 });

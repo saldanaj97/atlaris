@@ -2,7 +2,9 @@ import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
+  OPENROUTER_TEST_LESSON_PRESET,
   OPENROUTER_TEST_MODEL,
+  OPENROUTER_TEST_PLAN_PRESET,
 } from './openrouter-test-helpers';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import { OpenRouterProvider } from '@/features/ai/providers/openrouter';
@@ -12,6 +14,8 @@ describe('OpenRouterProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+    vi.stubEnv('OPENROUTER_PLAN_PRESET', OPENROUTER_TEST_PLAN_PRESET);
+    vi.stubEnv('OPENROUTER_LESSON_PRESET', OPENROUTER_TEST_LESSON_PRESET);
   });
 
   afterEach(() => {

@@ -4,7 +4,9 @@ import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
+  OPENROUTER_TEST_LESSON_PRESET,
   OPENROUTER_TEST_MODEL,
+  OPENROUTER_TEST_PLAN_PRESET,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
@@ -15,6 +17,8 @@ describe('OpenRouterProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+    vi.stubEnv('OPENROUTER_PLAN_PRESET', OPENROUTER_TEST_PLAN_PRESET);
+    vi.stubEnv('OPENROUTER_LESSON_PRESET', OPENROUTER_TEST_LESSON_PRESET);
   });
 
   afterEach(() => {
@@ -155,6 +159,29 @@ describe('OpenRouterProvider', () => {
           totalTokens: 250,
           providerReportedCostUsd: undefined,
         });
+      });
+
+      it('records the streamed finish reason in metadata', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithFinishReason(): AsyncIterable<StreamEventLike> {
+          yield { choices: [{ delta: { content: payload } }] };
+          yield {
+            choices: [{ delta: { content: '' }, finishReason: 'length' }],
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithFinishReason());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        expect(result.metadata.finishReason).toBeUndefined();
+        await collectOpenRouterStream(result.stream);
+        expect(result.metadata.finishReason).toBe('length');
       });
 
       it('updates metadata.model from streaming chunk model metadata', async () => {

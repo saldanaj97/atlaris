@@ -18,7 +18,6 @@ describe('MockGenerationProvider.generateModuleLessonBatch', () => {
   it('streams JSON matching ModuleLessonBatchProviderOutputSchema for taskIds', async () => {
     const provider = new MockGenerationProvider({ delayMs: 0, failureRate: 0 });
     const { stream, metadata } = await provider.generateModuleLessonBatch({
-      systemPrompt: 'system',
       userPrompt: 'user',
       taskIds: TASK_IDS,
     });

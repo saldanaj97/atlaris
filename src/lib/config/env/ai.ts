@@ -21,6 +21,9 @@ const MOCK_AI_SCENARIO_VALUES = new Set([
 
 const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
+/** Worker modes whose AI Gateway logs may keep prompt and response bodies. */
+const AI_GATEWAY_PAYLOAD_LOG_WORKER_ENVS = new Set(['staging', 'development']);
+
 /**
  * Mock-provider-specific env flags used by AI generation tests and local flows.
  */
@@ -64,6 +67,17 @@ interface OpenRouterEnv {
   readonly siteUrl: string | undefined;
   readonly appName: string | undefined;
   readonly baseUrl: string;
+  /** OpenRouter preset slug holding the plan-generation system prompt. */
+  readonly planPreset: string | undefined;
+  /** OpenRouter preset slug holding the lesson-generation system prompt. */
+  readonly lessonPreset: string | undefined;
+  /** Cloudflare AI Gateway token, sent when `baseUrl` points at the gateway. */
+  readonly aiGatewayToken: string | undefined;
+  /**
+   * Whether AI Gateway logs keep request and response bodies. Only staging and
+   * local Worker modes do; production logs metadata only (prompts hold user notes).
+   */
+  readonly aiGatewayLogPayloads: boolean;
 }
 
 /**
@@ -202,6 +216,22 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       return (
         access.getServerOptional('OPENROUTER_BASE_URL') ??
         OPENROUTER_DEFAULT_BASE_URL
+      );
+    },
+    get planPreset() {
+      return access.getServerOptional('OPENROUTER_PLAN_PRESET');
+    },
+    get lessonPreset() {
+      return access.getServerOptional('OPENROUTER_LESSON_PRESET');
+    },
+    get aiGatewayToken() {
+      return access.getServerOptional('CF_AI_GATEWAY_TOKEN');
+    },
+    get aiGatewayLogPayloads() {
+      const workerEnv = access.getServerOptional('WORKER_ENV');
+      return (
+        workerEnv !== undefined &&
+        AI_GATEWAY_PAYLOAD_LOG_WORKER_ENVS.has(workerEnv)
       );
     },
   };

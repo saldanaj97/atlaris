@@ -22,7 +22,6 @@ import { safeNormalizeUsage } from '@/features/ai/usage';
 import { resolveUserTier } from '@/features/billing/tier';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import {
-  buildModuleLessonBatchSystemPrompt,
   buildModuleLessonBatchUserPrompt,
   type ModuleLessonBatchPromptInput,
 } from '@/features/lesson-content/module-lesson-prompts';
@@ -61,6 +60,8 @@ export type ModuleLessonBatchInput = Parameters<
 export type ModuleLessonRawBatch = {
   readonly rawText: string;
   readonly usage: CanonicalAIUsage;
+  /** Provider `finish_reason` when streamed (`length` means the output was cut off). */
+  readonly finishReason?: string;
 };
 
 // --- prepare ---------------------------------------------------------------
@@ -119,7 +120,6 @@ export function buildModuleLessonBatchInput(
   promptInput: ModuleLessonBatchPromptInput,
 ): ModuleLessonBatchInput {
   return {
-    systemPrompt: buildModuleLessonBatchSystemPrompt(),
     userPrompt: buildModuleLessonBatchUserPrompt(promptInput),
     taskIds: promptInput.tasks.map((t) => t.taskId),
   };
@@ -189,7 +189,11 @@ export async function generateModuleLessonRawBatch(input: {
       signal: controller.signal,
     });
 
-    return { rawText, usage: safeNormalizeUsage(providerResult.metadata) };
+    return {
+      rawText,
+      usage: safeNormalizeUsage(providerResult.metadata),
+      finishReason: providerResult.metadata.finishReason,
+    };
   } finally {
     cleanupTimeoutLifecycle(lifecycle);
   }
