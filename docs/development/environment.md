@@ -21,7 +21,7 @@ Prefer the exported grouped configs instead of raw keys:
 - `clerkAuthEnv` - Clerk publishable and secret keys
 - `aiEnv` - AI/LLM provider configuration (includes `mockScenario` for mock provider)
 - `aiTimeoutEnv` - AI generation timeout settings
-- `openRouterEnv` - OpenRouter transport configuration and the required preset slugs `OPENROUTER_PLAN_PRESET` and `OPENROUTER_LESSON_PRESET`. The plan and lesson system prompts live only in those OpenRouter presets (the repo has no fallback copy), so a real provider call without a valid slug fails before any request is sent. The mock provider needs neither.
+- `openRouterEnv` - OpenRouter transport configuration and the required preset slugs `OPENROUTER_PLAN_PRESET` and `OPENROUTER_LESSON_PRESET`. The plan and lesson system prompts live only in those OpenRouter presets (the repo has no fallback copy), so a real provider call without a valid slug fails before any request is sent. The mock provider needs neither. Optional `OPENROUTER_BASE_URL` (a Cloudflare AI Gateway `/openrouter` URL) and `CF_AI_GATEWAY_TOKEN` route calls through AI Gateway; the provider sends `cf-aig-*` headers (token, `stage`/`preset` metadata, cache skip) only to `gateway.ai.cloudflare.com`. Gateway logs keep prompt and response bodies only when `WORKER_ENV` is `staging` or `development`.
 - `devAuthEnv` - Development auth overrides
 - `localProductTestingEnv` - Local product-testing mode flag and deterministic seed user ids (allowed for local preview builds; refused in hosted deploys)
 - `getAttemptCap` - Attempt cap overrides (implemented in `src/lib/config/env/ai.ts`)

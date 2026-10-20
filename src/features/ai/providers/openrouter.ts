@@ -40,9 +40,25 @@ export type OpenRouterClient = {
   chat: {
     send: (
       request: ChatRequest,
-      options?: { signal?: AbortSignal; timeoutMs?: number },
+      options?: OpenRouterRequestOptions,
     ) => Promise<unknown>;
   };
+};
+
+type OpenRouterRequestOptions = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  headers?: Record<string, string>;
+};
+
+/** Generation stage, tagged on each AI Gateway log entry. */
+type OpenRouterRequestStage = 'plan' | 'lesson';
+
+const AI_GATEWAY_HOSTNAME = 'gateway.ai.cloudflare.com';
+
+type AiGatewayConfig = {
+  token: string;
+  logPayloads: boolean;
 };
 
 export type OpenRouterProviderConfig = {
@@ -360,11 +376,42 @@ function requirePresetSlug(value: string | undefined, envName: string): string {
   return slug;
 }
 
+/**
+ * AI Gateway headers go only to the gateway host, so the Cloudflare token never
+ * reaches OpenRouter when `OPENROUTER_BASE_URL` is unset or points elsewhere.
+ */
+function resolveAiGatewayConfig(): AiGatewayConfig | undefined {
+  const token = openRouterEnv.aiGatewayToken;
+  if (!token) {
+    return undefined;
+  }
+  const { hostname } = new URL(openRouterEnv.baseUrl);
+  if (hostname !== AI_GATEWAY_HOSTNAME) {
+    return undefined;
+  }
+  return { token, logPayloads: openRouterEnv.aiGatewayLogPayloads };
+}
+
+function buildAiGatewayHeaders(
+  gateway: AiGatewayConfig,
+  stage: OpenRouterRequestStage,
+  presetSlug: string,
+): Record<string, string> {
+  return {
+    'cf-aig-authorization': `Bearer ${gateway.token}`,
+    'cf-aig-metadata': JSON.stringify({ stage, preset: presetSlug }),
+    // Regenerations resend identical requests and must get a fresh answer.
+    'cf-aig-skip-cache': 'true',
+    ...(gateway.logPayloads ? {} : { 'cf-aig-collect-log-payload': 'false' }),
+  };
+}
+
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouterClient;
   private readonly model: string;
   private readonly routeModels: string[];
   private readonly temperature: number;
+  private readonly aiGateway: AiGatewayConfig | undefined;
 
   constructor(cfg: OpenRouterProviderConfig, client?: OpenRouterClient) {
     if (!cfg.model) {
@@ -373,6 +420,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     this.model = cfg.model;
     this.routeModels = buildRouteModels(cfg.model, cfg.fallbackModels);
     this.temperature = cfg.temperature ?? 0.2;
+    this.aiGateway = resolveAiGatewayConfig();
     if (client) {
       this.client = client;
     } else {
@@ -384,6 +432,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       const appName = cfg.appName ?? openRouterEnv.appName;
       this.client = createLazyOpenRouterClient({
         apiKey,
+        serverURL: openRouterEnv.baseUrl,
         ...(siteUrl && { httpReferer: siteUrl }),
         ...(appName && { appTitle: appName }),
       });
@@ -393,6 +442,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
   private executeJsonObjectChat(
     messages: readonly OpenRouterChatMessage[],
     presetSlug: string,
+    stage: OpenRouterRequestStage,
     options: GenerationOptions | undefined,
     requestSpanName: string,
   ): Promise<ProviderGenerateResult> {
@@ -407,12 +457,16 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         },
       },
       async (span, finish) => {
-        const requestOptions: {
-          signal?: AbortSignal;
-          timeoutMs?: number;
-        } = {};
+        const requestOptions: OpenRouterRequestOptions = {};
         if (options?.signal) {
           requestOptions.signal = options.signal;
+        }
+        if (this.aiGateway) {
+          requestOptions.headers = buildAiGatewayHeaders(
+            this.aiGateway,
+            stage,
+            presetSlug,
+          );
         }
         // Streaming responses routinely exceed base timeout; extension applied unconditionally
         // until adaptive timeout is wired end-to-end (see GitHub #214).
@@ -523,6 +577,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     return this.executeJsonObjectChat(
       messages,
       presetSlug,
+      'plan',
       options,
       `request ${this.routeModels.join(' > ')}`,
     );
@@ -543,6 +598,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     return this.executeJsonObjectChat(
       messages,
       presetSlug,
+      'lesson',
       options,
       `request module-lesson-batch ${this.routeModels.join(' > ')}`,
     );
