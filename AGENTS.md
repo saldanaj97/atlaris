@@ -109,6 +109,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
 - Report the checks actually run and their outcomes. A skipped check is not a pass.
 
+## Branches and releases
+
+- Open every PR against `develop`, including each slice of a multi-PR project. Never create or target a long-lived track branch (short-lived stacked PRs are fine); put unfinished user-facing behavior behind a fail-closed flag in `src/flags.ts`.
+- Open a `develop` → `main` promotion PR only when asked. Promotions are batched (at most daily, or per milestone) and merged with a merge commit, never squash or rebase, so no `main` → `develop` merge-back is needed. Details: `docs/ci/branching-strategy.md`.
+
 ## PR review comments
 
 - After reviewing a PR review comment, reply to its thread and resolve it, whether you applied a fix or not. The reply names the fixing commit, or explains why no change was needed.
