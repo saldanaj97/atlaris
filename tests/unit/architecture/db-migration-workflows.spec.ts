@@ -422,8 +422,8 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 61,
-      tag: '20261017151324_add_users_posthog_deleted_at',
+      idx: 62,
+      tag: '20261020215726_add_plan_research_and_generation_quality_issues',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',

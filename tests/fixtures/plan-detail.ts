@@ -183,6 +183,8 @@ export function buildPlan(
     generationStatus: 'generating',
     isQuotaEligible: false,
     finalizedAt: null,
+    regenerationReasons: null,
+    regenerationNote: null,
     createdAt: BASE_DATE,
     updatedAt: BASE_DATE,
     modules: [],

@@ -26,6 +26,7 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20260826184123_expand_user_preferences_model_text_slots.sql
   supabase/migrations/20260828002855_add_clerk_billing_projection_watermark.sql
   supabase/migrations/20261017151324_add_users_posthog_deleted_at.sql
+  supabase/migrations/20261020215726_add_plan_research_and_generation_quality_issues.sql
 )
 
 # Keep the users INSERT revoke contract-only until service-role provisioning is live.

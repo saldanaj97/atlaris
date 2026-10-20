@@ -9,10 +9,13 @@
 export const AUTHENTICATED_SERVER_OWNED_WRITE_TABLES = [
   'ai_usage_events',
   'generation_attempts',
+  'generation_quality_issues',
   'learning_activity_events',
   'learning_plans',
   'modules',
+  'plan_research',
   'plan_schedules',
+  'research_sources',
   'resources',
   'task_resources',
   'tasks',
