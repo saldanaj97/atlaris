@@ -72,15 +72,15 @@ Waiting seven days is the default. A security fix younger than seven days may ad
 
 ### Active non-security exception: `tsrs` shadow typecheck
 
-A non-security exception needs the same exact selectors, code-owner approval, and removal date as a security one, plus a written reason here. One is active:
+The rule above covers security fixes only. The entries below are a one-off exception the code owner approved for a dev-only evaluation, and they follow the same controls: exact selectors, code-owner review, and a removal date.
 
 | Field | Value |
 | --- | --- |
-| Packages | `tsrs@0.18.0-ts7.1.0-dev.20260929` and its `@tsrs/{darwin-arm64,linux-x64-gnu,linux-x64-musl,linux-arm64-gnu,linux-arm64-musl}` binaries at the same version (dev-only, direct) |
-| `minimumReleaseAgeExclude` | All six exact versions. Published 2026-10-19 (registry timestamps); they reach seven days on 2026-10-26 |
-| `trustPolicyExclude` | `tsrs@0.18.0-ts7.1.0-dev.20260929` only. pnpm reports a trust downgrade against the package's older history (2024 releases from a different publisher and a staged bootstrap publish). This version is published by GitHub Actions trusted publishing with SLSA v1 provenance from `oxc-project/tsrs` |
-| Reason | Evaluates tsrs as a `tsc` replacement through the non-blocking CircleCI step `tsrs shadow typecheck (non-blocking)`. No production code path runs it |
-| Removal | Remove the six `minimumReleaseAgeExclude` entries in a cleanup PR on or after 2026-10-26. Remove the `trustPolicyExclude` entry when tsrs is upgraded or dropped; any newer version needs its own review |
+| Packages | `tsrs@0.18.0-ts7.1.0-dev.20260929`, a direct devDependency, and its five optional platform binaries `@tsrs/{darwin-arm64,linux-x64-gnu,linux-x64-musl,linux-arm64-gnu,linux-arm64-musl}` at the same version |
+| `minimumReleaseAgeExclude` | All six exact versions. The registry shows them published 2026-10-19 between 11:09 and 11:25 UTC, so they all pass the seven-day gate after 2026-10-26 11:25 UTC |
+| `trustPolicyExclude` | `tsrs@0.18.0-ts7.1.0-dev.20260929` only, because pnpm rejects it with `ERR_PNPM_TRUST_DOWNGRADE`. The package name's history includes three 2024 snapshots from npm user `qidanta` and a 2026-10-10 `0.0.0-bootstrap.0` publish by `boshen`, none with provenance. Every release from `0.12.0` onward, including this one, is published by GitHub Actions trusted publishing from `oxc-project/tsrs` with SLSA v1 provenance |
+| Reason | Compares tsrs with `tsc` in the non-blocking CircleCI step `tsrs shadow typecheck (non-blocking)`. Nothing in the production build or runtime uses it |
+| Removal | Remove the six `minimumReleaseAgeExclude` entries in a cleanup PR after 2026-10-26 11:25 UTC. Remove the `trustPolicyExclude` entry when tsrs is upgraded or dropped. A newer tsrs version needs its own review |
 
 ## Manifest-required and otherwise unfixable advisories
 
