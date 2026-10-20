@@ -58,6 +58,7 @@ describe('RouterGenerationProvider', () => {
   beforeEach(() => {
     vi.stubEnv('AI_PROVIDER', 'router');
     vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+    vi.stubEnv('OPENROUTER_PLAN_PRESET', 'test-plan-preset');
     vi.clearAllMocks();
     mockSend.mockReset();
     mockSend.mockResolvedValue(DEFAULT_OPENROUTER_RESPONSE);
@@ -152,7 +153,10 @@ describe('RouterGenerationProvider', () => {
       expect(mockSend.mock.calls[0][0]).toEqual(
         expect.objectContaining({
           chatRequest: expect.objectContaining({
-            models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+            models: [
+              'anthropic/claude-haiku-4.5@preset/test-plan-preset',
+              `${AI_DEFAULT_MODEL}@preset/test-plan-preset`,
+            ],
           }),
         }),
       );

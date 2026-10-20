@@ -1,6 +1,6 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
-import { isJobEnabled } from '../switches';
+import { isGroundedGenerationEnabled, isJobEnabled } from '../switches';
 import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
@@ -32,6 +32,7 @@ export class ModuleLessonsWorkflowEntrypoint extends WorkflowEntrypoint<
     const env = this.env;
     return runModuleLessonsWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'MODULE_LESSONS'),
+      isGroundedEnabled: (tier) => isGroundedGenerationEnabled(env, tier),
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       logger,
       nonRetryable: (message) => new NonRetryableError(message),

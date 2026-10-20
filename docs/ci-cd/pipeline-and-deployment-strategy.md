@@ -14,7 +14,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 ## The short version
 
 - Start work from `develop`.
-- Open PRs into `develop` (or `main` only for true hotfixes).
+- Open PRs into `develop` (or `main` only for true hotfixes). No long-lived track branches: unfinished work lands behind a flag in `src/flags.ts`.
+- Promote `develop` to `main` in batches (at most daily, or per milestone) and merge the promotion with a merge commit, never squash or rebase. See [branching-strategy.md](../ci/branching-strategy.md#batched-promotions).
 - PRs run CircleCI `ci-pr` checks.
 - CircleCI owns code and test validation; Vercel's Git integration is the authoritative Next.js build and deployment validation.
 - Vercel deploys branch pushes as Preview and `main` pushes as Production.
@@ -54,6 +55,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Draft PRs do not run `ci-pr`; the gate starts when the PR is marked ready for review and reruns on later updates.
 - Runs: lint, type-check, dependency audit, unit tests, PR integration tests (`integration-light`: impacted tests from the `integration tests` Smarter Testing suite, all tests for PRs into `main`), RLS security tests, and dependency remediation tests (the `dependency-remediation-tests` job)
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis. The `unit tests` suite spans two Vitest projects: `unit` (`.spec.ts`, Node environment) and `unit-dom` (`.spec.tsx`, jsdom). PR `unit-tests` runs `circleci testsuite run` on a single container (Node's `os.availableParallelism()` already reports the executor's 4 vCPUs, so Vitest sizes its pool correctly without a `maxWorkers` pin); JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
+- The `integration tests` suite sets `dynamic-test-splitting: true`, which only affects jobs with `parallelism` above 1 (`integration-tests` on `develop`). Auto-rerun stays off: a failure here is a real signal, not a flake. Smarter Testing bills discovered atoms once per `circleci testsuite run` whatever options are on, so splitting adds no test units beyond test impact analysis.
+- Dynamic parallelism trial (experimental): on `develop`, `list-integration-tests` runs `circleci testsuite list-tests` with the same selection flags as `integration-tests`, and the `experimental.dynamic-parallelism` stanza in `code-config.yml` sizes `integration-tests` between 1 and 2 nodes from that list. The job's `parallelism: 2` is the fallback. The trial exists to measure whether `list-tests` bills test units: compare the usage dashboard per `develop` push against the ~491-unit baseline (313 unit + 89 integration analysis + 89 integration run).
 - `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `dependency-remediation-tests` (runs only `node --test .github/scripts/dependency-remediation.test.mjs`) (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 

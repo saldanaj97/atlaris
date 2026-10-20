@@ -2,7 +2,9 @@ import {
   collectOpenRouterStream,
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
+  OPENROUTER_TEST_LESSON_PRESET,
   OPENROUTER_TEST_MODEL,
+  OPENROUTER_TEST_PLAN_PRESET,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
@@ -16,6 +18,8 @@ describe('OpenRouterProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.stubEnv('OPENROUTER_API_KEY', 'test-api-key');
+    vi.stubEnv('OPENROUTER_PLAN_PRESET', OPENROUTER_TEST_PLAN_PRESET);
+    vi.stubEnv('OPENROUTER_LESSON_PRESET', OPENROUTER_TEST_LESSON_PRESET);
   });
 
   afterEach(() => {
@@ -59,7 +63,7 @@ describe('OpenRouterProvider', () => {
 
       expect(send).toHaveBeenCalledWith(
         expect.objectContaining({
-          model: 'anthropic/claude-3-sonnet',
+          model: `anthropic/claude-3-sonnet@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
         }),
         expect.any(Object),
       );
@@ -96,7 +100,10 @@ describe('OpenRouterProvider', () => {
 
       const [request] = send.mock.calls[0] ?? [];
       expect(request).toMatchObject({
-        models: ['anthropic/claude-haiku-4.5', AI_DEFAULT_MODEL],
+        models: [
+          `anthropic/claude-haiku-4.5@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+          `${AI_DEFAULT_MODEL}@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+        ],
       });
       expect(request).not.toHaveProperty('model');
       expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);

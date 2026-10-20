@@ -8,7 +8,6 @@ import {
   deriveLessonLocks,
   deriveModuleCompletionSummary,
   deriveModuleProgressState,
-  derivePlanDetailsCardStats,
   derivePlanOverviewStats,
 } from '@/features/plans/task-progress/client';
 import { buildModule, buildTask } from '@tests/fixtures/plan-detail';
@@ -16,6 +15,39 @@ import { createTestPlanDetail } from '@tests/fixtures/plans';
 import { describe, expect, it } from 'vitest';
 
 const plan = createTestPlanDetail();
+
+const twoTaskPlan = createTestPlanDetail({
+  completedModules: 1,
+  modules: [
+    {
+      id: 'module-1',
+      order: 1,
+      title: 'Basics',
+      description: null,
+      estimatedMinutes: 90,
+      tasks: [
+        {
+          id: 'task-1',
+          order: 1,
+          title: 'Intro',
+          description: null,
+          estimatedMinutes: 45,
+          status: 'completed',
+          resources: [],
+        },
+        {
+          id: 'task-2',
+          order: 2,
+          title: 'Practice',
+          description: null,
+          estimatedMinutes: 45,
+          status: 'not_started',
+          resources: [],
+        },
+      ],
+    },
+  ],
+});
 
 describe('task-progress visible-state', () => {
   it('buildTaskStatusMap matches flattened module tasks', () => {
@@ -40,16 +72,25 @@ describe('task-progress visible-state', () => {
     expect(stats.completionPercentage).toBe(50);
   });
 
-  it('derivePlanDetailsCardStats ignores orphaned status keys', () => {
-    const m = plan.modules?.[0];
-    if (!m?.tasks?.[0] || !m.tasks[1]) throw new Error('fixture');
-    const stats = derivePlanDetailsCardStats(plan, {
-      [m.tasks[0].id]: 'completed',
-      [m.tasks[1].id]: 'not_started',
-      orphaned: 'completed',
+  it('derivePlanOverviewStats applies status overrides on top of persisted task counts', () => {
+    const stats = derivePlanOverviewStats(twoTaskPlan, {
+      'task-1': 'not_started',
+      'task-2': 'completed',
     });
+
     expect(stats.completedTasks).toBe(1);
+    expect(stats.totalTasks).toBe(2);
     expect(stats.completionPercentage).toBe(50);
+  });
+
+  it('derivePlanOverviewStats falls back to persisted task status for completed modules', () => {
+    const stats = derivePlanOverviewStats(twoTaskPlan, {
+      'task-2': 'completed',
+    });
+
+    expect(stats.completedTasks).toBe(2);
+    expect(stats.completedModules).toBe(1);
+    expect(stats.completionPercentage).toBe(100);
   });
 
   it('deriveModuleProgressState returns locked then active when prior incomplete', () => {

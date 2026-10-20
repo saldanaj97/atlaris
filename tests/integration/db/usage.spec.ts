@@ -2,11 +2,10 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
 import {
   canonicalUsageToRecordParams,
-  recordUsage,
+  recordUsageInTx,
 } from '../../../supabase/usage';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
-import { parseModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
@@ -78,7 +77,7 @@ describe('AI usage logging', () => {
     expect(planRow?.isQuotaEligible).toBe(false);
     expect(planRow?.finalizedAt).toBeNull();
 
-    await recordUsage({
+    await recordUsageInTx(db, {
       userId,
       provider: 'mock',
       model: 'mock-generator-v1',
@@ -114,7 +113,7 @@ describe('AI usage logging', () => {
       missingFields: [],
     };
 
-    await recordUsage(canonicalUsageToRecordParams(canonical, userId), db);
+    await recordUsageInTx(db, canonicalUsageToRecordParams(canonical, userId));
 
     const [row] = await db
       .select()
@@ -123,10 +122,15 @@ describe('AI usage logging', () => {
 
     expect(row?.costCents).toBe(3);
     expect(row?.providerCostMicrousd).toEqual(BigInt(1_234_567));
-    expect(parseModelPricingSnapshot(row?.modelPricingSnapshot)).toMatchObject({
+    expect(row?.modelPricingSnapshot).toEqual({
       version: 1,
       source: 'local_catalog',
       requestedModelId: 'openai/gpt-4o',
+      pricedModelId: 'openai/gpt-4o',
+      inputTokens: 10,
+      outputTokens: 20,
+      inputCostUsdPerMillion: 2.5,
+      outputCostUsdPerMillion: 10,
     });
   });
 

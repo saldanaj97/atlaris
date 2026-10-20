@@ -153,7 +153,7 @@ BEGIN
 
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['ai_usage_events', 'generation_attempts', 'learning_activity_events', 'learning_plans', 'modules', 'plan_schedules', 'resources', 'task_resources', 'tasks', 'usage_metrics']
+      ARRAY['ai_usage_events', 'generation_attempts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
     ) AS table_name
   ), forbidden_privileges AS (
     SELECT unnest(
@@ -180,7 +180,7 @@ BEGIN
 
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['ai_usage_events', 'generation_attempts', 'learning_activity_events', 'learning_plans', 'modules', 'plan_schedules', 'resources', 'task_resources', 'tasks', 'usage_metrics']
+      ARRAY['ai_usage_events', 'generation_attempts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
     ) AS table_name
   ), column_privileges AS (
     SELECT unnest(ARRAY['INSERT', 'UPDATE']) AS privilege_type

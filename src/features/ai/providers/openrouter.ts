@@ -6,12 +6,13 @@ import type {
   ProviderGenerateResult,
   ProviderUsage,
 } from '@/features/ai/types/provider.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { OpenRouterCore } from '@openrouter/sdk/core';
 import type { chatSend } from '@openrouter/sdk/funcs/chatSend';
 import type { ChatRequest } from '@openrouter/sdk/models';
 
 import { getOutputTokenCeiling } from '@/features/ai/cost';
-import { buildSystemPrompt, buildUserPrompt } from '@/features/ai/prompts';
+import { buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
   ProviderInvalidResponseError,
@@ -40,13 +41,34 @@ export type OpenRouterClient = {
   chat: {
     send: (
       request: ChatRequest,
-      options?: { signal?: AbortSignal; timeoutMs?: number },
+      options?: OpenRouterRequestOptions,
     ) => Promise<unknown>;
   };
 };
 
+type OpenRouterRequestOptions = {
+  signal?: AbortSignal;
+  timeoutMs?: number;
+  headers?: Record<string, string>;
+};
+
+/** Generation stage, tagged on each AI Gateway log entry. */
+type OpenRouterRequestStage = 'plan' | 'lesson';
+
+const AI_GATEWAY_HOSTNAME = 'gateway.ai.cloudflare.com';
+
+type AiGatewayConfig = {
+  token: string;
+  logPayloads: boolean;
+};
+
 export type OpenRouterProviderConfig = {
   apiKey?: string;
+  /**
+   * Picks `OPENROUTER_API_KEY_<TIER>` when no `apiKey` is given. Grounded
+   * stages pass it; the legacy pipeline does not, so it keeps one key.
+   */
+  tier?: SubscriptionTier;
   model: string;
   fallbackModels?: readonly string[];
   siteUrl?: string;
@@ -310,6 +332,7 @@ function resolveOpenRouterContentStream(
   response: unknown,
   metadataUsage: ProviderUsage,
   onModel?: (model: string) => void,
+  onFinishReason?: (finishReason: string) => void,
 ): { stream: ReadableStream<string>; isStreaming: boolean } {
   const isStreamingResponse = isAsyncIterable(response);
   if (isStreamingResponse) {
@@ -319,6 +342,7 @@ function resolveOpenRouterContentStream(
         mergeStreamUsageIntoMetadata(metadataUsage, usage, usageObjectPresent);
       },
       onModel,
+      onFinishReason,
     });
     return { stream, isStreaming: true };
   }
@@ -339,13 +363,67 @@ function resolveOpenRouterContentStream(
   return { stream: toStream(content), isStreaming: false };
 }
 
-type OpenRouterChatMessage = { role: 'system' | 'user'; content: string };
+type OpenRouterChatMessage = { role: 'user'; content: string };
+
+const PRESET_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
+
+/**
+ * System prompts live only in OpenRouter presets, so a request without a valid
+ * preset slug must not be sent.
+ */
+function requirePresetSlug(value: string | undefined, envName: string): string {
+  const slug = value?.trim();
+  if (!slug) {
+    throw new Error(`${envName} is not set`);
+  }
+  if (!PRESET_SLUG_PATTERN.test(slug)) {
+    throw new Error(`${envName} must be an OpenRouter preset slug`);
+  }
+  return slug;
+}
+
+/**
+ * AI Gateway headers go only to the gateway host, so the Cloudflare token never
+ * reaches OpenRouter when `OPENROUTER_BASE_URL` is unset or points elsewhere.
+ */
+function resolveAiGatewayConfig(): AiGatewayConfig | undefined {
+  const token = openRouterEnv.aiGatewayToken;
+  if (!token) {
+    return undefined;
+  }
+  const { hostname } = new URL(openRouterEnv.baseUrl);
+  if (hostname !== AI_GATEWAY_HOSTNAME) {
+    return undefined;
+  }
+  return { token, logPayloads: openRouterEnv.aiGatewayLogPayloads };
+}
+
+function buildAiGatewayHeaders(
+  gateway: AiGatewayConfig,
+  stage: OpenRouterRequestStage,
+  presetSlug: string,
+): Record<string, string> {
+  return {
+    'cf-aig-authorization': `Bearer ${gateway.token}`,
+    'cf-aig-metadata': JSON.stringify({ stage, preset: presetSlug }),
+    // Regenerations resend identical requests and must get a fresh answer.
+    'cf-aig-skip-cache': 'true',
+    // One quick retry, overriding the dashboard. Streamed calls fail before the
+    // stream starts (429, 5xx), so a retry cannot repeat a running generation.
+    // No cf-aig-request-timeout: a timeout retry could.
+    'cf-aig-max-attempts': '2',
+    'cf-aig-retry-delay': '1000',
+    'cf-aig-backoff': 'constant',
+    ...(gateway.logPayloads ? {} : { 'cf-aig-collect-log-payload': 'false' }),
+  };
+}
 
 export class OpenRouterProvider implements AiPlanGenerationProvider {
   private readonly client: OpenRouterClient;
   private readonly model: string;
   private readonly routeModels: string[];
   private readonly temperature: number;
+  private readonly aiGateway: AiGatewayConfig | undefined;
 
   constructor(cfg: OpenRouterProviderConfig, client?: OpenRouterClient) {
     if (!cfg.model) {
@@ -354,10 +432,11 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     this.model = cfg.model;
     this.routeModels = buildRouteModels(cfg.model, cfg.fallbackModels);
     this.temperature = cfg.temperature ?? 0.2;
+    this.aiGateway = resolveAiGatewayConfig();
     if (client) {
       this.client = client;
     } else {
-      const apiKey = cfg.apiKey ?? openRouterEnv.apiKey;
+      const apiKey = cfg.apiKey ?? openRouterEnv.apiKeyForTier(cfg.tier);
       if (!apiKey) {
         throw new Error('OPENROUTER_API_KEY is not set');
       }
@@ -365,6 +444,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       const appName = cfg.appName ?? openRouterEnv.appName;
       this.client = createLazyOpenRouterClient({
         apiKey,
+        serverURL: openRouterEnv.baseUrl,
         ...(siteUrl && { httpReferer: siteUrl }),
         ...(appName && { appTitle: appName }),
       });
@@ -373,6 +453,8 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
 
   private executeJsonObjectChat(
     messages: readonly OpenRouterChatMessage[],
+    presetSlug: string,
+    stage: OpenRouterRequestStage,
     options: GenerationOptions | undefined,
     requestSpanName: string,
   ): Promise<ProviderGenerateResult> {
@@ -387,12 +469,16 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
         },
       },
       async (span, finish) => {
-        const requestOptions: {
-          signal?: AbortSignal;
-          timeoutMs?: number;
-        } = {};
+        const requestOptions: OpenRouterRequestOptions = {};
         if (options?.signal) {
           requestOptions.signal = options.signal;
+        }
+        if (this.aiGateway) {
+          requestOptions.headers = buildAiGatewayHeaders(
+            this.aiGateway,
+            stage,
+            presetSlug,
+          );
         }
         // Streaming responses routinely exceed base timeout; extension applied unconditionally
         // until adaptive timeout is wired end-to-end (see GitHub #214).
@@ -405,10 +491,13 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
           const responseFormat = { type: 'json_object' as const };
           const tokenCeiling = getRouteTokenCeiling(this.routeModels);
           const messagePayload = [...messages];
+          const presetSuffix = `@preset/${presetSlug}`;
           const requestBody =
             this.routeModels.length > 1
               ? {
-                  models: this.routeModels,
+                  models: this.routeModels.map(
+                    (model) => `${model}${presetSuffix}`,
+                  ),
                   messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
@@ -416,7 +505,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
                   maxTokens: tokenCeiling,
                 }
               : {
-                  model: this.model,
+                  model: `${this.model}${presetSuffix}`,
                   messages: messagePayload,
                   stream: true,
                   temperature: this.temperature,
@@ -440,6 +529,9 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             metadataUsage,
             (resolvedModel) => {
               metadata.model = resolvedModel;
+            },
+            (finishReason) => {
+              metadata.finishReason = finishReason;
             },
           );
 
@@ -476,7 +568,10 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     input: GenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
-    const systemPrompt = buildSystemPrompt();
+    const presetSlug = requirePresetSlug(
+      openRouterEnv.planPreset,
+      'OPENROUTER_PLAN_PRESET',
+    );
     const userPrompt = buildUserPrompt({
       topic: input.topic,
       notes: input.notes,
@@ -488,28 +583,34 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
     });
 
     const messages: OpenRouterChatMessage[] = [
-      { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ];
 
     return this.executeJsonObjectChat(
       messages,
+      presetSlug,
+      'plan',
       options,
       `request ${this.routeModels.join(' > ')}`,
     );
   }
 
-  generateModuleLessonBatch(
+  async generateModuleLessonBatch(
     input: ModuleLessonBatchGenerationInput,
     options?: GenerationOptions,
   ): Promise<ProviderGenerateResult> {
+    const presetSlug = requirePresetSlug(
+      openRouterEnv.lessonPreset,
+      'OPENROUTER_LESSON_PRESET',
+    );
     const messages: OpenRouterChatMessage[] = [
-      { role: 'system', content: input.systemPrompt },
       { role: 'user', content: input.userPrompt },
     ];
 
     return this.executeJsonObjectChat(
       messages,
+      presetSlug,
+      'lesson',
       options,
       `request module-lesson-batch ${this.routeModels.join(' > ')}`,
     );

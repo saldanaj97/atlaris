@@ -1,8 +1,7 @@
 import type { ErrorResponse } from 'resend';
 
 import {
-  classifyResendError,
-  classifyResendOutcome,
+  classifyResend,
   createResendEmailSender,
   EmailProviderError,
   type ResendEmailsClient,
@@ -17,7 +16,7 @@ function error(
   return { name, message, statusCode };
 }
 
-describe('classifyResendError', () => {
+describe('classifyResend failure class', () => {
   it.each([
     ['invalid_api_key', 'provider_configuration'],
     ['invalid_from_address', 'provider_configuration'],
@@ -36,38 +35,38 @@ describe('classifyResendError', () => {
     ['internal_server_error', 'provider_error'],
     ['application_error', 'provider_error'],
   ] as const)('maps %s to %s', (name, expected) => {
-    expect(classifyResendError(error(name))).toBe(expected);
+    expect(classifyResend(error(name)).failureClass).toBe(expected);
   });
 
   it('treats a forbidden validation error as provider configuration', () => {
-    expect(classifyResendError(error('validation_error', 403))).toBe(
+    expect(classifyResend(error('validation_error', 403)).failureClass).toBe(
       'provider_configuration',
     );
   });
 
   it('distinguishes recipient validation from shared request validation', () => {
     expect(
-      classifyResendError(
+      classifyResend(
         error(
           'validation_error',
           422,
           'Invalid `to` field. The email address must be valid.',
         ),
-      ),
+      ).failureClass,
     ).toBe('provider_recipient_invalid');
     expect(
-      classifyResendError(
+      classifyResend(
         error(
           'invalid_parameter',
           422,
           'Invalid `from` field. The email address must be valid.',
         ),
-      ),
+      ).failureClass,
     ).toBe('provider_request_invalid');
   });
 });
 
-describe('classifyResendOutcome', () => {
+describe('classifyResend outcome', () => {
   it.each([
     ['invalid_api_key', 401, 'rejected'],
     ['validation_error', 400, 'rejected'],
@@ -78,14 +77,14 @@ describe('classifyResendOutcome', () => {
     ['concurrent_idempotent_requests', 409, 'unknown'],
     ['security_error', 403, 'unknown'],
   ] as const)('maps %s/%s to %s', (name, statusCode, expected) => {
-    expect(classifyResendOutcome(error(name, statusCode))).toBe(expected);
+    expect(classifyResend(error(name, statusCode)).outcome).toBe(expected);
   });
 
   it('treats null statusCode as unknown even for named client errors', () => {
-    expect(classifyResendOutcome(error('application_error', null))).toBe(
+    expect(classifyResend(error('application_error', null)).outcome).toBe(
       'unknown',
     );
-    expect(classifyResendOutcome(error('validation_error', null))).toBe(
+    expect(classifyResend(error('validation_error', null)).outcome).toBe(
       'unknown',
     );
   });

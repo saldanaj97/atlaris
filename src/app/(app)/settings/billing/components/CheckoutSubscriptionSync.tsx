@@ -192,7 +192,7 @@ export function CheckoutSubscriptionSync({
 
   return (
     <output
-      className='mb-3 block rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-sm text-muted-foreground'
+      className='mb-3 block rounded-md border border-border/60 bg-muted/40 px-3 py-2 type-body text-muted-foreground'
       aria-live='polite'
     >
       {phase === 'updating'

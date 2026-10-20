@@ -69,11 +69,11 @@ type ModuleState = {
 /** The module row the mocked queries read and write. */
 let moduleRow: ModuleState;
 
-function validBatchText(): string {
+function validBatchText(taskIds: readonly string[] = [TASK_A, TASK_B]): string {
   const block = { type: 'heading', text: 'Hi' };
   return JSON.stringify({
     version: 1,
-    tasks: [TASK_A, TASK_B].map((taskId) => ({
+    tasks: taskIds.map((taskId) => ({
       taskId,
       content: { version: 1, blocks: [block] },
     })),
@@ -100,6 +100,25 @@ function providerReturning(text: string) {
       },
     })),
   };
+}
+
+/** Returns each response in turn, one per provider call. */
+function providerReturningEach(
+  ...responses: ReadonlyArray<{ text: string; finishReason?: string }>
+) {
+  const generateModuleLessonBatch = vi.fn();
+  for (const { text, finishReason } of responses) {
+    generateModuleLessonBatch.mockImplementationOnce(async () => ({
+      stream: textStream(text),
+      metadata: {
+        provider: 'mock',
+        model: 'mock-module-lesson-batch-v1',
+        usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+        finishReason,
+      },
+    }));
+  }
+  return { generateModuleLessonBatch };
 }
 
 /** Runs each step like Workflows does: retries until the limit or a NonRetryableError. */
@@ -146,6 +165,8 @@ function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: ModuleLessonsWorkflowDeps = {
     isEnabled: () => true,
+    // Grounded generation off: today's pipeline.
+    isGroundedEnabled: () => false,
     withDb: (fn) => fn({} as DbClient),
     logger,
     nonRetryable: (message) =>
@@ -350,10 +371,85 @@ describe('runModuleLessonsWorkflow', () => {
     expect(moduleRow.status).toBe('failed');
   });
 
-  it('treats a parse failure as non-retryable and records the module failed', async () => {
-    const { deps, logger } = makeDeps({
-      provider: providerReturning('not json'),
-    });
+  it('retries once when the first output has the wrong task count, then commits', async () => {
+    const provider = providerReturningEach(
+      { text: validBatchText([TASK_A]), finishReason: 'stop' },
+      { text: validBatchText(), finishReason: 'stop' },
+    );
+    const { deps, logger } = makeDeps({ provider });
+    const { step, calls } = createStep();
+
+    await expect(
+      runModuleLessonsWorkflow(event(), step, deps),
+    ).resolves.toEqual({ kind: 'success' });
+
+    expect(calls).toEqual([
+      { name: 'claim', attempts: 1 },
+      { name: 'generate', attempts: 1 },
+      { name: 'parse-commit', attempts: 1 },
+      { name: 'generate-retry', attempts: 1 },
+      { name: 'parse-commit-retry', attempts: 1 },
+    ]);
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalledTimes(2);
+    expect(queries.commitSuccess).toHaveBeenCalledOnce();
+    expect(queries.commitFailure).not.toHaveBeenCalled();
+    expect(moduleRow.status).toBe('ready');
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        step: 'parse-commit',
+        attempt: 1,
+        outcome: 'parse_failed',
+        errorKind: 'validation',
+        errorMessage:
+          'Module lesson batch must include exactly 2 tasks; got 1.',
+      }),
+      'Module lessons workflow step finished',
+    );
+    expect(
+      stepLogs(logger).map((fields) => [
+        fields.step,
+        fields.attempt,
+        fields.outcome,
+      ]),
+    ).toEqual([
+      ['claim', undefined, 'claimed'],
+      ['generate', 1, 'generated'],
+      ['generate-retry', 2, 'generated'],
+      ['parse-commit-retry', 2, 'success'],
+    ]);
+  });
+
+  it('retries once after invalid JSON and logs the finish reason', async () => {
+    const provider = providerReturningEach(
+      { text: '{"version":1,"tasks":[', finishReason: 'length' },
+      { text: validBatchText(), finishReason: 'stop' },
+    );
+    const { deps, logger } = makeDeps({ provider });
+    const { step } = createStep();
+
+    await expect(
+      runModuleLessonsWorkflow(event(), step, deps),
+    ).resolves.toEqual({ kind: 'success' });
+
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalledTimes(2);
+    expect(queries.commitSuccess).toHaveBeenCalledOnce();
+    const generateLogs = stepLogs(logger).filter(
+      (fields) => fields.outcome === 'generated',
+    );
+    expect(
+      generateLogs.map((fields) => [fields.step, fields.finishReason]),
+    ).toEqual([
+      ['generate', 'length'],
+      ['generate-retry', 'stop'],
+    ]);
+  });
+
+  it('records the module failed when the retry also fails to parse', async () => {
+    const provider = providerReturningEach(
+      { text: 'not json' },
+      { text: 'not json' },
+    );
+    const { deps, logger } = makeDeps({ provider });
     const { step, calls } = createStep();
 
     await expect(
@@ -364,20 +460,58 @@ describe('runModuleLessonsWorkflow', () => {
       { name: 'claim', attempts: 1 },
       { name: 'generate', attempts: 1 },
       { name: 'parse-commit', attempts: 1 },
+      { name: 'generate-retry', attempts: 1 },
+      { name: 'parse-commit-retry', attempts: 1 },
       { name: 'fail', attempts: 1 },
     ]);
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalledTimes(2);
     expect(queries.commitSuccess).not.toHaveBeenCalled();
     expect(queries.commitFailure).toHaveBeenCalledOnce();
     expect(moduleRow.status).toBe('failed');
     expect(logger.warn).toHaveBeenCalledWith(
       expect.objectContaining({
-        step: 'parse-commit',
+        step: 'parse-commit-retry',
+        attempt: 2,
         outcome: 'parse_failed',
         errorKind: 'invalid_json',
         errorMessage: 'Module lesson batch response was not valid JSON.',
       }),
       'Module lessons workflow step finished',
     );
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ step: 'parse-commit-retry' }),
+      'Module lessons workflow step failed',
+    );
+  });
+
+  it('reverts without a retry call when the switch drops after a parse failure', async () => {
+    let enabled = true;
+    const provider = {
+      generateModuleLessonBatch: vi.fn(async () => {
+        enabled = false;
+        return {
+          stream: textStream('not json'),
+          metadata: { provider: 'mock', model: 'mock-module-lesson-batch-v1' },
+        };
+      }),
+    };
+    const { deps } = makeDeps({ provider, isEnabled: () => enabled });
+    const { step, calls } = createStep();
+
+    await expect(
+      runModuleLessonsWorkflow(event(), step, deps),
+    ).resolves.toEqual({ kind: 'disabled' });
+
+    expect(calls.map((call) => call.name)).toEqual([
+      'claim',
+      'generate',
+      'parse-commit',
+      'generate-retry',
+    ]);
+    expect(provider.generateModuleLessonBatch).toHaveBeenCalledOnce();
+    expect(queries.revert).toHaveBeenCalledOnce();
+    expect(queries.commitFailure).not.toHaveBeenCalled();
+    expect(moduleRow.status).toBe('not_generated');
   });
 
   it('does not commit twice when a retry finds its own commit already landed', async () => {

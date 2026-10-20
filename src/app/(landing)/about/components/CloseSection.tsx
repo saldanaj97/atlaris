@@ -30,7 +30,7 @@ export function CloseSection() {
           </SectionOverline>
           <h2
             id='about-close-heading'
-            className={`mt-4 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+            className={`mt-4 type-display-section text-balance text-foreground ${styles.revealItem}`}
           >
             You already know the goal.
             <span className='block font-medium text-muted-foreground italic'>
@@ -38,7 +38,7 @@ export function CloseSection() {
             </span>
           </h2>
           <p
-            className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+            className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             One name, about two minutes, and tonight&apos;s first task is laid

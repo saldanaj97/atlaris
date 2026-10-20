@@ -74,7 +74,7 @@ export function InlineDropdown<TValue extends string>({
           id={componentId}
           aria-label={ariaLabel}
           className={cn(
-            'inline-flex min-h-[40px] w-full items-center justify-between gap-[6px] overflow-hidden rounded-[8px] border px-[12px] py-[8px] text-sm font-medium leading-5 whitespace-nowrap shadow-sm outline-none hover:border-foreground focus-visible:border-ring [@media(pointer:coarse)]:min-h-[44px]',
+            'inline-flex min-h-[40px] w-full items-center justify-between gap-[6px] overflow-hidden rounded-[8px] border px-[12px] py-[8px] type-label whitespace-nowrap shadow-sm outline-none hover:border-foreground focus-visible:border-ring [@media(pointer:coarse)]:min-h-[44px]',
             'transition-[background-color,border-color,color,box-shadow] duration-200 ease-out motion-reduce:transition-none',
             'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
             isPlaceholder
@@ -118,12 +118,10 @@ export function InlineDropdown<TValue extends string>({
                 >
                   <span className='min-w-0 flex-1'>
                     <SelectPrimitive.ItemText>
-                      <span className='block text-sm font-medium'>
-                        {option.label}
-                      </span>
+                      <span className='block type-label'>{option.label}</span>
                     </SelectPrimitive.ItemText>
                     {option.description && (
-                      <span className='block text-xs text-muted-foreground'>
+                      <span className='block type-meta text-muted-foreground'>
                         {option.description}
                       </span>
                     )}

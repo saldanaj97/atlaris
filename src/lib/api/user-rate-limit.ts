@@ -180,13 +180,3 @@ export function clearAllUserRateLimiters(): void {
   }
   rateLimiters.clear();
 }
-
-/**
- * Resets rate limit for a specific user across all categories.
- * Useful for testing and admin operations.
- */
-export function resetUserRateLimits(userId: string): void {
-  for (const limiter of rateLimiters.values()) {
-    limiter.reset(userId);
-  }
-}

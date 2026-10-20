@@ -3,9 +3,8 @@ import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/rege
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
 import {
   completeJob,
-  enqueueJob,
+  enqueueJobWithResult,
   failJob,
-  getNextJob,
 } from '@/features/jobs/queue';
 import { JOB_TYPES } from '@/features/jobs/types';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
@@ -19,6 +18,7 @@ import {
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createPlan } from '@tests/fixtures/plans';
+import { claimPendingRegenerationJob } from '@tests/helpers/db/jobs';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { and, asc, eq } from 'drizzle-orm';
@@ -74,11 +74,14 @@ async function createClaimedRegenerationFixture(key: string) {
     topic: GENERATION_INPUT.topic,
     generationStatus: 'ready',
   });
-  const jobId = await enqueueJob(JOB_TYPES.PLAN_REGENERATION, plan.id, userId, {
-    planId: plan.id,
-  });
-  const claimed = await getNextJob([JOB_TYPES.PLAN_REGENERATION]);
-  if (!claimed || claimed.id !== jobId) {
+  const { id: jobId } = await enqueueJobWithResult(
+    JOB_TYPES.PLAN_REGENERATION,
+    plan.id,
+    userId,
+    { planId: plan.id },
+  );
+  const claimed = await claimPendingRegenerationJob(jobId);
+  if (claimed?.status !== 'processing') {
     throw new Error(
       'Expected regeneration job to be claimed for durability test',
     );
@@ -112,13 +115,15 @@ describe('regeneration lifecycle reservation replay', () => {
       topic: GENERATION_INPUT.topic,
       generationStatus: 'ready',
     });
-    const jobId = await enqueueJob(
+    const { id: jobId } = await enqueueJobWithResult(
       JOB_TYPES.PLAN_REGENERATION,
       plan.id,
       userId,
       { planId: plan.id },
     );
-    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(jobId);
+    expect((await claimPendingRegenerationJob(jobId))?.status).toBe(
+      'processing',
+    );
 
     const reservation = await reserveAttemptSlot({
       planId: plan.id,
@@ -178,14 +183,14 @@ describe('regeneration lifecycle reservation replay', () => {
       durationMs: 0,
     });
 
-    const retryJobId = await enqueueJob(
+    const { id: retryJobId } = await enqueueJobWithResult(
       JOB_TYPES.PLAN_REGENERATION,
       plan.id,
       userId,
       { planId: plan.id },
     );
-    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(
-      retryJobId,
+    expect((await claimPendingRegenerationJob(retryJobId))?.status).toBe(
+      'processing',
     );
 
     const failedReservation = await reserveAttemptSlot({
@@ -249,8 +254,8 @@ describe('regeneration lifecycle reservation replay', () => {
       .update(jobQueue)
       .set({ scheduledFor: new Date() })
       .where(eq(jobQueue.id, retryJobId));
-    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(
-      retryJobId,
+    expect((await claimPendingRegenerationJob(retryJobId))?.status).toBe(
+      'processing',
     );
 
     const retryReservation = await reserveAttemptSlot({
@@ -551,9 +556,9 @@ describe('regeneration lifecycle reservation replay', () => {
       .update(jobQueue)
       .set({ scheduledFor: new Date() })
       .where(eq(jobQueue.id, failureFixture.jobId));
-    expect((await getNextJob([JOB_TYPES.PLAN_REGENERATION]))?.id).toBe(
-      failureFixture.jobId,
-    );
+    expect(
+      (await claimPendingRegenerationJob(failureFixture.jobId))?.status,
+    ).toBe('processing');
 
     const retryReservation = await reserveAttemptSlot({
       planId: failureFixture.plan.id,

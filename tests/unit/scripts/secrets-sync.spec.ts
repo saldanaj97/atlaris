@@ -8,6 +8,7 @@ import {
   parseSyncArgs,
   planSync,
   readDeclaredVarNames,
+  readEnvironment,
   redeployVercel,
   SecretsSyncUsageError,
   SYNC_TARGETS,
@@ -361,6 +362,59 @@ describe.sequential('Cloudflare secrets through cf', () => {
     );
     expect(existsSync(dirname(file))).toBe(false);
   });
+});
+
+describe.sequential('readEnvironment', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    vi.mocked(spawn).mockReset();
+  });
+
+  /** `op run` prints the child's env; the Environment adds RESEND_API_KEY. */
+  function mockOpRun() {
+    vi.mocked(spawn).mockImplementation(((_command: string, args: string[]) =>
+      fakeChild(
+        0,
+        JSON.stringify(
+          args.includes('--environment')
+            ? { HOME: '/h', RESEND_API_KEY: 're_test' }
+            : { HOME: '/h' },
+        ),
+      )) as unknown as typeof spawn);
+  }
+
+  it('runs the OP_EXECUTABLE wrapper for both op run calls', async () => {
+    vi.stubEnv('OP_EXECUTABLE', '/opt/wrappers/op-sa');
+    mockOpRun();
+
+    await expect(
+      readEnvironment(SYNC_TARGETS['cloudflare staging']!),
+    ).resolves.toEqual({ RESEND_API_KEY: 're_test' });
+
+    const calls = vi.mocked(spawn).mock.calls;
+    expect(calls.map(([command]) => command)).toEqual([
+      '/opt/wrappers/op-sa',
+      '/opt/wrappers/op-sa',
+    ]);
+    expect(calls[0]![1]).toEqual(
+      expect.arrayContaining(['--environment', 'uyosl4mrol6d5uqao4rtgh4qby']),
+    );
+  });
+
+  it.each([undefined, ''])(
+    'runs op from PATH when OP_EXECUTABLE is %j',
+    async (value) => {
+      vi.stubEnv('OP_EXECUTABLE', value);
+      mockOpRun();
+
+      await readEnvironment(SYNC_TARGETS['cloudflare staging']!);
+
+      expect(vi.mocked(spawn).mock.calls.map(([command]) => command)).toEqual([
+        'op',
+        'op',
+      ]);
+    },
+  );
 });
 
 describe.sequential('redeployVercel', () => {

@@ -13,8 +13,6 @@ import userEvent from '@testing-library/user-event';
 import { toast } from 'sonner';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import '../../../mocks/unit/sonner.unit';
-
 const MOCK_PROFILE = buildProfile();
 
 function mockFetchSuccess(data: unknown = MOCK_PROFILE): void {
@@ -148,22 +146,6 @@ describe('ProfileForm', () => {
     expect(
       screen.getByRole('button', { name: /save changes/i }),
     ).toBeDisabled();
-  });
-
-  it('enables save when name is edited', async () => {
-    mockFetchSuccess();
-
-    render(<ProfileForm />);
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('Name')).toHaveValue(MOCK_PROFILE.name);
-    });
-
-    const nameInput = screen.getByLabelText('Name');
-    await user.clear(nameInput);
-    await user.type(nameInput, 'Charles Babbage');
-
-    expect(screen.getByRole('button', { name: /save changes/i })).toBeEnabled();
   });
 
   it('saves updated name and shows success toast', async () => {

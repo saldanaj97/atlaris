@@ -72,27 +72,3 @@ export async function runJobMutationIfEditable(
     return mutate(tx, locked.row);
   });
 }
-
-type MutationCountResult = {
-  count?: unknown;
-  rowCount?: unknown;
-};
-
-export function normalizeMutationCount(result: unknown): number {
-  if (!result || typeof result !== 'object') {
-    return 0;
-  }
-
-  const mutationResult = result as MutationCountResult;
-  const candidate = mutationResult.count;
-  if (typeof candidate === 'number' && Number.isFinite(candidate)) {
-    return Math.max(0, Math.trunc(candidate));
-  }
-
-  const rowCount = mutationResult.rowCount;
-  if (typeof rowCount === 'number' && Number.isFinite(rowCount)) {
-    return Math.max(0, Math.trunc(rowCount));
-  }
-
-  return 0;
-}

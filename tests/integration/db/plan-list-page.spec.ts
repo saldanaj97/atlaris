@@ -1,10 +1,9 @@
 import type {
   PlanListQuery,
   PlanListSort,
+  PlanReadStatus,
 } from '@/features/plans/read-projection/types';
-import type { PlanSummary } from '@/shared/types/db.types';
 
-import { derivePlanSummaryDisplayStatus } from '@/features/plans/read-projection/read-status';
 import { getPlansPageForRead } from '@/features/plans/read-projection/service';
 import { generationAttempts, taskProgress } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -141,10 +140,10 @@ describe('aggregate plans page query', () => {
 
   it('matches selector status rules and filters every plans-page status', async () => {
     const userId = await createUser('statuses');
-    const referenceDate = new Date(REFERENCE_TIMESTAMP);
     const statusFixtures: Array<{
       expectedFilter: PlanListQuery['status'];
-      summary: PlanSummary;
+      expectedStatus: PlanReadStatus;
+      planId: string;
     }> = [];
 
     const activePlan = await createTestPlan({
@@ -155,7 +154,7 @@ describe('aggregate plans page query', () => {
     });
     const activeModule = await createTestModule({ planId: activePlan.id });
     const activeTask = await createTestTask({ moduleId: activeModule.id });
-    const activeRemainingTask = await createTestTask({
+    await createTestTask({
       moduleId: activeModule.id,
       order: 2,
     });
@@ -166,18 +165,8 @@ describe('aggregate plans page query', () => {
     });
     statusFixtures.push({
       expectedFilter: 'active',
-      summary: {
-        plan: activePlan,
-        modules: [activeModule],
-        completion: 0.5,
-        completedTasks: 1,
-        totalTasks: 2,
-        totalMinutes:
-          activeTask.estimatedMinutes + activeRemainingTask.estimatedMinutes,
-        completedMinutes: activeTask.estimatedMinutes,
-        completedModules: 0,
-        attemptsCount: 0,
-      },
+      expectedStatus: 'active',
+      planId: activePlan.id,
     });
 
     const notStartedPlan = await createTestPlan({
@@ -189,22 +178,13 @@ describe('aggregate plans page query', () => {
     const notStartedModule = await createTestModule({
       planId: notStartedPlan.id,
     });
-    const notStartedTask = await createTestTask({
+    await createTestTask({
       moduleId: notStartedModule.id,
     });
     statusFixtures.push({
       expectedFilter: 'not_started',
-      summary: {
-        plan: notStartedPlan,
-        modules: [notStartedModule],
-        completion: 0,
-        completedTasks: 0,
-        totalTasks: 1,
-        totalMinutes: notStartedTask.estimatedMinutes,
-        completedMinutes: 0,
-        completedModules: 0,
-        attemptsCount: 0,
-      },
+      expectedStatus: 'not_started',
+      planId: notStartedPlan.id,
     });
 
     const pausedPlan = await createTestPlan({
@@ -215,7 +195,7 @@ describe('aggregate plans page query', () => {
     });
     const pausedModule = await createTestModule({ planId: pausedPlan.id });
     const pausedTask = await createTestTask({ moduleId: pausedModule.id });
-    const pausedRemainingTask = await createTestTask({
+    await createTestTask({
       moduleId: pausedModule.id,
       order: 2,
     });
@@ -227,18 +207,8 @@ describe('aggregate plans page query', () => {
     });
     statusFixtures.push({
       expectedFilter: 'inactive',
-      summary: {
-        plan: pausedPlan,
-        modules: [pausedModule],
-        completion: 0.5,
-        completedTasks: 1,
-        totalTasks: 2,
-        totalMinutes:
-          pausedTask.estimatedMinutes + pausedRemainingTask.estimatedMinutes,
-        completedMinutes: pausedTask.estimatedMinutes,
-        completedModules: 0,
-        attemptsCount: 0,
-      },
+      expectedStatus: 'paused',
+      planId: pausedPlan.id,
     });
 
     const completedPlan = await createTestPlan({
@@ -259,17 +229,8 @@ describe('aggregate plans page query', () => {
     });
     statusFixtures.push({
       expectedFilter: 'completed',
-      summary: {
-        plan: completedPlan,
-        modules: [completedModule],
-        completion: 1,
-        completedTasks: 1,
-        totalTasks: 1,
-        totalMinutes: completedTask.estimatedMinutes,
-        completedMinutes: completedTask.estimatedMinutes,
-        completedModules: 1,
-        attemptsCount: 0,
-      },
+      expectedStatus: 'completed',
+      planId: completedPlan.id,
     });
 
     const generatingPlan = await createTestPlan({
@@ -279,17 +240,8 @@ describe('aggregate plans page query', () => {
     });
     statusFixtures.push({
       expectedFilter: 'generating',
-      summary: {
-        plan: generatingPlan,
-        modules: [],
-        completion: 0,
-        completedTasks: 0,
-        totalTasks: 0,
-        totalMinutes: 0,
-        completedMinutes: 0,
-        completedModules: 0,
-        attemptsCount: 0,
-      },
+      expectedStatus: 'generating',
+      planId: generatingPlan.id,
     });
 
     const failedPlan = await createTestPlan({
@@ -310,17 +262,8 @@ describe('aggregate plans page query', () => {
     });
     statusFixtures.push({
       expectedFilter: 'failed',
-      summary: {
-        plan: failedPlan,
-        modules: [],
-        completion: 0,
-        completedTasks: 0,
-        totalTasks: 0,
-        totalMinutes: 0,
-        completedMinutes: 0,
-        completedModules: 0,
-        attemptsCount: 1,
-      },
+      expectedStatus: 'failed',
+      planId: failedPlan.id,
     });
 
     const all = await getPlansPageForRead({
@@ -331,21 +274,14 @@ describe('aggregate plans page query', () => {
     });
     const byId = new Map(all.items.map((item) => [item.id, item.status]));
     for (const fixture of statusFixtures) {
-      expect(byId.get(fixture.summary.plan.id)).toBe(
-        derivePlanSummaryDisplayStatus({
-          summary: fixture.summary,
-          referenceDate,
-        }),
-      );
+      expect(byId.get(fixture.planId)).toBe(fixture.expectedStatus);
       const filtered = await getPlansPageForRead({
         userId,
         dbClient: db,
         query: query({ search: 'scope', status: fixture.expectedFilter }),
         referenceTimestamp: REFERENCE_TIMESTAMP,
       });
-      expect(filtered.items.map((item) => item.id)).toEqual([
-        fixture.summary.plan.id,
-      ]);
+      expect(filtered.items.map((item) => item.id)).toEqual([fixture.planId]);
     }
 
     expect(all.statusCounts).toEqual({

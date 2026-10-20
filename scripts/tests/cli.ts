@@ -35,12 +35,11 @@ function usage(): never {
     [
       'Usage:',
       '  pnpm test',
-      '  pnpm test unit [--changed]',
-      '  pnpm test integration [--changed]',
+      '  pnpm test unit [--changed] [paths...]',
+      '  pnpm test integration [--changed] [paths...]',
       '  pnpm test security',
       '  pnpm test smoke [options]',
-      '  pnpm test e2e',
-      '  pnpm test all [--e2e]',
+      '  pnpm test all',
       '',
       `Add ${NATIVE_DB_FLAG} to any suite to use the native Supabase "test" stack`,
       `instead of Testcontainers (same as ${TEST_DB_ENV}=${NATIVE_TEST_DB}).`,
@@ -66,7 +65,12 @@ function changedArgs(): string[] {
   return ['--changed', resolveChangedTestBase()];
 }
 
-function unitPhase(changed: boolean): TestPhase {
+type SuiteOptions = {
+  changed: boolean;
+  paths: string[];
+};
+
+function unitPhase({ changed, paths }: SuiteOptions): TestPhase {
   return {
     label: changed ? 'unit --changed' : 'unit',
     commands: [
@@ -79,7 +83,7 @@ function unitPhase(changed: boolean): TestPhase {
           '--project',
           'unit-dom',
           ...(changed ? changedArgs() : []),
-          'tests/unit',
+          ...(paths.length > 0 ? paths : ['tests/unit']),
         ],
         { SKIP_DB_TEST_SETUP: 'true', NODE_ENV: 'test' },
       ),
@@ -87,7 +91,7 @@ function unitPhase(changed: boolean): TestPhase {
   };
 }
 
-function integrationPhase(changed: boolean): TestPhase {
+function integrationPhase({ changed, paths }: SuiteOptions): TestPhase {
   return {
     label: changed ? 'integration --changed' : 'integration',
     commands: [
@@ -98,7 +102,7 @@ function integrationPhase(changed: boolean): TestPhase {
           '--project',
           'integration',
           ...(changed ? changedArgs() : []),
-          'tests/integration',
+          ...(paths.length > 0 ? paths : ['tests/integration']),
         ],
         { NODE_ENV: 'test' },
       ),
@@ -112,18 +116,6 @@ function securityPhase(): TestPhase {
     commands: [
       vitestCommand(
         ['--config', VITEST_CONFIG, '--project', 'security', 'tests/security'],
-        { NODE_ENV: 'test' },
-      ),
-    ],
-  };
-}
-
-function e2ePhase(): TestPhase {
-  return {
-    label: 'e2e',
-    commands: [
-      vitestCommand(
-        ['--config', VITEST_CONFIG, '--project', 'e2e', 'tests/e2e'],
         { NODE_ENV: 'test' },
       ),
     ],
@@ -153,17 +145,19 @@ function checkPhase(): TestPhase {
   };
 }
 
+const CHANGED_ONLY: SuiteOptions = { changed: true, paths: [] };
+const FULL_SUITE: SuiteOptions = { changed: false, paths: [] };
+
 function defaultPlan(): TestPhase[] {
-  return [unitPhase(true), integrationPhase(true)];
+  return [unitPhase(CHANGED_ONLY), integrationPhase(CHANGED_ONLY)];
 }
 
-function allPlan(includeE2e: boolean): TestPhase[] {
+function allPlan(): TestPhase[] {
   return [
     checkPhase(),
-    unitPhase(false),
-    integrationPhase(false),
+    unitPhase(FULL_SUITE),
+    integrationPhase(FULL_SUITE),
     securityPhase(),
-    ...(includeE2e ? [e2ePhase()] : []),
   ];
 }
 
@@ -171,10 +165,18 @@ function stripArgumentSeparator(argv: readonly string[]): string[] {
   return argv[0] === '--' ? argv.slice(1) : [...argv];
 }
 
-function parseChangedOption(args: readonly string[]): boolean {
-  if (args.length === 0) return false;
-  if (args.length === 1 && args[0] === '--changed') return true;
-  usage();
+function parseSuiteOptions(args: readonly string[]): SuiteOptions {
+  const options: SuiteOptions = { changed: false, paths: [] };
+  for (const arg of args) {
+    if (arg === '--changed' && !options.changed) {
+      options.changed = true;
+    } else if (arg.startsWith('-')) {
+      usage();
+    } else {
+      options.paths.push(arg);
+    }
+  }
+  return options;
 }
 
 /** Remove `--native-db` from the runner's own options (not Playwright's). */
@@ -225,23 +227,17 @@ function parseSuitePlan(args: readonly string[]): TestPhase[] {
 
   switch (suite) {
     case 'unit':
-      return [unitPhase(parseChangedOption(options))];
+      return [unitPhase(parseSuiteOptions(options))];
     case 'integration':
-      return [integrationPhase(parseChangedOption(options))];
+      return [integrationPhase(parseSuiteOptions(options))];
     case 'security':
       if (options.length > 0) usage();
       return [securityPhase()];
     case 'smoke':
       return [smokePhase(options)];
-    case 'e2e':
-      if (options.length > 0) usage();
-      return [e2ePhase()];
     case 'all':
-      if (options.length === 0) return allPlan(false);
-      if (options.length === 1 && options[0] === '--e2e') {
-        return allPlan(true);
-      }
-      usage();
+      if (options.length > 0) usage();
+      return allPlan();
   }
 
   usage();

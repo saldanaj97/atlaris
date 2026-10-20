@@ -7,14 +7,14 @@ import { useEffect } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
 /**
  * Route-level error boundary for dashboard page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function DashboardError({ error, reset }: ErrorProps) {
+export default function DashboardError({ error, retry }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Dashboard error:', {
       errorDigest: error.digest,
@@ -31,9 +31,9 @@ export default function DashboardError({ error, reset }: ErrorProps) {
       />
 
       <RouteErrorState
-        title='Error Loading Dashboard'
+        title='Error loading dashboard'
         message="We couldn't load your dashboard. This could be a temporary issue."
-        onRetry={reset}
+        onRetry={retry}
       />
     </>
   );

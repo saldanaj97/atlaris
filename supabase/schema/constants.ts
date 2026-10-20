@@ -20,9 +20,6 @@ export const MAX_TASK_TITLE_LENGTH = MAX_TITLE_LENGTH;
 /** Title length cap for resources. Must match the DB CHECK constraint. */
 export const MAX_RESOURCE_TITLE_LENGTH = MAX_TITLE_LENGTH;
 
-/** Shared cap for DB-backed monitoring queries that page recent job rows. */
-export const MAX_JOB_MONITORING_ROWS = 200;
-
 /**
  * Soft cap on serialized JSON size (`length(lesson_content::text)`) stored on `tasks.lesson_content`.
  * Enforced by DB CHECK plus Zod semantic limits on blocks (MVP guards grossly oversized rows).
@@ -53,3 +50,13 @@ export const MAX_LESSON_LIST_ITEM_LENGTH = 600;
  * Upper bound on task entries in `ModuleLessonBatchProviderOutput.tasks`.
  */
 export const MAX_MODULE_LESSON_BATCH_TASKS = 64;
+
+/**
+ * Max characters for `learning_plans.regeneration_note`. Enforced by the DB CHECK
+ * `learning_plans_regeneration_note_length`; app-layer validation lands with the
+ * regeneration reasons UI.
+ */
+export const MAX_REGENERATION_NOTE_LENGTH = 500;
+
+/** Highest quality-check pass number stored on `generation_quality_issues.pass` (passes are 0-based). */
+export const MAX_GENERATION_QUALITY_PASS = 2;

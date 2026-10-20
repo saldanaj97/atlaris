@@ -1,6 +1,5 @@
 import type {
   ModuleCompletionSummary,
-  PlanDetailsCardStats,
   PlanModuleTimelineStatus,
   PlanOverviewStats,
 } from './types';
@@ -146,21 +145,6 @@ export function derivePlanOverviewStats(
     totalModules: modules.length,
     estimatedCompletionDate,
     tags,
-  };
-}
-
-export function derivePlanDetailsCardStats(
-  plan: ClientPlanDetail,
-  statuses: Record<string, ProgressStatus>,
-): PlanDetailsCardStats {
-  const sharedStats = computeSharedPlanStats(plan, statuses);
-
-  return {
-    completedTasks: sharedStats.completedTasks,
-    totalTasks: sharedStats.totalTasks,
-    totalMinutes: sharedStats.totalMinutes,
-    completionPercentage: sharedStats.completionPercentage,
-    estimatedWeeks: sharedStats.estimatedWeeks,
   };
 }
 

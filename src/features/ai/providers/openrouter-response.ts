@@ -20,6 +20,7 @@ type StreamDeltaLike = {
 type StreamChoiceLike = {
   delta?: StreamDeltaLike | null;
   message?: StreamDeltaLike | null;
+  finishReason?: string | null;
 };
 
 export type StreamEventLike = OpenRouterStreamChunk & {
@@ -330,8 +331,10 @@ export function streamFromEvents(params: {
   events: AsyncIterable<StreamEventLike>;
   onUsage: (usage: ProviderUsage, context: StreamUsageEventContext) => void;
   onModel?: (model: string) => void;
+  /** Called with `choices[0].finishReason` (`stop`, `length`, …) when a chunk carries one. */
+  onFinishReason?: (finishReason: string) => void;
 }): ReadableStream<string> {
-  const { events, onUsage, onModel } = params;
+  const { events, onUsage, onModel, onFinishReason } = params;
   const textChunks = (async function* () {
     let emittedAnyText = false;
 
@@ -342,6 +345,10 @@ export function streamFromEvents(params: {
       const model = extractModelFromEvent(event);
       if (model) {
         onModel?.(model);
+      }
+      const finishReason = event.choices?.[0]?.finishReason;
+      if (typeof finishReason === 'string' && finishReason.length > 0) {
+        onFinishReason?.(finishReason);
       }
       const text = extractChunkText(event);
       if (!text) {

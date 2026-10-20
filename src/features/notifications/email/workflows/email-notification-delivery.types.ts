@@ -1,30 +1,6 @@
 import type { EmailNotificationCategory } from '@/shared/types/db.types';
 import type { EmailNotificationDeliveryRunKind } from '@supabase/schema';
 
-export type EmailNotificationDeliveryWorkflowInput = {
-  readonly runId: string;
-};
-
-export type EmailNotificationDeliveryWorkflowClaimResult =
-  | { readonly kind: 'claimed' }
-  | { readonly kind: 'in_flight' }
-  | { readonly kind: 'terminal' };
-
-export type EmailNotificationDeliveryWorkflowPageResult =
-  | { readonly kind: 'page_processed'; readonly nextCursor: string | null }
-  | { readonly kind: 'in_flight' }
-  | { readonly kind: 'paused' };
-
-export type EmailNotificationDeliveryWorkflowTerminalResult =
-  | { readonly kind: 'completed' }
-  | { readonly kind: 'needs_review' }
-  | { readonly kind: 'in_flight' };
-
-export type EmailNotificationDeliveryWorkflowResult =
-  | EmailNotificationDeliveryWorkflowClaimResult
-  | EmailNotificationDeliveryWorkflowPageResult
-  | EmailNotificationDeliveryWorkflowTerminalResult;
-
 export type EmailNotificationDeliveryRunAction =
   | 'start'
   | 'resume'
@@ -32,40 +8,22 @@ export type EmailNotificationDeliveryRunAction =
 
 type EmailNotificationDeliveryRunDefinition = {
   readonly categories: readonly EmailNotificationCategory[];
-  readonly schedule: string;
   readonly referenceTimeUtc: string;
 };
 
 const EMAIL_NOTIFICATION_DELIVERY_RUN_DEFINITIONS = {
   daily: {
     categories: ['daily_reminder', 'streak_reminder'],
-    schedule: '0 14 * * *',
     referenceTimeUtc: '14:00:00.000Z',
   },
   weekly: {
     categories: ['weekly_summary'],
-    schedule: '30 14 * * 1',
     referenceTimeUtc: '14:30:00.000Z',
   },
 } as const satisfies Record<
   EmailNotificationDeliveryRunKind,
   EmailNotificationDeliveryRunDefinition
 >;
-
-export function resolveEmailNotificationDeliveryRunKind(
-  schedule: string,
-): EmailNotificationDeliveryRunKind | null {
-  for (const [runKind, definition] of Object.entries(
-    EMAIL_NOTIFICATION_DELIVERY_RUN_DEFINITIONS,
-  ) as Array<
-    [EmailNotificationDeliveryRunKind, EmailNotificationDeliveryRunDefinition]
-  >) {
-    if (definition.schedule === schedule) {
-      return runKind;
-    }
-  }
-  return null;
-}
 
 export function getEmailNotificationDeliveryRunDefinition(
   runKind: EmailNotificationDeliveryRunKind,

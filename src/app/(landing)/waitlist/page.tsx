@@ -64,11 +64,11 @@ export default async function WaitlistPage({
         </SectionOverline>
         <h1
           id='waitlist-heading'
-          className='mt-6 font-serif text-[2.75rem] leading-[1.05] font-semibold tracking-[-0.04em] text-balance text-foreground sm:text-5xl'
+          className='mt-6 type-display text-balance text-foreground'
         >
           Be first through the <span className='text-primary'>door.</span>
         </h1>
-        <p className='mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg'>
+        <p className='mt-5 max-w-md type-reading text-muted-foreground'>
           {copy.body}
         </p>
         {shouldUseClerkUi() ? <WaitlistForm /> : <WaitlistFormPreview />}

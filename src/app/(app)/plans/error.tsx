@@ -7,14 +7,14 @@ import { useEffect } from 'react';
 
 interface ErrorProps {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }
 
 /**
  * Route-level error boundary for plans list page.
  * Catches unexpected runtime errors and provides a recovery option.
  */
-export default function PlansError({ error, reset }: ErrorProps) {
+export default function PlansError({ error, retry }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Plans list error:', {
       errorDigest: error.digest,
@@ -28,10 +28,9 @@ export default function PlansError({ error, reset }: ErrorProps) {
       <PlansHero />
 
       <RouteErrorState
-        className='border-destructive/20 bg-destructive/5'
-        title='Error Loading Plans'
+        title='Error loading plans'
         message="We couldn't load your learning plans. This could be a temporary issue."
-        onRetry={reset}
+        onRetry={retry}
       />
     </>
   );

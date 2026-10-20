@@ -73,32 +73,55 @@ describe('MobileNavigation', () => {
     );
     expect(
       screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
-    ).toHaveAttribute('href', '/landing');
+    ).toHaveAttribute('href', '/dashboard');
     expect(
       screen.queryByRole('link', { name: 'Create New Plan' }),
     ).not.toBeInTheDocument();
   });
 
-  it('does not render a create-plan or entitlement upgrade action in the app drawer', async () => {
+  it('renders the create-plan action in the app drawer following canCreatePlan', async () => {
     const user = userEvent.setup();
+    const renderDrawer = (canCreatePlan?: boolean) =>
+      render(
+        <TooltipProvider>
+          <MobileNavigation
+            isMarketing={false}
+            isAppShell
+            pathname='/dashboard'
+            navItems={navItems}
+            tier='pro'
+            canCreatePlan={canCreatePlan}
+            isAuthenticated
+          />
+        </TooltipProvider>,
+      );
 
-    render(
-      <TooltipProvider>
-        <MobileNavigation
-          isMarketing={false}
-          isAppShell
-          pathname='/dashboard'
-          navItems={navItems}
-          canCreatePlan={false}
-          isAuthenticated
-        />
-      </TooltipProvider>,
-    );
-
+    const allowed = renderDrawer(true);
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
-
+    expect(screen.getByRole('link', { name: 'Create plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
     expect(
-      screen.queryByRole('link', { name: 'Create New Plan' }),
+      screen.queryByRole('button', { name: 'Expand sidebar' }),
+    ).not.toBeInTheDocument();
+    allowed.unmount();
+
+    const blocked = renderDrawer(false);
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
+      'href',
+      '/pricing',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Create plan' }),
+    ).not.toBeInTheDocument();
+    blocked.unmount();
+
+    renderDrawer(undefined);
+    await user.click(screen.getByRole('button', { name: 'Open menu' }));
+    expect(
+      screen.queryByRole('link', { name: 'Create plan' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Upgrade' }),

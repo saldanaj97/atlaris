@@ -1,7 +1,7 @@
 ---
 version: alpha
 name: Atlaris
-description: Agent entry point. The canonical detailed specification is docs/styles/design-system.md. Shared foundations and JCS-65 implementation slices are adopted; JCS-97 still owns integrated visual acceptance.
+description: Agent entry point. The canonical detailed specification is docs/styles/design-system.md. Shared foundations and JCS-65 implementation slices are adopted; JCS-65 and JCS-97 were closed on 2026-10-14 without a separate integrated visual-acceptance pass.
 ---
 
 # Atlaris design entry point
@@ -10,13 +10,33 @@ description: Agent entry point. The canonical detailed specification is docs/sty
 
 Read [the canonical design system](docs/styles/design-system.md) before introducing UI, changing shared components or tokens, modifying responsive behavior or visual states, or creating interface patterns. Consult it for marketing copy and brand usage too. This file is an orientation, not a second token catalog.
 
+## Find the right chapter
+
+The canonical document is long. Read only the chapters your change touches: run `grep -n '^## ' docs/styles/design-system.md` for chapter line numbers, then read that range.
+
+| Change                                         | Chapters                                         |
+| ---------------------------------------------- | ------------------------------------------------ |
+| Colors, type, spacing, radius, motion, tokens  | 03–07, 10–13                                     |
+| Buttons, links, icon buttons                   | 14 Actions                                       |
+| Inputs, selects, validation, form layout       | 15 Forms (component), 22 Forms (pattern)         |
+| App shell, sidebar, tabs, breadcrumbs          | 16 Navigation, 20 Page layouts                   |
+| Cards, badges, tables, progress, charts        | 17 Data display, 21 Cards & content groups       |
+| Toasts, alerts, skeletons, spinners            | 18 Feedback, 23 Loading / empty / error          |
+| Dialogs, sheets, menus, tooltips               | 19 Overlays                                      |
+| Breakpoints and reflow                         | 06 Layout & breakpoints, 24 Responsive behavior  |
+| Focus, keyboard, reduced motion, screen reader | 25 Accessibility                                 |
+| Labels, messages, marketing and brand copy     | 26 Content & copy, 02 Logo & brand marks         |
+| Mapping a design rule to existing code         | 27 Implementation mapping                        |
+
+Skip "Final-stage sources" and "Inherited reference scopes" at the end unless you are auditing provenance.
+
 ## Source of truth
 
 | Question                               | Authority                                                                                                                                                                                     |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Product behavior and business logic    | Current application code and tests, including real routes, permissions, billing and data contracts.                                                                                           |
 | Intended visual and interaction design | [docs/styles/design-system.md](docs/styles/design-system.md), preserving its source contracts, proposals and open decisions.                                                                  |
-| Actual runtime visual implementation   | [globals.css](src/app/globals.css), runtime tokens and shared components. Shared foundations follow the canonical specification. JCS-65 implementation children are complete; JCS-97 still owns integrated visual acceptance. |
+| Actual runtime visual implementation   | [globals.css](src/app/globals.css), runtime tokens and shared components. Shared foundations follow the canonical specification. JCS-65 implementation children are complete; JCS-97 was closed on 2026-10-14 without a separate integrated visual-acceptance pass. |
 | Agent/developer starting point         | This file; it defers detailed design rules to the canonical specification.                                                                                                                    |
 
 Current CSS describes what runs; it does not override the intended design specification. Design mockups do not authorize new product functionality.

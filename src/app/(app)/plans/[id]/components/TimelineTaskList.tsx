@@ -21,7 +21,7 @@ function TimelineResourceLink({
     <Button
       variant='outline'
       asChild
-      className='h-auto max-w-full justify-start rounded-md px-2.5 py-1.5 text-left text-xs whitespace-normal'
+      className='h-auto max-w-full justify-start rounded-md px-2.5 py-1.5 text-left type-meta font-medium whitespace-normal'
     >
       <a href={resource.url} target='_blank' rel='noopener noreferrer'>
         {createElement(getResourceIcon(resource.type), {
@@ -87,12 +87,12 @@ function TimelineTaskCard({
             >
               {task.title}
             </p>
-            <span className='text-xs text-muted-foreground'>
+            <span className='type-meta text-muted-foreground'>
               {formatMinutes(task.estimatedMinutes)}
             </span>
           </div>
           {task.description && (
-            <p className='mt-1 text-sm wrap-break-word text-muted-foreground'>
+            <p className='mt-1 type-body wrap-break-word text-muted-foreground'>
               {task.description}
             </p>
           )}
@@ -131,7 +131,9 @@ export function TimelineTaskList({
 }) {
   if (module.tasks.length === 0) {
     return (
-      <p className='text-sm text-muted-foreground'>No tasks in this module.</p>
+      <p className='type-body text-muted-foreground'>
+        No tasks in this module.
+      </p>
     );
   }
 

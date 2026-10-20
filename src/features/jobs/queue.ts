@@ -19,15 +19,12 @@ import type {
 import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 
 import {
-  claimNextPendingJob,
   claimRegenerationJobById,
   completeJobRecord,
-  countUserJobsSince,
   failJobRecord,
   getJobById,
   insertJobRecord,
   updateRegenerationJobPayload,
-  updateRegenerationJobPayloadIfRunIdMissing,
 } from '@/lib/db/queries/jobs';
 import { db } from '@supabase/service-role';
 
@@ -37,23 +34,6 @@ type FailJobOptions = {
   retryAfter?: number;
 };
 
-export async function enqueueJob(
-  type: JobType,
-  planId: string | null,
-  userId: string,
-  data: JobPayload,
-  priority = 0,
-): Promise<string> {
-  const result = await enqueueJobWithResult(
-    type,
-    planId,
-    userId,
-    data,
-    priority,
-  );
-  return result.id;
-}
-
 export async function enqueueJobWithResult(
   type: JobType,
   planId: string | null,
@@ -62,10 +42,6 @@ export async function enqueueJobWithResult(
   priority = 0,
 ): Promise<JobEnqueueResult> {
   return insertJobRecord({ type, planId, userId, data, priority }, db);
-}
-
-export async function getNextJob(types: JobType[]): Promise<Job | null> {
-  return claimNextPendingJob(types, db);
 }
 
 export async function claimRegenerationJob(
@@ -83,13 +59,6 @@ export async function updateJobPayload(
   return updateRegenerationJobPayload(jobId, payload, db);
 }
 
-export async function updateJobPayloadIfRunIdMissing(
-  jobId: string,
-  payload: JobPayload,
-): Promise<Job | null> {
-  return updateRegenerationJobPayloadIfRunIdMissing(jobId, payload, db);
-}
-
 export async function completeJob(
   jobId: string,
   result: JobResult,
@@ -103,14 +72,6 @@ export async function failJob(
   options: FailJobOptions = {},
 ): Promise<Job | null> {
   return failJobRecord(jobId, error, options.retryable, db, options.retryAfter);
-}
-
-export async function getUserJobCount(
-  userId: string,
-  type: JobType,
-  since: Date,
-): Promise<number> {
-  return countUserJobsSince(userId, type, since, db);
 }
 
 export async function loadJobById(jobId: string): Promise<Job | null> {

@@ -41,6 +41,8 @@ function createLearningPlan(
     generationStatus: 'ready',
     isQuotaEligible: false,
     finalizedAt: null,
+    regenerationReasons: null,
+    regenerationNote: null,
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01'),
     ...overrides,

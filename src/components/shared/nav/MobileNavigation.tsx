@@ -43,6 +43,7 @@ interface MobileNavigationProps {
 }
 
 function MobileAppSheetBody({
+  canCreatePlan,
   navItems,
   onNavigate,
   pathname,
@@ -51,6 +52,7 @@ function MobileAppSheetBody({
   userName,
   showClerkUserButton,
 }: {
+  canCreatePlan?: boolean;
   navItems: NavItem[];
   onNavigate: () => void;
   pathname: string;
@@ -68,6 +70,7 @@ function MobileAppSheetBody({
         pathname={pathname}
         navItems={navItems}
         tier={tier}
+        canCreatePlan={canCreatePlan}
         userName={userName}
         userImageUrl={userImageUrl}
         showClerkUserButton={showClerkUserButton}
@@ -166,7 +169,7 @@ function MobileSheetNavItems({
               onClick={onNavigate}
               aria-current={isActive ? 'page' : undefined}
               className={cn(
-                'flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                'flex min-h-11 items-center rounded-xl px-4 py-3 type-label transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                 isActive
                   ? 'bg-primary text-primary-foreground shadow-md'
                   : 'text-muted-foreground hover:bg-muted hover:text-primary',
@@ -185,7 +188,7 @@ function MobileSheetNavItems({
                       onClick={onNavigate}
                       aria-current={isSubActive ? 'page' : undefined}
                       className={cn(
-                        'flex min-h-11 items-center rounded-md px-3 py-2 text-xs font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
+                        'flex min-h-11 items-center rounded-md px-3 py-2 type-meta font-medium transition-colors motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                         isSubActive
                           ? 'text-primary dark:text-primary'
                           : 'text-muted-foreground hover:text-primary dark:hover:text-primary',
@@ -361,6 +364,7 @@ export default function MobileNavigation({
       >
         {isAppShell ? (
           <MobileAppSheetBody
+            canCreatePlan={canCreatePlan}
             navItems={navItems}
             onNavigate={handleNavigation}
             pathname={pathname}

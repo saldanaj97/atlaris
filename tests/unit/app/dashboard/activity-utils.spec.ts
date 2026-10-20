@@ -2,9 +2,8 @@ import type { GenerationStatus } from '@/shared/types/db.types';
 
 import {
   generateActivities,
-  getDashboardGreeting,
+  getDashboardHeroDescription,
   getDashboardHeroTitle,
-  getDashboardProgressStats,
 } from '@/app/(app)/dashboard/components/activity-utils';
 import {
   buildModuleRows,
@@ -121,7 +120,7 @@ describe('generateActivities', () => {
   );
 });
 
-describe('getDashboardGreeting', () => {
+describe('getDashboardHeroDescription', () => {
   it('does not describe a generating plan as ready', () => {
     const generatingPlan = planSummary({
       id: 'plan-generating',
@@ -131,12 +130,12 @@ describe('getDashboardGreeting', () => {
       updatedAt: '2026-06-22T00:00:00.000Z',
     });
 
-    expect(getDashboardGreeting('Juan Saldana', generatingPlan)).toBe(
-      'Welcome back, Juan. Your plan for Distributed systems is still being created.',
+    expect(getDashboardHeroDescription(generatingPlan)).toBe(
+      'Your plan for Distributed systems is still being created.',
     );
   });
 
-  it('grounds the greeting in the user and active plan progress', () => {
+  it('grounds the description in active plan progress', () => {
     const activePlan = planSummary({
       id: 'plan-active',
       topic: 'Workflow SDK TypeScript',
@@ -145,11 +144,11 @@ describe('getDashboardGreeting', () => {
       updatedAt: '2026-06-22T00:00:00.000Z',
     });
 
-    expect(getDashboardGreeting('Juan Saldana', activePlan)).toBe(
-      'Welcome back, Juan. You’re 50% through Workflow SDK TypeScript. Keep the momentum going.',
+    expect(getDashboardHeroDescription(activePlan)).toBe(
+      'You’re 50% through Workflow SDK TypeScript. Keep the momentum going.',
     );
-    expect(getDashboardGreeting('Juan Saldana')).toBe(
-      'Welcome back, Juan. Ready for your next challenge?',
+    expect(getDashboardHeroDescription()).toBe(
+      'Ready for your next challenge?',
     );
   });
 });
@@ -159,42 +158,5 @@ describe('getDashboardHeroTitle', () => {
     expect(getDashboardHeroTitle('Juan Saldana')).toBe('Welcome back, Juan.');
     expect(getDashboardHeroTitle('  ')).toBe('Welcome back.');
     expect(getDashboardHeroTitle(undefined)).toBe('Welcome back.');
-  });
-});
-
-describe('getDashboardProgressStats', () => {
-  it('weights overall progress by tasks instead of averaging plan percents', () => {
-    const completeSmall = {
-      ...planSummary({
-        id: 'plan-small',
-        topic: 'Short plan',
-        completedTasks: 1,
-        completion: 1,
-        moduleCount: 1,
-        updatedAt: '2026-06-22T00:00:00.000Z',
-      }),
-      totalTasks: 1,
-      completedTasks: 1,
-    };
-    const untouchedLarge = {
-      ...planSummary({
-        id: 'plan-large',
-        topic: 'Long plan',
-        completedTasks: 0,
-        completion: 0,
-        moduleCount: 3,
-        updatedAt: '2026-06-22T00:00:00.000Z',
-      }),
-      totalTasks: 9,
-      completedTasks: 0,
-    };
-
-    const stats = getDashboardProgressStats([completeSmall, untouchedLarge]);
-
-    expect(stats.percent).toBe(10);
-    expect(stats.completedTasks).toBe(1);
-    expect(stats.totalTasks).toBe(10);
-    expect(stats.planCount).toBe(2);
-    expect(stats.totalModules).toBe(4);
   });
 });

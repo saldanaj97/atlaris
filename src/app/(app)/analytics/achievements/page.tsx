@@ -63,11 +63,11 @@ export default function AchievementsPage() {
         <Surface className='relative mx-auto max-w-3xl overflow-hidden'>
           <p
             id='achievements-coming-soon-heading'
-            className='text-base font-medium text-foreground'
+            className='type-reading font-medium text-foreground'
           >
             Coming soon
           </p>
-          <p className='mt-1 max-w-md text-sm text-muted-foreground'>
+          <p className='mt-1 max-w-md type-body text-muted-foreground'>
             Achievement tracking isn&apos;t available yet. These milestones are
             a preview of what&apos;s ahead.
           </p>
@@ -81,10 +81,10 @@ export default function AchievementsPage() {
                   {achievement.icon}
                 </span>
                 <div className='min-w-0'>
-                  <p className='text-sm font-medium text-foreground'>
+                  <p className='type-label text-foreground'>
                     {achievement.name}
                   </p>
-                  <p className='mt-0.5 text-sm text-muted-foreground'>
+                  <p className='mt-0.5 type-body text-muted-foreground'>
                     {achievement.description}
                   </p>
                 </div>

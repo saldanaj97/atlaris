@@ -37,6 +37,21 @@ export const generationPurpose = pgEnum(
 );
 export type GenerationPurpose = (typeof generationPurpose.enumValues)[number];
 
+/** Research depth for one `plan_research` run. */
+export const researchMode = pgEnum('research_mode', ['fast', 'advanced']);
+
+/** Outcome of one research run; `failed_skipped` means generation continued without sources. */
+export const researchStatus = pgEnum('research_status', [
+  'ok',
+  'failed_skipped',
+]);
+
+/** Pipeline stage that reported a `generation_quality_issues` row. */
+export const generationQualityStage = pgEnum('generation_quality_stage', [
+  'outline',
+  'lesson',
+]);
+
 export const resourceType = pgEnum('resource_type', [
   'video',
   'article',

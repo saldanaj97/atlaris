@@ -53,7 +53,7 @@ export function SkySection() {
             {/* oxlint-enable shadcn/require-static-classes */}
             <h2
               id='about-sky-heading'
-              className={`mt-5 font-serif text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               Why a night sky,
@@ -62,7 +62,7 @@ export function SkySection() {
               </span>
             </h2>
             <p
-              className={`mt-6 max-w-xl font-sans text-base leading-relaxed text-muted-foreground sm:text-lg ${styles.revealItem}`}
+              className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 2 } as CSSProperties}
             >
               Most learning happens after the day is spent. Nine to eleven, a
@@ -96,16 +96,16 @@ export function SkySection() {
               className={`rounded-lg border border-panel-border bg-panel p-5 ${styles.revealItem}`}
               style={{ '--i': index } as CSSProperties}
             >
-              <dt className='font-serif text-base font-semibold text-foreground'>
+              <dt className='type-reading font-serif font-semibold text-foreground'>
                 {item.term}
               </dt>
-              <dd className='mt-3 max-w-prose font-sans text-sm leading-relaxed text-muted-foreground'>
+              <dd className='mt-3 max-w-prose type-body text-muted-foreground'>
                 {item.definition}
               </dd>
             </div>
           ))}
         </dl>
-        <p className='mt-8 text-center font-serif text-sm font-medium text-primary'>
+        <p className='mt-8 text-center type-label font-serif text-primary'>
           The sky does not hurry. Neither does the plan.
         </p>
       </RevealAnimation>

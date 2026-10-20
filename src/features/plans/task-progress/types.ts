@@ -110,9 +110,3 @@ export type PlanOverviewStats = BaseCompletionStats & {
   estimatedCompletionDate: string | null;
   tags: string[];
 };
-
-/**
- * Plan details-card stats derived for compact card UI.
- * Use this when module counts, tags, and estimated completion label are not needed.
- */
-export type PlanDetailsCardStats = BaseCompletionStats;

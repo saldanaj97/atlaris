@@ -19,7 +19,6 @@ export type GenerationInput = {
  * module order for deterministic mock payloads and later parser checks.
  */
 export type ModuleLessonBatchGenerationInput = {
-  systemPrompt: string;
   userPrompt: string;
   taskIds: readonly string[];
 };
@@ -60,4 +59,6 @@ export type ProviderMetadata = {
   model?: string;
   provider?: string;
   usage?: ProviderUsage;
+  /** Last streamed `finish_reason` (`stop`, `length`, …); set once the stream is read. */
+  finishReason?: string;
 };

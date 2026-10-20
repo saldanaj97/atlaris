@@ -158,9 +158,7 @@ function ProfileCard({ children }: { children: ReactNode }): ReactElement {
     >
       {/* oxlint-enable shadcn/require-static-classes */}
       <CardHeader>
-        <CardTitle as='h2' className='text-xl leading-[28px]'>
-          Profile
-        </CardTitle>
+        <CardTitle as='h2'>Profile</CardTitle>
       </CardHeader>
       <CardContent className='@container'>{children}</CardContent>
     </Card>
@@ -244,18 +242,18 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
           <div className='flex min-w-0 items-center gap-[16px]'>
             <div
               aria-hidden='true'
-              className='flex size-[64px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-action-soft text-2xl font-semibold tracking-[-0.01em] text-foreground'
+              className='flex size-[64px] shrink-0 items-center justify-center rounded-full border-2 border-primary bg-action-soft type-section text-foreground'
             >
               {getProfileInitials(state.name)}
             </div>
             <div className='min-w-0'>
-              <p className='text-xl leading-[28px] font-semibold [overflow-wrap:anywhere] text-foreground'>
+              <p className='type-card [overflow-wrap:anywhere] text-foreground'>
                 {state.name || 'No name set'}
               </p>
-              <p className='text-sm leading-[22px] [overflow-wrap:anywhere] text-muted-foreground'>
+              <p className='type-body [overflow-wrap:anywhere] text-muted-foreground'>
                 {email}
               </p>
-              <p className='text-xs leading-[18px] text-muted-foreground'>
+              <p className='type-meta text-muted-foreground'>
                 Member since <span>{memberSince}</span>
               </p>
             </div>
@@ -266,7 +264,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
           <div className='min-w-0 space-y-[8px]'>
             <label
               htmlFor={profileNameInputId}
-              className='text-sm leading-[20px] font-medium text-foreground'
+              className='type-label text-foreground'
             >
               Display name
             </label>
@@ -283,7 +281,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
           <div className='min-w-0 space-y-[8px]'>
             <label
               htmlFor={profileEmailInputId}
-              className='text-sm leading-[20px] font-medium text-foreground'
+              className='type-label text-foreground'
             >
               Email address
             </label>
@@ -296,7 +294,7 @@ export function ProfileForm({ locale }: ProfileFormProps): ReactElement {
             />
             <p
               id={profileEmailHelpId}
-              className='text-xs leading-[18px] text-muted-foreground'
+              className='type-meta text-muted-foreground'
             >
               Your email address is managed by your sign-in provider.
             </p>

@@ -37,14 +37,14 @@ export function CtaSection() {
 
             <h2
               id='landing-cta-heading'
-              className={`mt-5 font-serif text-3xl leading-[1.08] font-semibold tracking-[-0.035em] text-balance text-foreground sm:text-4xl ${styles.revealItem}`}
+              className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
               {copy.headline}
             </h2>
 
             <p
-              className={`relative mx-auto mt-5 max-w-lg font-sans text-base leading-relaxed text-muted-foreground ${styles.revealItem}`}
+              className={`relative mx-auto mt-5 max-w-lg type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 2 } as CSSProperties}
             >
               {copy.subheadline}

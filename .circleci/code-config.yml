@@ -256,6 +256,13 @@ jobs:
               "$lint_command" \
               "pnpm typecheck"
       - run:
+          # Non-blocking shadow run while tsrs is evaluated against tsc.
+          name: tsrs shadow typecheck (non-blocking)
+          when: always
+          no_output_timeout: 5m
+          command: |
+            time pnpm typecheck:tsrs || echo "tsrs shadow typecheck failed (non-blocking)"
+      - run:
           name: Worker bundle gate
           no_output_timeout: 5m
           command: |
@@ -474,6 +481,8 @@ jobs:
           POSTGRES_DB: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
     resource_class: large
+    # Fallback only: experimental.dynamic-parallelism (end of file) sizes this
+    # job from list-integration-tests; CircleCI uses this value when it cannot.
     parallelism: 2
     environment:
       NODE_ENV: test
@@ -509,6 +518,28 @@ jobs:
             circleci testsuite run "integration tests" --analyze-tests=none --run-tests=impacted
       - summarize-vitest:
           results-file: test-results/integration/results.json
+
+  # Dynamic parallelism trial (measures its test-unit cost). Lists the atoms
+  # integration-tests would run, without running them, so CircleCI can size
+  # that job's parallelism. `discover` only lists files, so no database.
+  list-integration-tests:
+    executor: node
+    resource_class: small
+    environment:
+      NODE_ENV: test
+    steps:
+      - skip-unless-integration
+      - checkout
+      - init-env
+      - fetch-base
+      - install-pnpm-deps
+      - run:
+          name: List selected integration tests
+          # Same selection flags as integration-tests so the two agree.
+          command: >-
+            circleci testsuite list-tests "integration tests"
+            --key=atlaris-integration-parallelism
+            --analyze-tests=none --run-tests=impacted
 
   integration-impact-analysis:
     docker:
@@ -616,9 +647,16 @@ workflows:
           filters:
             branches:
               only: develop
+      - list-integration-tests:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
       - integration-tests:
           requires:
             - detect-changes
+            - list-integration-tests
           filters:
             branches:
               only: develop
@@ -635,3 +673,13 @@ workflows:
           filters:
             branches:
               only: [main, develop]
+
+# Experimental (CircleCI says this stanza will be replaced in a future release).
+# integration-tests starts between min and max nodes based on the atoms that
+# list-integration-tests selected; on any failure it keeps its static parallelism.
+experimental:
+  dynamic-parallelism:
+    integration-tests:
+      key: atlaris-integration-parallelism
+      min: 1
+      max: 2

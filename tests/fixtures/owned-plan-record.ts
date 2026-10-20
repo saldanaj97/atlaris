@@ -25,6 +25,8 @@ export function createTestPlan(
     generationStatus: 'ready',
     isQuotaEligible: false,
     finalizedAt: null,
+    regenerationReasons: null,
+    regenerationNote: null,
     createdAt: BASE_DATE,
     updatedAt: BASE_DATE,
     ...overrides,

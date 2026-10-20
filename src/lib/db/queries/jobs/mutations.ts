@@ -7,7 +7,6 @@ import { jobQueueSelect, runJobMutationIfEditable } from './shared';
 import {
   activeRegenerationJobWhere,
   appendErrorHistoryEntry,
-  assertValidJobTypes,
   mapRowToJob,
 } from '@/lib/db/queries/helpers/jobs-helpers';
 import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
@@ -20,7 +19,7 @@ import {
   type JobType,
 } from '@/shared/types/jobs.types';
 import { jobQueue } from '@supabase/schema';
-import { and, desc, eq, inArray, lte, sql } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 
 /**
  * Inserts a new job into the queue. For plan regeneration jobs with a planId,
@@ -99,56 +98,6 @@ export async function insertJobRecord(
 }
 
 /**
- * Atomically claims the next eligible pending job of the given types.
- * Selects by highest priority, then oldest createdAt; updates status to processing and sets startedAt.
- * Only considers jobs whose scheduledFor is <= now.
- */
-export async function claimNextPendingJob(
-  types: JobType[],
-  dbClient: JobsDbClient,
-): Promise<Job | null> {
-  const client = dbClient;
-
-  if (types.length === 0) {
-    return null;
-  }
-  assertValidJobTypes(types);
-
-  const startTime = new Date();
-  return client.transaction(async (tx) => {
-    const [candidate] = await tx
-      .select({ id: jobQueue.id })
-      .from(jobQueue)
-      .where(
-        and(
-          eq(jobQueue.status, 'pending'),
-          inArray(jobQueue.jobType, types),
-          lte(jobQueue.scheduledFor, sql<Date>`now()`),
-        ),
-      )
-      .orderBy(desc(jobQueue.priority), jobQueue.createdAt)
-      .limit(1)
-      .for('update', { skipLocked: true });
-
-    if (!candidate) {
-      return null;
-    }
-
-    const [claimed] = await tx
-      .update(jobQueue)
-      .set({
-        status: 'processing',
-        startedAt: startTime,
-        updatedAt: startTime,
-      })
-      .where(eq(jobQueue.id, candidate.id))
-      .returning(jobQueueSelect);
-
-    return claimed ? mapRowToJob(claimed) : null;
-  });
-}
-
-/**
  * Claims a specific pending regeneration job by id. Returns null when the job is
  * missing, not pending, or not owned by the expected user/plan.
  */
@@ -204,43 +153,6 @@ export async function updateRegenerationJobPayload(
   const client = dbClient;
 
   return runJobMutationIfEditable(client, jobId, async (tx) => {
-    const updatedAt = new Date();
-    const [updated] = await tx
-      .update(jobQueue)
-      .set({
-        payload,
-        updatedAt,
-      })
-      .where(
-        and(
-          eq(jobQueue.id, jobId),
-          eq(jobQueue.jobType, JOB_TYPES.PLAN_REGENERATION),
-        ),
-      )
-      .returning(jobQueueSelect);
-
-    return updated ? mapRowToJob(updated) : null;
-  });
-}
-
-/**
- * Writes regeneration payload only when the locked row still has no workflow
- * run id. Returns the current row unchanged when a rival claim already won,
- * so callers can treat the existing run id as in-flight ownership.
- */
-export async function updateRegenerationJobPayloadIfRunIdMissing(
-  jobId: string,
-  payload: JobPayload,
-  dbClient: JobsDbClient,
-): Promise<Job | null> {
-  const client = dbClient;
-
-  return runJobMutationIfEditable(client, jobId, async (tx, row) => {
-    const existingRunId = (row.payload as JobPayload).workflow?.runId;
-    if (existingRunId) {
-      return mapRowToJob(row);
-    }
-
     const updatedAt = new Date();
     const [updated] = await tx
       .update(jobQueue)

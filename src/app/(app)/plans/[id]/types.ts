@@ -6,10 +6,7 @@
  * and not-found cases.
  */
 
-export type {
-  PlanDetailsCardStats,
-  PlanOverviewStats,
-} from '@/features/plans/task-progress/client';
+export type { PlanOverviewStats } from '@/features/plans/task-progress/client';
 
 import type {
   AccessError,

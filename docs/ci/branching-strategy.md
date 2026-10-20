@@ -20,6 +20,18 @@ We use two protected branches that serve as anchors for all development:
 
 **Rule:** All feature work branches from `develop`. All releases come from `main`.
 
+### No long-lived integration branches
+
+Every PR targets `develop` directly, including each slice of a multi-PR project. Do not create a track branch that collects slices and then needs its own "bring to develop" PR: each change would cross three PRs instead of one. Short-lived stacked PRs, which each merge into `develop` in turn, are fine.
+
+Land unfinished user-facing behavior on `develop` behind a flag in `src/flags.ts` with `defaultValue: false`, and keep the new path fail-closed until the flag is turned on. Remove the flag once the work ships.
+
+### Batched promotions
+
+Promote `develop` to `main` in batches: at most once a day, or when a milestone is ready. Do not open a promotion after every merge. The only exception is the urgent hotfix path in [pipeline-and-deployment-strategy.md](../ci-cd/pipeline-and-deployment-strategy.md#urgent-production-hotfix).
+
+Merge the promotion PR with **Create a merge commit**. A squash or rebase merge gives `main` a commit that `develop` lacks, so the next promotion conflicts until someone merges `main` back into `develop`. A merge commit keeps the promoted `develop` commit in `main`'s history, so the next promotion merges cleanly and no merge-back is needed. Merge `main` back into `develop` only after a hotfix lands on `main`.
+
 ---
 
 ## Visual Flow
@@ -214,7 +226,11 @@ Migration-related changes include:
 
 ### Which branch should PRs target?
 
-Target `develop` unless it is a true production hotfix.
+Target `develop` unless it is a true production hotfix. Never target a long-lived track branch (short-lived stacked PRs are fine); see [No long-lived integration branches](#no-long-lived-integration-branches).
+
+### How often do we promote to `main`?
+
+In batches, at most once a day or per milestone, merged with a merge commit. See [Batched promotions](#batched-promotions).
 
 ### What if a migration workflow fails?
 

@@ -59,3 +59,13 @@ without a biometric prompt.
 
 Worktrees inherit the same user-level config automatically. Do not commit either
 machine-local file.
+
+## Secrets sync
+
+`pnpm secrets:sync` also runs `OP_EXECUTABLE` when it is exported in your shell,
+so it reads the deployment Environments without a desktop-app prompt. The
+service account needs read access to each non-production Environment you sync,
+such as `atlaris-worker-preview` and `atlaris-vercel-preview`. Keep production
+Environments out of it: read those with plain `op`, or a wrapper that falls back
+to it, so the 1Password desktop app asks for approval. `~/.config/atlaris/dev.sh`
+only feeds `pnpm dev`; export `OP_EXECUTABLE` in your shell for the sync script.

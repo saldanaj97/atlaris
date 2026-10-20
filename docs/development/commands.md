@@ -88,7 +88,7 @@ pnpm start            # Start production server
 ```bash
 pnpm lint               # Oxlint: lint source, scripts, Supabase, and tests
 pnpm lint --format=github # Oxlint with GitHub annotations for CI
-pnpm typecheck          # TypeScript type checking only
+pnpm typecheck          # next typegen + tsc; ignores dev-server types in .next/dev
 pnpm check               # Lint and typecheck in parallel
 ```
 
@@ -140,14 +140,14 @@ See [docs/testing/test-standards.md](../testing/test-standards.md) for comprehen
 pnpm test                     # Run changed unit + integration-class tests
 pnpm test unit                # Run all unit tests
 pnpm test unit --changed      # Run unit tests for changed files only
+pnpm test unit <paths...>     # Run specific unit test files or directories
+pnpm test integration <paths...> # Run specific integration test files (Testcontainers)
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit --project unit-dom tests/unit  # Unit watch mode
 pnpm test integration --changed # Run changed integration tests
 pnpm test integration         # Run the full DB/API integration suite (heavier; use sparingly)
 pnpm test security            # Run RLS policy tests
 pnpm test smoke               # Run Playwright smoke coverage
-pnpm test e2e                 # Run the E2E Vitest project
 pnpm test all                 # Run lint, typecheck, unit, integration, and security suites
-pnpm test all --e2e           # Full suite plus E2E tests
 pnpm test integration --native-db # Any DB-backed suite on the native Supabase `test` stack (no Docker); same as ATLARIS_TEST_DB=native
 ```
 
@@ -155,13 +155,10 @@ DB-backed suites use Testcontainers unless `--native-db` / `ATLARIS_TEST_DB=nati
 
 ### Targeted Vitest commands
 
-Use native Vitest arguments for single-file or watch runs:
+Prefer `pnpm test unit <paths...>` and `pnpm test integration <paths...>` for single-file runs. Use native Vitest arguments for watch mode:
 
 ```bash
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit tests/unit/path/to/file.spec.ts      # .ts specs (Node)
-SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest run --config vitest.config.ts --project unit-dom tests/unit/path/to/file.spec.tsx # .tsx specs (jsdom)
 SKIP_DB_TEST_SETUP=true NODE_ENV=test pnpm vitest --config vitest.config.ts --project unit --project unit-dom tests/unit  # watch
-NODE_ENV=test pnpm vitest run --config vitest.config.ts --project integration tests/integration/path/to/file.spec.ts
 ```
 
 ## Local API Testing Guidance

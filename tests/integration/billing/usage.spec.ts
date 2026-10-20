@@ -1,18 +1,17 @@
 import {
   getCurrentMonth,
-  getUsageSummary,
   getUsageSummaryForTier,
 } from '@/features/billing/usage-metrics';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { learningPlans, usageMetrics, users } from '@supabase/schema';
+import { learningPlans, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 describe('Usage Tracking', () => {
-  describe('getUsageSummary', () => {
-    it('does not call resolveUserTier when getUsageSummaryForTier is used directly', async () => {
+  describe('getUsageSummaryForTier', () => {
+    it('uses the provided tier for limits', async () => {
       const userId = await ensureUser({
         authUserId: 'user_summary_tier_short_circuit',
         email: 'summary.tier.short@example.com',
@@ -79,7 +78,11 @@ describe('Usage Tracking', () => {
         },
       ]);
 
-      const summary = await getUsageSummary(userId, db);
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'free',
+        dbClient: db,
+      });
 
       // Only the two eligible plans should be counted
       expect(summary.activePlans.current).toBe(2);
@@ -124,7 +127,11 @@ describe('Usage Tracking', () => {
         exportsUsed: 7,
       });
 
-      const summary = await getUsageSummary(userId, db);
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'free',
+        dbClient: db,
+      });
 
       expect(summary).toEqual({
         tier: 'free',
@@ -143,13 +150,8 @@ describe('Usage Tracking', () => {
       const userId = await ensureUser({
         authUserId: 'user_summary_pro',
         email: 'summary.pro@example.com',
+        subscriptionTier: 'pro',
       });
-
-      // Upgrade to pro
-      await db
-        .update(users)
-        .set({ subscriptionTier: 'pro' })
-        .where(sql`id = ${userId}`);
 
       // Create 50 plans
       const finalizedAt = new Date();
@@ -174,7 +176,11 @@ describe('Usage Tracking', () => {
         exportsUsed: 100,
       });
 
-      const summary = await getUsageSummary(userId, db);
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'pro',
+        dbClient: db,
+      });
 
       expect(summary).toEqual({
         tier: 'pro',
@@ -202,7 +208,11 @@ describe('Usage Tracking', () => {
         .where(sql`user_id = ${userId}`);
       expect(before).toHaveLength(0);
 
-      const summary = await getUsageSummary(userId, db);
+      const summary = await getUsageSummaryForTier({
+        userId,
+        tier: 'free',
+        dbClient: db,
+      });
 
       expect(summary.regenerations.used).toBe(0);
       expect(summary).not.toHaveProperty('lessonGenerations');
