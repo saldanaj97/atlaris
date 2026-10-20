@@ -13,6 +13,12 @@ minimumReleaseAgeExclude:
   - "@next/swc-win32-arm64-msvc@16.2.11"
   - "@next/swc-win32-x64-msvc@16.2.11"
   - next@16.2.11
+  - tsrs@0.18.0-ts7.1.0-dev.20260929
+  - "@tsrs/darwin-arm64@0.18.0-ts7.1.0-dev.20260929"
+  - "@tsrs/linux-x64-gnu@0.18.0-ts7.1.0-dev.20260929"
+  - "@tsrs/linux-x64-musl@0.18.0-ts7.1.0-dev.20260929"
+  - "@tsrs/linux-arm64-gnu@0.18.0-ts7.1.0-dev.20260929"
+  - "@tsrs/linux-arm64-musl@0.18.0-ts7.1.0-dev.20260929"
 minimumReleaseAgeStrict: true
 trustPolicy: no-downgrade
 trustPolicyExclude:
@@ -29,6 +35,7 @@ trustPolicyExclude:
   - chokidar@4.0.3
   - semver@6.3.1
   - undici-types@6.21.0
+  - tsrs@0.18.0-ts7.1.0-dev.20260929
 overrides:
   "@esbuild-kit/core-utils>esbuild": ^0.25.0
   "@esbuild-kit/esm-loader>esbuild": ^0.25.0
