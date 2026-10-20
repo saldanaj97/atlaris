@@ -2,7 +2,7 @@
 
 Index of every folder and file under `docs/`. Paths are relative to this file.
 
-**In-flight work is not in `docs/`.** Plans and status for active tickets (`JCS-*`) live in Linear and on the tsk board (`tsk list --json`). Session recaps are local and untracked: `.daily-recap/` (daily notes) and `.agents/recaps/<date>/` (orchestration waves), both linked from the main checkout. Check those before searching the repo for a ticket's plan.
+**In-flight work is not in `docs/`.** Plans, status, recaps, and learnings for active tickets (`JCS-*`) live in Linear. Check the issue and its comments before searching the repo for a ticket's plan.
 
 ## Root
 
