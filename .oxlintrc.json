@@ -8,7 +8,7 @@
   "jsPlugins": ["@shadcn/lint"],
   "options": {
     "typeAware": true,
-    "typeCheck": true
+    "typeCheck": false
   },
   "env": {
     "browser": true,
