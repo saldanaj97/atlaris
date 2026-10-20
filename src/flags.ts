@@ -1,3 +1,4 @@
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { Adapter } from 'flags';
 
 import { vercelAdapter } from '@flags-sdk/vercel';
@@ -6,6 +7,10 @@ import { flag } from 'flags/next';
 const fallbackAdapter = (): Adapter<boolean, unknown> => ({
   decide: ({ defaultValue }) =>
     typeof defaultValue === 'boolean' ? defaultValue : false,
+});
+
+const tierListFallbackAdapter = (): Adapter<SubscriptionTier[], unknown> => ({
+  decide: () => [],
 });
 
 export const maintenanceMode = flag<boolean>({
@@ -62,5 +67,23 @@ export const moduleLessonGeneration = flag<boolean>({
   options: [
     { value: false, label: 'Disabled' },
     { value: true, label: 'Enabled' },
+  ],
+});
+
+/**
+ * Tiers that run the grounded generation pipeline (research, verify, advisor).
+ * Fail-closed: the default and any evaluation error mean no tier.
+ */
+export const groundedGeneration = flag<SubscriptionTier[]>({
+  key: 'grounded-generation',
+  defaultValue: [],
+  adapter: process.env.FLAGS ? vercelAdapter() : tierListFallbackAdapter(),
+  description:
+    'Tiers that run grounded generation instead of the current pipeline.',
+  options: [
+    { value: [], label: 'Off' },
+    { value: ['pro'], label: 'Pro' },
+    { value: ['starter', 'pro'], label: 'Starter and Pro' },
+    { value: ['free', 'starter', 'pro'], label: 'All tiers' },
   ],
 });

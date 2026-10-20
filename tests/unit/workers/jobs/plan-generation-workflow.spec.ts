@@ -204,6 +204,8 @@ function makeDeps(overrides: Partial<PlanGenerationWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: PlanGenerationWorkflowDeps = {
     isEnabled: () => true,
+    // Grounded generation off: today's pipeline.
+    isGroundedEnabled: () => false,
     withDb: (fn) => fn(makeDb()),
     startModuleLessons: vi.fn(),
     logger,

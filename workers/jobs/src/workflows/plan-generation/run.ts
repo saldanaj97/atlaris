@@ -14,6 +14,7 @@ import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
@@ -124,6 +125,11 @@ type GenerateStepResult =
 export type PlanGenerationWorkflowDeps = {
   /** `isJobEnabled(env, 'PLAN_GENERATION')`: the Worker switch. */
   readonly isEnabled: () => boolean;
+  /**
+   * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
+   * generation. Unset switches mean off; nothing reads it until 3a/3b.
+   */
+  readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   /** Starts module lessons after success (the Worker's lessons Workflow starter). */

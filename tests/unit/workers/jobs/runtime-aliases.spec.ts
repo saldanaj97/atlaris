@@ -50,6 +50,16 @@ describe('flags/next alias', () => {
     await expect(enabled()).resolves.toBe(true);
   });
 
+  it('maps grounded-generation to the per-tier switches, off when unset', async () => {
+    const tiers = flag<string[]>({ key: 'grounded-generation' });
+
+    await expect(tiers()).resolves.toEqual([]);
+
+    vi.stubEnv('GROUNDED_GENERATION_STARTER', 'true');
+    vi.stubEnv('GROUNDED_GENERATION_PRO', 'true');
+    await expect(tiers()).resolves.toEqual(['starter', 'pro']);
+  });
+
   it('keeps maintenance-mode off on the Worker', async () => {
     vi.stubEnv('MAINTENANCE_MODE', 'true');
     await expect(flag<boolean>({ key: 'maintenance-mode' })()).resolves.toBe(

@@ -2,6 +2,7 @@ import type { ModuleLessonBatchPromptInput } from '@/features/lesson-content/mod
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
@@ -134,6 +135,11 @@ type ParseCommitStepResult =
 export type ModuleLessonsWorkflowDeps = {
   /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
   readonly isEnabled: () => boolean;
+  /**
+   * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
+   * generation. Unset switches mean off; nothing reads it until 3a/3b.
+   */
+  readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;
