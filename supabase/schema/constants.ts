@@ -50,3 +50,13 @@ export const MAX_LESSON_LIST_ITEM_LENGTH = 600;
  * Upper bound on task entries in `ModuleLessonBatchProviderOutput.tasks`.
  */
 export const MAX_MODULE_LESSON_BATCH_TASKS = 64;
+
+/**
+ * Max characters for `learning_plans.regeneration_note`. Enforced by the DB CHECK
+ * `learning_plans_regeneration_note_length`; app-layer validation lands with the
+ * regeneration reasons UI.
+ */
+export const MAX_REGENERATION_NOTE_LENGTH = 500;
+
+/** Highest quality-check pass number stored on `generation_quality_issues.pass` (passes are 0-based). */
+export const MAX_GENERATION_QUALITY_PASS = 2;

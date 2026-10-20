@@ -6,6 +6,7 @@ import {
   planOrigin,
   skillLevel,
 } from '../../enums';
+import { MAX_REGENERATION_NOTE_LENGTH } from '../constants';
 import { timestampFields } from '../helpers';
 import {
   planOwnedByCurrentUser,
@@ -49,10 +50,19 @@ export const learningPlans = pgTable(
       .default('generating'),
     isQuotaEligible: boolean('is_quota_eligible').notNull().default(false),
     finalizedAt: timestamp('finalized_at', { withTimezone: true }),
+    /** Reason chips from the latest regeneration request; values are validated by the app. */
+    regenerationReasons: text('regeneration_reasons').array(),
+    /** Free-text note from the latest regeneration request. */
+    regenerationNote: text('regeneration_note'),
     ...timestampFields,
   },
   (table) => [
     check('weekly_hours_check', sql`${table.weeklyHours} >= 0`),
+    check(
+      'learning_plans_regeneration_note_length',
+      // react-doctor-disable-next-line react-doctor/raw-sql-injection-risk -- static numeric limit from repo constants, not user input.
+      sql`(${table.regenerationNote} IS NULL OR char_length(${table.regenerationNote}) <= ${sql.raw(String(MAX_REGENERATION_NOTE_LENGTH))})`,
+    ),
     index('idx_learning_plans_user_created_at_desc').on(
       table.userId,
       table.createdAt.desc(),
