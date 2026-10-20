@@ -22,8 +22,7 @@
   },
   "include": [
     ".cloudflare/types/index.d.ts",
-    "cloudflare.config.ts",
-    "wrangler.config.ts",
+    "*.ts",
     "src/**/*.ts"
   ],
   "exclude": []
