@@ -42,6 +42,9 @@ export const MODULE_LESSONS_STEPS = {
   generate: 'generate',
   parseCommit: 'parse-commit',
   fail: 'fail',
+  /** One more provider call and parse when the first output fails to parse. */
+  generateRetry: 'generate-retry',
+  parseCommitRetry: 'parse-commit-retry',
 } as const;
 
 type StepName =
@@ -49,6 +52,18 @@ type StepName =
 
 /** Keeps a long schema error readable in logs and the instance error. */
 const PARSE_ERROR_MESSAGE_MAX_CHARS = 1_000;
+
+/**
+ * Parse failures that a second provider call can fix: malformed or empty JSON,
+ * a wrong task count, or a schema miss. `invalid_input` is a caller bug.
+ */
+const RETRYABLE_PARSE_ERROR_KINDS: ReadonlySet<string> = new Set([
+  'invalid_json',
+  'validation',
+]);
+
+/** Which provider call this is: the first, or the one retry after a parse failure. */
+type GenerationAttempt = 1 | 2;
 
 /** Margin over the AI timeout so the provider abort fires before the step's. */
 const GENERATE_STEP_TIMEOUT_MARGIN_MS = 60_000;
@@ -107,6 +122,15 @@ type GenerateStepResult =
     }
   | { readonly kind: 'disabled' };
 
+type ParseCommitStepResult =
+  | { readonly kind: 'success' }
+  | {
+      readonly kind: 'parse_failed';
+      readonly errorKind: string;
+      readonly errorMessage: string;
+      readonly retryable: boolean;
+    };
+
 export type ModuleLessonsWorkflowDeps = {
   /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
   readonly isEnabled: () => boolean;
@@ -137,8 +161,10 @@ function logStep(
   run: RunContext,
   step: StepName,
   fields: {
+    attempt?: GenerationAttempt;
     taskCount?: number;
     rawChars?: number;
+    finishReason?: string;
     outcome: string;
     errorKind?: string;
     errorMessage?: string;
@@ -244,17 +270,23 @@ async function claimStep(
   };
 }
 
-/** Step 2: re-check the switch, mark provider started, call, buffer. */
+/**
+ * Step 2 (`generate`, or `generate-retry` after a parse failure): re-check the
+ * switch, mark provider started, call, buffer. The provider-start marker is a
+ * no-op on the retry, so usage quota counts the module once.
+ */
 async function generateStep(
   db: DbClient,
   run: RunContext,
   promptInput: ModuleLessonBatchPromptInput,
+  attempt: GenerationAttempt,
 ): Promise<GenerateStepResult> {
+  const stepName: StepName = attempt === 1 ? 'generate' : 'generate-retry';
   const taskCount = promptInput.tasks.length;
   // Switch dropped since the claim: release it, as on a flag drop today.
   if (!run.deps.isEnabled()) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
-    logStep(run, 'generate', { taskCount, outcome: 'disabled' });
+    logStep(run, stepName, { attempt, taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
   }
 
@@ -272,27 +304,36 @@ async function generateStep(
     now: run.now,
   });
 
-  logStep(run, 'generate', {
+  logStep(run, stepName, {
+    attempt,
     taskCount,
     rawChars: batch.rawText.length,
+    finishReason: batch.finishReason,
     outcome: 'generated',
   });
   return { kind: 'generated', rawText: batch.rawText, usage: batch.usage };
 }
 
-/** Step 3: parse and commit. A parse failure is permanent. */
+/**
+ * Step 3 (`parse-commit`, or `parse-commit-retry`): parse and commit. A parse
+ * failure is returned, not thrown, so the workflow can decide whether to call
+ * the provider again; step retries cover transient DB errors only.
+ */
 async function parseCommitStep(
   db: DbClient,
   run: RunContext,
   claim: Extract<ClaimStepResult, { kind: 'claimed' }>,
   generated: Extract<GenerateStepResult, { kind: 'generated' }>,
-  attempt: number,
-): Promise<{ readonly kind: 'success' }> {
+  attempt: GenerationAttempt,
+  stepAttempt: number,
+): Promise<ParseCommitStepResult> {
+  const stepName: StepName =
+    attempt === 1 ? 'parse-commit' : 'parse-commit-retry';
   const taskCount = claim.promptInput.tasks.length;
   const rawChars = generated.rawText.length;
 
   // A retry after a commit whose response was lost finds the module ready.
-  if (attempt > 1) {
+  if (stepAttempt > 1) {
     const load = await loadModuleLessonGenerationContext(
       db,
       run.target.planId,
@@ -303,7 +344,12 @@ async function parseCommitStep(
       load?.module.lessonGenerationStatus === 'ready' &&
       load.module.lessonGenerationMetadata?.workflow?.runId === run.instanceId
     ) {
-      logStep(run, 'parse-commit', { taskCount, rawChars, outcome: 'success' });
+      logStep(run, stepName, {
+        attempt,
+        taskCount,
+        rawChars,
+        outcome: 'success',
+      });
       return { kind: 'success' };
     }
   }
@@ -336,8 +382,9 @@ async function parseCommitStep(
       );
       logStep(
         run,
-        'parse-commit',
+        stepName,
         {
+          attempt,
           taskCount,
           rawChars,
           outcome: 'parse_failed',
@@ -346,15 +393,28 @@ async function parseCommitStep(
         },
         'warn',
       );
-      throw run.deps.nonRetryable(
-        `Module lesson batch could not be parsed (${error.kind}): ${errorMessage}`,
-      );
+      return {
+        kind: 'parse_failed',
+        errorKind: error.kind,
+        errorMessage,
+        retryable: RETRYABLE_PARSE_ERROR_KINDS.has(error.kind),
+      };
     }
     throw error;
   }
 
-  logStep(run, 'parse-commit', { taskCount, rawChars, outcome: 'success' });
+  logStep(run, stepName, { attempt, taskCount, rawChars, outcome: 'success' });
   return { kind: 'success' };
+}
+
+/** A parse failure the workflow will not retry: ends the run in `fail`. */
+function parseFailedError(
+  run: RunContext,
+  result: Extract<ParseCommitStepResult, { kind: 'parse_failed' }>,
+): Error {
+  return run.deps.nonRetryable(
+    `Module lesson batch could not be parsed (${result.errorKind}): ${result.errorMessage}`,
+  );
 }
 
 /**
@@ -402,8 +462,9 @@ async function failStep(
 
 /**
  * The module lessons Workflow body: `claim` → `generate` → `parse-commit`,
- * with a `fail` step after any thrown step. Each step opens its own database
- * pool through `deps.withDb`.
+ * then `generate-retry` → `parse-commit-retry` once when the first output
+ * fails to parse, with a `fail` step after any thrown step. Each step opens
+ * its own database pool through `deps.withDb`.
  */
 export async function runModuleLessonsWorkflow(
   event: Readonly<WorkflowEvent<ModuleLessonsWorkflowParams>>,
@@ -442,21 +503,53 @@ export async function runModuleLessonsWorkflow(
     const generated = await step.do(
       MODULE_LESSONS_STEPS.generate,
       generateStepConfig(),
-      async () => deps.withDb((db) => generateStep(db, run, claim.promptInput)),
+      async () =>
+        deps.withDb((db) => generateStep(db, run, claim.promptInput, 1)),
     );
     if (generated.kind !== 'generated') {
       return { kind: generated.kind };
     }
 
     current = 'parse-commit';
-    return await step.do(
+    const committed = await step.do(
       MODULE_LESSONS_STEPS.parseCommit,
       PARSE_COMMIT_STEP_CONFIG,
       async (ctx) =>
         deps.withDb((db) =>
-          parseCommitStep(db, run, claim, generated, ctx.attempt),
+          parseCommitStep(db, run, claim, generated, 1, ctx.attempt),
         ),
     );
+    if (committed.kind === 'success') {
+      return committed;
+    }
+    if (!committed.retryable) {
+      throw parseFailedError(run, committed);
+    }
+
+    current = 'generate-retry';
+    const regenerated = await step.do(
+      MODULE_LESSONS_STEPS.generateRetry,
+      generateStepConfig(),
+      async () =>
+        deps.withDb((db) => generateStep(db, run, claim.promptInput, 2)),
+    );
+    if (regenerated.kind !== 'generated') {
+      return { kind: regenerated.kind };
+    }
+
+    current = 'parse-commit-retry';
+    const recommitted = await step.do(
+      MODULE_LESSONS_STEPS.parseCommitRetry,
+      PARSE_COMMIT_STEP_CONFIG,
+      async (ctx) =>
+        deps.withDb((db) =>
+          parseCommitStep(db, run, claim, regenerated, 2, ctx.attempt),
+        ),
+    );
+    if (recommitted.kind !== 'success') {
+      throw parseFailedError(run, recommitted);
+    }
+    return recommitted;
   } catch (error) {
     deps.logger.warn(
       {

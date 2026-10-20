@@ -59,4 +59,6 @@ export type ProviderMetadata = {
   model?: string;
   provider?: string;
   usage?: ProviderUsage;
+  /** Last streamed `finish_reason` (`stop`, `length`, …); set once the stream is read. */
+  finishReason?: string;
 };

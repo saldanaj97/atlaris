@@ -60,6 +60,8 @@ export type ModuleLessonBatchInput = Parameters<
 export type ModuleLessonRawBatch = {
   readonly rawText: string;
   readonly usage: CanonicalAIUsage;
+  /** Provider `finish_reason` when streamed (`length` means the output was cut off). */
+  readonly finishReason?: string;
 };
 
 // --- prepare ---------------------------------------------------------------
@@ -187,7 +189,11 @@ export async function generateModuleLessonRawBatch(input: {
       signal: controller.signal,
     });
 
-    return { rawText, usage: safeNormalizeUsage(providerResult.metadata) };
+    return {
+      rawText,
+      usage: safeNormalizeUsage(providerResult.metadata),
+      finishReason: providerResult.metadata.finishReason,
+    };
   } finally {
     cleanupTimeoutLifecycle(lifecycle);
   }

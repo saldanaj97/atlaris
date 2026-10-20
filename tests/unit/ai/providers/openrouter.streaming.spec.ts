@@ -161,6 +161,29 @@ describe('OpenRouterProvider', () => {
         });
       });
 
+      it('records the streamed finish reason in metadata', async () => {
+        const payload = JSON.stringify(VALID_PLAN_RESPONSE);
+        async function* streamWithFinishReason(): AsyncIterable<StreamEventLike> {
+          yield { choices: [{ delta: { content: payload } }] };
+          yield {
+            choices: [{ delta: { content: '' }, finishReason: 'length' }],
+          };
+        }
+
+        const { client, send } = createOpenRouterMockClient();
+        send.mockResolvedValueOnce(streamWithFinishReason());
+
+        const provider = new OpenRouterProvider(
+          { model: OPENROUTER_TEST_MODEL },
+          client,
+        );
+        const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+        expect(result.metadata.finishReason).toBeUndefined();
+        await collectOpenRouterStream(result.stream);
+        expect(result.metadata.finishReason).toBe('length');
+      });
+
       it('updates metadata.model from streaming chunk model metadata', async () => {
         const payload = JSON.stringify(VALID_PLAN_RESPONSE);
         async function* streamWithModelMetadata(): AsyncIterable<

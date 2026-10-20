@@ -310,6 +310,7 @@ function resolveOpenRouterContentStream(
   response: unknown,
   metadataUsage: ProviderUsage,
   onModel?: (model: string) => void,
+  onFinishReason?: (finishReason: string) => void,
 ): { stream: ReadableStream<string>; isStreaming: boolean } {
   const isStreamingResponse = isAsyncIterable(response);
   if (isStreamingResponse) {
@@ -319,6 +320,7 @@ function resolveOpenRouterContentStream(
         mergeStreamUsageIntoMetadata(metadataUsage, usage, usageObjectPresent);
       },
       onModel,
+      onFinishReason,
     });
     return { stream, isStreaming: true };
   }
@@ -461,6 +463,9 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             metadataUsage,
             (resolvedModel) => {
               metadata.model = resolvedModel;
+            },
+            (finishReason) => {
+              metadata.finishReason = finishReason;
             },
           );
 
