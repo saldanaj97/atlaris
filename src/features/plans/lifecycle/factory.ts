@@ -16,6 +16,7 @@
  */
 
 import type { GenerationFinalizationStoreDeps } from './generation-finalization/types';
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { DbClient } from '@/lib/db/types';
 
 import { createPlanLifecycleGeneration } from './generation';
@@ -40,8 +41,10 @@ export function createPlanLifecycleService(params: {
   dbClient: DbClient;
   /** Overrides how finalization starts module lessons (the jobs Worker skips them until B5). */
   startModuleLessons?: GenerationFinalizationStoreDeps['startModuleLessons'];
+  /** Replaces the tier's resolved generation provider (the grounded outline writer). */
+  generationProvider?: AiPlanGenerationProvider;
 }): PlanLifecycleService {
-  const { dbClient, startModuleLessons } = params;
+  const { dbClient, startModuleLessons, generationProvider } = params;
 
   return new PlanLifecycleService({
     planPersistence: {
@@ -59,7 +62,10 @@ export function createPlanLifecycleService(params: {
       checkDurationCap: checkPlanDurationCap,
       normalizePlanDuration: normalizePlanDurationForTier,
     },
-    generation: createPlanLifecycleGeneration(dbClient),
+    generation: createPlanLifecycleGeneration(
+      dbClient,
+      generationProvider ? { provider: generationProvider } : {},
+    ),
     // Intended owner: these store functions implement the lifecycle port.
     // Production callers settle through PlanLifecycleService, not these imports.
     generationFinalization: {
