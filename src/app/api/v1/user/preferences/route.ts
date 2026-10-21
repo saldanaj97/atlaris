@@ -13,6 +13,7 @@ import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validatio
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import {
+  GROUNDED_MODEL_PICKS_FEATURE,
   GROUNDED_PICK_FIELD_BY_ROLE,
   GROUNDED_PICK_ROLES,
   getPersistableModelsForTier,
@@ -26,6 +27,7 @@ import { AppError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { hasClerkPlanFeature } from '@/lib/auth/server';
 import { upsertUserModelPreferences } from '@/lib/db/queries/user-preferences';
 import {
   attachRequestIdHeader,
@@ -143,10 +145,12 @@ function assertCanPersistSlot(
 
 /**
  * Grounded picks are Pro-only, must be in the role's catalog, and are only
- * accepted while grounded generation is on for the user's tier.
+ * accepted while grounded generation is on for the user's tier and their
+ * Clerk plan has the grounded_model_picks feature.
  */
 async function assertCanPersistGroundedPicks(
   tier: SubscriptionTier,
+  authUserId: string,
   patch: UserModelPreferencePatch,
 ): Promise<void> {
   const provided = GROUNDED_PICK_ROLES.filter(
@@ -168,6 +172,14 @@ async function assertCanPersistGroundedPicks(
     throw new AppError('Grounded generation is not enabled for your plan.', {
       status: 403,
       code: 'GROUNDED_GENERATION_DISABLED',
+      details: { tier },
+    });
+  }
+
+  if (!(await hasClerkPlanFeature(authUserId, GROUNDED_MODEL_PICKS_FEATURE))) {
+    throw new AppError('Grounded model picks are not included in your plan.', {
+      status: 403,
+      code: 'GROUNDED_MODEL_PICKS_NOT_INCLUDED',
       details: { tier },
     });
   }
@@ -324,7 +336,7 @@ export const PATCH = requestBoundary.route(
       'preferredLessonAiModel',
       patch.preferredLessonAiModel,
     );
-    await assertCanPersistGroundedPicks(userTier, patch);
+    await assertCanPersistGroundedPicks(userTier, actor.authUserId, patch);
 
     const updatedPreferences = await upsertUserModelPreferences(
       actor.id,
