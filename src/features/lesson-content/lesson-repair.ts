@@ -198,7 +198,8 @@ export function lessonAdvisorTool(
  * One repair pass on a lesson: the writer models rewrite the flagged blocks
  * (or the whole lesson for a lesson-level issue) through the repair preset.
  * Starter and pro add the advisor tool with `tool_choice: required`; free
- * runs without it. Throws on provider or output errors.
+ * runs without it, as does a repair the plan's AI ceiling cut the advisor
+ * from (`withAdvisor: false`). Throws on provider or output errors.
  */
 export async function runLessonRepair(
   params: {
@@ -208,6 +209,8 @@ export async function runLessonRepair(
     readonly pickedModelId: string | null;
     /** The Pro advisor pick; the route ignores it on other tiers. */
     readonly advisorModelId: string | null;
+    /** `false` drops the advisor tool (JCS-170). Defaults to `true`. */
+    readonly withAdvisor?: boolean;
     readonly promptInput: ModuleLessonBatchPromptInput;
     readonly taskIndex: number;
     readonly content: LessonContent;
@@ -221,7 +224,10 @@ export async function runLessonRepair(
   if (params.issues.length === 0) {
     throw new Error('Lesson repair needs at least one issue');
   }
-  const advisor = lessonAdvisorTool(params.tier, params.advisorModelId);
+  const advisor =
+    params.withAdvisor === false
+      ? null
+      : lessonAdvisorTool(params.tier, params.advisorModelId);
   const { value, usage, model } = await sendLessonQualityCall(
     {
       tier: params.tier,

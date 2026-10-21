@@ -29,6 +29,7 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import type { DbClient } from '@/lib/db/types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
@@ -36,6 +37,7 @@ import {
   resolveOverrideOrSavedModelId,
 } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
+import { sumUsages } from '@/features/ai/usage';
 import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
@@ -109,14 +111,20 @@ export type GroundedRegenerationStages = {
   readonly research: (
     stage: GroundedRegenerationStageInput,
   ) => Promise<ResearchBrief | null>;
-  /** The outline to keep after checks, verifier and one repair. */
+  /**
+   * The outline to keep after checks, verifier and one repair, with the
+   * usage of those calls.
+   */
   readonly outlineQuality: (
     stage: GroundedRegenerationStageInput & {
       readonly modelOverride: string | null;
       readonly research: ResearchBrief | null;
     },
     modules: GeneratedModule[],
-  ) => Promise<GeneratedModule[]>;
+  ) => Promise<{
+    readonly modules: GeneratedModule[];
+    readonly usages: readonly CanonicalAIUsage[];
+  }>;
 };
 
 export type RegenerationRunContext = {
@@ -649,12 +657,15 @@ export async function processRegenerationRun(
     );
     let toSettle: GenerationRunResult = run;
     if (run.status === 'success') {
+      const quality = await grounded.outlineQuality(
+        { ...stage(), modelOverride: groundedWriterModelId, research },
+        run.modules,
+      );
+      // Verifier and repair spend counts toward the plan's AI ceiling (JCS-170).
       toSettle = {
         ...run,
-        modules: await grounded.outlineQuality(
-          { ...stage(), modelOverride: groundedWriterModelId, research },
-          run.modules,
-        ),
+        modules: quality.modules,
+        usage: sumUsages([run.usage, ...quality.usages]),
       };
       // Before settlement, which starts the lessons that read it.
       await saveRegenerationFeedback(input.planId, feedback);

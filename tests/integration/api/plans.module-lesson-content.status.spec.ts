@@ -1,5 +1,5 @@
 import { GET } from '@/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route';
-import { learningPlans, modules } from '@supabase/schema';
+import { generationBudgetCuts, learningPlans, modules } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { setTestUser, clearTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db/users';
@@ -112,6 +112,7 @@ describe('GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status', ()
         planId: VALID_PLAN_ID,
         moduleId: VALID_MODULE_ID,
         status: expectedStatus,
+        budgetCuts: 0,
       });
     },
   );
@@ -134,6 +135,36 @@ describe('GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status', ()
       moduleId: VALID_MODULE_ID,
       status: 'not_generated',
       workflowRunId: 'wrun_current',
+      budgetCuts: 0,
+    });
+  });
+
+  it('counts steps the plan AI ceiling cut for the module', async () => {
+    const userId = await authenticateTestUser('budget-cuts');
+    await seedOwnedPlanForStatusApi(userId);
+    await seedOwnedModule('ready');
+    const cut = {
+      planId: VALID_PLAN_ID,
+      moduleId: VALID_MODULE_ID,
+      spentMicrousd: 1_100_000,
+      ceilingMicrousd: 1_250_000,
+    };
+    await db.insert(generationBudgetCuts).values([
+      { ...cut, step: 'advisor', pass: 1 },
+      { ...cut, step: 'repair', pass: 2 },
+    ]);
+
+    const response = await GET(
+      createRequest(),
+      buildRouteHandlerContext({
+        planId: VALID_PLAN_ID,
+        moduleId: VALID_MODULE_ID,
+      }),
+    );
+
+    expect(await response.json()).toMatchObject({
+      status: 'ready',
+      budgetCuts: 2,
     });
   });
 

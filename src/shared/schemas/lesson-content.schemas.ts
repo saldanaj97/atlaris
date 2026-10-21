@@ -147,4 +147,6 @@ export const ModuleLessonGenerationStatusResponseSchema =
   ModuleLessonGenerationApiBaseSchema.extend({
     status: z.enum(['not_generated', 'generating', 'ready', 'failed']),
     workflowRunId: z.string().min(1).optional(),
+    /** Lesson repair steps the plan's AI spend ceiling cut (JCS-170). */
+    budgetCuts: z.number().int().nonnegative().optional(),
   });
