@@ -22,6 +22,7 @@ export const lesson: ModuleDetailTask = {
   lessonContent: null,
   lessonContentUpdatedAt: null,
   resources: [],
+  sources: [],
 };
 
 export function mockJsonFetchResponse(

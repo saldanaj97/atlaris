@@ -235,6 +235,61 @@ describe('module-detail read projection', () => {
     expect(model!.module.tasks[0].lessonContentUpdatedAt).toBe(updatedAt);
   });
 
+  it('resolves cited research sources from stored lesson sourceIds', () => {
+    const researchSource = (citationKey: string) => ({
+      id: `source-${citationKey}`,
+      researchId: 'research-1',
+      citationKey,
+      url: `https://example.com/${citationKey}`,
+      title: `Source ${citationKey}`,
+      publisher: 'example.com',
+      retrievedAt: BASE,
+    });
+    const baseTask = rowsForReadModel({}).taskRows[0];
+    const rows = rowsForReadModel({
+      taskRows: [
+        {
+          ...baseTask,
+          lessonContent: {
+            version: 1,
+            blocks: [
+              { type: 'paragraph', text: 'See [S3] and [S1] and [S9].' },
+            ],
+            sourceIds: ['S3', 'S1', 'S9'],
+          },
+        },
+        {
+          ...baseTask,
+          id: 'dddddddd-dddd-dddd-dddd-dddddddddddd',
+          order: 2,
+          lessonContent: {
+            version: 1,
+            blocks: [{ type: 'paragraph', text: 'No citations.' }],
+            sourceIds: [],
+          },
+        },
+      ],
+    });
+
+    const model = buildModuleDetailReadModel(rows, [
+      researchSource('S1'),
+      researchSource('S2'),
+      researchSource('S3'),
+    ]);
+
+    expect(model).not.toBeNull();
+    expect(model!.module.tasks[0].lessonContent?.sourceIds).toEqual([
+      'S3',
+      'S1',
+      'S9',
+    ]);
+    expect(model!.module.tasks[0].sources.map((s) => s.citationKey)).toEqual([
+      'S1',
+      'S3',
+    ]);
+    expect(model!.module.tasks[1].sources).toEqual([]);
+  });
+
   it('sets previousModulesComplete to false when a prior module is incomplete', () => {
     const planId = 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa';
     const m1 = 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb';
