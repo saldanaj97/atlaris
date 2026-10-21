@@ -128,12 +128,14 @@ commands:
           command: mkdir -p test-results coverage
       - store_test_results:
           path: test-results
+          when: always
       - when:
           condition: << parameters.coverage-destination >>
           steps:
             - store_artifacts:
                 path: coverage
                 destination: << parameters.coverage-destination >>
+                when: always
 
 jobs:
   # Sole writer of the pnpm store cache. Exact-key restore only, so a miss
@@ -376,6 +378,26 @@ jobs:
           name: Refresh unit test impact data
           no_output_timeout: 20m
           command: circleci testsuite run "unit tests" --analyze-tests=impacted --run-tests=none
+
+  # develop only: PRs run impacted unit tests, so run the whole suite after merge
+  # to surface impact-selection misses before the develop -> main promotion.
+  # Separate from unit-impact-analysis so a test failure cannot block the impact refresh.
+  unit-tests-trunk:
+    executor: node
+    environment:
+      NODE_ENV: test
+      SKIP_DB_TEST_SETUP: 'true'
+    steps:
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Unit tests (full suite)
+          no_output_timeout: 20m
+          command: |
+            mkdir -p test-results/unit
+            circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
+      - store-test-outputs:
+          results-file: test-results/unit/results.json
 
   integration-light:
     docker:
@@ -658,6 +680,12 @@ workflows:
             branches:
               only: [main, develop]
       - unit-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
+      - unit-tests-trunk:
           requires:
             - detect-changes
           filters:

@@ -123,6 +123,7 @@ Vercel's required GitHub status is the authoritative Next.js build and deploymen
 
 **What it runs:**
 
+- Unit tests (full suite, `develop` only; PRs run only impacted unit tests, so this surfaces selection misses before promotion)
 - Integration tests (full suite)
 - RLS security tests
 
