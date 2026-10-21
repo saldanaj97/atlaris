@@ -1,3 +1,4 @@
+// JCS-165 build-gate check (test PR, do not merge)
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { Adapter } from 'flags';
 
