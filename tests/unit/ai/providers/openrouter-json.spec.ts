@@ -68,5 +68,8 @@ describe('extractFirstJsonObject', () => {
     expect(() =>
       extractFirstJsonObject('{"modules":[{"title":"Intro"},]}'),
     ).toThrow(ProviderInvalidResponseError);
+    expect(() =>
+      extractFirstJsonObject('{"body":"```js\\nconst a = {}\\n```",}'),
+    ).toThrow(ProviderInvalidResponseError);
   });
 });

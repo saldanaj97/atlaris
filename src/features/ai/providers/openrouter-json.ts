@@ -36,21 +36,26 @@ function findBalancedObjectEnd(
   return undefined;
 }
 
+type Span = { start: number; end: number };
+
 type ObjectScan = {
   /** First balanced object that parses as JSON. */
-  object?: { value: unknown; start: number; end: number };
+  object?: Span & { value: unknown };
+  /** Balanced objects before it that failed to parse (prose or malformed JSON). */
+  skipped: Span[];
   /** Opening brace that never closes (truncated output). */
   unclosedAt?: number;
 };
 
 function scanFirstObject(text: string): ObjectScan {
+  const skipped: Span[] = [];
   let start = text.indexOf('{');
   while (start !== -1) {
     const end = findBalancedObjectEnd(text, start);
     if (end === undefined) {
       // Every later brace is nested inside this one, so parsing one would
       // return a fragment of the real object.
-      return { unclosedAt: start };
+      return { skipped, unclosedAt: start };
     }
     try {
       return {
@@ -59,29 +64,34 @@ function scanFirstObject(text: string): ObjectScan {
           start,
           end,
         },
+        skipped,
       };
     } catch {
       // Not JSON (prose braces); skip past it rather than into it.
+      skipped.push({ start, end });
     }
     start = text.indexOf('{', end);
   }
-  return {};
+  return { skipped };
+}
+
+function spanContains(span: Span | undefined, index: number): boolean {
+  return span !== undefined && index >= span.start && index < span.end;
 }
 
 /**
  * Takes the first balanced JSON object from model output. Models that ignore
  * `response_format` wrap JSON in code fences and prose, so a fenced block wins
- * unless it sits inside the first object (fenced code in a string value) or
- * after a brace that never closes.
+ * unless it sits inside a balanced object (fenced code in a string value, even
+ * when that object is malformed) or after a brace that never closes.
  */
 export function extractFirstJsonObject(text: string): unknown {
   const scan = scanFirstObject(text);
   for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
     const fenceStart = match.index;
     const insideObject =
-      scan.object !== undefined &&
-      fenceStart >= scan.object.start &&
-      fenceStart < scan.object.end;
+      spanContains(scan.object, fenceStart) ||
+      scan.skipped.some((span) => spanContains(span, fenceStart));
     const afterUnclosed =
       scan.unclosedAt !== undefined && fenceStart > scan.unclosedAt;
     if (insideObject || afterUnclosed) {
