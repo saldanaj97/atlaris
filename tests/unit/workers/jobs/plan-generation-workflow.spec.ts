@@ -25,6 +25,34 @@ const mocks = vi.hoisted(() => ({
   runPlanResearch: vi.fn(),
   insertPlanResearch: vi.fn(),
   getLatestPlanResearch: vi.fn(),
+  createGroundedOutlineProvider: vi.fn(),
+  runOutlineVerifier: vi.fn(),
+  runOutlineRepair: vi.fn(),
+  insertQualityIssues: vi.fn(),
+  listQualityIssues: vi.fn(),
+}));
+
+// The grounded writer, verifier and repair calls are covered with fixture
+// streams in tests/unit/features/plans/outline.
+vi.mock('@/features/plans/outline/grounded-writer', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/outline/grounded-writer')
+  >()),
+  createGroundedOutlineProvider: mocks.createGroundedOutlineProvider,
+}));
+vi.mock('@/features/plans/outline/verifier', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/outline/verifier')
+  >()),
+  runOutlineVerifier: mocks.runOutlineVerifier,
+}));
+vi.mock('@/features/plans/outline/repair', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/plans/outline/repair')>()),
+  runOutlineRepair: mocks.runOutlineRepair,
+}));
+vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
+  insertGenerationQualityIssues: mocks.insertQualityIssues,
+  listGenerationQualityIssuesForPlan: mocks.listQualityIssues,
 }));
 
 // The provider call is covered in tests/unit/features/plans/research.
@@ -160,6 +188,28 @@ function validModule() {
   };
 }
 
+/** Passes every outline code check for `params.input`. */
+function cleanModules() {
+  return [
+    {
+      title: 'TypeScript types',
+      estimatedMinutes: 60,
+      tasks: [
+        { title: 'Primitive types', estimatedMinutes: 30 },
+        { title: 'Type inference', estimatedMinutes: 30 },
+      ],
+    },
+    {
+      title: 'TypeScript functions',
+      estimatedMinutes: 60,
+      tasks: [
+        { title: 'Function signatures', estimatedMinutes: 30 },
+        { title: 'Overloads', estimatedMinutes: 30 },
+      ],
+    },
+  ];
+}
+
 function providerReturning(text: string) {
   mocks.provider.generate.mockImplementation(async () => ({
     stream: new ReadableStream<string>({
@@ -259,6 +309,7 @@ describe('runPlanGenerationWorkflow', () => {
       return { id: ATTEMPT_ID };
     });
     providerReturning(planText());
+    mocks.createGroundedOutlineProvider.mockReturnValue(mocks.provider);
   });
 
   it('records the instance, generates once, and finalizes with usage and lessons', async () => {
@@ -610,6 +661,8 @@ describe('runPlanGenerationWorkflow', () => {
       });
       mocks.insertPlanResearch.mockResolvedValue(undefined);
       mocks.getLatestPlanResearch.mockResolvedValue(null);
+      // A clean outline: no outline repair on free (covered under JCS-159).
+      providerReturning(planText(cleanModules()));
     });
 
     it('researches once, saves the brief and sources, then generates', async () => {
@@ -628,6 +681,12 @@ describe('runPlanGenerationWorkflow', () => {
         ['finalize', 1],
       ]);
       expect(calls[1]?.config.retries.limit).toBe(2);
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith({
+        tier: 'free',
+        purpose: 'initial',
+        modelOverride: null,
+        research: RESEARCH,
+      });
       expect(mocks.runPlanResearch).toHaveBeenCalledWith({
         tier: 'free',
         input: params.input,
@@ -696,6 +755,10 @@ describe('runPlanGenerationWorkflow', () => {
         expect.anything(),
       );
       expect(mocks.provider.generate).toHaveBeenCalledOnce();
+      // No brief: the grounded outline runs with the contract only.
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ research: null }),
+      );
       expect(
         stepLogs(logger)
           .filter((fields) => String(fields.step).startsWith('research'))
@@ -760,6 +823,289 @@ describe('runPlanGenerationWorkflow', () => {
       ]);
       expect(mocks.runPlanResearch).not.toHaveBeenCalled();
       expect(mocks.insertPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.createGroundedOutlineProvider).not.toHaveBeenCalled();
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('grounded outline (JCS-159)', () => {
+    const RESEARCH = { brief: 'Types first.', sources: [] } as const;
+    const VERIFIER_ISSUE = {
+      code: 'verifier.too_advanced',
+      blockRef: 'modules[1]',
+      message: 'Overloads are too advanced for a beginner.',
+      source: 'verifier',
+    } as const;
+
+    /** Fails only the module and lesson counts. */
+    function thinModule(title = 'TypeScript basics') {
+      return {
+        title,
+        estimatedMinutes: 30,
+        tasks: [{ title: `${title} lesson`, estimatedMinutes: 30 }],
+      };
+    }
+
+    function groundedEvent(tier: 'free' | 'starter' | 'pro') {
+      return event({ ...params, tier });
+    }
+
+    function finalizedModules() {
+      return mocks.commitSuccess.mock.calls[0]?.[1].modules;
+    }
+
+    function savedIssues() {
+      return (
+        mocks.insertQualityIssues.mock.calls[0]![0] as {
+          issueCode: string;
+          blockRef: string;
+          pass: number;
+          resolved: boolean;
+          stage: string;
+        }[]
+      ).map((record) => [
+        record.issueCode,
+        record.blockRef,
+        record.pass,
+        record.resolved,
+      ]);
+    }
+
+    beforeEach(() => {
+      mocks.runPlanResearch.mockResolvedValue({
+        research: RESEARCH,
+        droppedSourceCount: 0,
+        mode: 'fast',
+        searchCount: 1,
+        costMicrousd: 1_000,
+        model: 'served/model',
+      });
+      mocks.insertPlanResearch.mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue(null);
+      mocks.runOutlineVerifier.mockResolvedValue({
+        issues: [],
+        model: 'verifier/model',
+      });
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: cleanModules(),
+        model: 'repair/model',
+      });
+      mocks.insertQualityIssues.mockResolvedValue([]);
+      mocks.listQualityIssues.mockResolvedValue([]);
+      providerReturning(planText([thinModule()]));
+    });
+
+    it('runs code checks only on free, repairs once and logs resolved issues', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('free'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['outline-repair', 1],
+        ['outline-quality-save', 1],
+        ['finalize', 1],
+      ]);
+      expect(
+        calls.find((call) => call.name === 'outline-repair')?.config.retries
+          .limit,
+      ).toBe(0);
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(mocks.runOutlineRepair).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tier: 'free',
+          purpose: 'initial',
+          research: RESEARCH,
+          modules: [thinModule()],
+          issues: [
+            expect.objectContaining({ code: 'module_count', blockRef: 'plan' }),
+            expect.objectContaining({
+              code: 'lesson_count',
+              blockRef: 'modules[0]',
+            }),
+          ],
+        }),
+      );
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, true],
+        ['lesson_count', 'modules[0]', 0, true],
+      ]);
+      expect(mocks.insertQualityIssues.mock.calls[0]?.[0][0]).toMatchObject({
+        planId: PLAN_ID,
+        stage: 'outline',
+      });
+      expect(finalizedModules()).toEqual(cleanModules());
+    });
+
+    it('verifies on starter, repairs once, reverifies and logs the outcome', async () => {
+      providerReturning(planText(cleanModules()));
+      mocks.runOutlineVerifier
+        .mockResolvedValueOnce({ issues: [VERIFIER_ISSUE], model: 'v/model' })
+        .mockResolvedValueOnce({ issues: [], model: 'v/model' });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('starter'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'research',
+        'research-save',
+        'generate',
+        'outline-verify',
+        'outline-repair',
+        'outline-reverify',
+        'outline-quality-save',
+        'finalize',
+      ]);
+      expect(mocks.runOutlineVerifier).toHaveBeenCalledTimes(2);
+      expect(mocks.runOutlineVerifier).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ tier: 'starter', research: RESEARCH }),
+      );
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(savedIssues()).toEqual([
+        ['verifier.too_advanced', 'modules[1]', 0, true],
+      ]);
+    });
+
+    it('repairs only once and logs the issues that remain', async () => {
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: [thinModule(), thinModule('TypeScript functions')],
+        model: 'repair/model',
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, true],
+        ['lesson_count', 'modules[0]', 0, false],
+        ['lesson_count', 'modules[1]', 1, false],
+      ]);
+      expect(finalizedModules()).toHaveLength(2);
+    });
+
+    it('keeps the first outline when the repair has more issues', async () => {
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: [thinModule(), thinModule()],
+        model: 'repair/model',
+      });
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, false],
+        ['lesson_count', 'modules[0]', 0, false],
+      ]);
+      expect(finalizedModules()).toEqual([thinModule()]);
+      expect(
+        stepLogs(logger).find(
+          (fields) =>
+            fields.step === 'outline-repair' &&
+            fields.outcome === 'repair_rejected',
+        ),
+      ).toMatchObject({ issueCount: 4 });
+    });
+
+    it('finalizes the first outline and logs every issue open when the repair fails', async () => {
+      mocks.runOutlineRepair.mockRejectedValue(new Error('provider down'));
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('free'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(
+        calls.find((call) => call.name === 'outline-repair'),
+      ).toMatchObject({ attempts: 1 });
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, false],
+        ['lesson_count', 'modules[0]', 0, false],
+      ]);
+      expect(finalizedModules()).toEqual([thinModule()]);
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'outline-repair'),
+      ).toMatchObject({ outcome: 'failed_skipped' });
+    });
+
+    it('retries a failing verifier once, then continues on code checks alone', async () => {
+      providerReturning(planText(cleanModules()));
+      mocks.runOutlineVerifier.mockRejectedValue(new Error('bad output'));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('pro'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['outline-verify', 2],
+        ['finalize', 1],
+      ]);
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+      expect(finalizedModules()).toEqual(cleanModules());
+    });
+
+    it('skips repair and logging when the outline passes every check', async () => {
+      providerReturning(planText(cleanModules()));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'research',
+        'research-save',
+        'generate',
+        'outline-verify',
+        'finalize',
+      ]);
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+    });
+
+    it('does not insert again when a save retry finds its rows', async () => {
+      mocks.insertQualityIssues
+        .mockRejectedValueOnce(new Error('connection reset'))
+        .mockResolvedValue([]);
+      mocks.listQualityIssues.mockResolvedValue([
+        {
+          stage: 'outline',
+          createdAt: new Date(reservation.startedAt.getTime() + 1),
+        },
+      ]);
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(
+        calls.find((call) => call.name === 'outline-quality-save'),
+      ).toMatchObject({ attempts: 2 });
+      expect(mocks.insertQualityIssues).toHaveBeenCalledOnce();
     });
   });
 });

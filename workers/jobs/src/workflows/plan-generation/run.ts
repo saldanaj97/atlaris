@@ -1,3 +1,4 @@
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
 import type { GenerationRunResult } from '@/features/plans/lifecycle/service';
 import type {
@@ -5,6 +6,7 @@ import type {
   GenerationAttemptResult,
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle/types';
+import type { ResearchBrief } from '@/features/plans/research/contract';
 import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
 import type {
   AttemptReservation,
@@ -20,13 +22,15 @@ import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 import {
-  type ResearchLogFields,
-  RESEARCH_STEPS,
-  runPlanResearchSteps,
-} from './research';
+  type OutlineLogFields,
+  OUTLINE_STEPS,
+  runOutlineQualitySteps,
+} from './outline';
+import { RESEARCH_STEPS, runPlanResearchSteps } from './research';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { validateReservation } from '@/features/plans/lifecycle/generation';
+import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
 import {
   fromSerializableReservation,
   resolvePlanGenerationWorkflowPurpose,
@@ -53,6 +57,10 @@ export const PLAN_GENERATION_STEPS = {
   research: RESEARCH_STEPS.research,
   researchSave: RESEARCH_STEPS.researchSave,
   generate: 'generate',
+  outlineVerify: OUTLINE_STEPS.verify,
+  outlineRepair: OUTLINE_STEPS.repair,
+  outlineReverify: OUTLINE_STEPS.reverify,
+  outlineQualitySave: OUTLINE_STEPS.qualitySave,
   finalize: 'finalize',
   fail: 'fail',
 } as const;
@@ -134,7 +142,8 @@ export type PlanGenerationWorkflowDeps = {
   readonly isEnabled: () => boolean;
   /**
    * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
-   * generation (the research step, JCS-158). Unset switches mean off.
+   * generation (research, JCS-158; grounded outline, JCS-159). Unset
+   * switches mean off.
    */
   readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
@@ -166,7 +175,7 @@ type RunContext = {
 function logStep(
   run: RunContext,
   step: StepName,
-  fields: ResearchLogFields & { taskCount?: number },
+  fields: OutlineLogFields & { taskCount?: number },
   level: 'info' | 'warn' = 'info',
 ): void {
   run.deps.logger[level](
@@ -182,10 +191,15 @@ function logStep(
   );
 }
 
-function lifecycleFor(db: DbClient, run: RunContext) {
+function lifecycleFor(
+  db: DbClient,
+  run: RunContext,
+  generationProvider?: AiPlanGenerationProvider,
+) {
   return createPlanLifecycleService({
     dbClient: db,
     startModuleLessons: run.deps.startModuleLessons,
+    ...(generationProvider ? { generationProvider } : {}),
   });
 }
 
@@ -307,10 +321,12 @@ async function recordWorkflowStep(
  * Step 2: re-check the switch, then the shared lifecycle's provider half:
  * replay check, provider call under the adaptive timeout, parse, pace.
  * Provider and parse failures come back classified exactly as on Vercel.
+ * A grounded run passes the grounded outline writer as the provider.
  */
 async function generateStep(
   db: DbClient,
   run: RunContext,
+  generationProvider?: AiPlanGenerationProvider,
 ): Promise<GenerateStepResult> {
   // Switch dropped since the command was accepted: no provider call (Decision 7).
   if (!run.deps.isEnabled()) {
@@ -319,10 +335,11 @@ async function generateStep(
   }
 
   const result = toGenerateStepResult(
-    await lifecycleFor(db, run).runGenerationWithReservation(
-      run.processInput,
-      run.reservation,
-    ),
+    await lifecycleFor(
+      db,
+      run,
+      generationProvider,
+    ).runGenerationWithReservation(run.processInput, run.reservation),
   );
 
   if (result.kind === 'generated') {
@@ -404,9 +421,9 @@ async function failStep(
 
 /**
  * The plan-generation Workflow body: `record-workflow` → (`research` →
- * `research-save` when grounded) → `generate` → `finalize`, with a `fail`
- * step after any thrown step. Each step opens its own database pool through
- * `deps.withDb`.
+ * `research-save` when grounded) → `generate` → (outline checks, verify and
+ * repair when grounded) → `finalize`, with a `fail` step after any thrown
+ * step. Each step opens its own database pool through `deps.withDb`.
  */
 export async function runPlanGenerationWorkflow(
   event: Readonly<WorkflowEvent<PlanGenerationWorkflowParams>>,
@@ -449,11 +466,13 @@ export async function runPlanGenerationWorkflow(
       async () => deps.withDb((db) => recordWorkflowStep(db, run)),
     );
 
-    // Grounded research (JCS-158); its brief feeds the outline in 2b. A
-    // dropped switch skips it too, so no search runs (Decision 7).
-    if (deps.isEnabled() && deps.isGroundedEnabled(input.tier)) {
+    // Grounded research (JCS-158) feeds the grounded outline (JCS-159). A
+    // dropped switch skips both, so no search runs (Decision 7).
+    const grounded = deps.isEnabled() && deps.isGroundedEnabled(input.tier);
+    let research: ResearchBrief | null = null;
+    if (grounded) {
       current = 'research-save';
-      await runPlanResearchSteps(step, {
+      const outcome = await runPlanResearchSteps(step, {
         planId: input.planId,
         tier: input.tier,
         input: input.input,
@@ -461,24 +480,57 @@ export async function runPlanGenerationWorkflow(
         withDb: deps.withDb,
         log: (name, fields, level) => logStep(run, name, fields, level),
       });
+      research = outcome.status === 'ok' ? outcome.research : null;
     }
+    const outlineProvider = grounded
+      ? createGroundedOutlineProvider({
+          tier: input.tier,
+          purpose: generationPurpose,
+          modelOverride: input.modelOverride ?? null,
+          research,
+        })
+      : undefined;
 
     current = 'generate';
     const generated = await step.do(
       PLAN_GENERATION_STEPS.generate,
       generateStepConfig(),
-      async () => deps.withDb((db) => generateStep(db, run)),
+      async () => deps.withDb((db) => generateStep(db, run, outlineProvider)),
     );
     if (generated.kind === 'already_finalized') {
       return { kind: 'already_finalized' };
     }
+
+    // Outline checks, verifier and one repair on the grounded outline (JCS-159).
+    current = 'outline-quality-save';
+    const toFinalize =
+      grounded && generated.kind === 'generated'
+        ? {
+            ...generated,
+            modules: await runOutlineQualitySteps(
+              step,
+              {
+                planId: input.planId,
+                tier: input.tier,
+                purpose: generationPurpose,
+                modelOverride: input.modelOverride ?? null,
+                input: input.input,
+                research,
+                attemptStartedAt: input.reservation.startedAt,
+                withDb: deps.withDb,
+                log: (name, fields, level) => logStep(run, name, fields, level),
+              },
+              generated.modules,
+            ),
+          }
+        : generated;
 
     current = 'finalize';
     return await step.do(
       PLAN_GENERATION_STEPS.finalize,
       FINALIZE_STEP_CONFIG,
       async (ctx) =>
-        deps.withDb((db) => finalizeStep(db, run, generated, ctx.attempt)),
+        deps.withDb((db) => finalizeStep(db, run, toFinalize, ctx.attempt)),
     );
   } catch (error) {
     deps.logger.warn(
