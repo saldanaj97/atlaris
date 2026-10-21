@@ -1,18 +1,21 @@
+import type { PlanRegenerationState } from '@/app/(app)/plans/[id]/types';
 import type { PlanOverviewStats } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import type { CSSProperties } from 'react';
 
+import { RegeneratePlanDialog } from '@/app/(app)/plans/[id]/components/RegeneratePlanDialog';
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
 import { planDetailPath } from '@/features/navigation/routes';
 import { formatMinutes } from '@/features/plans/formatters';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 interface PlanOverviewProps {
   plan: ClientPlanDetail;
   stats: PlanOverviewStats;
   activeModuleId?: string | null;
+  regeneration?: PlanRegenerationState;
 }
 
 /** Introduces the plan and keeps the primary learning action near its title. */
@@ -20,6 +23,7 @@ export function PlanOverviewHeader({
   plan,
   stats,
   activeModuleId = null,
+  regeneration,
 }: PlanOverviewProps) {
   const continueHref = activeModuleId
     ? `${planDetailPath(plan.id)}/modules/${activeModuleId}`
@@ -47,6 +51,17 @@ export function PlanOverviewHeader({
           <Button asChild variant='outline'>
             <a href='#learning-path'>View roadmap</a>
           </Button>
+          {regeneration?.isRegenerating ? (
+            <Button variant='outline' disabled>
+              <Loader2
+                aria-hidden='true'
+                className='animate-spin motion-reduce:animate-none'
+              />
+              Regenerating…
+            </Button>
+          ) : regeneration?.canRegenerate ? (
+            <RegeneratePlanDialog planId={plan.id} />
+          ) : null}
           <span className='type-meta text-muted-foreground tabular-nums'>
             {stats.completionPercentage}% complete ·{' '}
             {formatMinutes(stats.totalMinutes)} planned
@@ -55,6 +70,12 @@ export function PlanOverviewHeader({
               : null}
           </span>
         </div>
+        {regeneration?.isRegenerating ? (
+          <output className='mt-3 block type-body text-muted-foreground'>
+            A new version of this plan is being generated. It replaces this one
+            when it is ready.
+          </output>
+        ) : null}
       </div>
 
       <div

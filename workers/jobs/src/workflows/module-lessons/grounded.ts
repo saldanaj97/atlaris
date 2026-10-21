@@ -33,6 +33,8 @@ import {
   toLessonResearch,
   writeGroundedLesson,
 } from '@/features/lesson-content/grounded-lesson-writer';
+import { buildRegenerationGuidance } from '@/features/plans/regeneration-orchestration/reasons';
+import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import {
   markModuleLessonProviderStarted,
   revertModuleLessonGeneratingToNotGenerated,
@@ -85,6 +87,8 @@ export type GroundedLessonContext = {
   readonly verifierModelId: string | null;
   readonly advisorModelId: string | null;
   readonly research: ResearchBrief | null;
+  /** The plan's last regeneration reasons and note as a prompt block (JCS-162). */
+  readonly reason: string | null;
 };
 
 /**
@@ -103,10 +107,15 @@ export async function resolveGroundedLessonContext(
   if (!input.isGroundedEnabled(tier)) {
     return null;
   }
-  const [saved, groundedPicks, latest] = await Promise.all([
+  const [saved, groundedPicks, latest, plan] = await Promise.all([
     getUserPreferences(input.target.userId, db),
     getGroundedModelPreferences(input.target.userId, db),
     getLatestPlanResearch(input.target.planId, db),
+    selectOwnedPlanById({
+      planId: input.target.planId,
+      ownerUserId: input.target.userId,
+      dbClient: db,
+    }),
   ]);
   return {
     tier,
@@ -120,6 +129,10 @@ export async function resolveGroundedLessonContext(
     verifierModelId: resolveGroundedModelPick(tier, groundedPicks, 'verifier'),
     advisorModelId: resolveGroundedModelPick(tier, groundedPicks, 'advisor'),
     research: toLessonResearch(latest),
+    reason: buildRegenerationGuidance({
+      reasons: plan?.regenerationReasons,
+      note: plan?.regenerationNote,
+    }),
   };
 }
 
@@ -213,6 +226,8 @@ async function lessonStep(
       promptInput: ctx.promptInput,
       taskIndex: index,
       research: ctx.grounded.research,
+      // Absent on claims replayed from before JCS-162.
+      reason: ctx.grounded.reason ?? undefined,
     }),
     timeoutMs: resolveTimeoutConfig().baseMs,
   });

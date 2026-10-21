@@ -5,6 +5,8 @@ import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
+import { countProviderStartedRegenerations } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
 import {
   getUsageSummaryForTier,
@@ -45,6 +47,18 @@ export interface RegenerationOrchestrationDeps {
       tier: SubscriptionTier,
       dbClient: DbClient,
     ) => Promise<UsageSummary>;
+    /**
+     * This plan's regenerations that reached provider start, for the
+     * per-plan grounded cap (JCS-162). Settled again at provider start.
+     */
+    countPlanRegenerations: (
+      planId: string,
+      dbClient: DbClient,
+    ) => Promise<number>;
+  };
+  grounded: {
+    /** `groundedGeneration` flag for the tier (fails closed). */
+    isEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   };
   plans: {
     getActiveRegenerationJob: (
@@ -115,7 +129,10 @@ export function createDefaultRegenerationOrchestrationDeps(
     quota: {
       peekUsage: (userId, tier, client) =>
         getUsageSummaryForTier({ userId, tier, dbClient: client }),
+      countPlanRegenerations: (planId, client) =>
+        countProviderStartedRegenerations({ planId, dbClient: client }),
     },
+    grounded: { isEnabled: isGroundedEnabled },
     plans: {
       getActiveRegenerationJob,
       findOwnedPlan: async (planId, userId, client) => {

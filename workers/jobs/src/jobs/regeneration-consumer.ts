@@ -50,6 +50,8 @@ export type RegenerationConsumerDeps = {
   readonly run: typeof runPlanRegeneration;
   readonly terminalize: typeof terminalizeAbandonedRegenerationRun;
   readonly startModuleLessons: RegenerationRunContext['startModuleLessons'];
+  /** Grounded regeneration stages (JCS-162); off per tier by its switch. */
+  readonly grounded?: RegenerationRunContext['grounded'];
   readonly now?: () => number;
 };
 
@@ -176,7 +178,11 @@ async function consumeMessage(
   let result: RegenerationRunResult;
   try {
     result = await deps.withDb(() =>
-      deps.run(jobId, { runId, startModuleLessons: deps.startModuleLessons }),
+      deps.run(jobId, {
+        runId,
+        startModuleLessons: deps.startModuleLessons,
+        ...(deps.grounded ? { grounded: deps.grounded } : {}),
+      }),
     );
   } catch (error) {
     deps.captureException(error, {

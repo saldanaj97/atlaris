@@ -127,6 +127,26 @@ describe('runPlanResearch', () => {
     },
   );
 
+  it('adds regeneration guidance after the fenced request', async () => {
+    const fetchMock = researchFetch();
+
+    await runPlanResearch(
+      {
+        tier: 'pro',
+        input: INPUT,
+        guidance: 'REGENERATION FEEDBACK: favor recent sources',
+      },
+      { fetch: fetchMock },
+    );
+
+    const prompt = JSON.stringify(
+      JSON.parse(String(fetchMock.mock.calls[0]?.[1]?.body)).messages,
+    );
+    expect(prompt.indexOf('---END USER INPUT---')).toBeLessThan(
+      prompt.indexOf('REGENERATION FEEDBACK: favor recent sources'),
+    );
+  });
+
   it('sends advanced mode for pro and fast mode for free', async () => {
     const proFetch = researchFetch();
     const freeFetch = researchFetch();

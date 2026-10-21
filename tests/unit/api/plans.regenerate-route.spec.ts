@@ -52,12 +52,12 @@ const PLAN_ID = '0c834f38-e9e1-4c7d-bdc0-2e28c505256a';
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
 import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
 
-function regenerate(): Promise<Response> {
+function regenerate(body: unknown = {}): Promise<Response> {
   return POST(
     new Request(`http://localhost/api/v1/plans/${PLAN_ID}/regenerate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
+      body: JSON.stringify(body),
     }),
   );
 }
@@ -95,5 +95,30 @@ describe('POST /api/v1/plans/:planId/regenerate', () => {
       ...mocks.baseDeps,
       dispatch: dispatchRegenerationToWorker,
     });
+  });
+
+  it('passes reasons and a trimmed note to the request', async () => {
+    const response = await regenerate({
+      reasons: ['too_basic', 'other'],
+      note: '  More practice  ',
+    });
+
+    expect(response.status).toBe(202);
+    expect(mocks.requestPlanRegeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: 'user-1',
+        planId: PLAN_ID,
+        reasons: ['too_basic', 'other'],
+        note: 'More practice',
+      }),
+      expect.anything(),
+    );
+  });
+
+  it('rejects an unknown reason with 400', async () => {
+    const response = await regenerate({ reasons: ['vibes'] });
+
+    expect(response.status).toBe(400);
+    expect(mocks.requestPlanRegeneration).not.toHaveBeenCalled();
   });
 });

@@ -1,3 +1,4 @@
+import type { RequestPlanRegenerationArgs } from '@/features/plans/regeneration-orchestration/types';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { PlainHandler } from '@/lib/api/auth';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -75,9 +76,11 @@ export const POST: PlainHandler = requestBoundary.route(
     });
 
     let overrides: PlanRegenerationOverridesInput | undefined;
+    let feedback: Pick<RequestPlanRegenerationArgs, 'reasons' | 'note'> = {};
     try {
       const parsed = planRegenerationRequestSchema.parse(body);
       overrides = parsed.overrides;
+      feedback = { reasons: parsed.reasons, note: parsed.note };
     } catch (err: unknown) {
       const errDetail = err instanceof Error ? err : new Error(String(err));
       const serializableCause = `${errDetail.name}: ${errDetail.message}`;
@@ -99,6 +102,7 @@ export const POST: PlainHandler = requestBoundary.route(
         userId: actor.id,
         planId,
         overrides,
+        ...feedback,
       },
       {
         ...createDefaultRegenerationOrchestrationDeps(db),
@@ -171,6 +175,8 @@ export const POST: PlainHandler = requestBoundary.route(
           plan_id: planId,
           job_id: result.jobId,
           has_overrides: overrides !== undefined,
+          reason_count: feedback.reasons?.length ?? 0,
+          has_note: Boolean(feedback.note),
         });
         return json(
           {

@@ -42,6 +42,10 @@ export function makeRegenerationOrchestrationDeps(
         activePlans: { current: 0, limit: Number.POSITIVE_INFINITY },
         regenerations: { used: 0, limit: 25 },
       })),
+      countPlanRegenerations: vi.fn(async () => 0),
+    },
+    grounded: {
+      isEnabled: vi.fn(async () => false),
     },
     plans: {
       getActiveRegenerationJob: vi.fn(async () => null),
@@ -78,6 +82,7 @@ export function makeRegenerationOrchestrationDeps(
     dbClient: overrides.dbClient ?? base.dbClient,
     queue: { ...base.queue, ...overrides.queue },
     quota: { ...base.quota, ...overrides.quota },
+    grounded: { ...base.grounded, ...overrides.grounded },
     plans: { ...base.plans, ...overrides.plans },
     tier: { ...base.tier, ...overrides.tier },
     priority: { ...base.priority, ...overrides.priority },
