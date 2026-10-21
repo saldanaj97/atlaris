@@ -321,7 +321,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
       );
     });
 
-    it('lets a valid ?model= override beat the writer pick', async () => {
+    it('keeps the writer pick when ?model= is off the writer catalog', async () => {
       await startCreate(
         buildBoundary(),
         `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_QUERY_MODEL)}`,
@@ -330,7 +330,8 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
       );
 
       expect(startedWorkflowInput()).toMatchObject({
-        groundedWriterModelId: PRO_QUERY_MODEL,
+        modelOverride: PRO_QUERY_MODEL,
+        groundedWriterModelId: WRITER_PICK,
       });
     });
   });
