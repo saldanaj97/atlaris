@@ -723,6 +723,51 @@ describe('runPlanGenerationWorkflow', () => {
       });
     });
 
+    it('writes the grounded outline with the writer pick, never the legacy override', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(
+          event({
+            ...params,
+            tier: 'pro',
+            modelOverride: 'google/gemini-3.1-pro-preview',
+            groundedWriterModelId: 'anthropic/claude-haiku-5.5',
+          }),
+          step,
+          deps,
+        ),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tier: 'pro',
+          modelOverride: 'anthropic/claude-haiku-5.5',
+        }),
+      );
+    });
+
+    it('falls back to the tier writers for a run started before JCS-169', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(
+          event({
+            ...params,
+            modelOverride: 'google/gemini-3.1-pro-preview',
+          }),
+          step,
+          deps,
+        ),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ modelOverride: null }),
+      );
+    });
+
     it('retries research twice, then saves failed_skipped and still generates', async () => {
       mocks.runPlanResearch.mockRejectedValue(new Error('provider down'));
       const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });

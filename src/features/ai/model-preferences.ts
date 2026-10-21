@@ -178,6 +178,12 @@ export function resolveSavedPreferenceForSettings(
 
 export const GROUNDED_PICK_ROLES = ['writer', 'verifier', 'advisor'] as const;
 
+/**
+ * Clerk plan feature (on the Pro plan) that lets a user save grounded picks and
+ * see their pickers. Workers have no Clerk session, so runs stay tier-based.
+ */
+export const GROUNDED_MODEL_PICKS_FEATURE = 'grounded_model_picks';
+
 export type GroundedPickRole = (typeof GROUNDED_PICK_ROLES)[number];
 
 export type SavedGroundedModelPicks = {
@@ -256,4 +262,21 @@ export function resolveGroundedModelPick(
     return null;
   }
   return validateGroundedPick(tier, role, modelId).valid ? modelId : null;
+}
+
+/**
+ * The writer model to lead a grounded call (JCS-169): an explicit
+ * per-request override, else the saved Pro writer pick. The legacy slots above
+ * never apply to grounded runs. `null` runs the tier's code-owned writers;
+ * `getGroundedModelRoute` also drops a model outside the tier's catalog.
+ */
+export function resolveGroundedWriterModelId(
+  tier: SubscriptionTier,
+  override: string | null | undefined,
+  saved: SavedGroundedModelPicks,
+): string | null {
+  if (override != null && override !== '') {
+    return override;
+  }
+  return resolveGroundedModelPick(tier, saved, 'writer');
 }

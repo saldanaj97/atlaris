@@ -22,6 +22,7 @@ const mocks = vi.hoisted(() => ({
   settleReservedAttemptFailure: vi.fn(),
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
+  getGroundedModelPreferences: vi.fn(),
   loadAuthorizedRegenerationPlan: vi.fn(),
   reserveRegenerationQuotaAtProviderStart: vi.fn(),
   findAttemptWithWorkflowIdempotencyKey: vi.fn(),
@@ -70,6 +71,7 @@ vi.mock('@/features/plans/outline/grounded-writer', () => ({
 
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: mocks.getUserPreferences,
+  getGroundedModelPreferences: mocks.getGroundedModelPreferences,
 }));
 
 vi.mock('@/features/plans/regeneration-orchestration/deps', () => ({
@@ -203,6 +205,11 @@ beforeEach(() => {
     preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
     preferredLessonAiModel: 'google/gemini-3-flash-preview',
     analyticsTimezone: 'UTC',
+  });
+  mocks.getGroundedModelPreferences.mockResolvedValue({
+    preferredWriterAiModel: null,
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
   });
   mocks.findAttemptWithWorkflowIdempotencyKey.mockResolvedValue(null);
   mocks.reserveAttemptSlot.mockResolvedValue(
@@ -672,6 +679,87 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
     expect(mocks.updatePlan).not.toHaveBeenCalled();
   });
 
+  describe('writer pick (JCS-169)', () => {
+    const WRITER_PICK = 'anthropic/claude-haiku-5.5';
+
+    function writerModelOverrides() {
+      return {
+        provider:
+          mocks.createGroundedOutlineProvider.mock.calls[0]?.[0].modelOverride,
+        quality: stages.outlineQuality.mock.calls[0]?.[0].modelOverride,
+      };
+    }
+
+    beforeEach(() => {
+      mocks.getGroundedModelPreferences.mockResolvedValue({
+        preferredWriterAiModel: WRITER_PICK,
+        preferredVerifierAiModel: null,
+        preferredAdvisorAiModel: null,
+      });
+    });
+
+    it('writes and checks the Pro outline with the saved writer pick, not the legacy regeneration pick', async () => {
+      await runPlanRegeneration(JOB_ID, groundedContext);
+
+      expect(writerModelOverrides()).toEqual({
+        provider: WRITER_PICK,
+        quality: WRITER_PICK,
+      });
+    });
+
+    it('falls back to the tier writers when Pro saved no writer pick', async () => {
+      mocks.getGroundedModelPreferences.mockResolvedValue({
+        preferredWriterAiModel: null,
+        preferredVerifierAiModel: null,
+        preferredAdvisorAiModel: null,
+      });
+
+      await runPlanRegeneration(JOB_ID, groundedContext);
+
+      expect(writerModelOverrides()).toEqual({
+        provider: null,
+        quality: null,
+      });
+    });
+
+    it('lets an explicit request override beat the saved writer pick', async () => {
+      const withOverride = (row: Job): Job => ({
+        ...row,
+        data: {
+          ...row.data,
+          overrides: { model: 'google/gemini-3.1-pro-preview' },
+        },
+      });
+      jobSequence(
+        withOverride(groundedJob('pending')),
+        withOverride(groundedJob('pending')),
+        withOverride(groundedJob('processing', RUN_ID)),
+      );
+
+      await runPlanRegeneration(JOB_ID, groundedContext);
+
+      expect(writerModelOverrides()).toEqual({
+        provider: 'google/gemini-3.1-pro-preview',
+        quality: 'google/gemini-3.1-pro-preview',
+      });
+    });
+
+    it.each(['starter', 'free'] as const)(
+      'ignores a %s writer pick and legacy picks in grounded outlines',
+      async (tier) => {
+        mocks.resolveUserTier.mockResolvedValue(tier);
+        mocks.getLatestPlanResearch.mockResolvedValue(SAVED_ROW);
+
+        await runPlanRegeneration(JOB_ID, groundedContext);
+
+        expect(writerModelOverrides()).toEqual({
+          provider: null,
+          quality: null,
+        });
+      },
+    );
+  });
+
   it("keeps today's flow when the switch is off for the tier", async () => {
     stages.isEnabled.mockReturnValue(false);
 
@@ -680,6 +768,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
     ).resolves.toMatchObject({ kind: 'completed' });
 
     expect(mocks.processGenerationAttemptWithReservation).toHaveBeenCalled();
+    expect(mocks.getGroundedModelPreferences).not.toHaveBeenCalled();
     expect(mocks.runGenerationWithReservation).not.toHaveBeenCalled();
     expect(stages.research).not.toHaveBeenCalled();
     expect(mocks.updatePlan).not.toHaveBeenCalled();

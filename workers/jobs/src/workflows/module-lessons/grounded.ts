@@ -21,7 +21,7 @@ import {
 } from './lesson-quality';
 import {
   resolveGroundedModelPick,
-  resolveOverrideOrSavedModelId,
+  resolveGroundedWriterModelId,
 } from '@/features/ai/model-preferences';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
@@ -40,10 +40,7 @@ import {
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
 import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
-import {
-  getGroundedModelPreferences,
-  getUserPreferences,
-} from '@/lib/db/queries/user-preferences';
+import { getGroundedModelPreferences } from '@/lib/db/queries/user-preferences';
 
 /**
  * Per-lesson step names, numbered by the lesson's position in the claimed
@@ -81,7 +78,7 @@ const PARSE_ERROR_MESSAGE_MAX_CHARS = 1_000;
 /** Decided in the `claim` step; JSON-safe so it replays with the claim. */
 export type GroundedLessonContext = {
   readonly tier: SubscriptionTier;
-  /** The override or saved lesson model; the route ignores non-catalog picks. */
+  /** The override or saved Pro writer pick, for writing and repair; the route ignores non-catalog picks. */
   readonly pickedModelId: string | null;
   /** The Pro verifier and advisor picks; `null` uses the tier's models. */
   readonly verifierModelId: string | null;
@@ -107,8 +104,7 @@ export async function resolveGroundedLessonContext(
   if (!input.isGroundedEnabled(tier)) {
     return null;
   }
-  const [saved, groundedPicks, latest, plan] = await Promise.all([
-    getUserPreferences(input.target.userId, db),
+  const [groundedPicks, latest, plan] = await Promise.all([
     getGroundedModelPreferences(input.target.userId, db),
     getLatestPlanResearch(input.target.planId, db),
     selectOwnedPlanById({
@@ -119,13 +115,11 @@ export async function resolveGroundedLessonContext(
   ]);
   return {
     tier,
-    pickedModelId:
-      resolveOverrideOrSavedModelId(
-        input.modelOverride,
-        tier,
-        saved,
-        'lesson',
-      ) ?? null,
+    pickedModelId: resolveGroundedWriterModelId(
+      tier,
+      input.modelOverride,
+      groundedPicks,
+    ),
     verifierModelId: resolveGroundedModelPick(tier, groundedPicks, 'verifier'),
     advisorModelId: resolveGroundedModelPick(tier, groundedPicks, 'advisor'),
     research: toLessonResearch(latest),
