@@ -1,15 +1,25 @@
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
-import type { SavedModelPreferenceSlots } from '@/features/ai/model-preferences';
-import type { UserModelPreferencePatch } from '@/lib/db/queries/user-preferences';
+import type {
+  GroundedPickRole,
+  SavedModelPreferenceSlots,
+} from '@/features/ai/model-preferences';
+import type {
+  UserModelPreferencePatch,
+  UserModelPreferenceValues,
+} from '@/lib/db/queries/user-preferences';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import {
+  GROUNDED_PICK_FIELD_BY_ROLE,
+  GROUNDED_PICK_ROLES,
   getPersistableModelsForTier,
   isRuntimeOnlyModelId,
   resolveEffectivePreference,
   savedModelIdForOperation,
+  validateGroundedPick,
 } from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { AppError, ValidationError } from '@/lib/api/errors';
@@ -131,6 +141,52 @@ function assertCanPersistSlot(
   }
 }
 
+/**
+ * Grounded picks are Pro-only, must be in the role's catalog, and are only
+ * accepted while grounded generation is on for the user's tier.
+ */
+async function assertCanPersistGroundedPicks(
+  tier: SubscriptionTier,
+  patch: UserModelPreferencePatch,
+): Promise<void> {
+  const provided = GROUNDED_PICK_ROLES.filter(
+    (role) => patch[GROUNDED_PICK_FIELD_BY_ROLE[role]] !== undefined,
+  );
+  if (provided.length === 0) {
+    return;
+  }
+
+  for (const role of provided) {
+    assertCanPersistGroundedPick(
+      tier,
+      role,
+      patch[GROUNDED_PICK_FIELD_BY_ROLE[role]],
+    );
+  }
+
+  if (!(await isGroundedEnabled(tier))) {
+    throw new AppError('Grounded generation is not enabled for your plan.', {
+      status: 403,
+      code: 'GROUNDED_GENERATION_DISABLED',
+      details: { tier },
+    });
+  }
+}
+
+function assertCanPersistGroundedPick(
+  tier: SubscriptionTier,
+  role: GroundedPickRole,
+  modelId: string | null | undefined,
+): void {
+  if (modelId === undefined || modelId === null) {
+    return;
+  }
+  const validation = validateGroundedPick(tier, role, modelId);
+  if (!validation.valid) {
+    throwForInvalidModel(validation.reason, modelId, tier);
+  }
+}
+
 function savedSlotsFromActor(actor: {
   preferredAiModel: string | null;
   preferredRegenerationAiModel: string | null;
@@ -170,12 +226,15 @@ function toPreferencesGetResponse(
   };
 }
 
-function toPreferencesPatchResponse(saved: SavedModelPreferenceSlots) {
+function toPreferencesPatchResponse(saved: UserModelPreferenceValues) {
   return {
     message: 'Preferences updated' as const,
     preferredAiModel: saved.preferredAiModel,
     preferredRegenerationAiModel: saved.preferredRegenerationAiModel,
     preferredLessonAiModel: saved.preferredLessonAiModel,
+    preferredWriterAiModel: saved.preferredWriterAiModel,
+    preferredVerifierAiModel: saved.preferredVerifierAiModel,
+    preferredAdvisorAiModel: saved.preferredAdvisorAiModel,
   };
 }
 
@@ -265,6 +324,7 @@ export const PATCH = requestBoundary.route(
       'preferredLessonAiModel',
       patch.preferredLessonAiModel,
     );
+    await assertCanPersistGroundedPicks(userTier, patch);
 
     const updatedPreferences = await upsertUserModelPreferences(
       actor.id,
@@ -293,6 +353,9 @@ export const PATCH = requestBoundary.route(
         preferredRegenerationAiModel:
           updatedPreferences.preferredRegenerationAiModel,
         preferredLessonAiModel: updatedPreferences.preferredLessonAiModel,
+        preferredWriterAiModel: updatedPreferences.preferredWriterAiModel,
+        preferredVerifierAiModel: updatedPreferences.preferredVerifierAiModel,
+        preferredAdvisorAiModel: updatedPreferences.preferredAdvisorAiModel,
       },
       'User preferences updated successfully',
     );

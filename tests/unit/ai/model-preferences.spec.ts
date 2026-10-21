@@ -3,10 +3,17 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { getModelsForTier } from '@/features/ai/ai-models';
 import {
   MODEL_OPERATIONS,
+  PRO_GROUNDED_REVIEW_CATALOG,
+  PRO_GROUNDED_WRITER_CATALOG,
   STARTER_OUTLINE_REGENERATION_MODEL_IDS,
 } from '@/features/ai/model-operation-policy';
 import {
+  GROUNDED_PICK_ROLES,
+  getGroundedPickCatalog,
+  getGroundedPickDefault,
   getPersistableModelsForTier,
+  resolveGroundedModelPick,
+  validateGroundedPick,
   isPersistableModelId,
   isRuntimeOnlyModelId,
   resolveEffectivePreference,
@@ -257,5 +264,113 @@ describe('model-preferences', () => {
         'google/gemini-3-flash-preview',
       );
     });
+  });
+});
+
+describe('grounded model picks', () => {
+  const NO_PICKS = {
+    preferredWriterAiModel: null,
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
+  };
+
+  it('offers the 1b Pro catalog for each role', () => {
+    expect(getGroundedPickCatalog('writer')).toEqual(
+      PRO_GROUNDED_WRITER_CATALOG,
+    );
+    expect(getGroundedPickCatalog('verifier')).toEqual(
+      PRO_GROUNDED_REVIEW_CATALOG,
+    );
+    expect(getGroundedPickCatalog('advisor')).toEqual(
+      PRO_GROUNDED_REVIEW_CATALOG,
+    );
+  });
+
+  it('defaults to the tier primary model and has none where a role does not run', () => {
+    expect(getGroundedPickDefault('pro', 'writer')).toBe('openai/gpt-6-sol');
+    expect(getGroundedPickDefault('pro', 'verifier')).toBe(
+      'anthropic/claude-sonnet-5.5',
+    );
+    expect(getGroundedPickDefault('pro', 'advisor')).toBe(
+      'anthropic/claude-opus-5.5',
+    );
+    expect(getGroundedPickDefault('free', 'verifier')).toBeNull();
+    expect(getGroundedPickDefault('free', 'advisor')).toBeNull();
+  });
+
+  it.each(GROUNDED_PICK_ROLES)(
+    'accepts a Pro %s pick in the catalog',
+    (role) => {
+      const [modelId] = getGroundedPickCatalog(role);
+      expect(validateGroundedPick('pro', role, modelId ?? '')).toEqual({
+        valid: true,
+      });
+    },
+  );
+
+  it.each(['free', 'starter'] as const)(
+    'rejects every %s pick, even one in the catalog',
+    (tier) => {
+      for (const role of GROUNDED_PICK_ROLES) {
+        const [modelId] = getGroundedPickCatalog(role);
+        expect(validateGroundedPick(tier, role, modelId ?? '')).toEqual({
+          valid: false,
+          reason: 'tier_denied',
+        });
+      }
+    },
+  );
+
+  it.each([
+    ['writer', 'anthropic/claude-opus-5.5'],
+    ['verifier', 'openai/gpt-6-luna'],
+    ['advisor', 'openai/gpt-5.2'],
+    ['writer', 'not-a-real-model'],
+  ] as const)('rejects an off-catalog Pro %s pick %s', (role, modelId) => {
+    expect(validateGroundedPick('pro', role, modelId)).toEqual({
+      valid: false,
+      reason: 'invalid_model',
+    });
+  });
+
+  it('uses a valid Pro pick', () => {
+    expect(
+      resolveGroundedModelPick(
+        'pro',
+        { ...NO_PICKS, preferredVerifierAiModel: 'openai/gpt-6-sol' },
+        'verifier',
+      ),
+    ).toBe('openai/gpt-6-sol');
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'falls back to the code-owned models after a downgrade to %s and keeps the stored pick',
+    (tier) => {
+      const saved = {
+        preferredWriterAiModel: 'anthropic/claude-sonnet-5.5',
+        preferredVerifierAiModel: 'openai/gpt-6-sol',
+        preferredAdvisorAiModel: 'anthropic/claude-haiku-5.5',
+      };
+      const before = { ...saved };
+
+      for (const role of GROUNDED_PICK_ROLES) {
+        expect(resolveGroundedModelPick(tier, saved, role)).toBeNull();
+      }
+      expect(saved).toEqual(before);
+      expect(resolveGroundedModelPick('pro', saved, 'writer')).toBe(
+        'anthropic/claude-sonnet-5.5',
+      );
+    },
+  );
+
+  it('ignores an empty or off-catalog stored pick', () => {
+    expect(resolveGroundedModelPick('pro', NO_PICKS, 'writer')).toBeNull();
+    expect(
+      resolveGroundedModelPick(
+        'pro',
+        { ...NO_PICKS, preferredAdvisorAiModel: 'openai/gpt-5.2' },
+        'advisor',
+      ),
+    ).toBeNull();
   });
 });
