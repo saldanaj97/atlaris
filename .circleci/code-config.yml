@@ -128,12 +128,14 @@ commands:
           command: mkdir -p test-results coverage
       - store_test_results:
           path: test-results
+          when: always
       - when:
           condition: << parameters.coverage-destination >>
           steps:
             - store_artifacts:
                 path: coverage
                 destination: << parameters.coverage-destination >>
+                when: always
 
 jobs:
   # Sole writer of the pnpm store cache. Exact-key restore only, so a miss
