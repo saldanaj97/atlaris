@@ -82,7 +82,11 @@ export const groundedGeneration = flag<SubscriptionTier[]>({
     'Tiers that run grounded generation instead of the current pipeline.',
   options: [
     { value: [], label: 'Off' },
+    { value: ['free'], label: 'Free' },
+    { value: ['starter'], label: 'Starter' },
     { value: ['pro'], label: 'Pro' },
+    { value: ['free', 'starter'], label: 'Free and Starter' },
+    { value: ['free', 'pro'], label: 'Free and Pro' },
     { value: ['starter', 'pro'], label: 'Starter and Pro' },
     { value: ['free', 'starter', 'pro'], label: 'All tiers' },
   ],
