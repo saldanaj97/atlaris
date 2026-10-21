@@ -19,6 +19,7 @@ jobs:
       github.event.pull_request.base.repo.full_name == 'saldanaj97/atlaris' &&
       github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
