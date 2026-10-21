@@ -114,6 +114,14 @@ export function RegeneratePlanDialog({
     setError(null);
 
     const trimmedNote = note.trim();
+    // Clears the busy state unless a newer submit took over (no `finally`:
+    // React Compiler cannot lower it).
+    const settle = (): void => {
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+        setSubmitting(false);
+      }
+    };
     try {
       const res = await fetch(`/api/v1/plans/${planId}/regenerate`, {
         method: 'POST',
@@ -126,6 +134,7 @@ export function RegeneratePlanDialog({
       });
 
       if (res.ok) {
+        settle();
         toast.success(
           'Regenerating your plan. The new version replaces this one when it is ready.',
         );
@@ -138,6 +147,7 @@ export function RegeneratePlanDialog({
         res,
         'Could not start regeneration.',
       );
+      settle();
       if (parsed.code === 'REGENERATION_ALREADY_QUEUED') {
         toast.message('This plan is already regenerating.');
         setOpen(false);
@@ -146,6 +156,7 @@ export function RegeneratePlanDialog({
       }
       setError(toSubmitError(res.status, parsed));
     } catch (caught: unknown) {
+      settle();
       if (isAbortError(caught)) {
         return;
       }
@@ -159,11 +170,6 @@ export function RegeneratePlanDialog({
       );
       setOpen(false);
       router.refresh();
-    } finally {
-      if (abortControllerRef.current === controller) {
-        abortControllerRef.current = null;
-        setSubmitting(false);
-      }
     }
   }
 
@@ -176,8 +182,8 @@ export function RegeneratePlanDialog({
         </Button>
       </DialogPrimitive.Trigger>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className='fixed inset-0 z-[51] bg-black/72 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none motion-reduce:transition-none' />
-        <DialogPrimitive.Content className='fixed top-[50%] left-[50%] z-[52] grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[32rem] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl border border-input bg-popover p-4 text-popover-foreground shadow-xl duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 motion-reduce:animate-none motion-reduce:transition-none sm:p-6'>
+        <DialogPrimitive.Overlay className='fixed inset-0 z-[51] bg-black/72 transition-opacity duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0 motion-reduce:animate-none motion-reduce:transition-none' />
+        <DialogPrimitive.Content className='fixed top-[50%] left-[50%] z-[52] grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-[32rem] translate-x-[-50%] translate-y-[-50%] gap-4 overflow-y-auto overscroll-contain rounded-2xl border border-input bg-popover p-4 text-popover-foreground shadow-xl transition-opacity duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 motion-reduce:animate-none motion-reduce:transition-none sm:p-6'>
           <div className='grid gap-2 pr-10'>
             <DialogPrimitive.Title className='type-card text-foreground'>
               Regenerate plan
