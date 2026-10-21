@@ -727,6 +727,26 @@ describe('runPlanGenerationWorkflow', () => {
       expect(mocks.runPlanResearch).toHaveBeenCalledOnce();
     });
 
+    it('skips research without a search when the switch is off', async () => {
+      const { deps } = makeDeps({
+        isEnabled: () => false,
+        isGroundedEnabled: () => true,
+      });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'disabled' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'generate',
+        'finalize',
+      ]);
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.insertPlanResearch).not.toHaveBeenCalled();
+    });
+
     it('leaves the flow unchanged when grounded generation is off', async () => {
       const { deps } = makeDeps();
       const { step, calls } = createStep();

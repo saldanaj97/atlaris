@@ -72,16 +72,21 @@ function hostPublisher(url: string): string {
   return new URL(url).hostname.replace(/^www\./i, '');
 }
 
-/** Renames `[Sn]` markers to their new keys and removes markers of dropped sources. */
+/**
+ * Renames `[Sn]` markers to their new keys and removes markers of dropped
+ * sources. A combined marker such as `[S1, S3]` becomes `[S1][S3]`.
+ */
 function rekeyBriefMarkers(
   brief: string,
   keyMap: ReadonlyMap<string, ResearchCitationKey>,
 ): string {
   return brief
-    .replace(/\[(S\d+)\]/g, (_marker, key: string) => {
-      const next = keyMap.get(key);
-      return next ? `[${next}]` : '';
-    })
+    .replace(/\[(S\d+(?:\s*[,;]\s*S\d+)*)\]/g, (_marker, keys: string) =>
+      [...new Set(keys.split(/\s*[,;]\s*/).map((key) => keyMap.get(key)))]
+        .filter((key) => key !== undefined)
+        .map((key) => `[${key}]`)
+        .join(''),
+    )
     .replace(/ {2,}/g, ' ')
     .replace(/ +([.,;:])/g, '$1')
     .trim();

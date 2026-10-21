@@ -449,8 +449,9 @@ export async function runPlanGenerationWorkflow(
       async () => deps.withDb((db) => recordWorkflowStep(db, run)),
     );
 
-    // Grounded research (JCS-158); its brief feeds the outline in 2b.
-    if (deps.isGroundedEnabled(input.tier)) {
+    // Grounded research (JCS-158); its brief feeds the outline in 2b. A
+    // dropped switch skips it too, so no search runs (Decision 7).
+    if (deps.isEnabled() && deps.isGroundedEnabled(input.tier)) {
       current = 'research-save';
       await runPlanResearchSteps(step, {
         planId: input.planId,

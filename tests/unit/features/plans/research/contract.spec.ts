@@ -70,6 +70,18 @@ describe('checkResearchOutput', () => {
     expect(research.brief).toBe('A [S1] and B [S1].');
   });
 
+  it('rewrites combined markers and drops their uncited keys', () => {
+    const text = output('Both [S1, S2]. Mixed [S2; S3].', [
+      { key: 'S1', title: 'Blog', url: 'https://blog.example.com/rust' },
+      { key: 'S2', title: 'Book', url: CITATIONS[0]!.url },
+      { key: 'S3', title: 'Learn', url: CITATIONS[1]!.url },
+    ]);
+
+    expect(checkResearchOutput(text, CITATIONS).research.brief).toBe(
+      'Both [S1]. Mixed [S1][S2].',
+    );
+  });
+
   it('reads fenced JSON wrapped in prose', () => {
     const text = `Here it is:\n\`\`\`json\n${output('Brief [S1].', [
       { key: 'S1', title: 'Learn', url: CITATIONS[1]!.url },
