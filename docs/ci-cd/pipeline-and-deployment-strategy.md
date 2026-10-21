@@ -18,7 +18,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Promote `develop` to `main` in batches (at most daily, or per milestone) and merge the promotion with a merge commit, never squash or rebase. See [branching-strategy.md](../ci/branching-strategy.md#batched-promotions).
 - PRs run CircleCI `ci-pr` checks.
 - CircleCI owns code, test and Next.js build validation (the required `build` check).
-- Vercel deploys only `develop` (Preview, staging) and `main` (Production); feature and PR branches are not deployed.
+- Vercel builds Preview for `develop` (staging) and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status), and Production for `main`; feature branches get no Vercel deployment.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
 - JCS-52 will add native Vercel Deployment Checks for Production gating.
@@ -32,7 +32,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 | Environment | Source | Owner | Notes |
 | ----------- | ------ | ----- | ----- |
 | Local / Local Preview | Your feature branch | You | Fast local iteration (`pnpm dev`, local product testing; 1Password Local Preview lane in JCS-50) |
-| Preview | `develop` only | Vercel Git integration | Hosted staging build; feature and PR branches get no Vercel deployment (use `pnpm dev` or a one-off `vercel deploy`) |
+| Preview | `develop` and `hotfix/*` | Vercel Git integration | Staging build for `develop`; `hotfix/*` previews give hotfix PRs into `main` the required Vercel status. Feature branches get no Vercel deployment (use `pnpm dev` or a one-off `vercel deploy`) |
 | Staging | `develop` | Vercel Preview + Supabase migrations | The `develop` Preview uses non-Production services; migration phases target the staging project |
 | Staged Production proof | Exact `main` SHA on `origin/main` | Operator + Vercel | Post-push unaliased rehearsal; it does not govern native Production aliases or domains. Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
 | Live Production | `main` | Vercel Git integration | `main` pushes create Production deployments; JCS-52 will add native Deployment Checks for Production gating |
@@ -73,7 +73,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Both `analysis` commands run in single-pass mode: `@circleci/vitest-circleci-coverage` records per-test V8 coverage for all impacted atoms in one Vitest run (`CIRCLECI_COVERAGE=<< outputs.circleci-coverage >>`). The earlier lcov mode ran one Vitest process per atom (~7s each), so a widely imported change re-analyzed 300+ atoms for 35+ minutes.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
-Vercel's native Git integration is separate from CircleCI: only `develop` pushes create a Preview deployment (staging), and every `main` push creates a Production deployment. CircleCI `build` is the PR gate for Next.js compilation; Vercel's `Vercel` status covers deployment validation on `main`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
+Vercel's native Git integration is separate from CircleCI: `develop` and `hotfix/*` pushes create a Preview deployment (staging and hotfix PR status), feature branches are not deployed, and every `main` push creates a Production deployment. CircleCI `build` is the PR gate for Next.js compilation; Vercel's `Vercel` status covers deployment validation on `main`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
 
 ### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -173,7 +173,7 @@ No Vercel credentials are stored in GitHub. Vercel project and Production enviro
 
 ### Vercel settings
 
-Keep the GitHub project connection and Deployment Protection enabled. Configure the Ignored Build Step in the Vercel dashboard to skip commits limited to documentation files; any code or mixed change should build. Native Git builds only `develop` (Preview) and `main` (Production); feature and PR branches are not deployed. JCS-52 will add native Deployment Checks for Production gating.
+Keep the GitHub project connection and Deployment Protection enabled. Configure the Ignored Build Step in the Vercel dashboard to skip commits limited to documentation files; any code or mixed change should build. Native Git builds Preview for `develop` and `hotfix/*` branches and Production for `main`; feature branches are not deployed. JCS-52 will add native Deployment Checks for Production gating.
 
 ---
 

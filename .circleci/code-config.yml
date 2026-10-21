@@ -312,7 +312,7 @@ jobs:
               exit 1
             fi
 
-  # Next.js build gate for PRs (Vercel only builds develop and main). Needs no
+  # Next.js build gate for PRs (Vercel builds only develop, hotfix/* and main). Needs no
   # secrets. The empty Sentry token overrides any project-level value, so
   # withSentryConfig skips release creation and source-map upload.
   build:

@@ -80,14 +80,14 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 | Environment | Branch Source | URL | Purpose |
 | ----------- | ------------- | --- | ------- |
 | **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
-| **Preview** | `develop` only | Vercel preview | Hosted staging build; feature and PR branches get no Vercel deployment |
+| **Preview** | `develop` and `hotfix/*` | Vercel preview | Staging build for `develop`; `hotfix/*` previews give hotfix PRs into `main` the required Vercel status. Feature branches get no Vercel deployment |
 | **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
 | **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains |
 | **Live Production** | `main` | Production URL | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating |
 
 ### Deployment Mechanism
 
-- **Preview**: Vercel's Git integration builds a Preview deployment only for `develop`; feature and PR branches are not deployed. For a per-PR URL, use the local dev server (`pnpm dev`) or a one-off `vercel deploy`. The PR build gate is CircleCI `build`.
+- **Preview**: Vercel's Git integration builds a Preview deployment for `develop` (staging) and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status); feature branches are not deployed. For a per-PR URL, use the local dev server (`pnpm dev`) or a one-off `vercel deploy`. The PR build gate is CircleCI `build`.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Staging**: the `develop` branch's Vercel Preview deployment is the hosted staging surface; use non-Production services and dispatch migration phases when needed.
 - **Staged Production**: before JCS-52, operators run a post-push unaliased rehearsal from a clean checkout after the exact `main` SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
@@ -99,7 +99,7 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 
 PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`main` is CircleCI `ci-trunk` only.
 
-CircleCI `build` is the PR gate for the Next.js build: it runs `pnpm build` with no secrets (Sentry auth token blanked, so no release or source-map upload). Vercel builds and deploys only `develop` (staging) and `main` (Production); it is not a PR check.
+CircleCI `build` is the PR gate for the Next.js build: it runs `pnpm build` with no secrets (Sentry auth token blanked, so no release or source-map upload). Vercel builds Preview for `develop` (staging) and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status) and Production for `main`; feature branches get no Vercel deployment.
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
@@ -240,7 +240,7 @@ Check the GitHub Actions logs for `supabase migration up`, confirm the run used 
 
 ### How do I test against a real DB before merge?
 
-Run the local dev server (`pnpm dev`) against a local or isolated database, or the `develop` Preview for staging. Feature branches have no Vercel Preview; for a one-off hosted check, run `vercel deploy` with preview environment variables pointing at an isolated preview database.
+Run the local dev server (`pnpm dev`) against a local or isolated database, or the `develop` Preview for staging. Feature branches have no Vercel Preview (only `develop` and `hotfix/*` do); for a one-off hosted check, run `vercel deploy` with preview environment variables pointing at an isolated preview database.
 
 ---
 

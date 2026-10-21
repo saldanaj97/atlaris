@@ -17,7 +17,7 @@ Full safety model, proof/cutover boundary, abandon/rollback, and observation req
 
 Feature cutovers below still define migration expand/contract ordering relative to that app release.
 
-On the Hobby plan, the `develop` branch's Vercel Preview deployment serves as the hosted staging surface with non-Production configuration. Native Vercel Git builds Preview only for `develop` and Production for `main`; feature and PR branches are not deployed, and the PR build gate is CircleCI `build`. For a per-PR hosted URL, run `vercel deploy` once by hand. No Vercel credentials are stored in GitHub.
+On the Hobby plan, the `develop` branch's Vercel Preview deployment serves as the hosted staging surface with non-Production configuration. Native Vercel Git builds Preview for `develop` and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status) and Production for `main`; feature branches are not deployed, and the PR build gate is CircleCI `build`. For a per-PR hosted URL, run `vercel deploy` once by hand. No Vercel credentials are stored in GitHub.
 
 ## PDF Removal Cutover
 
