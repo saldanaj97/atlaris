@@ -18,6 +18,9 @@ const INPUT = {
   weeklyHours: 5,
 } as const;
 
+/** No deadline, so pacing did not trim the outline. */
+const UNPACED = { deadlineDate: null };
+
 function lesson(title: string, estimatedMinutes = 30) {
   return { title, estimatedMinutes };
 }
@@ -106,20 +109,39 @@ describe('outline code checks', () => {
         lesson(`Generics drill ${index}`, 10),
       );
 
-      expect(codes(checkOutlineCounts([module('Generics')]))).toEqual([
+      expect(codes(checkOutlineCounts([module('Generics')], UNPACED))).toEqual([
         ['module_count', 'plan'],
       ]);
       expect(
         codes(
-          checkOutlineCounts([
-            module('Types', [lesson('Only one')]),
-            module('Generics', tooMany),
-          ]),
+          checkOutlineCounts(
+            [
+              module('Types', [lesson('Only one')]),
+              module('Generics', tooMany),
+            ],
+            UNPACED,
+          ),
         ),
       ).toEqual([
         ['lesson_count', 'modules[0]'],
         ['lesson_count', 'modules[1]'],
       ]);
+    });
+
+    it('skips the minimums on a plan pacing trimmed for a deadline', () => {
+      const tooMany = Array.from({ length: 13 }, (_, index) =>
+        lesson(`Generics drill ${index}`, 10),
+      );
+      const paced = { ...INPUT, deadlineDate: '2026-11-09' };
+
+      expect(
+        codes(
+          checkOutlineCounts([module('Types', [lesson('Only one')])], paced),
+        ),
+      ).toEqual([]);
+      expect(
+        codes(checkOutlineCounts([module('Generics', tooMany)], paced)),
+      ).toEqual([['lesson_count', 'modules[0]']]);
     });
   });
 
@@ -210,6 +232,19 @@ describe('outline code checks', () => {
       outline[0] = { ...outline[0]!, estimatedMinutes: 240 };
 
       expect(codes(checkOutlineTime(outline, INPUT))).toEqual([
+        ['module_time_mismatch', 'modules[0]'],
+      ]);
+    });
+
+    it('allows a paced module to estimate more than its remaining lessons', () => {
+      const paced = { ...INPUT, deadlineDate: '2026-11-09' };
+      const trimmed = cleanOutline();
+      trimmed[0] = { ...trimmed[0]!, estimatedMinutes: 240 };
+      const underestimated = cleanOutline();
+      underestimated[0] = { ...underestimated[0]!, estimatedMinutes: 15 };
+
+      expect(checkOutlineTime(trimmed, paced)).toEqual([]);
+      expect(codes(checkOutlineTime(underestimated, paced))).toEqual([
         ['module_time_mismatch', 'modules[0]'],
       ]);
     });

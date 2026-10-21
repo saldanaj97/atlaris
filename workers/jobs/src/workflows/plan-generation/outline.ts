@@ -179,9 +179,12 @@ async function saveQualityStep(
 /**
  * Outline quality for a grounded run, after `generate`: code checks on all
  * tiers, the verifier on tiers whose policy has one, then one repair pass
- * when anything was found, checked again the same way. Issues are written to
- * `generation_quality_issues` (remaining and resolved). Returns the outline
- * to finalize: the repaired one, or the first when no repair ran or it failed.
+ * when anything was found, checked again the same way. The repair is kept
+ * only when it has no more issues than the first outline, counting verifier
+ * issues only when both verifier runs succeeded. Issues are written to
+ * `generation_quality_issues` (remaining and resolved) for the outline kept.
+ * Returns that outline: the repaired one, or the first when no repair ran, it
+ * failed or it was worse.
  *
  * Code checks are pure and run outside steps on step results, so a replay
  * gets the same answer.
@@ -196,27 +199,38 @@ export async function runOutlineQualitySteps(
   const verifierIssues = withVerifier
     ? await verifyOutline(step, ctx, OUTLINE_STEPS.verify, modules)
     : null;
-  const pass0 = [
-    ...runOutlineCodeChecks(modules, ctx.input),
-    ...(verifierIssues ?? []),
-  ];
+  const codeIssues = runOutlineCodeChecks(modules, ctx.input);
+  const pass0 = [...codeIssues, ...(verifierIssues ?? [])];
   if (pass0.length === 0) {
     return modules;
   }
 
   const repaired = await repairOutline(step, ctx, modules, pass0);
+  let kept = modules;
   let pass1: Parameters<typeof toOutlineQualityRecords>[1]['pass1'] = null;
   if (repaired) {
     const reverified = withVerifier
       ? await verifyOutline(step, ctx, OUTLINE_STEPS.reverify, repaired)
       : null;
-    pass1 = {
-      issues: [
-        ...runOutlineCodeChecks(repaired, ctx.input),
-        ...(reverified ?? []),
-      ],
-      verifierRan: reverified !== null,
-    };
+    const repairedCodeIssues = runOutlineCodeChecks(repaired, ctx.input);
+    const compareVerifier = verifierIssues !== null && reverified !== null;
+    const before =
+      codeIssues.length + (compareVerifier ? verifierIssues.length : 0);
+    const after =
+      repairedCodeIssues.length + (compareVerifier ? reverified.length : 0);
+    if (after <= before) {
+      kept = repaired;
+      pass1 = {
+        issues: [...repairedCodeIssues, ...(reverified ?? [])],
+        verifierRan: reverified !== null,
+      };
+    } else {
+      ctx.log(
+        OUTLINE_STEPS.repair,
+        { outcome: 'repair_rejected', issueCount: after },
+        'warn',
+      );
+    }
   }
 
   const records = toOutlineQualityRecords(ctx.planId, { pass0, pass1 });
@@ -226,5 +240,5 @@ export async function runOutlineQualitySteps(
     async (stepCtx) =>
       ctx.withDb((db) => saveQualityStep(db, ctx, records, stepCtx.attempt)),
   );
-  return repaired ?? modules;
+  return kept;
 }

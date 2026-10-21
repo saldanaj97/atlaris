@@ -999,6 +999,30 @@ describe('runPlanGenerationWorkflow', () => {
       expect(finalizedModules()).toHaveLength(2);
     });
 
+    it('keeps the first outline when the repair has more issues', async () => {
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: [thinModule(), thinModule()],
+        model: 'repair/model',
+      });
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, false],
+        ['lesson_count', 'modules[0]', 0, false],
+      ]);
+      expect(finalizedModules()).toEqual([thinModule()]);
+      expect(
+        stepLogs(logger).find(
+          (fields) =>
+            fields.step === 'outline-repair' &&
+            fields.outcome === 'repair_rejected',
+        ),
+      ).toMatchObject({ issueCount: 4 });
+    });
+
     it('finalizes the first outline and logs every issue open when the repair fails', async () => {
       mocks.runOutlineRepair.mockRejectedValue(new Error('provider down'));
       const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });

@@ -174,12 +174,25 @@ export function checkOutlineSchema(modules: unknown): OutlineIssue[] {
   });
 }
 
+/**
+ * Pacing (`pacePlan`) trims a plan with a deadline to fit its hours: it drops
+ * lessons, and at very low capacity whole modules, without changing module
+ * estimates. Checks skip what that trim causes, or a repair (paced again)
+ * could never clear it.
+ */
+function isPacedInput(input: Pick<GenerationInput, 'deadlineDate'>): boolean {
+  return Boolean(input.deadlineDate?.trim());
+}
+
+/** Minimums are skipped on a paced plan; maximums always apply. */
 export function checkOutlineCounts(
   modules: readonly ParsedModule[],
+  input: Pick<GenerationInput, 'deadlineDate'>,
 ): OutlineIssue[] {
   const issues: OutlineIssue[] = [];
+  const paced = isPacedInput(input);
   const { min, max } = OUTLINE_MODULE_COUNT_RANGE;
-  if (modules.length < min || modules.length > max) {
+  if ((!paced && modules.length < min) || modules.length > max) {
     issues.push(
       issue(
         'module_count',
@@ -191,7 +204,7 @@ export function checkOutlineCounts(
   const lessons = OUTLINE_LESSONS_PER_MODULE_RANGE;
   modules.forEach((module, index) => {
     if (
-      module.tasks.length < lessons.min ||
+      (!paced && module.tasks.length < lessons.min) ||
       module.tasks.length > lessons.max
     ) {
       issues.push(
@@ -332,12 +345,14 @@ function weeksBetween(startDate: string, deadlineDate: string): number | null {
 /**
  * Module minutes must match their lessons' sum, no lesson may exceed a week's
  * hours, and with a start date and deadline the lessons must fit the hours.
+ * On a paced plan a module may estimate more than its remaining lessons.
  */
 export function checkOutlineTime(
   modules: readonly ParsedModule[],
   input: Pick<GenerationInput, 'weeklyHours' | 'startDate' | 'deadlineDate'>,
 ): OutlineIssue[] {
   const issues: OutlineIssue[] = [];
+  const paced = isPacedInput(input);
   const weeklyMinutes = input.weeklyHours * 60;
   let totalMinutes = 0;
 
@@ -351,7 +366,8 @@ export function checkOutlineTime(
       MODULE_MINUTES_SLACK,
       lessonMinutes * MODULE_MINUTES_TOLERANCE,
     );
-    if (Math.abs(module.estimatedMinutes - lessonMinutes) > allowed) {
+    const difference = module.estimatedMinutes - lessonMinutes;
+    if ((paced ? -difference : Math.abs(difference)) > allowed) {
       issues.push(
         issue(
           'module_time_mismatch',
@@ -407,7 +423,7 @@ export function runOutlineCodeChecks(
     return schemaIssues;
   }
   return [
-    ...checkOutlineCounts(modules),
+    ...checkOutlineCounts(modules, input),
     ...checkOutlineDuplicates(modules),
     ...checkOutlineScope(modules, input.topic),
     ...checkOutlineTime(modules, input),
