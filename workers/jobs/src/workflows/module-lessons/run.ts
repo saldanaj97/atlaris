@@ -5,8 +5,14 @@ import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
+import {
+  type GroundedLessonContext,
+  resolveGroundedLessonContext,
+  runGroundedLessonSteps,
+} from './grounded';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
+import { sumLessonUsage } from '@/features/lesson-content/grounded-lesson-writer';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import {
   buildModuleLessonBatchInput,
@@ -50,6 +56,11 @@ export const MODULE_LESSONS_STEPS = {
 
 type StepName =
   (typeof MODULE_LESSONS_STEPS)[keyof typeof MODULE_LESSONS_STEPS];
+
+/** Where a grounded run failed: one of the per-lesson steps. */
+const GROUNDED_LESSONS_STAGE = 'lessons';
+
+type CurrentStep = StepName | typeof GROUNDED_LESSONS_STAGE;
 
 /** Keeps a long schema error readable in logs and the instance error. */
 const PARSE_ERROR_MESSAGE_MAX_CHARS = 1_000;
@@ -112,6 +123,12 @@ type ClaimStepResult =
       readonly kind: 'claimed';
       readonly startedAt: string;
       readonly promptInput: ModuleLessonBatchPromptInput;
+      /**
+       * Set when the user's tier runs grounded generation: one call per
+       * lesson instead of the batch. Absent on the batch path and on claims
+       * cached before grounded lessons shipped.
+       */
+      readonly grounded?: GroundedLessonContext;
     }
   | { readonly kind: Exclude<ModuleLessonsWorkflowOutcome['kind'], 'success'> };
 
@@ -137,7 +154,7 @@ export type ModuleLessonsWorkflowDeps = {
   readonly isEnabled: () => boolean;
   /**
    * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
-   * generation. Unset switches mean off; nothing reads it until 3a/3b.
+   * generation. Unset switches mean off.
    */
   readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
@@ -268,11 +285,20 @@ async function claimStep(
     return { kind };
   }
 
-  logStep(run, 'claim', { taskCount, outcome: 'claimed' });
+  const grounded = await resolveGroundedLessonContext(db, {
+    target,
+    modelOverride: run.params.modelOverride,
+    isGroundedEnabled: run.deps.isGroundedEnabled,
+  });
+  logStep(run, 'claim', {
+    taskCount,
+    outcome: grounded ? 'claimed_grounded' : 'claimed',
+  });
   return {
     kind: 'claimed',
     startedAt: claim.workflowStartedAt ?? startedAt,
     promptInput: buildModuleLessonBatchPromptInput(load),
+    ...(grounded ? { grounded } : {}),
   };
 }
 
@@ -431,7 +457,7 @@ function parseFailedError(
 async function failStep(
   db: DbClient,
   run: RunContext,
-  failedStep: StepName,
+  failedStep: CurrentStep,
 ): Promise<{ readonly outcome: string }> {
   if (failedStep === 'claim') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -467,6 +493,64 @@ async function failStep(
 }
 
 /**
+ * The grounded path: `lesson-<n>` steps (each with one `lesson-<n>-retry`),
+ * then the lessons committed together in `parse-commit` with summed usage.
+ */
+async function runGroundedLessons(
+  step: Pick<WorkflowStep, 'do'>,
+  run: RunContext,
+  claim: Extract<ClaimStepResult, { kind: 'claimed' }>,
+  grounded: GroundedLessonContext,
+  setCurrent: (step: CurrentStep) => void,
+): Promise<ModuleLessonsWorkflowOutcome> {
+  const written = await runGroundedLessonSteps(step, {
+    target: run.target,
+    promptInput: claim.promptInput,
+    grounded,
+    generateStepConfig: generateStepConfig(),
+    isEnabled: run.deps.isEnabled,
+    withDb: run.deps.withDb,
+    revertArgs: revertArgs(run),
+    nonRetryable: run.deps.nonRetryable,
+    now: run.now,
+    log: (stepName, fields, level = 'info') =>
+      run.deps.logger[level](
+        {
+          job: MODULE_LESSONS_JOB,
+          step: stepName,
+          instanceId: run.instanceId,
+          planId: run.target.planId,
+          moduleId: run.target.moduleId,
+          ...fields,
+        },
+        'Module lessons workflow step finished',
+      ),
+  });
+  if (written.kind !== 'written') {
+    return { kind: written.kind };
+  }
+
+  setCurrent('parse-commit');
+  const generated = {
+    kind: 'generated',
+    rawText: JSON.stringify({ version: 1, tasks: written.lessons }),
+    usage: sumLessonUsage(written.usages),
+  } as const;
+  const committed = await step.do(
+    MODULE_LESSONS_STEPS.parseCommit,
+    PARSE_COMMIT_STEP_CONFIG,
+    async (ctx) =>
+      run.deps.withDb((db) =>
+        parseCommitStep(db, run, claim, generated, 1, ctx.attempt),
+      ),
+  );
+  if (committed.kind !== 'success') {
+    throw parseFailedError(run, committed);
+  }
+  return committed;
+}
+
+/**
  * The module lessons Workflow body: `claim` → `generate` → `parse-commit`,
  * then `generate-retry` → `parse-commit-retry` once when the first output
  * fails to parse, with a `fail` step after any thrown step. Each step opens
@@ -494,7 +578,7 @@ export async function runModuleLessonsWorkflow(
     now: deps.now ?? (() => new Date()),
   };
 
-  let current: StepName = 'claim';
+  let current: CurrentStep = 'claim';
   try {
     const claim = await step.do(
       MODULE_LESSONS_STEPS.claim,
@@ -503,6 +587,12 @@ export async function runModuleLessonsWorkflow(
     );
     if (claim.kind !== 'claimed') {
       return { kind: claim.kind };
+    }
+    if (claim.grounded) {
+      current = GROUNDED_LESSONS_STAGE;
+      return await runGroundedLessons(step, run, claim, claim.grounded, (s) => {
+        current = s;
+      });
     }
 
     current = 'generate';
