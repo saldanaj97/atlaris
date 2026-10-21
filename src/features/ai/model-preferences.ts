@@ -266,16 +266,21 @@ export function resolveGroundedModelPick(
 
 /**
  * The writer model to lead a grounded call (JCS-169): an explicit
- * per-request override, else the saved Pro writer pick. The legacy slots above
- * never apply to grounded runs. `null` runs the tier's code-owned writers;
- * `getGroundedModelRoute` also drops a model outside the tier's catalog.
+ * per-request override in the tier's writer catalog, else the saved Pro writer
+ * pick. An off-catalog override falls through rather than masking the pick.
+ * The legacy slots above never apply to grounded runs. `null` runs the tier's
+ * code-owned writers.
  */
 export function resolveGroundedWriterModelId(
   tier: SubscriptionTier,
   override: string | null | undefined,
   saved: SavedGroundedModelPicks,
 ): string | null {
-  if (override != null && override !== '') {
+  if (
+    override != null &&
+    override !== '' &&
+    validateGroundedPick(tier, 'writer', override).valid
+  ) {
     return override;
   }
   return resolveGroundedModelPick(tier, saved, 'writer');

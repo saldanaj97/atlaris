@@ -722,7 +722,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
       });
     });
 
-    it('lets an explicit request override beat the saved writer pick', async () => {
+    it('falls back to the saved writer pick when the override is off the writer catalog', async () => {
       const withOverride = (row: Job): Job => ({
         ...row,
         data: {
@@ -739,8 +739,8 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
       await runPlanRegeneration(JOB_ID, groundedContext);
 
       expect(writerModelOverrides()).toEqual({
-        provider: 'google/gemini-3.1-pro-preview',
-        quality: 'google/gemini-3.1-pro-preview',
+        provider: WRITER_PICK,
+        quality: WRITER_PICK,
       });
     });
 

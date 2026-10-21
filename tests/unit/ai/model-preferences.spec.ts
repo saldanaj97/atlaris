@@ -395,6 +395,30 @@ describe('resolveGroundedWriterModelId', () => {
     ).toBe('openai/gpt-6.1-sol');
   });
 
+  it('falls back to the saved pick when the override is off the writer catalog', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', PICKS),
+    ).toBe('anthropic/claude-haiku-5.5');
+  });
+
+  it('ignores an off-catalog override when Pro saved no pick', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', {
+        ...PICKS,
+        preferredWriterAiModel: null,
+      }),
+    ).toBeNull();
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'ignores an override for %s',
+    (tier) => {
+      expect(
+        resolveGroundedWriterModelId(tier, 'openai/gpt-6.1-sol', PICKS),
+      ).toBeNull();
+    },
+  );
+
   it.each([null, undefined, ''])(
     'ignores an empty override (%s)',
     (override) => {
