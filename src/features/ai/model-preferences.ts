@@ -6,7 +6,10 @@
  * legacy PostgreSQL `preferred_ai_model` enum.
  */
 
-import type { ModelOperation } from '@/features/ai/model-operation-policy';
+import type {
+  GroundedOperation,
+  ModelOperation,
+} from '@/features/ai/model-operation-policy';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -15,6 +18,7 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/features/ai/ai-models';
+import { getGroundedOperationPolicy } from '@/features/ai/model-operation-policy';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
@@ -164,4 +168,92 @@ export function resolveSavedPreferenceForSettings(
     return null;
   }
   return savedPreferredAiModel;
+}
+
+/*
+ * Grounded generation (JCS-157). Pro users pick the writer, verifier and
+ * advisor models from the role catalogs in `model-operation-policy.ts`. These
+ * picks live in their own slots so the legacy ones above stay unchanged.
+ */
+
+export const GROUNDED_PICK_ROLES = ['writer', 'verifier', 'advisor'] as const;
+
+export type GroundedPickRole = (typeof GROUNDED_PICK_ROLES)[number];
+
+export type SavedGroundedModelPicks = {
+  preferredWriterAiModel: string | null;
+  preferredVerifierAiModel: string | null;
+  preferredAdvisorAiModel: string | null;
+};
+
+export const GROUNDED_PICK_FIELD_BY_ROLE = {
+  writer: 'preferredWriterAiModel',
+  verifier: 'preferredVerifierAiModel',
+  advisor: 'preferredAdvisorAiModel',
+} as const satisfies Record<GroundedPickRole, keyof SavedGroundedModelPicks>;
+
+/** The writer, verifier and advisor roles share one catalog per role. */
+const GROUNDED_OPERATION_BY_PICK_ROLE = {
+  writer: 'initial_outline',
+  verifier: 'outline_verify',
+  advisor: 'advisor',
+} as const satisfies Record<GroundedPickRole, GroundedOperation>;
+
+/** Models a Pro user may pick for `role`. */
+export function getGroundedPickCatalog(
+  role: GroundedPickRole,
+): readonly string[] {
+  const policy = getGroundedOperationPolicy(
+    'pro',
+    GROUNDED_OPERATION_BY_PICK_ROLE[role],
+  );
+  return policy.allowed ? policy.catalog : [];
+}
+
+/** The tier's code-owned primary model for `role`; `null` when it does not run. */
+export function getGroundedPickDefault(
+  tier: SubscriptionTier,
+  role: GroundedPickRole,
+): string | null {
+  const policy = getGroundedOperationPolicy(
+    tier,
+    GROUNDED_OPERATION_BY_PICK_ROLE[role],
+  );
+  return policy.allowed ? policy.models[0].modelId : null;
+}
+
+export type GroundedPickValidation =
+  | { valid: true }
+  | { valid: false; reason: 'tier_denied' | 'invalid_model' };
+
+/** Whether `tier` may save `modelId` as its `role` pick. Only Pro may. */
+export function validateGroundedPick(
+  tier: SubscriptionTier,
+  role: GroundedPickRole,
+  modelId: string,
+): GroundedPickValidation {
+  if (tier !== 'pro') {
+    return { valid: false, reason: 'tier_denied' };
+  }
+  if (!getGroundedPickCatalog(role).includes(modelId)) {
+    return { valid: false, reason: 'invalid_model' };
+  }
+  return { valid: true };
+}
+
+/**
+ * The saved pick to lead the `role` route, or `null` for the tier's code-owned
+ * models. A downgraded user's pick is ignored here but stays stored, so it
+ * applies again if they return to Pro. Never writes.
+ */
+export function resolveGroundedModelPick(
+  tier: SubscriptionTier,
+  saved: SavedGroundedModelPicks,
+  role: GroundedPickRole,
+): string | null {
+  const modelId = saved[GROUNDED_PICK_FIELD_BY_ROLE[role]];
+  if (modelId == null || modelId === '') {
+    return null;
+  }
+  return validateGroundedPick(tier, role, modelId).valid ? modelId : null;
 }
