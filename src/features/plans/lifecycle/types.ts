@@ -164,6 +164,8 @@ export type ProcessGenerationInput = {
   readonly input: Readonly<GenerationInput>;
   readonly generationPurpose: GenerationPurpose;
   readonly modelOverride?: string;
+  /** The grounded outline writer pick; only the jobs Worker reads it (JCS-169). */
+  readonly groundedWriterModelId?: string | null;
   readonly signal?: AbortSignal;
   /** When set, passed to `reserveAttemptSlot` for transactional status checks. */
   readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];

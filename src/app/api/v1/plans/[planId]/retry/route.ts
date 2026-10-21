@@ -17,6 +17,7 @@ import {
 } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { getGroundedModelPreferences } from '@/lib/db/queries/user-preferences';
 
 export const maxDuration = 60;
 
@@ -87,6 +88,15 @@ export function createRetryHandler(deps?: {
           deadlineDate: plan.deadlineDate,
         },
         savedPreferredAiModel: actor.preferredAiModel ?? null,
+        // Only a Pro writer pick is ever honored, so skip the read below Pro.
+        ...(actor.subscriptionTier === 'pro'
+          ? {
+              savedGroundedPicks: await getGroundedModelPreferences(
+                actor.id,
+                db,
+              ),
+            }
+          : {}),
         tierDb: db,
         requestId: correlationId,
       });
