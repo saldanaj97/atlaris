@@ -247,7 +247,8 @@ jobs:
     needs: plan
     if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Waits on `gh pr checks --required --watch`; CircleCI PR pipelines can start ~40 min late and a full ci-pr run takes 10-15 min.
+    timeout-minutes: 45
     permissions:
       contents: write
       pull-requests: write
