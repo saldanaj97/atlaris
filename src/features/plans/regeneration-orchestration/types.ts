@@ -1,3 +1,4 @@
+import type { RegenerationReason } from './reasons';
 import type { PlanRegenerationOverridesInput } from '@/features/plans/validation/learningPlans.types';
 import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
@@ -19,6 +20,9 @@ export type RequestPlanRegenerationArgs = {
   userId: string;
   planId: string;
   overrides?: PlanRegenerationOverrides;
+  /** Grounded regenerations only (JCS-162); dropped when the flag is off. */
+  reasons?: RegenerationReason[];
+  note?: string;
 };
 
 type PlanGenerationRateLimitSnapshot = {

@@ -1,3 +1,4 @@
+import type { PlanRegenerationState } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 
 import { cleanup, render, screen } from '@testing-library/react';
@@ -26,12 +27,15 @@ vi.mock('@/components/ui/button', () => ({
   ),
 }));
 
-async function renderPlanDetails(plan: ClientPlanDetail) {
+async function renderPlanDetails(
+  plan: ClientPlanDetail,
+  regeneration?: PlanRegenerationState,
+) {
   vi.stubGlobal('React', React);
   try {
     const { PlanDetails } =
       await import('@/app/(app)/plans/[id]/components/PlanDetails');
-    return render(<PlanDetails plan={plan} />);
+    return render(<PlanDetails plan={plan} regeneration={regeneration} />);
   } finally {
     vi.unstubAllGlobals();
   }
@@ -125,5 +129,44 @@ describe('PlanDetails', () => {
     expect(screen.queryByText('Resources')).not.toBeInTheDocument();
     expect(screen.queryByText('Projects')).not.toBeInTheDocument();
     expect(screen.queryByText('Notes')).not.toBeInTheDocument();
+  });
+
+  it('offers no regeneration when grounded generation is off', async () => {
+    await renderPlanDetails(createCompletedPlan(), {
+      canRegenerate: false,
+      isRegenerating: false,
+    });
+
+    expect(
+      screen.queryByRole('button', { name: /regenerat/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers Regenerate plan when grounded generation is on', async () => {
+    await renderPlanDetails(createCompletedPlan(), {
+      canRegenerate: true,
+      isRegenerating: false,
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Regenerate plan' }),
+    ).toBeEnabled();
+  });
+
+  it('shows a disabled Regenerating state while a regeneration job is active', async () => {
+    await renderPlanDetails(createCompletedPlan(), {
+      canRegenerate: true,
+      isRegenerating: true,
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Regenerating…' }),
+    ).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      /new version of this plan is being generated/i,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Regenerate plan' }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -130,6 +130,8 @@ export function createGroundedOutlineProvider(
     purpose: OutlinePurpose;
     modelOverride?: string | null;
     research: ResearchBrief | null;
+    /** Regeneration feedback (JCS-162), after the request. */
+    guidance?: string | null;
   },
   deps: GroundedCallDeps = {},
 ): AiPlanGenerationProvider {
@@ -145,7 +147,11 @@ export function createGroundedOutlineProvider(
           ),
           presetSlug: requirePlanPreset(),
           stage: OUTLINE_STAGE,
-          userParts: buildGroundedOutlineUserParts(input, params.research),
+          userParts: buildGroundedOutlineUserParts(
+            input,
+            params.research,
+            params.guidance,
+          ),
           signal: options?.signal,
           timeoutMs: options?.timeoutMs,
         },

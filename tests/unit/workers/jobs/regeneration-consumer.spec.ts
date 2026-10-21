@@ -116,6 +116,24 @@ describe('handleRegenerationBatch', () => {
     );
   });
 
+  it('passes the grounded regeneration stages to the run', async () => {
+    const grounded = {
+      isEnabled: vi.fn(() => true),
+      research: vi.fn(),
+      outlineQuality: vi.fn(),
+    };
+    const deps = makeDeps({ grounded });
+    const { batch } = makeBatch();
+
+    await handleRegenerationBatch(batch, deps);
+
+    expect(deps.run).toHaveBeenCalledWith(JOB_ID, {
+      runId: 'msg-1',
+      startModuleLessons: deps.startModuleLessons,
+      grounded,
+    });
+  });
+
   it.each(['in-flight', 'already-completed', 'job-not-found'] as const)(
     'acknowledges a losing or stale message (%s) without retrying',
     async (kind) => {

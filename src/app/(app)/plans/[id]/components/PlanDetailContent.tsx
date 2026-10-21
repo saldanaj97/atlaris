@@ -1,7 +1,10 @@
 import { PlanDetailPageError } from './Error';
 import { PlanDetails } from './PlanDetails';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
-import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
+import {
+  loadPlanForPage,
+  loadPlanRegenerationState,
+} from '@/app/(app)/plans/[id]/plan-page-data';
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
 import { Card, CardContent } from '@/components/ui/card';
 import { LoadingStatus } from '@/components/ui/loading-status';
@@ -77,8 +80,9 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     }
   }
 
+  const regeneration = await loadPlanRegenerationState(planId);
   logger.debug({ planId }, 'Plan detail payload ready for rendering');
-  return <PlanDetails plan={planResult.data} />;
+  return <PlanDetails plan={planResult.data} regeneration={regeneration} />;
 }
 
 /**

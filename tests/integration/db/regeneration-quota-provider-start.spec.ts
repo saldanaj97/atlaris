@@ -13,14 +13,22 @@ import { and, eq } from 'drizzle-orm';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
-async function createProcessingRegenerationJob(scenario: string) {
+async function createProcessingRegenerationJob(
+  scenario: string,
+  subscriptionTier: 'free' | 'pro' = 'pro',
+) {
   const authUserId = buildTestAuthUserId(scenario);
   const userId = await ensureUser({
     authUserId,
     email: buildTestEmail(authUserId),
-    subscriptionTier: 'pro',
+    subscriptionTier,
   });
   const plan = await createPlan(userId);
+  return await claimNextRegenerationJob(userId, plan.id);
+}
+
+async function claimNextRegenerationJob(userId: string, planId: string) {
+  const plan = { id: planId };
   const { id: jobId } = await enqueueJobWithResult(
     JOB_TYPES.PLAN_REGENERATION,
     plan.id,
@@ -172,5 +180,43 @@ describe('regeneration provider-start quota settlement', () => {
       }),
     ).rejects.toThrow('invalid job payload');
     expect(await readRegenerationUsage(fixture.userId)).toBe(0);
+  });
+
+  it('caps a grounded Free run per plan without the monthly meter', async () => {
+    const fixture = await createProcessingRegenerationJob(
+      'regeneration-quota-grounded-free',
+      'free',
+    );
+
+    await expect(
+      reserveRegenerationQuotaAtProviderStart({
+        ...fixture,
+        dbClient: db,
+        groundedTier: 'free',
+      }),
+    ).resolves.toMatchObject({ ok: true, alreadySettled: false });
+    expect(await readRegenerationUsage(fixture.userId)).toBe(0);
+
+    await db
+      .update(jobQueue)
+      .set({ status: 'completed', completedAt: new Date() })
+      .where(eq(jobQueue.id, fixture.jobId));
+    const second = await claimNextRegenerationJob(
+      fixture.userId,
+      fixture.planId,
+    );
+
+    await expect(
+      reserveRegenerationQuotaAtProviderStart({
+        ...second,
+        dbClient: db,
+        groundedTier: 'free',
+      }),
+    ).resolves.toEqual({ ok: false, currentCount: 1, limit: 1 });
+    const [job] = await db
+      .select({ payload: jobQueue.payload })
+      .from(jobQueue)
+      .where(eq(jobQueue.id, second.jobId));
+    expect(job?.payload).toEqual({ planId: fixture.planId });
   });
 });

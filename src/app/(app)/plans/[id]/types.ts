@@ -18,3 +18,9 @@ import type { ClientPlanDetail } from '@/shared/types/client.types';
 export type PlanAccessErrorCode = AccessErrorCode;
 export type PlanAccessError = AccessError;
 export type PlanAccessResult = AccessResult<ClientPlanDetail>;
+
+/** Whether the plan page offers regeneration, and whether one is running. */
+export type PlanRegenerationState = {
+  readonly canRegenerate: boolean;
+  readonly isRegenerating: boolean;
+};

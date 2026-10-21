@@ -71,6 +71,8 @@ export type ResearchStepsContext = {
   readonly planId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
+  /** Regeneration feedback that steers the search (JCS-162). */
+  readonly guidance?: string | null;
   /** Research rows for the plan created from here on belong to this attempt. */
   readonly attemptStartedAt: string;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -84,7 +86,11 @@ export type ResearchStepsContext = {
 async function researchStep(
   ctx: ResearchStepsContext,
 ): Promise<ResearchStepResult> {
-  const run = await runPlanResearch({ tier: ctx.tier, input: ctx.input });
+  const run = await runPlanResearch({
+    tier: ctx.tier,
+    input: ctx.input,
+    guidance: ctx.guidance,
+  });
   ctx.log('research', {
     outcome: 'researched',
     model: run.model,

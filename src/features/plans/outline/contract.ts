@@ -42,10 +42,12 @@ export function buildResearchBriefPart(
 export function buildGroundedOutlineUserParts(
   input: GenerationInput,
   research: ResearchBrief | null,
+  guidance?: string | null,
 ): OpenRouterPromptPart[] {
   return [
     ...(research ? [buildResearchBriefPart(research)] : []),
     { text: `${OUTLINE_SCOPE_CONTRACT}\n\n${buildUserPrompt(input)}` },
+    ...(guidance ? [{ text: guidance }] : []),
   ];
 }
 

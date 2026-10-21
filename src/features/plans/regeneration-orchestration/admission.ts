@@ -83,14 +83,16 @@ export function buildPersistedRegenerationInput(
 }
 
 /**
- * Free deny takes precedence over duration. Does not clamp dates.
+ * Free deny takes precedence over duration; a grounded regeneration (JCS-162)
+ * is open to Free, capped per plan at provider start. Does not clamp dates.
  */
 export function resolveRegenerationPolicyDenial(params: {
   readonly tier: SubscriptionTier;
+  readonly grounded?: boolean;
   readonly startDate?: string | null;
   readonly deadlineDate?: string | null;
 }): RegenerationPolicyDenial | null {
-  if (params.tier === 'free') {
+  if (params.tier === 'free' && params.grounded !== true) {
     return { kind: 'not-included' };
   }
 

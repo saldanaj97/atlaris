@@ -3,11 +3,13 @@ import type {
   RequestPlanRegenerationArgs,
   RequestPlanRegenerationResult,
 } from './types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   buildPersistedRegenerationInput,
   resolveRegenerationPolicyDenial,
 } from './admission';
+import { groundedRegenerationPlanCap } from '@/features/billing/regeneration-quota-boundary';
 import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
 
 type EnqueuedRegenerationWork =
@@ -34,6 +36,67 @@ type AdmittedRegeneration = {
 type RegenerationAdmission =
   | { readonly kind: 'admitted'; readonly value: AdmittedRegeneration }
   | { readonly kind: 'rejected'; readonly result: RegenerationRejectedResult };
+
+const QUOTA_DENIED_REASON =
+  'Regeneration quota exceeded for your subscription tier.';
+
+/** Reasons and note for the job payload; an empty note is left out. */
+function regenerationFeedback(
+  args: RequestPlanRegenerationArgs,
+): Pick<PlanRegenerationJobData, 'reasons' | 'note'> {
+  return {
+    ...(args.reasons && args.reasons.length > 0
+      ? { reasons: args.reasons }
+      : {}),
+    ...(args.note ? { note: args.note } : {}),
+  };
+}
+
+/**
+ * Fail-fast quota read; nothing is settled until provider start. A grounded
+ * run on a tier with a per-plan cap counts this plan's regenerations instead
+ * of the monthly meter.
+ */
+async function peekRegenerationQuota(
+  params: {
+    readonly userId: string;
+    readonly planId: string;
+    readonly tier: SubscriptionTier;
+    readonly grounded: boolean;
+  },
+  d: RegenerationRequestDeps,
+): Promise<Extract<
+  RegenerationRejectedResult,
+  { kind: 'quota-denied' }
+> | null> {
+  const planCap = groundedRegenerationPlanCap(
+    params.grounded ? params.tier : undefined,
+  );
+  if (planCap !== null) {
+    const used = await d.quota.countPlanRegenerations(
+      params.planId,
+      d.dbClient,
+    );
+    return used >= planCap
+      ? {
+          kind: 'quota-denied',
+          currentCount: used,
+          limit: planCap,
+          reason: QUOTA_DENIED_REASON,
+        }
+      : null;
+  }
+
+  const usage = await d.quota.peekUsage(params.userId, params.tier, d.dbClient);
+  return usage.regenerations.used >= usage.regenerations.limit
+    ? {
+        kind: 'quota-denied',
+        currentCount: usage.regenerations.used,
+        limit: usage.regenerations.limit,
+        reason: QUOTA_DENIED_REASON,
+      }
+    : null;
+}
 
 async function admitPlanRegeneration(
   args: RequestPlanRegenerationArgs,
@@ -70,9 +133,13 @@ async function admitPlanRegeneration(
     d.tier.resolveUserTier(userId, d.dbClient),
   ]);
 
+  // Grounded regeneration (JCS-162): reasons and note, Free's per-plan cap.
+  // Flag off keeps today's admission and drops reasons and note.
+  const grounded = await d.grounded.isEnabled(tier);
   const merged = buildPersistedRegenerationInput(plan, overrides);
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
+    grounded,
     startDate: merged.startDate,
     deadlineDate: merged.deadlineDate,
   });
@@ -97,25 +164,21 @@ async function admitPlanRegeneration(
     return { kind: 'rejected', result: { kind: 'content-locked' } };
   }
 
-  const usage = await d.quota.peekUsage(userId, tier, d.dbClient);
-  if (usage.regenerations.used >= usage.regenerations.limit) {
-    return {
-      kind: 'rejected',
-      result: {
-        kind: 'quota-denied',
-        currentCount: usage.regenerations.used,
-        limit: usage.regenerations.limit,
-        reason: 'Regeneration quota exceeded for your subscription tier.',
-      },
-    };
+  const quotaDenial = await peekRegenerationQuota(
+    { userId, planId, tier, grounded },
+    d,
+  );
+  if (quotaDenial) {
+    return { kind: 'rejected', result: quotaDenial };
   }
 
+  const feedback = grounded ? regenerationFeedback(args) : {};
   return {
     kind: 'admitted',
     value: {
       userId,
       planId,
-      payload: { planId, overrides },
+      payload: { planId, overrides, ...feedback },
       priority: d.priority.computeJobPriority({
         tier,
         isPriorityTopic: d.priority.isPriorityTopic(plan.topic),

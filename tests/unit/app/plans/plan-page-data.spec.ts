@@ -1,12 +1,28 @@
-import { loadPlanForPage } from '@/app/(app)/plans/[id]/plan-page-data';
+import {
+  loadPlanForPage,
+  loadPlanRegenerationState,
+} from '@/app/(app)/plans/[id]/plan-page-data';
 import { describe, expect, it, vi } from 'vitest';
 
-const { requestBoundaryComponentMock, getPlanDetailForReadMock } = vi.hoisted(
-  () => ({
-    requestBoundaryComponentMock: vi.fn(),
-    getPlanDetailForReadMock: vi.fn(),
-  }),
-);
+const {
+  requestBoundaryComponentMock,
+  getPlanDetailForReadMock,
+  isGroundedEnabledMock,
+  getActiveRegenerationJobMock,
+} = vi.hoisted(() => ({
+  requestBoundaryComponentMock: vi.fn(),
+  getPlanDetailForReadMock: vi.fn(),
+  isGroundedEnabledMock: vi.fn(),
+  getActiveRegenerationJobMock: vi.fn(),
+}));
+
+vi.mock('@/features/ai/grounded-generation-flag', () => ({
+  isGroundedEnabled: isGroundedEnabledMock,
+}));
+
+vi.mock('@/lib/db/queries/jobs', () => ({
+  getActiveRegenerationJob: getActiveRegenerationJobMock,
+}));
 
 vi.mock('@/lib/api/request-boundary', () => ({
   requestBoundary: {
@@ -48,6 +64,52 @@ describe('loadPlanForPage', () => {
     expect(result).toMatchObject({
       success: false,
       error: { code: 'NOT_FOUND' },
+    });
+  });
+});
+
+describe('loadPlanRegenerationState', () => {
+  const actor = { id: 'user-1', subscriptionTier: 'pro' };
+
+  it('hides regeneration without querying jobs when grounded is off', async () => {
+    requestBoundaryComponentMock.mockImplementationOnce(async (resolver) =>
+      resolver({ actor, db: {} }),
+    );
+    isGroundedEnabledMock.mockResolvedValueOnce(false);
+
+    await expect(loadPlanRegenerationState('plan-1')).resolves.toEqual({
+      canRegenerate: false,
+      isRegenerating: false,
+    });
+    expect(getActiveRegenerationJobMock).not.toHaveBeenCalled();
+  });
+
+  it('reports an active regeneration job when grounded is on', async () => {
+    const db = {};
+    requestBoundaryComponentMock.mockImplementationOnce(async (resolver) =>
+      resolver({ actor, db }),
+    );
+    isGroundedEnabledMock.mockResolvedValueOnce(true);
+    getActiveRegenerationJobMock.mockResolvedValueOnce({ id: 'job-1' });
+
+    await expect(loadPlanRegenerationState('plan-1')).resolves.toEqual({
+      canRegenerate: true,
+      isRegenerating: true,
+    });
+    expect(isGroundedEnabledMock).toHaveBeenCalledWith('pro');
+    expect(getActiveRegenerationJobMock).toHaveBeenCalledWith(
+      'plan-1',
+      'user-1',
+      db,
+    );
+  });
+
+  it('hides regeneration when the viewer is signed out', async () => {
+    requestBoundaryComponentMock.mockResolvedValueOnce(null);
+
+    await expect(loadPlanRegenerationState('plan-1')).resolves.toEqual({
+      canRegenerate: false,
+      isRegenerating: false,
     });
   });
 });

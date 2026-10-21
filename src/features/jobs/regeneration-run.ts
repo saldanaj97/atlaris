@@ -1,3 +1,4 @@
+import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 /**
  * Plan regeneration run for the Cloudflare jobs Worker's queue consumer
  * (docs/architecture/regeneration-worker-runbook.md): claim (CAS) → reserve
@@ -9,9 +10,14 @@
  * through the injected `startModuleLessons`.
  */
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
-import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
+import type { GenerationRunResult } from '@/features/plans/lifecycle/service';
+import type {
+  GeneratedModule,
+  GenerationAttemptResult,
+} from '@/features/plans/lifecycle/types';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
+import type { ResearchBrief } from '@/features/plans/research/contract';
 import type {
   PlanRegenerationWorkflowClaimResult,
   PlanRegenerationWorkflowResult,
@@ -21,6 +27,7 @@ import type {
   AttemptRejection,
   AttemptReservation,
 } from '@/lib/db/queries/types/attempts.types';
+import type { DbClient } from '@/lib/db/types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -35,7 +42,9 @@ import {
   updateJobPayload,
 } from '@/features/jobs/queue';
 import { JOB_TYPES, type Job } from '@/features/jobs/types';
+import { toLessonResearch } from '@/features/lesson-content/grounded-lesson-writer';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
 import { resolveRegenerationPolicyDenial } from '@/features/plans/regeneration-orchestration/admission';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';
 import {
@@ -45,13 +54,15 @@ import {
   loadAuthorizedRegenerationPlan,
   validateQueuedRegenerationPayloadForJob,
 } from '@/features/plans/regeneration-orchestration/process-workflow-support';
+import { buildRegenerationGuidance } from '@/features/plans/regeneration-orchestration/reasons';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
 import {
   findAttemptWithWorkflowIdempotencyKey,
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
+import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
 import { getUserPreferences } from '@/lib/db/queries/user-preferences';
-import { jobQueue } from '@supabase/schema';
+import { jobQueue, learningPlans } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
 
@@ -69,6 +80,39 @@ export type RegenerationRunInput = {
   readonly userId: string;
 };
 
+/** What a grounded regeneration's research and outline-quality stages see. */
+export type GroundedRegenerationStageInput = {
+  readonly planId: string;
+  readonly tier: SubscriptionTier;
+  readonly input: GenerationInput;
+  /** Reasons and note as a prompt block (JCS-162), or `null`. */
+  readonly guidance: string | null;
+  /** Rows for the plan created from here on belong to this attempt. */
+  readonly attemptStartedAt: string;
+  readonly db: DbClient;
+};
+
+/**
+ * Grounded regeneration stages (JCS-162), injected by the Worker: research
+ * (JCS-158) and outline checks, verifier and repair (JCS-159).
+ */
+export type GroundedRegenerationStages = {
+  /** The Worker's `groundedGeneration` switch for `tier`. */
+  readonly isEnabled: (tier: SubscriptionTier) => boolean;
+  /** Runs and saves research; `null` when it was skipped after its retries. */
+  readonly research: (
+    stage: GroundedRegenerationStageInput,
+  ) => Promise<ResearchBrief | null>;
+  /** The outline to keep after checks, verifier and one repair. */
+  readonly outlineQuality: (
+    stage: GroundedRegenerationStageInput & {
+      readonly modelOverride: string | null;
+      readonly research: ResearchBrief | null;
+    },
+    modules: GeneratedModule[],
+  ) => Promise<GeneratedModule[]>;
+};
+
 export type RegenerationRunContext = {
   /** Queue message ID: stable across redeliveries of one message. */
   readonly runId: string;
@@ -76,6 +120,8 @@ export type RegenerationRunContext = {
   readonly startModuleLessons: NonNullable<
     EnqueueModuleLessonGenerationsDeps['start']
   >;
+  /** Absent or switched off for the tier: today's regeneration. */
+  readonly grounded?: GroundedRegenerationStages;
 };
 
 /** A retryable failure the queue should redeliver once the job is due again. */
@@ -112,13 +158,16 @@ type LoadedRegeneration = {
 
 type PreparedRegeneration = LoadedRegeneration & {
   readonly tier: SubscriptionTier;
+  readonly grounded: boolean;
   readonly modelOverride?: string;
 };
 
 type Preparation = {
   readonly reservation: AttemptReservation;
   readonly tier: SubscriptionTier;
+  readonly grounded: boolean;
   readonly generationInput: GenerationInput;
+  readonly payload: PlanRegenerationJobPayload;
   readonly modelOverride?: string;
 };
 
@@ -240,13 +289,16 @@ async function loadRegenerationContext(
 
 async function prepareRegeneration(
   loaded: LoadedRegeneration,
+  context: RegenerationRunContext,
   admittedTier?: SubscriptionTier,
 ): Promise<PreparedRegeneration> {
   const { plan, generationInput, payload } = loaded;
   const tier =
     admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
+  const grounded = context.grounded?.isEnabled(tier) === true;
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
+    grounded,
     startDate: generationInput.startDate,
     deadlineDate: generationInput.deadlineDate,
   });
@@ -279,6 +331,7 @@ async function prepareRegeneration(
   return {
     ...loaded,
     tier,
+    grounded,
     ...(modelOverride !== undefined ? { modelOverride } : {}),
   };
 }
@@ -401,6 +454,7 @@ export async function reserveRegenerationRunAttempt(
   try {
     preflight = await prepareRegeneration(
       loaded,
+      context,
       existingReservation?.admittedTier,
     );
   } catch (error: unknown) {
@@ -438,7 +492,11 @@ export async function reserveRegenerationRunAttempt(
     reservation.admittedTier !== preflight.tier
   ) {
     try {
-      prepared = await prepareRegeneration(loaded, reservation.admittedTier);
+      prepared = await prepareRegeneration(
+        loaded,
+        context,
+        reservation.admittedTier,
+      );
     } catch (error: unknown) {
       if (error instanceof RegenerationAdmissionDeniedError) {
         return compensatePostReservationAdmission(
@@ -456,7 +514,9 @@ export async function reserveRegenerationRunAttempt(
   return {
     reservation,
     tier: prepared.tier,
+    grounded: prepared.grounded,
     generationInput: prepared.generationInput,
+    payload: prepared.payload,
     ...(prepared.modelOverride !== undefined
       ? { modelOverride: prepared.modelOverride }
       : {}),
@@ -476,47 +536,113 @@ export async function processRegenerationRun(
   }
 
   const { reservation, tier, generationInput, modelOverride } = preparation;
+  const grounded = preparation.grounded ? context.grounded : undefined;
+  const feedback = {
+    reasons: preparation.payload.reasons ?? null,
+    note: preparation.payload.note ?? null,
+  };
+  const guidance = grounded ? buildRegenerationGuidance(feedback) : null;
+  const stage = (): GroundedRegenerationStageInput => ({
+    planId: input.planId,
+    tier,
+    input: generationInput,
+    guidance,
+    attemptStartedAt: reservation.startedAt.toISOString(),
+    db: serviceRoleDb,
+  });
+
+  // Grounded (JCS-162): the outline writer reads research the provider-start
+  // callback produced, so it is created before research runs.
+  let research: ResearchBrief | null = null;
+  const generationProvider: AiPlanGenerationProvider | undefined = grounded
+    ? {
+        generate: (providerInput, options) =>
+          createGroundedOutlineProvider({
+            tier,
+            purpose: GENERATION_PURPOSE,
+            modelOverride: modelOverride ?? null,
+            research,
+            guidance,
+          }).generate(providerInput, options),
+        generateModuleLessonBatch: () =>
+          Promise.reject(
+            new Error('The grounded outline writer does not write lessons'),
+          ),
+      }
+    : undefined;
   const lifecycle = createPlanLifecycleService({
     dbClient: serviceRoleDb,
     startModuleLessons: context.startModuleLessons,
+    ...(generationProvider ? { generationProvider } : {}),
   });
 
   // Quota is consumed only once the provider is about to start: failures
   // before this callback leave quota untouched, later failures keep it consumed.
+  // A grounded run counts research as provider work: Starter and Pro rerun it
+  // steered by the feedback; Free reuses the plan's saved brief and sources.
   let quotaDenied = false;
-  const generationResult =
-    await lifecycle.processGenerationAttemptWithReservation(
-      {
-        planId: input.planId,
+  const processInput = {
+    planId: input.planId,
+    userId: input.userId,
+    tier,
+    generationPurpose: GENERATION_PURPOSE,
+    input: generationInput,
+    ...(modelOverride !== undefined ? { modelOverride } : {}),
+    workflowMetadata: {
+      provider: PROVIDER,
+      runId: context.runId,
+      startedAt: reservation.startedAt.toISOString(),
+      idempotencyKey: regenerationReservationIdempotencyKey(
+        job.id,
+        job.attempts,
+      ),
+    },
+    onAttemptReserved: async () => {
+      const quotaResult = await reserveRegenerationQuotaAtProviderStart({
         userId: input.userId,
-        tier,
-        generationPurpose: GENERATION_PURPOSE,
-        input: generationInput,
-        ...(modelOverride !== undefined ? { modelOverride } : {}),
-        workflowMetadata: {
-          provider: PROVIDER,
-          runId: context.runId,
-          startedAt: reservation.startedAt.toISOString(),
-          idempotencyKey: regenerationReservationIdempotencyKey(
-            job.id,
-            job.attempts,
-          ),
-        },
-        onAttemptReserved: async () => {
-          const quotaResult = await reserveRegenerationQuotaAtProviderStart({
-            userId: input.userId,
-            planId: input.planId,
-            jobId: job.id,
-            dbClient: serviceRoleDb,
-          });
-          if (!quotaResult.ok) {
-            quotaDenied = true;
-            throw new Error(QUOTA_EXCEEDED_MESSAGE);
-          }
-        },
-      },
+        planId: input.planId,
+        jobId: job.id,
+        dbClient: serviceRoleDb,
+        ...(grounded ? { groundedTier: tier } : {}),
+      });
+      if (!quotaResult.ok) {
+        quotaDenied = true;
+        throw new Error(QUOTA_EXCEEDED_MESSAGE);
+      }
+      if (grounded) {
+        research = await loadRegenerationResearch(grounded, stage());
+      }
+    },
+  };
+
+  let generationResult: GenerationAttemptResult;
+  if (grounded) {
+    const run = await lifecycle.runGenerationWithReservation(
+      processInput,
       reservation,
     );
+    let toSettle: GenerationRunResult = run;
+    if (run.status === 'success') {
+      toSettle = {
+        ...run,
+        modules: await grounded.outlineQuality(
+          { ...stage(), modelOverride: modelOverride ?? null, research },
+          run.modules,
+        ),
+      };
+      // Before settlement, which starts the lessons that read it.
+      await saveRegenerationFeedback(input.planId, feedback);
+    }
+    generationResult = await lifecycle.settleGenerationResult(
+      processInput,
+      toSettle,
+    );
+  } else {
+    generationResult = await lifecycle.processGenerationAttemptWithReservation(
+      processInput,
+      reservation,
+    );
+  }
 
   if (quotaDenied) {
     await failJob(job.id, QUOTA_EXCEEDED_MESSAGE, { retryable: false });
@@ -524,6 +650,38 @@ export async function processRegenerationRun(
   }
 
   return generationResult;
+}
+
+/**
+ * Research for a grounded regeneration: paid tiers rerun it steered by the
+ * feedback (`null` when it was skipped); Free reuses the plan's latest saved
+ * brief and sources.
+ */
+async function loadRegenerationResearch(
+  grounded: GroundedRegenerationStages,
+  stage: GroundedRegenerationStageInput,
+): Promise<ResearchBrief | null> {
+  if (stage.tier !== 'free') {
+    return grounded.research(stage);
+  }
+  return toLessonResearch(await getLatestPlanResearch(stage.planId, stage.db));
+}
+
+/** The reasons and note the lesson writer reads; `null` clears older ones. */
+async function saveRegenerationFeedback(
+  planId: string,
+  feedback: {
+    readonly reasons: readonly string[] | null;
+    readonly note: string | null;
+  },
+): Promise<void> {
+  await serviceRoleDb
+    .update(learningPlans)
+    .set({
+      regenerationReasons: feedback.reasons ? [...feedback.reasons] : null,
+      regenerationNote: feedback.note,
+    })
+    .where(eq(learningPlans.id, planId));
 }
 
 export async function finalizeRegenerationRun(

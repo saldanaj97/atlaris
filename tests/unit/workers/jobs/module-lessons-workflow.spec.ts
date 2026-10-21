@@ -8,6 +8,7 @@ import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
 } from '../../../../workers/jobs/src/workflows/module-lessons/run';
+import { REGENERATION_REASON_GUIDANCE } from '@/features/plans/regeneration-orchestration/reasons';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const queries = vi.hoisted(() => ({
@@ -44,6 +45,17 @@ const research = vi.hoisted(() => ({ latest: vi.fn() }));
 
 vi.mock('@/lib/db/queries/plan-research', () => ({
   getLatestPlanResearch: research.latest,
+}));
+
+const plan = vi.hoisted(() => ({
+  feedback: {
+    regenerationReasons: null as string[] | null,
+    regenerationNote: null as string | null,
+  },
+}));
+
+vi.mock('@/lib/db/queries/helpers/plans-helpers', () => ({
+  selectOwnedPlanById: vi.fn(async () => plan.feedback),
 }));
 
 const writer = vi.hoisted(() => ({ write: vi.fn() }));
@@ -882,6 +894,50 @@ describe('runModuleLessonsWorkflow', () => {
             task.content.sourceIds,
         ),
       ).toEqual([[], []]);
+    });
+
+    it("adds the plan's regeneration reasons and fenced note to each lesson prompt", async () => {
+      plan.feedback = {
+        regenerationReasons: ['too_basic'],
+        regenerationNote: 'More practice please',
+      };
+      writerReturning(() => 'Typed [S1].');
+      const { deps } = groundedDeps();
+      const { step } = createStep();
+
+      try {
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+      } finally {
+        plan.feedback = { regenerationReasons: null, regenerationNote: null };
+      }
+
+      const [first] = writer.write.mock.calls[0] ?? [];
+      const reason = first.userParts.find((part: { text: string }) =>
+        part.text.startsWith('REGENERATION FEEDBACK'),
+      );
+      expect(reason?.text).toContain(REGENERATION_REASON_GUIDANCE.too_basic);
+      expect(reason?.text).toContain(
+        '---BEGIN LEARNER NOTE---\nMore practice please\n---END LEARNER NOTE---',
+      );
+    });
+
+    it('sends no regeneration block when the plan has no reasons or note', async () => {
+      writerReturning(() => 'Typed [S1].');
+      const { deps } = groundedDeps();
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      const [first] = writer.write.mock.calls[0] ?? [];
+      expect(
+        first.userParts.some((part: { text: string }) =>
+          part.text.startsWith('REGENERATION FEEDBACK'),
+        ),
+      ).toBe(false);
     });
 
     it.each([

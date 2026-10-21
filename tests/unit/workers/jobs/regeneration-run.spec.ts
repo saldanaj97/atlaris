@@ -27,6 +27,11 @@ const mocks = vi.hoisted(() => ({
   findAttemptWithWorkflowIdempotencyKey: vi.fn(),
   reserveAttemptSlot: vi.fn(),
   scheduledFor: vi.fn(),
+  runGenerationWithReservation: vi.fn(),
+  settleGenerationResult: vi.fn(),
+  getLatestPlanResearch: vi.fn(),
+  createGroundedOutlineProvider: vi.fn(),
+  updatePlan: vi.fn(),
 }));
 
 vi.mock('@/features/jobs/queue', () => ({
@@ -55,6 +60,14 @@ vi.mock('@/features/billing/tier', () => ({
   resolveUserTier: mocks.resolveUserTier,
 }));
 
+vi.mock('@/lib/db/queries/plan-research', () => ({
+  getLatestPlanResearch: mocks.getLatestPlanResearch,
+}));
+
+vi.mock('@/features/plans/outline/grounded-writer', () => ({
+  createGroundedOutlineProvider: mocks.createGroundedOutlineProvider,
+}));
+
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: mocks.getUserPreferences,
 }));
@@ -80,9 +93,15 @@ vi.mock(
   },
 );
 
-// `select({ scheduledFor }).from(jobQueue).where(...).limit(1)`
+// `select({ scheduledFor }).from(jobQueue).where(...).limit(1)`;
+// `update(learningPlans).set(feedback).where(...)`
 vi.mock('@supabase/service-role', () => ({
   db: {
+    update: () => ({
+      set: (values: unknown) => ({
+        where: async () => mocks.updatePlan(values),
+      }),
+    }),
     select: () => ({
       from: () => ({
         where: () => ({
@@ -170,6 +189,8 @@ beforeEach(() => {
     processGenerationAttemptWithReservation:
       mocks.processGenerationAttemptWithReservation,
     settleReservedAttemptFailure: mocks.settleReservedAttemptFailure,
+    runGenerationWithReservation: mocks.runGenerationWithReservation,
+    settleGenerationResult: mocks.settleGenerationResult,
   } as unknown as PlanLifecycleService);
   mocks.claimJob.mockImplementation(async () => job('processing', RUN_ID));
   mocks.updateJobPayload.mockResolvedValue(null);
@@ -457,6 +478,227 @@ describe('runPlanRegeneration quota settlement', () => {
 
     await expect(runPlanRegeneration(JOB_ID, context)).rejects.toBe(outage);
     expect(mocks.failJob).not.toHaveBeenCalled();
+  });
+});
+
+describe('runPlanRegeneration grounded (JCS-162)', () => {
+  const FEEDBACK = { reasons: ['too_basic'], note: 'More practice please' };
+  const MODULES = [{ title: 'Written', tasks: [{}, {}] }];
+  const CHECKED = [{ title: 'Checked', tasks: [{}, {}, {}] }];
+  const BRIEF = {
+    brief: 'Fresh brief [S1]',
+    sources: [
+      {
+        key: 'S1',
+        title: 'Rust book',
+        url: 'https://doc.rust-lang.org/book/',
+        publisher: 'rust-lang.org',
+      },
+    ],
+  };
+  const SAVED_ROW = {
+    research: { status: 'ok', brief: 'Saved brief [S1]' },
+    sources: [
+      {
+        citationKey: 'S1',
+        title: 'Rust book',
+        url: 'https://doc.rust-lang.org/book/',
+        publisher: 'rust-lang.org',
+      },
+    ],
+  };
+
+  const stages = {
+    isEnabled: vi.fn(() => true),
+    research: vi.fn(),
+    outlineQuality: vi.fn(),
+  };
+  const groundedContext = { ...context, grounded: stages };
+  const order: string[] = [];
+
+  function groundedJob(status: Job['status'], runId?: string): Job {
+    const row = job(status, runId);
+    return { ...row, data: { ...row.data, ...FEEDBACK } };
+  }
+
+  /** The lifecycle as the Worker sees it: provider start, outline, settle. */
+  function lifecycleRuns() {
+    mocks.runGenerationWithReservation.mockImplementation(
+      async (args: { onAttemptReserved?: () => Promise<void> }) => {
+        await args.onAttemptReserved?.();
+        const provider = mocks.createPlanLifecycleService.mock.calls.at(-1)?.[0]
+          .generationProvider as {
+          generate: (input: unknown, options: unknown) => Promise<unknown>;
+        };
+        await provider.generate({}, {});
+        order.push('outline');
+        return { status: 'success', modules: MODULES };
+      },
+    );
+    mocks.settleGenerationResult.mockImplementation(async () => {
+      order.push('settle');
+      return {
+        status: 'generation_success',
+        data: { modules: CHECKED, metadata: {}, durationMs: 12 },
+      };
+    });
+  }
+
+  beforeEach(() => {
+    order.length = 0;
+    jobSequence(
+      groundedJob('pending'),
+      groundedJob('pending'),
+      groundedJob('processing', RUN_ID),
+    );
+    stages.isEnabled.mockReturnValue(true);
+    stages.research.mockImplementation(async () => {
+      order.push('research');
+      return BRIEF;
+    });
+    stages.outlineQuality.mockImplementation(async () => {
+      order.push('quality');
+      return CHECKED;
+    });
+    mocks.createGroundedOutlineProvider.mockReturnValue({
+      generate: vi.fn(async () => ({})),
+    });
+    mocks.updatePlan.mockImplementation(() => {
+      order.push('feedback');
+    });
+    lifecycleRuns();
+  });
+
+  it('reruns research on paid tiers, steered by the reasons and note', async () => {
+    await expect(
+      runPlanRegeneration(JOB_ID, groundedContext),
+    ).resolves.toMatchObject({ kind: 'completed' });
+
+    expect(order).toEqual([
+      'research',
+      'outline',
+      'quality',
+      'feedback',
+      'settle',
+    ]);
+    const [stage] = stages.research.mock.calls[0] ?? [];
+    expect(stage).toMatchObject({ planId: PLAN_ID, tier: 'pro' });
+    expect(stage.guidance).toContain('REGENERATION FEEDBACK');
+    expect(stage.guidance).toContain(
+      '---BEGIN LEARNER NOTE---\nMore practice please\n---END LEARNER NOTE---',
+    );
+    expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tier: 'pro',
+        research: BRIEF,
+        guidance: stage.guidance,
+      }),
+    );
+    expect(stages.outlineQuality).toHaveBeenCalledWith(
+      expect.objectContaining({ research: BRIEF }),
+      MODULES,
+    );
+    expect(mocks.settleGenerationResult).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ status: 'success', modules: CHECKED }),
+    );
+    expect(mocks.reserveRegenerationQuotaAtProviderStart).toHaveBeenCalledWith(
+      expect.objectContaining({ groundedTier: 'pro' }),
+    );
+    expect(mocks.updatePlan).toHaveBeenCalledWith({
+      regenerationReasons: ['too_basic'],
+      regenerationNote: 'More practice please',
+    });
+    expect(mocks.getLatestPlanResearch).not.toHaveBeenCalled();
+    expect(
+      mocks.processGenerationAttemptWithReservation,
+    ).not.toHaveBeenCalled();
+  });
+
+  it('admits Free and reuses the saved brief instead of researching', async () => {
+    mocks.resolveUserTier.mockResolvedValue('free');
+    mocks.getLatestPlanResearch.mockResolvedValue(SAVED_ROW);
+
+    await expect(
+      runPlanRegeneration(JOB_ID, groundedContext),
+    ).resolves.toMatchObject({ kind: 'completed' });
+
+    expect(stages.research).not.toHaveBeenCalled();
+    expect(mocks.getLatestPlanResearch).toHaveBeenCalledWith(
+      PLAN_ID,
+      expect.anything(),
+    );
+    const saved = {
+      brief: 'Saved brief [S1]',
+      sources: [expect.objectContaining({ key: 'S1' })],
+    };
+    expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+      expect.objectContaining({ tier: 'free', research: saved }),
+    );
+    expect(mocks.reserveRegenerationQuotaAtProviderStart).toHaveBeenCalledWith(
+      expect.objectContaining({ groundedTier: 'free' }),
+    );
+  });
+
+  it('clears older feedback when the job has no reasons or note', async () => {
+    jobSequence(job('pending'), job('pending'), job('processing', RUN_ID));
+
+    await runPlanRegeneration(JOB_ID, groundedContext);
+
+    expect(stages.research.mock.calls[0]?.[0].guidance).toBeNull();
+    expect(mocks.updatePlan).toHaveBeenCalledWith({
+      regenerationReasons: null,
+      regenerationNote: null,
+    });
+  });
+
+  it('skips quality and feedback when the outline fails', async () => {
+    mocks.runGenerationWithReservation.mockResolvedValue({
+      status: 'failure',
+      classification: 'timeout',
+      error: new Error('timeout'),
+      durationMs: 1,
+    });
+    mocks.settleGenerationResult.mockResolvedValue({
+      status: 'retryable_failure',
+      classification: 'timeout',
+      error: new Error('timeout'),
+    });
+
+    await expect(
+      runPlanRegeneration(JOB_ID, groundedContext),
+    ).resolves.toMatchObject({ kind: 'retry-scheduled' });
+    expect(stages.outlineQuality).not.toHaveBeenCalled();
+    expect(mocks.updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("keeps today's flow when the switch is off for the tier", async () => {
+    stages.isEnabled.mockReturnValue(false);
+
+    await expect(
+      runPlanRegeneration(JOB_ID, groundedContext),
+    ).resolves.toMatchObject({ kind: 'completed' });
+
+    expect(mocks.processGenerationAttemptWithReservation).toHaveBeenCalled();
+    expect(mocks.runGenerationWithReservation).not.toHaveBeenCalled();
+    expect(stages.research).not.toHaveBeenCalled();
+    expect(mocks.updatePlan).not.toHaveBeenCalled();
+    expect(
+      mocks.createPlanLifecycleService.mock.calls[0]?.[0],
+    ).not.toHaveProperty('generationProvider');
+    expect(
+      mocks.reserveRegenerationQuotaAtProviderStart.mock.calls[0]?.[0],
+    ).not.toHaveProperty('groundedTier');
+  });
+
+  it('still denies Free when the switch is off', async () => {
+    stages.isEnabled.mockReturnValue(false);
+    mocks.resolveUserTier.mockResolvedValue('free');
+
+    await expect(
+      runPlanRegeneration(JOB_ID, groundedContext),
+    ).resolves.toMatchObject({ kind: 'permanent-failure' });
+    expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
   });
 });
 

@@ -1,9 +1,14 @@
-import type { PlanAccessResult } from '@/app/(app)/plans/[id]/types';
+import type {
+  PlanAccessResult,
+  PlanRegenerationState,
+} from '@/app/(app)/plans/[id]/types';
 
 import { planError, planSuccess } from '@/app/(app)/plans/[id]/helpers';
 import { accessErrorFromAppError } from '@/app/(app)/plans/access-result';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -49,4 +54,22 @@ export function loadPlanForPage(planId: string): Promise<PlanAccessResult> {
         'You must be signed in to view this plan.',
       );
     });
+}
+
+/**
+ * Regeneration state for the plan overview header (JCS-162). Offered only
+ * when grounded generation is on for the viewer's tier; the active-job check
+ * keeps the "Regenerating" state across reloads. Call after the plan loaded.
+ */
+export async function loadPlanRegenerationState(
+  planId: string,
+): Promise<PlanRegenerationState> {
+  const state = await requestBoundary.component(async ({ actor, db }) => {
+    if (!(await isGroundedEnabled(actor.subscriptionTier))) {
+      return { canRegenerate: false, isRegenerating: false };
+    }
+    const activeJob = await getActiveRegenerationJob(planId, actor.id, db);
+    return { canRegenerate: true, isRegenerating: activeJob !== null };
+  });
+  return state ?? { canRegenerate: false, isRegenerating: false };
 }

@@ -177,6 +177,26 @@ describe('grounded outline writer', () => {
     expect(prompt).toContain('TypeScript generics');
   });
 
+  it('adds regeneration guidance after the contract', async () => {
+    const fetchMock = textFetch(JSON.stringify({ modules: MODULES }));
+    const provider = createGroundedOutlineProvider(
+      {
+        tier: 'pro',
+        purpose: 'regeneration',
+        research: RESEARCH,
+        guidance: 'REGENERATION FEEDBACK: go deeper',
+      },
+      { fetch: fetchMock },
+    );
+
+    await provider.generate(INPUT);
+
+    const prompt = JSON.stringify(sentBody(fetchMock).messages);
+    expect(prompt.indexOf('TITLE-SCOPE CONTRACT')).toBeLessThan(
+      prompt.indexOf('REGENERATION FEEDBACK: go deeper'),
+    );
+  });
+
   it('rejects output with no JSON object', async () => {
     const provider = createGroundedOutlineProvider(
       { tier: 'free', purpose: 'initial', research: null },
