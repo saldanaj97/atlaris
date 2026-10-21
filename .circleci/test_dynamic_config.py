@@ -5,6 +5,7 @@ from pathlib import Path
 
 CONFIG_DIR = Path(__file__).parent
 REQUIRED_CHECKS = {
+    "build",
     "dependency-remediation-tests",
     "integration-light",
     "lint-and-type-check",
@@ -33,7 +34,11 @@ def select_config(paths: list[str]) -> tuple[dict[str, bool], set[str]]:
 
 
 def main() -> None:
-    assert "command: pnpm build" not in (CONFIG_DIR / "code-config.yml").read_text()
+    code_config = (CONFIG_DIR / "code-config.yml").read_text()
+    build_job = re.search(r"^  build:\n(?P<body>(?: {4}.*\n|\n)+)", code_config, re.MULTILINE)
+    assert build_job and "command: pnpm build" in build_job.group("body")
+    ci_pr = re.search(r"^  ci-pr:\n(?P<body>.*?)^  ci-trunk:", code_config, re.MULTILINE | re.DOTALL)
+    assert ci_pr and re.search(r"^ {6}- build:$", ci_pr.group("body"), re.MULTILINE)
 
     cases = {
         "docs-only": (

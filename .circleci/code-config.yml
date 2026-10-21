@@ -69,6 +69,24 @@ commands:
               circleci-agent step halt
             fi
 
+  # Halt the build job before checkout when no build input changed. The `build`
+  # flag (see detect-changes) covers source, root configs, package.json, the
+  # lockfile and .circleci/, so a CI-only PR still exercises the job.
+  # PRs into main always build.
+  skip-unless-build-inputs:
+    steps:
+      - attach_workspace:
+          at: /tmp/.ci-flags
+      - run:
+          name: Skip if no build-input changes
+          command: |
+            if [ "<< pipeline.event.github.pull_request.base.ref >>" = "main" ]; then
+              echo "PR into main; running in full."
+            elif [ "$(cat /tmp/.ci-flags/build 2>/dev/null || echo true)" != "true" ]; then
+              echo "No build-input changes; skipping."
+              circleci-agent step halt
+            fi
+
   # Restore-only: the pnpm store cache is saved by warm-pnpm-cache on trunk,
   # so PR and parallel jobs never upload their own copy.
   install-pnpm-deps:
@@ -174,6 +192,7 @@ jobs:
             echo true > .ci-flags/source
             echo true > .ci-flags/integration
             echo true > .ci-flags/remediation
+            echo true > .ci-flags/build
 
             event_name="<< pipeline.event.name >>"
             base_rev="<< pipeline.git.base_revision >>"
@@ -203,12 +222,14 @@ jobs:
             source=false
             integration=false
             remediation=false
+            build=false
             changed_files="$(mktemp)"
             if ! git diff --name-only "${diff_range}" > "${changed_files}"; then
               echo "git diff failed; assuming source and integration changed."
               source=true
               integration=true
               remediation=true
+              build=true
             else
               while IFS= read -r f; do
                 [ -z "${f}" ] && continue
@@ -233,20 +254,30 @@ jobs:
                     remediation=true
                     ;;
                 esac
+                case "${f}" in
+                  .circleci/*)
+                    build=true
+                    ;;
+                esac
               done < "${changed_files}"
+              if [ "${source}" = "true" ] || [ "${integration}" = "true" ]; then
+                build=true
+              fi
             fi
             rm -f "${changed_files}"
 
             echo "${source}" > .ci-flags/source
             echo "${integration}" > .ci-flags/integration
             echo "${remediation}" > .ci-flags/remediation
-            echo "source=${source} integration=${integration} remediation=${remediation}"
+            echo "${build}" > .ci-flags/build
+            echo "source=${source} integration=${integration} remediation=${remediation} build=${build}"
       - persist_to_workspace:
           root: .ci-flags
           paths:
             - source
             - integration
             - remediation
+            - build
 
   lint-and-type-check:
     executor: node
@@ -280,6 +311,23 @@ jobs:
               echo "workers/jobs/.cloudflare/types/index.d.ts is stale. Run 'pnpm workers types' and commit the file."
               exit 1
             fi
+
+  # Next.js build gate for PRs (Vercel only builds develop and main). Needs no
+  # secrets. The empty Sentry token overrides any project-level value, so
+  # withSentryConfig skips release creation and source-map upload.
+  build:
+    executor: node
+    environment:
+      SENTRY_AUTH_TOKEN: ''
+    steps:
+      - skip-unless-build-inputs
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Build
+          no_output_timeout: 15m
+          command: pnpm build
 
   vulnerability-scan:
     executor: node
@@ -646,6 +694,9 @@ workflows:
     jobs:
       - detect-changes
       - lint-and-type-check:
+          requires:
+            - detect-changes
+      - build:
           requires:
             - detect-changes
       - vulnerability-scan:

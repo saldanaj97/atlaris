@@ -17,9 +17,8 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Open PRs into `develop` (or `main` only for true hotfixes). No long-lived track branches: unfinished work lands behind a flag in `src/flags.ts`.
 - Promote `develop` to `main` in batches (at most daily, or per milestone) and merge the promotion with a merge commit, never squash or rebase. See [branching-strategy.md](../ci/branching-strategy.md#batched-promotions).
 - PRs run CircleCI `ci-pr` checks.
-- CircleCI owns code and test validation; Vercel's Git integration is the authoritative Next.js build and deployment validation.
-- Vercel deploys branch pushes as Preview and `main` pushes as Production.
-- Vercel's dashboard-configured Ignored Build Step skips builds for docs-only commits.
+- CircleCI owns code, test and Next.js build validation (the required `build` check).
+- Vercel deploys only `develop` (Preview, staging) and `main` (Production); feature and PR branches are not deployed.
 - Preview databases are provisioned per your Vercel/Supabase setup; wire `POSTGRES_URL` for each preview environment there.
 - Merging to `develop` runs Supabase CLI migrations against staging (operator-dispatched expand/contract).
 - JCS-52 will add native Vercel Deployment Checks for Production gating.
@@ -33,7 +32,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 | Environment | Source | Owner | Notes |
 | ----------- | ------ | ----- | ----- |
 | Local / Local Preview | Your feature branch | You | Fast local iteration (`pnpm dev`, local product testing; 1Password Local Preview lane in JCS-50) |
-| Preview | Branch pushes and PRs | Vercel Git integration | Each branch push gets a Preview deployment unless the Ignored Build Step skips a docs-only commit |
+| Preview | `develop` only | Vercel Git integration | Hosted staging build; feature and PR branches get no Vercel deployment (use `pnpm dev` or a one-off `vercel deploy`) |
 | Staging | `develop` | Vercel Preview + Supabase migrations | The `develop` Preview uses non-Production services; migration phases target the staging project |
 | Staged Production proof | Exact `main` SHA on `origin/main` | Operator + Vercel | Post-push unaliased rehearsal; it does not govern native Production aliases or domains. Not a sandbox — uses Production-scoped config. See [staged-production-deployment.md](./staged-production-deployment.md). |
 | Live Production | `main` | Vercel Git integration | `main` pushes create Production deployments; JCS-52 will add native Deployment Checks for Production gating |
@@ -47,7 +46,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - The setup pipeline uses `circleci/path-filtering@1.3.0` to compare the current revision with the PR base branch or `pipeline.git.base_revision` for `main`/`develop` pushes. Standalone feature-branch pushes do not launch a setup workflow; PR events own validation.
 - Every changed-file pipeline includes `.circleci/shared-config.yml`. Docs-only changes—including root Markdown files—add `.circleci/docs-config.yml`; code, mixed, and CI/config changes add `.circleci/code-config.yml`. The orb merges the selected fragments into the single continuation config.
 - `.circleci/no-updates.yml` is the fallback when the comparison contains no changed files.
-- Docs-only pipelines publish zero-credit no-op jobs under the six required CircleCI check names. They do not provision code CI executors or run lint, audit, or test commands. Vercel still publishes a successful required status when its Ignored Build Step skips the deployment.
+- Docs-only pipelines publish zero-credit no-op jobs under the seven required CircleCI check names (including `build`). They do not provision code CI executors or run build, lint, audit, or test commands.
 
 ### 2) CircleCI `ci-pr` (`.circleci/code-config.yml`)
 
@@ -57,7 +56,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - `.circleci/test-suites.yml` defines the unit-test discovery/run contract for CircleCI Smarter Testing, including test impact analysis. The `unit tests` suite spans two Vitest projects: `unit` (`.spec.ts`, Node environment) and `unit-dom` (`.spec.tsx`, jsdom). PR `unit-tests` runs `circleci testsuite run` on a single container (Node's `os.availableParallelism()` already reports the executor's 4 vCPUs, so Vitest sizes its pool correctly without a `maxWorkers` pin); JUnit output is stored at `test-results/unit/junit.xml` for timing and result ingestion.
 - The `integration tests` suite sets `dynamic-test-splitting: true`, which only affects jobs with `parallelism` above 1 (`integration-tests` on `develop`). Auto-rerun stays off: a failure here is a real signal, not a flake. Smarter Testing bills discovered atoms once per `circleci testsuite run` whatever options are on, so splitting adds no test units beyond test impact analysis.
 - Dynamic parallelism trial (experimental): on `develop`, `list-integration-tests` runs `circleci testsuite list-tests` with the same selection flags as `integration-tests`, and the `experimental.dynamic-parallelism` stanza in `code-config.yml` sizes `integration-tests` between 1 and 2 nodes from that list. The job's `parallelism: 2` is the fallback. The trial exists to measure whether `list-tests` bills test units: compare the usage dashboard per `develop` push against the ~491-unit baseline (313 unit + 89 integration analysis + 89 integration run).
-- `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. GitHub rulesets require the Vercel GitHub App's `Vercel` status plus these CircleCI jobs: `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `dependency-remediation-tests` (runs only `node --test .github/scripts/dependency-remediation.test.mjs`) (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
+- `integration-light` keeps its job name because GitHub rulesets require it. There is no aggregator job. The `development` (`develop`) GitHub ruleset requires these seven CircleCI jobs and not the `Vercel` status; the `main` ruleset requires the seven CircleCI checks plus Vercel. The jobs: `build` (runs `pnpm build`), `lint-and-type-check`, `vulnerability-scan`, `unit-tests`, `integration-light`, `security-tests`, `dependency-remediation-tests` (runs only `node --test .github/scripts/dependency-remediation.test.mjs`) (GitHub may show them as `ci/circleci: <job>` — pick the names from **Add checks** after a pipeline has run)
 - `develop` → `main` PRs need a CircleCI GitHub App trigger that emits `pull_request` (`opened` / `synchronize` / `reopened` / `ready_for_review`). Keep **All pushes** so `ci-trunk` still runs on `develop` and `main`
 
 ### 3) CircleCI `ci-trunk` (`.circleci/code-config.yml`)
@@ -74,7 +73,7 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 - Both `analysis` commands run in single-pass mode: `@circleci/vitest-circleci-coverage` records per-test V8 coverage for all impacted atoms in one Vitest run (`CIRCLECI_COVERAGE=<< outputs.circleci-coverage >>`). The earlier lcov mode ran one Vitest process per atom (~7s each), so a widely imported change re-analyzed 300+ atoms for 35+ minutes.
 - Browser smoke is a supported local command (`pnpm test smoke`), not a hosted CI gate
 
-Vercel's native Git integration is separate from CircleCI: every branch push creates a Preview deployment (including `develop`), and every `main` push creates a Production deployment. Its required `Vercel` status owns Next.js compilation, packaging, and deployment validation; CircleCI does not run a duplicate `pnpm build`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
+Vercel's native Git integration is separate from CircleCI: only `develop` pushes create a Preview deployment (staging), and every `main` push creates a Production deployment. CircleCI `build` is the PR gate for Next.js compilation; Vercel's `Vercel` status covers deployment validation on `main`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
 
 ### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
 
@@ -123,8 +122,8 @@ Vercel's native Git integration is separate from CircleCI: every branch push cre
 
 1. You push to a feature branch and open a PR to `develop`.
 2. CircleCI `ci-pr` validates code quality and tests.
-3. Vercel's required GitHub status validates the Next.js build and Preview deployment; the Ignored Build Step reports success for docs-only commits.
-4. Configure preview Supabase settings in Vercel if preview deployments need a database.
+3. CircleCI `build` validates the Next.js build; docs-only PRs report `build` as a no-op. Vercel does not deploy the PR branch.
+4. Configure preview Supabase settings in Vercel for the `develop` Preview deployment.
 
 ---
 
@@ -174,7 +173,7 @@ No Vercel credentials are stored in GitHub. Vercel project and Production enviro
 
 ### Vercel settings
 
-Keep the GitHub project connection and Deployment Protection enabled. Configure the Ignored Build Step in the Vercel dashboard to skip commits limited to documentation files; any code or mixed change should build. Native Git remains enabled for all branches, with branch pushes creating Preview deployments and `main` pushes creating Production deployments. JCS-52 will add native Deployment Checks for Production gating.
+Keep the GitHub project connection and Deployment Protection enabled. Configure the Ignored Build Step in the Vercel dashboard to skip commits limited to documentation files; any code or mixed change should build. Native Git builds only `develop` (Preview) and `main` (Production); feature and PR branches are not deployed. JCS-52 will add native Deployment Checks for Production gating.
 
 ---
 
