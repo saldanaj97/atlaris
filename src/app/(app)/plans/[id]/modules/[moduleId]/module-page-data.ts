@@ -5,6 +5,7 @@ import {
   moduleSuccess,
 } from '@/app/(app)/plans/[id]/modules/[moduleId]/helpers';
 import { accessErrorFromAppError } from '@/app/(app)/plans/access-result';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { getModuleDetailForRead } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { logger } from '@/lib/logging/logger';
@@ -26,6 +27,7 @@ export function loadModuleForPage(
           moduleId,
           userId: actor.id,
           dbClient: db,
+          includeLessonSources: await isGroundedEnabled(actor.subscriptionTier),
         });
         if (!moduleData) {
           logger.debug(
