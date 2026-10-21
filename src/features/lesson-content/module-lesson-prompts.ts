@@ -46,7 +46,7 @@ export type ModuleLessonBatchPromptInput = {
   readonly tasks: readonly ModuleLessonBatchPromptTask[];
 };
 
-function optionalSanitizedLine(
+export function optionalSanitizedLine(
   label: string,
   value: string | null | undefined,
   maxChars: number,
@@ -63,7 +63,9 @@ function optionalSanitizedLine(
 /**
  * Rough character budget hint per task (lesson body should stay proportional; hard caps still enforced by schema / DB).
  */
-function suggestedLessonBodyBudgetChars(estimatedMinutes: number): number {
+export function suggestedLessonBodyBudgetChars(
+  estimatedMinutes: number,
+): number {
   const scaled =
     LESSON_BODY_BUDGET_BASE_CHARS +
     Math.round(estimatedMinutes) * LESSON_BODY_BUDGET_CHARS_PER_MINUTE;

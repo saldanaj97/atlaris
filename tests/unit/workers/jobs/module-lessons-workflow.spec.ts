@@ -1,6 +1,8 @@
 import type { DbClient } from '@/lib/db/types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
+import { mapWithConcurrency } from '../../../../workers/jobs/src/workflows/module-lessons/grounded';
 import {
   type ModuleLessonsWorkflowDeps,
   type ModuleLessonsWorkflowParams,
@@ -30,9 +32,31 @@ vi.mock('@/features/plans/entitlement/access', () => ({
   readPlanContentAccess: vi.fn(async () => 'full'),
 }));
 
-vi.mock('@/features/billing/tier', () => ({
-  resolveUserTier: vi.fn(async () => 'free'),
+const tier = vi.hoisted(() => ({
+  value: 'free' as 'free' | 'starter' | 'pro',
 }));
+
+vi.mock('@/features/billing/tier', () => ({
+  resolveUserTier: vi.fn(async () => tier.value),
+}));
+
+const research = vi.hoisted(() => ({ latest: vi.fn() }));
+
+vi.mock('@/lib/db/queries/plan-research', () => ({
+  getLatestPlanResearch: research.latest,
+}));
+
+const writer = vi.hoisted(() => ({ write: vi.fn() }));
+
+vi.mock(
+  '@/features/lesson-content/grounded-lesson-writer',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/features/lesson-content/grounded-lesson-writer')
+    >()),
+    writeGroundedLesson: writer.write,
+  }),
+);
 
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: vi.fn(async () => ({
@@ -68,6 +92,9 @@ type ModuleState = {
 
 /** The module row the mocked queries read and write. */
 let moduleRow: ModuleState;
+
+/** The module's tasks, in order. */
+let taskIds: string[];
 
 function validBatchText(taskIds: readonly string[] = [TASK_A, TASK_B]): string {
   const block = { type: 'heading', text: 'Hi' };
@@ -187,6 +214,9 @@ function stepLogs(logger: { info: ReturnType<typeof vi.fn> }) {
 describe('runModuleLessonsWorkflow', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    taskIds = [TASK_A, TASK_B];
+    tier.value = 'free';
+    research.latest.mockResolvedValue(null);
     // The app's provisional claim: generating, batch ID, no workflow yet.
     moduleRow = {
       status: 'generating',
@@ -208,7 +238,7 @@ describe('runModuleLessonsWorkflow', () => {
         lessonGenerationStatus: moduleRow.status,
         lessonGenerationMetadata: moduleRow.metadata,
       },
-      tasks: [TASK_A, TASK_B].map((id, index) => ({
+      tasks: taskIds.map((id, index) => ({
         id,
         moduleId: MODULE_ID,
         order: index + 1,
@@ -578,5 +608,328 @@ describe('runModuleLessonsWorkflow', () => {
       runModuleLessonsWorkflow(event({ v: 1 }), step, deps),
     ).rejects.toMatchObject({ name: 'NonRetryableError' });
     expect(calls).toEqual([]);
+  });
+
+  describe('grounded lessons', () => {
+    const TASK_IDS = Array.from(
+      { length: 7 },
+      (_v, index) => `${String(index + 5)}a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d`,
+    );
+
+    function usage(): CanonicalAIUsage {
+      return {
+        inputTokens: 10,
+        outputTokens: 5,
+        totalTokens: 15,
+        model: 'grounded-writer',
+        provider: 'openrouter',
+        estimatedCostCents: 1,
+        providerCostMicrousd: 100,
+        isPartial: false,
+        missingFields: [],
+      };
+    }
+
+    /** The taskId the lesson task part names. */
+    function promptTaskId(call: { userParts: readonly { text: string }[] }) {
+      return /taskId: (\S+)/.exec(call.userParts.at(-1)?.text ?? '')?.[1];
+    }
+
+    /** Writes each lesson with `text(taskId, attempt)` as its only paragraph. */
+    function writerReturning(
+      text: (taskId: string, attempt: number) => string = () => 'Typed [S1].',
+    ) {
+      const attempts = new Map<string, number>();
+      writer.write.mockImplementation(async (call) => {
+        const taskId = promptTaskId(call) ?? '';
+        const attempt = (attempts.get(taskId) ?? 0) + 1;
+        attempts.set(taskId, attempt);
+        return {
+          rawText: JSON.stringify({
+            version: 1,
+            tasks: [
+              {
+                taskId,
+                content: {
+                  version: 1,
+                  blocks: [{ type: 'paragraph', text: text(taskId, attempt) }],
+                },
+              },
+            ],
+          }),
+          usage: usage(),
+          finishReason: 'stop',
+        };
+      });
+    }
+
+    const RESEARCH_ROW = {
+      research: {
+        id: 'research-1',
+        planId: PLAN_ID,
+        brief: 'Types help [S1].',
+        mode: 'fast',
+        status: 'ok',
+        searchCount: 1,
+        costMicrousd: null,
+        createdAt: NOW,
+      },
+      sources: [
+        {
+          id: 'source-1',
+          researchId: 'research-1',
+          citationKey: 'S1',
+          url: 'https://www.typescriptlang.org/docs/',
+          title: 'TypeScript docs',
+          publisher: 'typescriptlang.org',
+          retrievedAt: NOW,
+        },
+      ],
+    };
+
+    function groundedDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
+      return makeDeps({ isGroundedEnabled: () => true, ...overrides });
+    }
+
+    beforeEach(() => {
+      research.latest.mockResolvedValue(RESEARCH_ROW);
+      writerReturning();
+    });
+
+    it('leaves the batch flow unchanged when the grounded switch is off', async () => {
+      const { deps } = makeDeps();
+      const { step, calls } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'claim',
+        'generate',
+        'parse-commit',
+      ]);
+      expect(research.latest).not.toHaveBeenCalled();
+      expect(writer.write).not.toHaveBeenCalled();
+      const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+      expect(committed.parsed.tasks[0].content).not.toHaveProperty('sourceIds');
+    });
+
+    it('writes one lesson per step with a shared cached prefix, then commits once', async () => {
+      const { deps, logger } = groundedDeps();
+      const { step, calls } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'claim',
+        'lesson-1',
+        'lesson-2',
+        'parse-commit',
+      ]);
+      expect(writer.write).toHaveBeenCalledTimes(2);
+      const prompts = writer.write.mock.calls.map(([call]) => call);
+      for (const call of prompts) {
+        expect(call).toMatchObject({ tier: 'free', planId: PLAN_ID });
+        expect(call.models.length).toBeGreaterThan(0);
+      }
+      const prefix = (call: (typeof prompts)[number]) =>
+        call.userParts
+          .filter((part: { cache?: boolean }) => part.cache)
+          .map((part: { text: string }) => part.text);
+      expect(prefix(prompts[0])).toHaveLength(2);
+      expect(prefix(prompts[1])).toEqual(prefix(prompts[0]));
+      expect(prompts.map(promptTaskId).sort()).toEqual([TASK_A, TASK_B].sort());
+
+      expect(queries.markProviderStarted).toHaveBeenCalledTimes(2);
+      expect(queries.commitSuccess).toHaveBeenCalledOnce();
+      const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+      expect(
+        committed.parsed.tasks.map(
+          (task: { taskId: string; content: { sourceIds?: string[] } }) => [
+            task.taskId,
+            task.content.sourceIds,
+          ],
+        ),
+      ).toEqual([
+        [TASK_A, ['S1']],
+        [TASK_B, ['S1']],
+      ]);
+      expect(committed.usage).toMatchObject({
+        inputTokens: 20,
+        totalTokens: 30,
+        providerCostMicrousd: 200,
+      });
+      expect(moduleRow.status).toBe('ready');
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'claim')?.outcome,
+      ).toBe('claimed_grounded');
+    });
+
+    it('retries only the lesson whose citations fail, then commits', async () => {
+      writerReturning((taskId, attempt) =>
+        taskId === TASK_A && attempt === 1 ? 'Made up [S9].' : 'Typed [S1].',
+      );
+      const { deps } = groundedDeps();
+      const { step, calls } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name).sort()).toEqual(
+        [
+          'claim',
+          'lesson-1',
+          'lesson-1-retry',
+          'lesson-2',
+          'parse-commit',
+        ].sort(),
+      );
+      expect(writer.write).toHaveBeenCalledTimes(3);
+      expect(calls.every((call) => call.attempts === 1)).toBe(true);
+    });
+
+    it('records the module failed when a lesson still fails after its retry', async () => {
+      writerReturning((taskId) =>
+        taskId === TASK_A ? 'See https://example.com' : 'Typed [S1].',
+      );
+      const { deps } = groundedDeps();
+      const { step, calls } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'failed' });
+
+      const names = calls.map((call) => call.name);
+      expect(names).toContain('lesson-1-retry');
+      expect(names.at(-1)).toBe('fail');
+      expect(names).not.toContain('parse-commit');
+      expect(queries.commitSuccess).not.toHaveBeenCalled();
+      expect(moduleRow.status).toBe('failed');
+    });
+
+    it('forbids citations and drops the brief when the plan has no research', async () => {
+      research.latest.mockResolvedValue({
+        ...RESEARCH_ROW,
+        research: { ...RESEARCH_ROW.research, status: 'failed_skipped' },
+      });
+      writerReturning((_taskId, attempt) =>
+        attempt === 1 ? 'Typed [S1].' : 'Typed, no sources.',
+      );
+      const { deps } = groundedDeps();
+      const { step, calls } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toContain('lesson-1-retry');
+      const [first] = writer.write.mock.calls[0] ?? [];
+      expect(
+        first.userParts.some((part: { text: string }) =>
+          part.text.includes('RESEARCH BRIEF'),
+        ),
+      ).toBe(false);
+      const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+      expect(
+        committed.parsed.tasks.map(
+          (task: { content: { sourceIds?: string[] } }) =>
+            task.content.sourceIds,
+        ),
+      ).toEqual([[], []]);
+    });
+
+    it.each([
+      ['free', 2],
+      ['pro', 6],
+    ] as const)(
+      'keeps at most the %s fan-out (%i) lesson calls in flight',
+      async (userTier, limit) => {
+        tier.value = userTier;
+        taskIds = TASK_IDS;
+        let inFlight = 0;
+        let maxInFlight = 0;
+        writer.write.mockImplementation(async (call) => {
+          inFlight += 1;
+          maxInFlight = Math.max(maxInFlight, inFlight);
+          await new Promise((resolve) => setTimeout(resolve, 5));
+          inFlight -= 1;
+          return {
+            rawText: JSON.stringify({
+              version: 1,
+              tasks: [
+                {
+                  taskId: promptTaskId(call),
+                  content: {
+                    version: 1,
+                    blocks: [{ type: 'heading', text: 'Hi' }],
+                  },
+                },
+              ],
+            }),
+            usage: usage(),
+          };
+        });
+        const { deps } = groundedDeps();
+        const { step } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(writer.write).toHaveBeenCalledTimes(TASK_IDS.length);
+        expect(maxInFlight).toBe(limit);
+      },
+    );
+
+    it('reverts the claim when the switch drops before a lesson call', async () => {
+      const enabled = vi
+        .fn<() => boolean>()
+        .mockReturnValueOnce(true)
+        .mockReturnValueOnce(true)
+        .mockReturnValue(false);
+      const { deps } = groundedDeps({ isEnabled: enabled });
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'disabled' });
+
+      expect(writer.write).not.toHaveBeenCalled();
+      expect(queries.revert).toHaveBeenCalled();
+      expect(queries.commitSuccess).not.toHaveBeenCalled();
+    });
+  });
+});
+
+describe('mapWithConcurrency', () => {
+  it('starts nothing new after a failure and waits for calls in flight', async () => {
+    const started: number[] = [];
+    const finished: number[] = [];
+    const run = mapWithConcurrency([0, 1, 2, 3, 4], 2, async (item) => {
+      started.push(item);
+      if (item === 0) {
+        throw new Error('boom');
+      }
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      finished.push(item);
+      return item;
+    });
+
+    await expect(run).rejects.toThrow('boom');
+    expect(started).toEqual([0, 1]);
+    expect(finished).toEqual([1]);
+  });
+
+  it('returns results in input order', async () => {
+    await expect(
+      mapWithConcurrency([30, 10, 20], 3, async (ms) => {
+        await new Promise((resolve) => setTimeout(resolve, ms));
+        return ms;
+      }),
+    ).resolves.toEqual([30, 10, 20]);
   });
 });
