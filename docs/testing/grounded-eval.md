@@ -33,12 +33,12 @@ The 10 topics are listed in `topics.ts`. Every plan asks for 4 hours a week, the
 | `EVAL_BASE_URL`                 | `run.ts`   | `https://staging.atlaris.app` (only staging or localhost is accepted)           |
 | `EVAL_VERCEL_BYPASS`            | `run.ts`   | Staging deployment protection bypass                                            |
 | `EVAL_CLERK_SECRET_KEY`         | `run.ts`   | Staging (dev instance) Clerk secret key                                         |
-| `EVAL_CLERK_USER_ID`            | `run.ts`   | Starter or Pro test user (free creates throwaway users)                         |
+| `EVAL_CLERK_USER_ID`            | `run.ts`   | Starter or Pro test user (free creates throwaway `eval-…@atlaris.app` users)    |
 | `EVAL_TIER_OPENROUTER_API_KEY`  | `run.ts`   | The tier's grounded OpenRouter key, read only for its usage. Grounded arm only. |
 | `EVAL_JUDGE_OPENROUTER_API_KEY` | `score.ts` | A separate key, so judge spend stays out of the tier keys                       |
 | `EVAL_JUDGE_MODEL`              | `score.ts` | Optional judge override                                                         |
 
-The launch waitlist must be off for the users, or the runner stops on the redirect. Starter allows 10 plans, so run `cleanup` on the v15 Starter manifest before you collect the grounded arm.
+The staging Clerk allowlist admits only `atlaris.app`, which is why throwaway users use that domain. The launch waitlist must be off for the users, or the runner stops on the redirect. Starter allows 10 plans, so run `cleanup` on the v15 Starter manifest before you collect the grounded arm.
 
 ## Run
 

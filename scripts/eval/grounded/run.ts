@@ -72,18 +72,56 @@ function log(message: string): void {
   console.log(`[${new Date().toISOString()}] ${message}`);
 }
 
+const NETWORK_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 40_000];
+
+/**
+ * `fetch` that retries network failures and timeouts (never HTTP errors) when
+ * `retry` is set. Only pass it for requests that are safe to repeat.
+ */
+async function fetchRetrying(
+  url: string,
+  init: RequestInit,
+  retry: boolean,
+): Promise<Response> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fetch(url, {
+        ...init,
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+      });
+    } catch (error) {
+      const delay = NETWORK_RETRY_DELAYS_MS[attempt];
+      if (!retry || delay === undefined) {
+        throw error;
+      }
+      log(
+        `${init.method ?? 'GET'} ${new URL(url).pathname} failed (${
+          error instanceof Error ? error.message : String(error)
+        }); retrying in ${delay / 1000}s`,
+      );
+      await sleep(delay);
+    }
+  }
+}
+
 async function clerk<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const response = await fetch(`${CLERK_API}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${requireEnv('EVAL_CLERK_SECRET_KEY')}`,
-      'Content-Type': 'application/json',
+  const method = init.method ?? 'GET';
+  // Minting a session token has no side effect worth guarding against.
+  const retry = method === 'GET' || path.endsWith('/tokens');
+  const response = await fetchRetrying(
+    `${CLERK_API}${path}`,
+    {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${requireEnv('EVAL_CLERK_SECRET_KEY')}`,
+        'Content-Type': 'application/json',
+      },
     },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+    retry,
+  );
   if (!response.ok) {
     throw new Error(
-      `Clerk ${init.method ?? 'GET'} ${path}: ${response.status} ${await response.text()}`,
+      `Clerk ${method} ${path}: ${response.status} ${await response.text()}`,
     );
   }
   return (await response.json()) as T;
@@ -122,12 +160,15 @@ class ClerkSession {
   }
 }
 
+/** The only domain on the staging Clerk allowlist. */
+const THROWAWAY_EMAIL_DOMAIN = 'atlaris.app';
+
 async function createThrowawayUser(label: string): Promise<string> {
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const user = await clerk<{ id: string }>('/users', {
     method: 'POST',
     body: JSON.stringify({
-      email_address: [`eval-${label}-${stamp}@example.com`],
+      email_address: [`eval-${label}-${stamp}@${THROWAWAY_EMAIL_DOMAIN}`],
       skip_password_requirement: true,
       public_metadata: { atlarisEval: 'JCS-163' },
     }),
@@ -155,13 +196,16 @@ async function api(
   if (body !== undefined) {
     headers['Content-Type'] = 'application/json';
   }
-  const response = await fetch(`${baseUrl}${path}`, {
-    method,
-    headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    redirect: 'manual',
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  const response = await fetchRetrying(
+    `${baseUrl}${path}`,
+    {
+      method,
+      headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      redirect: 'manual',
+    },
+    method === 'GET',
+  );
   if (response.status >= 300 && response.status < 400) {
     throw new Error(
       `${method} ${path} redirected to ${response.headers.get('location')}; is the launch waitlist on or the bypass missing?`,
@@ -196,10 +240,11 @@ async function readKeyUsageUsd(): Promise<number | null> {
   if (!key) {
     return null;
   }
-  const response = await fetch('https://openrouter.ai/api/v1/key', {
-    headers: { Authorization: `Bearer ${key}` },
-    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-  });
+  const response = await fetchRetrying(
+    'https://openrouter.ai/api/v1/key',
+    { headers: { Authorization: `Bearer ${key}` } },
+    true,
+  );
   if (!response.ok) {
     throw new Error(`OpenRouter key read failed: ${response.status}`);
   }
