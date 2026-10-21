@@ -8,7 +8,7 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 
 - **Lint:** Oxlint, not ESLint. `pnpm lint`; one file: `pnpm exec oxlint <files> --max-warnings=0`. Includes `@shadcn/lint`; see `docs/development/shadcn-lint.md`.
 - **Format:** oxfmt, not Prettier. `pnpm exec oxfmt <files>` (`--check` to verify).
-- **Typecheck:** `pnpm typecheck` (runs `next typegen`, `tsc`, then `pnpm check:type:workers` for `workers/jobs`; ignores dev-server types in `.next/dev`).
+- **Typecheck:** `pnpm typecheck` (runs `next typegen`, `tsrs`, then `pnpm check:type:workers` for `workers/jobs`; ignores dev-server types in `.next/dev`).
 - **Tests:** `pnpm test unit <paths...>`, `pnpm test integration <paths...>`, or `pnpm test security`; more in `tests/AGENTS.md`.
 - **Dev server:** `pnpm dev` (Portless, Webpack; secrets injected by 1Password `op run`). `--ui` runs UI-only Turbopack, `--db` starts Supabase first, `doctor` runs read-only diagnostics. In a linked worktree the URL is `https://<branch>.atlaris.localhost`; `portless get atlaris` prints it.
 - **UI checks:** `pnpm exec tsx scripts/dev/tw-classes.ts <classes>` prints the CSS Tailwind generates; `pnpm exec tsx scripts/dev/screenshot.ts <routes>` screenshots the running dev server at several widths in both themes.
