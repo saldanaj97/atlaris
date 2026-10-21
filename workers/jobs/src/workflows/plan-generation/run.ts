@@ -486,7 +486,7 @@ export async function runPlanGenerationWorkflow(
       ? createGroundedOutlineProvider({
           tier: input.tier,
           purpose: generationPurpose,
-          modelOverride: input.modelOverride ?? null,
+          modelOverride: input.groundedWriterModelId ?? null,
           research,
         })
       : undefined;
@@ -513,7 +513,7 @@ export async function runPlanGenerationWorkflow(
                 planId: input.planId,
                 tier: input.tier,
                 purpose: generationPurpose,
-                modelOverride: input.modelOverride ?? null,
+                modelOverride: input.groundedWriterModelId ?? null,
                 input: input.input,
                 research,
                 attemptStartedAt: input.reservation.startedAt,

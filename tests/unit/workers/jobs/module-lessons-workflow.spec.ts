@@ -92,6 +92,9 @@ vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
 }));
 
 const groundedPicks = vi.hoisted(() => ({
+  writer: null as string | null,
+  /** The legacy "Preferred lesson model"; grounded lessons must ignore it. */
+  legacyLesson: null as string | null,
   verifier: null as string | null,
   advisor: null as string | null,
 }));
@@ -100,11 +103,11 @@ vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: vi.fn(async () => ({
     preferredAiModel: null,
     preferredRegenerationAiModel: null,
-    preferredLessonAiModel: null,
+    preferredLessonAiModel: groundedPicks.legacyLesson,
     analyticsTimezone: 'UTC',
   })),
   getGroundedModelPreferences: vi.fn(async () => ({
-    preferredWriterAiModel: null,
+    preferredWriterAiModel: groundedPicks.writer,
     preferredVerifierAiModel: groundedPicks.verifier,
     preferredAdvisorAiModel: groundedPicks.advisor,
   })),
@@ -259,6 +262,8 @@ describe('runModuleLessonsWorkflow', () => {
     vi.clearAllMocks();
     taskIds = [TASK_A, TASK_B];
     tier.value = 'free';
+    groundedPicks.writer = null;
+    groundedPicks.legacyLesson = null;
     groundedPicks.verifier = null;
     groundedPicks.advisor = null;
     research.latest.mockResolvedValue(null);
@@ -1228,6 +1233,62 @@ describe('runModuleLessonsWorkflow', () => {
             verifierModel: 'openai/gpt-6.1-sol',
             advisorModel: 'openai/gpt-6.1-sol',
           });
+        });
+      });
+
+      describe('saved writer pick (JCS-169)', () => {
+        /** One flagged lesson, so one writer call and one repair run. */
+        async function runFlaggedLesson() {
+          taskIds = [TASK_A];
+          writerFlaggingTaskA();
+          const { deps } = groundedDeps();
+          const { step } = createStep();
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+          const [written] = writer.write.mock.calls[0] ?? [];
+          return {
+            writerModel: (written as { models: Array<{ modelId: string }> })
+              .models[0]?.modelId,
+            repairModel: qualityCalls('grounded-lesson-repair')[0]?.models[0]
+              ?.modelId,
+          };
+        }
+
+        it('writes and repairs Pro lessons with the writer pick, ignoring the legacy lesson pick', async () => {
+          tier.value = 'pro';
+          groundedPicks.writer = 'anthropic/claude-haiku-5.5';
+          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+
+          await expect(runFlaggedLesson()).resolves.toEqual({
+            writerModel: 'anthropic/claude-haiku-5.5',
+            repairModel: 'anthropic/claude-haiku-5.5',
+          });
+        });
+
+        it.each([
+          ['no writer pick is saved', null],
+          ['the writer pick is not in the catalog', 'not/in-catalog'],
+        ])('uses the Pro writer default when %s', async (_case, pick) => {
+          tier.value = 'pro';
+          groundedPicks.writer = pick;
+          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+
+          await expect(runFlaggedLesson()).resolves.toEqual({
+            writerModel: 'openai/gpt-6-sol',
+            repairModel: 'openai/gpt-6-sol',
+          });
+        });
+
+        it('ignores a writer pick below Pro', async () => {
+          tier.value = 'starter';
+          groundedPicks.writer = 'anthropic/claude-haiku-5.5';
+          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          const { writerModel, repairModel } = await runFlaggedLesson();
+
+          expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
+          expect(writerModel).not.toBe('google/gemini-3-flash-preview');
+          expect(repairModel).toBe(writerModel);
         });
       });
 

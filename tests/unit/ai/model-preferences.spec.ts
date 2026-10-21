@@ -13,6 +13,7 @@ import {
   getGroundedPickDefault,
   getPersistableModelsForTier,
   resolveGroundedModelPick,
+  resolveGroundedWriterModelId,
   validateGroundedPick,
   isPersistableModelId,
   isRuntimeOnlyModelId,
@@ -373,4 +374,79 @@ describe('grounded model picks', () => {
       ),
     ).toBeNull();
   });
+});
+
+describe('resolveGroundedWriterModelId', () => {
+  const PICKS = {
+    preferredWriterAiModel: 'anthropic/claude-haiku-5.5',
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
+  };
+
+  it('uses the Pro writer pick when there is no override', () => {
+    expect(resolveGroundedWriterModelId('pro', undefined, PICKS)).toBe(
+      'anthropic/claude-haiku-5.5',
+    );
+  });
+
+  it('lets an explicit override beat the saved pick', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-6.1-sol', PICKS),
+    ).toBe('openai/gpt-6.1-sol');
+  });
+
+  it('falls back to the saved pick when the override is off the writer catalog', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', PICKS),
+    ).toBe('anthropic/claude-haiku-5.5');
+  });
+
+  it('ignores an off-catalog override when Pro saved no pick', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', {
+        ...PICKS,
+        preferredWriterAiModel: null,
+      }),
+    ).toBeNull();
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'ignores an override for %s',
+    (tier) => {
+      expect(
+        resolveGroundedWriterModelId(tier, 'openai/gpt-6.1-sol', PICKS),
+      ).toBeNull();
+    },
+  );
+
+  it.each([null, undefined, ''])(
+    'ignores an empty override (%s)',
+    (override) => {
+      expect(resolveGroundedWriterModelId('pro', override, PICKS)).toBe(
+        'anthropic/claude-haiku-5.5',
+      );
+    },
+  );
+
+  it('falls back to the tier writers when Pro saved no pick or an off-catalog one', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', undefined, {
+        ...PICKS,
+        preferredWriterAiModel: null,
+      }),
+    ).toBeNull();
+    expect(
+      resolveGroundedWriterModelId('pro', undefined, {
+        ...PICKS,
+        preferredWriterAiModel: 'google/gemini-3-flash-preview',
+      }),
+    ).toBeNull();
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'ignores a saved %s writer pick',
+    (tier) => {
+      expect(resolveGroundedWriterModelId(tier, undefined, PICKS)).toBeNull();
+    },
+  );
 });

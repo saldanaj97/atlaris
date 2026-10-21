@@ -31,7 +31,10 @@ import type { DbClient } from '@/lib/db/types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
+import {
+  resolveGroundedWriterModelId,
+  resolveOverrideOrSavedModelId,
+} from '@/features/ai/model-preferences';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
@@ -61,7 +64,10 @@ import {
   reserveAttemptSlot,
 } from '@/lib/db/queries/attempts';
 import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
-import { getUserPreferences } from '@/lib/db/queries/user-preferences';
+import {
+  getGroundedModelPreferences,
+  getUserPreferences,
+} from '@/lib/db/queries/user-preferences';
 import { jobQueue, learningPlans } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
@@ -160,6 +166,8 @@ type PreparedRegeneration = LoadedRegeneration & {
   readonly tier: SubscriptionTier;
   readonly grounded: boolean;
   readonly modelOverride?: string;
+  /** The grounded outline writer pick (JCS-169); legacy slots never apply. */
+  readonly groundedWriterModelId: string | null;
 };
 
 type Preparation = {
@@ -169,6 +177,7 @@ type Preparation = {
   readonly generationInput: GenerationInput;
   readonly payload: PlanRegenerationJobPayload;
   readonly modelOverride?: string;
+  readonly groundedWriterModelId: string | null;
 };
 
 type AttemptWorkflowMetadataBase = {
@@ -320,7 +329,10 @@ async function prepareRegeneration(
     );
   }
 
-  const saved = await getUserPreferences(plan.userId, serviceRoleDb);
+  const [saved, groundedPicks] = await Promise.all([
+    getUserPreferences(plan.userId, serviceRoleDb),
+    grounded ? getGroundedModelPreferences(plan.userId, serviceRoleDb) : null,
+  ]);
   const modelOverride = resolveOverrideOrSavedModelId(
     payload.overrides?.model,
     tier,
@@ -333,6 +345,13 @@ async function prepareRegeneration(
     tier,
     grounded,
     ...(modelOverride !== undefined ? { modelOverride } : {}),
+    groundedWriterModelId: groundedPicks
+      ? resolveGroundedWriterModelId(
+          tier,
+          payload.overrides?.model,
+          groundedPicks,
+        )
+      : null,
   };
 }
 
@@ -520,6 +539,7 @@ export async function reserveRegenerationRunAttempt(
     ...(prepared.modelOverride !== undefined
       ? { modelOverride: prepared.modelOverride }
       : {}),
+    groundedWriterModelId: prepared.groundedWriterModelId,
   };
 }
 
@@ -535,7 +555,13 @@ export async function processRegenerationRun(
     );
   }
 
-  const { reservation, tier, generationInput, modelOverride } = preparation;
+  const {
+    reservation,
+    tier,
+    generationInput,
+    modelOverride,
+    groundedWriterModelId,
+  } = preparation;
   const grounded = preparation.grounded ? context.grounded : undefined;
   const feedback = {
     reasons: preparation.payload.reasons ?? null,
@@ -560,7 +586,7 @@ export async function processRegenerationRun(
           createGroundedOutlineProvider({
             tier,
             purpose: GENERATION_PURPOSE,
-            modelOverride: modelOverride ?? null,
+            modelOverride: groundedWriterModelId,
             research,
             guidance,
           }).generate(providerInput, options),
@@ -626,7 +652,7 @@ export async function processRegenerationRun(
       toSettle = {
         ...run,
         modules: await grounded.outlineQuality(
-          { ...stage(), modelOverride: modelOverride ?? null, research },
+          { ...stage(), modelOverride: groundedWriterModelId, research },
           run.modules,
         ),
       };

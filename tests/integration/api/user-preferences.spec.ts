@@ -23,6 +23,14 @@ const { isGroundedEnabled } =
   await import('@/features/ai/grounded-generation-flag');
 const mockIsGroundedEnabled = vi.mocked(isGroundedEnabled);
 
+vi.mock('@/lib/auth/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/server')>()),
+  hasClerkPlanFeature: vi.fn(async () => false),
+}));
+
+const { hasClerkPlanFeature } = await import('@/lib/auth/server');
+const mockHasClerkPlanFeature = vi.mocked(hasClerkPlanFeature);
+
 assertLocalIntegrationDatabaseUrl();
 
 type ApiModelResponse = {
@@ -825,11 +833,13 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
       subscriptionTier: 'pro',
     });
     mockIsGroundedEnabled.mockResolvedValue(true);
+    mockHasClerkPlanFeature.mockResolvedValue(true);
     setTestUser(testAuthUserId);
   });
 
   afterAll(() => {
     mockIsGroundedEnabled.mockResolvedValue(false);
+    mockHasClerkPlanFeature.mockResolvedValue(false);
     clearTestUser();
   });
 
@@ -849,6 +859,36 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
       preferredAdvisorAiModel: PRO_GROUNDED_REVIEW_CATALOG[0],
     });
     expect(mockIsGroundedEnabled).toHaveBeenCalledWith('pro');
+    expect(mockHasClerkPlanFeature).toHaveBeenCalledWith(
+      testAuthUserId,
+      'grounded_model_picks',
+    );
+  });
+
+  it('rejects a Pro pick without the grounded_model_picks feature, without writing', async () => {
+    mockHasClerkPlanFeature.mockResolvedValue(false);
+    const before = await readGroundedRow();
+
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[0],
+    });
+
+    expect(response.status).toBe(403);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('GROUNDED_MODEL_PICKS_NOT_INCLUDED');
+    expect(await readGroundedRow()).toEqual(before);
+  });
+
+  it('fails the save, without writing, when the Clerk feature check is unavailable', async () => {
+    mockHasClerkPlanFeature.mockRejectedValue(new Error('clerk down'));
+    const before = await readGroundedRow();
+
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[0],
+    });
+
+    expect(response.status).toBe(500);
+    expect(await readGroundedRow()).toEqual(before);
   });
 
   it('rejects an off-catalog pick without writing', async () => {
@@ -894,12 +934,14 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
     expect(data.code).toBe('GROUNDED_GENERATION_DISABLED');
   });
 
-  it('does not consult the flag for legacy slots', async () => {
+  it('does not consult the flag or the Clerk feature for legacy slots', async () => {
     mockIsGroundedEnabled.mockClear();
+    mockHasClerkPlanFeature.mockClear();
 
     const response = await patch({ preferredLessonAiModel: null });
 
     expect(response.status).toBe(200);
     expect(mockIsGroundedEnabled).not.toHaveBeenCalled();
+    expect(mockHasClerkPlanFeature).not.toHaveBeenCalled();
   });
 });

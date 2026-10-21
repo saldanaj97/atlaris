@@ -12,6 +12,7 @@ import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { getDefaultModelForTier, getModelById } from '@/features/ai/ai-models';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import {
+  GROUNDED_MODEL_PICKS_FEATURE,
   GROUNDED_PICK_FIELD_BY_ROLE,
   GROUNDED_PICK_ROLES,
   getGroundedPickCatalog,
@@ -22,6 +23,7 @@ import {
 } from '@/features/ai/model-preferences';
 import { ROUTES } from '@/features/navigation/routes';
 import { requestBoundary } from '@/lib/api/request-boundary';
+import { hasClerkPlanFeature } from '@/lib/auth/server';
 import { getGroundedModelPreferences } from '@/lib/db/queries/user-preferences';
 import { logger } from '@/lib/logging/logger';
 import { AlertCircle } from 'lucide-react';
@@ -31,15 +33,16 @@ import { redirect } from 'next/navigation';
 const GROUNDED_PICK_COPY = {
   writer: {
     label: 'Writer model',
-    description: 'Writes outlines, regenerations, and lessons.',
+    description:
+      'Writes grounded outlines, regenerations, and lessons, and fixes lessons that fail checks.',
   },
   verifier: {
-    label: 'Verifier model',
-    description: 'Checks each outline against its research sources.',
+    label: 'Lesson checker',
+    description: 'Checks each lesson against its sources.',
   },
   advisor: {
     label: 'Advisor model',
-    description: 'Suggests fixes when the verifier finds problems.',
+    description: 'Suggests fixes when a check finds problems.',
   },
 } as const satisfies Record<
   GroundedPickRole,
@@ -51,15 +54,39 @@ function groundedModelLabel(modelId: string): string {
 }
 
 /**
+ * Grounded pickers need Pro, the grounded flag on for Pro, and the Clerk plan
+ * feature. An unavailable Clerk check is logged and hides the pickers.
+ */
+async function canShowGroundedPicks(actor: {
+  authUserId: string;
+  subscriptionTier: SubscriptionTier;
+}): Promise<boolean> {
+  if (actor.subscriptionTier !== 'pro' || !(await isGroundedEnabled('pro'))) {
+    return false;
+  }
+  try {
+    return await hasClerkPlanFeature(
+      actor.authUserId,
+      GROUNDED_MODEL_PICKS_FEATURE,
+    );
+  } catch (error) {
+    logger.error(
+      { error },
+      'Clerk feature check failed; hiding grounded model pickers',
+    );
+    return false;
+  }
+}
+
+/**
  * Async component that fetches user subscription data and renders the model selector.
  */
 export async function ModelSelectionCard() {
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
-    groundedPicks:
-      actor.subscriptionTier === 'pro' && (await isGroundedEnabled('pro'))
-        ? await getGroundedModelPreferences(actor.id, db)
-        : null,
+    groundedPicks: (await canShowGroundedPicks(actor))
+      ? await getGroundedModelPreferences(actor.id, db)
+      : null,
   }));
 
   if (!result) {
@@ -201,7 +228,7 @@ export async function ModelSelectionCard() {
   }
 }
 
-/** Pro picks for grounded generation; shown only while its flag covers Pro. */
+/** Pro picks for grounded generation; shown only when `canShowGroundedPicks`. */
 function GroundedModelPicks({ picks }: { picks: SavedGroundedModelPicks }) {
   return (
     <section aria-labelledby='grounded-model-picks' className='space-y-6'>
