@@ -16,7 +16,12 @@ import { buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
   ProviderInvalidResponseError,
+  ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
+import {
+  type OpenRouterGroundedMetadata,
+  streamGroundedEvents,
+} from '@/features/ai/providers/openrouter-grounded-response';
 import {
   getStatusCodeFromError,
   isAsyncIterable,
@@ -28,6 +33,12 @@ import {
   streamFromEvents,
   validateNonStreamingResponse,
 } from '@/features/ai/providers/openrouter-response';
+import {
+  type OpenRouterServerTool,
+  type OpenRouterToolChoice,
+  toWireServerTool,
+} from '@/features/ai/providers/openrouter-server-tools';
+import { parseSseJsonEvents } from '@/features/ai/providers/openrouter-sse';
 import { toStream } from '@/features/ai/streaming/utils';
 import {
   DEFAULT_GENERATION_EXTENSION_MS,
@@ -258,6 +269,7 @@ function wrapStreamWithGenAiSpanLifecycle(
   span: GenAiManualSpan,
   metadataUsage: ProviderUsage,
   finish: () => void,
+  onCancel?: () => void,
 ): ReadableStream<string> {
   let streamSpanFinished = false;
   const finishStreamSpan = (): void => {
@@ -320,6 +332,7 @@ function wrapStreamWithGenAiSpanLifecycle(
     },
     cancel(reason) {
       finishStreamSpanWithError(reason);
+      onCancel?.();
       if (transformedReader) {
         return transformedReader.cancel(reason);
       }
@@ -382,6 +395,17 @@ function requirePresetSlug(value: string | undefined, envName: string): string {
   return slug;
 }
 
+/** `model`, or `models` for a fallback route, each with the preset suffix. */
+function buildPresetModelRoute(
+  routeModels: readonly string[],
+  presetSlug: string,
+): { model: string } | { models: string[] } {
+  const presetSuffix = `@preset/${presetSlug}`;
+  return routeModels.length > 1
+    ? { models: routeModels.map((model) => `${model}${presetSuffix}`) }
+    : { model: `${routeModels[0]}${presetSuffix}` };
+}
+
 /**
  * AI Gateway headers go only to the gateway host, so the Cloudflare token never
  * reaches OpenRouter when `OPENROUTER_BASE_URL` is unset or points elsewhere.
@@ -398,10 +422,18 @@ function resolveAiGatewayConfig(): AiGatewayConfig | undefined {
   return { token, logPayloads: openRouterEnv.aiGatewayLogPayloads };
 }
 
+/**
+ * Requests with billed server tools get a single attempt: a gateway retry
+ * would rerun and re-bill the searches. The workflow step retries those.
+ */
+const AI_GATEWAY_MAX_ATTEMPTS = 2;
+const AI_GATEWAY_MAX_ATTEMPTS_WITH_SERVER_TOOLS = 1;
+
 function buildAiGatewayHeaders(
   gateway: AiGatewayConfig,
-  stage: OpenRouterRequestStage,
+  stage: string,
   presetSlug: string,
+  maxAttempts: number = AI_GATEWAY_MAX_ATTEMPTS,
 ): Record<string, string> {
   return {
     'cf-aig-authorization': `Bearer ${gateway.token}`,
@@ -411,7 +443,7 @@ function buildAiGatewayHeaders(
     // One quick retry, overriding the dashboard. Streamed calls fail before the
     // stream starts (429, 5xx), so a retry cannot repeat a running generation.
     // No cf-aig-request-timeout: a timeout retry could.
-    'cf-aig-max-attempts': '2',
+    'cf-aig-max-attempts': String(maxAttempts),
     'cf-aig-retry-delay': '1000',
     'cf-aig-backoff': 'constant',
     ...(gateway.logPayloads ? {} : { 'cf-aig-collect-log-payload': 'false' }),
@@ -488,30 +520,14 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
 
         let response: unknown;
         try {
-          const responseFormat = { type: 'json_object' as const };
-          const tokenCeiling = getRouteTokenCeiling(this.routeModels);
-          const messagePayload = [...messages];
-          const presetSuffix = `@preset/${presetSlug}`;
-          const requestBody =
-            this.routeModels.length > 1
-              ? {
-                  models: this.routeModels.map(
-                    (model) => `${model}${presetSuffix}`,
-                  ),
-                  messages: messagePayload,
-                  stream: true,
-                  temperature: this.temperature,
-                  responseFormat,
-                  maxTokens: tokenCeiling,
-                }
-              : {
-                  model: `${this.model}${presetSuffix}`,
-                  messages: messagePayload,
-                  stream: true,
-                  temperature: this.temperature,
-                  responseFormat,
-                  maxTokens: tokenCeiling,
-                };
+          const requestBody = {
+            ...buildPresetModelRoute(this.routeModels, presetSlug),
+            messages: [...messages],
+            stream: true,
+            temperature: this.temperature,
+            responseFormat: { type: 'json_object' as const },
+            maxTokens: getRouteTokenCeiling(this.routeModels),
+          };
           response = await this.client.chat.send(requestBody, requestOptions);
         } catch (err) {
           logAndThrowFromOpenRouterSend(err, this.model);
@@ -615,4 +631,270 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
       `request module-lesson-batch ${this.routeModels.join(' > ')}`,
     );
   }
+}
+
+/**
+ * One user prompt part. `cache` sets an explicit cache breakpoint on it, for
+ * the stable prefix (brief, module outline) that repeats across calls. A
+ * breakpoint caches everything before it, the preset's system prompt included,
+ * so cached parts belong first.
+ */
+export type OpenRouterPromptPart = { text: string; cache?: boolean };
+
+/**
+ * `json_schema` only for models that support structured outputs; the caller
+ * decides. Either way, read the text with `extractFirstJsonObject`, since some
+ * models ignore `response_format`.
+ */
+export type OpenRouterResponseFormat =
+  | { type: 'json_object' }
+  | {
+      type: 'json_schema';
+      name: string;
+      schema: Record<string, unknown>;
+      strict?: boolean;
+    };
+
+export type OpenRouterGroundedChatRequest = {
+  /** Picks the tier's API key for this call. */
+  tier: SubscriptionTier;
+  model: string;
+  fallbackModels?: readonly string[];
+  presetSlug: string;
+  /** Tagged on AI Gateway log entries. */
+  stage: string;
+  userParts: readonly OpenRouterPromptPart[];
+  /** Sticky routing key, so calls sharing a cached prefix hit the same cache. */
+  promptCacheKey?: string;
+  responseFormat: OpenRouterResponseFormat;
+  serverTools?: readonly OpenRouterServerTool[];
+  toolChoice?: OpenRouterToolChoice;
+  /** Server-tool step budget; OpenRouter defaults to and caps at 30. */
+  maxToolCalls?: number;
+  temperature?: number;
+  signal?: AbortSignal;
+  timeoutMs?: number;
+};
+
+export type OpenRouterGroundedChatResult = {
+  stream: ReadableStream<string>;
+  /** Complete once `stream` has been read to the end. */
+  metadata: OpenRouterGroundedMetadata;
+};
+
+type OpenRouterGroundedChatDeps = {
+  fetch?: typeof fetch;
+};
+
+/** Anthropic allows four explicit breakpoints; Gemini uses only the last. */
+const MAX_CACHE_BREAKPOINTS = 4;
+
+class OpenRouterHttpError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = 'OpenRouterHttpError';
+  }
+}
+
+async function toOpenRouterHttpError(
+  response: Response,
+): Promise<OpenRouterHttpError> {
+  const fallback = `OpenRouter request failed with status ${response.status}`;
+  const text = await response.text();
+  let message = fallback;
+  try {
+    const body: unknown = JSON.parse(text);
+    if (
+      isObjectRecord(body) &&
+      isObjectRecord(body.error) &&
+      typeof body.error.message === 'string'
+    ) {
+      message = body.error.message;
+    }
+  } catch {
+    // Non-JSON error body (an HTML gateway page); keep the status message.
+  }
+  return new OpenRouterHttpError(response.status, message);
+}
+
+/** Maps a body read that failed because the request timed out. */
+async function* mapStreamTimeout(
+  events: AsyncIterable<unknown>,
+  timeoutSignal: AbortSignal,
+): AsyncGenerator<unknown> {
+  try {
+    yield* events;
+  } catch (error) {
+    if (timeoutSignal.aborted) {
+      throw new ProviderTimeoutError('OpenRouter stream timed out', {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+}
+
+function buildUserContentParts(parts: readonly OpenRouterPromptPart[]) {
+  if (parts.length === 0) {
+    throw new Error('OpenRouter grounded chat needs at least one prompt part');
+  }
+  if (parts.filter((part) => part.cache).length > MAX_CACHE_BREAKPOINTS) {
+    throw new Error(
+      `OpenRouter grounded chat allows at most ${MAX_CACHE_BREAKPOINTS} cached prompt parts`,
+    );
+  }
+  return parts.map((part) => ({
+    type: 'text' as const,
+    text: part.text,
+    ...(part.cache && { cache_control: { type: 'ephemeral' as const } }),
+  }));
+}
+
+function toWireResponseFormat(format: OpenRouterResponseFormat) {
+  if (format.type === 'json_object') {
+    return { type: 'json_object' as const };
+  }
+  return {
+    type: 'json_schema' as const,
+    json_schema: {
+      name: format.name,
+      schema: format.schema,
+      ...(format.strict !== undefined && { strict: format.strict }),
+    },
+  };
+}
+
+/**
+ * Streams one chat completion with server tools, explicit caching and citation
+ * collection. It calls the HTTP API directly: the SDK drops `annotations` from
+ * stream deltas and has no `max_tool_calls` field.
+ */
+export async function sendOpenRouterGroundedChat(
+  request: OpenRouterGroundedChatRequest,
+  deps: OpenRouterGroundedChatDeps = {},
+): Promise<OpenRouterGroundedChatResult> {
+  const presetSlug = requirePresetSlug(request.presetSlug, 'presetSlug');
+  const apiKey = openRouterEnv.apiKeyForTier(request.tier);
+  if (!apiKey) {
+    throw new Error('OPENROUTER_API_KEY is not set');
+  }
+  const routeModels = buildRouteModels(request.model, request.fallbackModels);
+  const temperature = request.temperature ?? 0.2;
+  const serverTools = request.serverTools ?? [];
+  const gateway = resolveAiGatewayConfig();
+  const siteUrl = openRouterEnv.siteUrl;
+  const appName = openRouterEnv.appName;
+
+  const body = {
+    ...buildPresetModelRoute(routeModels, presetSlug),
+    messages: [
+      { role: 'user', content: buildUserContentParts(request.userParts) },
+    ],
+    stream: true,
+    temperature,
+    response_format: toWireResponseFormat(request.responseFormat),
+    max_tokens: getRouteTokenCeiling(routeModels),
+    ...(serverTools.length > 0 && {
+      tools: serverTools.map(toWireServerTool),
+    }),
+    ...(request.toolChoice && { tool_choice: request.toolChoice }),
+    ...(request.maxToolCalls !== undefined && {
+      max_tool_calls: request.maxToolCalls,
+    }),
+    ...(request.promptCacheKey && {
+      prompt_cache_key: request.promptCacheKey,
+    }),
+  };
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${apiKey}`,
+    'Content-Type': 'application/json',
+    ...(siteUrl && { 'HTTP-Referer': siteUrl }),
+    ...(appName && { 'X-OpenRouter-Title': appName }),
+    ...(gateway &&
+      buildAiGatewayHeaders(
+        gateway,
+        request.stage,
+        presetSlug,
+        serverTools.length > 0
+          ? AI_GATEWAY_MAX_ATTEMPTS_WITH_SERVER_TOOLS
+          : AI_GATEWAY_MAX_ATTEMPTS,
+      )),
+  };
+  const url = `${openRouterEnv.baseUrl.replace(/\/+$/, '')}/chat/completions`;
+  const fetchImpl = deps.fetch ?? fetch;
+
+  return Sentry.startSpanManual(
+    {
+      op: 'gen_ai.request',
+      name: `request ${request.stage} ${routeModels.join(' > ')}`,
+      attributes: {
+        'gen_ai.request.model': request.model,
+        'gen_ai.request.model_route': routeModels.join(' > '),
+        'gen_ai.request.temperature': temperature,
+      },
+    },
+    async (span, finish) => {
+      // The timeout covers reading the stream too, not only the first byte.
+      const timeoutSignal = AbortSignal.timeout(
+        (request.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
+          OPENROUTER_TIMEOUT_EXTENSION_MS,
+      );
+      // Cancelling the returned stream aborts the body read it is waiting on.
+      const cancelController = new AbortController();
+      const signal = AbortSignal.any([
+        cancelController.signal,
+        timeoutSignal,
+        ...(request.signal ? [request.signal] : []),
+      ]);
+
+      let response: Response;
+      try {
+        response = await fetchImpl(url, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(body),
+          signal,
+        });
+        if (!response.ok) {
+          throw await toOpenRouterHttpError(response);
+        }
+      } catch (err) {
+        finish();
+        logAndThrowFromOpenRouterSend(err, request.model);
+      }
+      if (!response.body) {
+        finish();
+        throw new ProviderInvalidResponseError(
+          'OpenRouter returned an empty response body',
+        );
+      }
+
+      const metadata: OpenRouterGroundedMetadata = {
+        provider: 'openrouter',
+        model: request.model,
+        usage: createFreshMetadataUsage(),
+        citations: [],
+      };
+      const stream = streamGroundedEvents({
+        events: mapStreamTimeout(
+          parseSseJsonEvents(response.body),
+          timeoutSignal,
+        ),
+        metadata,
+      });
+      return {
+        stream: wrapStreamWithGenAiSpanLifecycle(
+          stream,
+          span,
+          metadata.usage,
+          finish,
+          () => cancelController.abort(),
+        ),
+        metadata,
+      };
+    },
+  );
 }
