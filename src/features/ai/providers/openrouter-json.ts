@@ -61,10 +61,15 @@ function parseFirstObject(text: string): unknown {
  * tried first, then the whole text.
  */
 export function extractFirstJsonObject(text: string): unknown {
-  for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
-    const parsed = parseFirstObject(match[1] ?? '');
-    if (parsed !== undefined) {
-      return parsed;
+  // Bare JSON output: its string values can hold fenced code (`dict = {}`),
+  // so never look for fences inside it.
+  const isBareObject = text.trimStart().startsWith('{');
+  if (!isBareObject) {
+    for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
+      const parsed = parseFirstObject(match[1] ?? '');
+      if (parsed !== undefined) {
+        return parsed;
+      }
     }
   }
   const parsed = parseFirstObject(text);
