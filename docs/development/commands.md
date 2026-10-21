@@ -88,7 +88,7 @@ pnpm start            # Start production server
 ```bash
 pnpm lint               # Oxlint: lint source, scripts, Supabase, and tests
 pnpm lint --format=github # Oxlint with GitHub annotations for CI
-pnpm typecheck          # next typegen + tsc; ignores dev-server types in .next/dev
+pnpm typecheck          # next typegen + tsrs; ignores dev-server types in .next/dev
 pnpm check               # Lint and typecheck in parallel
 ```
 

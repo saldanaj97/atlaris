@@ -269,13 +269,6 @@ jobs:
               "$lint_command" \
               "pnpm typecheck"
       - run:
-          # Non-blocking shadow run while tsrs is evaluated against tsc.
-          name: tsrs shadow typecheck (non-blocking)
-          when: always
-          no_output_timeout: 5m
-          command: |
-            time pnpm typecheck:tsrs || echo "tsrs shadow typecheck failed (non-blocking)"
-      - run:
           name: Worker bundle gate
           no_output_timeout: 5m
           command: |

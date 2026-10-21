@@ -14,7 +14,7 @@ Use this as concise project context. Do not treat hosted service versions as kno
 - Next.js: `16.3.3`; `pnpm dev` uses Portless + Webpack by default; `pnpm dev --ui` uses Portless + Turbopack for UI-only work; `build` uses Turbopack.
 - React: `19.2.8`; React DOM: `19.2.8`.
 - React Compiler: enabled in `next.config.ts`; `babel-plugin-react-compiler` package `1.0.0`.
-- TypeScript: `6.0.3`; typecheck runs via `tsc --noEmit` (`pnpm typecheck`).
+- TypeScript: `6.0.3`; typecheck runs via `tsrs --noEmit` (`pnpm typecheck`).
 
 ## Data and Backend
 
