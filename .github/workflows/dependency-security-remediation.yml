@@ -20,6 +20,7 @@ jobs:
   plan:
     name: Plan dependency remediation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     outputs:
@@ -166,6 +167,7 @@ jobs:
     needs: plan
     if: needs.plan.result == 'success' && needs.plan.outputs.status == 'noop'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
@@ -245,6 +247,7 @@ jobs:
     needs: plan
     if: needs.plan.outputs.publish == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
       pull-requests: write
