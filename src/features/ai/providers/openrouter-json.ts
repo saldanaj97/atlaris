@@ -36,47 +36,66 @@ function findBalancedObjectEnd(
   return undefined;
 }
 
-function parseFirstObject(text: string): unknown {
+type ObjectScan = {
+  /** First balanced object that parses as JSON. */
+  object?: { value: unknown; start: number; end: number };
+  /** Opening brace that never closes (truncated output). */
+  unclosedAt?: number;
+};
+
+function scanFirstObject(text: string): ObjectScan {
   let start = text.indexOf('{');
   while (start !== -1) {
     const end = findBalancedObjectEnd(text, start);
     if (end === undefined) {
-      // Unclosed (truncated output): every later brace is nested inside it, so
-      // parsing one would return a fragment of the real object.
-      return undefined;
+      // Every later brace is nested inside this one, so parsing one would
+      // return a fragment of the real object.
+      return { unclosedAt: start };
     }
     try {
-      return JSON.parse(text.slice(start, end)) as unknown;
+      return {
+        object: {
+          value: JSON.parse(text.slice(start, end)) as unknown,
+          start,
+          end,
+        },
+      };
     } catch {
       // Not JSON (prose braces); skip past it rather than into it.
     }
     start = text.indexOf('{', end);
   }
-  return undefined;
+  return {};
 }
 
 /**
  * Takes the first balanced JSON object from model output. Models that ignore
- * `response_format` wrap JSON in code fences and prose, so fenced blocks are
- * tried first, then the whole text.
+ * `response_format` wrap JSON in code fences and prose, so a fenced block wins
+ * unless it sits inside the first object (fenced code in a string value) or
+ * after a brace that never closes.
  */
 export function extractFirstJsonObject(text: string): unknown {
-  // Bare JSON output: its string values can hold fenced code (`dict = {}`),
-  // so never look for fences inside it.
-  const isBareObject = text.trimStart().startsWith('{');
-  if (!isBareObject) {
-    for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
-      const parsed = parseFirstObject(match[1] ?? '');
-      if (parsed !== undefined) {
-        return parsed;
-      }
+  const scan = scanFirstObject(text);
+  for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
+    const fenceStart = match.index;
+    const insideObject =
+      scan.object !== undefined &&
+      fenceStart >= scan.object.start &&
+      fenceStart < scan.object.end;
+    const afterUnclosed =
+      scan.unclosedAt !== undefined && fenceStart > scan.unclosedAt;
+    if (insideObject || afterUnclosed) {
+      continue;
+    }
+    const fenced = scanFirstObject(match[1] ?? '').object;
+    if (fenced) {
+      return fenced.value;
     }
   }
-  const parsed = parseFirstObject(text);
-  if (parsed === undefined) {
+  if (!scan.object) {
     throw new ProviderInvalidResponseError(
       'Model output contained no JSON object',
     );
   }
-  return parsed;
+  return scan.object.value;
 }

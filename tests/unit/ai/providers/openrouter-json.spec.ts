@@ -54,6 +54,16 @@ describe('extractFirstJsonObject', () => {
     ).toThrow(ProviderInvalidResponseError);
   });
 
+  it('keeps fenced code inside JSON that follows prose', () => {
+    const lesson = { body: '```js\nconst a = {}\n```' };
+    expect(
+      extractFirstJsonObject(`Here is the lesson: ${JSON.stringify(lesson)}`),
+    ).toEqual(lesson);
+    expect(() =>
+      extractFirstJsonObject('Here: {"body":"```js\\nconst a = {}\\n```",'),
+    ).toThrow(ProviderInvalidResponseError);
+  });
+
   it('does not return an inner fragment of a malformed object', () => {
     expect(() =>
       extractFirstJsonObject('{"modules":[{"title":"Intro"},]}'),
