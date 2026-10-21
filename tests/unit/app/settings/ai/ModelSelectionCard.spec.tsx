@@ -6,6 +6,16 @@ const mocks = vi.hoisted(() => ({
   redirectMock: vi.fn(),
   requestBoundaryComponentMock: vi.fn(),
   refreshMock: vi.fn(),
+  isGroundedEnabledMock: vi.fn(),
+  getGroundedModelPreferencesMock: vi.fn(),
+}));
+
+vi.mock('@/features/ai/grounded-generation-flag', () => ({
+  isGroundedEnabled: mocks.isGroundedEnabledMock,
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', () => ({
+  getGroundedModelPreferences: mocks.getGroundedModelPreferencesMock,
 }));
 
 vi.mock('@/lib/api/request-boundary', () => ({
@@ -39,6 +49,7 @@ async function renderCard() {
 describe('ModelSelectionCard', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.isGroundedEnabledMock.mockResolvedValue(false);
   });
 
   it('does not render a model picker for Free', async () => {
@@ -100,5 +111,63 @@ describe('ModelSelectionCard', () => {
       screen.getByRole('combobox', { name: /preferred lesson model/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('combobox')).toHaveLength(3);
+  });
+
+  it('adds writer, verifier, and advisor pickers for Pro when grounded generation is on', async () => {
+    mocks.isGroundedEnabledMock.mockResolvedValue(true);
+    mocks.getGroundedModelPreferencesMock.mockResolvedValue({
+      preferredWriterAiModel: 'anthropic/claude-haiku-5.5',
+      preferredVerifierAiModel: 'not/in-catalog',
+      preferredAdvisorAiModel: null,
+    });
+    mocks.requestBoundaryComponentMock.mockImplementation(async (run) =>
+      run({
+        actor: buildUserFixture({ subscriptionTier: 'pro' }),
+        db: {} as never,
+      }),
+    );
+
+    await renderCard();
+
+    expect(mocks.isGroundedEnabledMock).toHaveBeenCalledWith('pro');
+    expect(screen.getAllByRole('combobox')).toHaveLength(6);
+    expect(
+      screen.getByRole('combobox', { name: /writer model/i }),
+    ).toHaveTextContent('anthropic/claude-haiku-5.5');
+    expect(
+      screen.getByRole('combobox', { name: /verifier model/i }),
+    ).toHaveTextContent(/^Default/);
+    expect(
+      screen.getByRole('combobox', { name: /advisor model/i }),
+    ).toHaveTextContent(/^Default/);
+  });
+
+  it('keeps the grounded pickers hidden and unloaded for Starter even when the flag covers it', async () => {
+    mocks.isGroundedEnabledMock.mockResolvedValue(true);
+    mocks.requestBoundaryComponentMock.mockImplementation(async (run) =>
+      run({
+        actor: buildUserFixture({ subscriptionTier: 'starter' }),
+        db: {} as never,
+      }),
+    );
+
+    await renderCard();
+
+    expect(screen.getAllByRole('combobox')).toHaveLength(1);
+    expect(mocks.getGroundedModelPreferencesMock).not.toHaveBeenCalled();
+  });
+
+  it('does not load grounded picks for Pro while the flag is off', async () => {
+    mocks.requestBoundaryComponentMock.mockImplementation(async (run) =>
+      run({
+        actor: buildUserFixture({ subscriptionTier: 'pro' }),
+        db: {} as never,
+      }),
+    );
+
+    await renderCard();
+
+    expect(screen.getAllByRole('combobox')).toHaveLength(3);
+    expect(mocks.getGroundedModelPreferencesMock).not.toHaveBeenCalled();
   });
 });

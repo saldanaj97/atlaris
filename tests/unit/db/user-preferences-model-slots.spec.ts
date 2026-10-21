@@ -17,6 +17,20 @@ const MIGRATION_SQL = readFileSync(
   join(REPO_ROOT, 'supabase', 'migrations', MIGRATION_NAME),
   'utf8',
 );
+const GROUNDED_MIGRATION_SQL = readFileSync(
+  join(
+    REPO_ROOT,
+    'supabase',
+    'migrations',
+    '20261021143142_add_user_preferences_grounded_model_slots.sql',
+  ),
+  'utf8',
+);
+const GROUNDED_COLUMNS = [
+  'preferred_writer_ai_model',
+  'preferred_verifier_ai_model',
+  'preferred_advisor_ai_model',
+];
 const USER_PREFERENCES_QUERY_SOURCE = readFileSync(
   join(REPO_ROOT, 'src', 'lib', 'db', 'queries', 'user-preferences.ts'),
   'utf8',
@@ -28,6 +42,21 @@ function normalizeColumns(rawColumns: string): string[] {
     .map((column) => column.trim())
     .filter(Boolean)
     .sort();
+}
+
+function lastGrantColumns(
+  migrationSql: string,
+  privilege: 'INSERT' | 'UPDATE',
+): string[] {
+  const grant = [
+    ...migrationSql.matchAll(
+      new RegExp(
+        `GRANT ${privilege} \\(([^)]+)\\) ON TABLE "user_preferences" TO authenticated;`,
+        'g',
+      ),
+    ),
+  ].at(-1);
+  return normalizeColumns(grant?.[1] ?? '');
 }
 
 describe('canonical user preference model-slot schema', () => {
@@ -66,6 +95,9 @@ describe('canonical user preference model-slot schema', () => {
       'preferred_ai_model',
       'preferred_regeneration_ai_model',
       'preferred_lesson_ai_model',
+      'preferred_writer_ai_model',
+      'preferred_verifier_ai_model',
+      'preferred_advisor_ai_model',
       'analytics_timezone',
       'updated_at',
     ]);
@@ -73,6 +105,9 @@ describe('canonical user preference model-slot schema', () => {
       'preferred_ai_model',
       'preferred_regeneration_ai_model',
       'preferred_lesson_ai_model',
+      'preferred_writer_ai_model',
+      'preferred_verifier_ai_model',
+      'preferred_advisor_ai_model',
       'analytics_timezone',
       'updated_at',
     ]);
@@ -104,21 +139,26 @@ describe('canonical user preference model-slot schema', () => {
     expect(MIGRATION_SQL).not.toMatch(/UPDATE "user_preferences"/i);
     expect(MIGRATION_SQL).not.toMatch(/ON(?: TABLE)? "users"/i);
 
-    const insertGrant = [
-      ...MIGRATION_SQL.matchAll(
-        /GRANT INSERT \(([^)]+)\) ON TABLE "user_preferences" TO authenticated;/g,
-      ),
-    ].at(-1);
-    const updateGrant = [
-      ...MIGRATION_SQL.matchAll(
-        /GRANT UPDATE \(([^)]+)\) ON TABLE "user_preferences" TO authenticated;/g,
-      ),
-    ].at(-1);
+    const withoutGrounded = (columns: readonly string[]) =>
+      columns.filter((column) => !GROUNDED_COLUMNS.includes(column)).sort();
+    expect(lastGrantColumns(MIGRATION_SQL, 'INSERT')).toEqual(
+      withoutGrounded(USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS),
+    );
+    expect(lastGrantColumns(MIGRATION_SQL, 'UPDATE')).toEqual(
+      withoutGrounded(USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS),
+    );
+  });
 
-    expect(normalizeColumns(insertGrant?.[1] ?? '')).toEqual(
+  it('adds the grounded role slots as nullable text and grants the current columns', () => {
+    for (const column of GROUNDED_COLUMNS) {
+      expect(GROUNDED_MIGRATION_SQL).toContain(`ADD COLUMN "${column}" text;`);
+    }
+    expect(GROUNDED_MIGRATION_SQL).not.toMatch(/\bCHECK\s*\(/i);
+    expect(GROUNDED_MIGRATION_SQL).not.toMatch(/UPDATE "user_preferences"/i);
+    expect(lastGrantColumns(GROUNDED_MIGRATION_SQL, 'INSERT')).toEqual(
       [...USER_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS].sort(),
     );
-    expect(normalizeColumns(updateGrant?.[1] ?? '')).toEqual(
+    expect(lastGrantColumns(GROUNDED_MIGRATION_SQL, 'UPDATE')).toEqual(
       [...USER_PREFERENCES_AUTHENTICATED_UPDATE_COLUMNS].sort(),
     );
   });

@@ -15,6 +15,7 @@ const baseLesson: ModuleDetailTask = {
   status: 'not_started',
   lessonContent: null,
   lessonContentUpdatedAt: null,
+  sources: [],
   resources: [
     {
       id: createId('task-resource'),

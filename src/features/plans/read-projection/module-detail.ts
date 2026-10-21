@@ -9,8 +9,13 @@ import type {
   ModuleDetailRows,
   ModuleTaskMetricRow,
 } from '@/lib/db/queries/types/modules.types';
+import type { DbResearchSource } from '@/lib/db/queries/types/plan-research.types';
 import type { ResourceType } from '@/shared/types/db.types';
 
+import {
+  readCitedSourceIds,
+  resolveLessonSources,
+} from '@/features/plans/read-projection/lesson-sources';
 import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
 import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
@@ -91,9 +96,11 @@ function parseLessonContentForRead(
  * Assembles module-detail UI read-model from `getModuleDetailRows` output.
  *
  * Returns `null` when `moduleMetricsRows` and current `module.id` drift (defensive consistency).
+ * `researchSources` are the plan's sources; each lesson lists only those it cites.
  */
 export function buildModuleDetailReadModel(
   rows: ModuleDetailRows,
+  researchSources: readonly DbResearchSource[] = [],
 ): ModuleDetailReadModel | null {
   const allModules = buildModuleDetailNavItems(rows.moduleMetricsRows);
 
@@ -123,6 +130,7 @@ export function buildModuleDetailReadModel(
     const resources: ModuleDetailResource[] = wired
       .toSorted((a, b) => a.order - b.order)
       .map((tr) => flattenTaskResource(tr));
+    const lessonContent = parseLessonContentForRead(task.lessonContent);
 
     return {
       id: task.id,
@@ -131,9 +139,15 @@ export function buildModuleDetailReadModel(
       description: task.description,
       estimatedMinutes: task.estimatedMinutes ?? 0,
       status: progress?.status ?? 'not_started',
-      lessonContent: parseLessonContentForRead(task.lessonContent),
+      lessonContent,
       lessonContentUpdatedAt: task.lessonContentUpdatedAt,
       resources,
+      sources: lessonContent
+        ? resolveLessonSources(
+            readCitedSourceIds(task.lessonContent),
+            researchSources,
+          )
+        : [],
     };
   });
 

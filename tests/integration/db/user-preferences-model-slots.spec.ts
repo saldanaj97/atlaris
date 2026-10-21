@@ -28,7 +28,21 @@ const EXPAND_MIGRATION_SQL = readFileSync(
   'utf8',
 );
 
+const GROUNDED_SLOTS_MIGRATION_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20261021143142_add_user_preferences_grounded_model_slots.sql',
+  ),
+  'utf8',
+);
+
 const RESTORE_PRE_EXPAND_SCHEMA_SQL = `
+  ALTER TABLE "user_preferences"
+    DROP COLUMN IF EXISTS "preferred_writer_ai_model";
+  ALTER TABLE "user_preferences"
+    DROP COLUMN IF EXISTS "preferred_verifier_ai_model";
+  ALTER TABLE "user_preferences"
+    DROP COLUMN IF EXISTS "preferred_advisor_ai_model";
   ALTER TABLE "user_preferences"
     DROP COLUMN IF EXISTS "preferred_regeneration_ai_model";
   ALTER TABLE "user_preferences"
@@ -228,6 +242,7 @@ describe('user preference model-slot persistence', () => {
     const client = postgres(databaseUrl, { max: 1 });
     let restoredPriorSchema = false;
     let expanded = false;
+    let groundedApplied = false;
 
     try {
       await client.unsafe(RESTORE_PRE_EXPAND_SCHEMA_SQL);
@@ -240,6 +255,8 @@ describe('user preference model-slot persistence', () => {
 
       await client.unsafe(EXPAND_MIGRATION_SQL);
       expanded = true;
+      await client.unsafe(GROUNDED_SLOTS_MIGRATION_SQL);
+      groundedApplied = true;
 
       const [row] = await client<
         {
@@ -324,6 +341,9 @@ describe('user preference model-slot persistence', () => {
       try {
         if (restoredPriorSchema && !expanded) {
           await client.unsafe(EXPAND_MIGRATION_SQL);
+        }
+        if (restoredPriorSchema && !groundedApplied) {
+          await client.unsafe(GROUNDED_SLOTS_MIGRATION_SQL);
         }
       } finally {
         await client.end();

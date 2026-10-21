@@ -29,11 +29,24 @@ export type UserPreferenceValues = {
   analyticsTimezone: string;
 };
 
+/** Pro picks for the grounded pipeline's writer, verifier and advisor roles. */
+export type GroundedModelPreferenceValues = {
+  preferredWriterAiModel: string | null;
+  preferredVerifierAiModel: string | null;
+  preferredAdvisorAiModel: string | null;
+};
+
 export type UserModelPreferencePatch = {
   preferredAiModel?: string | null;
   preferredRegenerationAiModel?: string | null;
   preferredLessonAiModel?: string | null;
+  preferredWriterAiModel?: string | null;
+  preferredVerifierAiModel?: string | null;
+  preferredAdvisorAiModel?: string | null;
 };
+
+export type UserModelPreferenceValues = UserPreferenceValues &
+  GroundedModelPreferenceValues;
 
 export const DEFAULT_USER_PREFERENCES: UserPreferenceValues = {
   preferredAiModel: null,
@@ -41,6 +54,13 @@ export const DEFAULT_USER_PREFERENCES: UserPreferenceValues = {
   preferredLessonAiModel: null,
   analyticsTimezone: 'UTC',
 };
+
+export const DEFAULT_GROUNDED_MODEL_PREFERENCES: GroundedModelPreferenceValues =
+  {
+    preferredWriterAiModel: null,
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
+  };
 
 function mapPreferenceRow(row: {
   preferred_ai_model: string | null;
@@ -72,6 +92,22 @@ export async function getUserPreferences(
     .where(eq(userPreferences.userId, userId));
 
   return row ?? DEFAULT_USER_PREFERENCES;
+}
+
+export async function getGroundedModelPreferences(
+  userId: string,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<GroundedModelPreferenceValues> {
+  const [row] = await dbClient
+    .select({
+      preferredWriterAiModel: userPreferences.preferredWriterAiModel,
+      preferredVerifierAiModel: userPreferences.preferredVerifierAiModel,
+      preferredAdvisorAiModel: userPreferences.preferredAdvisorAiModel,
+    })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId));
+
+  return row ?? DEFAULT_GROUNDED_MODEL_PREFERENCES;
 }
 
 export async function getEmailNotificationPreferences(
@@ -225,72 +261,79 @@ export async function saveEmailNotificationPreferences(
   });
 }
 
+const MODEL_PREFERENCE_COLUMNS = {
+  preferredAiModel: 'preferred_ai_model',
+  preferredRegenerationAiModel: 'preferred_regeneration_ai_model',
+  preferredLessonAiModel: 'preferred_lesson_ai_model',
+  preferredWriterAiModel: 'preferred_writer_ai_model',
+  preferredVerifierAiModel: 'preferred_verifier_ai_model',
+  preferredAdvisorAiModel: 'preferred_advisor_ai_model',
+} as const satisfies Record<keyof UserModelPreferencePatch, string>;
+
+type ModelPreferenceField = keyof typeof MODEL_PREFERENCE_COLUMNS;
+
+const MODEL_PREFERENCE_FIELDS = Object.keys(
+  MODEL_PREFERENCE_COLUMNS,
+) as ModelPreferenceField[];
+
 export async function upsertUserModelPreferences(
   userId: string,
   patch: UserModelPreferencePatch,
   dbClient: Pick<DbClient, 'execute'>,
-): Promise<UserPreferenceValues | undefined> {
-  const insertOutline =
-    patch.preferredAiModel !== undefined
-      ? sql`${patch.preferredAiModel}`
-      : sql`DEFAULT`;
-  const insertRegeneration =
-    patch.preferredRegenerationAiModel !== undefined
-      ? sql`${patch.preferredRegenerationAiModel}`
-      : sql`DEFAULT`;
-  const insertLesson =
-    patch.preferredLessonAiModel !== undefined
-      ? sql`${patch.preferredLessonAiModel}`
-      : sql`DEFAULT`;
+): Promise<UserModelPreferenceValues | undefined> {
+  const columns = MODEL_PREFERENCE_FIELDS.map((field) =>
+    sql.identifier(MODEL_PREFERENCE_COLUMNS[field]),
+  );
+  const inserts = MODEL_PREFERENCE_FIELDS.map((field) => {
+    const value = patch[field];
+    return value !== undefined ? sql`${value}` : sql`DEFAULT`;
+  });
 
   const updates: SQL[] = [sql`"updated_at" = now()`];
-  if (patch.preferredAiModel !== undefined) {
-    updates.push(sql`"preferred_ai_model" = EXCLUDED."preferred_ai_model"`);
-  }
-  if (patch.preferredRegenerationAiModel !== undefined) {
-    updates.push(
-      sql`"preferred_regeneration_ai_model" = EXCLUDED."preferred_regeneration_ai_model"`,
-    );
-  }
-  if (patch.preferredLessonAiModel !== undefined) {
-    updates.push(
-      sql`"preferred_lesson_ai_model" = EXCLUDED."preferred_lesson_ai_model"`,
-    );
+  for (const field of MODEL_PREFERENCE_FIELDS) {
+    if (patch[field] !== undefined) {
+      const column = sql.identifier(MODEL_PREFERENCE_COLUMNS[field]);
+      updates.push(sql`${column} = EXCLUDED.${column}`);
+    }
   }
 
-  const [row] = await executeRows<{
-    preferred_ai_model: string | null;
-    preferred_regeneration_ai_model: string | null;
-    preferred_lesson_ai_model: string | null;
-    analytics_timezone: string;
-  }>(
+  const [row] = await executeRows<
+    Record<
+      (typeof MODEL_PREFERENCE_COLUMNS)[ModelPreferenceField],
+      string | null
+    > & {
+      analytics_timezone: string;
+    }
+  >(
     dbClient,
     sql`
     INSERT INTO ${userPreferences} (
       "user_id",
-      "preferred_ai_model",
-      "preferred_regeneration_ai_model",
-      "preferred_lesson_ai_model",
+      ${sql.join(columns, sql`, `)},
       "updated_at"
     )
     VALUES (
       ${userId},
-      ${insertOutline},
-      ${insertRegeneration},
-      ${insertLesson},
+      ${sql.join(inserts, sql`, `)},
       now()
     )
     ON CONFLICT ("user_id") DO UPDATE SET
       ${sql.join(updates, sql`, `)}
     RETURNING
-      "preferred_ai_model",
-      "preferred_regeneration_ai_model",
-      "preferred_lesson_ai_model",
+      ${sql.join(columns, sql`, `)},
       "analytics_timezone"
   `,
   );
 
-  return row ? mapPreferenceRow(row) : undefined;
+  if (!row) {
+    return undefined;
+  }
+  return {
+    ...mapPreferenceRow(row),
+    preferredWriterAiModel: row.preferred_writer_ai_model,
+    preferredVerifierAiModel: row.preferred_verifier_ai_model,
+    preferredAdvisorAiModel: row.preferred_advisor_ai_model,
+  };
 }
 
 export async function upsertUserAnalyticsTimezone(

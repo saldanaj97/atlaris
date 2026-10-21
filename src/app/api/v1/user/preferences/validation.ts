@@ -17,20 +17,18 @@ const savedModelIdSchema = z
 
 /**
  * `null` on a provided slot clears that saved preference (tier default applies
- * as the effective value only). At least one slot is required.
+ * as the effective value only). At least one slot is required. The writer,
+ * verifier and advisor slots are Pro picks for grounded generation.
  */
 export const updatePreferencesSchema = z
   .strictObject({
     preferredAiModel: savedModelIdSchema.optional(),
     preferredRegenerationAiModel: savedModelIdSchema.optional(),
     preferredLessonAiModel: savedModelIdSchema.optional(),
+    preferredWriterAiModel: savedModelIdSchema.optional(),
+    preferredVerifierAiModel: savedModelIdSchema.optional(),
+    preferredAdvisorAiModel: savedModelIdSchema.optional(),
   })
-  .refine(
-    (value) =>
-      value.preferredAiModel !== undefined ||
-      value.preferredRegenerationAiModel !== undefined ||
-      value.preferredLessonAiModel !== undefined,
-    {
-      message: 'At least one model preference is required',
-    },
-  );
+  .refine((value) => Object.values(value).some((v) => v !== undefined), {
+    message: 'At least one model preference is required',
+  });
