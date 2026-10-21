@@ -159,18 +159,33 @@ describe('outline code checks', () => {
   });
 
   describe('checkOutlineScope', () => {
-    it('flags a module with no topic keyword', () => {
+    it('flags an outline in which no module mentions the topic', () => {
       const outline = [
-        ...cleanOutline(),
         module('Sourdough baking', [
           lesson('Starter care'),
           lesson('Shaping loaves'),
         ]),
+        module('Bread scoring', [lesson('Blades'), lesson('Patterns')]),
       ];
 
       expect(codes(checkOutlineScope(outline, INPUT.topic))).toEqual([
-        ['off_topic_module', 'modules[2]'],
+        ['off_topic_outline', 'plan'],
       ]);
+    });
+
+    it('leaves a subtopic that does not repeat the topic to the verifier', () => {
+      const outline = [
+        module('Machine learning foundations', [
+          lesson('What a model learns'),
+          lesson('Training and test data'),
+        ]),
+        module('Linear regression', [
+          lesson('Least squares'),
+          lesson('Gradient descent'),
+        ]),
+      ];
+
+      expect(checkOutlineScope(outline, 'Machine Learning')).toEqual([]);
     });
 
     it('matches keywords by prefix and lesson titles', () => {

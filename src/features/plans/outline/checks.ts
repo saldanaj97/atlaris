@@ -284,8 +284,11 @@ function sharesKeyword(
 }
 
 /**
- * Flags a module whose title, description and lesson titles share no keyword
- * with the topic. Skipped when the topic has no keyword of 3+ characters.
+ * Flags an outline in which no module's title, description or lesson titles
+ * share a keyword with the topic. Plan-level only: a valid subtopic often
+ * does not repeat the topic name ("Linear regression" in a machine learning
+ * plan), so per-module scope is left to the verifier. Skipped when the topic
+ * has no keyword of 3+ characters.
  */
 export function checkOutlineScope(
   modules: readonly ParsedModule[],
@@ -297,22 +300,23 @@ export function checkOutlineScope(
   if (keywords.size === 0) {
     return [];
   }
-  return modules.flatMap((module, index) => {
+  const onTopic = modules.some((module) => {
     const text = [
       module.title,
       module.description ?? '',
       ...module.tasks.map((task) => task.title),
     ].join(' ');
-    return sharesKeyword(titleTokens(text), keywords)
-      ? []
-      : [
-          issue(
-            'off_topic_module',
-            moduleRef(index),
-            `Module "${module.title}" does not mention the plan topic.`,
-          ),
-        ];
+    return sharesKeyword(titleTokens(text), keywords);
   });
+  return onTopic
+    ? []
+    : [
+        issue(
+          'off_topic_outline',
+          'plan',
+          `No module mentions the plan topic "${topic}".`,
+        ),
+      ];
 }
 
 function weeksBetween(startDate: string, deadlineDate: string): number | null {

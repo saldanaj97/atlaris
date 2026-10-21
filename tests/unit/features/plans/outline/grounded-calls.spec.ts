@@ -267,6 +267,15 @@ describe('outline verifier', () => {
     ]);
   });
 
+  it('points a null ref at the plan', () => {
+    const issues = parseVerifierOutput(
+      { issues: [{ code: 'scope', blockRef: null, message: 'x' }] },
+      MODULES,
+    );
+
+    expect(issues.map((issue) => issue.blockRef)).toEqual(['plan']);
+  });
+
   it('rejects output that is not the issues contract', () => {
     expect(() => parseVerifierOutput({ problems: [] }, MODULES)).toThrow(
       ProviderInvalidResponseError,

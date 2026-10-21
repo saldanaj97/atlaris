@@ -31,7 +31,7 @@ const verifierOutputSchema = z.object({
   issues: z.array(
     z.object({
       code: z.string().trim().min(1),
-      blockRef: z.string().trim().optional(),
+      blockRef: z.string().trim().nullish(),
       message: z.string().trim().min(1),
     }),
   ),
@@ -59,7 +59,7 @@ function toVerifierCode(code: string): string {
 
 /** A ref outside the outline points at the whole plan. */
 function toBlockRef(
-  blockRef: string | undefined,
+  blockRef: string | null | undefined,
   modules: readonly ParsedModule[],
 ): string {
   if (!blockRef || !BLOCK_REF_PATTERN.test(blockRef)) {
