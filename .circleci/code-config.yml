@@ -54,6 +54,7 @@ commands:
 
   # Halt integration-only jobs before checkout when their paths did not change.
   # Dynamic setup keeps docs-only pipelines from provisioning these executors.
+  # PRs into main (the develop promotion) always run the full job.
   skip-unless-integration:
     steps:
       - attach_workspace:
@@ -61,7 +62,9 @@ commands:
       - run:
           name: Skip if no integration-path changes
           command: |
-            if [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
+            if [ "<< pipeline.event.github.pull_request.base.ref >>" = "main" ]; then
+              echo "PR into main; running in full."
+            elif [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
               echo "No integration-path changes; skipping."
               circleci-agent step halt
             fi
@@ -168,6 +171,7 @@ jobs:
             mkdir -p .ci-flags
             echo true > .ci-flags/source
             echo true > .ci-flags/integration
+            echo true > .ci-flags/remediation
 
             event_name="<< pipeline.event.name >>"
             base_rev="<< pipeline.git.base_revision >>"
@@ -196,11 +200,13 @@ jobs:
             echo "Diff range: ${diff_range}"
             source=false
             integration=false
+            remediation=false
             changed_files="$(mktemp)"
             if ! git diff --name-only "${diff_range}" > "${changed_files}"; then
               echo "git diff failed; assuming source and integration changed."
               source=true
               integration=true
+              remediation=true
             else
               while IFS= read -r f; do
                 [ -z "${f}" ] && continue
@@ -220,18 +226,25 @@ jobs:
                     integration=true
                     ;;
                 esac
+                case "${f}" in
+                  .github/scripts/*|.github/workflows/dependency-security-remediation.yml|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.circleci/*)
+                    remediation=true
+                    ;;
+                esac
               done < "${changed_files}"
             fi
             rm -f "${changed_files}"
 
             echo "${source}" > .ci-flags/source
             echo "${integration}" > .ci-flags/integration
-            echo "source=${source} integration=${integration}"
+            echo "${remediation}" > .ci-flags/remediation
+            echo "source=${source} integration=${integration} remediation=${remediation}"
       - persist_to_workspace:
           root: .ci-flags
           paths:
             - source
             - integration
+            - remediation
 
   lint-and-type-check:
     executor: node
@@ -570,6 +583,15 @@ jobs:
       - image: cimg/node:24.19
     resource_class: medium
     steps:
+      - attach_workspace:
+          at: /tmp/.ci-flags
+      - run:
+          name: Skip if no remediation-path changes
+          command: |
+            if [ "$(cat /tmp/.ci-flags/remediation 2>/dev/null || echo true)" != "true" ]; then
+              echo "No remediation-path changes; skipping."
+              circleci-agent step halt
+            fi
       - checkout
       - init-env
       - install-pnpm-deps
@@ -621,6 +643,7 @@ workflows:
           requires:
             - detect-changes
       - security-tests:
+          skip_unless: integration
           requires:
             - detect-changes
       - dependency-remediation-tests:
