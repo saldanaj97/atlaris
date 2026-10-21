@@ -16,6 +16,7 @@ import { buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
   ProviderInvalidResponseError,
+  ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
 import {
   type OpenRouterGroundedMetadata,
@@ -268,6 +269,7 @@ function wrapStreamWithGenAiSpanLifecycle(
   span: GenAiManualSpan,
   metadataUsage: ProviderUsage,
   finish: () => void,
+  onCancel?: () => void,
 ): ReadableStream<string> {
   let streamSpanFinished = false;
   const finishStreamSpan = (): void => {
@@ -330,6 +332,7 @@ function wrapStreamWithGenAiSpanLifecycle(
     },
     cancel(reason) {
       finishStreamSpanWithError(reason);
+      onCancel?.();
       if (transformedReader) {
         return transformedReader.cancel(reason);
       }
@@ -717,6 +720,23 @@ async function toOpenRouterHttpError(
   return new OpenRouterHttpError(response.status, message);
 }
 
+/** Maps a body read that failed because the request timed out. */
+async function* mapStreamTimeout(
+  events: AsyncIterable<unknown>,
+  timeoutSignal: AbortSignal,
+): AsyncGenerator<unknown> {
+  try {
+    yield* events;
+  } catch (error) {
+    if (timeoutSignal.aborted) {
+      throw new ProviderTimeoutError('OpenRouter stream timed out', {
+        cause: error,
+      });
+    }
+    throw error;
+  }
+}
+
 function buildUserContentParts(parts: readonly OpenRouterPromptPart[]) {
   if (parts.length === 0) {
     throw new Error('OpenRouter grounded chat needs at least one prompt part');
@@ -822,9 +842,13 @@ export async function sendOpenRouterGroundedChat(
         (request.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
           OPENROUTER_TIMEOUT_EXTENSION_MS,
       );
-      const signal = request.signal
-        ? AbortSignal.any([request.signal, timeoutSignal])
-        : timeoutSignal;
+      // Cancelling the returned stream aborts the body read it is waiting on.
+      const cancelController = new AbortController();
+      const signal = AbortSignal.any([
+        cancelController.signal,
+        timeoutSignal,
+        ...(request.signal ? [request.signal] : []),
+      ]);
 
       let response: Response;
       try {
@@ -855,7 +879,10 @@ export async function sendOpenRouterGroundedChat(
         citations: [],
       };
       const stream = streamGroundedEvents({
-        events: parseSseJsonEvents(response.body),
+        events: mapStreamTimeout(
+          parseSseJsonEvents(response.body),
+          timeoutSignal,
+        ),
         metadata,
       });
       return {
@@ -864,6 +891,7 @@ export async function sendOpenRouterGroundedChat(
           span,
           metadata.usage,
           finish,
+          () => cancelController.abort(),
         ),
         metadata,
       };

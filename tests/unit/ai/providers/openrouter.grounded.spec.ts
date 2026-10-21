@@ -9,7 +9,10 @@ import {
   OPENROUTER_TEST_MODEL,
   OPENROUTER_TEST_PLAN_PRESET,
 } from './openrouter-test-helpers';
-import { ProviderError } from '@/features/ai/providers/errors';
+import {
+  ProviderError,
+  ProviderTimeoutError,
+} from '@/features/ai/providers/errors';
 import {
   type OpenRouterGroundedChatRequest,
   sendOpenRouterGroundedChat,
@@ -65,6 +68,25 @@ function streamResponse(): Response {
   });
 }
 
+/** Sends one text event, then stalls until the request signal aborts, as fetch does. */
+function stallingFetch() {
+  return vi.fn<typeof fetch>((_url, init) => {
+    const signal = init?.signal;
+    const firstEvent = new TextEncoder().encode(
+      `data: ${JSON.stringify({ choices: [{ delta: { content: '{' } }] })}\n\n`,
+    );
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(firstEvent);
+        signal?.addEventListener('abort', () =>
+          controller.error(signal.reason),
+        );
+      },
+    });
+    return Promise.resolve(new Response(body, { status: 200 }));
+  });
+}
+
 function captureFetch(response: () => Response = streamResponse) {
   const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(response()));
   const call = () => {
@@ -103,6 +125,7 @@ describe('sendOpenRouterGroundedChat', () => {
 
   afterEach(() => {
     vi.unstubAllEnvs();
+    vi.restoreAllMocks();
   });
 
   it('sends server tools, cache breakpoints and the schema format on the wire', async () => {
@@ -251,6 +274,34 @@ describe('sendOpenRouterGroundedChat', () => {
       statusCode: 429,
       message: 'Rate limited',
     });
+  });
+
+  it('maps a timeout while reading the stream to a provider timeout error', async () => {
+    const timeoutController = new AbortController();
+    vi.spyOn(AbortSignal, 'timeout').mockReturnValue(timeoutController.signal);
+    const fetchMock = stallingFetch();
+
+    const { stream } = await sendOpenRouterGroundedChat(BASE_REQUEST, {
+      fetch: fetchMock,
+    });
+    const reader = stream.getReader();
+    await reader.read();
+    timeoutController.abort(new DOMException('timed out', 'TimeoutError'));
+
+    await expect(reader.read()).rejects.toBeInstanceOf(ProviderTimeoutError);
+  });
+
+  it('aborts the request when the caller cancels the stream', async () => {
+    const fetchMock = stallingFetch();
+
+    const { stream } = await sendOpenRouterGroundedChat(BASE_REQUEST, {
+      fetch: fetchMock,
+    });
+    const reader = stream.getReader();
+    await reader.read();
+    await reader.cancel();
+
+    expect(fetchMock.mock.calls[0]?.[1]?.signal?.aborted).toBe(true);
   });
 
   it('rejects more than four cache breakpoints before sending', async () => {
