@@ -29,11 +29,13 @@ export function buildCreateGenerationInput({
   createResult,
   userId,
   modelOverride,
+  groundedWriterModelId = null,
 }: {
   body: CreateLearningPlanInput;
   createResult: SuccessfulCreatePlanGenerationResult;
   userId: string;
   modelOverride?: string;
+  groundedWriterModelId?: string | null;
 }): ProcessGenerationInput {
   const { normalizedInput: ni, planId, tier } = createResult;
 
@@ -52,6 +54,7 @@ export function buildCreateGenerationInput({
       deadlineDate: ni.deadlineDate,
     },
     modelOverride,
+    groundedWriterModelId,
   };
 }
 

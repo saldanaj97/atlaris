@@ -8,6 +8,15 @@ const ATTEMPT_ID = '5a0d7b6c-1e9f-4d8a-8b3c-2f1a0b9c8d74';
 const mocks = vi.hoisted(() => ({
   checkPlanGenerationRateLimit: vi.fn(),
   requirePlanContentAccess: vi.fn(),
+  getGroundedModelPreferences: vi.fn(),
+  actorTier: 'starter' as 'free' | 'starter' | 'pro',
+}));
+
+vi.mock('@/lib/db/queries/user-preferences', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/lib/db/queries/user-preferences')
+  >()),
+  getGroundedModelPreferences: mocks.getGroundedModelPreferences,
 }));
 
 vi.mock('@/lib/api/rate-limit', async (importOriginal) => ({
@@ -49,6 +58,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
             id: string;
             authUserId: string;
             preferredAiModel: string | null;
+            subscriptionTier: 'free' | 'starter' | 'pro';
           };
           db: unknown;
           correlationId: string;
@@ -62,6 +72,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
               id: 'user-1',
               authUserId: 'auth-1',
               preferredAiModel: 'openai/gpt-4o-mini',
+              subscriptionTier: mocks.actorTier,
             },
             db: {},
             correlationId: 'corr-1',
@@ -85,6 +96,18 @@ const VALID_BODY = {
   visibility: 'private',
   origin: 'ai',
 };
+
+const WRITER_PICKS = {
+  preferredWriterAiModel: 'anthropic/claude-haiku-5.5',
+  preferredVerifierAiModel: null,
+  preferredAdvisorAiModel: null,
+};
+
+beforeEach(() => {
+  mocks.actorTier = 'starter';
+  mocks.getGroundedModelPreferences.mockReset();
+  mocks.getGroundedModelPreferences.mockResolvedValue(WRITER_PICKS);
+});
 
 const NOT_STARTED = new AppError(
   'Plan generation encountered an error. Please try again.',
@@ -158,6 +181,24 @@ describe('POST /api/v1/plans', () => {
       savedPreferredAiModel: 'openai/gpt-4o-mini',
       requestId: 'corr-1',
     });
+    expect(mocks.getGroundedModelPreferences).not.toHaveBeenCalled();
+  });
+
+  it('loads and passes the saved grounded picks for Pro', async () => {
+    mocks.actorTier = 'pro';
+    const boundary = makeBoundary();
+    const post = createPlanCreateHandler({ boundary, logger: makeLogger() });
+
+    const response = await post(createRequest(JSON.stringify(VALID_BODY)));
+
+    expect(response.status).toBe(202);
+    expect(mocks.getGroundedModelPreferences).toHaveBeenCalledWith(
+      'user-1',
+      {},
+    );
+    expect(boundary.startCreate).toHaveBeenCalledWith(
+      expect.objectContaining({ savedGroundedPicks: WRITER_PICKS }),
+    );
   });
 
   it('returns 400 with reason details for malformed JSON', async () => {
@@ -322,6 +363,20 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       tierDb: {},
       requestId: 'corr-1',
     });
+    expect(mocks.getGroundedModelPreferences).not.toHaveBeenCalled();
+  });
+
+  it('loads and passes the saved grounded picks for a Pro retry', async () => {
+    mocks.actorTier = 'pro';
+    const boundary = makeBoundary();
+    const post = createRetryHandler({ boundary });
+
+    const response = await post(retryRequest());
+
+    expect(response.status).toBe(202);
+    expect(boundary.startRetry).toHaveBeenCalledWith(
+      expect.objectContaining({ savedGroundedPicks: WRITER_PICKS }),
+    );
   });
 
   it.each(['generating', 'ready'])(
