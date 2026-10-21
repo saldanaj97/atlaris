@@ -19,6 +19,11 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
+import {
+  type ResearchLogFields,
+  RESEARCH_STEPS,
+  runPlanResearchSteps,
+} from './research';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { validateReservation } from '@/features/plans/lifecycle/generation';
@@ -45,6 +50,8 @@ export type PlanGenerationWorkflowParams = PlanGenerationStartCommand;
  */
 export const PLAN_GENERATION_STEPS = {
   recordWorkflow: 'record-workflow',
+  research: RESEARCH_STEPS.research,
+  researchSave: RESEARCH_STEPS.researchSave,
   generate: 'generate',
   finalize: 'finalize',
   fail: 'fail',
@@ -127,7 +134,7 @@ export type PlanGenerationWorkflowDeps = {
   readonly isEnabled: () => boolean;
   /**
    * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
-   * generation. Unset switches mean off; nothing reads it until 3a/3b.
+   * generation (the research step, JCS-158). Unset switches mean off.
    */
   readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
@@ -159,7 +166,7 @@ type RunContext = {
 function logStep(
   run: RunContext,
   step: StepName,
-  fields: { outcome: string; errorKind?: string; taskCount?: number },
+  fields: ResearchLogFields & { taskCount?: number },
   level: 'info' | 'warn' = 'info',
 ): void {
   run.deps.logger[level](
@@ -396,9 +403,10 @@ async function failStep(
 }
 
 /**
- * The plan-generation Workflow body: `record-workflow` → `generate` →
- * `finalize`, with a `fail` step after any thrown step. Each step opens its
- * own database pool through `deps.withDb`.
+ * The plan-generation Workflow body: `record-workflow` → (`research` →
+ * `research-save` when grounded) → `generate` → `finalize`, with a `fail`
+ * step after any thrown step. Each step opens its own database pool through
+ * `deps.withDb`.
  */
 export async function runPlanGenerationWorkflow(
   event: Readonly<WorkflowEvent<PlanGenerationWorkflowParams>>,
@@ -440,6 +448,19 @@ export async function runPlanGenerationWorkflow(
       RECORD_WORKFLOW_STEP_CONFIG,
       async () => deps.withDb((db) => recordWorkflowStep(db, run)),
     );
+
+    // Grounded research (JCS-158); its brief feeds the outline in 2b.
+    if (deps.isGroundedEnabled(input.tier)) {
+      current = 'research-save';
+      await runPlanResearchSteps(step, {
+        planId: input.planId,
+        tier: input.tier,
+        input: input.input,
+        attemptStartedAt: input.reservation.startedAt,
+        withDb: deps.withDb,
+        log: (name, fields, level) => logStep(run, name, fields, level),
+      });
+    }
 
     current = 'generate';
     const generated = await step.do(

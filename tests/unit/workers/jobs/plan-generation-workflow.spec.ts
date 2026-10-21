@@ -22,6 +22,24 @@ const mocks = vi.hoisted(() => ({
   commitSuccess: vi.fn(),
   commitFailure: vi.fn(),
   provider: { generate: vi.fn(), generateModuleLessonBatch: vi.fn() },
+  runPlanResearch: vi.fn(),
+  insertPlanResearch: vi.fn(),
+  getLatestPlanResearch: vi.fn(),
+}));
+
+// The provider call is covered in tests/unit/features/plans/research.
+vi.mock('@/features/plans/research/run-research', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/research/run-research')
+  >()),
+  runPlanResearch: mocks.runPlanResearch,
+}));
+
+// The inserts are covered against Postgres in
+// tests/integration/db/plan-research.queries.spec.ts.
+vi.mock('@/lib/db/queries/plan-research', () => ({
+  insertPlanResearch: mocks.insertPlanResearch,
+  getLatestPlanResearch: mocks.getLatestPlanResearch,
 }));
 
 vi.mock('@/lib/db/queries/attempts', async (importOriginal) => ({
@@ -566,5 +584,162 @@ describe('runPlanGenerationWorkflow', () => {
       runPlanGenerationWorkflow(event({ v: 1 }), step, deps),
     ).rejects.toMatchObject({ name: 'NonRetryableError' });
     expect(calls).toEqual([]);
+  });
+
+  describe('grounded research (JCS-158)', () => {
+    const RESEARCH = {
+      brief: 'Types first [S1].',
+      sources: [
+        {
+          key: 'S1',
+          title: 'Handbook',
+          url: 'https://www.typescriptlang.org/docs/handbook/',
+          publisher: 'typescriptlang.org',
+        },
+      ],
+    } as const;
+
+    beforeEach(() => {
+      mocks.runPlanResearch.mockResolvedValue({
+        research: RESEARCH,
+        droppedSourceCount: 1,
+        mode: 'fast',
+        searchCount: 3,
+        costMicrousd: 21_500,
+        model: 'served/model',
+      });
+      mocks.insertPlanResearch.mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue(null);
+    });
+
+    it('researches once, saves the brief and sources, then generates', async () => {
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['finalize', 1],
+      ]);
+      expect(calls[1]?.config.retries.limit).toBe(2);
+      expect(mocks.runPlanResearch).toHaveBeenCalledWith({
+        tier: 'free',
+        input: params.input,
+      });
+      expect(mocks.insertPlanResearch).toHaveBeenCalledWith(
+        {
+          research: {
+            planId: PLAN_ID,
+            brief: RESEARCH.brief,
+            mode: 'fast',
+            status: 'ok',
+            searchCount: 3,
+            costMicrousd: 21_500,
+          },
+          sources: [
+            {
+              citationKey: 'S1',
+              url: RESEARCH.sources[0].url,
+              title: 'Handbook',
+              publisher: 'typescriptlang.org',
+            },
+          ],
+        },
+        expect.anything(),
+      );
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'research'),
+      ).toMatchObject({
+        outcome: 'researched',
+        model: 'served/model',
+        sourceCount: 1,
+        droppedSourceCount: 1,
+        searchCount: 3,
+      });
+    });
+
+    it('retries research twice, then saves failed_skipped and still generates', async () => {
+      mocks.runPlanResearch.mockRejectedValue(new Error('provider down'));
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 3],
+        ['research-save', 1],
+        ['generate', 1],
+        ['finalize', 1],
+      ]);
+      expect(mocks.runPlanResearch).toHaveBeenCalledTimes(3);
+      expect(mocks.insertPlanResearch).toHaveBeenCalledWith(
+        {
+          research: {
+            planId: PLAN_ID,
+            brief: '',
+            mode: 'fast',
+            status: 'failed_skipped',
+            searchCount: 0,
+            costMicrousd: null,
+          },
+          sources: [],
+        },
+        expect.anything(),
+      );
+      expect(mocks.provider.generate).toHaveBeenCalledOnce();
+      expect(
+        stepLogs(logger)
+          .filter((fields) => String(fields.step).startsWith('research'))
+          .map((fields) => [fields.step, fields.outcome]),
+      ).toEqual([
+        // `stepLogs` lists info entries before warn entries.
+        ['research-save', 'saved_failed_skipped'],
+        ['research', 'failed_skipped'],
+      ]);
+    });
+
+    it('does not insert again when a save retry finds its row', async () => {
+      mocks.insertPlanResearch
+        .mockRejectedValueOnce(new Error('connection reset'))
+        .mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue({
+        research: { createdAt: new Date(reservation.startedAt.getTime() + 1) },
+        sources: [],
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(event(), step, deps);
+
+      expect(calls.find((call) => call.name === 'research-save')).toMatchObject(
+        { attempts: 2 },
+      );
+      expect(mocks.insertPlanResearch).toHaveBeenCalledOnce();
+      expect(mocks.runPlanResearch).toHaveBeenCalledOnce();
+    });
+
+    it('leaves the flow unchanged when grounded generation is off', async () => {
+      const { deps } = makeDeps();
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(event(), step, deps);
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'generate',
+        'finalize',
+      ]);
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.insertPlanResearch).not.toHaveBeenCalled();
+    });
   });
 });
