@@ -58,12 +58,29 @@ export const LessonContentBlockSchema = z.discriminatedUnion('type', [
   LessonCompletionCriteriaBlockSchema,
 ]);
 
+/** Research source keys (`S1`, `S2`, …) a lesson may cite, at most this many. */
+export const MAX_LESSON_SOURCE_IDS = 32;
+
+export const LessonSourceIdSchema = z.string().regex(/^S[1-9]\d*$/);
+
 export const LessonContentSchema = z.strictObject({
   version: z.literal(1),
   blocks: z
     .array(LessonContentBlockSchema)
     .min(1)
     .max(MAX_LESSON_BLOCKS_PER_TASK),
+  /**
+   * Research source keys the body cites as `[S1]`, unique and in order of
+   * first appearance. Set by code on grounded lessons (JCS-160); absent on
+   * batch lessons and rows written before it.
+   */
+  sourceIds: z
+    .array(LessonSourceIdSchema)
+    .max(MAX_LESSON_SOURCE_IDS)
+    .refine((ids) => new Set(ids).size === ids.length, {
+      message: 'sourceIds must be unique',
+    })
+    .optional(),
 });
 
 export const ModuleLessonBatchProviderOutputSchema = z.strictObject({

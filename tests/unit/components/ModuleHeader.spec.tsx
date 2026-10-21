@@ -30,6 +30,7 @@ function completedLesson(order: number): ModuleDetailModule['tasks'][number] {
     lessonContent: null,
     lessonContentUpdatedAt: null,
     resources: [],
+    sources: [],
   };
 }
 
