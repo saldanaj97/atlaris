@@ -507,6 +507,7 @@ async function runGroundedLessons(
     target: run.target,
     promptInput: claim.promptInput,
     grounded,
+    attemptStartedAt: claim.startedAt,
     generateStepConfig: generateStepConfig(),
     isEnabled: run.deps.isEnabled,
     withDb: run.deps.withDb,

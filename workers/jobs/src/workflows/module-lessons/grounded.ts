@@ -1,3 +1,7 @@
+import type {
+  LessonQualityLogFields,
+  LessonQualityStepName,
+} from './lesson-quality';
 import type { GroundedLesson } from '@/features/lesson-content/grounded-lesson-writer';
 import type {
   ModuleLessonBatchPromptInput,
@@ -5,11 +9,16 @@ import type {
 } from '@/features/lesson-content/module-lesson-prompts';
 import type { ModuleLessonGenerationTarget } from '@/features/lesson-content/run-module-lesson-generation-work';
 import type { ResearchBrief } from '@/features/plans/research/contract';
+import type { NewGenerationQualityIssue } from '@/lib/db/queries/types/generation-quality-issues.types';
 import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { WorkflowStep, WorkflowStepConfig } from 'cloudflare:workers';
 
+import {
+  runLessonQualitySteps,
+  saveLessonQualityIssues,
+} from './lesson-quality';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
@@ -116,6 +125,8 @@ export type GroundedLessonStepsContext = {
   readonly target: ModuleLessonGenerationTarget;
   readonly promptInput: ModuleLessonBatchPromptInput;
   readonly grounded: GroundedLessonContext;
+  /** Quality rows for the module created from here on belong to this run. */
+  readonly attemptStartedAt: string;
   readonly generateStepConfig: WorkflowStepConfig;
   readonly isEnabled: () => boolean;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -126,8 +137,8 @@ export type GroundedLessonStepsContext = {
   readonly nonRetryable: (message: string) => Error;
   readonly now: () => Date;
   readonly log: (
-    step: GroundedLessonStepName,
-    fields: GroundedLessonLogFields,
+    step: GroundedLessonStepName | LessonQualityStepName,
+    fields: GroundedLessonLogFields | LessonQualityLogFields,
     level?: 'info' | 'warn',
   ) => void;
 };
@@ -299,10 +310,46 @@ export async function mapWithConcurrency<T, R>(
   return results;
 }
 
+type CheckedLessonResult =
+  | {
+      readonly kind: 'written';
+      readonly lesson: GroundedLesson;
+      /** The writer call, then its verifier and repair calls. */
+      readonly usages: readonly CanonicalAIUsage[];
+      readonly records: readonly NewGenerationQualityIssue[];
+    }
+  | { readonly kind: 'disabled' };
+
+/** Writes one lesson, then checks and repairs it (`runLessonQualitySteps`). */
+async function writeAndCheckLesson(
+  step: Pick<WorkflowStep, 'do'>,
+  ctx: GroundedLessonStepsContext,
+  index: number,
+): Promise<CheckedLessonResult> {
+  const written = await writeLessonWithRetry(step, ctx, index);
+  if (written.kind !== 'written') {
+    return written;
+  }
+  const checked = await runLessonQualitySteps(
+    step,
+    ctx,
+    index,
+    written.lesson.content,
+  );
+  return {
+    kind: 'written',
+    lesson: { ...written.lesson, content: checked.content },
+    usages: [written.usage, ...checked.usages],
+    records: checked.records,
+  };
+}
+
 /**
  * One call per lesson, all of the module's lessons in parallel up to the
- * tier's fan-out, each with its own parse retry. Throws when a lesson still
- * fails after its retry or a call throws; the caller runs `fail`.
+ * tier's fan-out, each with its own parse retry, then its checks and up to
+ * two repair passes. Issues found are saved before the caller commits.
+ * Throws when a lesson still fails after its retry or a call throws; the
+ * caller runs `fail`.
  */
 export async function runGroundedLessonSteps(
   step: Pick<WorkflowStep, 'do'>,
@@ -311,13 +358,18 @@ export async function runGroundedLessonSteps(
   const results = await mapWithConcurrency(
     ctx.promptInput.tasks,
     GROUNDED_LESSON_FAN_OUT_BY_TIER[ctx.grounded.tier],
-    (_task, index) => writeLessonWithRetry(step, ctx, index),
+    (_task, index) => writeAndCheckLesson(step, ctx, index),
   );
   const written = results.filter((result) => result.kind === 'written');
-  const [first, ...rest] = written.map((result) => result.usage);
+  const [first, ...rest] = written.flatMap((result) => result.usages);
   if (written.length !== results.length || !first) {
     return { kind: 'disabled' };
   }
+  await saveLessonQualityIssues(
+    step,
+    ctx,
+    written.flatMap((result) => result.records),
+  );
   return {
     kind: 'written',
     lessons: written.map((result) => result.lesson),

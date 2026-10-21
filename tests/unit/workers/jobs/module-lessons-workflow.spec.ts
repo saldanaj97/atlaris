@@ -58,6 +58,27 @@ vi.mock(
   }),
 );
 
+const quality = vi.hoisted(() => ({
+  call: vi.fn(),
+  insert: vi.fn(),
+  list: vi.fn(),
+}));
+
+vi.mock(
+  '@/features/lesson-content/lesson-quality-call',
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import('@/features/lesson-content/lesson-quality-call')
+    >()),
+    sendLessonQualityCall: quality.call,
+  }),
+);
+
+vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
+  insertGenerationQualityIssues: quality.insert,
+  listGenerationQualityIssuesForPlan: quality.list,
+}));
+
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: vi.fn(async () => ({
     preferredAiModel: null,
@@ -635,7 +656,16 @@ describe('runModuleLessonsWorkflow', () => {
       return /taskId: (\S+)/.exec(call.userParts.at(-1)?.text ?? '')?.[1];
     }
 
-    /** Writes each lesson with `text(taskId, attempt)` as its only paragraph. */
+    /** A lesson that passes the code checks, with `text` as its paragraph. */
+    function cleanBlocks(text: string) {
+      return [
+        { type: 'paragraph', text },
+        { type: 'takeaways', items: ['Types: they catch mistakes early.'] },
+        { type: 'completion_criteria', items: ['Explain what a type is.'] },
+      ];
+    }
+
+    /** Writes each lesson with `text(taskId, attempt)` as its paragraph. */
     function writerReturning(
       text: (taskId: string, attempt: number) => string = () => 'Typed [S1].',
     ) {
@@ -652,7 +682,7 @@ describe('runModuleLessonsWorkflow', () => {
                 taskId,
                 content: {
                   version: 1,
-                  blocks: [{ type: 'paragraph', text: text(taskId, attempt) }],
+                  blocks: cleanBlocks(text(taskId, attempt)),
                 },
               },
             ],
@@ -865,7 +895,7 @@ describe('runModuleLessonsWorkflow', () => {
                   taskId: promptTaskId(call),
                   content: {
                     version: 1,
-                    blocks: [{ type: 'heading', text: 'Hi' }],
+                    blocks: cleanBlocks('Hi'),
                   },
                 },
               ],
@@ -884,6 +914,306 @@ describe('runModuleLessonsWorkflow', () => {
         expect(maxInFlight).toBe(limit);
       },
     );
+
+    describe('checks and repair', () => {
+      type QualityCall = {
+        stage: string;
+        tier: string;
+        presetSlug: string;
+        serverTools?: Array<{ type: string; model: string }>;
+        toolChoice?: string;
+        userParts: Array<{ text: string; cache?: boolean }>;
+      };
+
+      function qualityCalls(stage: string): QualityCall[] {
+        return quality.call.mock.calls
+          .map(([call]) => call as QualityCall)
+          .filter((call) => call.stage === stage);
+      }
+
+      /** Writes TASK_A without completion criteria; TASK_B is clean. */
+      function writerFlaggingTaskA() {
+        writer.write.mockImplementation(async (call) => {
+          const taskId = promptTaskId(call) ?? '';
+          const blocks = cleanBlocks('Typed [S1].');
+          return {
+            rawText: JSON.stringify({
+              version: 1,
+              tasks: [
+                {
+                  taskId,
+                  content: {
+                    version: 1,
+                    blocks: taskId === TASK_A ? blocks.slice(0, 2) : blocks,
+                  },
+                },
+              ],
+            }),
+            usage: usage(),
+          };
+        });
+      }
+
+      /** Verifier reports `issues(lessonText)`; repair returns `repaired`. */
+      function qualityReturning(options: {
+        verifierIssues?: (prompt: string) => unknown[];
+        repaired?: () => unknown;
+      }) {
+        quality.call.mockImplementation(async (call: QualityCall) => {
+          const prompt = call.userParts.at(-1)?.text ?? '';
+          const value =
+            call.stage === 'grounded-lesson-verify'
+              ? { issues: options.verifierIssues?.(prompt) ?? [] }
+              : (options.repaired?.() ?? {
+                  blocks: cleanBlocks('Fixed [S1].'),
+                });
+          return { value, usage: usage(), model: 'quality-model' };
+        });
+      }
+
+      beforeEach(() => {
+        quality.insert.mockResolvedValue([]);
+        quality.list.mockResolvedValue([]);
+        qualityReturning({});
+      });
+
+      it('runs code checks only on free, repairs without the advisor, and logs issues', async () => {
+        writerFlaggingTaskA();
+        // The repair never adds completion criteria, so both passes run.
+        qualityReturning({
+          repaired: () => ({ blocks: cleanBlocks('Still [S1].').slice(0, 2) }),
+        });
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        const names = calls.map((call) => call.name);
+        expect(names.filter((name) => name.includes('-verify-'))).toEqual([]);
+        expect(names.filter((name) => name.includes('-repair-'))).toEqual([
+          'lesson-1-repair-1',
+          'lesson-1-repair-2',
+        ]);
+        expect(names.slice(-2)).toEqual([
+          'lessons-quality-save',
+          'parse-commit',
+        ]);
+        const repairs = qualityCalls('grounded-lesson-repair');
+        expect(repairs).toHaveLength(2);
+        for (const call of repairs) {
+          expect(call).toMatchObject({
+            tier: 'free',
+            presetSlug: 'atlaris-grounded-repair',
+          });
+          expect(call.serverTools).toBeUndefined();
+          expect(call.toolChoice).toBeUndefined();
+        }
+
+        const [rows] = quality.insert.mock.calls[0] ?? [];
+        expect(rows).toEqual([
+          expect.objectContaining({
+            planId: PLAN_ID,
+            moduleId: MODULE_ID,
+            taskId: TASK_A,
+            stage: 'lesson',
+            blockRef: 'lesson',
+            issueCode: 'missing_completion_criteria',
+            pass: 0,
+            resolved: false,
+          }),
+        ]);
+        const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+        // Six calls: two lessons and two repairs, one usage each.
+        expect(committed.usage.inputTokens).toBe(40);
+      });
+
+      it('verifies on paid tiers, repairs with the advisor required, and stops once clean', async () => {
+        tier.value = 'pro';
+        qualityReturning({
+          // The first draft of every lesson says "Typed"; the repair fixes it.
+          verifierIssues: (prompt) =>
+            prompt.includes('Typed [S1].')
+              ? [
+                  {
+                    code: 'title mismatch',
+                    blockRef: 'blocks[0]',
+                    message: 'The paragraph does not match the title.',
+                  },
+                ]
+              : [],
+          repaired: () => ({
+            blocks: [
+              { index: 0, block: { type: 'paragraph', text: 'Fixed [S1].' } },
+            ],
+          }),
+        });
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        const names = calls.map((call) => call.name);
+        for (const lesson of [1, 2]) {
+          expect(names).toEqual(
+            expect.arrayContaining([
+              `lesson-${lesson}-verify-0`,
+              `lesson-${lesson}-repair-1`,
+              `lesson-${lesson}-verify-1`,
+            ]),
+          );
+          expect(names).not.toContain(`lesson-${lesson}-repair-2`);
+        }
+        const repairs = qualityCalls('grounded-lesson-repair');
+        expect(repairs).toHaveLength(2);
+        for (const call of repairs) {
+          expect(call.toolChoice).toBe('required');
+          expect(call.serverTools).toEqual([
+            expect.objectContaining({
+              type: 'advisor',
+              model: 'anthropic/claude-opus-5.5',
+            }),
+          ]);
+        }
+        expect(qualityCalls('grounded-lesson-verify')[0]).toMatchObject({
+          presetSlug: 'atlaris-grounded-verifier',
+        });
+
+        const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+        expect(
+          committed.parsed.tasks.map(
+            (task: { content: { blocks: Array<{ text?: string }> } }) =>
+              task.content.blocks[0]?.text,
+          ),
+        ).toEqual(['Fixed [S1].', 'Fixed [S1].']);
+        const [rows] = quality.insert.mock.calls[0] ?? [];
+        expect(rows).toHaveLength(2);
+        for (const row of rows) {
+          expect(row).toMatchObject({
+            stage: 'lesson',
+            blockRef: 'blocks[0]',
+            issueCode: 'verifier.title_mismatch',
+            pass: 0,
+            resolved: true,
+          });
+        }
+      });
+
+      it('runs exactly two repair passes on a paid lesson that stays flagged', async () => {
+        tier.value = 'starter';
+        taskIds = [TASK_A];
+        qualityReturning({
+          verifierIssues: () => [
+            {
+              code: 'answer_key',
+              blockRef: 'blocks[0]',
+              message: 'Wrong key.',
+            },
+          ],
+          repaired: () => ({
+            blocks: [
+              { index: 0, block: { type: 'paragraph', text: 'Again [S1].' } },
+            ],
+          }),
+        });
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(calls.map((call) => call.name)).toEqual([
+          'claim',
+          'lesson-1',
+          'lesson-1-verify-0',
+          'lesson-1-repair-1',
+          'lesson-1-verify-1',
+          'lesson-1-repair-2',
+          'lesson-1-verify-2',
+          'lessons-quality-save',
+          'parse-commit',
+        ]);
+        const [rows] = quality.insert.mock.calls[0] ?? [];
+        expect(rows).toEqual([
+          expect.objectContaining({
+            issueCode: 'verifier.answer_key',
+            pass: 0,
+            resolved: false,
+          }),
+        ]);
+      });
+
+      it('keeps the written lesson when the repair output is not a valid lesson', async () => {
+        writerFlaggingTaskA();
+        qualityReturning({ repaired: () => ({ blocks: [] }) });
+        const { deps, logger } = groundedDeps();
+        const { step } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+        expect(committed.parsed.tasks[0].content.blocks).toHaveLength(2);
+        expect(
+          logger.warn.mock.calls.filter(
+            ([fields]) =>
+              (fields as { outcome?: string }).outcome === 'failed_skipped',
+          ),
+        ).toHaveLength(2);
+      });
+
+      it('ships the lesson with code checks when the verifier fails', async () => {
+        tier.value = 'pro';
+        taskIds = [TASK_A];
+        quality.call.mockRejectedValue(new Error('provider down'));
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(calls.map((call) => call.name)).toEqual([
+          'claim',
+          'lesson-1',
+          'lesson-1-verify-0',
+          'parse-commit',
+        ]);
+        expect(quality.insert).not.toHaveBeenCalled();
+      });
+
+      it('does not save the issues twice when a retry finds its own rows', async () => {
+        writerFlaggingTaskA();
+        quality.insert
+          .mockImplementationOnce(async () => {
+            throw new Error('connection reset after insert');
+          })
+          .mockResolvedValue([]);
+        quality.list.mockResolvedValue([
+          {
+            stage: 'lesson',
+            moduleId: MODULE_ID,
+            createdAt: new Date(NOW.getTime() + 1_000),
+          },
+        ]);
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(quality.insert).toHaveBeenCalledOnce();
+        expect(
+          calls.find((call) => call.name === 'lessons-quality-save')?.attempts,
+        ).toBe(2);
+      });
+    });
 
     it('reverts the claim when the switch drops before a lesson call', async () => {
       const enabled = vi
