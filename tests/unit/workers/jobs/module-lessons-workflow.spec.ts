@@ -79,12 +79,22 @@ vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
   listGenerationQualityIssuesForPlan: quality.list,
 }));
 
+const groundedPicks = vi.hoisted(() => ({
+  verifier: null as string | null,
+  advisor: null as string | null,
+}));
+
 vi.mock('@/lib/db/queries/user-preferences', () => ({
   getUserPreferences: vi.fn(async () => ({
     preferredAiModel: null,
     preferredRegenerationAiModel: null,
     preferredLessonAiModel: null,
     analyticsTimezone: 'UTC',
+  })),
+  getGroundedModelPreferences: vi.fn(async () => ({
+    preferredWriterAiModel: null,
+    preferredVerifierAiModel: groundedPicks.verifier,
+    preferredAdvisorAiModel: groundedPicks.advisor,
   })),
 }));
 
@@ -237,6 +247,8 @@ describe('runModuleLessonsWorkflow', () => {
     vi.clearAllMocks();
     taskIds = [TASK_A, TASK_B];
     tier.value = 'free';
+    groundedPicks.verifier = null;
+    groundedPicks.advisor = null;
     research.latest.mockResolvedValue(null);
     // The app's provisional claim: generating, batch ID, no workflow yet.
     moduleRow = {
@@ -920,6 +932,7 @@ describe('runModuleLessonsWorkflow', () => {
         stage: string;
         tier: string;
         presetSlug: string;
+        models: Array<{ modelId: string }>;
         serverTools?: Array<{ type: string; model: string }>;
         toolChoice?: string;
         userParts: Array<{ text: string; cache?: boolean }>;
@@ -1100,6 +1113,66 @@ describe('runModuleLessonsWorkflow', () => {
             resolved: true,
           });
         }
+      });
+
+      describe('saved verifier and advisor picks', () => {
+        /** One flagged lesson, so one verifier call and one repair run. */
+        async function runFlaggedLesson() {
+          taskIds = [TASK_A];
+          qualityReturning({
+            verifierIssues: (prompt) =>
+              prompt.includes('Typed [S1].')
+                ? [{ code: 'x', blockRef: 'blocks[0]', message: 'm' }]
+                : [],
+            repaired: () => ({
+              blocks: [
+                { index: 0, block: { type: 'paragraph', text: 'Fixed [S1].' } },
+              ],
+            }),
+          });
+          const { deps } = groundedDeps();
+          const { step } = createStep();
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+          return {
+            verifierModel: qualityCalls('grounded-lesson-verify')[0]?.models[0]
+              ?.modelId,
+            advisorModel: qualityCalls('grounded-lesson-repair')[0]
+              ?.serverTools?.[0]?.model,
+          };
+        }
+
+        it('leads with the Pro saved picks', async () => {
+          tier.value = 'pro';
+          groundedPicks.verifier = 'openai/gpt-6-sol';
+          groundedPicks.advisor = 'anthropic/claude-haiku-5.5';
+
+          await expect(runFlaggedLesson()).resolves.toEqual({
+            verifierModel: 'openai/gpt-6-sol',
+            advisorModel: 'anthropic/claude-haiku-5.5',
+          });
+        });
+
+        it('uses the tier defaults when Pro has no saved picks', async () => {
+          tier.value = 'pro';
+
+          await expect(runFlaggedLesson()).resolves.toEqual({
+            verifierModel: 'anthropic/claude-sonnet-5.5',
+            advisorModel: 'anthropic/claude-opus-5.5',
+          });
+        });
+
+        it('ignores saved picks below Pro', async () => {
+          tier.value = 'starter';
+          groundedPicks.verifier = 'openai/gpt-6-sol';
+          groundedPicks.advisor = 'anthropic/claude-haiku-5.5';
+
+          await expect(runFlaggedLesson()).resolves.toEqual({
+            verifierModel: 'openai/gpt-6.1-sol',
+            advisorModel: 'openai/gpt-6.1-sol',
+          });
+        });
       });
 
       it('runs exactly two repair passes on a paid lesson that stays flagged', async () => {

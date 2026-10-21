@@ -19,7 +19,10 @@ import {
   runLessonQualitySteps,
   saveLessonQualityIssues,
 } from './lesson-quality';
-import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
+import {
+  resolveGroundedModelPick,
+  resolveOverrideOrSavedModelId,
+} from '@/features/ai/model-preferences';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
 import { resolveUserTier } from '@/features/billing/tier';
@@ -35,7 +38,10 @@ import {
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
 import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
-import { getUserPreferences } from '@/lib/db/queries/user-preferences';
+import {
+  getGroundedModelPreferences,
+  getUserPreferences,
+} from '@/lib/db/queries/user-preferences';
 
 /**
  * Per-lesson step names, numbered by the lesson's position in the claimed
@@ -75,6 +81,9 @@ export type GroundedLessonContext = {
   readonly tier: SubscriptionTier;
   /** The override or saved lesson model; the route ignores non-catalog picks. */
   readonly pickedModelId: string | null;
+  /** The Pro verifier and advisor picks; `null` uses the tier's models. */
+  readonly verifierModelId: string | null;
+  readonly advisorModelId: string | null;
   readonly research: ResearchBrief | null;
 };
 
@@ -94,8 +103,9 @@ export async function resolveGroundedLessonContext(
   if (!input.isGroundedEnabled(tier)) {
     return null;
   }
-  const [saved, latest] = await Promise.all([
+  const [saved, groundedPicks, latest] = await Promise.all([
     getUserPreferences(input.target.userId, db),
+    getGroundedModelPreferences(input.target.userId, db),
     getLatestPlanResearch(input.target.planId, db),
   ]);
   return {
@@ -107,6 +117,8 @@ export async function resolveGroundedLessonContext(
         saved,
         'lesson',
       ) ?? null,
+    verifierModelId: resolveGroundedModelPick(tier, groundedPicks, 'verifier'),
+    advisorModelId: resolveGroundedModelPick(tier, groundedPicks, 'advisor'),
     research: toLessonResearch(latest),
   };
 }

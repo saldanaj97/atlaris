@@ -288,15 +288,27 @@ describe('lesson repair', () => {
   });
 
   it('adds the advisor on paid tiers only', () => {
-    expect(lessonAdvisorTool('free')).toBeNull();
-    expect(lessonAdvisorTool('starter')).toMatchObject({
+    expect(lessonAdvisorTool('free', null)).toBeNull();
+    expect(lessonAdvisorTool('starter', null)).toMatchObject({
       type: 'advisor',
       model: 'openai/gpt-6.1-sol',
     });
-    expect(lessonAdvisorTool('pro')).toMatchObject({
+    expect(lessonAdvisorTool('pro', null)).toMatchObject({
       type: 'advisor',
       model: 'anthropic/claude-opus-5.5',
     });
+  });
+
+  it('leads the advisor with a Pro pick in its catalog only', () => {
+    expect(
+      lessonAdvisorTool('pro', 'anthropic/claude-haiku-5.5'),
+    ).toMatchObject({ model: 'anthropic/claude-haiku-5.5' });
+    expect(lessonAdvisorTool('pro', 'not/a-model')).toMatchObject({
+      model: 'anthropic/claude-opus-5.5',
+    });
+    expect(
+      lessonAdvisorTool('starter', 'anthropic/claude-haiku-5.5'),
+    ).toMatchObject({ model: 'openai/gpt-6.1-sol' });
   });
 
   it('asks for flagged blocks only in a block repair', () => {

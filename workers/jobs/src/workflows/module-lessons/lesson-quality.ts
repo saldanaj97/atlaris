@@ -116,6 +116,7 @@ async function verifyLesson(
       const run = await runLessonVerifier({
         tier: ctx.grounded.tier,
         planId: ctx.target.planId,
+        pickedModelId: ctx.grounded.verifierModelId,
         promptInput: ctx.promptInput,
         taskIndex: index,
         content,
@@ -163,6 +164,7 @@ async function repairLesson(
         tier: ctx.grounded.tier,
         planId: ctx.target.planId,
         pickedModelId: ctx.grounded.pickedModelId,
+        advisorModelId: ctx.grounded.advisorModelId,
         promptInput: ctx.promptInput,
         taskIndex: index,
         content,

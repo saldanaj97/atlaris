@@ -150,6 +150,8 @@ export async function runLessonVerifier(
   params: {
     readonly tier: SubscriptionTier;
     readonly planId: string;
+    /** The Pro verifier pick; the route ignores it on other tiers. */
+    readonly pickedModelId: string | null;
     readonly promptInput: ModuleLessonBatchPromptInput;
     readonly taskIndex: number;
     readonly content: LessonContent;
@@ -159,7 +161,11 @@ export async function runLessonVerifier(
   },
   deps: LessonQualityCallDeps = {},
 ): Promise<LessonVerifierRun> {
-  const models = getGroundedModelRoute(params.tier, 'lesson_verify');
+  const models = getGroundedModelRoute(
+    params.tier,
+    'lesson_verify',
+    params.pickedModelId,
+  );
   if (!models) {
     throw new Error(`Lesson verifier is not available for ${params.tier}`);
   }

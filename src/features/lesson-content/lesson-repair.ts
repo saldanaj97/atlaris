@@ -176,12 +176,13 @@ export function applyLessonRepairOutput(
 
 /**
  * The advisor tool for a paid repair, or `null` on free. Its model is the
- * tier's advisor route primary.
+ * Pro advisor pick when allowed, else the tier's advisor route primary.
  */
 export function lessonAdvisorTool(
   tier: SubscriptionTier,
+  pickedModelId: string | null,
 ): OpenRouterServerTool | null {
-  const route = getGroundedModelRoute(tier, 'advisor');
+  const route = getGroundedModelRoute(tier, 'advisor', pickedModelId);
   const model = route?.[0]?.modelId;
   if (!model) {
     return null;
@@ -205,6 +206,8 @@ export async function runLessonRepair(
     readonly planId: string;
     /** The Pro writer pick, as for the lesson writer. */
     readonly pickedModelId: string | null;
+    /** The Pro advisor pick; the route ignores it on other tiers. */
+    readonly advisorModelId: string | null;
     readonly promptInput: ModuleLessonBatchPromptInput;
     readonly taskIndex: number;
     readonly content: LessonContent;
@@ -218,7 +221,7 @@ export async function runLessonRepair(
   if (params.issues.length === 0) {
     throw new Error('Lesson repair needs at least one issue');
   }
-  const advisor = lessonAdvisorTool(params.tier);
+  const advisor = lessonAdvisorTool(params.tier, params.advisorModelId);
   const { value, usage, model } = await sendLessonQualityCall(
     {
       tier: params.tier,
