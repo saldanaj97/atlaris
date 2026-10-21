@@ -4,6 +4,7 @@ import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestr
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
 import { makeAttemptReservation } from '../../../fixtures/attempts';
+import { makeCanonicalUsage } from '../../../fixtures/canonical-usage.factory';
 import {
   PLAN_REGENERATION_FAILURE_MESSAGE,
   runPlanRegeneration,
@@ -539,7 +540,11 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
         };
         await provider.generate({}, {});
         order.push('outline');
-        return { status: 'success', modules: MODULES };
+        return {
+          status: 'success',
+          modules: MODULES,
+          usage: makeCanonicalUsage({ providerCostMicrousd: 4_000 }),
+        };
       },
     );
     mocks.settleGenerationResult.mockImplementation(async () => {
@@ -565,7 +570,10 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
     });
     stages.outlineQuality.mockImplementation(async () => {
       order.push('quality');
-      return CHECKED;
+      return {
+        modules: CHECKED,
+        usages: [makeCanonicalUsage({ providerCostMicrousd: 1_500 })],
+      };
     });
     mocks.createGroundedOutlineProvider.mockReturnValue({
       generate: vi.fn(async () => ({})),
@@ -607,7 +615,12 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
     );
     expect(mocks.settleGenerationResult).toHaveBeenCalledWith(
       expect.anything(),
-      expect.objectContaining({ status: 'success', modules: CHECKED }),
+      expect.objectContaining({
+        status: 'success',
+        modules: CHECKED,
+        // Outline verifier and repair spend is recorded with the outline's.
+        usage: expect.objectContaining({ providerCostMicrousd: 5_500 }),
+      }),
     );
     expect(mocks.reserveRegenerationQuotaAtProviderStart).toHaveBeenCalledWith(
       expect.objectContaining({ groundedTier: 'pro' }),

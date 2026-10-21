@@ -12,7 +12,7 @@ import {
 } from './grounded';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
-import { sumLessonUsage } from '@/features/lesson-content/grounded-lesson-writer';
+import { sumUsages } from '@/features/ai/usage';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import {
   buildModuleLessonBatchInput,
@@ -535,7 +535,7 @@ async function runGroundedLessons(
   const generated = {
     kind: 'generated',
     rawText: JSON.stringify({ version: 1, tasks: written.lessons }),
-    usage: sumLessonUsage(written.usages),
+    usage: sumUsages(written.usages),
   } as const;
   const committed = await step.do(
     MODULE_LESSONS_STEPS.parseCommit,

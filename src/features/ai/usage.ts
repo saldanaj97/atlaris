@@ -177,3 +177,28 @@ export function safeNormalizeUsage(
     throw error;
   }
 }
+
+/** One usage record for several calls: token and cost totals, model and provider of the first. */
+export function sumUsages(
+  usages: readonly [CanonicalAIUsage, ...CanonicalAIUsage[]],
+): CanonicalAIUsage {
+  const [first] = usages;
+  const missingFields = [...new Set(usages.flatMap((u) => u.missingFields))];
+  return {
+    inputTokens: usages.reduce((sum, u) => sum + u.inputTokens, 0),
+    outputTokens: usages.reduce((sum, u) => sum + u.outputTokens, 0),
+    totalTokens: usages.reduce((sum, u) => sum + u.totalTokens, 0),
+    model: first.model,
+    provider: first.provider,
+    estimatedCostCents: usages.reduce(
+      (sum, u) => sum + u.estimatedCostCents,
+      0,
+    ),
+    // A total is known only when every call's cost is.
+    providerCostMicrousd: usages.every((u) => u.providerCostMicrousd !== null)
+      ? usages.reduce((sum, u) => sum + (u.providerCostMicrousd ?? 0), 0)
+      : null,
+    isPartial: usages.some((u) => u.isPartial),
+    missingFields,
+  };
+}

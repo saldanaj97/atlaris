@@ -28,6 +28,7 @@ import {
 } from './outline';
 import { RESEARCH_STEPS, runPlanResearchSteps } from './research';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
+import { sumUsages } from '@/features/ai/usage';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { validateReservation } from '@/features/plans/lifecycle/generation';
 import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
@@ -503,27 +504,30 @@ export async function runPlanGenerationWorkflow(
 
     // Outline checks, verifier and one repair on the grounded outline (JCS-159).
     current = 'outline-quality-save';
-    const toFinalize =
-      grounded && generated.kind === 'generated'
-        ? {
-            ...generated,
-            modules: await runOutlineQualitySteps(
-              step,
-              {
-                planId: input.planId,
-                tier: input.tier,
-                purpose: generationPurpose,
-                modelOverride: input.groundedWriterModelId ?? null,
-                input: input.input,
-                research,
-                attemptStartedAt: input.reservation.startedAt,
-                withDb: deps.withDb,
-                log: (name, fields, level) => logStep(run, name, fields, level),
-              },
-              generated.modules,
-            ),
-          }
-        : generated;
+    let toFinalize = generated;
+    if (grounded && generated.kind === 'generated') {
+      const quality = await runOutlineQualitySteps(
+        step,
+        {
+          planId: input.planId,
+          tier: input.tier,
+          purpose: generationPurpose,
+          modelOverride: input.groundedWriterModelId ?? null,
+          input: input.input,
+          research,
+          attemptStartedAt: input.reservation.startedAt,
+          withDb: deps.withDb,
+          log: (name, fields, level) => logStep(run, name, fields, level),
+        },
+        generated.modules,
+      );
+      // Verifier and repair spend counts toward the plan's AI ceiling (JCS-170).
+      toFinalize = {
+        ...generated,
+        modules: quality.modules,
+        usage: sumUsages([generated.usage, ...quality.usages]),
+      };
+    }
 
     current = 'finalize';
     return await step.do(

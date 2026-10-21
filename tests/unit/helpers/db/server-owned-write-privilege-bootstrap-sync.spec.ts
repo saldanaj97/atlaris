@@ -41,7 +41,14 @@ describe('server-owned write privilege bootstrap sync', () => {
       ),
       'utf8',
     );
-    const serverOwnedMigrationSql = `${migration}\n${learningActivityMigration}\n${researchAndQualityMigration}`;
+    const planAiBudgetMigration = readFileSync(
+      resolve(
+        REPO_ROOT,
+        'supabase/migrations/20261021221300_add_plan_ai_budget_tracking.sql',
+      ),
+      'utf8',
+    );
+    const serverOwnedMigrationSql = `${migration}\n${learningActivityMigration}\n${researchAndQualityMigration}\n${planAiBudgetMigration}`;
     const bootstrap = readFileSync(
       resolve(TEST_DIR, '../../../helpers/db/bootstrap.ts'),
       'utf8',

@@ -2,6 +2,7 @@ import type { ModelPricingSnapshot } from '@/shared/types/model-pricing-snapshot
 
 import { timestampFields } from '../helpers';
 import { recordOwnedByCurrentUser } from '../policy-helpers';
+import { learningPlans } from './plans';
 import { users } from './users';
 import { sql } from 'drizzle-orm';
 import {
@@ -80,6 +81,10 @@ export const aiUsageEvents = pgTable(
       'model_pricing_snapshot',
     ).$type<ModelPricingSnapshot | null>(),
     requestId: text('request_id'),
+    /** The plan the call generated content for; null on rows from before JCS-170. */
+    planId: uuid('plan_id').references(() => learningPlans.id, {
+      onDelete: 'set null',
+    }),
     createdAt: timestamp('created_at', { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -88,6 +93,10 @@ export const aiUsageEvents = pgTable(
     index('idx_ai_usage_created_at').on(table.createdAt),
     index('idx_ai_usage_events_user_created_at').on(
       table.userId,
+      table.createdAt,
+    ),
+    index('idx_ai_usage_events_plan_created_at').on(
+      table.planId,
       table.createdAt,
     ),
     check(

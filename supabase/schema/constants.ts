@@ -60,3 +60,6 @@ export const MAX_REGENERATION_NOTE_LENGTH = 500;
 
 /** Highest quality-check pass number stored on `generation_quality_issues.pass` (passes are 0-based). */
 export const MAX_GENERATION_QUALITY_PASS = 2;
+
+/** Optional steps a per-plan AI spend ceiling can cut (`generation_budget_cuts.step`). */
+export const GENERATION_BUDGET_CUT_STEPS = ['advisor', 'repair'] as const;

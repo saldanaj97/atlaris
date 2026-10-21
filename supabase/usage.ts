@@ -16,6 +16,8 @@ export type RecordUsageParams = {
   providerCostMicrousd?: bigint;
   modelPricingSnapshot?: ModelPricingSnapshotV1;
   requestId?: string;
+  /** The plan the call generated content for, so per-plan spend can be summed. */
+  planId?: string;
 };
 
 /**
@@ -63,5 +65,6 @@ export async function recordUsageInTx(
     providerCostMicrousd: params.providerCostMicrousd ?? null,
     modelPricingSnapshot: params.modelPricingSnapshot ?? null,
     requestId: params.requestId ?? null,
+    planId: params.planId ?? null,
   });
 }

@@ -3,6 +3,7 @@ import type { OutlineIssue } from '@/features/plans/outline/checks';
 import type { GroundedCallDeps } from '@/features/plans/outline/grounded-writer';
 import type { ResearchBrief } from '@/features/plans/research/contract';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
@@ -11,6 +12,7 @@ import {
 } from '@/features/ai/model-operation-policy';
 import { buildUserPrompt } from '@/features/ai/prompts';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
+import { safeNormalizeUsage } from '@/features/ai/usage';
 import {
   OUTLINE_SCOPE_CONTRACT,
   buildResearchBriefPart,
@@ -40,6 +42,7 @@ const verifierOutputSchema = z.object({
 export type OutlineVerifierRun = {
   readonly issues: OutlineIssue[];
   readonly model: string;
+  readonly usage: CanonicalAIUsage;
 };
 
 /** Free runs code checks only; starter and pro also run the verifier. */
@@ -158,5 +161,6 @@ export async function runOutlineVerifier(
   return {
     issues: parseVerifierOutput(value, params.modules),
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
+    usage: safeNormalizeUsage(metadata),
   };
 }

@@ -8,10 +8,10 @@ import type {
 } from '@/shared/types/lesson-content.types';
 
 import { ParserError } from '@/features/ai/parser';
+import { sumUsages } from '@/features/ai/usage';
 import { buildGroundedLessonPromptParts } from '@/features/lesson-content/grounded-lesson-prompt';
 import {
   parseGroundedLessonText,
-  sumLessonUsage,
   toLessonResearch,
 } from '@/features/lesson-content/grounded-lesson-writer';
 import {
@@ -306,7 +306,7 @@ describe('parseGroundedLessonText', () => {
   });
 });
 
-describe('sumLessonUsage', () => {
+describe('sumUsages', () => {
   const usage = (over: Partial<CanonicalAIUsage> = {}): CanonicalAIUsage => ({
     inputTokens: 100,
     outputTokens: 50,
@@ -321,7 +321,7 @@ describe('sumLessonUsage', () => {
   });
 
   it('sums tokens and costs', () => {
-    expect(sumLessonUsage([usage(), usage()])).toMatchObject({
+    expect(sumUsages([usage(), usage()])).toMatchObject({
       inputTokens: 200,
       outputTokens: 100,
       totalTokens: 300,
@@ -334,7 +334,7 @@ describe('sumLessonUsage', () => {
 
   it('drops the provider cost when any lesson lacks it and merges gaps', () => {
     expect(
-      sumLessonUsage([
+      sumUsages([
         usage(),
         usage({
           providerCostMicrousd: null,

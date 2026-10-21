@@ -6,6 +6,7 @@ import type {
 } from '@/features/plans/outline/grounded-writer';
 import type { ResearchBrief } from '@/features/plans/research/contract';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { GROUNDED_PRESET_SLUGS } from '@/features/ai/model-operation-policy';
@@ -13,6 +14,7 @@ import { pacePlan } from '@/features/ai/pacing';
 import { parseGenerationStream } from '@/features/ai/parser';
 import { buildUserPrompt } from '@/features/ai/prompts';
 import { toStream } from '@/features/ai/streaming/utils';
+import { safeNormalizeUsage } from '@/features/ai/usage';
 import {
   OUTLINE_SCOPE_CONTRACT,
   buildResearchBriefPart,
@@ -29,6 +31,7 @@ export const OUTLINE_REPAIR_STAGE = 'grounded-outline-repair';
 export type OutlineRepairRun = {
   readonly modules: ParsedModule[];
   readonly model: string;
+  readonly usage: CanonicalAIUsage;
 };
 
 export function formatIssuesForRepair(issues: readonly OutlineIssue[]): string {
@@ -110,5 +113,6 @@ export async function runOutlineRepair(
   return {
     modules: pacePlan(parsed.modules, params.input),
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
+    usage: safeNormalizeUsage(metadata),
   };
 }
