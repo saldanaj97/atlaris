@@ -85,8 +85,10 @@ export async function resolveGroundedLessonContext(
   if (!input.isGroundedEnabled(tier)) {
     return null;
   }
-  const saved = await getUserPreferences(input.target.userId, db);
-  const latest = await getLatestPlanResearch(input.target.planId, db);
+  const [saved, latest] = await Promise.all([
+    getUserPreferences(input.target.userId, db),
+    getLatestPlanResearch(input.target.planId, db),
+  ]);
   return {
     tier,
     pickedModelId:
