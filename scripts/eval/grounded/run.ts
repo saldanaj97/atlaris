@@ -600,18 +600,22 @@ function errorMessage(error: unknown): string {
  * Creates and generates one topic's plan under a new throwaway user. Every
  * tier gets its own user per plan so per-user rate limits never queue plans.
  * Once the user exists, a failure returns what was created instead of
- * throwing, so the manifest keeps it for `cleanup`.
+ * throwing, so the manifest keeps it for `cleanup`. `onCreated` reports the
+ * user and then the plan as each is created.
  */
 async function runTopic(
   baseUrl: string,
   options: { arm: EvalArm; tier: SubscriptionTier },
   topic: EvalTopic,
+  onCreated: (created: Pick<AbandonedRun, 'clerkUserId' | 'planId'>) => void,
 ): Promise<TopicOutcome> {
   const clerkUserId = await createThrowawayUser(topic.id);
   let planId: string | null = null;
+  onCreated({ clerkUserId, planId });
   try {
     const run = await runTopicAs(baseUrl, options, topic, clerkUserId, (id) => {
       planId = id;
+      onCreated({ clerkUserId, planId });
     });
     return { ok: true, run };
   } catch (error) {
@@ -717,9 +721,29 @@ async function collect(options: {
   for (let i = 0; i < topics.length; i += options.concurrency) {
     const batch = topics.slice(i, i + options.concurrency);
     const usageBefore = await readKeyUsageUsd();
+    // Record each run's user and plan as they are created, so an interrupted
+    // runner still leaves them in the manifest for `cleanup`.
+    const inFlight = new Map<string, AbandonedRun>();
     const results = await Promise.allSettled(
-      batch.map((topic) => runTopic(baseUrl, options, topic)),
+      batch.map((topic) =>
+        runTopic(baseUrl, options, topic, (created) => {
+          const previous = inFlight.get(topic.id);
+          const entry: AbandonedRun = {
+            topicId: topic.id,
+            ...created,
+            error: 'interrupted: the runner stopped before this run finished',
+          };
+          inFlight.set(topic.id, entry);
+          manifest.abandoned = [
+            ...(manifest.abandoned ?? []).filter((r) => r !== previous),
+            entry,
+          ];
+          writeManifest(options.out, manifest);
+        }),
+      ),
     );
+    const finished = new Set(inFlight.values());
+    manifest.abandoned = manifest.abandoned?.filter((r) => !finished.has(r));
     const runs: PlanRun[] = [];
     let setupError: string | null = null;
     results.forEach((result, index) => {
