@@ -132,6 +132,7 @@ describe('GET /api/v1/user/preferences', () => {
     expect(data.effectivePreferredAiModel).toBe(FREE_EFFECTIVE_MODEL);
     expect(data.effectivePreferredAiModel).toBe(AI_DEFAULT_MODEL);
     expect(expectModelArray(data.availableModels)).toEqual([]);
+    expect(expectModelArray(data.proOnlyModels)).toEqual([]);
   });
 
   it('returns models with correct structure', async () => {
@@ -388,6 +389,38 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(row?.preferredAiModel).toBe(STARTER_SELECTABLE_MODEL_IDS.at(-1));
     expect(row?.preferredLessonAiModel).toBeNull();
     expect(row?.preferredRegenerationAiModel).toBeNull();
+  });
+
+  it('GET lists Pro-only models separately from the selectable Starter models', async () => {
+    setTestUser(testAuthUserId);
+
+    const response = await GET(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'GET',
+      }),
+    );
+    expect(response.status).toBe(200);
+    const data = expectJsonObject(await response.json());
+
+    const availableIds = expectModelArray(data.availableModels)
+      .map((model) => model.id)
+      .sort();
+    expect(availableIds).toEqual([...STARTER_SELECTABLE_MODEL_IDS].sort());
+
+    const proOnlyIds = expectModelArray(data.proOnlyModels)
+      .map((model) => model.id)
+      .sort();
+    expect(proOnlyIds).toEqual(
+      [
+        ...PICKER_HIDDEN_MODEL_IDS_BY_TIER.starter,
+        ...MODEL_CATALOG_FIXTURE.pro
+          .map((model) => model.modelId)
+          .filter((modelId) => !STARTER_SYNCED_MODEL_IDS.includes(modelId)),
+      ].sort(),
+    );
+    expect(proOnlyIds).toContain('openai/gpt-6.1-sol');
+    expect(proOnlyIds).not.toContain(AI_DEFAULT_MODEL);
+    expect(proOnlyIds.filter((id) => availableIds.includes(id))).toEqual([]);
   });
 
   it('rejects invalid model ID with validation error and keeps the previous saved value', async () => {
@@ -777,6 +810,7 @@ describe('PATCH /api/v1/user/preferences — Pro slots', () => {
       PRO_REGEN_MODEL_ID,
     );
     expect(savedGet.effectivePreferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
+    expect(expectModelArray(savedGet.proOnlyModels)).toEqual([]);
 
     const clearLesson = await PATCH(
       new Request('http://localhost/api/v1/user/preferences', {

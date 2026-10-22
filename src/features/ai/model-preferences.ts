@@ -17,7 +17,12 @@ import {
   getDefaultModelForTier,
   getModelsForTier,
 } from '@/features/ai/ai-models';
-import { getGroundedOperationPolicy } from '@/features/ai/model-operation-policy';
+import { getTierModels } from '@/features/ai/model-catalog/catalog';
+import {
+  getGroundedOperationPolicy,
+  getModelOperationPolicy,
+  PICKER_HIDDEN_MODEL_IDS_BY_TIER,
+} from '@/features/ai/model-operation-policy';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
@@ -49,6 +54,38 @@ export async function getPersistableModelsForTier(
   return (await getModelsForTier(tier, operation)).filter(
     (m) => !isRuntimeOnlyModelId(m.id),
   );
+}
+
+/**
+ * Models Starter sees in its picker but cannot pick (Settings shows them
+ * disabled with a Pro plan badge): its picker-hidden guardrail models plus Pro
+ * guardrail models missing from the Starter guardrail, without runtime-only
+ * routers. Empty for Free, Pro and operations that offer no guardrail models.
+ * Validation still rejects these models (`tier_denied`).
+ */
+export async function getProOnlyModelsForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<AvailableModel[]> {
+  if (
+    tier !== 'starter' ||
+    !getModelOperationPolicy(tier, operation).usesTierCatalog
+  ) {
+    return [];
+  }
+  const [starterModels, proModels] = await Promise.all([
+    getTierModels('starter'),
+    getTierModels('pro'),
+  ]);
+  const hiddenModelIds: readonly string[] =
+    PICKER_HIDDEN_MODEL_IDS_BY_TIER.starter;
+  const starterModelIds = new Set(starterModels.map((model) => model.id));
+  // Disjoint by construction: hidden models are on the Starter guardrail, the
+  // Pro ones are not, so each id appears once.
+  return [
+    ...starterModels.filter((model) => hiddenModelIds.includes(model.id)),
+    ...proModels.filter((model) => !starterModelIds.has(model.id)),
+  ].filter((model) => !isRuntimeOnlyModelId(model.id));
 }
 
 export type SavedModelPreferenceSlots = {

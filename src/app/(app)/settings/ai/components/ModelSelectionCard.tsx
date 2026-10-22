@@ -18,6 +18,7 @@ import {
   getGroundedPickCatalog,
   getGroundedPickDefault,
   getPersistableModelsForTier,
+  getProOnlyModelsForTier,
   resolveGroundedModelPick,
   resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
@@ -112,15 +113,17 @@ export async function ModelSelectionCard() {
         </div>
       );
     case 'starter': {
-      const [availableModels, currentModel, tierDefaultId] = await Promise.all([
-        getPersistableModelsForTier(userTier, 'initial_outline'),
-        resolveSavedPreferenceForSettings(
-          userTier,
-          user.preferredAiModel,
-          'initial_outline',
-        ),
-        getDefaultModelForTier(userTier, 'initial_outline'),
-      ]);
+      const [availableModels, proOnlyModels, currentModel, tierDefaultId] =
+        await Promise.all([
+          getPersistableModelsForTier(userTier, 'initial_outline'),
+          getProOnlyModelsForTier(userTier, 'initial_outline'),
+          resolveSavedPreferenceForSettings(
+            userTier,
+            user.preferredAiModel,
+            'initial_outline',
+          ),
+          getDefaultModelForTier(userTier, 'initial_outline'),
+        ]);
       const tierDefaultMeta = availableModels.find(
         (model) => model.id === tierDefaultId,
       );
@@ -146,7 +149,7 @@ export async function ModelSelectionCard() {
             ) : (
               <>
                 New plans use <strong>{tierDefaultLabel}</strong> until you save
-                a preference. Only persistable models appear here.
+                a preference. Only models your plan can save are selectable.
               </>
             )}
           </p>
@@ -154,6 +157,7 @@ export async function ModelSelectionCard() {
             currentModel={currentModel}
             userTier={userTier}
             availableModels={availableModels}
+            proOnlyModels={proOnlyModels}
           />
         </div>
       );

@@ -17,6 +17,7 @@ import {
   GROUNDED_PICK_FIELD_BY_ROLE,
   GROUNDED_PICK_ROLES,
   getPersistableModelsForTier,
+  getProOnlyModelsForTier,
   isRuntimeOnlyModelId,
   resolveEffectivePreference,
   savedModelIdForOperation,
@@ -220,6 +221,7 @@ async function toPreferencesGetResponse(
     effectivePreferredRegenerationAiModel,
     effectivePreferredLessonAiModel,
     availableModels,
+    proOnlyModels,
   ] = await Promise.all([
     resolveEffectivePreference(
       tier,
@@ -237,6 +239,7 @@ async function toPreferencesGetResponse(
       'lesson',
     ),
     getPersistableModelsForTier(tier, 'initial_outline'),
+    getProOnlyModelsForTier(tier, 'initial_outline'),
   ]);
   return {
     preferredAiModel: saved.preferredAiModel,
@@ -246,6 +249,7 @@ async function toPreferencesGetResponse(
     effectivePreferredRegenerationAiModel,
     effectivePreferredLessonAiModel,
     availableModels,
+    proOnlyModels,
   };
 }
 
@@ -265,7 +269,8 @@ function toPreferencesPatchResponse(saved: UserModelPreferenceValues) {
  * GET /api/v1/user/preferences
  *
  * Returns raw saved model slots (nullable, including out-of-tier IDs) plus
- * effective resolved IDs for the current tier. Never writes.
+ * effective resolved IDs for the current tier, the persistable outline picker
+ * list, and the Pro-only models Starter sees disabled. Never writes.
  */
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },

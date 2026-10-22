@@ -103,7 +103,9 @@ describe('ModelSelectionCard', () => {
 
     expect(
       screen.getByRole('combobox', { name: /preferred ai model/i }),
-    ).toBeInTheDocument();
+    ).toHaveAccessibleDescription(
+      /models marked pro plan are available when you upgrade to pro/i,
+    );
     expect(screen.getAllByRole('combobox')).toHaveLength(1);
   });
 
@@ -127,6 +129,9 @@ describe('ModelSelectionCard', () => {
       screen.getByRole('combobox', { name: /preferred lesson model/i }),
     ).toBeInTheDocument();
     expect(screen.getAllByRole('combobox')).toHaveLength(3);
+    expect(
+      screen.queryByText(/models marked pro plan/i),
+    ).not.toBeInTheDocument();
   });
 
   it('adds writer, lesson checker, and advisor pickers for Pro when grounded generation is on', async () => {
