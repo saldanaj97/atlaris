@@ -28,7 +28,11 @@ const PRO_DEFAULT_MODEL_BY_OPERATION = {
 
 export type ModelOperationPolicy = {
   readonly allowed: boolean;
-  /** Must be in the operation's models; resolution throws when it is not. */
+  /**
+   * Should be in the operation's models. When the guardrail drops it,
+   * resolution uses the first listed model on the operation's grounded writer
+   * route, and throws when none is listed.
+   */
   readonly defaultModelId: string;
   /** Offers the tier's synced guardrail models. */
   readonly usesTierCatalog: boolean;

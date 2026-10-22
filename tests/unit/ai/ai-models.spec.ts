@@ -16,6 +16,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 const fixtureIds = (tier: keyof typeof MODEL_CATALOG_FIXTURE) =>
   MODEL_CATALOG_FIXTURE[tier].map((model) => model.modelId);
 
+function dropFromGuardrail(
+  tier: keyof typeof MODEL_CATALOG_FIXTURE,
+  modelIds: readonly string[],
+) {
+  return inMemoryModelCatalogStore.replaceTierModels(
+    tier,
+    MODEL_CATALOG_FIXTURE[tier].filter(
+      (model) => !modelIds.includes(model.modelId),
+    ),
+    new Date(),
+  );
+}
+
 describe('AI Models Configuration', () => {
   afterEach(() => {
     vi.restoreAllMocks();
@@ -95,14 +108,31 @@ describe('AI Models Configuration', () => {
       });
     });
 
-    it('throws and logs when the operation default left the guardrail', async () => {
-      await inMemoryModelCatalogStore.replaceTierModels(
-        'starter',
-        MODEL_CATALOG_FIXTURE.starter.filter(
-          (model) => model.modelId !== 'openai/gpt-6-luna',
-        ),
-        new Date(),
+    it('warns and keeps the list when the default falls back', async () => {
+      await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
+      const warnSpy = vi.spyOn(logger, 'warn');
+
+      const ids = (await getModelsForTier('starter', 'initial_outline')).map(
+        (m) => m.id,
       );
+
+      expect(ids).not.toContain('openai/gpt-6-luna');
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'model_default_not_in_guardrail',
+          tier: 'starter',
+          defaultModelId: 'openai/gpt-6-luna',
+          fallbackModelId: 'deepseek/deepseek-v4.1-flash',
+        }),
+        expect.any(String),
+      );
+    });
+
+    it('throws and logs when the default and every fallback left the guardrail', async () => {
+      await dropFromGuardrail('starter', [
+        'openai/gpt-6-luna',
+        'deepseek/deepseek-v4.1-flash',
+      ]);
       const errorSpy = vi.spyOn(logger, 'error');
 
       await expect(
@@ -116,6 +146,7 @@ describe('AI Models Configuration', () => {
           event: 'model_default_not_in_guardrail',
           tier: 'starter',
           defaultModelId: 'openai/gpt-6-luna',
+          fallbackModelId: null,
         }),
         expect.any(String),
       );
@@ -159,14 +190,39 @@ describe('AI Models Configuration', () => {
       );
     });
 
-    it('rejects when the Pro default is missing from the guardrail', async () => {
-      await inMemoryModelCatalogStore.replaceTierModels(
-        'pro',
-        MODEL_CATALOG_FIXTURE.pro.filter(
-          (model) => model.modelId !== 'anthropic/claude-sonnet-5.5',
-        ),
-        new Date(),
+    it('uses the first listed fallback when the default left the guardrail', async () => {
+      await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
+      await dropFromGuardrail('pro', ['anthropic/claude-sonnet-5.5']);
+      vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+      // Starter writer route: Luna, then DeepSeek V4.1 Flash.
+      expect(await getDefaultModelForTier('starter', 'initial_outline')).toBe(
+        'deepseek/deepseek-v4.1-flash',
       );
+      // Pro writer route: GPT-6 Sol, then GPT-6.1 Sol.
+      expect(await getDefaultModelForTier('pro', 'regeneration')).toBe(
+        'openai/gpt-6-sol',
+      );
+    });
+
+    it('skips fallbacks the guardrail also dropped', async () => {
+      await dropFromGuardrail('pro', [
+        'anthropic/claude-sonnet-5.5',
+        'openai/gpt-6-sol',
+      ]);
+      vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
+      expect(await getDefaultModelForTier('pro', 'regeneration')).toBe(
+        'openai/gpt-6.1-sol',
+      );
+    });
+
+    it('rejects when the default and every fallback left the guardrail', async () => {
+      await dropFromGuardrail('pro', [
+        'anthropic/claude-sonnet-5.5',
+        'openai/gpt-6-sol',
+        'openai/gpt-6.1-sol',
+      ]);
       vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
       await expect(

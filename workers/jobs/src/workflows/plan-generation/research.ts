@@ -172,7 +172,8 @@ export async function runPlanResearchSteps(
     researched = await step.do(
       RESEARCH_STEPS.research,
       researchStepConfig(),
-      async () => researchStep(ctx),
+      // withDb: the call's output ceiling reads the synced model catalog.
+      async () => ctx.withDb(() => researchStep(ctx)),
     );
   } catch (error) {
     ctx.log(

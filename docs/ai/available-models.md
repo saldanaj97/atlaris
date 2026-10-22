@@ -22,7 +22,7 @@ The table is deny-all under RLS; only the service-role client reads or writes it
 ## What stays in code
 
 - **`openrouter/free`** (`FREE_ROUTER_MODEL` in `catalog.ts`): a router, not a model, so no guardrail lists it. It is free and has no output limit of its own.
-- **Per-operation defaults** in `model-operation-policy.ts`: Starter outline/regeneration `openai/gpt-6-luna`; Pro outline `openai/gpt-6.1-sol`, regeneration `anthropic/claude-sonnet-5.5`, lesson `anthropic/claude-haiku-5.5`. A default missing from its tier's synced list fails loudly: `getModelsForTier` logs `model_default_not_in_guardrail` and throws `ModelResolutionError` (`DEFAULT_MODEL_UNAVAILABLE`). Fix the guardrail or the default; there is no silent substitute.
+- **Per-operation defaults** in `model-operation-policy.ts`: Starter outline/regeneration `openai/gpt-6-luna`; Pro outline `openai/gpt-6.1-sol`, regeneration `anthropic/claude-sonnet-5.5`, lesson `anthropic/claude-haiku-5.5`. A default missing from its tier's synced list falls back to the first listed model on the operation's grounded writer route (`GROUNDED_MODELS_BY_TIER`: Starter Luna then DeepSeek V4.1 Flash; Pro GPT-6 Sol then GPT-6.1 Sol), and `getModelsForTier` logs a `model_default_not_in_guardrail` warning naming `fallbackModelId`. Only when no fallback is listed either does it log the event as an error and throw `ModelResolutionError` (`DEFAULT_MODEL_UNAVAILABLE`). Fix the guardrail or the default when the warning appears.
 - **`DEFAULT_OUTPUT_TOKEN_CEILING`** (32,768) in `cost.ts`: the ceiling for models without a synced max output, and the cap on every grounded call's `max_tokens`.
 
 ## Subscription tiers
@@ -43,7 +43,7 @@ The Free guardrail's rows are synced but not selectable: Free users always get `
 
 ## Costs and output ceilings
 
-`computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. When the table cannot be read (for example a jobs Worker step with no DB client), cost lookups log `model_catalog_unavailable`, the estimate falls back to unknown, and the ceiling falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`; provider-reported cost still applies.
+`computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. Every jobs Worker step that makes a model call runs inside `withDb`, so it reads the table. When the table cannot be read, cost lookups log `model_catalog_unavailable`, the estimate falls back to unknown, and the ceiling falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`; provider-reported cost still applies.
 
 Usage cost is computed when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so a guardrail price change never reprices past usage.
 

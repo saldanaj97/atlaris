@@ -13,59 +13,103 @@ import {
   FREE_ROUTER_MODEL,
   getTierModels,
 } from '@/features/ai/model-catalog/catalog';
-import { getModelOperationPolicy } from '@/features/ai/model-operation-policy';
+import {
+  getGroundedOperationPolicy,
+  getModelOperationPolicy,
+} from '@/features/ai/model-operation-policy';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 
 export { AI_DEFAULT_MODEL };
 
+type TierModels = {
+  readonly models: AvailableModel[];
+  /** The operation default, or its first allowed fallback. */
+  readonly defaultModelId: string;
+};
+
 /**
- * Models allowed for a subscription tier and generation operation. Throws
- * when the operation's code-owned default is not among them (for example,
- * the guardrail dropped it): resolution must not quietly pick another model.
+ * The operation's code-listed fallbacks for a default the guardrail dropped:
+ * its grounded writer route (`GROUNDED_MODELS_BY_TIER`), in order.
  */
-export async function getModelsForTier(
+function getDefaultFallbackModelIds(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): Promise<AvailableModel[]> {
+): string[] {
+  const grounded = getGroundedOperationPolicy(tier, operation);
+  return grounded.allowed ? grounded.models.map((model) => model.modelId) : [];
+}
+
+async function resolveTierModels(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<TierModels> {
   const policy = getModelOperationPolicy(tier, operation);
   if (!policy.allowed) {
-    return [];
+    return { models: [], defaultModelId: policy.defaultModelId };
   }
   const models = [
     ...(policy.usesFreeRouter ? [FREE_ROUTER_MODEL] : []),
     ...(policy.usesTierCatalog ? await getTierModels(tier) : []),
   ];
-  if (!models.some((model) => model.id === policy.defaultModelId)) {
-    logger.error(
-      {
-        tier,
-        operation,
-        defaultModelId: policy.defaultModelId,
-        modelIds: models.map((model) => model.id),
-        event: 'model_default_not_in_guardrail',
-      },
-      'Operation default model is missing from the tier guardrail models',
-    );
-    throw new ModelResolutionError(
-      `Default model "${policy.defaultModelId}" is not available for ${tier} ${operation}.`,
-      { code: 'DEFAULT_MODEL_UNAVAILABLE' },
-    );
+  const isListed = (modelId: string) =>
+    models.some((model) => model.id === modelId);
+  if (isListed(policy.defaultModelId)) {
+    return { models, defaultModelId: policy.defaultModelId };
   }
-  return models;
+
+  const fallbackModelId = getDefaultFallbackModelIds(tier, operation).find(
+    isListed,
+  );
+  const fields = {
+    tier,
+    operation,
+    defaultModelId: policy.defaultModelId,
+    fallbackModelId: fallbackModelId ?? null,
+    modelIds: models.map((model) => model.id),
+    event: 'model_default_not_in_guardrail',
+  };
+  if (fallbackModelId) {
+    logger.warn(
+      fields,
+      'Operation default model is missing from the tier guardrail models; using its fallback',
+    );
+    return { models, defaultModelId: fallbackModelId };
+  }
+  logger.error(
+    fields,
+    'Operation default model and its fallbacks are missing from the tier guardrail models',
+  );
+  throw new ModelResolutionError(
+    `Default model "${policy.defaultModelId}" and its fallbacks are not available for ${tier} ${operation}.`,
+    { code: 'DEFAULT_MODEL_UNAVAILABLE' },
+  );
 }
 
 /**
- * The default model for a subscription tier and generation operation, after
- * checking it is still in the tier's models (see {@link getModelsForTier}).
+ * Models allowed for a subscription tier and generation operation. Throws
+ * when neither the operation's code-owned default nor any of its code-listed
+ * fallbacks is among them (see {@link getDefaultModelForTier}).
+ */
+export async function getModelsForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<AvailableModel[]> {
+  return (await resolveTierModels(tier, operation)).models;
+}
+
+/**
+ * The default model for a subscription tier and generation operation: the
+ * code-owned default while the tier's guardrail lists it, otherwise the first
+ * listed model on the operation's grounded writer route. Throws when none is
+ * listed.
  */
 export async function getDefaultModelForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
 ): Promise<string> {
-  await getModelsForTier(tier, operation);
-  return getModelOperationPolicy(tier, operation).defaultModelId;
+  return (await resolveTierModels(tier, operation)).defaultModelId;
 }
 
 /**
