@@ -44,7 +44,7 @@ describe('users queries', () => {
           authUserId: 'auth-user-3',
         }),
         preferences: {
-          preferredAiModel: 'google/gemini-2.5-flash-lite',
+          preferredAiModel: 'openai/gpt-6-luna',
           analyticsTimezone: 'America/Chicago',
         },
       },

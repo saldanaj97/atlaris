@@ -1274,7 +1274,7 @@ describe('runModuleLessonsWorkflow', () => {
         it('writes and repairs Pro lessons with the writer pick, ignoring the legacy lesson pick', async () => {
           tier.value = 'pro';
           groundedPicks.writer = 'anthropic/claude-haiku-5.5';
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
 
           await expect(runFlaggedLesson()).resolves.toEqual({
             writerModel: 'anthropic/claude-haiku-5.5',
@@ -1288,7 +1288,7 @@ describe('runModuleLessonsWorkflow', () => {
         ])('uses the Pro writer default when %s', async (_case, pick) => {
           tier.value = 'pro';
           groundedPicks.writer = pick;
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
 
           await expect(runFlaggedLesson()).resolves.toEqual({
             writerModel: 'openai/gpt-6-sol',
@@ -1299,11 +1299,11 @@ describe('runModuleLessonsWorkflow', () => {
         it('ignores a writer pick below Pro', async () => {
           tier.value = 'starter';
           groundedPicks.writer = 'anthropic/claude-haiku-5.5';
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
           const { writerModel, repairModel } = await runFlaggedLesson();
 
           expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
-          expect(writerModel).not.toBe('google/gemini-3-flash-preview');
+          expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
           expect(repairModel).toBe(writerModel);
         });
       });

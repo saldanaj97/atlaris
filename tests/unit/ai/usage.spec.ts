@@ -19,7 +19,7 @@ vi.mock('@/features/ai/ai-models', () => ({
       string,
       { inputCostPerMillion: number; outputCostPerMillion: number }
     > = {
-      'openai/gpt-4o': {
+      'openai/gpt-6-sol': {
         inputCostPerMillion: 2.5,
         outputCostPerMillion: 10,
       },
@@ -38,7 +38,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('normalizes complete provider metadata into canonical shape', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 500,
         completionTokens: 1000,
@@ -52,7 +52,7 @@ describe('normalizeToCanonicalUsage', () => {
       inputTokens: 500,
       outputTokens: 1000,
       totalTokens: 1500,
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       provider: 'openrouter',
       estimatedCostCents: expect.any(Number),
       providerCostMicrousd: null,
@@ -64,7 +64,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('maps providerReportedCostUsd to providerCostMicrousd when usage is complete', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
         completionTokens: 200,
@@ -81,7 +81,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('preserves zero providerReportedCostUsd when usage is complete', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
         completionTokens: 200,
@@ -95,7 +95,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('ignores invalid providerReportedCostUsd values when usage is otherwise complete', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
         completionTokens: 200,
@@ -109,7 +109,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('never reports providerCostMicrousd for partial usage', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
         providerReportedCostUsd: 0.004567,
@@ -132,7 +132,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('computes totalTokens when not provided by the provider', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 200,
         completionTokens: 300,
@@ -146,7 +146,7 @@ describe('normalizeToCanonicalUsage', () => {
 
   it('throws IncompleteUsageError when provider is missing', () => {
     const metadata: ProviderMetadata = {
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
         completionTokens: 200,
@@ -193,7 +193,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('throws IncompleteUsageError when inputTokens is missing', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         completionTokens: 200,
       },
@@ -216,7 +216,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('throws IncompleteUsageError when outputTokens is missing', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 100,
       },
@@ -239,7 +239,7 @@ describe('normalizeToCanonicalUsage', () => {
   it('throws IncompleteUsageError when usage object is entirely missing', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
     };
 
     expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
@@ -337,7 +337,7 @@ describe('safeNormalizeUsage', () => {
   it('returns canonical usage for complete metadata', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       usage: {
         promptTokens: 500,
         completionTokens: 1000,
@@ -382,14 +382,14 @@ describe('safeNormalizeUsage', () => {
   it('returns partial usage with available fields preserved', () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       // usage is missing entirely
     };
 
     const result = safeNormalizeUsage(metadata);
 
     expect(result.provider).toBe('openrouter');
-    expect(result.model).toBe('openai/gpt-4o');
+    expect(result.model).toBe('openai/gpt-6-sol');
     expect(result.inputTokens).toBe(0);
     expect(result.outputTokens).toBe(0);
   });

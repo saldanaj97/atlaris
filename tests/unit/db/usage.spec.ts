@@ -10,7 +10,7 @@ function makeCanonicalUsage(
     inputTokens: 100,
     outputTokens: 200,
     totalTokens: 300,
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-sol',
     provider: 'openrouter',
     estimatedCostCents: 5,
     providerCostMicrousd: 1_000,

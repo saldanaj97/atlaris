@@ -90,7 +90,7 @@ describe('OpenRouterProvider', () => {
 
       const provider = new OpenRouterProvider(
         {
-          model: 'anthropic/claude-haiku-4.5',
+          model: 'anthropic/claude-opus-5.5',
           fallbackModels: [AI_DEFAULT_MODEL],
         },
         client,
@@ -101,7 +101,7 @@ describe('OpenRouterProvider', () => {
       const [request] = send.mock.calls[0] ?? [];
       expect(request).toMatchObject({
         models: [
-          `anthropic/claude-haiku-4.5@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+          `anthropic/claude-opus-5.5@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
           `${AI_DEFAULT_MODEL}@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
         ],
       });
