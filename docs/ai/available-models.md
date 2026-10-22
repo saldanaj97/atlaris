@@ -10,7 +10,7 @@ Each tier's selectable models come from that tier's OpenRouter guardrail, not fr
 
 | Piece                  | File                  | What it does                                                                                                                                                                   |
 | :--------------------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetchGuardrailModels` | `guardrail-models.ts` | Fetches with a 5s timeout and parses strictly. A non-2xx response, a malformed model, a variable (`-1`) price or an empty list throws.                                         |
+| `fetchGuardrailModels` | `guardrail-models.ts` | Fetches with a 5s timeout. Skips and logs a malformed or variable (`-1`) priced model. A non-2xx response, a malformed body, or a list with no valid model throws.             |
 | `syncTierModelCatalog` | `catalog.ts`          | Replaces the tier's rows in one transaction after a successful fetch. On any failure it keeps the last good rows and logs `model_catalog_sync_failed`.                         |
 | `getTierModels`        | `catalog.ts`          | Reads a tier's rows, cheapest first. Refresh-on-read: rows older than 15 minutes (or none) sync first. After a failed sync, reads use the stored rows for 60s before retrying. |
 | `getCatalogModel`      | `catalog.ts`          | Pricing and limits for one model id from the most recently synced tier. `openrouter/free` returns the code-owned `FREE_ROUTER_MODEL`.                                          |

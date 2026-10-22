@@ -3,6 +3,7 @@
  * `GET /models/user` (https://openrouter.ai/docs/api/api-reference/models/list-models-user).
  */
 
+import { logger } from '@/lib/logging/logger';
 import { z } from 'zod';
 
 /** One model from a tier's guardrail, in catalog units. */
@@ -36,7 +37,7 @@ const guardrailModelSchema = z.object({
 });
 
 const guardrailModelsResponseSchema = z.object({
-  data: z.array(guardrailModelSchema),
+  data: z.array(z.unknown()),
 });
 
 export class GuardrailModelsError extends Error {
@@ -70,10 +71,20 @@ function splitDisplayName(
   return { provider: id.split('/')[0] ?? id, name: displayName };
 }
 
+/** The entry's `id` when it has a string one, for logging a skipped model. */
+function entryId(entry: unknown): string | null {
+  if (typeof entry === 'object' && entry !== null && 'id' in entry) {
+    return typeof entry.id === 'string' ? entry.id : null;
+  }
+  return null;
+}
+
 /**
- * Parses a `/models/user` body. Throws when the body or any model is
- * malformed, or the list is empty, so a sync never replaces good rows with a
- * partial or empty list. Long-prompt `pricing.overrides` are ignored.
+ * Parses a `/models/user` body. Skips and logs a model it cannot price or
+ * parse (a variable `-1` price, a missing field), so one entry cannot freeze
+ * the tier's list. Throws when the body is malformed or no model is valid, so
+ * a sync never replaces good rows with an empty list. Long-prompt
+ * `pricing.overrides` are ignored.
  */
 export function parseGuardrailModels(body: unknown): GuardrailModel[] {
   const parsed = guardrailModelsResponseSchema.safeParse(body);
@@ -84,10 +95,33 @@ export function parseGuardrailModels(body: unknown): GuardrailModel[] {
       { cause: parsed.error },
     );
   }
-  if (parsed.data.data.length === 0) {
+  const entries = parsed.data.data;
+  if (entries.length === 0) {
     throw new GuardrailModelsError('The guardrail returned no models', 'empty');
   }
-  return parsed.data.data.map((model) => ({
+  const models: z.infer<typeof guardrailModelSchema>[] = [];
+  const skippedModelIds: (string | null)[] = [];
+  for (const entry of entries) {
+    const model = guardrailModelSchema.safeParse(entry);
+    if (model.success) {
+      models.push(model.data);
+    } else {
+      skippedModelIds.push(entryId(entry));
+    }
+  }
+  if (skippedModelIds.length > 0) {
+    logger.warn(
+      { skippedModelIds, event: 'guardrail_models_skipped' },
+      'Skipping guardrail models with a variable price or unexpected shape',
+    );
+  }
+  if (models.length === 0) {
+    throw new GuardrailModelsError(
+      'No /models/user entry could be parsed',
+      'parse',
+    );
+  }
+  return models.map((model) => ({
     modelId: model.id,
     ...splitDisplayName(model.id, model.name),
     description: model.description ?? '',

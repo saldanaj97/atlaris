@@ -3,7 +3,12 @@ import {
   GuardrailModelsError,
   parseGuardrailModels,
 } from '@/features/ai/model-catalog/guardrail-models';
-import { describe, expect, it, vi } from 'vitest';
+import { logger } from '@/lib/logging/logger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 /** Shaped like a real `/models/user` entry, including fields the sync ignores. */
 function apiModel(overrides: Record<string, unknown> = {}) {
@@ -73,7 +78,35 @@ describe('parseGuardrailModels', () => {
     );
   });
 
-  it('rejects a variable (-1) price instead of syncing a wrong cost', () => {
+  it('skips a variable (-1) price or malformed model and logs it', () => {
+    const warnSpy = vi.spyOn(logger, 'warn');
+
+    const models = parseGuardrailModels({
+      data: [
+        apiModel(),
+        apiModel({
+          id: 'openrouter/auto',
+          pricing: { prompt: '-1', completion: '-1' },
+        }),
+        apiModel({ id: 'broken', context_length: 'big' }),
+      ],
+    });
+
+    expect(models.map((model) => model.modelId)).toEqual([
+      'anthropic/claude-haiku-5.5',
+    ]);
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'guardrail_models_skipped',
+        skippedModelIds: ['openrouter/auto', 'broken'],
+      }),
+      expect.any(String),
+    );
+  });
+
+  it('rejects a list with no valid model instead of emptying the tier', () => {
+    vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
+
     expect(() =>
       parseGuardrailModels({
         data: [apiModel({ pricing: { prompt: '-1', completion: '-1' } })],
@@ -81,12 +114,10 @@ describe('parseGuardrailModels', () => {
     ).toThrow(expect.objectContaining({ reason: 'parse' }));
   });
 
-  it('rejects the whole list when one model is malformed', () => {
-    expect(() =>
-      parseGuardrailModels({
-        data: [apiModel(), apiModel({ id: 'broken', context_length: 'big' })],
-      }),
-    ).toThrow(GuardrailModelsError);
+  it('rejects a body without a model list', () => {
+    expect(() => parseGuardrailModels({ models: [] })).toThrow(
+      GuardrailModelsError,
+    );
   });
 });
 
