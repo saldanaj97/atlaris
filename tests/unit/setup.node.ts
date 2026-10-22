@@ -1,7 +1,7 @@
 // Node-level unit setup shared by the `unit` (node) and `unit-dom` (jsdom)
 // Vitest projects: env defaults plus the hoisted module mocks. DOM-only setup
 // lives in ./setup.ts.
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 
 import '../setup/test-env';
 
@@ -34,6 +34,23 @@ vi.mock('@/lib/logging/client', () => ({
     ),
   },
 }));
+
+// Tier model lists come from the guardrail fixture, reseeded before each test.
+vi.mock('@/features/ai/model-catalog/store', async () => {
+  const { inMemoryModelCatalogStore } =
+    await import('../fixtures/ai-model-catalog');
+  return {
+    selectTierModels: vi.fn(inMemoryModelCatalogStore.selectTierModels),
+    selectCatalogModel: vi.fn(inMemoryModelCatalogStore.selectCatalogModel),
+    replaceTierModels: vi.fn(inMemoryModelCatalogStore.replaceTierModels),
+  };
+});
+
+beforeEach(async () => {
+  const { seedModelCatalogFixture } =
+    await import('../fixtures/ai-model-catalog');
+  seedModelCatalogFixture();
+});
 
 // Prevent unit tests from importing a real DB client.
 // This avoids requiring POSTGRES_URL in unit test runs and catches accidental DB usage.

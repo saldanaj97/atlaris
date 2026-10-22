@@ -1,28 +1,14 @@
 import { updatePreferencesSchema } from '@/app/api/v1/user/preferences/validation';
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/features/ai/ai-models';
-import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { describe, expect, it, vi } from 'vitest';
 
-const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
-  'starter',
-  'initial_outline',
-);
-const STARTER_PERSISTABLE_MODEL = STARTER_PERSISTABLE_MODELS[0]?.id;
-const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
-  'pro',
-  'initial_outline',
-).find(
-  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
-)?.id;
+const STARTER_PERSISTABLE_MODEL = 'deepseek/deepseek-v4.1-flash';
+const PRO_PERSISTABLE_MODEL = 'anthropic/claude-opus-5.5';
 // The free router is the only Free-labelled catalog model.
 const FREE_QUERY_OVERRIDE_MODEL = AI_DEFAULT_MODEL;
 const PRO_OUTLINE_DEFAULT = 'openai/gpt-6.1-sol';
 const STARTER_OUTLINE_DEFAULT = 'openai/gpt-6-luna';
-
-if (!STARTER_PERSISTABLE_MODEL || !PRO_PERSISTABLE_MODEL) {
-  throw new Error('Expected model fixtures for validation tests');
-}
 
 const stubProviderGetter = vi.fn((_modelId: string) => ({
   generate: vi.fn(async () => {
@@ -76,47 +62,9 @@ describe('Model validation helpers (preferences + tier gating)', () => {
     });
   });
 
-  describe('Model override validation logic (without tier-gating)', () => {
-    it('uses override when valid model ID is provided', () => {
-      const modelOverride = FREE_QUERY_OVERRIDE_MODEL;
-      const model =
-        modelOverride && isValidModelId(modelOverride)
-          ? modelOverride
-          : AI_DEFAULT_MODEL;
-      expect(model).toBe(FREE_QUERY_OVERRIDE_MODEL);
-    });
-
-    it('falls back to DEFAULT_MODEL when invalid model ID is provided', () => {
-      const modelOverride = 'invalid/model-id';
-      const model =
-        modelOverride && isValidModelId(modelOverride)
-          ? modelOverride
-          : AI_DEFAULT_MODEL;
-      expect(model).toBe(AI_DEFAULT_MODEL);
-    });
-
-    it('falls back to DEFAULT_MODEL when empty string is provided', () => {
-      const modelOverride = '';
-      const model =
-        modelOverride && isValidModelId(modelOverride)
-          ? modelOverride
-          : AI_DEFAULT_MODEL;
-      expect(model).toBe(AI_DEFAULT_MODEL);
-    });
-
-    it('falls back to DEFAULT_MODEL when null is provided', () => {
-      const modelOverride = null;
-      const model =
-        modelOverride && isValidModelId(modelOverride)
-          ? modelOverride
-          : AI_DEFAULT_MODEL;
-      expect(model).toBe(AI_DEFAULT_MODEL);
-    });
-  });
-
-  describe('Tier-gated model override validation (production logic)', () => {
-    it('allows the free router for a Free user', () => {
-      const resolution = resolveModelForTier(
+  describe('Tier-gated model override validation (production logic)', async () => {
+    it('allows the free router for a Free user', async () => {
+      const resolution = await resolveModelForTier(
         'free',
         AI_DEFAULT_MODEL,
         'initial_outline',
@@ -126,8 +74,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('allows a Free-labelled catalog model for a Pro user', () => {
-      const resolution = resolveModelForTier(
+    it('allows a Free-labelled catalog model for a Pro user', async () => {
+      const resolution = await resolveModelForTier(
         'pro',
         FREE_QUERY_OVERRIDE_MODEL,
         'initial_outline',
@@ -137,8 +85,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.modelId).toBe(FREE_QUERY_OVERRIDE_MODEL);
     });
 
-    it('allows a Pro catalog model for a Pro user', () => {
-      const resolution = resolveModelForTier(
+    it('allows a Pro catalog model for a Pro user', async () => {
+      const resolution = await resolveModelForTier(
         'pro',
         PRO_PERSISTABLE_MODEL,
         'initial_outline',
@@ -148,8 +96,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.modelId).toBe(PRO_PERSISTABLE_MODEL);
     });
 
-    it('BLOCKS a paid model for a Free user and falls back to the free router', () => {
-      const resolution = resolveModelForTier(
+    it('BLOCKS a paid model for a Free user and falls back to the free router', async () => {
+      const resolution = await resolveModelForTier(
         'free',
         PRO_PERSISTABLE_MODEL,
         'initial_outline',
@@ -160,10 +108,10 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.fallbackReason).toBe('tier_denied');
     });
 
-    it('BLOCKS an out-of-allowlist model for Starter outline and falls back to Flash Lite', () => {
-      const resolution = resolveModelForTier(
+    it('BLOCKS a model outside the Starter guardrail and falls back to the Starter default', async () => {
+      const resolution = await resolveModelForTier(
         'starter',
-        PRO_OUTLINE_DEFAULT,
+        PRO_PERSISTABLE_MODEL,
         'initial_outline',
         stubProviderGetter,
         stubLogger,
@@ -172,8 +120,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.fallbackReason).toBe('tier_denied');
     });
 
-    it('falls back to the Pro operation default when an invalid model ID is provided', () => {
-      const resolution = resolveModelForTier(
+    it('falls back to the Pro operation default when an invalid model ID is provided', async () => {
+      const resolution = await resolveModelForTier(
         'pro',
         'invalid/model-id',
         'initial_outline',
@@ -184,8 +132,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.fallbackReason).toBe('invalid_model');
     });
 
-    it('falls back to the Free operation default when null is provided', () => {
-      const resolution = resolveModelForTier(
+    it('falls back to the Free operation default when null is provided', async () => {
+      const resolution = await resolveModelForTier(
         'free',
         null,
         'initial_outline',
@@ -195,8 +143,8 @@ describe('Model validation helpers (preferences + tier gating)', () => {
       expect(resolution.modelId).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('falls back to the Pro operation default when empty string is provided', () => {
-      const resolution = resolveModelForTier(
+    it('falls back to the Pro operation default when empty string is provided', async () => {
+      const resolution = await resolveModelForTier(
         'pro',
         '',
         'initial_outline',
@@ -297,20 +245,6 @@ describe('Model validation helpers (preferences + tier gating)', () => {
           'Unrecognized key',
         );
       }
-    });
-  });
-
-  describe('isValidModelId integration', () => {
-    it('is imported and works correctly', () => {
-      expect(typeof isValidModelId).toBe('function');
-      expect(isValidModelId(FREE_QUERY_OVERRIDE_MODEL)).toBe(true);
-      expect(isValidModelId('fake-model')).toBe(false);
-    });
-
-    it('handles edge cases', () => {
-      expect(isValidModelId('')).toBe(false);
-      expect(isValidModelId('   ')).toBe(false);
-      expect(isValidModelId('google/')).toBe(false);
     });
   });
 });

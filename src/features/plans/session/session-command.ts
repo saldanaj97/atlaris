@@ -122,15 +122,16 @@ async function prepareCreate(
     throwCreatePlanResultError(createResult);
   }
 
-  const { modelOverride, groundedWriterModelId } = resolveCreateStreamModel({
-    req,
-    authUserId,
-    internalUserId,
-    planId: createResult.planId,
-    tier: createResult.tier,
-    savedPreferredAiModel,
-    savedGroundedPicks,
-  });
+  const { modelOverride, groundedWriterModelId } =
+    await resolveCreateStreamModel({
+      req,
+      authUserId,
+      internalUserId,
+      planId: createResult.planId,
+      tier: createResult.tier,
+      savedPreferredAiModel,
+      savedGroundedPicks,
+    });
 
   const generationInput = buildCreateGenerationInput({
     body,
@@ -179,15 +180,16 @@ async function prepareRetry(
       'Ignoring persisted plan session date with invalid ISO calendar format',
     );
   });
-  const { modelOverride, groundedWriterModelId } = resolveCreateStreamModel({
-    req,
-    authUserId,
-    internalUserId,
-    planId,
-    tier,
-    savedPreferredAiModel,
-    savedGroundedPicks,
-  });
+  const { modelOverride, groundedWriterModelId } =
+    await resolveCreateStreamModel({
+      req,
+      authUserId,
+      internalUserId,
+      planId,
+      tier,
+      savedPreferredAiModel,
+      savedGroundedPicks,
+    });
 
   return {
     planId,
@@ -216,7 +218,7 @@ async function prepareRetry(
   };
 }
 
-function resolveCreateStreamModel({
+async function resolveCreateStreamModel({
   req,
   authUserId,
   internalUserId,
@@ -232,9 +234,9 @@ function resolveCreateStreamModel({
   tier: SubscriptionTier;
   savedPreferredAiModel: string | null;
   savedGroundedPicks: SavedGroundedModelPicks | undefined;
-}): { modelOverride?: string; groundedWriterModelId: string | null } {
+}): Promise<{ modelOverride?: string; groundedWriterModelId: string | null }> {
   const { modelOverride, resolutionSource, suppliedModel } =
-    resolveStreamModelResolution({
+    await resolveStreamModelResolution({
       searchParams: new URL(req.url).searchParams,
       tier,
       savedPreferredAiModel,

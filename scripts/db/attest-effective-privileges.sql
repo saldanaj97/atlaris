@@ -217,7 +217,7 @@ BEGIN
   -- Stripe archive is expand-phase-only, so it remains optional when absent.
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
+      ARRAY['clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries', 'openrouter_tier_models']
     ) AS table_name
   )
   SELECT format('required service-only public.%I table is missing', required_tables.table_name)
@@ -235,7 +235,7 @@ BEGIN
 
   WITH service_only_tables AS (
     SELECT unnest(
-      ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
+      ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries', 'openrouter_tier_models']
     ) AS table_name
   ), client_roles AS (
     SELECT unnest(ARRAY['anon', 'authenticated']) AS role_name
@@ -266,7 +266,7 @@ BEGIN
 
   WITH service_only_tables AS (
     SELECT unnest(
-      ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries']
+      ARRAY['legacy_stripe_entitlement_archive', 'clerk_webhook_events', 'clerk_webhook_event_claims', 'email_notification_delivery_runs', 'email_notification_deliveries', 'openrouter_tier_models']
     ) AS table_name
   ), client_roles AS (
     SELECT unnest(ARRAY['anon', 'authenticated']) AS role_name

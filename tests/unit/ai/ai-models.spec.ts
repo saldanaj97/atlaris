@@ -1,298 +1,177 @@
 import {
+  inMemoryModelCatalogStore,
+  MODEL_CATALOG_FIXTURE,
+} from '../../fixtures/ai-model-catalog';
+import {
   AI_DEFAULT_MODEL,
-  AVAILABLE_MODELS,
   getDefaultModelForTier,
   getFallbackModelsForTier,
-  getModelById,
   getModelsForTier,
-  isValidModelId,
 } from '@/features/ai/ai-models';
-import {
-  PRO_MODEL_IDS,
-  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
-} from '@/features/ai/model-operation-policy';
-import { describe, expect, it } from 'vitest';
+import { FREE_ROUTER_MODEL } from '@/features/ai/model-catalog/catalog';
+import { ModelResolutionError } from '@/features/ai/model-resolution-error';
+import { logger } from '@/lib/logging/logger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const fixtureIds = (tier: keyof typeof MODEL_CATALOG_FIXTURE) =>
+  MODEL_CATALOG_FIXTURE[tier].map((model) => model.modelId);
 
 describe('AI Models Configuration', () => {
-  describe('AVAILABLE_MODELS', () => {
-    it('contains at least one model', () => {
-      expect(AVAILABLE_MODELS.length).toBeGreaterThan(0);
-    });
-
-    it('has required properties for each model', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        expect(model).toHaveProperty('id');
-        expect(model).toHaveProperty('name');
-        expect(model).toHaveProperty('provider');
-        expect(model).toHaveProperty('description');
-        expect(model).toHaveProperty('tier');
-        expect(model).toHaveProperty('contextWindow');
-        expect(model).toHaveProperty('inputCostPerMillion');
-        expect(model).toHaveProperty('outputCostPerMillion');
-      });
-    });
-
-    it('has correct property types for each model', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        expect(typeof model.id).toBe('string');
-        expect(typeof model.name).toBe('string');
-        expect(typeof model.provider).toBe('string');
-        expect(typeof model.description).toBe('string');
-        expect(['free', 'pro']).toContain(model.tier);
-        expect(typeof model.contextWindow).toBe('number');
-        expect(typeof model.inputCostPerMillion).toBe('number');
-        expect(typeof model.outputCostPerMillion).toBe('number');
-      });
-    });
-
-    it('has non-empty string values for text fields', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        expect(model.id.length).toBeGreaterThan(0);
-        expect(model.name.length).toBeGreaterThan(0);
-        expect(model.provider.length).toBeGreaterThan(0);
-        expect(model.description.length).toBeGreaterThan(0);
-      });
-    });
-
-    it('has positive numeric values for token-related fields', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        expect(model.contextWindow).toBeGreaterThan(0);
-        expect(model.inputCostPerMillion).toBeGreaterThanOrEqual(0);
-        expect(model.outputCostPerMillion).toBeGreaterThanOrEqual(0);
-      });
-    });
-
-    it('labels Claude Opus as pro because it is paid', () => {
-      const model = getModelById('anthropic/claude-opus-5.5');
-      expect(model?.tier).toBe('pro');
-      expect(model?.inputCostPerMillion).toBeGreaterThan(0);
-      expect(model?.outputCostPerMillion).toBeGreaterThan(0);
-    });
-
-    it('contains both free and pro tier models', () => {
-      const freeModels = AVAILABLE_MODELS.filter((m) => m.tier === 'free');
-      const proModels = AVAILABLE_MODELS.filter((m) => m.tier === 'pro');
-
-      expect(freeModels.length).toBeGreaterThan(0);
-      expect(proModels.length).toBeGreaterThan(0);
-    });
-
-    it('has unique model IDs', () => {
-      const ids = AVAILABLE_MODELS.map((m) => m.id);
-      const uniqueIds = new Set(ids);
-      expect(uniqueIds.size).toBe(ids.length);
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  describe('DEFAULT_MODEL', () => {
-    it('is a valid model ID', () => {
-      expect(isValidModelId(AI_DEFAULT_MODEL)).toBe(true);
-    });
-
-    it('exists in AVAILABLE_MODELS', () => {
-      const model = AVAILABLE_MODELS.find((m) => m.id === AI_DEFAULT_MODEL);
-      expect(model).toBeDefined();
-    });
-
-    it('is a free tier model', () => {
-      const model = AVAILABLE_MODELS.find((m) => m.id === AI_DEFAULT_MODEL);
-      expect(model?.tier).toBe('free');
-    });
-
-    it('has the expected value', () => {
+  describe('AI_DEFAULT_MODEL', () => {
+    it('is the code-owned free router', () => {
       expect(AI_DEFAULT_MODEL).toBe('openrouter/free');
-    });
-  });
-
-  describe('getModelById', () => {
-    it('returns correct model for valid ID', () => {
-      const model = getModelById('openrouter/free');
-      expect(model).toBeDefined();
-      expect(model?.id).toBe('openrouter/free');
-      expect(model?.name).toBe('Free Models Router');
-      expect(model?.provider).toBe('OpenRouter');
-    });
-
-    it('includes Claude Sonnet 5.5 with its OpenRouter pricing', () => {
-      const model = getModelById('anthropic/claude-sonnet-5.5');
-      expect(model).toMatchObject({
-        id: 'anthropic/claude-sonnet-5.5',
-        name: 'Claude Sonnet 5.5',
-        provider: 'Anthropic',
-        tier: 'pro',
-        contextWindow: 1_000_000,
-        maxOutputTokens: 128_000,
-        inputCostPerMillion: 2,
-        outputCostPerMillion: 10,
+      expect(FREE_ROUTER_MODEL).toMatchObject({
+        id: AI_DEFAULT_MODEL,
+        tier: 'free',
+        contextWindow: 200_000,
+        inputCostPerMillion: 0,
+        outputCostPerMillion: 0,
       });
-    });
-
-    it.each([
-      'google/gemini-3-pro-preview',
-      'google/gemini-2.0-flash-exp:free',
-      'openai/gpt-oss-20b:free',
-      'alibaba/tongyi-deepresearch-30b-a3b:free',
-      'openai/gpt-4o-mini-search-preview',
-      'anthropic/claude-haiku-4.5',
-      'google/gemini-2.5-flash-lite',
-      'google/gemini-3-flash-preview',
-      'google/gemini-3.1-pro-preview',
-      'anthropic/claude-sonnet-4.5',
-      'openai/gpt-4o-mini-2024-07-18',
-      'openai/gpt-4o',
-      'openai/gpt-5.1',
-      'openai/gpt-5.2',
-    ])('excludes retired OpenRouter model %s', (retiredId) => {
-      expect(getModelById(retiredId)).toBeUndefined();
-      expect(isValidModelId(retiredId)).toBe(false);
-    });
-
-    it('returns correct model for each model in AVAILABLE_MODELS', () => {
-      AVAILABLE_MODELS.forEach((expectedModel) => {
-        const model = getModelById(expectedModel.id);
-        expect(model).toBeDefined();
-        expect(model).toEqual(expectedModel);
-      });
-    });
-
-    it('returns undefined for invalid ID', () => {
-      expect(getModelById('invalid/model-id')).toBeUndefined();
-    });
-
-    it('returns undefined for empty string', () => {
-      expect(getModelById('')).toBeUndefined();
-    });
-
-    it('returns undefined for partial match', () => {
-      expect(getModelById('google/gemini')).toBeUndefined();
-    });
-
-    it('returns undefined for case-mismatched ID', () => {
-      expect(getModelById('Google/Gemini-2.0-Flash-Exp:Free')).toBeUndefined();
+      expect(FREE_ROUTER_MODEL.maxOutputTokens).toBeUndefined();
+      expect(FREE_ROUTER_MODEL.description).toContain('output limits vary');
     });
   });
 
   describe('getModelsForTier', () => {
-    it('returns only the free router for Free outline and lesson', () => {
-      expect(
-        getModelsForTier('free', 'initial_outline').map((m) => m.id),
-      ).toEqual([AI_DEFAULT_MODEL]);
-      expect(getModelsForTier('free', 'lesson').map((m) => m.id)).toEqual([
-        AI_DEFAULT_MODEL,
-      ]);
+    it('returns only the free router for Free outline and lesson', async () => {
+      for (const operation of ['initial_outline', 'lesson'] as const) {
+        const ids = (await getModelsForTier('free', operation)).map(
+          (m) => m.id,
+        );
+        expect(ids).toEqual([AI_DEFAULT_MODEL]);
+      }
     });
 
-    it('returns an empty catalog for Free regeneration', () => {
-      expect(getModelsForTier('free', 'regeneration')).toEqual([]);
+    it('returns an empty list for Free regeneration', async () => {
+      expect(await getModelsForTier('free', 'regeneration')).toEqual([]);
     });
 
-    it('returns the Starter outline/regen allowlist, not the Free catalog', () => {
-      expect(
-        getModelsForTier('starter', 'initial_outline').map((m) => m.id),
-      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
-      expect(
-        getModelsForTier('starter', 'regeneration').map((m) => m.id),
-      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
+    it('returns the Starter guardrail models for outline and regen', async () => {
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        const ids = (await getModelsForTier('starter', operation)).map(
+          (m) => m.id,
+        );
+        expect([...ids].sort()).toEqual(fixtureIds('starter').sort());
+        expect(ids).not.toContain(AI_DEFAULT_MODEL);
+      }
     });
 
-    it('returns only the free router for Starter lesson', () => {
-      expect(getModelsForTier('starter', 'lesson').map((m) => m.id)).toEqual([
-        AI_DEFAULT_MODEL,
-      ]);
+    it('returns only the free router for Starter lesson', async () => {
+      const ids = (await getModelsForTier('starter', 'lesson')).map(
+        (m) => m.id,
+      );
+      expect(ids).toEqual([AI_DEFAULT_MODEL]);
     });
 
-    it('returns the Pro catalog for Pro operations, without DeepSeek', () => {
+    it('returns the free router plus the Pro guardrail models for Pro', async () => {
       for (const operation of [
         'initial_outline',
         'regeneration',
         'lesson',
       ] as const) {
-        const ids = getModelsForTier('pro', operation).map((m) => m.id);
-        expect(ids).toEqual([...PRO_MODEL_IDS]);
+        const ids = (await getModelsForTier('pro', operation)).map((m) => m.id);
+        expect(ids[0]).toBe(AI_DEFAULT_MODEL);
+        expect(ids.slice(1).sort()).toEqual(fixtureIds('pro').sort());
         expect(ids).not.toContain('deepseek/deepseek-v4.1-flash');
       }
     });
 
-    it('does not include Claude Opus in Free or Starter catalogs', () => {
+    it('carries synced pricing and limits', async () => {
+      const models = await getModelsForTier('starter', 'initial_outline');
       expect(
-        getModelsForTier('free', 'initial_outline').map((m) => m.id),
-      ).not.toContain('anthropic/claude-opus-5.5');
-      expect(
-        getModelsForTier('starter', 'initial_outline').map((m) => m.id),
-      ).not.toContain('anthropic/claude-opus-5.5');
-    });
-  });
-
-  describe('isValidModelId', () => {
-    it('returns true for valid model IDs', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        expect(isValidModelId(model.id)).toBe(true);
+        models.find((m) => m.id === 'deepseek/deepseek-v4.1-flash'),
+      ).toMatchObject({
+        name: 'DeepSeek V4.1 Flash',
+        provider: 'DeepSeek',
+        tier: 'pro',
+        contextWindow: 1_048_576,
+        maxOutputTokens: 943_718,
+        inputCostPerMillion: 0.07,
+        outputCostPerMillion: 0.5,
       });
     });
 
-    it('returns true for DEFAULT_MODEL', () => {
-      expect(isValidModelId(AI_DEFAULT_MODEL)).toBe(true);
-    });
+    it('throws and logs when the operation default left the guardrail', async () => {
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'starter',
+        MODEL_CATALOG_FIXTURE.starter.filter(
+          (model) => model.modelId !== 'openai/gpt-6-luna',
+        ),
+        new Date(),
+      );
+      const errorSpy = vi.spyOn(logger, 'error');
 
-    it('returns false for invalid IDs', () => {
-      expect(isValidModelId('invalid/model')).toBe(false);
-      expect(isValidModelId('not-a-real-model')).toBe(false);
-      expect(isValidModelId('random-string-123')).toBe(false);
-    });
-
-    it('returns false for empty string', () => {
-      expect(isValidModelId('')).toBe(false);
-    });
-
-    it('returns false for whitespace-only string', () => {
-      expect(isValidModelId('   ')).toBe(false);
-      expect(isValidModelId('\t\n')).toBe(false);
-    });
-
-    it('returns false for partial model IDs', () => {
-      expect(isValidModelId('google/')).toBe(false);
-      expect(isValidModelId('/gpt-6-luna')).toBe(false);
-    });
-
-    it('returns false for case-mismatched IDs', () => {
-      expect(isValidModelId('OPENAI/GPT-6-LUNA')).toBe(false);
+      await expect(
+        getModelsForTier('starter', 'initial_outline'),
+      ).rejects.toMatchObject({
+        name: ModelResolutionError.name,
+        code: 'DEFAULT_MODEL_UNAVAILABLE',
+      });
+      expect(errorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'model_default_not_in_guardrail',
+          tier: 'starter',
+          defaultModelId: 'openai/gpt-6-luna',
+        }),
+        expect.any(String),
+      );
     });
   });
 
   describe('getDefaultModelForTier', () => {
-    it('returns the free router for Free outline and lesson', () => {
-      expect(getDefaultModelForTier('free', 'initial_outline')).toBe(
+    it('returns the free router for Free outline and lesson', async () => {
+      expect(await getDefaultModelForTier('free', 'initial_outline')).toBe(
         AI_DEFAULT_MODEL,
       );
-      expect(getDefaultModelForTier('free', 'lesson')).toBe(AI_DEFAULT_MODEL);
-    });
-
-    it('returns GPT-6 Luna for Starter outline and regen', () => {
-      expect(getDefaultModelForTier('starter', 'initial_outline')).toBe(
-        'openai/gpt-6-luna',
-      );
-      expect(getDefaultModelForTier('starter', 'regeneration')).toBe(
-        'openai/gpt-6-luna',
-      );
-    });
-
-    it('returns the free router for Starter lesson', () => {
-      expect(getDefaultModelForTier('starter', 'lesson')).toBe(
+      expect(await getDefaultModelForTier('free', 'lesson')).toBe(
         AI_DEFAULT_MODEL,
       );
     });
 
-    it('returns operation-specific Pro defaults, not the first catalog row', () => {
-      expect(AVAILABLE_MODELS[0]?.id).toBe(AI_DEFAULT_MODEL);
-      expect(getDefaultModelForTier('pro', 'initial_outline')).toBe(
+    it('returns GPT-6 Luna for Starter outline and regen', async () => {
+      expect(await getDefaultModelForTier('starter', 'initial_outline')).toBe(
+        'openai/gpt-6-luna',
+      );
+      expect(await getDefaultModelForTier('starter', 'regeneration')).toBe(
+        'openai/gpt-6-luna',
+      );
+    });
+
+    it('returns the free router for Starter lesson', async () => {
+      expect(await getDefaultModelForTier('starter', 'lesson')).toBe(
+        AI_DEFAULT_MODEL,
+      );
+    });
+
+    it('returns operation-specific Pro defaults, not the cheapest synced row', async () => {
+      expect(await getDefaultModelForTier('pro', 'initial_outline')).toBe(
         'openai/gpt-6.1-sol',
       );
-      expect(getDefaultModelForTier('pro', 'regeneration')).toBe(
+      expect(await getDefaultModelForTier('pro', 'regeneration')).toBe(
         'anthropic/claude-sonnet-5.5',
       );
-      expect(getDefaultModelForTier('pro', 'lesson')).toBe(
+      expect(await getDefaultModelForTier('pro', 'lesson')).toBe(
         'anthropic/claude-haiku-5.5',
       );
+    });
+
+    it('rejects when the Pro default is missing from the guardrail', async () => {
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'pro',
+        MODEL_CATALOG_FIXTURE.pro.filter(
+          (model) => model.modelId !== 'anthropic/claude-sonnet-5.5',
+        ),
+        new Date(),
+      );
+      vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+      await expect(
+        getDefaultModelForTier('pro', 'regeneration'),
+      ).rejects.toBeInstanceOf(ModelResolutionError);
     });
   });
 
@@ -341,34 +220,6 @@ describe('AI Models Configuration', () => {
           'initial_outline',
         ),
       ).toEqual([]);
-    });
-  });
-
-  describe('Model data integrity', () => {
-    it('keeps openrouter/free metadata router-aware instead of backend-specific', () => {
-      const model = getModelById('openrouter/free');
-      expect(model).toMatchObject({
-        contextWindow: 200_000,
-      });
-      expect(model?.maxOutputTokens).toBeUndefined();
-      expect(model?.description).toContain('output limits vary');
-    });
-
-    it('known free models have zero input cost', () => {
-      const freeModels = AVAILABLE_MODELS.filter(
-        (m) => m.tier === 'free' && m.inputCostPerMillion === 0,
-      );
-      // At least some free models should have zero cost
-      expect(freeModels.length).toBeGreaterThan(0);
-    });
-
-    it('all models have reasonable context windows', () => {
-      AVAILABLE_MODELS.forEach((model) => {
-        // Context windows should be at least 1K tokens
-        expect(model.contextWindow).toBeGreaterThanOrEqual(1000);
-        // And no more than 10M tokens (reasonable upper bound)
-        expect(model.contextWindow).toBeLessThanOrEqual(10_000_000);
-      });
     });
   });
 });

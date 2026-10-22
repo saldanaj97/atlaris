@@ -25,16 +25,16 @@ type ResolveStreamModelResolutionInput = {
   savedPreferredAiModel: string | null;
 };
 
-export function resolveStreamModelResolution({
+export async function resolveStreamModelResolution({
   searchParams,
   tier,
   savedPreferredAiModel,
-}: ResolveStreamModelResolutionInput): StreamModelResolution {
+}: ResolveStreamModelResolutionInput): Promise<StreamModelResolution> {
   const suppliedModel = searchParams.get('model') ?? undefined;
   let validationError: StreamModelValidationError | undefined;
 
   if (suppliedModel !== undefined) {
-    const validation = validateModelForTier(
+    const validation = await validateModelForTier(
       tier,
       suppliedModel,
       'initial_outline',
@@ -55,7 +55,7 @@ export function resolveStreamModelResolution({
     validationError = { reason: validation.reason };
   }
 
-  const savedModel = resolveSavedPreferenceForSettings(
+  const savedModel = await resolveSavedPreferenceForSettings(
     tier,
     savedPreferredAiModel,
     'initial_outline',

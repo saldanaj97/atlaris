@@ -13,8 +13,8 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import {
   getDefaultModelForTier,
   getModelsForTier,
-  isValidModelId,
 } from '@/features/ai/ai-models';
+import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import { type Logger, logger } from '@/lib/logging/logger';
@@ -39,26 +39,22 @@ type ModelResolverLogger = {
 };
 
 /**
- * Validates whether a requested model is both known and allowed for a
- * tier × operation catalog. Does not throw; callers fall back.
+ * Validates whether a requested model is allowed for a tier × operation:
+ * `tier_denied` when another tier's guardrail lists it, `invalid_model` when
+ * none does. Throws only when the default check or catalog read fails.
  */
-export function validateModelForTier(
+export async function validateModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string,
   operation: ModelOperation,
-): ModelValidationResult {
-  if (!isValidModelId(requestedModel)) {
-    return { valid: false, reason: 'invalid_model' };
+): Promise<ModelValidationResult> {
+  const allowedModels = await getModelsForTier(userTier, operation);
+  if (allowedModels.some((model) => model.id === requestedModel)) {
+    return { valid: true };
   }
-
-  const allowedModels = getModelsForTier(userTier, operation);
-  const isAllowed = allowedModels.some((model) => model.id === requestedModel);
-
-  if (!isAllowed) {
-    return { valid: false, reason: 'tier_denied' };
-  }
-
-  return { valid: true };
+  return (await getCatalogModel(requestedModel))
+    ? { valid: false, reason: 'tier_denied' }
+    : { valid: false, reason: 'invalid_model' };
 }
 
 /**
@@ -112,14 +108,14 @@ function getProviderSafe(
  * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
  * @returns ModelResolution with the resolved provider and metadata
  */
-export function resolveModelForTier(
+export async function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string | null | undefined,
   operation: ModelOperation,
   providerGetter: ProviderGetter = getGenerationProviderWithModel,
   requestLogger: ModelResolverLogger = logger,
-): ModelResolution {
-  const defaultModelForTier = getDefaultModelForTier(userTier, operation);
+): Promise<ModelResolution> {
+  const defaultModelForTier = await getDefaultModelForTier(userTier, operation);
 
   // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
   const modelSpecified = requestedModel !== undefined;
@@ -161,7 +157,11 @@ export function resolveModelForTier(
     };
   }
 
-  const validation = validateModelForTier(userTier, requestedModel, operation);
+  const validation = await validateModelForTier(
+    userTier,
+    requestedModel,
+    operation,
+  );
 
   if (!validation.valid) {
     requestLogger.warn(

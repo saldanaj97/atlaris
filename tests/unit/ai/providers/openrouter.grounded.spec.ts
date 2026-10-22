@@ -202,7 +202,8 @@ describe('sendOpenRouterGroundedChat', () => {
 
     await sendOpenRouterGroundedChat(BASE_REQUEST, { fetch: fetchMock });
 
-    expect(getOutputTokenCeiling(OPENROUTER_TEST_MODEL)).toBe(128_000);
+    // Synced from the guardrail; grounded calls still send at most 32_768.
+    expect(await getOutputTokenCeiling(OPENROUTER_TEST_MODEL)).toBe(128_000);
     expect(call().body.max_tokens).toBe(DEFAULT_OUTPUT_TOKEN_CEILING);
     expect(DEFAULT_OUTPUT_TOKEN_CEILING).toBe(32_768);
   });

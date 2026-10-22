@@ -1,4 +1,6 @@
-type ModelResolutionErrorCode = 'PROVIDER_INIT_FAILED';
+type ModelResolutionErrorCode =
+  | 'PROVIDER_INIT_FAILED'
+  | 'DEFAULT_MODEL_UNAVAILABLE';
 
 type ModelResolutionErrorOptions = {
   code?: ModelResolutionErrorCode;

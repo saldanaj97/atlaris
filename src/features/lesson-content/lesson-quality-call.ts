@@ -77,7 +77,7 @@ export async function sendLessonQualityCall(
   });
   return {
     value: extractFirstJsonObject(text),
-    usage: safeNormalizeUsage(metadata),
+    usage: await safeNormalizeUsage(metadata),
     model: metadata.model ?? primary.modelId,
   };
 }

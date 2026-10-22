@@ -1,12 +1,15 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import {
+  inMemoryModelCatalogStore,
+  MODEL_CATALOG_FIXTURE,
+} from '../../fixtures/ai-model-catalog';
 import { getModelsForTier } from '@/features/ai/ai-models';
 import {
   type ModelOperation,
   MODEL_OPERATIONS,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
-  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
 } from '@/features/ai/model-operation-policy';
 import {
   GROUNDED_PICK_ROLES,
@@ -26,27 +29,17 @@ import {
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
 
-const STARTER_OUTLINE_MODELS = getPersistableModelsForTier(
-  'starter',
-  'initial_outline',
-);
-const PRO_OUTLINE_MODELS = getPersistableModelsForTier(
-  'pro',
-  'initial_outline',
-);
-const STARTER_MODEL_ID = STARTER_OUTLINE_MODELS[0]?.id;
-const PRO_ONLY_MODEL_ID = PRO_OUTLINE_MODELS.find(
-  ({ id }) => !STARTER_OUTLINE_MODELS.some((model) => model.id === id),
-)?.id;
+const STARTER_MODEL_ID = 'deepseek/deepseek-v4.1-flash';
+const PRO_ONLY_MODEL_ID = 'anthropic/claude-opus-5.5';
+const RETIRED_MODEL_ID = 'google/gemini-3-pro-preview';
 
-if (!STARTER_MODEL_ID || !PRO_ONLY_MODEL_ID) {
-  throw new Error('Expected persistable starter and pro model fixtures');
-}
+const ids = (models: readonly { id: string }[]) =>
+  models.map((model) => model.id).sort();
 
 describe('model-preferences', () => {
   describe('isPersistableModelId', () => {
-    it.each([STARTER_MODEL_ID, PRO_ONLY_MODEL_ID, 'anthropic/claude-opus-5.5'])(
-      'accepts catalog ids that are not runtime-only %s',
+    it.each([STARTER_MODEL_ID, PRO_ONLY_MODEL_ID, RETIRED_MODEL_ID])(
+      'accepts model slugs that are not runtime-only %s',
       (id) => {
         expect(isPersistableModelId(id)).toBe(true);
       },
@@ -60,54 +53,59 @@ describe('model-preferences', () => {
       'too/many/parts/here',
       'openai/',
       'gpt-oss-20b:free',
-      'google/gemini-3-pro-preview',
-      'google/gemini-2.0-flash-exp:free',
-    ])('rejects non-persistable or invalid id %s', (id) => {
+      '/gpt-6-luna',
+      '   ',
+    ])('rejects non-persistable or malformed id %j', (id) => {
       expect(isPersistableModelId(id)).toBe(false);
     });
   });
 
   describe('getPersistableModelsForTier', () => {
-    it('Free persistable lists are empty for every operation', () => {
-      expect(getPersistableModelsForTier('free', 'initial_outline')).toEqual(
+    it('Free persistable lists are empty for every operation', async () => {
+      for (const operation of MODEL_OPERATIONS) {
+        expect(await getPersistableModelsForTier('free', operation)).toEqual(
+          [],
+        );
+      }
+    });
+
+    it('Starter outline/regen persistable lists are the Starter guardrail models', async () => {
+      const expected = MODEL_CATALOG_FIXTURE.starter
+        .map((model) => model.modelId)
+        .sort();
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        expect(
+          ids(await getPersistableModelsForTier('starter', operation)),
+        ).toEqual(expected);
+      }
+    });
+
+    it('Starter lesson persistable list is empty', async () => {
+      expect(await getPersistableModelsForTier('starter', 'lesson')).toEqual(
         [],
       );
-      expect(getPersistableModelsForTier('free', 'regeneration')).toEqual([]);
-      expect(getPersistableModelsForTier('free', 'lesson')).toEqual([]);
     });
 
-    it('Starter outline/regen persistable lists are the three allowlisted ids', () => {
-      expect(
-        getPersistableModelsForTier('starter', 'initial_outline').map(
-          (m) => m.id,
-        ),
-      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
-      expect(
-        getPersistableModelsForTier('starter', 'regeneration').map((m) => m.id),
-      ).toEqual([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]);
-    });
-
-    it('Starter lesson persistable list is empty', () => {
-      expect(getPersistableModelsForTier('starter', 'lesson')).toEqual([]);
-    });
-
-    it('Pro persistable list includes paid catalog models and excludes the router', () => {
-      const proModels = getPersistableModelsForTier('pro', 'initial_outline');
-      expect(proModels.some((m) => m.id === 'openrouter/free')).toBe(false);
-      expect(proModels.some((m) => m.id === PRO_ONLY_MODEL_ID)).toBe(true);
-      expect(proModels.some((m) => m.id === 'anthropic/claude-opus-5.5')).toBe(
-        true,
+    it('Pro persistable list is the Pro guardrail models without the router', async () => {
+      const proModels = await getPersistableModelsForTier(
+        'pro',
+        'initial_outline',
       );
+      expect(ids(proModels)).toEqual(
+        MODEL_CATALOG_FIXTURE.pro.map((model) => model.modelId).sort(),
+      );
+      expect(proModels.some((m) => m.id === AI_DEFAULT_MODEL)).toBe(false);
     });
 
-    it('matches the operation policy catalog minus runtime-only ids', () => {
-      const tiers = ['free', 'starter', 'pro'] as const;
-      for (const tier of tiers) {
+    it('matches the operation models minus runtime-only ids', async () => {
+      for (const tier of ['free', 'starter', 'pro'] as const) {
         for (const operation of MODEL_OPERATIONS) {
           expect(
-            getPersistableModelsForTier(tier, operation).map((m) => m.id),
+            (await getPersistableModelsForTier(tier, operation)).map(
+              (m) => m.id,
+            ),
           ).toEqual(
-            getModelsForTier(tier, operation)
+            (await getModelsForTier(tier, operation))
               .filter((m) => !isRuntimeOnlyModelId(m.id))
               .map((m) => m.id),
           );
@@ -135,12 +133,13 @@ describe('model-preferences', () => {
       ['starter', STARTER_MODEL_ID, null, 'lesson'],
       ['starter', PRO_ONLY_MODEL_ID, null, 'initial_outline'],
       ['pro', PRO_ONLY_MODEL_ID, PRO_ONLY_MODEL_ID, 'initial_outline'],
+      ['pro', RETIRED_MODEL_ID, null, 'initial_outline'],
     ])(
       'tier %s stored %j returns %j for %s',
-      (tier, stored, expected, operation) => {
-        expect(resolveSavedPreferenceForSettings(tier, stored, operation)).toBe(
-          expected,
-        );
+      async (tier, stored, expected, operation) => {
+        expect(
+          await resolveSavedPreferenceForSettings(tier, stored, operation),
+        ).toBe(expected);
       },
     );
   });
@@ -217,9 +216,9 @@ describe('model-preferences', () => {
   });
 
   describe('resolveEffectivePreference', () => {
-    it('returns the saved id when it is allowed for the operation', () => {
+    it('returns the saved id when it is allowed for the operation', async () => {
       expect(
-        resolveEffectivePreference(
+        await resolveEffectivePreference(
           'starter',
           STARTER_MODEL_ID,
           'initial_outline',
@@ -227,37 +226,27 @@ describe('model-preferences', () => {
       ).toBe(STARTER_MODEL_ID);
     });
 
-    it('returns the Free router default without treating it as a saved value', () => {
+    it('returns the Free router default without treating it as a saved value', async () => {
       expect(
-        resolveEffectivePreference(
+        await resolveEffectivePreference(
           'free',
           PRO_ONLY_MODEL_ID,
           'initial_outline',
         ),
       ).toBe(AI_DEFAULT_MODEL);
-      expect(resolveEffectivePreference('free', null, 'initial_outline')).toBe(
-        AI_DEFAULT_MODEL,
-      );
+      expect(
+        await resolveEffectivePreference('free', null, 'initial_outline'),
+      ).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('falls back to the Pro regeneration default for a retired saved id', () => {
+    it('falls back to the Pro regeneration default for a retired saved id', async () => {
       expect(
-        resolveEffectivePreference(
+        await resolveEffectivePreference(
           'pro',
-          'google/gemini-3-pro-preview',
+          RETIRED_MODEL_ID,
           'regeneration',
         ),
       ).toBe('anthropic/claude-sonnet-5.5');
-    });
-
-    it('hides a retired saved id from the settings picker', () => {
-      expect(
-        resolveSavedPreferenceForSettings(
-          'pro',
-          'openai/gpt-4o-mini-search-preview',
-          'initial_outline',
-        ),
-      ).toBeNull();
     });
 
     it.each<[SubscriptionTier, ModelOperation, string]>([
@@ -267,19 +256,32 @@ describe('model-preferences', () => {
       ['pro', 'regeneration', 'anthropic/claude-sonnet-5.5'],
       ['pro', 'lesson', 'anthropic/claude-haiku-5.5'],
     ])(
-      'resolves the removed id openai/gpt-5.2 to the %s %s default',
-      (tier, operation, expected) => {
+      'falls back to the %s %s default once a saved pick leaves the guardrail',
+      async (tier, operation, expected) => {
+        const saved = tier === 'starter' ? STARTER_MODEL_ID : PRO_ONLY_MODEL_ID;
+        expect(await resolveEffectivePreference(tier, saved, operation)).toBe(
+          saved,
+        );
+
+        await inMemoryModelCatalogStore.replaceTierModels(
+          tier,
+          MODEL_CATALOG_FIXTURE[tier].filter(
+            (model) => model.modelId !== saved,
+          ),
+          new Date(),
+        );
+
+        expect(await resolveEffectivePreference(tier, saved, operation)).toBe(
+          expected,
+        );
         expect(
-          resolveEffectivePreference(tier, 'openai/gpt-5.2', operation),
-        ).toBe(expected);
-        expect(
-          resolveSavedPreferenceForSettings(tier, 'openai/gpt-5.2', operation),
+          await resolveSavedPreferenceForSettings(tier, saved, operation),
         ).toBeNull();
       },
     );
 
-    it('uses the Pro lesson default when the lesson slot is empty', () => {
-      expect(resolveEffectivePreference('pro', null, 'lesson')).toBe(
+    it('uses the Pro lesson default when the lesson slot is empty', async () => {
+      expect(await resolveEffectivePreference('pro', null, 'lesson')).toBe(
         'anthropic/claude-haiku-5.5',
       );
     });

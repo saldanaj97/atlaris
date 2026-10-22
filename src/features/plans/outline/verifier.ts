@@ -161,6 +161,6 @@ export async function runOutlineVerifier(
   return {
     issues: parseVerifierOutput(value, params.modules),
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
-    usage: safeNormalizeUsage(metadata),
+    usage: await safeNormalizeUsage(metadata),
   };
 }

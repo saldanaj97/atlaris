@@ -113,7 +113,10 @@ describe('AI usage logging', () => {
       missingFields: [],
     };
 
-    await recordUsageInTx(db, canonicalUsageToRecordParams(canonical, userId));
+    await recordUsageInTx(
+      db,
+      await canonicalUsageToRecordParams(canonical, userId),
+    );
 
     const [row] = await db
       .select()

@@ -113,6 +113,6 @@ export async function runOutlineRepair(
   return {
     modules: pacePlan(parsed.modules, params.input),
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
-    usage: safeNormalizeUsage(metadata),
+    usage: await safeNormalizeUsage(metadata),
   };
 }

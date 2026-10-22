@@ -1,7 +1,8 @@
 /**
- * Code-owned model catalogs and defaults per billing tier × generation
- * operation. Membership is not an env/DB control plane. Catalog `tier`
- * labels are not proof of zero cost.
+ * Model sources and code-owned defaults per billing tier × generation
+ * operation. The selectable models come from each tier's OpenRouter guardrail
+ * (`model-catalog`); this file decides which sources an operation uses and
+ * which model it runs when the user picked none.
  */
 
 import type { SubscriptionTier } from '@/shared/types/billing.types';
@@ -16,56 +17,43 @@ export const MODEL_OPERATIONS = [
 
 export type ModelOperation = (typeof MODEL_OPERATIONS)[number];
 
-export const STARTER_OUTLINE_REGENERATION_MODEL_IDS = [
-  'openai/gpt-6-luna',
-  'anthropic/claude-haiku-5.5',
-  'deepseek/deepseek-v4.1-flash',
-] as const;
-
 export const STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID =
-  STARTER_OUTLINE_REGENERATION_MODEL_IDS[0];
-
-/**
- * Pro catalog for every operation. Leaves out `deepseek/deepseek-v4.1-flash`,
- * which the `atlaris-pro` OpenRouter guardrail blocks.
- */
-export const PRO_MODEL_IDS = [
-  'openrouter/free',
-  'openai/gpt-6-luna',
-  'anthropic/claude-haiku-5.5',
-  'openai/gpt-6.1-sol',
-  'openai/gpt-6-sol',
-  'anthropic/claude-sonnet-5.5',
-  'anthropic/claude-opus-5.5',
-] as const;
+  'openai/gpt-6-luna';
 
 const PRO_DEFAULT_MODEL_BY_OPERATION = {
   initial_outline: 'openai/gpt-6.1-sol',
   regeneration: 'anthropic/claude-sonnet-5.5',
   lesson: 'anthropic/claude-haiku-5.5',
-} as const satisfies Record<ModelOperation, (typeof PRO_MODEL_IDS)[number]>;
+} as const satisfies Record<ModelOperation, string>;
 
 export type ModelOperationPolicy = {
   readonly allowed: boolean;
+  /** Must be in the operation's models; resolution throws when it is not. */
   readonly defaultModelId: string;
-  /** Empty when the operation is not a catalog. */
-  readonly modelIds: readonly string[];
+  /** Offers the tier's synced guardrail models. */
+  readonly usesTierCatalog: boolean;
+  /** Offers the code-owned `openrouter/free` router. */
+  readonly usesFreeRouter: boolean;
+};
+
+const FREE_ROUTER_ONLY: ModelOperationPolicy = {
+  allowed: true,
+  defaultModelId: AI_DEFAULT_MODEL,
+  usesTierCatalog: false,
+  usesFreeRouter: true,
 };
 
 function freePolicy(operation: ModelOperation): ModelOperationPolicy {
   switch (operation) {
     case 'initial_outline':
     case 'lesson':
-      return {
-        allowed: true,
-        defaultModelId: AI_DEFAULT_MODEL,
-        modelIds: [AI_DEFAULT_MODEL],
-      };
+      return FREE_ROUTER_ONLY;
     case 'regeneration':
       return {
         allowed: false,
         defaultModelId: AI_DEFAULT_MODEL,
-        modelIds: [],
+        usesTierCatalog: false,
+        usesFreeRouter: false,
       };
     default: {
       const _never: never = operation;
@@ -81,14 +69,11 @@ function starterPolicy(operation: ModelOperation): ModelOperationPolicy {
       return {
         allowed: true,
         defaultModelId: STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
-        modelIds: STARTER_OUTLINE_REGENERATION_MODEL_IDS,
+        usesTierCatalog: true,
+        usesFreeRouter: false,
       };
     case 'lesson':
-      return {
-        allowed: true,
-        defaultModelId: AI_DEFAULT_MODEL,
-        modelIds: [AI_DEFAULT_MODEL],
-      };
+      return FREE_ROUTER_ONLY;
     default: {
       const _never: never = operation;
       throw new Error(`Unhandled model operation: ${String(_never)}`);
@@ -104,7 +89,8 @@ function proPolicy(operation: ModelOperation): ModelOperationPolicy {
       return {
         allowed: true,
         defaultModelId: PRO_DEFAULT_MODEL_BY_OPERATION[operation],
-        modelIds: PRO_MODEL_IDS,
+        usesTierCatalog: true,
+        usesFreeRouter: true,
       };
     default: {
       const _never: never = operation;

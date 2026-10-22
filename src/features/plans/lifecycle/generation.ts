@@ -138,10 +138,12 @@ async function runGeneration(
   const generationPurpose = parseGenerationPurpose(params.generationPurpose);
   const provider =
     options.provider ??
-    resolveModelForTier(
-      params.tier,
-      params.modelOverride ?? undefined,
-      modelOperationForGenerationPurpose(generationPurpose),
+    (
+      await resolveModelForTier(
+        params.tier,
+        params.modelOverride ?? undefined,
+        modelOperationForGenerationPurpose(generationPurpose),
+      )
     ).provider;
 
   const generationInput: GenerationInput = {
@@ -190,7 +192,9 @@ async function runGeneration(
       classification: result.classification,
       error: result.error,
       metadata: result.metadata,
-      usage: result.metadata ? safeNormalizeUsage(result.metadata) : undefined,
+      usage: result.metadata
+        ? await safeNormalizeUsage(result.metadata)
+        : undefined,
       durationMs: result.durationMs,
       timedOut: result.timedOut,
       extendedTimeout: result.extendedTimeout,
@@ -206,7 +210,9 @@ async function runGeneration(
       classification: exec.classification,
       error: exec.error,
       metadata: exec.metadata,
-      usage: exec.metadata ? safeNormalizeUsage(exec.metadata) : undefined,
+      usage: exec.metadata
+        ? await safeNormalizeUsage(exec.metadata)
+        : undefined,
       durationMs: exec.durationMs,
       reservation: exec.reservation,
       timedOut: exec.timedOut,
@@ -218,7 +224,7 @@ async function runGeneration(
     status: 'success',
     modules: exec.modules as GeneratedModule[],
     metadata: exec.metadata,
-    usage: safeNormalizeUsage(exec.metadata),
+    usage: await safeNormalizeUsage(exec.metadata),
     durationMs: exec.durationMs,
     reservation: exec.reservation,
     extendedTimeout: exec.extendedTimeout,

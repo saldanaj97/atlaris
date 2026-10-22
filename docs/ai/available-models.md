@@ -1,64 +1,52 @@
 # Available AI Models
 
-This document lists the AI models Atlaris uses via OpenRouter when grounded generation is off. Grounded generation has its own catalogs in `src/features/ai/model-operation-policy.ts` (`GROUNDED_MODELS_BY_TIER`, `PRO_GROUNDED_WRITER_CATALOG`, `PRO_GROUNDED_REVIEW_CATALOG`).
+Each tier's selectable models come from that tier's OpenRouter guardrail, not from code. A guardrail change reaches users on the next sync, with no code change or deploy. Grounded generation has its own route definitions in `src/features/ai/model-operation-policy.ts` (`GROUNDED_MODELS_BY_TIER`, `PRO_GROUNDED_WRITER_CATALOG`, `PRO_GROUNDED_REVIEW_CATALOG`); only their pricing and output ceilings come from the synced data.
 
-## Model Comparison Table
+## Where the list comes from
 
-Persistable catalog (Settings picker). The runtime default `openrouter/free` ("Free Models Router") is also in `AVAILABLE_MODELS` but is **not** stored in `user_preferences.preferred_ai_model`.
+`GET https://openrouter.ai/api/v1/models/user` ([docs](https://openrouter.ai/docs/api/api-reference/models/list-models-user)) returns the models a key's guardrail allows. Each tier key (`OPENROUTER_API_KEY_FREE`, `_STARTER`, `_PRO`) has its own guardrail, so each call returns that tier's list with OpenRouter's current name, pricing, context length, max output tokens and supported parameters.
 
-Prices and limits come from the OpenRouter models API on 2026-10-22.
+`src/features/ai/model-catalog/` syncs it into `openrouter_tier_models`, keyed by `(tier, model_id)`:
 
-| Model ID                       | Name                | Provider  | Tiers        | Context Window | Max output | Cost (input) | Cost (output) |
-| :----------------------------- | :------------------ | :-------- | :----------- | :------------- | :--------- | :----------- | :------------ |
-| `openai/gpt-6-luna`            | GPT-6 Luna          | OpenAI    | Starter, Pro | 1.05M tokens   | 128K       | $0.10/M      | $0.50/M       |
-| `anthropic/claude-haiku-5.5`   | Claude Haiku 5.5    | Anthropic | Starter, Pro | 1M tokens      | 128K       | $0.10/M      | $0.50/M       |
-| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | DeepSeek  | Starter      | 1.05M tokens   | 944K       | $0.30/M      | $1.20/M       |
-| `openai/gpt-6.1-sol`           | GPT-6.1 Sol         | OpenAI    | Pro          | 1.05M tokens   | 128K       | $2/M         | $10/M         |
-| `openai/gpt-6-sol`             | GPT-6 Sol           | OpenAI    | Pro          | 1.05M tokens   | 128K       | $2/M         | $10/M         |
-| `anthropic/claude-sonnet-5.5`  | Claude Sonnet 5.5   | Anthropic | Pro          | 1M tokens      | 128K       | $2/M         | $10/M         |
-| `anthropic/claude-opus-5.5`    | Claude Opus 5.5     | Anthropic | Pro          | 1M tokens      | 128K       | $4/M         | $20/M         |
+| Piece                  | File                  | What it does                                                                                                                                                                   |
+| :--------------------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchGuardrailModels` | `guardrail-models.ts` | Fetches with a 5s timeout and parses strictly. A non-2xx response, a malformed model, a variable (`-1`) price or an empty list throws.                                         |
+| `syncTierModelCatalog` | `catalog.ts`          | Replaces the tier's rows in one transaction after a successful fetch. On any failure it keeps the last good rows and logs `model_catalog_sync_failed`.                         |
+| `getTierModels`        | `catalog.ts`          | Reads a tier's rows, cheapest first. Refresh-on-read: rows older than 15 minutes (or none) sync first. After a failed sync, reads use the stored rows for 60s before retrying. |
+| `getCatalogModel`      | `catalog.ts`          | Pricing and limits for one model id from the most recently synced tier. `openrouter/free` returns the code-owned `FREE_ROUTER_MODEL`.                                          |
 
-DeepSeek V4.1 Flash is Starter-only: the `atlaris-pro` OpenRouter guardrail blocks it.
+A runtime syncs a tier only when it has that tier's own key; there is no fallback to `OPENROUTER_API_KEY`. The Next.js app has all three keys and keeps the table fresh. The jobs Worker has only `OPENROUTER_API_KEY`, so it reads what the app synced and never syncs.
 
-Retired ids. Removed on 2026-10-22 when the catalog was replaced (the tier guardrails block them): `anthropic/claude-haiku-4.5`, `google/gemini-2.5-flash-lite`, `google/gemini-3-flash-preview`, `google/gemini-3.1-pro-preview`, `anthropic/claude-sonnet-4.5`, `openai/gpt-4o-mini-2024-07-18`, `openai/gpt-4o`, `openai/gpt-5.1`, `openai/gpt-5.2`. Removed on 2026-10-13 because OpenRouter no longer serves them: `google/gemini-3-pro-preview`, `google/gemini-2.0-flash-exp:free`, `openai/gpt-oss-20b:free`, `alibaba/tongyi-deepresearch-30b-a3b:free`, `openai/gpt-4o-mini-search-preview`. A saved preference or override that still holds one is rejected as `invalid_model` and resolves to the tier × operation default. Settings shows no saved pick for it. The legacy `preferred_ai_model` PostgreSQL enum keeps its historical values; the column is `text`.
+The table is deny-all under RLS; only the service-role client reads or writes it.
 
-## Subscription Tiers
+## What stays in code
 
-Access is gated per tier × operation by `getModelOperationPolicy()` in `src/features/ai/model-operation-policy.ts`; `getModelsForTier()` in `src/features/ai/ai-models.ts` returns the matching catalog rows.
+- **`openrouter/free`** (`FREE_ROUTER_MODEL` in `catalog.ts`): a router, not a model, so no guardrail lists it. It is free and has no output limit of its own.
+- **Per-operation defaults** in `model-operation-policy.ts`: Starter outline/regeneration `openai/gpt-6-luna`; Pro outline `openai/gpt-6.1-sol`, regeneration `anthropic/claude-sonnet-5.5`, lesson `anthropic/claude-haiku-5.5`. A default missing from its tier's synced list fails loudly: `getModelsForTier` logs `model_default_not_in_guardrail` and throws `ModelResolutionError` (`DEFAULT_MODEL_UNAVAILABLE`). Fix the guardrail or the default; there is no silent substitute.
+- **`DEFAULT_OUTPUT_TOKEN_CEILING`** (32,768) in `cost.ts`: the ceiling for models without a synced max output, and the cap on every grounded call's `max_tokens`.
 
-| Tier    | Operation             | Default                       | Catalog                                                                    |
-| :------ | :-------------------- | :---------------------------- | :------------------------------------------------------------------------- |
-| Free    | outline, lesson       | `openrouter/free`             | `openrouter/free` only                                                     |
-| Free    | regeneration          | not allowed                   | none                                                                       |
-| Starter | outline, regeneration | `openai/gpt-6-luna`           | GPT-6 Luna, Claude Haiku 5.5, DeepSeek V4.1 Flash                          |
-| Starter | lesson                | `openrouter/free`             | `openrouter/free` only                                                     |
-| Pro     | outline               | `openai/gpt-6.1-sol`          | `PRO_MODEL_IDS`: every model above except DeepSeek, plus `openrouter/free` |
-| Pro     | regeneration          | `anthropic/claude-sonnet-5.5` | `PRO_MODEL_IDS`                                                            |
-| Pro     | lesson                | `anthropic/claude-haiku-5.5`  | `PRO_MODEL_IDS`                                                            |
+## Subscription tiers
 
-## Understanding Costs
+Access is gated per tier × operation by `getModelOperationPolicy()`; `getModelsForTier()` in `src/features/ai/ai-models.ts` returns the matching models.
 
-Costs are listed per million (M) tokens:
+| Tier    | Operation             | Default                       | Selectable models                             |
+| :------ | :-------------------- | :---------------------------- | :-------------------------------------------- |
+| Free    | outline, lesson       | `openrouter/free`             | `openrouter/free` only                        |
+| Free    | regeneration          | not allowed                   | none                                          |
+| Starter | outline, regeneration | `openai/gpt-6-luna`           | the Starter guardrail list                    |
+| Starter | lesson                | `openrouter/free`             | `openrouter/free` only                        |
+| Pro     | outline               | `openai/gpt-6.1-sol`          | `openrouter/free` plus the Pro guardrail list |
+| Pro     | regeneration          | `anthropic/claude-sonnet-5.5` | `openrouter/free` plus the Pro guardrail list |
+| Pro     | lesson                | `anthropic/claude-haiku-5.5`  | `openrouter/free` plus the Pro guardrail list |
 
-- **Input Cost**: The cost for the prompt/instructions sent to the model.
-- **Output Cost**: The cost for the response generated by the model.
+The Free guardrail's rows are synced but not selectable: Free users always get `openrouter/free`.
 
-Usage cost is computed from this catalog when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so changing the catalog does not reprice past usage.
+## Costs and output ceilings
 
-## Technical Specifications
+`computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. When the table cannot be read (for example a jobs Worker step with no DB client), cost lookups log `model_catalog_unavailable`, the estimate falls back to unknown, and the ceiling falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`; provider-reported cost still applies.
 
-### Context Window
+Usage cost is computed when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so a guardrail price change never reprices past usage.
 
-The context window represents the maximum amount of text (in tokens) the model can "remember" or process at once. Every paid model above has a context window of about 1M tokens.
+## Model selection
 
-### Max output
-
-`maxOutputTokens` is the per-request output ceiling `getOutputTokenCeiling()` in `src/features/ai/cost.ts` sends to the provider. Models without one (`openrouter/free`) use `DEFAULT_OUTPUT_TOKEN_CEILING`.
-
-### Providers
-
-The catalog spans three providers via OpenRouter: OpenAI, Anthropic and DeepSeek. No default uses a Google model.
-
-## Model Selection
-
-Users pick a preferred model under **Settings → AI model** (`/settings/ai`). The value is stored on `user_preferences.preferred_ai_model` (Pro also has `preferred_regeneration_ai_model` and `preferred_lesson_ai_model`) and used for later generation while it stays in the user's tier × operation catalog. Persistable options exclude `openrouter/free`; when no valid preference is set, generation uses the tier × operation default above.
+Users pick a preferred model under **Settings → AI model** (`/settings/ai`). The value is stored on `user_preferences.preferred_ai_model` (Pro also has `preferred_regeneration_ai_model` and `preferred_lesson_ai_model`). Generation uses it while it stays in the user's synced tier × operation list. A saved pick that leaves the guardrail is not deleted: `resolveEffectivePreference` falls back to the operation default and Settings shows no saved pick, and it applies again if the guardrail adds it back. Persistable options exclude `openrouter/free`. The legacy `preferred_ai_model` PostgreSQL enum keeps its historical values; the column is `text`.

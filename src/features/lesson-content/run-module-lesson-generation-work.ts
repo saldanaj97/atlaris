@@ -145,7 +145,7 @@ export async function resolveModuleLessonProvider(
 
   return (
     provider ??
-    resolveModelForTier(currentTier, requestedModel, 'lesson').provider
+    (await resolveModelForTier(currentTier, requestedModel, 'lesson')).provider
   );
 }
 
@@ -191,7 +191,7 @@ export async function generateModuleLessonRawBatch(input: {
 
     return {
       rawText,
-      usage: safeNormalizeUsage(providerResult.metadata),
+      usage: await safeNormalizeUsage(providerResult.metadata),
       finishReason: providerResult.metadata.finishReason,
     };
   } finally {

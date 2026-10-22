@@ -22,15 +22,15 @@ import {
 } from '@/shared/constants/api-error-codes';
 import { ZodError } from 'zod';
 
-function assertRegenerationModelAllowed(
+async function assertRegenerationModelAllowed(
   tier: SubscriptionTier,
   model: string | undefined,
-): void {
+): Promise<void> {
   if (model === undefined) {
     return;
   }
 
-  const validation = validateModelForTier(tier, model, 'regeneration');
+  const validation = await validateModelForTier(tier, model, 'regeneration');
   if (validation.valid) {
     return;
   }
@@ -95,7 +95,10 @@ export const POST: PlainHandler = requestBoundary.route(
       });
     }
 
-    assertRegenerationModelAllowed(actor.subscriptionTier, overrides?.model);
+    await assertRegenerationModelAllowed(
+      actor.subscriptionTier,
+      overrides?.model,
+    );
 
     const result = await requestPlanRegeneration(
       {

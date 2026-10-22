@@ -12,6 +12,7 @@ import {
   learningPlans,
   modules,
   oauthStateTokens,
+  openRouterTierModels,
   planResearch,
   planSchedules,
   researchSources,
@@ -99,6 +100,7 @@ const TRUNCATE_TABLES = [
   clerkWebhookEventClaims,
   clerkWebhookEvents,
   oauthStateTokens,
+  openRouterTierModels,
   users,
 ] as const;
 
