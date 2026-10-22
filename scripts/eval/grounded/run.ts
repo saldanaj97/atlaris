@@ -86,10 +86,16 @@ export type Manifest = {
   abandoned?: AbandonedRun[];
 };
 
+/**
+ * A problem every topic would hit (missing env, wrong linked project, waitlist
+ * redirect, flags on for a v15 run). `collect` stops after the batch.
+ */
+class SetupError extends Error {}
+
 function requireEnv(name: string): string {
   const value = process.env[name];
   if (!value) {
-    throw new Error(`Missing ${name}; see docs/testing/grounded-eval.md`);
+    throw new SetupError(`Missing ${name}; see docs/testing/grounded-eval.md`);
   }
   return value;
 }
@@ -235,10 +241,10 @@ async function setStagingTier(
     'utf8',
   ).trim();
   if (ref !== STAGING_PROJECT_REF) {
-    throw new Error(`Refusing to set tiers on linked project ${ref}`);
+    throw new SetupError(`Refusing to set tiers on linked project ${ref}`);
   }
   if (!/^user_[A-Za-z0-9]+$/.test(clerkUserId)) {
-    throw new Error(`Unexpected Clerk user id ${clerkUserId}`);
+    throw new SetupError(`Unexpected Clerk user id ${clerkUserId}`);
   }
   const { stdout } = await execFileAsync(
     'supabase',
@@ -318,7 +324,7 @@ async function apiOnce(
     method === 'GET',
   );
   if (response.status >= 300 && response.status < 400) {
-    throw new Error(
+    throw new SetupError(
       `${method} ${path} redirected to ${response.headers.get('location')}; is the launch waitlist on or the bypass missing?`,
     );
   }
@@ -539,7 +545,7 @@ async function collectTasks(
 function checkArm(arm: EvalArm, tasks: readonly ManifestTask[]): void {
   const cited = tasks.filter((t) => t.lessonContent?.sourceIds?.length).length;
   if (arm === 'v15' && cited > 0) {
-    throw new Error(
+    throw new SetupError(
       `${cited} lesson(s) cite sources, so grounded generation is on; this is not a v15 run`,
     );
   }
@@ -574,7 +580,11 @@ type PlanRun = Omit<ManifestPlan, 'costUsd' | 'costBatchSize'>;
 
 type TopicOutcome =
   | { readonly ok: true; readonly run: PlanRun }
-  | { readonly ok: false; readonly abandoned: AbandonedRun };
+  | {
+      readonly ok: false;
+      readonly abandoned: AbandonedRun;
+      readonly setupError: boolean;
+    };
 
 function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -607,6 +617,7 @@ async function runTopic(
         planId,
         error: errorMessage(error),
       },
+      setupError: error instanceof SetupError,
     };
   }
 }
@@ -704,16 +715,23 @@ async function collect(options: {
       batch.map((topic) => runTopic(baseUrl, options, topic)),
     );
     const runs: PlanRun[] = [];
+    let setupError: string | null = null;
     results.forEach((result, index) => {
       let error: string;
       if (result.status === 'rejected') {
         error = errorMessage(result.reason);
+        if (result.reason instanceof SetupError) {
+          setupError = error;
+        }
       } else if (result.value.ok) {
         runs.push(result.value.run);
         return;
       } else {
         error = result.value.abandoned.error;
         (manifest.abandoned ??= []).push(result.value.abandoned);
+        if (result.value.setupError) {
+          setupError = error;
+        }
       }
       log(`${batch[index]!.id}: run failed (${error}); rerun to retry it`);
     });
@@ -721,8 +739,13 @@ async function collect(options: {
     let batchCostUsd: number | null = null;
     if (usageBefore !== null && runs.length > 0) {
       await sleep(COST_SETTLE_MS);
-      const usageAfter = await readKeyUsageUsd();
-      batchCostUsd = usageAfter === null ? null : usageAfter - usageBefore;
+      try {
+        const usageAfter = await readKeyUsageUsd();
+        batchCostUsd = usageAfter === null ? null : usageAfter - usageBefore;
+      } catch (error) {
+        // The batch's runs are still recorded; their cost reads as unmeasured.
+        log(`closing key usage read failed (${errorMessage(error)})`);
+      }
     }
     for (const run of runs) {
       // A failed run's spend lands on the batch's recorded plans.
@@ -735,6 +758,11 @@ async function collect(options: {
       );
     }
     writeManifest(options.out, manifest);
+    if (setupError !== null) {
+      throw new Error(
+        `Stopping before the next batch: ${setupError}. Fix the setup, then rerun.`,
+      );
+    }
     if (runs.length < batch.length) {
       process.exitCode = 1;
     }
