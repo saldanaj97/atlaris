@@ -421,14 +421,14 @@ describe('runModuleLessonGenerationWork', () => {
   it('uses the Pro saved lesson slot when modelOverride is omitted', async () => {
     mocks.resolveUserTier.mockResolvedValue('pro');
     mocks.getUserPreferences.mockResolvedValue({
-      preferredAiModel: 'openai/gpt-5.2',
-      preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
-      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      preferredAiModel: 'openai/gpt-6.1-sol',
+      preferredRegenerationAiModel: 'anthropic/claude-sonnet-5.5',
+      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
       analyticsTimezone: 'UTC',
     });
     mocks.resolveModelForTier.mockReturnValue({
       provider: { generateModuleLessonBatch: vi.fn() },
-      modelId: 'google/gemini-3-flash-preview',
+      modelId: 'anthropic/claude-haiku-5.5',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
     mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
@@ -451,7 +451,7 @@ describe('runModuleLessonGenerationWork', () => {
     expect(mocks.getUserPreferences).toHaveBeenCalledWith(userId, fakeDb);
     expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
       'pro',
-      'google/gemini-3-flash-preview',
+      'anthropic/claude-haiku-5.5',
       'lesson',
     );
   });
@@ -494,12 +494,12 @@ describe('runModuleLessonGenerationWork', () => {
     mocks.getUserPreferences.mockResolvedValue({
       preferredAiModel: null,
       preferredRegenerationAiModel: null,
-      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
       analyticsTimezone: 'UTC',
     });
     mocks.resolveModelForTier.mockReturnValue({
       provider: { generateModuleLessonBatch: vi.fn() },
-      modelId: 'google/gemini-3-flash-preview',
+      modelId: 'anthropic/claude-haiku-5.5',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
     mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
@@ -523,7 +523,7 @@ describe('runModuleLessonGenerationWork', () => {
     );
     expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
       'pro',
-      'google/gemini-3-flash-preview',
+      'anthropic/claude-haiku-5.5',
       'lesson',
     );
     expect(mocks.resolveModelForTier).not.toHaveBeenCalledWith(
@@ -538,12 +538,12 @@ describe('runModuleLessonGenerationWork', () => {
     mocks.getUserPreferences.mockResolvedValue({
       preferredAiModel: null,
       preferredRegenerationAiModel: null,
-      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
       analyticsTimezone: 'UTC',
     });
     mocks.resolveModelForTier.mockReturnValue({
       provider: { generateModuleLessonBatch: vi.fn() },
-      modelId: 'openai/gpt-5.2',
+      modelId: 'openai/gpt-6.1-sol',
     });
     mocks.invokeProvider.mockResolvedValue(providerOk());
     mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
@@ -554,7 +554,7 @@ describe('runModuleLessonGenerationWork', () => {
         userId: createId('user'),
         planId: createId('plan'),
         moduleId: createId('module'),
-        modelOverride: 'openai/gpt-5.2',
+        modelOverride: 'openai/gpt-6.1-sol',
       },
       {
         serverDbClient: fakeDb,
@@ -565,7 +565,7 @@ describe('runModuleLessonGenerationWork', () => {
     expect(mocks.getUserPreferences).not.toHaveBeenCalled();
     expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
       'pro',
-      'openai/gpt-5.2',
+      'openai/gpt-6.1-sol',
       'lesson',
     );
   });

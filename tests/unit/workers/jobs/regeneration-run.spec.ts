@@ -202,9 +202,9 @@ beforeEach(() => {
   mocks.loadAuthorizedRegenerationPlan.mockResolvedValue(plan);
   mocks.resolveUserTier.mockResolvedValue('pro');
   mocks.getUserPreferences.mockResolvedValue({
-    preferredAiModel: 'openai/gpt-5.2',
-    preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
-    preferredLessonAiModel: 'google/gemini-3-flash-preview',
+    preferredAiModel: 'openai/gpt-6.1-sol',
+    preferredRegenerationAiModel: 'anthropic/claude-sonnet-5.5',
+    preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
     analyticsTimezone: 'UTC',
   });
   mocks.getGroundedModelPreferences.mockResolvedValue({
@@ -740,7 +740,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
         ...row,
         data: {
           ...row.data,
-          overrides: { model: 'google/gemini-3.1-pro-preview' },
+          overrides: { model: 'anthropic/claude-opus-5.5' },
         },
       });
       jobSequence(

@@ -733,7 +733,7 @@ describe('runPlanGenerationWorkflow', () => {
           event({
             ...params,
             tier: 'pro',
-            modelOverride: 'google/gemini-3.1-pro-preview',
+            modelOverride: 'anthropic/claude-sonnet-5.5',
             groundedWriterModelId: 'anthropic/claude-haiku-5.5',
           }),
           step,
@@ -757,7 +757,7 @@ describe('runPlanGenerationWorkflow', () => {
         runPlanGenerationWorkflow(
           event({
             ...params,
-            modelOverride: 'google/gemini-3.1-pro-preview',
+            modelOverride: 'anthropic/claude-sonnet-5.5',
           }),
           step,
           deps,

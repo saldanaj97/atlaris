@@ -9,7 +9,7 @@ function baseComplete(overrides?: Partial<CanonicalAIUsage>): CanonicalAIUsage {
     inputTokens: 100,
     outputTokens: 200,
     totalTokens: 300,
-    model: 'openai/gpt-4o',
+    model: 'openai/gpt-6-sol',
     provider: 'openrouter',
     estimatedCostCents: 50,
     providerCostMicrousd: null,
@@ -25,8 +25,8 @@ describe('buildModelPricingSnapshot', () => {
     expect(snap).not.toBeNull();
     expect(snap?.version).toBe(1);
     expect(snap?.source).toBe('local_catalog');
-    expect(snap?.requestedModelId).toBe('openai/gpt-4o');
-    expect(snap?.pricedModelId).toBe('openai/gpt-4o');
+    expect(snap?.requestedModelId).toBe('openai/gpt-6-sol');
+    expect(snap?.pricedModelId).toBe('openai/gpt-6-sol');
     expect(snap?.inputTokens).toBe(100);
     expect(snap?.outputTokens).toBe(200);
     expect(Number.isFinite(snap?.inputCostUsdPerMillion)).toBe(true);

@@ -36,117 +36,93 @@ export const AVAILABLE_MODELS = [
 
   // Pro-labelled catalog models. Catalog `tier` is not proof of zero cost.
   {
-    id: 'anthropic/claude-haiku-4.5',
-    name: 'Claude Haiku 4.5',
+    id: 'openai/gpt-6-luna',
+    name: 'GPT-6 Luna',
+    provider: 'OpenAI',
+    description: 'Fast, low-cost OpenAI model for everyday plan generation.',
+    tier: 'pro',
+    contextWindow: 1_050_000,
+    maxOutputTokens: 128_000,
+    inputCostPerMillion: 0.1,
+    outputCostPerMillion: 0.5,
+  },
+  {
+    id: 'anthropic/claude-haiku-5.5',
+    name: 'Claude Haiku 5.5',
     provider: 'Anthropic',
     description:
       'Fast and efficient model from Anthropic with strong reasoning capabilities.',
     tier: 'pro',
-    contextWindow: 200_000,
-    maxOutputTokens: 100_000,
-    inputCostPerMillion: 1,
-    outputCostPerMillion: 5,
-  },
-  {
-    id: 'google/gemini-2.5-flash-lite',
-    name: 'Gemini 2.5 Flash Lite',
-    provider: 'Google',
-    description: 'Optimized version of Gemini Flash for faster processing.',
-    tier: 'pro',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 525_000,
+    contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
     inputCostPerMillion: 0.1,
-    outputCostPerMillion: 0.4,
+    outputCostPerMillion: 0.5,
   },
   {
-    id: 'google/gemini-3-flash-preview',
-    name: 'Gemini 3 Flash Preview',
-    provider: 'Google',
-    description:
-      'Next-generation flash model with improved speed and intelligence.',
-    tier: 'pro',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 525_000,
-    inputCostPerMillion: 0.5,
-    outputCostPerMillion: 1,
-  },
-  {
-    id: 'google/gemini-3.1-pro-preview',
-    name: 'Gemini 3.1 Pro Preview',
-    provider: 'Google',
-    description:
-      'Frontier Gemini reasoning model for complex, multi-step planning.',
+    id: 'deepseek/deepseek-v4.1-flash',
+    name: 'DeepSeek V4.1 Flash',
+    provider: 'DeepSeek',
+    description: 'Low-cost DeepSeek flash model with a very large context.',
     tier: 'pro',
     contextWindow: 1_048_576,
-    maxOutputTokens: 65_536,
-    inputCostPerMillion: 2,
-    outputCostPerMillion: 12,
+    maxOutputTokens: 943_718,
+    inputCostPerMillion: 0.3,
+    outputCostPerMillion: 1.2,
   },
   {
-    id: 'anthropic/claude-sonnet-4.5',
-    name: 'Claude Sonnet 4.5',
+    id: 'openai/gpt-6.1-sol',
+    name: 'GPT-6.1 Sol',
+    provider: 'OpenAI',
+    description:
+      'Latest frontier OpenAI model for complex, multi-step planning.',
+    tier: 'pro',
+    contextWindow: 1_050_000,
+    maxOutputTokens: 128_000,
+    inputCostPerMillion: 2,
+    outputCostPerMillion: 10,
+  },
+  {
+    id: 'openai/gpt-6-sol',
+    name: 'GPT-6 Sol',
+    provider: 'OpenAI',
+    description:
+      'Frontier OpenAI model with strong performance across diverse tasks.',
+    tier: 'pro',
+    contextWindow: 1_050_000,
+    maxOutputTokens: 128_000,
+    inputCostPerMillion: 2,
+    outputCostPerMillion: 10,
+  },
+  {
+    id: 'anthropic/claude-sonnet-5.5',
+    name: 'Claude Sonnet 5.5',
     provider: 'Anthropic',
     description:
       'Premium model with exceptional reasoning and nuanced understanding.',
     tier: 'pro',
     contextWindow: 1_000_000,
-    maxOutputTokens: 500_000,
-    inputCostPerMillion: 3,
-    outputCostPerMillion: 15,
-  },
-  {
-    id: 'openai/gpt-4o-mini-2024-07-18',
-    name: 'GPT-4o-mini 2024-07-18',
-    provider: 'OpenAI',
-    description: 'Efficient mini model for cost-effective quality generation.',
-    tier: 'pro',
-    contextWindow: 128_000,
-    maxOutputTokens: 64_000,
-    inputCostPerMillion: 0.15,
-    outputCostPerMillion: 0.6,
-  },
-  {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    provider: 'OpenAI',
-    description:
-      'High-performance omni model for complex reasoning and multimodal tasks.',
-    tier: 'pro',
-    contextWindow: 128_000,
-    maxOutputTokens: 64_000,
-    inputCostPerMillion: 2.5,
+    maxOutputTokens: 128_000,
+    inputCostPerMillion: 2,
     outputCostPerMillion: 10,
   },
   {
-    id: 'openai/gpt-5.1',
-    name: 'GPT-5.1',
-    provider: 'OpenAI',
+    id: 'anthropic/claude-opus-5.5',
+    name: 'Claude Opus 5.5',
+    provider: 'Anthropic',
     description:
-      'Advanced GPT model with strong performance across diverse tasks.',
+      'Most capable Anthropic model for the hardest reasoning tasks.',
     tier: 'pro',
-    contextWindow: 400_000,
-    maxOutputTokens: 200_000,
-    inputCostPerMillion: 1.25,
-    outputCostPerMillion: 10,
-  },
-  {
-    id: 'openai/gpt-5.2',
-    name: 'GPT-5.2',
-    provider: 'OpenAI',
-    description:
-      'Latest GPT model with advanced reasoning and extended context.',
-    tier: 'pro',
-    contextWindow: 400_000,
-    maxOutputTokens: 200_000,
-    inputCostPerMillion: 1.75,
-    outputCostPerMillion: 14,
+    contextWindow: 1_000_000,
+    maxOutputTokens: 128_000,
+    inputCostPerMillion: 4,
+    outputCostPerMillion: 20,
   },
 ] satisfies AvailableModel[];
 
 /**
  * Get a model by its OpenRouter ID.
  *
- * @param id - The OpenRouter model ID (e.g., 'google/gemini-1.5-flash')
+ * @param id - The OpenRouter model ID (e.g., 'openai/gpt-6-luna')
  * @returns The model metadata or undefined if not found
  */
 export function getModelById(id: string): AvailableModel | undefined {
@@ -161,10 +137,6 @@ export function getModelsForTier(
   operation: ModelOperation,
 ): AvailableModel[] {
   const policy = getModelOperationPolicy(tier, operation);
-  if (policy.modelIds === 'full') {
-    return AVAILABLE_MODELS;
-  }
-
   return policy.modelIds.map((id) => {
     const model = getModelById(id);
     if (!model) {

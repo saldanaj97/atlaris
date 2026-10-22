@@ -7,7 +7,10 @@ import {
   getModelsForTier,
   isValidModelId,
 } from '@/features/ai/ai-models';
-import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-operation-policy';
+import {
+  PRO_MODEL_IDS,
+  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
+} from '@/features/ai/model-operation-policy';
 import { describe, expect, it } from 'vitest';
 
 describe('AI Models Configuration', () => {
@@ -59,8 +62,8 @@ describe('AI Models Configuration', () => {
       });
     });
 
-    it('labels Claude Haiku as pro because it is paid', () => {
-      const model = getModelById('anthropic/claude-haiku-4.5');
+    it('labels Claude Opus as pro because it is paid', () => {
+      const model = getModelById('anthropic/claude-opus-5.5');
       expect(model?.tier).toBe('pro');
       expect(model?.inputCostPerMillion).toBeGreaterThan(0);
       expect(model?.outputCostPerMillion).toBeGreaterThan(0);
@@ -110,16 +113,17 @@ describe('AI Models Configuration', () => {
       expect(model?.provider).toBe('OpenRouter');
     });
 
-    it('includes Gemini 3.1 Pro Preview with its OpenRouter pricing', () => {
-      const model = getModelById('google/gemini-3.1-pro-preview');
+    it('includes Claude Sonnet 5.5 with its OpenRouter pricing', () => {
+      const model = getModelById('anthropic/claude-sonnet-5.5');
       expect(model).toMatchObject({
-        id: 'google/gemini-3.1-pro-preview',
-        name: 'Gemini 3.1 Pro Preview',
-        provider: 'Google',
+        id: 'anthropic/claude-sonnet-5.5',
+        name: 'Claude Sonnet 5.5',
+        provider: 'Anthropic',
         tier: 'pro',
-        contextWindow: 1_048_576,
+        contextWindow: 1_000_000,
+        maxOutputTokens: 128_000,
         inputCostPerMillion: 2,
-        outputCostPerMillion: 12,
+        outputCostPerMillion: 10,
       });
     });
 
@@ -129,6 +133,15 @@ describe('AI Models Configuration', () => {
       'openai/gpt-oss-20b:free',
       'alibaba/tongyi-deepresearch-30b-a3b:free',
       'openai/gpt-4o-mini-search-preview',
+      'anthropic/claude-haiku-4.5',
+      'google/gemini-2.5-flash-lite',
+      'google/gemini-3-flash-preview',
+      'google/gemini-3.1-pro-preview',
+      'anthropic/claude-sonnet-4.5',
+      'openai/gpt-4o-mini-2024-07-18',
+      'openai/gpt-4o',
+      'openai/gpt-5.1',
+      'openai/gpt-5.2',
     ])('excludes retired OpenRouter model %s', (retiredId) => {
       expect(getModelById(retiredId)).toBeUndefined();
       expect(isValidModelId(retiredId)).toBe(false);
@@ -188,21 +201,25 @@ describe('AI Models Configuration', () => {
       ]);
     });
 
-    it('returns all models for Pro operations', () => {
-      expect(getModelsForTier('pro', 'initial_outline')).toEqual(
-        AVAILABLE_MODELS,
-      );
-      expect(getModelsForTier('pro', 'regeneration')).toEqual(AVAILABLE_MODELS);
-      expect(getModelsForTier('pro', 'lesson')).toEqual(AVAILABLE_MODELS);
+    it('returns the Pro catalog for Pro operations, without DeepSeek', () => {
+      for (const operation of [
+        'initial_outline',
+        'regeneration',
+        'lesson',
+      ] as const) {
+        const ids = getModelsForTier('pro', operation).map((m) => m.id);
+        expect(ids).toEqual([...PRO_MODEL_IDS]);
+        expect(ids).not.toContain('deepseek/deepseek-v4.1-flash');
+      }
     });
 
-    it('does not include Claude Haiku in Free or Starter catalogs', () => {
+    it('does not include Claude Opus in Free or Starter catalogs', () => {
       expect(
         getModelsForTier('free', 'initial_outline').map((m) => m.id),
-      ).not.toContain('anthropic/claude-haiku-4.5');
+      ).not.toContain('anthropic/claude-opus-5.5');
       expect(
         getModelsForTier('starter', 'initial_outline').map((m) => m.id),
-      ).not.toContain('anthropic/claude-haiku-4.5');
+      ).not.toContain('anthropic/claude-opus-5.5');
     });
   });
 
@@ -234,11 +251,11 @@ describe('AI Models Configuration', () => {
 
     it('returns false for partial model IDs', () => {
       expect(isValidModelId('google/')).toBe(false);
-      expect(isValidModelId('/gemini-3-flash-preview')).toBe(false);
+      expect(isValidModelId('/gpt-6-luna')).toBe(false);
     });
 
     it('returns false for case-mismatched IDs', () => {
-      expect(isValidModelId('GOOGLE/GEMINI-3-FLASH-PREVIEW')).toBe(false);
+      expect(isValidModelId('OPENAI/GPT-6-LUNA')).toBe(false);
     });
   });
 
@@ -250,12 +267,12 @@ describe('AI Models Configuration', () => {
       expect(getDefaultModelForTier('free', 'lesson')).toBe(AI_DEFAULT_MODEL);
     });
 
-    it('returns Gemini 2.5 Flash Lite for Starter outline and regen', () => {
+    it('returns GPT-6 Luna for Starter outline and regen', () => {
       expect(getDefaultModelForTier('starter', 'initial_outline')).toBe(
-        'google/gemini-2.5-flash-lite',
+        'openai/gpt-6-luna',
       );
       expect(getDefaultModelForTier('starter', 'regeneration')).toBe(
-        'google/gemini-2.5-flash-lite',
+        'openai/gpt-6-luna',
       );
     });
 
@@ -268,13 +285,13 @@ describe('AI Models Configuration', () => {
     it('returns operation-specific Pro defaults, not the first catalog row', () => {
       expect(AVAILABLE_MODELS[0]?.id).toBe(AI_DEFAULT_MODEL);
       expect(getDefaultModelForTier('pro', 'initial_outline')).toBe(
-        'openai/gpt-5.2',
+        'openai/gpt-6.1-sol',
       );
       expect(getDefaultModelForTier('pro', 'regeneration')).toBe(
-        'google/gemini-3.1-pro-preview',
+        'anthropic/claude-sonnet-5.5',
       );
       expect(getDefaultModelForTier('pro', 'lesson')).toBe(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
     });
   });
@@ -284,7 +301,7 @@ describe('AI Models Configuration', () => {
       expect(
         getFallbackModelsForTier(
           'free',
-          'anthropic/claude-haiku-4.5',
+          'anthropic/claude-opus-5.5',
           'initial_outline',
         ),
       ).toEqual([]);
@@ -294,14 +311,14 @@ describe('AI Models Configuration', () => {
       expect(
         getFallbackModelsForTier(
           'starter',
-          'google/gemini-2.5-flash-lite',
+          'openai/gpt-6-luna',
           'initial_outline',
         ),
       ).toEqual([]);
       expect(
         getFallbackModelsForTier(
           'starter',
-          'openai/gpt-4o-mini-2024-07-18',
+          'deepseek/deepseek-v4.1-flash',
           'regeneration',
         ),
       ).toEqual([]);
@@ -309,11 +326,7 @@ describe('AI Models Configuration', () => {
 
     it('uses openrouter/free as the only Starter/Free lesson fallback', () => {
       expect(
-        getFallbackModelsForTier(
-          'starter',
-          'google/gemini-2.5-flash-lite',
-          'lesson',
-        ),
+        getFallbackModelsForTier('starter', 'openai/gpt-6-luna', 'lesson'),
       ).toEqual([AI_DEFAULT_MODEL]);
       expect(
         getFallbackModelsForTier('free', AI_DEFAULT_MODEL, 'lesson'),
@@ -324,7 +337,7 @@ describe('AI Models Configuration', () => {
       expect(
         getFallbackModelsForTier(
           'pro',
-          'anthropic/claude-sonnet-4.5',
+          'anthropic/claude-sonnet-5.5',
           'initial_outline',
         ),
       ).toEqual([]);

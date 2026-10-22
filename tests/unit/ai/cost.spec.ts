@@ -20,7 +20,7 @@ describe('computeCostCents', () => {
   });
 
   it('returns 0 when both token counts are 0', () => {
-    expect(computeCostCents('openai/gpt-4o', 0, 0)).toBe(0);
+    expect(computeCostCents('openai/gpt-6-sol', 0, 0)).toBe(0);
   });
 
   it('returns 0 for free models', () => {
@@ -28,30 +28,32 @@ describe('computeCostCents', () => {
   });
 
   it('prices the Pro regeneration default from the catalog', () => {
-    // google/gemini-3.1-pro-preview: $2/M input, $12/M output
-    // 1M input = 200 cents, 500K output = 600 cents
+    // anthropic/claude-sonnet-5.5: $2/M input, $10/M output
+    // 1M input = 200 cents, 500K output = 500 cents
     expect(
-      computeCostCents('google/gemini-3.1-pro-preview', 1_000_000, 500_000),
-    ).toBe(800);
+      computeCostCents('anthropic/claude-sonnet-5.5', 1_000_000, 500_000),
+    ).toBe(700);
   });
 
   it('computes cost correctly for paid models', () => {
-    // openai/gpt-4o: inputCostPerMillion = 2.5, outputCostPerMillion = 10
-    // 1M input tokens at $2.5/M = $2.50 = 250 cents
-    // 500K output tokens at $10/M = $5.00 = 500 cents
-    // Total = 750 cents
-    expect(computeCostCents('openai/gpt-4o', 1_000_000, 500_000)).toBe(750);
+    // anthropic/claude-opus-5.5: inputCostPerMillion = 4, outputCostPerMillion = 20
+    // 1M input tokens at $4/M = $4.00 = 400 cents
+    // 500K output tokens at $20/M = $10.00 = 1000 cents
+    // Total = 1400 cents
+    expect(
+      computeCostCents('anthropic/claude-opus-5.5', 1_000_000, 500_000),
+    ).toBe(1400);
   });
 
   it('rounds to nearest cent', () => {
-    // 100 input tokens at $2.5/M = $0.00025 = 0.025 cents → rounds to 0
-    expect(computeCostCents('openai/gpt-4o', 100, 0)).toBe(0);
-    // 10_000 input tokens at $2.5/M = $0.025 = 2.5 cents → rounds to 3
-    expect(computeCostCents('openai/gpt-4o', 10_000, 0)).toBe(3);
+    // 100 input tokens at $2/M = $0.0002 = 0.02 cents → rounds to 0
+    expect(computeCostCents('openai/gpt-6-sol', 100, 0)).toBe(0);
+    // 12_500 input tokens at $2/M = $0.025 = 2.5 cents → rounds to 3
+    expect(computeCostCents('openai/gpt-6-sol', 12_500, 0)).toBe(3);
   });
 
   it('is deterministic — same input always produces same output', () => {
-    const model = 'openai/gpt-4o';
+    const model = 'openai/gpt-6-sol';
     const input = 123_456;
     const output = 78_901;
     const results = Array.from({ length: 100 }, () =>
@@ -78,8 +80,9 @@ describe('computeCostCents', () => {
 
 describe('getOutputTokenCeiling', () => {
   it('returns the model-defined maxOutputTokens when present', () => {
-    // openai/gpt-4o has maxOutputTokens: 64_000
-    expect(getOutputTokenCeiling('openai/gpt-4o')).toBe(64_000);
+    const model = getModelById('openai/gpt-6-sol');
+    expect(model?.maxOutputTokens).toBe(128_000);
+    expect(getOutputTokenCeiling(model?.id ?? '')).toBe(128_000);
   });
 
   it('returns DEFAULT_OUTPUT_TOKEN_CEILING for models without maxOutputTokens', () => {

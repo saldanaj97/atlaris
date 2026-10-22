@@ -62,20 +62,16 @@ describe('OpenRouterProvider', () => {
         ],
       });
 
-      // openai/gpt-4o has maxOutputTokens: 64_000
-      const provider = new OpenRouterProvider(
-        { model: 'openai/gpt-4o' },
-        client,
-      );
+      // openai/gpt-6-sol has maxOutputTokens: 128_000
+      const model = 'openai/gpt-6-sol';
+      const provider = new OpenRouterProvider({ model }, client);
       await provider.generate(OPENROUTER_SAMPLE_INPUT);
 
       const requestBody = send.mock.calls[0][0] as {
         maxTokens: number;
         [key: string]: unknown;
       };
-      expect(requestBody.maxTokens).toBe(
-        getOutputTokenCeiling('openai/gpt-4o'),
-      );
+      expect(requestBody.maxTokens).toBe(getOutputTokenCeiling(model));
     });
 
     it('uses default ceiling for unknown models', async () => {

@@ -305,7 +305,7 @@ describe('requestPlanRegeneration', () => {
       {
         userId: 'user-1',
         planId: ownedPlan.id,
-        overrides: { model: 'google/gemini-3.1-pro-preview' },
+        overrides: { model: 'anthropic/claude-sonnet-5.5' },
       },
       deps,
     );
@@ -316,7 +316,7 @@ describe('requestPlanRegeneration', () => {
       'user-1',
       {
         planId: ownedPlan.id,
-        overrides: { model: 'google/gemini-3.1-pro-preview' },
+        overrides: { model: 'anthropic/claude-sonnet-5.5' },
       },
       7,
     );
