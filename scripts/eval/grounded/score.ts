@@ -34,6 +34,7 @@ import {
   selectSpotCheck,
   stripCitations,
   summarizeArm,
+  summarizeReliability,
 } from './scoring';
 import { EVAL_TOPICS } from './topics';
 import { runLessonCodeChecks } from '@/features/lesson-content/lesson-checks';
@@ -140,14 +141,19 @@ function readSpotCheck(
   if (!path) {
     return null;
   }
-  const verdicts = readJson<Record<string, 'ok' | 'wrong'>>(path);
+  const verdicts = readJson<Record<string, unknown>>(path);
   const key = readJson<Record<string, { arm: EvalArm }>>(keyPath);
-  const grounded = Object.entries(verdicts).filter(
-    ([id]) => key[id]?.arm === 'grounded',
+  const groundedIds = Object.keys(key).filter(
+    (id) => key[id]!.arm === 'grounded',
+  );
+  // Only `ok` and `wrong` count as reviewed; a typo leaves the lesson pending.
+  const reviewed = groundedIds.filter(
+    (id) => verdicts[id] === 'ok' || verdicts[id] === 'wrong',
   );
   return {
-    reviewed: grounded.length,
-    wrong: grounded.filter(([, verdict]) => verdict === 'wrong').length,
+    expected: groundedIds.length,
+    reviewed: reviewed.length,
+    wrong: reviewed.filter((id) => verdicts[id] === 'wrong').length,
   };
 }
 
@@ -296,6 +302,10 @@ async function main(): Promise<void> {
     v15: v15Summary,
     grounded: groundedSummary,
     groundedModules: grounded.plans.flatMap((p) => p.modules),
+    groundedPlansNotReady:
+      grounded.plans.filter((p) => p.status !== 'ready').length +
+      EVAL_TOPICS.filter((t) => !grounded.plans.some((p) => p.topicId === t.id))
+        .length,
     groundedPlanCostsUsd: grounded.plans.map((p) => p.costUsd),
     spotCheck: readSpotCheck(values['spot-check'], keyPath),
   });
@@ -316,6 +326,13 @@ async function main(): Promise<void> {
       (b) =>
         `| ${b.name} | ${b.value} | ${b.target} | ${b.pass === null ? 'pending' : b.pass ? 'yes' : 'no'} |`,
     ),
+    '',
+    '### Reliability (separate from quality)',
+    '',
+    `- v15: ${summarizeReliability(v15.plans.flatMap((p) => p.modules))}`,
+    `- grounded: ${summarizeReliability(grounded.plans.flatMap((p) => p.modules))}`,
+    '',
+    'A failed module has no lessons, so it is left out of the quality comparison. Timeouts are the AI call limit both arms share (JCS-172); v15 writes a whole module per call and grounded one lesson per call, so v15 hits it first. Run `run.ts classify` on both manifests first, or causes read as unclassified.',
     '',
     '### Issues by code',
     '',

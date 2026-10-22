@@ -66,7 +66,91 @@ export type ModuleRun = {
   readonly moduleId: string;
   readonly status: 'ready' | 'failed';
   readonly durationMs: number;
+  /** The module's lesson workflow instance, for classifying failures later. */
+  readonly workflowRunId?: string;
+  /** Set by `run.ts classify` on failed modules. */
+  readonly failureCause?: FailureCause;
+  /**
+   * The longest provider-call step attempt, set by `run.ts classify`. v15
+   * writes a whole module per call; grounded writes one lesson per call.
+   */
+  readonly longestCallMs?: number;
 };
+
+export type FailureCause = 'timeout' | 'parse' | 'other';
+
+/**
+ * The per-call AI timeout both arms run with (`AI_TIMEOUT_BASE_MS` default,
+ * src/lib/config/env/ai.ts). A call at this length was cut off (JCS-172).
+ */
+export const AI_CALL_TIMEOUT_MS = 120_000;
+
+/** One step of a Cloudflare Workflow instance, as `wrangler ... describe --json` prints it. */
+export type WorkflowStep = {
+  readonly name: string;
+  readonly attempts?: readonly {
+    readonly start: string | null;
+    readonly end: string | null;
+    readonly success: boolean | null;
+    readonly error?: {
+      readonly name?: string;
+      readonly message?: string;
+    } | null;
+  }[];
+};
+
+const BOOKKEEPING_STEP = /^(claim|fail|parse-commit)/;
+
+/**
+ * Reads a lesson workflow's steps: the longest provider-call attempt, and for
+ * a failed module the cause of its last failed attempt. An aborted or
+ * timed-out call is `timeout`; a failed parse step is `parse`.
+ */
+export function classifyWorkflowSteps(
+  steps: readonly WorkflowStep[],
+  failed: boolean,
+): { failureCause?: FailureCause; longestCallMs?: number } {
+  let longestCallMs: number | undefined;
+  let lastFailure: { step: string; name: string; message: string } | undefined;
+  for (const step of steps) {
+    for (const attempt of step.attempts ?? []) {
+      if (!BOOKKEEPING_STEP.test(step.name) && attempt.start && attempt.end) {
+        const ms = Date.parse(attempt.end) - Date.parse(attempt.start);
+        longestCallMs = Math.max(longestCallMs ?? 0, ms);
+      }
+      if (attempt.success === false && !step.name.startsWith('fail')) {
+        lastFailure = {
+          step: step.name,
+          name: attempt.error?.name ?? '',
+          message: attempt.error?.message ?? '',
+        };
+      }
+    }
+  }
+  if (!failed) {
+    return { longestCallMs };
+  }
+  const failureCause: FailureCause = !lastFailure
+    ? 'other'
+    : /^(AbortError|TimeoutError)$/.test(lastFailure.name) ||
+        /aborted|timed? ?out/i.test(lastFailure.message)
+      ? 'timeout'
+      : lastFailure.step.startsWith('parse-commit')
+        ? 'parse'
+        : 'other';
+  return { failureCause, longestCallMs };
+}
+
+/** Failed modules by cause, for the reliability line of the report. */
+export function summarizeReliability(modules: readonly ModuleRun[]): string {
+  const failed = modules.filter((m) => m.status === 'failed');
+  const count = (cause: FailureCause | undefined) =>
+    failed.filter((m) => m.failureCause === cause).length;
+  const atCap = modules.filter(
+    (m) => (m.longestCallMs ?? 0) >= AI_CALL_TIMEOUT_MS,
+  ).length;
+  return `${failed.length} of ${modules.length} failed (timeout ${count('timeout')}, parse ${count('parse')}, other ${count('other')}, unclassified ${count(undefined)}); ${atCap} module(s) with a call at the ${AI_CALL_TIMEOUT_MS / 1000} s cap`;
+}
 
 /** `[S1]`, or several keys in one bracket: `[S1, S3]`. */
 const CITATION_MARKER_PATTERN = /\s*\[S\d+(?:\s*[,;]\s*S\d+)*\]/g;
@@ -148,6 +232,8 @@ export function summarizeArm(lessons: readonly ScoredLesson[]): ArmSummary {
 
 /** Human spot-check verdicts; `null` until the reviewer fills the sheet in. */
 export type SpotCheckResult = {
+  /** Grounded lessons on the sheet; every one needs a verdict. */
+  readonly expected: number;
   readonly reviewed: number;
   readonly wrong: number;
 } | null;
@@ -157,6 +243,11 @@ export type TierVerdictInput = {
   readonly v15: ArmSummary;
   readonly grounded: ArmSummary;
   readonly groundedModules: readonly ModuleRun[];
+  /**
+   * Grounded plans that never reached their modules: a failed or timed-out
+   * outline, or a topic with no plan in the manifest.
+   */
+  readonly groundedPlansNotReady: number;
   /** Grounded cost per plan, USD; `null` where the measurement is missing. */
   readonly groundedPlanCostsUsd: readonly (number | null)[];
   readonly spotCheck: SpotCheckResult;
@@ -189,22 +280,27 @@ function formatNumber(value: number | null, digits = 2): string {
 export function evaluateTier(input: TierVerdictInput): TierVerdict {
   const { v15, grounded } = input;
 
-  const wrongTotal =
-    grounded.wrongOutputLessons + (input.spotCheck?.wrong ?? 0);
+  const { spotCheck } = input;
+  const wrongTotal = grounded.wrongOutputLessons + (spotCheck?.wrong ?? 0);
+  // A partly filled sheet is still pending: the unreviewed lessons may be wrong.
+  const spotCheckDone =
+    spotCheck !== null &&
+    spotCheck.expected > 0 &&
+    spotCheck.reviewed >= spotCheck.expected;
   const wrongBar: BarResult = {
     name: 'Wrong outputs (judge + spot-check)',
     value: `${grounded.wrongOutputLessons} judge, ${
-      input.spotCheck
-        ? `${input.spotCheck.wrong} of ${input.spotCheck.reviewed} spot-checked`
+      spotCheck
+        ? `${spotCheck.wrong} wrong, ${spotCheck.reviewed} of ${spotCheck.expected} spot-checked`
         : 'spot-check pending'
     }`,
     target: '0',
     pass:
       wrongTotal > 0 || grounded.unjudgedLessons > 0 || grounded.lessons === 0
         ? false
-        : input.spotCheck === null
-          ? null
-          : true,
+        : spotCheckDone
+          ? true
+          : null,
   };
 
   const reduction =
@@ -230,14 +326,24 @@ export function evaluateTier(input: TierVerdictInput): TierVerdict {
     completed.map((m) => m.durationMs),
     95,
   );
+  const timedOut = input.groundedModules.filter(
+    (m) => m.failureCause === 'timeout',
+  ).length;
   const latencyBar: BarResult = {
     name: 'p95 module latency',
     value: `${p95 === null ? 'n/a' : `${(p95 / 60_000).toFixed(1)} min`}${
       failedModules > 0 ? `, ${failedModules} module(s) failed` : ''
+    }${timedOut > 0 ? ` (${timedOut} hit the AI call timeout: infra, JCS-172)` : ''}${
+      input.groundedPlansNotReady > 0
+        ? `, ${input.groundedPlansNotReady} plan(s) failed before modules`
+        : ''
     }`,
-    target: `≤ ${MAX_P95_MODULE_LATENCY_MS / 60_000} min, no failed modules`,
+    target: `≤ ${MAX_P95_MODULE_LATENCY_MS / 60_000} min, no failed plans or modules`,
     pass:
-      p95 !== null && p95 <= MAX_P95_MODULE_LATENCY_MS && failedModules === 0,
+      p95 !== null &&
+      p95 <= MAX_P95_MODULE_LATENCY_MS &&
+      failedModules === 0 &&
+      input.groundedPlansNotReady === 0,
   };
 
   const cap = COST_CAP_PER_PLAN_USD[input.tier];

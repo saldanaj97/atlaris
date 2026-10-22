@@ -8,6 +8,7 @@ import {
   type ArmSummary,
   type ScoredLesson,
   type TierVerdictInput,
+  classifyWorkflowSteps,
   evaluateTier,
   percentile,
   selectSpotCheck,
@@ -57,8 +58,9 @@ function passingInput(
       { moduleId: 'm1', status: 'ready', durationMs: 60_000 },
       { moduleId: 'm2', status: 'ready', durationMs: 200_000 },
     ],
+    groundedPlansNotReady: 0,
     groundedPlanCostsUsd: [2, 2.5],
-    spotCheck: { reviewed: 10, wrong: 0 },
+    spotCheck: { expected: 10, reviewed: 10, wrong: 0 },
     ...overrides,
   };
 }
@@ -141,8 +143,18 @@ describe('evaluateTier', () => {
     expect(verdict.pass).toBe(true);
   });
 
-  it('stays pending until the spot-check is in', () => {
+  it('stays pending until every spot-check lesson has a verdict', () => {
     expect(evaluateTier(passingInput({ spotCheck: null })).pass).toBeNull();
+    expect(
+      evaluateTier(
+        passingInput({ spotCheck: { expected: 10, reviewed: 0, wrong: 0 } }),
+      ).pass,
+    ).toBeNull();
+    expect(
+      evaluateTier(
+        passingInput({ spotCheck: { expected: 10, reviewed: 9, wrong: 0 } }),
+      ).pass,
+    ).toBeNull();
   });
 
   it('fails on any wrong output, from the judge or the spot-check', () => {
@@ -154,8 +166,9 @@ describe('evaluateTier', () => {
       ).pass,
     ).toBe(false);
     expect(
-      evaluateTier(passingInput({ spotCheck: { reviewed: 10, wrong: 1 } }))
-        .pass,
+      evaluateTier(
+        passingInput({ spotCheck: { expected: 10, reviewed: 3, wrong: 1 } }),
+      ).pass,
     ).toBe(false);
   });
 
@@ -200,6 +213,12 @@ describe('evaluateTier', () => {
       }),
     );
     expect(failed.bars[2]?.pass).toBe(false);
+  });
+
+  it('fails latency when a plan never reached its modules', () => {
+    const verdict = evaluateTier(passingInput({ groundedPlansNotReady: 1 }));
+    expect(verdict.bars[2]?.pass).toBe(false);
+    expect(verdict.pass).toBe(false);
   });
 
   it('fails cost over the tier cap or with an unmeasured plan', () => {
@@ -272,5 +291,69 @@ describe('planRequestBody', () => {
       startDate: '2026-10-21',
       deadlineDate: '2026-11-04',
     });
+  });
+});
+
+describe('classifyWorkflowSteps', () => {
+  const attempt = (
+    start: string,
+    end: string,
+    success: boolean,
+    error?: { name: string; message: string },
+  ) => ({
+    start: `2026-10-21T22:${start}Z`,
+    end: `2026-10-21T22:${end}Z`,
+    success,
+    error,
+  });
+
+  it('reads an aborted generate call as a timeout', () => {
+    expect(
+      classifyWorkflowSteps(
+        [
+          { name: 'claim-1', attempts: [attempt('44:01', '44:02', true)] },
+          {
+            name: 'generate-1',
+            attempts: [
+              attempt('44:02', '46:02', false, {
+                name: 'AbortError',
+                message: 'The operation was aborted',
+              }),
+            ],
+          },
+          { name: 'fail-1', attempts: [attempt('46:02', '46:03', true)] },
+        ],
+        true,
+      ),
+    ).toEqual({ failureCause: 'timeout', longestCallMs: 120_000 });
+  });
+
+  it('reads a failed parse step as a parse failure', () => {
+    expect(
+      classifyWorkflowSteps(
+        [
+          { name: 'generate-1', attempts: [attempt('44:00', '45:00', true)] },
+          {
+            name: 'parse-commit-1',
+            attempts: [
+              attempt('45:00', '45:01', false, {
+                name: 'Error',
+                message: 'schema mismatch',
+              }),
+            ],
+          },
+        ],
+        true,
+      ),
+    ).toEqual({ failureCause: 'parse', longestCallMs: 60_000 });
+  });
+
+  it('records only the longest call for a ready module', () => {
+    expect(
+      classifyWorkflowSteps(
+        [{ name: 'generate-1', attempts: [attempt('46:14', '47:44', true)] }],
+        false,
+      ),
+    ).toEqual({ longestCallMs: 90_000 });
   });
 });

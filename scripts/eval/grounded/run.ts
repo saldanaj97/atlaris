@@ -1,4 +1,3 @@
-import type { EvalArm, ModuleRun } from './scoring';
 /**
  * Collects one eval arm for one tier (JCS-163): creates a plan per topic on
  * staging, generates every module's lessons, times each module, reads the
@@ -7,15 +6,24 @@ import type { EvalArm, ModuleRun } from './scoring';
  * It never changes flags: run it once with grounded generation off (v15) and
  * once with it on for the tier (grounded). See docs/testing/grounded-eval.md.
  *
- *   pnpm exec tsx scripts/eval/grounded/run.ts collect --arm v15 --tier pro
+ *   pnpm exec tsx scripts/eval/grounded/run.ts collect --arm v15 --tier pro [--concurrency 3]
+ *   pnpm exec tsx scripts/eval/grounded/run.ts classify --manifest <file>
  *   pnpm exec tsx scripts/eval/grounded/run.ts cleanup --manifest <file>
  */
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { LessonContent } from '@/shared/types/lesson-content.types';
 
-import { EVAL_TOPICS, planRequestBody } from './topics';
+import {
+  classifyWorkflowSteps,
+  type EvalArm,
+  type ModuleRun,
+  type WorkflowStep,
+} from './scoring';
+import { EVAL_TOPICS, type EvalTopic, planRequestBody } from './topics';
+import { execFile } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
+import { promisify } from 'node:util';
 import { parseArgs } from 'node:util';
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -25,10 +33,14 @@ const MODULE_TIMEOUT_MS = 20 * 60_000;
 /** Lessons in flight per plan; the outline auto-starts the first two. */
 const MAX_MODULES_IN_FLIGHT = 2;
 const MAX_RATE_LIMIT_WAIT_MS = 15 * 60_000;
+/** Consecutive 5xx answers to one module's generate call before it counts as failed. */
+const MAX_GENERATE_SERVER_ERRORS = 3;
 /** OpenRouter key usage lags generation; wait before the closing reading. */
 const COST_SETTLE_MS = 60_000;
 const CLERK_API = 'https://api.clerk.com/v1';
 const ALLOWED_HOSTS = new Set(['staging.atlaris.app', 'localhost']);
+/** Supabase project behind staging.atlaris.app (`atlaris-dev`). */
+const STAGING_PROJECT_REF = 'wbdvgscqvnoxaaydkxkv';
 
 export type ManifestTask = {
   readonly taskId: string;
@@ -43,12 +55,27 @@ export type ManifestPlan = {
   readonly topicId: string;
   readonly planId: string;
   readonly clerkUserId: string;
-  /** Throwaway Clerk user created for this plan (free tier). */
+  /** Throwaway Clerk user created for this plan. */
   readonly throwawayUser: boolean;
   readonly status: 'ready' | 'failed';
+  /** The batch's key spend divided by `costBatchSize`. */
   readonly costUsd: number | null;
+  /** Plans that ran together and share one cost reading; absent means 1. */
+  readonly costBatchSize?: number;
   readonly modules: readonly (ModuleRun & { readonly title: string })[];
   readonly tasks: readonly ManifestTask[];
+};
+
+/**
+ * A topic run that threw after its throwaway user was created. It is left out
+ * of scoring and retried on rerun; `cleanup` deletes what it created.
+ */
+export type AbandonedRun = {
+  readonly topicId: string;
+  readonly clerkUserId: string;
+  /** `null` when the plan create never answered; cleanup lists the user's plans. */
+  readonly planId: string | null;
+  readonly error: string;
 };
 
 export type Manifest = {
@@ -56,6 +83,7 @@ export type Manifest = {
   readonly tier: SubscriptionTier;
   readonly baseUrl: string;
   readonly plans: ManifestPlan[];
+  abandoned?: AbandonedRun[];
 };
 
 function requireEnv(name: string): string {
@@ -104,6 +132,15 @@ async function fetchRetrying(
   }
 }
 
+class ClerkError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
 async function clerk<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = init.method ?? 'GET';
   // Minting a session token has no side effect worth guarding against.
@@ -120,7 +157,8 @@ async function clerk<T>(path: string, init: RequestInit = {}): Promise<T> {
     retry,
   );
   if (!response.ok) {
-    throw new Error(
+    throw new ClerkError(
+      response.status,
       `Clerk ${method} ${path}: ${response.status} ${await response.text()}`,
     );
   }
@@ -169,6 +207,10 @@ async function createThrowawayUser(label: string): Promise<string> {
     method: 'POST',
     body: JSON.stringify({
       email_address: [`eval-${label}-${stamp}@${THROWAWAY_EMAIL_DOMAIN}`],
+      // The staging instance requires a name and username.
+      username: `eval-${label}-${stamp}`.slice(0, 64),
+      first_name: 'Eval',
+      last_name: label,
       skip_password_requirement: true,
       public_metadata: { atlarisEval: 'JCS-163' },
     }),
@@ -176,9 +218,78 @@ async function createThrowawayUser(label: string): Promise<string> {
   return user.id;
 }
 
+const execFileAsync = promisify(execFile);
+
+/**
+ * Sets a provisioned user's tier on the staging database through the Supabase
+ * CLI, run from `EVAL_SUPABASE_LINKED_DIR` (a checkout linked to staging).
+ * Refuses any other linked project.
+ */
+async function setStagingTier(
+  clerkUserId: string,
+  tier: SubscriptionTier,
+): Promise<void> {
+  const dir = requireEnv('EVAL_SUPABASE_LINKED_DIR');
+  const ref = readFileSync(
+    join(dir, 'supabase/.temp/project-ref'),
+    'utf8',
+  ).trim();
+  if (ref !== STAGING_PROJECT_REF) {
+    throw new Error(`Refusing to set tiers on linked project ${ref}`);
+  }
+  if (!/^user_[A-Za-z0-9]+$/.test(clerkUserId)) {
+    throw new Error(`Unexpected Clerk user id ${clerkUserId}`);
+  }
+  const { stdout } = await execFileAsync(
+    'supabase',
+    [
+      'db',
+      'query',
+      '--linked',
+      `update users set subscription_tier = '${tier}' where auth_user_id = '${clerkUserId}' returning id`,
+    ],
+    { cwd: dir, timeout: 60_000 },
+  );
+  const { rows } = JSON.parse(stdout.slice(stdout.indexOf('{'))) as {
+    rows: unknown[];
+  };
+  if (rows.length !== 1) {
+    throw new Error(
+      `Tier update for ${clerkUserId} matched ${rows.length} rows`,
+    );
+  }
+}
+
 type ApiResult = { status: number; body: unknown; retryAfterS: number | null };
 
+/**
+ * Calls the app API. GETs also retry 5xx and 429 answers, so a transient
+ * error while polling does not end a topic's run.
+ */
 async function api(
+  baseUrl: string,
+  session: ClerkSession,
+  method: string,
+  path: string,
+  body?: unknown,
+): Promise<ApiResult> {
+  for (let attempt = 0; ; attempt++) {
+    const result = await apiOnce(baseUrl, session, method, path, body);
+    const delay = NETWORK_RETRY_DELAYS_MS[attempt];
+    if (
+      method !== 'GET' ||
+      delay === undefined ||
+      (result.status < 500 && result.status !== 429)
+    ) {
+      return result;
+    }
+    const waitMs = Math.max(delay, (result.retryAfterS ?? 0) * 1000);
+    log(`GET ${path}: ${result.status}; retrying in ${waitMs / 1000}s`);
+    await sleep(waitMs);
+  }
+}
+
+async function apiOnce(
   baseUrl: string,
   session: ClerkSession,
   method: string,
@@ -286,11 +397,14 @@ type DetailModule = { id: string; order: number; title: string };
 async function generateModules(
   baseUrl: string,
   session: ClerkSession,
+  topicId: string,
   planId: string,
   modules: readonly DetailModule[],
 ): Promise<(ModuleRun & { title: string })[]> {
   const startedAt = new Map<string, number>();
   const done = new Map<string, ModuleRun & { title: string }>();
+  /** Consecutive 5xx answers to a module's generate call. */
+  const serverErrors = new Map<string, number>();
   let rateLimitedUntil = 0;
   const lessonPath = (moduleId: string) =>
     `/api/v1/plans/${planId}/modules/${moduleId}/lesson-content`;
@@ -300,10 +414,10 @@ async function generateModules(
       if (done.has(module.id)) {
         continue;
       }
-      const { status } = expectOk(
+      const { status, workflowRunId } = expectOk(
         await api(baseUrl, session, 'GET', `${lessonPath(module.id)}/status`),
         'lesson status',
-      ) as { status: string };
+      ) as { status: string; workflowRunId?: string };
       const now = Date.now();
       const started = startedAt.get(module.id);
 
@@ -313,8 +427,9 @@ async function generateModules(
           title: module.title,
           status,
           durationMs: started === undefined ? 0 : now - started,
+          workflowRunId,
         });
-        log(`module "${module.title}": ${status}`);
+        log(`${topicId}: module "${module.title}": ${status}`);
         continue;
       }
       if (status === 'generating') {
@@ -326,8 +441,9 @@ async function generateModules(
             title: module.title,
             status: 'failed',
             durationMs: now - started,
+            workflowRunId,
           });
-          log(`module "${module.title}": timed out`);
+          log(`${topicId}: module "${module.title}": timed out`);
         }
         continue;
       }
@@ -348,10 +464,29 @@ async function generateModules(
         );
         rateLimitedUntil = now + waitMs;
         log(
-          `lesson generation rate-limited; retrying in ${Math.round(waitMs / 60_000)} min`,
+          `${topicId}: lesson generation rate-limited; retrying in ${Math.round(waitMs / 60_000)} min`,
         );
         continue;
       }
+      if (result.status >= 500) {
+        // The next poll rereads the status, so a start that did land is seen
+        // before the call is repeated.
+        const errors = (serverErrors.get(module.id) ?? 0) + 1;
+        serverErrors.set(module.id, errors);
+        log(
+          `${topicId}: module "${module.title}": generate answered ${result.status} (${errors}/${MAX_GENERATE_SERVER_ERRORS})`,
+        );
+        if (errors >= MAX_GENERATE_SERVER_ERRORS) {
+          done.set(module.id, {
+            moduleId: module.id,
+            title: module.title,
+            status: 'failed',
+            durationMs: 0,
+          });
+        }
+        continue;
+      }
+      serverErrors.delete(module.id);
       const body = expectOk(result, 'lesson generate') as { state: string };
       if (body.state === 'generating' || body.state === 'ready') {
         startedAt.set(module.id, now);
@@ -435,11 +570,114 @@ function resolveBaseUrl(): string {
   return baseUrl;
 }
 
+type PlanRun = Omit<ManifestPlan, 'costUsd' | 'costBatchSize'>;
+
+type TopicOutcome =
+  | { readonly ok: true; readonly run: PlanRun }
+  | { readonly ok: false; readonly abandoned: AbandonedRun };
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/**
+ * Creates and generates one topic's plan under a new throwaway user. Every
+ * tier gets its own user per plan so per-user rate limits never queue plans.
+ * Once the user exists, a failure returns what was created instead of
+ * throwing, so the manifest keeps it for `cleanup`.
+ */
+async function runTopic(
+  baseUrl: string,
+  options: { arm: EvalArm; tier: SubscriptionTier },
+  topic: EvalTopic,
+): Promise<TopicOutcome> {
+  const clerkUserId = await createThrowawayUser(topic.id);
+  let planId: string | null = null;
+  try {
+    const run = await runTopicAs(baseUrl, options, topic, clerkUserId, (id) => {
+      planId = id;
+    });
+    return { ok: true, run };
+  } catch (error) {
+    return {
+      ok: false,
+      abandoned: {
+        topicId: topic.id,
+        clerkUserId,
+        planId,
+        error: errorMessage(error),
+      },
+    };
+  }
+}
+
+async function runTopicAs(
+  baseUrl: string,
+  options: { arm: EvalArm; tier: SubscriptionTier },
+  topic: EvalTopic,
+  clerkUserId: string,
+  onPlanCreated: (planId: string) => void,
+): Promise<PlanRun> {
+  const session = await ClerkSession.open(clerkUserId);
+  try {
+    if (options.tier !== 'free') {
+      // The first authenticated request provisions the app's user row.
+      expectOk(
+        await api(baseUrl, session, 'GET', '/api/v1/user/profile'),
+        'user profile',
+      );
+      await setStagingTier(clerkUserId, options.tier);
+    }
+    log(`${topic.id}: creating plan (${options.arm}, ${options.tier})`);
+    const { planId } = expectOk(
+      await api(
+        baseUrl,
+        session,
+        'POST',
+        '/api/v1/plans',
+        planRequestBody(topic, new Date()),
+      ),
+      'create plan',
+    ) as { planId: string };
+    onPlanCreated(planId);
+
+    const planStatus = await waitForPlan(baseUrl, session, planId);
+    log(`${topic.id}: outline ${planStatus}`);
+    const detail = expectOk(
+      await api(baseUrl, session, 'GET', `/api/v1/plans/${planId}`),
+      'plan detail',
+    ) as { modules: DetailModule[] };
+    const modules = [...detail.modules].sort((a, b) => a.order - b.order);
+    const moduleRuns =
+      planStatus === 'ready'
+        ? await generateModules(baseUrl, session, topic.id, planId, modules)
+        : [];
+    const tasks = await collectTasks(baseUrl, session, planId, modules);
+    checkArm(options.arm, tasks);
+    return {
+      topicId: topic.id,
+      planId,
+      clerkUserId,
+      throwawayUser: true,
+      status: planStatus,
+      modules: moduleRuns,
+      tasks,
+    };
+  } finally {
+    await session.revoke();
+  }
+}
+
+/**
+ * Runs topics in batches of `concurrency`. The tier key is read before and
+ * after each batch, so a batch's plans share its spend evenly.
+ */
 async function collect(options: {
   arm: EvalArm;
   tier: SubscriptionTier;
   out: string;
   topicIds: readonly string[] | null;
+  concurrency: number;
 }): Promise<void> {
   const baseUrl = resolveBaseUrl();
   const manifest: Manifest = existsSync(options.out)
@@ -448,97 +686,191 @@ async function collect(options: {
   if (manifest.arm !== options.arm || manifest.tier !== options.tier) {
     throw new Error(`${options.out} holds ${manifest.arm}/${manifest.tier}`);
   }
-  const topics = EVAL_TOPICS.filter(
-    (t) => !options.topicIds || options.topicIds.includes(t.id),
-  );
-
-  for (const topic of topics) {
-    if (manifest.plans.some((p) => p.topicId === topic.id)) {
-      log(`skip ${topic.id}: already in manifest`);
-      continue;
+  const topics = EVAL_TOPICS.filter((t) => {
+    if (options.topicIds && !options.topicIds.includes(t.id)) {
+      return false;
     }
-    // Free allows one lifetime plan, so each free plan gets its own user.
-    const throwawayUser = options.tier === 'free';
-    const clerkUserId = throwawayUser
-      ? await createThrowawayUser(topic.id)
-      : requireEnv('EVAL_CLERK_USER_ID');
-    const session = await ClerkSession.open(clerkUserId);
-    try {
-      const usageBefore = await readKeyUsageUsd();
-      log(`${topic.id}: creating plan (${options.arm}, ${options.tier})`);
-      const { planId } = expectOk(
-        await api(
-          baseUrl,
-          session,
-          'POST',
-          '/api/v1/plans',
-          planRequestBody(topic, new Date()),
-        ),
-        'create plan',
-      ) as { planId: string };
+    if (manifest.plans.some((p) => p.topicId === t.id)) {
+      log(`skip ${t.id}: already in manifest`);
+      return false;
+    }
+    return true;
+  });
 
-      const planStatus = await waitForPlan(baseUrl, session, planId);
-      const detail = expectOk(
-        await api(baseUrl, session, 'GET', `/api/v1/plans/${planId}`),
-        'plan detail',
-      ) as { modules: DetailModule[] };
-      const modules = [...detail.modules].sort((a, b) => a.order - b.order);
-      const moduleRuns =
-        planStatus === 'ready'
-          ? await generateModules(baseUrl, session, planId, modules)
-          : [];
-      const tasks = await collectTasks(baseUrl, session, planId, modules);
-      checkArm(options.arm, tasks);
-
-      let costUsd: number | null = null;
-      if (usageBefore !== null) {
-        await sleep(COST_SETTLE_MS);
-        const usageAfter = await readKeyUsageUsd();
-        costUsd = usageAfter === null ? null : usageAfter - usageBefore;
+  for (let i = 0; i < topics.length; i += options.concurrency) {
+    const batch = topics.slice(i, i + options.concurrency);
+    const usageBefore = await readKeyUsageUsd();
+    const results = await Promise.allSettled(
+      batch.map((topic) => runTopic(baseUrl, options, topic)),
+    );
+    const runs: PlanRun[] = [];
+    results.forEach((result, index) => {
+      let error: string;
+      if (result.status === 'rejected') {
+        error = errorMessage(result.reason);
+      } else if (result.value.ok) {
+        runs.push(result.value.run);
+        return;
+      } else {
+        error = result.value.abandoned.error;
+        (manifest.abandoned ??= []).push(result.value.abandoned);
       }
+      log(`${batch[index]!.id}: run failed (${error}); rerun to retry it`);
+    });
 
-      manifest.plans.push({
-        topicId: topic.id,
-        planId,
-        clerkUserId,
-        throwawayUser,
-        status: planStatus,
-        costUsd,
-        modules: moduleRuns,
-        tasks,
-      });
-      writeManifest(options.out, manifest);
+    let batchCostUsd: number | null = null;
+    if (usageBefore !== null && runs.length > 0) {
+      await sleep(COST_SETTLE_MS);
+      const usageAfter = await readKeyUsageUsd();
+      batchCostUsd = usageAfter === null ? null : usageAfter - usageBefore;
+    }
+    for (const run of runs) {
+      // A failed run's spend lands on the batch's recorded plans.
+      const costUsd = batchCostUsd === null ? null : batchCostUsd / runs.length;
+      manifest.plans.push({ ...run, costUsd, costBatchSize: runs.length });
       log(
-        `${topic.id}: ${planStatus}, ${moduleRuns.length} modules, ${tasks.length} lessons, cost ${
+        `${run.topicId}: ${run.status}, ${run.modules.filter((m) => m.status === 'ready').length}/${run.modules.length} modules ready, ${run.tasks.length} lessons, cost ${
           costUsd === null ? 'unmeasured' : `$${costUsd.toFixed(4)}`
         }`,
       );
-    } finally {
-      await session.revoke();
+    }
+    writeManifest(options.out, manifest);
+    if (runs.length < batch.length) {
+      process.exitCode = 1;
     }
   }
 }
 
-/** Deletes the manifest's plans, then its throwaway Clerk users. */
-async function cleanup(manifestPath: string): Promise<void> {
-  const baseUrl = resolveBaseUrl();
+/** The staging lesson Workflow; the eval never reads production instances. */
+const STAGING_LESSONS_WORKFLOW = 'atlaris-module-lessons-staging';
+const JOBS_WORKER_DIR = 'workers/jobs';
+
+/**
+ * Reads each module's lesson workflow instance on staging and records its
+ * failure cause and longest provider call in the manifest.
+ */
+async function classify(manifestPath: string): Promise<void> {
   const manifest = readManifest(manifestPath);
+  if (new URL(manifest.baseUrl).hostname !== 'staging.atlaris.app') {
+    throw new Error('classify reads staging workflow instances only');
+  }
+  const plans = [];
   for (const plan of manifest.plans) {
-    const session = await ClerkSession.open(plan.clerkUserId);
-    try {
+    const modules = [];
+    for (const module of plan.modules) {
+      if (!module.workflowRunId || module.longestCallMs !== undefined) {
+        modules.push(module);
+        continue;
+      }
+      const { stdout } = await execFileAsync(
+        resolve(JOBS_WORKER_DIR, 'node_modules/.bin/wrangler'),
+        [
+          'workflows',
+          'instances',
+          'describe',
+          STAGING_LESSONS_WORKFLOW,
+          module.workflowRunId,
+          '--json',
+        ],
+        { cwd: JOBS_WORKER_DIR, maxBuffer: 64 * 1024 * 1024 },
+      );
+      // Wrangler prints a banner before the JSON.
+      const instance = JSON.parse(stdout.slice(stdout.indexOf('{'))) as {
+        steps?: WorkflowStep[];
+      };
+      const result = classifyWorkflowSteps(
+        instance.steps ?? [],
+        module.status === 'failed',
+      );
+      log(
+        `${plan.topicId}: module "${module.title}": ${module.status}${
+          result.failureCause ? ` (${result.failureCause})` : ''
+        }, longest call ${((result.longestCallMs ?? 0) / 1000).toFixed(1)} s`,
+      );
+      modules.push({ ...module, ...result });
+    }
+    plans.push({ ...plan, modules });
+  }
+  writeManifest(manifestPath, { ...manifest, plans });
+}
+
+type CleanupEntry = {
+  readonly clerkUserId: string;
+  readonly planId: string | null;
+  readonly throwawayUser: boolean;
+};
+
+/**
+ * Deletes one entry's plans: its recorded plan, or every plan the user owns
+ * when the create never answered. True when none is left.
+ */
+async function deletePlans(
+  baseUrl: string,
+  entry: CleanupEntry,
+): Promise<boolean> {
+  const session = await ClerkSession.open(entry.clerkUserId);
+  try {
+    const planIds = entry.planId
+      ? [entry.planId]
+      : (
+          expectOk(
+            await api(baseUrl, session, 'GET', '/api/v1/plans'),
+            'list plans',
+          ) as { id: string }[]
+        ).map((p) => p.id);
+    let allDeleted = true;
+    for (const planId of planIds) {
       const result = await api(
         baseUrl,
         session,
         'DELETE',
-        `/api/v1/plans/${plan.planId}`,
+        `/api/v1/plans/${planId}`,
       );
-      log(`plan ${plan.planId}: delete ${result.status}`);
-    } finally {
-      await session.revoke();
+      log(`plan ${planId}: delete ${result.status}`);
+      allDeleted &&=
+        (result.status >= 200 && result.status < 300) || result.status === 404;
     }
-    if (plan.throwawayUser) {
-      await clerk(`/users/${plan.clerkUserId}`, { method: 'DELETE' });
-      log(`clerk user ${plan.clerkUserId}: deleted`);
+    return allDeleted;
+  } finally {
+    await session.revoke();
+  }
+}
+
+/**
+ * Deletes the manifest's plans, abandoned runs included, then their throwaway
+ * Clerk users. A user is deleted only once its plans are; one entry's failure
+ * is logged and the rest still run.
+ */
+async function cleanup(manifestPath: string): Promise<void> {
+  const baseUrl = resolveBaseUrl();
+  const manifest = readManifest(manifestPath);
+  const entries: CleanupEntry[] = [
+    ...manifest.plans,
+    ...(manifest.abandoned ?? []).map((run) => ({
+      ...run,
+      throwawayUser: true,
+    })),
+  ];
+  for (const entry of entries) {
+    try {
+      // A generating plan answers 409; keep its user so a rerun can delete it.
+      if (!(await deletePlans(baseUrl, entry))) {
+        process.exitCode = 1;
+        continue;
+      }
+      if (entry.throwawayUser) {
+        await clerk(`/users/${entry.clerkUserId}`, { method: 'DELETE' });
+        log(`clerk user ${entry.clerkUserId}: deleted`);
+      }
+    } catch (error) {
+      if (error instanceof ClerkError && error.status === 404) {
+        log(`clerk user ${entry.clerkUserId}: already deleted`);
+        continue;
+      }
+      log(
+        `clerk user ${entry.clerkUserId}: cleanup failed (${errorMessage(error)})`,
+      );
+      process.exitCode = 1;
     }
   }
 }
@@ -552,9 +884,17 @@ async function main(): Promise<void> {
       topics: { type: 'string' },
       out: { type: 'string' },
       manifest: { type: 'string' },
+      concurrency: { type: 'string' },
     },
   });
   const command = positionals[0];
+  if (command === 'classify') {
+    if (!values.manifest) {
+      throw new Error('classify needs --manifest <file>');
+    }
+    await classify(values.manifest);
+    return;
+  }
   if (command === 'cleanup') {
     if (!values.manifest) {
       throw new Error('cleanup needs --manifest <file>');
@@ -564,7 +904,7 @@ async function main(): Promise<void> {
   }
   if (command !== 'collect') {
     throw new Error(
-      'usage: run.ts collect --arm v15|grounded --tier free|starter|pro | cleanup --manifest <file>',
+      'usage: run.ts collect --arm v15|grounded --tier free|starter|pro [--concurrency N] | classify --manifest <file> | cleanup --manifest <file>',
     );
   }
   const arm = values.arm as EvalArm;
@@ -577,11 +917,16 @@ async function main(): Promise<void> {
       'collect needs --arm v15|grounded and --tier free|starter|pro',
     );
   }
+  const concurrency = Number(values.concurrency ?? '1');
+  if (!Number.isInteger(concurrency) || concurrency < 1) {
+    throw new Error('--concurrency needs a positive integer');
+  }
   await collect({
     arm,
     tier,
     out: values.out ?? `tests/results/grounded-eval/${arm}-${tier}.json`,
     topicIds: values.topics ? values.topics.split(',') : null,
+    concurrency,
   });
 }
 

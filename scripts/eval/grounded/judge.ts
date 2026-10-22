@@ -20,7 +20,8 @@ import { z } from 'zod';
 export const DEFAULT_JUDGE_MODEL = 'x-ai/grok-4.7';
 
 const OPENROUTER_CHAT_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const JUDGE_TIMEOUT_MS = 120_000;
+/** Long lessons take the judge over 2 minutes; a timeout leaves a lesson unjudged. */
+const JUDGE_TIMEOUT_MS = 300_000;
 
 /** Blind rubric codes. The first four are wrong outputs (`WRONG_OUTPUT_CODES`). */
 export const BLIND_JUDGE_CODES = [
