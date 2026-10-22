@@ -23,21 +23,22 @@ The table is deny-all under RLS; only the service-role client reads or writes it
 
 - **`openrouter/free`** (`FREE_ROUTER_MODEL` in `catalog.ts`): a router, not a model, so no guardrail lists it. It is free and has no output limit of its own.
 - **Per-operation defaults** in `model-operation-policy.ts`: Starter outline/regeneration `openai/gpt-6-luna`; Pro outline `openai/gpt-6.1-sol`, regeneration `anthropic/claude-sonnet-5.5`, lesson `anthropic/claude-haiku-5.5`. A default missing from its tier's synced list falls back to the first listed model on the operation's grounded writer route (`GROUNDED_MODELS_BY_TIER`: Starter Luna then DeepSeek V4.1 Flash; Pro GPT-6 Sol then GPT-6.1 Sol), and `getModelsForTier` logs a `model_default_not_in_guardrail` warning naming `fallbackModelId`. When no fallback is listed either, the default becomes `openrouter/free` (added to the operation's list, so validation agrees; Settings never offers it) and the event is logged as an error. `resolveModelForTier` sets `freeRouterFallback` on that generation's resolution and sends one Sentry `captureMessage` per generation (`model_free_router_fallback`, fingerprinted by tier and operation), because paid users are now on a free model; settings and validation lookups only log. Fix the guardrail or the default when either log appears.
+- **Picker-hidden models** (`PICKER_HIDDEN_MODEL_IDS_BY_TIER` in `model-operation-policy.ts`): guardrail models a tier keeps only for its grounded routes. `getModelsForTier` drops them before default and fallback resolution, so Settings never offers them and validation rejects them (`tier_denied`, falling back to the default). Starter hides `openai/gpt-6.1-sol`, its grounded verifier and advisor.
 - **`DEFAULT_OUTPUT_TOKEN_CEILING`** (32,768) in `cost.ts`: the ceiling for models without a synced max output, and the cap on every grounded call's `max_tokens`.
 
 ## Subscription tiers
 
 Access is gated per tier × operation by `getModelOperationPolicy()`; `getModelsForTier()` in `src/features/ai/ai-models.ts` returns the matching models.
 
-| Tier    | Operation             | Default                       | Selectable models                             |
-| :------ | :-------------------- | :---------------------------- | :-------------------------------------------- |
-| Free    | outline, lesson       | `openrouter/free`             | `openrouter/free` only                        |
-| Free    | regeneration          | not allowed                   | none                                          |
-| Starter | outline, regeneration | `openai/gpt-6-luna`           | the Starter guardrail list                    |
-| Starter | lesson                | `openrouter/free`             | `openrouter/free` only                        |
-| Pro     | outline               | `openai/gpt-6.1-sol`          | `openrouter/free` plus the Pro guardrail list |
-| Pro     | regeneration          | `anthropic/claude-sonnet-5.5` | `openrouter/free` plus the Pro guardrail list |
-| Pro     | lesson                | `anthropic/claude-haiku-5.5`  | `openrouter/free` plus the Pro guardrail list |
+| Tier    | Operation             | Default                       | Selectable models                                     |
+| :------ | :-------------------- | :---------------------------- | :---------------------------------------------------- |
+| Free    | outline, lesson       | `openrouter/free`             | `openrouter/free` only                                |
+| Free    | regeneration          | not allowed                   | none                                                  |
+| Starter | outline, regeneration | `openai/gpt-6-luna`           | the Starter guardrail list minus picker-hidden models |
+| Starter | lesson                | `openrouter/free`             | `openrouter/free` only                                |
+| Pro     | outline               | `openai/gpt-6.1-sol`          | `openrouter/free` plus the Pro guardrail list         |
+| Pro     | regeneration          | `anthropic/claude-sonnet-5.5` | `openrouter/free` plus the Pro guardrail list         |
+| Pro     | lesson                | `anthropic/claude-haiku-5.5`  | `openrouter/free` plus the Pro guardrail list         |
 
 The Free guardrail's rows are synced but not selectable: Free users always get `openrouter/free`.
 

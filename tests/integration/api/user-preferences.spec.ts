@@ -5,6 +5,7 @@ import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import {
   getModelOperationPolicy,
+  PICKER_HIDDEN_MODEL_IDS_BY_TIER,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
   STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
@@ -45,6 +46,12 @@ type ApiModelResponse = {
 // The integration DB reset seeds each tier's synced models from this fixture.
 const STARTER_SYNCED_MODEL_IDS = MODEL_CATALOG_FIXTURE.starter.map(
   (model) => model.modelId,
+);
+const STARTER_SELECTABLE_MODEL_IDS = STARTER_SYNCED_MODEL_IDS.filter(
+  (modelId) =>
+    !(PICKER_HIDDEN_MODEL_IDS_BY_TIER.starter as readonly string[]).includes(
+      modelId,
+    ),
 );
 const STARTER_MODEL_ID = STARTER_SYNCED_MODEL_IDS[0];
 const SECOND_STARTER_MODEL_ID = STARTER_SYNCED_MODEL_IDS[1] ?? STARTER_MODEL_ID;
@@ -336,10 +343,10 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
-  it('can save every synced Starter model and leaves lesson unused', async () => {
+  it('can save every selectable Starter model and leaves lesson unused', async () => {
     setTestUser(testAuthUserId);
 
-    for (const modelId of STARTER_SYNCED_MODEL_IDS) {
+    for (const modelId of STARTER_SELECTABLE_MODEL_IDS) {
       const response = await PATCH(
         new Request('http://localhost/api/v1/user/preferences', {
           method: 'PATCH',
@@ -351,6 +358,19 @@ describe('PATCH /api/v1/user/preferences', () => {
       const data = expectJsonObject(await response.json());
       expect(data.preferredAiModel).toBe(modelId);
       expect(data.preferredLessonAiModel).toBeNull();
+    }
+
+    for (const modelId of PICKER_HIDDEN_MODEL_IDS_BY_TIER.starter) {
+      const hiddenResponse = await PATCH(
+        new Request('http://localhost/api/v1/user/preferences', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ preferredAiModel: modelId }),
+        }),
+      );
+      expect(hiddenResponse.status).toBe(403);
+      const hiddenData = expectJsonObject(await hiddenResponse.json());
+      expect(hiddenData.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
     }
 
     const lessonResponse = await PATCH(
@@ -365,7 +385,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(lessonData.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
 
     const row = await readSavedPreferenceRow(testAuthUserId);
-    expect(row?.preferredAiModel).toBe(STARTER_SYNCED_MODEL_IDS.at(-1));
+    expect(row?.preferredAiModel).toBe(STARTER_SELECTABLE_MODEL_IDS.at(-1));
     expect(row?.preferredLessonAiModel).toBeNull();
     expect(row?.preferredRegenerationAiModel).toBeNull();
   });
