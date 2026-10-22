@@ -153,7 +153,7 @@ BEGIN
 
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['ai_usage_events', 'generation_attempts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
+      ARRAY['ai_usage_events', 'generation_attempts', 'generation_budget_cuts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
     ) AS table_name
   ), forbidden_privileges AS (
     SELECT unnest(
@@ -180,7 +180,7 @@ BEGIN
 
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['ai_usage_events', 'generation_attempts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
+      ARRAY['ai_usage_events', 'generation_attempts', 'generation_budget_cuts', 'generation_quality_issues', 'learning_activity_events', 'learning_plans', 'modules', 'plan_research', 'plan_schedules', 'research_sources', 'resources', 'task_resources', 'tasks', 'usage_metrics']
     ) AS table_name
   ), column_privileges AS (
     SELECT unnest(ARRAY['INSERT', 'UPDATE']) AS privilege_type
@@ -397,8 +397,8 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
-      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
-      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_settings', 'UPDATE', ARRAY['unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_preferences', 'INSERT', ARRAY['user_id', 'category', 'enabled', 'unsubscribed_at', 'updated_at']),
@@ -429,8 +429,8 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
-      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
-      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
+      ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_settings', 'UPDATE', ARRAY['unsubscribe_all_optional_emails', 'updated_at']),
       ('user_email_notification_preferences', 'INSERT', ARRAY['user_id', 'category', 'enabled', 'unsubscribed_at', 'updated_at']),

@@ -31,6 +31,7 @@ import {
   toClientGenerationAttempts,
   toClientPlanDetail,
 } from '@/features/plans/read-projection/detail-dto';
+import { readCitedSourceIds } from '@/features/plans/read-projection/lesson-sources';
 import { buildModuleDetailReadModel } from '@/features/plans/read-projection/module-detail';
 import {
   buildPlanDetailStatusSnapshot,
@@ -46,7 +47,9 @@ import {
   getModuleDetailRows,
   getModuleLessonGenerationStatus,
 } from '@/lib/db/queries/modules';
+import { countGenerationBudgetCutsForModule } from '@/lib/db/queries/plan-ai-budget';
 import { getPlanListPageRowsForUser } from '@/lib/db/queries/plan-list';
+import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
 import {
   getLearningPlanDetailRows,
   getLightweightPlanSummaryRowsForUser,
@@ -416,14 +419,22 @@ export async function getModuleLessonGenerationStatusForRead(params: {
   moduleId: string;
   status: 'not_generated' | 'generating' | 'ready' | 'failed';
   workflowRunId?: string;
+  budgetCuts: number;
 } | null> {
   return loadIfOwnedPlanReadable(params, async () => {
-    const snapshot = await getModuleLessonGenerationStatus(
-      params.planId,
-      params.moduleId,
-      params.userId,
-      params.dbClient,
-    );
+    const [snapshot, budgetCuts] = await Promise.all([
+      getModuleLessonGenerationStatus(
+        params.planId,
+        params.moduleId,
+        params.userId,
+        params.dbClient,
+      ),
+      countGenerationBudgetCutsForModule(
+        params.planId,
+        params.moduleId,
+        params.dbClient,
+      ),
+    ]);
 
     if (!snapshot) {
       return null;
@@ -433,6 +444,7 @@ export async function getModuleLessonGenerationStatusForRead(params: {
       planId: params.planId,
       moduleId: params.moduleId,
       ...snapshot,
+      budgetCuts,
     };
   });
 }
@@ -462,6 +474,8 @@ export async function getModuleDetailForRead(params: {
   moduleId: string;
   userId: string;
   dbClient: DbClient;
+  /** Load the plan's research sources so lessons can list what they cite. */
+  includeLessonSources?: boolean;
 }): Promise<ModuleDetailReadModel | null> {
   return loadIfOwnedPlanReadable(params, async () => {
     const rows = await getModuleDetailRows(
@@ -475,8 +489,20 @@ export async function getModuleDetailForRead(params: {
       return null;
     }
 
+    const citesSources =
+      params.includeLessonSources === true &&
+      rows.taskRows.some(
+        (task) => readCitedSourceIds(task.lessonContent).length > 0,
+      );
+    const research = citesSources
+      ? await getLatestPlanResearch(params.planId, params.dbClient)
+      : null;
+
     try {
-      const readModel = buildModuleDetailReadModel(rows);
+      const readModel = buildModuleDetailReadModel(
+        rows,
+        research?.sources ?? [],
+      );
       if (!readModel) {
         logger.error(
           {

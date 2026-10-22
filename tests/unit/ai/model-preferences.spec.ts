@@ -2,11 +2,20 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { getModelsForTier } from '@/features/ai/ai-models';
 import {
+  type ModelOperation,
   MODEL_OPERATIONS,
+  PRO_GROUNDED_REVIEW_CATALOG,
+  PRO_GROUNDED_WRITER_CATALOG,
   STARTER_OUTLINE_REGENERATION_MODEL_IDS,
 } from '@/features/ai/model-operation-policy';
 import {
+  GROUNDED_PICK_ROLES,
+  getGroundedPickCatalog,
+  getGroundedPickDefault,
   getPersistableModelsForTier,
+  resolveGroundedModelPick,
+  resolveGroundedWriterModelId,
+  validateGroundedPick,
   isPersistableModelId,
   isRuntimeOnlyModelId,
   resolveEffectivePreference,
@@ -36,13 +45,12 @@ if (!STARTER_MODEL_ID || !PRO_ONLY_MODEL_ID) {
 
 describe('model-preferences', () => {
   describe('isPersistableModelId', () => {
-    it.each([
-      STARTER_MODEL_ID,
-      PRO_ONLY_MODEL_ID,
-      'anthropic/claude-haiku-4.5',
-    ])('accepts catalog ids that are not runtime-only %s', (id) => {
-      expect(isPersistableModelId(id)).toBe(true);
-    });
+    it.each([STARTER_MODEL_ID, PRO_ONLY_MODEL_ID, 'anthropic/claude-opus-5.5'])(
+      'accepts catalog ids that are not runtime-only %s',
+      (id) => {
+        expect(isPersistableModelId(id)).toBe(true);
+      },
+    );
 
     it.each([
       '',
@@ -87,7 +95,7 @@ describe('model-preferences', () => {
       const proModels = getPersistableModelsForTier('pro', 'initial_outline');
       expect(proModels.some((m) => m.id === 'openrouter/free')).toBe(false);
       expect(proModels.some((m) => m.id === PRO_ONLY_MODEL_ID)).toBe(true);
-      expect(proModels.some((m) => m.id === 'anthropic/claude-haiku-4.5')).toBe(
+      expect(proModels.some((m) => m.id === 'anthropic/claude-opus-5.5')).toBe(
         true,
       );
     });
@@ -139,9 +147,9 @@ describe('model-preferences', () => {
 
   describe('savedModelIdForOperation', () => {
     const saved = {
-      preferredAiModel: 'openai/gpt-5.2',
-      preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
-      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      preferredAiModel: 'openai/gpt-6.1-sol',
+      preferredRegenerationAiModel: 'anthropic/claude-sonnet-5.5',
+      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
     };
 
     it('Starter/Free regeneration reuse the outline slot', () => {
@@ -168,20 +176,20 @@ describe('model-preferences', () => {
 
   describe('resolveOverrideOrSavedModelId', () => {
     const saved = {
-      preferredAiModel: 'openai/gpt-5.2',
-      preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
-      preferredLessonAiModel: 'google/gemini-3-flash-preview',
+      preferredAiModel: 'openai/gpt-6.1-sol',
+      preferredRegenerationAiModel: 'anthropic/claude-sonnet-5.5',
+      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
     };
 
     it('prefers an explicit override over the saved slot', () => {
       expect(
         resolveOverrideOrSavedModelId(
-          'google/gemini-3-flash-preview',
+          'anthropic/claude-haiku-5.5',
           'pro',
           saved,
           'regeneration',
         ),
-      ).toBe('google/gemini-3-flash-preview');
+      ).toBe('anthropic/claude-haiku-5.5');
     });
 
     it('uses the Pro regeneration saved slot when override is omitted', () => {
@@ -239,7 +247,7 @@ describe('model-preferences', () => {
           'google/gemini-3-pro-preview',
           'regeneration',
         ),
-      ).toBe('google/gemini-3.1-pro-preview');
+      ).toBe('anthropic/claude-sonnet-5.5');
     });
 
     it('hides a retired saved id from the settings picker', () => {
@@ -252,10 +260,214 @@ describe('model-preferences', () => {
       ).toBeNull();
     });
 
+    it.each<[SubscriptionTier, ModelOperation, string]>([
+      ['starter', 'initial_outline', 'openai/gpt-6-luna'],
+      ['starter', 'regeneration', 'openai/gpt-6-luna'],
+      ['pro', 'initial_outline', 'openai/gpt-6.1-sol'],
+      ['pro', 'regeneration', 'anthropic/claude-sonnet-5.5'],
+      ['pro', 'lesson', 'anthropic/claude-haiku-5.5'],
+    ])(
+      'resolves the removed id openai/gpt-5.2 to the %s %s default',
+      (tier, operation, expected) => {
+        expect(
+          resolveEffectivePreference(tier, 'openai/gpt-5.2', operation),
+        ).toBe(expected);
+        expect(
+          resolveSavedPreferenceForSettings(tier, 'openai/gpt-5.2', operation),
+        ).toBeNull();
+      },
+    );
+
     it('uses the Pro lesson default when the lesson slot is empty', () => {
       expect(resolveEffectivePreference('pro', null, 'lesson')).toBe(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
     });
   });
+});
+
+describe('grounded model picks', () => {
+  const NO_PICKS = {
+    preferredWriterAiModel: null,
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
+  };
+
+  it('offers the 1b Pro catalog for each role', () => {
+    expect(getGroundedPickCatalog('writer')).toEqual(
+      PRO_GROUNDED_WRITER_CATALOG,
+    );
+    expect(getGroundedPickCatalog('verifier')).toEqual(
+      PRO_GROUNDED_REVIEW_CATALOG,
+    );
+    expect(getGroundedPickCatalog('advisor')).toEqual(
+      PRO_GROUNDED_REVIEW_CATALOG,
+    );
+  });
+
+  it('defaults to the tier primary model and has none where a role does not run', () => {
+    expect(getGroundedPickDefault('pro', 'writer')).toBe('openai/gpt-6-sol');
+    expect(getGroundedPickDefault('pro', 'verifier')).toBe(
+      'anthropic/claude-sonnet-5.5',
+    );
+    expect(getGroundedPickDefault('pro', 'advisor')).toBe(
+      'anthropic/claude-opus-5.5',
+    );
+    expect(getGroundedPickDefault('free', 'verifier')).toBeNull();
+    expect(getGroundedPickDefault('free', 'advisor')).toBeNull();
+  });
+
+  it.each(GROUNDED_PICK_ROLES)(
+    'accepts a Pro %s pick in the catalog',
+    (role) => {
+      const [modelId] = getGroundedPickCatalog(role);
+      expect(validateGroundedPick('pro', role, modelId ?? '')).toEqual({
+        valid: true,
+      });
+    },
+  );
+
+  it.each(['free', 'starter'] as const)(
+    'rejects every %s pick, even one in the catalog',
+    (tier) => {
+      for (const role of GROUNDED_PICK_ROLES) {
+        const [modelId] = getGroundedPickCatalog(role);
+        expect(validateGroundedPick(tier, role, modelId ?? '')).toEqual({
+          valid: false,
+          reason: 'tier_denied',
+        });
+      }
+    },
+  );
+
+  it.each([
+    ['writer', 'anthropic/claude-opus-5.5'],
+    ['verifier', 'openai/gpt-6-luna'],
+    ['advisor', 'deepseek/deepseek-v4.1-flash'],
+    ['writer', 'not-a-real-model'],
+  ] as const)('rejects an off-catalog Pro %s pick %s', (role, modelId) => {
+    expect(validateGroundedPick('pro', role, modelId)).toEqual({
+      valid: false,
+      reason: 'invalid_model',
+    });
+  });
+
+  it('uses a valid Pro pick', () => {
+    expect(
+      resolveGroundedModelPick(
+        'pro',
+        { ...NO_PICKS, preferredVerifierAiModel: 'openai/gpt-6-sol' },
+        'verifier',
+      ),
+    ).toBe('openai/gpt-6-sol');
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'falls back to the code-owned models after a downgrade to %s and keeps the stored pick',
+    (tier) => {
+      const saved = {
+        preferredWriterAiModel: 'anthropic/claude-sonnet-5.5',
+        preferredVerifierAiModel: 'openai/gpt-6-sol',
+        preferredAdvisorAiModel: 'anthropic/claude-haiku-5.5',
+      };
+      const before = { ...saved };
+
+      for (const role of GROUNDED_PICK_ROLES) {
+        expect(resolveGroundedModelPick(tier, saved, role)).toBeNull();
+      }
+      expect(saved).toEqual(before);
+      expect(resolveGroundedModelPick('pro', saved, 'writer')).toBe(
+        'anthropic/claude-sonnet-5.5',
+      );
+    },
+  );
+
+  it('ignores an empty or off-catalog stored pick', () => {
+    expect(resolveGroundedModelPick('pro', NO_PICKS, 'writer')).toBeNull();
+    expect(
+      resolveGroundedModelPick(
+        'pro',
+        {
+          ...NO_PICKS,
+          preferredAdvisorAiModel: 'deepseek/deepseek-v4.1-flash',
+        },
+        'advisor',
+      ),
+    ).toBeNull();
+  });
+});
+
+describe('resolveGroundedWriterModelId', () => {
+  const PICKS = {
+    preferredWriterAiModel: 'anthropic/claude-haiku-5.5',
+    preferredVerifierAiModel: null,
+    preferredAdvisorAiModel: null,
+  };
+
+  it('uses the Pro writer pick when there is no override', () => {
+    expect(resolveGroundedWriterModelId('pro', undefined, PICKS)).toBe(
+      'anthropic/claude-haiku-5.5',
+    );
+  });
+
+  it('lets an explicit override beat the saved pick', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-6.1-sol', PICKS),
+    ).toBe('openai/gpt-6.1-sol');
+  });
+
+  it('falls back to the saved pick when the override is off the writer catalog', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', PICKS),
+    ).toBe('anthropic/claude-haiku-5.5');
+  });
+
+  it('ignores an off-catalog override when Pro saved no pick', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', 'openai/gpt-4o-mini', {
+        ...PICKS,
+        preferredWriterAiModel: null,
+      }),
+    ).toBeNull();
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'ignores an override for %s',
+    (tier) => {
+      expect(
+        resolveGroundedWriterModelId(tier, 'openai/gpt-6.1-sol', PICKS),
+      ).toBeNull();
+    },
+  );
+
+  it.each([null, undefined, ''])(
+    'ignores an empty override (%s)',
+    (override) => {
+      expect(resolveGroundedWriterModelId('pro', override, PICKS)).toBe(
+        'anthropic/claude-haiku-5.5',
+      );
+    },
+  );
+
+  it('falls back to the tier writers when Pro saved no pick or an off-catalog one', () => {
+    expect(
+      resolveGroundedWriterModelId('pro', undefined, {
+        ...PICKS,
+        preferredWriterAiModel: null,
+      }),
+    ).toBeNull();
+    expect(
+      resolveGroundedWriterModelId('pro', undefined, {
+        ...PICKS,
+        preferredWriterAiModel: 'deepseek/deepseek-v4.1-flash',
+      }),
+    ).toBeNull();
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'ignores a saved %s writer pick',
+    (tier) => {
+      expect(resolveGroundedWriterModelId(tier, undefined, PICKS)).toBeNull();
+    },
+  );
 });

@@ -120,6 +120,7 @@ export const planGenerationStartCommandSchema = z.strictObject({
   }),
   generationPurpose: initialGenerationPurposeSchema.optional(),
   modelOverride: z.string().min(1).max(256).nullable().optional(),
+  groundedWriterModelId: z.string().min(1).max(256).nullable().optional(),
   correlationId: z.string().min(1).max(256),
   reservation: serializableReservationSchema,
   allowedGenerationStatuses: z.array(planGenerationStatusSchema).optional(),

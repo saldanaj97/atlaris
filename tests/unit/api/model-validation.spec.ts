@@ -17,8 +17,8 @@ const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
 )?.id;
 // The free router is the only Free-labelled catalog model.
 const FREE_QUERY_OVERRIDE_MODEL = AI_DEFAULT_MODEL;
-const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
-const STARTER_OUTLINE_DEFAULT = 'google/gemini-2.5-flash-lite';
+const PRO_OUTLINE_DEFAULT = 'openai/gpt-6.1-sol';
+const STARTER_OUTLINE_DEFAULT = 'openai/gpt-6-luna';
 
 if (!STARTER_PERSISTABLE_MODEL || !PRO_PERSISTABLE_MODEL) {
   throw new Error('Expected model fixtures for validation tests');

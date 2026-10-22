@@ -7,6 +7,7 @@ import {
   type PlanGenerationWorkflowParams,
   runPlanGenerationWorkflow,
 } from '../../../../workers/jobs/src/workflows/plan-generation/run';
+import { makeCanonicalUsage } from '../../../fixtures/canonical-usage.factory';
 import { ProviderRateLimitError } from '@/features/ai/providers/errors';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import {
@@ -22,6 +23,52 @@ const mocks = vi.hoisted(() => ({
   commitSuccess: vi.fn(),
   commitFailure: vi.fn(),
   provider: { generate: vi.fn(), generateModuleLessonBatch: vi.fn() },
+  runPlanResearch: vi.fn(),
+  insertPlanResearch: vi.fn(),
+  getLatestPlanResearch: vi.fn(),
+  createGroundedOutlineProvider: vi.fn(),
+  runOutlineVerifier: vi.fn(),
+  runOutlineRepair: vi.fn(),
+  insertQualityIssues: vi.fn(),
+  listQualityIssues: vi.fn(),
+}));
+
+// The grounded writer, verifier and repair calls are covered with fixture
+// streams in tests/unit/features/plans/outline.
+vi.mock('@/features/plans/outline/grounded-writer', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/outline/grounded-writer')
+  >()),
+  createGroundedOutlineProvider: mocks.createGroundedOutlineProvider,
+}));
+vi.mock('@/features/plans/outline/verifier', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/outline/verifier')
+  >()),
+  runOutlineVerifier: mocks.runOutlineVerifier,
+}));
+vi.mock('@/features/plans/outline/repair', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/plans/outline/repair')>()),
+  runOutlineRepair: mocks.runOutlineRepair,
+}));
+vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
+  insertGenerationQualityIssues: mocks.insertQualityIssues,
+  listGenerationQualityIssuesForPlan: mocks.listQualityIssues,
+}));
+
+// The provider call is covered in tests/unit/features/plans/research.
+vi.mock('@/features/plans/research/run-research', async (importOriginal) => ({
+  ...(await importOriginal<
+    typeof import('@/features/plans/research/run-research')
+  >()),
+  runPlanResearch: mocks.runPlanResearch,
+}));
+
+// The inserts are covered against Postgres in
+// tests/integration/db/plan-research.queries.spec.ts.
+vi.mock('@/lib/db/queries/plan-research', () => ({
+  insertPlanResearch: mocks.insertPlanResearch,
+  getLatestPlanResearch: mocks.getLatestPlanResearch,
 }));
 
 vi.mock('@/lib/db/queries/attempts', async (importOriginal) => ({
@@ -142,6 +189,28 @@ function validModule() {
   };
 }
 
+/** Passes every outline code check for `params.input`. */
+function cleanModules() {
+  return [
+    {
+      title: 'TypeScript types',
+      estimatedMinutes: 60,
+      tasks: [
+        { title: 'Primitive types', estimatedMinutes: 30 },
+        { title: 'Type inference', estimatedMinutes: 30 },
+      ],
+    },
+    {
+      title: 'TypeScript functions',
+      estimatedMinutes: 60,
+      tasks: [
+        { title: 'Function signatures', estimatedMinutes: 30 },
+        { title: 'Overloads', estimatedMinutes: 30 },
+      ],
+    },
+  ];
+}
+
 function providerReturning(text: string) {
   mocks.provider.generate.mockImplementation(async () => ({
     stream: new ReadableStream<string>({
@@ -241,6 +310,7 @@ describe('runPlanGenerationWorkflow', () => {
       return { id: ATTEMPT_ID };
     });
     providerReturning(planText());
+    mocks.createGroundedOutlineProvider.mockReturnValue(mocks.provider);
   });
 
   it('records the instance, generates once, and finalizes with usage and lessons', async () => {
@@ -566,5 +636,587 @@ describe('runPlanGenerationWorkflow', () => {
       runPlanGenerationWorkflow(event({ v: 1 }), step, deps),
     ).rejects.toMatchObject({ name: 'NonRetryableError' });
     expect(calls).toEqual([]);
+  });
+
+  describe('grounded research (JCS-158)', () => {
+    const RESEARCH = {
+      brief: 'Types first [S1].',
+      sources: [
+        {
+          key: 'S1',
+          title: 'Handbook',
+          url: 'https://www.typescriptlang.org/docs/handbook/',
+          publisher: 'typescriptlang.org',
+        },
+      ],
+    } as const;
+
+    beforeEach(() => {
+      mocks.runPlanResearch.mockResolvedValue({
+        research: RESEARCH,
+        droppedSourceCount: 1,
+        mode: 'fast',
+        searchCount: 3,
+        costMicrousd: 21_500,
+        model: 'served/model',
+      });
+      mocks.insertPlanResearch.mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue(null);
+      // A clean outline: no outline repair on free (covered under JCS-159).
+      providerReturning(planText(cleanModules()));
+    });
+
+    it('researches once, saves the brief and sources, then generates', async () => {
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['finalize', 1],
+      ]);
+      expect(calls[1]?.config.retries.limit).toBe(2);
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith({
+        tier: 'free',
+        purpose: 'initial',
+        modelOverride: null,
+        research: RESEARCH,
+      });
+      expect(mocks.runPlanResearch).toHaveBeenCalledWith({
+        tier: 'free',
+        input: params.input,
+      });
+      expect(mocks.insertPlanResearch).toHaveBeenCalledWith(
+        {
+          research: {
+            planId: PLAN_ID,
+            brief: RESEARCH.brief,
+            mode: 'fast',
+            status: 'ok',
+            searchCount: 3,
+            costMicrousd: 21_500,
+          },
+          sources: [
+            {
+              citationKey: 'S1',
+              url: RESEARCH.sources[0].url,
+              title: 'Handbook',
+              publisher: 'typescriptlang.org',
+            },
+          ],
+        },
+        expect.anything(),
+      );
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'research'),
+      ).toMatchObject({
+        outcome: 'researched',
+        model: 'served/model',
+        sourceCount: 1,
+        droppedSourceCount: 1,
+        searchCount: 3,
+      });
+    });
+
+    it('writes the grounded outline with the writer pick, never the legacy override', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(
+          event({
+            ...params,
+            tier: 'pro',
+            modelOverride: 'anthropic/claude-sonnet-5.5',
+            groundedWriterModelId: 'anthropic/claude-haiku-5.5',
+          }),
+          step,
+          deps,
+        ),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tier: 'pro',
+          modelOverride: 'anthropic/claude-haiku-5.5',
+        }),
+      );
+    });
+
+    it('falls back to the tier writers for a run started before JCS-169', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(
+          event({
+            ...params,
+            modelOverride: 'anthropic/claude-sonnet-5.5',
+          }),
+          step,
+          deps,
+        ),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ modelOverride: null }),
+      );
+    });
+
+    it('retries research twice, then saves failed_skipped and still generates', async () => {
+      mocks.runPlanResearch.mockRejectedValue(new Error('provider down'));
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 3],
+        ['research-save', 1],
+        ['generate', 1],
+        ['finalize', 1],
+      ]);
+      expect(mocks.runPlanResearch).toHaveBeenCalledTimes(3);
+      expect(mocks.insertPlanResearch).toHaveBeenCalledWith(
+        {
+          research: {
+            planId: PLAN_ID,
+            brief: '',
+            mode: 'fast',
+            status: 'failed_skipped',
+            searchCount: 0,
+            costMicrousd: null,
+          },
+          sources: [],
+        },
+        expect.anything(),
+      );
+      expect(mocks.provider.generate).toHaveBeenCalledOnce();
+      // No brief: the grounded outline runs with the contract only.
+      expect(mocks.createGroundedOutlineProvider).toHaveBeenCalledWith(
+        expect.objectContaining({ research: null }),
+      );
+      expect(
+        stepLogs(logger)
+          .filter((fields) => String(fields.step).startsWith('research'))
+          .map((fields) => [fields.step, fields.outcome]),
+      ).toEqual([
+        // `stepLogs` lists info entries before warn entries.
+        ['research-save', 'saved_failed_skipped'],
+        ['research', 'failed_skipped'],
+      ]);
+    });
+
+    it('does not insert again when a save retry finds its row', async () => {
+      mocks.insertPlanResearch
+        .mockRejectedValueOnce(new Error('connection reset'))
+        .mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue({
+        research: { createdAt: new Date(reservation.startedAt.getTime() + 1) },
+        sources: [],
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(event(), step, deps);
+
+      expect(calls.find((call) => call.name === 'research-save')).toMatchObject(
+        { attempts: 2 },
+      );
+      expect(mocks.insertPlanResearch).toHaveBeenCalledOnce();
+      expect(mocks.runPlanResearch).toHaveBeenCalledOnce();
+    });
+
+    it('skips research without a search when the switch is off', async () => {
+      const { deps } = makeDeps({
+        isEnabled: () => false,
+        isGroundedEnabled: () => true,
+      });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'disabled' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'generate',
+        'finalize',
+      ]);
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.insertPlanResearch).not.toHaveBeenCalled();
+    });
+
+    it('leaves the flow unchanged when grounded generation is off', async () => {
+      const { deps } = makeDeps();
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(event(), step, deps);
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'generate',
+        'finalize',
+      ]);
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.insertPlanResearch).not.toHaveBeenCalled();
+      expect(mocks.createGroundedOutlineProvider).not.toHaveBeenCalled();
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('grounded outline (JCS-159)', () => {
+    const RESEARCH = { brief: 'Types first.', sources: [] } as const;
+    const VERIFIER_ISSUE = {
+      code: 'verifier.too_advanced',
+      blockRef: 'modules[1]',
+      message: 'Overloads are too advanced for a beginner.',
+      source: 'verifier',
+    } as const;
+
+    /** Fails only the module and lesson counts. */
+    function thinModule(title = 'TypeScript basics') {
+      return {
+        title,
+        estimatedMinutes: 30,
+        tasks: [{ title: `${title} lesson`, estimatedMinutes: 30 }],
+      };
+    }
+
+    function groundedEvent(tier: 'free' | 'starter' | 'pro') {
+      return event({ ...params, tier });
+    }
+
+    function finalizedModules() {
+      return mocks.commitSuccess.mock.calls[0]?.[1].modules;
+    }
+
+    function savedIssues() {
+      return (
+        mocks.insertQualityIssues.mock.calls[0]![0] as {
+          issueCode: string;
+          blockRef: string;
+          pass: number;
+          resolved: boolean;
+          stage: string;
+        }[]
+      ).map((record) => [
+        record.issueCode,
+        record.blockRef,
+        record.pass,
+        record.resolved,
+      ]);
+    }
+
+    beforeEach(() => {
+      mocks.runPlanResearch.mockResolvedValue({
+        research: RESEARCH,
+        droppedSourceCount: 0,
+        mode: 'fast',
+        searchCount: 1,
+        costMicrousd: 1_000,
+        model: 'served/model',
+      });
+      mocks.insertPlanResearch.mockResolvedValue(undefined);
+      mocks.getLatestPlanResearch.mockResolvedValue(null);
+      mocks.runOutlineVerifier.mockResolvedValue({
+        issues: [],
+        model: 'verifier/model',
+      });
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: cleanModules(),
+        model: 'repair/model',
+      });
+      mocks.insertQualityIssues.mockResolvedValue([]);
+      mocks.listQualityIssues.mockResolvedValue([]);
+      providerReturning(planText([thinModule()]));
+    });
+
+    it('runs code checks only on free, repairs once and logs resolved issues', async () => {
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('free'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['outline-repair', 1],
+        ['outline-quality-save', 1],
+        ['finalize', 1],
+      ]);
+      expect(
+        calls.find((call) => call.name === 'outline-repair')?.config.retries
+          .limit,
+      ).toBe(0);
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(mocks.runOutlineRepair).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tier: 'free',
+          purpose: 'initial',
+          research: RESEARCH,
+          modules: [thinModule()],
+          issues: [
+            expect.objectContaining({ code: 'module_count', blockRef: 'plan' }),
+            expect.objectContaining({
+              code: 'lesson_count',
+              blockRef: 'modules[0]',
+            }),
+          ],
+        }),
+      );
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, true],
+        ['lesson_count', 'modules[0]', 0, true],
+      ]);
+      expect(mocks.insertQualityIssues.mock.calls[0]?.[0][0]).toMatchObject({
+        planId: PLAN_ID,
+        stage: 'outline',
+      });
+      expect(finalizedModules()).toEqual(cleanModules());
+    });
+
+    it('verifies on starter, repairs once, reverifies and logs the outcome', async () => {
+      providerReturning(planText(cleanModules()));
+      mocks.runOutlineVerifier
+        .mockResolvedValueOnce({ issues: [VERIFIER_ISSUE], model: 'v/model' })
+        .mockResolvedValueOnce({ issues: [], model: 'v/model' });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('starter'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'research',
+        'research-save',
+        'generate',
+        'outline-verify',
+        'outline-repair',
+        'outline-reverify',
+        'outline-quality-save',
+        'finalize',
+      ]);
+      expect(mocks.runOutlineVerifier).toHaveBeenCalledTimes(2);
+      expect(mocks.runOutlineVerifier).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({ tier: 'starter', research: RESEARCH }),
+      );
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(savedIssues()).toEqual([
+        ['verifier.too_advanced', 'modules[1]', 0, true],
+      ]);
+    });
+
+    it('records verifier and repair usage with the outline (JCS-170)', async () => {
+      providerReturning(planText(cleanModules()));
+      const callUsage = makeCanonicalUsage({
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+      });
+      mocks.runOutlineVerifier
+        .mockResolvedValueOnce({
+          issues: [VERIFIER_ISSUE],
+          model: 'v/model',
+          usage: callUsage,
+        })
+        .mockResolvedValueOnce({ issues: [], model: 'v/model', usage: null });
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: cleanModules(),
+        model: 'repair/model',
+        usage: callUsage,
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
+
+      const [, finalizeInput] = mocks.commitSuccess.mock.calls[0]!;
+      // The writer's 10 + 20 tokens, plus one verifier and one repair call.
+      expect(finalizeInput.usage).toMatchObject({
+        inputTokens: 12,
+        outputTokens: 22,
+      });
+    });
+
+    it('replays verifier and repair steps cached before JCS-170 without usage', async () => {
+      providerReturning(planText(cleanModules()));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step: live } = createStep();
+      // Before JCS-170 these steps returned the bare issues and modules.
+      const cached: Record<string, unknown> = {
+        'outline-verify': [VERIFIER_ISSUE],
+        'outline-repair': cleanModules(),
+        'outline-reverify': [],
+      };
+      const step = {
+        do: (name: string, ...rest: unknown[]) =>
+          name in cached
+            ? Promise.resolve(cached[name])
+            : (live.do as (...args: unknown[]) => Promise<unknown>)(
+                name,
+                ...rest,
+              ),
+      } as unknown as Pick<WorkflowStep, 'do'>;
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('starter'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(finalizedModules()).toEqual(cleanModules());
+      const [, finalizeInput] = mocks.commitSuccess.mock.calls[0]!;
+      expect(finalizeInput.usage).toMatchObject({
+        inputTokens: 10,
+        outputTokens: 20,
+      });
+    });
+
+    it('repairs only once and logs the issues that remain', async () => {
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: [thinModule(), thinModule('TypeScript functions')],
+        model: 'repair/model',
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(mocks.runOutlineRepair).toHaveBeenCalledOnce();
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, true],
+        ['lesson_count', 'modules[0]', 0, false],
+        ['lesson_count', 'modules[1]', 1, false],
+      ]);
+      expect(finalizedModules()).toHaveLength(2);
+    });
+
+    it('keeps the first outline when the repair has more issues', async () => {
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: [thinModule(), thinModule()],
+        model: 'repair/model',
+      });
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, false],
+        ['lesson_count', 'modules[0]', 0, false],
+      ]);
+      expect(finalizedModules()).toEqual([thinModule()]);
+      expect(
+        stepLogs(logger).find(
+          (fields) =>
+            fields.step === 'outline-repair' &&
+            fields.outcome === 'repair_rejected',
+        ),
+      ).toMatchObject({ issueCount: 4 });
+    });
+
+    it('finalizes the first outline and logs every issue open when the repair fails', async () => {
+      mocks.runOutlineRepair.mockRejectedValue(new Error('provider down'));
+      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('free'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(
+        calls.find((call) => call.name === 'outline-repair'),
+      ).toMatchObject({ attempts: 1 });
+      expect(savedIssues()).toEqual([
+        ['module_count', 'plan', 0, false],
+        ['lesson_count', 'modules[0]', 0, false],
+      ]);
+      expect(finalizedModules()).toEqual([thinModule()]);
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'outline-repair'),
+      ).toMatchObject({ outcome: 'failed_skipped' });
+    });
+
+    it('retries a failing verifier once, then continues on code checks alone', async () => {
+      providerReturning(planText(cleanModules()));
+      mocks.runOutlineVerifier.mockRejectedValue(new Error('bad output'));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('pro'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => [call.name, call.attempts])).toEqual([
+        ['record-workflow', 1],
+        ['research', 1],
+        ['research-save', 1],
+        ['generate', 1],
+        ['outline-verify', 2],
+        ['finalize', 1],
+      ]);
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+      expect(finalizedModules()).toEqual(cleanModules());
+    });
+
+    it('skips repair and logging when the outline passes every check', async () => {
+      providerReturning(planText(cleanModules()));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
+
+      expect(calls.map((call) => call.name)).toEqual([
+        'record-workflow',
+        'research',
+        'research-save',
+        'generate',
+        'outline-verify',
+        'finalize',
+      ]);
+      expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
+      expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
+    });
+
+    it('does not insert again when a save retry finds its rows', async () => {
+      mocks.insertQualityIssues
+        .mockRejectedValueOnce(new Error('connection reset'))
+        .mockResolvedValue([]);
+      mocks.listQualityIssues.mockResolvedValue([
+        {
+          stage: 'outline',
+          createdAt: new Date(reservation.startedAt.getTime() + 1),
+        },
+      ]);
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step, calls } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(
+        calls.find((call) => call.name === 'outline-quality-save'),
+      ).toMatchObject({ attempts: 2 });
+      expect(mocks.insertQualityIssues).toHaveBeenCalledOnce();
+    });
   });
 });

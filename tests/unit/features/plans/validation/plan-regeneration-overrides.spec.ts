@@ -10,7 +10,7 @@ describe('planRegenerationOverridesSchema', () => {
         learningStyle: 'practice',
         startDate: '2026-01-01',
         deadlineDate: '2026-02-01',
-        model: 'google/gemini-3-flash-preview',
+        model: 'anthropic/claude-haiku-5.5',
       }),
     ).toMatchObject({
       skillLevel: 'advanced',

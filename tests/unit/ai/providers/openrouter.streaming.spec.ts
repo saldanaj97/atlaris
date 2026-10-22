@@ -203,7 +203,7 @@ describe('OpenRouterProvider', () => {
 
         const provider = new OpenRouterProvider(
           {
-            model: 'openai/gpt-4o',
+            model: 'openai/gpt-6-sol',
             fallbackModels: [AI_DEFAULT_MODEL],
           },
           client,

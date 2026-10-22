@@ -1,17 +1,17 @@
 # User Preferences
 
 **Audience:** Developers changing settings, AI model defaults, email opt-ins, or analytics timezone.  
-**Last Updated:** September 2026
+**Last Updated:** October 2026
 
 Preferences live in dedicated tables (not on `users`). Auth actor loading joins `user_preferences`; missing tables during cutover fail actor resolution — see [deploy.md](../development/deploy.md) for migration order.
 
 ## Tables
 
-| Table                                 | Role                                                                                                                                       |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `user_preferences`                    | `preferred_ai_model`, `preferred_regeneration_ai_model`, `preferred_lesson_ai_model` (nullable text), `analytics_timezone` (default `UTC`) |
-| `user_email_notification_settings`    | `unsubscribe_all_optional_emails` (default `false`)                                                                                        |
-| `user_email_notification_preferences` | Per-category `enabled` + optional `unsubscribed_at`; PK `(user_id, category)`                                                              |
+| Table                                 | Role                                                                                                                                                                                                                                                |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `user_preferences`                    | `preferred_ai_model`, `preferred_regeneration_ai_model`, `preferred_lesson_ai_model`, grounded `preferred_writer_ai_model` / `preferred_verifier_ai_model` / `preferred_advisor_ai_model` (all nullable text), `analytics_timezone` (default `UTC`) |
+| `user_email_notification_settings`    | `unsubscribe_all_optional_emails` (default `false`)                                                                                                                                                                                                 |
+| `user_email_notification_preferences` | Per-category `enabled` + optional `unsubscribed_at`; PK `(user_id, category)`                                                                                                                                                                       |
 
 Schema: `supabase/schema/tables/user-preferences.ts`. Queries: `src/lib/db/queries/user-preferences.ts`.
 
@@ -38,14 +38,14 @@ Ops delivery runbook: [email-notification-delivery-runbook.md](./email-notificat
 
 `/settings` redirects to `/settings/profile`. Each section is its own route (`settings-section-ids.ts`):
 
-| Route                      | Section                                      |
-| -------------------------- | -------------------------------------------- |
-| `/settings/profile`        | Profile form                                 |
-| `/settings/billing`        | Plan & billing (DB snapshot + checkout sync) |
-| `/settings/usage`          | Billing meters (not learning analytics)      |
-| `/settings/ai`             | AI model preference                          |
-| `/settings/integrations`   | Integrations                                 |
-| `/settings/notifications`  | Email notification preferences               |
+| Route                     | Section                                      |
+| ------------------------- | -------------------------------------------- |
+| `/settings/profile`       | Profile form                                 |
+| `/settings/billing`       | Plan & billing (DB snapshot + checkout sync) |
+| `/settings/usage`         | Billing meters (not learning analytics)      |
+| `/settings/ai`            | AI model preference                          |
+| `/settings/integrations`  | Integrations                                 |
+| `/settings/notifications` | Email notification preferences               |
 
 Deep links: `/settings/notifications`, `/settings/billing?checkout=1&checkoutBaseline=...`. Nav: `SettingsSectionNavigation` from the pathname.
 
@@ -59,6 +59,8 @@ Deep links: `/settings/notifications`, `/settings/billing?checkout=1&checkoutBas
 | `PATCH` | `/api/v1/user/preferences` | One or more of `{ preferredAiModel, preferredRegenerationAiModel, preferredLessonAiModel }` as `string \| null`. Validated against the current tier × operation policy, not the PostgreSQL enum. `null` clears that slot. Free rejects any non-null save (`403 MODEL_NOT_ALLOWED_FOR_TIER`). Starter may save only the outline slot. Pro may save all three independently                                                         |
 
 UI: Settings `/settings/ai` → `ModelSelectionCard` → `ModelPreferencesSelector` → `useModelPreferenceSave` → PATCH, then `router.refresh()`. Free has no picker and does not PATCH on render.
+
+**Grounded picks (JCS-157).** PATCH also accepts `preferredWriterAiModel`, `preferredVerifierAiModel` and `preferredAdvisorAiModel` (`string | null`). They are Pro-only (`403 MODEL_NOT_ALLOWED_FOR_TIER` otherwise), must be in the role's Pro catalog in `model-operation-policy.ts` (`400 MODEL_INVALID` otherwise), and are rejected with `403 GROUNDED_GENERATION_DISABLED` unless the `grounded-generation` flag covers the user's tier. The flag is read only when a grounded field is present, so legacy-slot saves are unchanged. GET does not return them. One writer pick covers outline, regeneration and lesson. `resolveGroundedModelPick` (`src/features/ai/model-preferences.ts`) returns the pick only while it is valid for the current tier; after a downgrade it returns `null` (code-owned models) and the stored value stays. While the flag covers Pro, `/settings/ai` shows a "Grounded generation models" section (`GroundedModelPicker`, one per role) under the Pro pickers; "Default" saves `null`.
 
 ### Email notification preferences
 
@@ -90,11 +92,11 @@ Token: HMAC payload with purpose `email_unsubscribe_all` (`src/features/notifica
 
 Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags. These three keys stay Vercel-backed operational kill switches — they do not move to PostHog. Future user/cohort/experiment/percentage product rollouts belong in PostHog; do not add `@flags-sdk/posthog` for these controls. Ownership rule and env/scheduler inventory: [environment.md — Flag and gate ownership](../development/environment.md#flag-and-gate-ownership). Fail-open/fail-closed table: [environment.md — Vercel Flags](../development/environment.md#vercel-flags).
 
-| Flag key                      | Default               | Role                                                             |
-| ----------------------------- | --------------------- | ---------------------------------------------------------------- |
-| `email-notification-delivery` | `false` (fail-closed) | Cron / maintenance / workflow must not send when off             |
+| Flag key                      | Default               | Role                                                                                                        |
+| ----------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `email-notification-delivery` | `false` (fail-closed) | Cron / maintenance / workflow must not send when off                                                        |
 | `maintenance-mode`            | fallback `false`      | Proxy routes app traffic to maintenance. Local development still allows opening `/maintenance` for preview. |
-| `module-lesson-generation`    | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle |
+| `module-lesson-generation`    | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle                                            |
 
 Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback — email delivery and lesson generation stay off until enabled in a Vercel environment with Flags configured.
 

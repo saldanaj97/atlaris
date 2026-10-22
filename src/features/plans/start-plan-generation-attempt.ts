@@ -82,6 +82,10 @@ export function buildPlanGenerationWorkflowInput(
     input: input.input,
     generationPurpose: input.generationPurpose,
     modelOverride: input.modelOverride ?? null,
+    // Omitted without a pick, so starts stay valid on a Worker deployed before JCS-169.
+    ...(input.groundedWriterModelId
+      ? { groundedWriterModelId: input.groundedWriterModelId }
+      : {}),
     correlationId,
     reservation: toSerializableReservation(reservation),
     allowedGenerationStatuses: input.allowedGenerationStatuses,

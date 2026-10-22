@@ -54,6 +54,7 @@ commands:
 
   # Halt integration-only jobs before checkout when their paths did not change.
   # Dynamic setup keeps docs-only pipelines from provisioning these executors.
+  # PRs into main (the develop promotion) always run the full job.
   skip-unless-integration:
     steps:
       - attach_workspace:
@@ -61,8 +62,28 @@ commands:
       - run:
           name: Skip if no integration-path changes
           command: |
-            if [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
+            if [ "<< pipeline.event.github.pull_request.base.ref >>" = "main" ]; then
+              echo "PR into main; running in full."
+            elif [ "$(cat /tmp/.ci-flags/integration 2>/dev/null || echo true)" != "true" ]; then
               echo "No integration-path changes; skipping."
+              circleci-agent step halt
+            fi
+
+  # Halt the build job before checkout when no build input changed. The `build`
+  # flag (see detect-changes) covers source, root configs, package.json, the
+  # lockfile and .circleci/, so a CI-only PR still exercises the job.
+  # PRs into main always build.
+  skip-unless-build-inputs:
+    steps:
+      - attach_workspace:
+          at: /tmp/.ci-flags
+      - run:
+          name: Skip if no build-input changes
+          command: |
+            if [ "<< pipeline.event.github.pull_request.base.ref >>" = "main" ]; then
+              echo "PR into main; running in full."
+            elif [ "$(cat /tmp/.ci-flags/build 2>/dev/null || echo true)" != "true" ]; then
+              echo "No build-input changes; skipping."
               circleci-agent step halt
             fi
 
@@ -125,12 +146,14 @@ commands:
           command: mkdir -p test-results coverage
       - store_test_results:
           path: test-results
+          when: always
       - when:
           condition: << parameters.coverage-destination >>
           steps:
             - store_artifacts:
                 path: coverage
                 destination: << parameters.coverage-destination >>
+                when: always
 
 jobs:
   # Sole writer of the pnpm store cache. Exact-key restore only, so a miss
@@ -168,6 +191,8 @@ jobs:
             mkdir -p .ci-flags
             echo true > .ci-flags/source
             echo true > .ci-flags/integration
+            echo true > .ci-flags/remediation
+            echo true > .ci-flags/build
 
             event_name="<< pipeline.event.name >>"
             base_rev="<< pipeline.git.base_revision >>"
@@ -196,11 +221,15 @@ jobs:
             echo "Diff range: ${diff_range}"
             source=false
             integration=false
+            remediation=false
+            build=false
             changed_files="$(mktemp)"
             if ! git diff --name-only "${diff_range}" > "${changed_files}"; then
               echo "git diff failed; assuming source and integration changed."
               source=true
               integration=true
+              remediation=true
+              build=true
             else
               while IFS= read -r f; do
                 [ -z "${f}" ] && continue
@@ -220,18 +249,35 @@ jobs:
                     integration=true
                     ;;
                 esac
+                case "${f}" in
+                  .github/scripts/*|.github/workflows/dependency-security-remediation.yml|package.json|pnpm-lock.yaml|pnpm-workspace.yaml|.circleci/*)
+                    remediation=true
+                    ;;
+                esac
+                case "${f}" in
+                  .circleci/*)
+                    build=true
+                    ;;
+                esac
               done < "${changed_files}"
+              if [ "${source}" = "true" ] || [ "${integration}" = "true" ]; then
+                build=true
+              fi
             fi
             rm -f "${changed_files}"
 
             echo "${source}" > .ci-flags/source
             echo "${integration}" > .ci-flags/integration
-            echo "source=${source} integration=${integration}"
+            echo "${remediation}" > .ci-flags/remediation
+            echo "${build}" > .ci-flags/build
+            echo "source=${source} integration=${integration} remediation=${remediation} build=${build}"
       - persist_to_workspace:
           root: .ci-flags
           paths:
             - source
             - integration
+            - remediation
+            - build
 
   lint-and-type-check:
     executor: node
@@ -256,13 +302,6 @@ jobs:
               "$lint_command" \
               "pnpm typecheck"
       - run:
-          # Non-blocking shadow run while tsrs is evaluated against tsc.
-          name: tsrs shadow typecheck (non-blocking)
-          when: always
-          no_output_timeout: 5m
-          command: |
-            time pnpm typecheck:tsrs || echo "tsrs shadow typecheck failed (non-blocking)"
-      - run:
           name: Worker bundle gate
           no_output_timeout: 5m
           command: |
@@ -272,6 +311,23 @@ jobs:
               echo "workers/jobs/.cloudflare/types/index.d.ts is stale. Run 'pnpm workers types' and commit the file."
               exit 1
             fi
+
+  # Next.js build gate for PRs (Vercel builds only develop, hotfix/* and main). Needs no
+  # secrets. The empty Sentry token overrides any project-level value, so
+  # withSentryConfig skips release creation and source-map upload.
+  build:
+    executor: node
+    environment:
+      SENTRY_AUTH_TOKEN: ''
+    steps:
+      - skip-unless-build-inputs
+      - checkout
+      - init-env
+      - install-pnpm-deps
+      - run:
+          name: Build
+          no_output_timeout: 15m
+          command: pnpm build
 
   vulnerability-scan:
     executor: node
@@ -370,6 +426,26 @@ jobs:
           name: Refresh unit test impact data
           no_output_timeout: 20m
           command: circleci testsuite run "unit tests" --analyze-tests=impacted --run-tests=none
+
+  # develop only: PRs run impacted unit tests, so run the whole suite after merge
+  # to surface impact-selection misses before the develop -> main promotion.
+  # Separate from unit-impact-analysis so a test failure cannot block the impact refresh.
+  unit-tests-trunk:
+    executor: node
+    environment:
+      NODE_ENV: test
+      SKIP_DB_TEST_SETUP: 'true'
+    steps:
+      - checkout
+      - install-pnpm-deps
+      - run:
+          name: Unit tests (full suite)
+          no_output_timeout: 20m
+          command: |
+            mkdir -p test-results/unit
+            circleci testsuite run "unit tests" --analyze-tests=none --run-tests=all
+      - store-test-outputs:
+          results-file: test-results/unit/results.json
 
   integration-light:
     docker:
@@ -570,6 +646,15 @@ jobs:
       - image: cimg/node:24.19
     resource_class: medium
     steps:
+      - attach_workspace:
+          at: /tmp/.ci-flags
+      - run:
+          name: Skip if no remediation-path changes
+          command: |
+            if [ "$(cat /tmp/.ci-flags/remediation 2>/dev/null || echo true)" != "true" ]; then
+              echo "No remediation-path changes; skipping."
+              circleci-agent step halt
+            fi
       - checkout
       - init-env
       - install-pnpm-deps
@@ -611,6 +696,9 @@ workflows:
       - lint-and-type-check:
           requires:
             - detect-changes
+      - build:
+          requires:
+            - detect-changes
       - vulnerability-scan:
           requires:
             - detect-changes
@@ -621,6 +709,7 @@ workflows:
           requires:
             - detect-changes
       - security-tests:
+          skip_unless: integration
           requires:
             - detect-changes
       - dependency-remediation-tests:
@@ -642,6 +731,12 @@ workflows:
             branches:
               only: [main, develop]
       - unit-impact-analysis:
+          requires:
+            - detect-changes
+          filters:
+            branches:
+              only: develop
+      - unit-tests-trunk:
           requires:
             - detect-changes
           filters:

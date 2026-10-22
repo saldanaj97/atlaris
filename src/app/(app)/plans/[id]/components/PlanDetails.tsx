@@ -1,5 +1,6 @@
 'use client';
 
+import type { PlanRegenerationState } from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
@@ -26,12 +27,16 @@ import { toast } from 'sonner';
 
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
+  regeneration?: PlanRegenerationState;
 }
 
 /**
  * Client component that keeps header progress in sync with timeline status changes.
  */
-export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
+export function PlanDetails({
+  plan,
+  regeneration,
+}: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
   const scopedTaskIds = new Set(
@@ -111,6 +116,7 @@ export function PlanDetails({ plan }: PlanDetailClientProps): ReactElement {
             plan={plan}
             stats={overviewStats}
             activeModuleId={activeModuleId}
+            regeneration={regeneration}
           />
 
           <div className='mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>

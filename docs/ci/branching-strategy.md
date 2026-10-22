@@ -50,7 +50,7 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
                          WHAT RUNS WHEN
     ┌─────────────────────────────────────────────────────────────┐
     │                                                             │
-    │   Open PR ───────> CI PR checks + Vercel Preview deploy       │
+    │   Open PR ───────> CircleCI PR checks (incl. `build`)         │
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
@@ -80,14 +80,14 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 | Environment | Branch Source | URL | Purpose |
 | ----------- | ------------- | --- | ------- |
 | **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
-| **Preview** | Branch pushes and PRs | Vercel preview | Branch-level testing; docs-only commits are skipped by the Ignored Build Step |
+| **Preview** | `develop` and `hotfix/*` | Vercel preview | Staging build for `develop`; `hotfix/*` previews give hotfix PRs into `main` the required Vercel status. Feature branches get no Vercel deployment |
 | **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
 | **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains |
 | **Live Production** | `main` | Production URL | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating |
 
 ### Deployment Mechanism
 
-- **Preview**: Vercel's Git integration creates a Preview deployment for branch pushes and PRs; the dashboard Ignored Build Step skips docs-only commits.
+- **Preview**: Vercel's Git integration builds a Preview deployment for `develop` (staging) and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status); feature branches are not deployed. For a per-PR URL, use the local dev server (`pnpm dev`) or a one-off `vercel deploy`. The PR build gate is CircleCI `build`.
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Staging**: the `develop` branch's Vercel Preview deployment is the hosted staging surface; use non-Production services and dispatch migration phases when needed.
 - **Staged Production**: before JCS-52, operators run a post-push unaliased rehearsal from a clean checkout after the exact `main` SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
@@ -99,7 +99,7 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 
 PR validation is CircleCI `ci-pr`. Trunk integration after merge to `develop`/`main` is CircleCI `ci-trunk` only.
 
-Vercel's required GitHub status is the authoritative Next.js build and deployment gate. CircleCI does not repeat `pnpm build`.
+CircleCI `build` is the PR gate for the Next.js build: it runs `pnpm build` with no secrets (Sentry auth token blanked, so no release or source-map upload). Vercel builds Preview for `develop` (staging) and `hotfix/*` branches (so hotfix PRs into `main` still get the required Vercel status) and Production for `main`; feature branches get no Vercel deployment.
 
 ### 1. CircleCI `ci-pr` - PR Validation
 
@@ -107,15 +107,16 @@ Vercel's required GitHub status is the authoritative Next.js build and deploymen
 
 **What it runs:**
 
+- Next.js build (`pnpm build`, the required `build` job; skipped when `detect-changes` finds no `source`, `integration` or `.circleci/` changes, except on PRs into `main`)
 - Lint (Oxlint)
 - Type check (TypeScript)
 - Security audit (dependency vulnerabilities)
 - Unit tests
 - Integration tests (related for small source diffs, full for global or broad diffs, light only when no suitable source candidates)
-- RLS security tests
-- Dependency remediation tests (the required `dependency-remediation-tests` job)
+- RLS security tests (skipped when `detect-changes` finds no integration-path files, except on PRs into `main`)
+- Dependency remediation tests (the required `dependency-remediation-tests` job; skipped unless the diff touches `.github/scripts/`, the remediation workflow, `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, or `.circleci/`)
 
-**Purpose:** Fast feedback on PRs before merge. GitHub rulesets require the `Vercel` status plus the six CircleCI validation job names, not a GitHub Actions aggregator.
+**Purpose:** Fast feedback on PRs before merge. The `development` (`develop`) GitHub ruleset requires the seven CircleCI validation job names (`build` plus the six below) and not the `Vercel` status or a GitHub Actions aggregator.
 
 ### 2. CircleCI `ci-trunk` - Full CI (post-merge)
 
@@ -123,6 +124,7 @@ Vercel's required GitHub status is the authoritative Next.js build and deploymen
 
 **What it runs:**
 
+- Unit tests (full suite, `develop` only; PRs run only impacted unit tests, so this surfaces selection misses before promotion)
 - Integration tests (full suite)
 - RLS security tests
 
@@ -186,13 +188,13 @@ git commit -m "feat: ..."
 ### Step 4: PR review process
 
 1. CircleCI `ci-pr` runs code and test validation
-2. Vercel validates the Next.js build and Preview deployment; docs-only commits report success through the Ignored Build Step
+2. CircleCI `build` validates the Next.js build; docs-only PRs report `build` as a no-op
 3. Address feedback and merge
 
 ### Step 5: Merge to `develop`
 
 1. Full CI runs (CircleCI `ci-trunk`)
-2. Vercel creates the `develop` Preview as the hosted staging surface
+2. Vercel builds the `develop` Preview as the hosted staging surface
 3. An operator dispatches `staging-db-migrations.yaml` phases as needed, with `contract` only after health verification
 
 ### Step 6: Release to production (`develop` -> `main`)
@@ -238,7 +240,7 @@ Check the GitHub Actions logs for `supabase migration up`, confirm the run used 
 
 ### How do I test against a real DB before merge?
 
-Use the Vercel preview deployment URL; ensure preview environment variables point at an isolated preview database.
+Run the local dev server (`pnpm dev`) against a local or isolated database, or the `develop` Preview for staging. Feature branches have no Vercel Preview (only `develop` and `hotfix/*` do); for a one-off hosted check, run `vercel deploy` with preview environment variables pointing at an isolated preview database.
 
 ---
 

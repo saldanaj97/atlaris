@@ -305,7 +305,7 @@ describe('requestPlanRegeneration', () => {
       {
         userId: 'user-1',
         planId: ownedPlan.id,
-        overrides: { model: 'google/gemini-3.1-pro-preview' },
+        overrides: { model: 'anthropic/claude-sonnet-5.5' },
       },
       deps,
     );
@@ -316,10 +316,122 @@ describe('requestPlanRegeneration', () => {
       'user-1',
       {
         planId: ownedPlan.id,
-        overrides: { model: 'google/gemini-3.1-pro-preview' },
+        overrides: { model: 'anthropic/claude-sonnet-5.5' },
       },
       7,
     );
+  });
+
+  describe('grounded regeneration (JCS-162)', () => {
+    const feedback = {
+      reasons: ['too_basic' as const],
+      note: 'More practice please',
+    };
+
+    it('drops reasons and note and keeps Free not-included when the flag is off', async () => {
+      const deps = buildDeps();
+
+      await requestPlanRegeneration(
+        { userId: 'user-1', planId: ownedPlan.id, ...feedback },
+        deps,
+      );
+      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+        'plan_regeneration',
+        ownedPlan.id,
+        'user-1',
+        { planId: ownedPlan.id, overrides: undefined },
+        7,
+      );
+
+      const free = buildDeps({
+        tier: { resolveUserTier: vi.fn(async () => 'free' as const) },
+      });
+      await expect(
+        requestPlanRegeneration(
+          { userId: 'user-1', planId: ownedPlan.id, ...feedback },
+          free,
+        ),
+      ).resolves.toEqual({ kind: 'not-included' });
+      expect(free.quota.countPlanRegenerations).not.toHaveBeenCalled();
+    });
+
+    it('stores reasons and note on the payload when the flag is on', async () => {
+      const deps = buildDeps({
+        grounded: { isEnabled: vi.fn(async () => true) },
+      });
+
+      await requestPlanRegeneration(
+        { userId: 'user-1', planId: ownedPlan.id, ...feedback },
+        deps,
+      );
+
+      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+        'plan_regeneration',
+        ownedPlan.id,
+        'user-1',
+        { planId: ownedPlan.id, overrides: undefined, ...feedback },
+        7,
+      );
+      expect(deps.quota.peekUsage).toHaveBeenCalled();
+      expect(deps.quota.countPlanRegenerations).not.toHaveBeenCalled();
+    });
+
+    it('leaves out empty reasons and note', async () => {
+      const deps = buildDeps({
+        grounded: { isEnabled: vi.fn(async () => true) },
+      });
+
+      await requestPlanRegeneration(
+        { userId: 'user-1', planId: ownedPlan.id, reasons: [], note: '' },
+        deps,
+      );
+
+      expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
+        'plan_regeneration',
+        ownedPlan.id,
+        'user-1',
+        { planId: ownedPlan.id, overrides: undefined },
+        7,
+      );
+    });
+
+    it('admits Free once per plan without the monthly meter', async () => {
+      const grounded = { isEnabled: vi.fn(async () => true) };
+      const freeTier = {
+        resolveUserTier: vi.fn(async () => 'free' as const),
+      };
+      const first = buildDeps({ grounded, tier: freeTier });
+
+      await expect(
+        requestPlanRegeneration(
+          { userId: 'user-1', planId: ownedPlan.id, ...feedback },
+          first,
+        ),
+      ).resolves.toMatchObject({ kind: 'enqueued' });
+      expect(first.quota.countPlanRegenerations).toHaveBeenCalledWith(
+        ownedPlan.id,
+        fakeDb,
+      );
+      expect(first.quota.peekUsage).not.toHaveBeenCalled();
+
+      const second = buildDeps({
+        grounded,
+        tier: freeTier,
+        quota: { countPlanRegenerations: vi.fn(async () => 1) },
+      });
+      await expect(
+        requestPlanRegeneration(
+          { userId: 'user-1', planId: ownedPlan.id },
+          second,
+        ),
+      ).resolves.toEqual({
+        kind: 'quota-denied',
+        currentCount: 1,
+        limit: 1,
+        reason: 'Regeneration quota exceeded for your subscription tier.',
+      });
+      expect(second.queue.enqueueWithResult).not.toHaveBeenCalled();
+    });
   });
 
   describe('jobs Worker dispatch', () => {

@@ -20,6 +20,7 @@ import {
 } from '@/lib/api/rate-limit';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
+import { getGroundedModelPreferences } from '@/lib/db/queries/user-preferences';
 import { logger } from '@/lib/logging/logger';
 import {
   getPaginationDefault,
@@ -114,6 +115,15 @@ export function createPlanCreateHandler(deps?: {
         internalUserId: actor.id,
         body,
         savedPreferredAiModel: actor.preferredAiModel ?? null,
+        // Only a Pro writer pick is ever honored, so skip the read below Pro.
+        ...(actor.subscriptionTier === 'pro'
+          ? {
+              savedGroundedPicks: await getGroundedModelPreferences(
+                actor.id,
+                db,
+              ),
+            }
+          : {}),
         requestId: correlationId,
       });
 

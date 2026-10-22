@@ -1,3 +1,4 @@
+import type { SavedGroundedModelPicks } from '@/features/ai/model-preferences';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type {
   CreatePlanResult,
@@ -6,6 +7,7 @@ import type {
 import type { StartPlanGenerationAttemptDeps } from '@/features/plans/start-plan-generation-attempt';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
+import { PRO_GROUNDED_WRITER_CATALOG } from '@/features/ai/model-operation-policy';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import {
   createPlanGenerationSessionBoundary,
@@ -48,7 +50,19 @@ const PRO_QUERY_MODEL = getPersistableModelsForTier(
   ({ id }) => !STARTER_OUTLINE_MODELS.some((model) => model.id === id),
 )?.id;
 
-if (!STARTER_SAVED_MODEL || !STARTER_QUERY_MODEL || !PRO_QUERY_MODEL) {
+const PRO_OFF_WRITER_QUERY_MODEL = getPersistableModelsForTier(
+  'pro',
+  'initial_outline',
+).find(
+  ({ id }) => !(PRO_GROUNDED_WRITER_CATALOG as readonly string[]).includes(id),
+)?.id;
+
+if (
+  !STARTER_SAVED_MODEL ||
+  !STARTER_QUERY_MODEL ||
+  !PRO_QUERY_MODEL ||
+  !PRO_OFF_WRITER_QUERY_MODEL
+) {
   throw new Error('Expected outline model fixtures for model override tests');
 }
 
@@ -106,6 +120,7 @@ function startCreate(
   boundary: ReturnType<typeof buildBoundary>,
   url = 'http://localhost/api/v1/plans',
   savedPreferredAiModel: string | null = null,
+  savedGroundedPicks?: SavedGroundedModelPicks,
 ) {
   return boundary.startCreate({
     req: new Request(url, { method: 'POST' }),
@@ -113,6 +128,7 @@ function startCreate(
     internalUserId: 'internal-user',
     body,
     savedPreferredAiModel,
+    savedGroundedPicks,
     requestId: 'req-1',
   });
 }
@@ -121,6 +137,7 @@ function startRetry(
   boundary: ReturnType<typeof buildBoundary>,
   url: string,
   savedPreferredAiModel: string | null,
+  savedGroundedPicks?: SavedGroundedModelPicks,
 ) {
   return boundary.startRetry({
     req: new Request(url, { method: 'POST' }),
@@ -136,9 +153,25 @@ function startRetry(
       deadlineDate: '2030-01-01',
     },
     savedPreferredAiModel,
+    savedGroundedPicks,
     tierDb: {} as never,
     requestId: 'req-1',
   });
+}
+
+const WRITER_PICK = 'anthropic/claude-haiku-5.5';
+const WRITER_PICKS: SavedGroundedModelPicks = {
+  preferredWriterAiModel: WRITER_PICK,
+  preferredVerifierAiModel: null,
+  preferredAdvisorAiModel: null,
+};
+
+/** The Worker start command, as dispatched. */
+function startedWorkflowInput(): Record<string, unknown> {
+  const [workflowInput] = mocks.dispatch.mock.calls[0] as [
+    Record<string, unknown>,
+  ];
+  return workflowInput;
 }
 
 /** The `modelOverride` the Worker dispatch received. */
@@ -277,6 +310,44 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
 
     expect(startedModelOverride()).toBe(PRO_QUERY_MODEL);
   });
+
+  describe('grounded writer pick (JCS-169)', () => {
+    it('sends the Pro writer pick beside the legacy outline model', async () => {
+      await startCreate(
+        buildBoundary(),
+        undefined,
+        PRO_QUERY_MODEL,
+        WRITER_PICKS,
+      );
+
+      expect(startedWorkflowInput()).toMatchObject({
+        modelOverride: PRO_QUERY_MODEL,
+        groundedWriterModelId: WRITER_PICK,
+      });
+    });
+
+    it('does not carry the legacy outline model into grounded outlines', async () => {
+      await startCreate(buildBoundary(), undefined, PRO_QUERY_MODEL);
+
+      expect(startedWorkflowInput()).not.toHaveProperty(
+        'groundedWriterModelId',
+      );
+    });
+
+    it('keeps the writer pick when ?model= is off the writer catalog', async () => {
+      await startCreate(
+        buildBoundary(),
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_OFF_WRITER_QUERY_MODEL)}`,
+        null,
+        WRITER_PICKS,
+      );
+
+      expect(startedWorkflowInput()).toMatchObject({
+        modelOverride: PRO_OFF_WRITER_QUERY_MODEL,
+        groundedWriterModelId: WRITER_PICK,
+      });
+    });
+  });
 });
 
 describe('PlanGenerationSessionBoundary.startRetry', () => {
@@ -326,5 +397,27 @@ describe('PlanGenerationSessionBoundary.startRetry', () => {
     );
 
     expect(startedModelOverride()).toBe(STARTER_QUERY_MODEL);
+  });
+
+  it("does not carry Starter's saved outline model or a writer pick into grounded outlines", async () => {
+    await startRetry(
+      buildBoundary(),
+      retryUrl,
+      STARTER_SAVED_MODEL,
+      WRITER_PICKS,
+    );
+
+    expect(startedModelOverride()).toBe(STARTER_SAVED_MODEL);
+    expect(startedWorkflowInput()).not.toHaveProperty('groundedWriterModelId');
+  });
+
+  it('sends the writer pick on a Pro retry', async () => {
+    resolveUserTier.mockResolvedValue('pro');
+
+    await startRetry(buildBoundary(), retryUrl, null, WRITER_PICKS);
+
+    expect(startedWorkflowInput()).toMatchObject({
+      groundedWriterModelId: WRITER_PICK,
+    });
   });
 });

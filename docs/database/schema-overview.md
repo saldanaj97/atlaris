@@ -8,7 +8,8 @@ users 1—1 user_preferences
 users 1—1 user_email_notification_settings
 users 1—* user_email_notification_preferences   (per email category)
 users 1—* learning_activity_events
-learning_plans 1—* modules, generation_attempts, plan_research, generation_quality_issues
+learning_plans 1—* modules, generation_attempts, plan_research, generation_quality_issues, generation_budget_cuts
+learning_plans 1—* ai_usage_events   (nullable `plan_id`, `ON DELETE SET NULL`; per-plan AI spend)
 plan_research 1—* research_sources   (latest `plan_research` row per plan is current)
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
@@ -57,7 +58,7 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 - **Ordering integrity:** `unique(plan_id, order)` on modules and `unique(module_id, order)` on tasks
 - **Preferences:** `user_preferences.user_id` and `user_email_notification_settings.user_id` are 1:1 with `users`; category prefs use `unique(user_id, category)`
 - **Email delivery:** `unique(user_id, category, delivery_key)` on deliveries; `unique(run_kind, scheduler_date_utc)` on runs
-- **Grounded generation:** `research_sources.citation_key` matches `S1`, `S2`, … and is `unique(research_id, citation_key)`; `generation_quality_issues.pass` is 0–2; `learning_plans.regeneration_note` is at most 500 characters (`regeneration_reasons` chip values are validated by the app)
+- **Grounded generation:** `research_sources.citation_key` matches `S1`, `S2`, … and is `unique(research_id, citation_key)`; `generation_quality_issues.pass` is 0–2; `generation_budget_cuts.step` is `advisor` or `repair`, `pass` is 1–2, and spend/ceiling micro-USD are non-negative; `learning_plans.regeneration_note` is at most 500 characters (`regeneration_reasons` chip values are validated by the app)
 
 ## Row Level Security (RLS)
 
@@ -68,7 +69,7 @@ RLS is enforced through request-scoped Postgres session state:
 - user-facing policies are explicitly scoped to `authenticated`
 - service-role access is reserved for tests, workers, migrations, and other system flows
 
-Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `plan_research`, `research_sources`, and `generation_quality_issues` are authenticated **select-only** for the plan owner; writes are service-role only. `clerk_webhook_events`, `email_notification_deliveries`, and `email_notification_delivery_runs` use deny-all RLS (service-role only).
+Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` are authenticated **select-only** for the plan owner; writes are service-role only. `clerk_webhook_events`, `email_notification_deliveries`, and `email_notification_delivery_runs` use deny-all RLS (service-role only).
 
 Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDATE`; `DELETE` is intentionally absent from both the policy set and table grants.
 
@@ -85,9 +86,10 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 | `plan_research`                    | `(plan_id, created_at desc)`                                                                           |
 | `research_sources`                 | `(research_id, citation_key)` unique                                                                   |
 | `generation_quality_issues`        | `(plan_id, created_at)`, `(module_id)`, `(task_id)`                                                    |
+| `generation_budget_cuts`           | `(plan_id, created_at)`, `(module_id)`, `(task_id)`                                                    |
 | `job_queue`                        | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)`                  |
 | `usage_metrics`                    | `(user_id, month)` unique; `lesson_modules_generated` is an observational column (not a product quota) |
-| `ai_usage_events`                  | `(user_id, created_at)`                                                                                |
+| `ai_usage_events`                  | `(user_id, created_at)`, `(plan_id, created_at)`                                                       |
 | `oauth_state_tokens`               | `(state_token_hash)`, `(expires_at)`                                                                   |
 | `clerk_webhook_events`             | `(event_id)` unique, `(created_at)`                                                                    |
 | `clerk_webhook_event_claims`       | `(event_id)` primary key, `(claim_expires_at)`                                                         |
@@ -103,7 +105,7 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 - `clerk_webhook_event_claims` holds temporary claim tokens while a webhook refreshes Clerk. Successful and failed requests remove their claims; crash leftovers can be reclaimed after the two-minute lease and stale claims are pruned by retention cleanup.
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
 - `learning_activity_events` follows FK cascades; there is no separate retention prune for analytics history today.
-- `plan_research`, `research_sources`, and `generation_quality_issues` keep every row (regeneration appends research runs) and follow FK cascades from the plan; there is no retention prune yet.
+- `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` keep every row (regeneration appends research runs) and follow FK cascades from the plan; there is no retention prune yet.
 - Email delivery run/ledger tables are operational state for the scheduler; see [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md).
 
 Scheduled invocation: the jobs Worker's cron (`0 3 * * *`) runs `private.cleanup_retained_db_rows()` daily. Manual operator fallback: `POST /api/internal/maintenance/retention/cleanup` (see `docs/architecture/retention-cleanup-runbook.md`).

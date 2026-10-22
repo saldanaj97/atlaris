@@ -49,6 +49,18 @@ Quota follows the existing boundary (`reserveRegenerationQuotaAtProviderStart`):
 
 The consumer relies on Cloudflare keeping a message's ID across redeliveries; staging confirms it (a changed ID would leave the job `processing` for plan cleanup instead of resuming).
 
+### Grounded regeneration (JCS-162)
+
+Behind the `grounded-generation` flag, evaluated for the plan owner's tier at admission and again in the consumer. With the flag off for that tier, the flow above is unchanged: Free gets `PLAN_REGENERATION_NOT_INCLUDED`, and reasons and note are dropped.
+
+- **Request.** The body takes `reasons` (chips from `REGENERATION_REASONS` in `src/features/plans/regeneration-orchestration/reasons.ts`) and an optional `note` (trimmed, at most 500 characters). Both go on the job payload only when the flag is on.
+- **Guidance.** `buildRegenerationGuidance` turns the chips into fixed guidance lines and fences the sanitized note as untrusted data. The text goes to the research prompt, the grounded outline prompt and, through the plan's stored `regeneration_reasons` and `regeneration_note`, the lesson prompts. The verifier and repair passes do not see it.
+- **Stages.** Paid tiers rerun research, saving a new `plan_research` row. Free reuses the plan's latest brief. The outline is followed by the outline-quality steps; after a successful outline, the run saves the reasons and note on the plan, clearing them when there are none, and then settles. The steps run inline (`workers/jobs/src/jobs/regeneration-grounded.ts`) with no durable step results.
+- **Quota.** Paid tiers use the monthly meter. Free gets one grounded regeneration per plan: the app counts this plan's `plan_regeneration` jobs whose payload has `quota.providerStartedAt`, peeks at admission, and checks again under a plan row lock at provider start. Free runs skip the monthly meter.
+- **Redelivery cost.** A redelivered message (`max_retries: 3`) or a rescheduled attempt starts the stages again. Paid research and outline-quality calls run again, and a repeated research save can add another `plan_research` row. Decide whether that cost is acceptable, or move regeneration to a Workflow, before turning the flag on for paid tiers.
+
+The plan page shows **Regenerate plan** only when the flag is on for the viewer's tier, and shows **Regenerating…** while a `plan_regeneration` job for the plan is pending or processing.
+
 ### Module lessons
 
 Regeneration finalization starts lesson generation for the first two modules. On the Worker, the injected starter (`createWorkflowModuleLessonStarter`) runs the app's flag check (`JOB_MODULE_LESSONS_ENABLED`), preflight, and provisional claim, then creates the module lessons Workflow instance directly. With the lessons switch off it starts nothing and the modules stay `not_generated`.

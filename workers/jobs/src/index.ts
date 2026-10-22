@@ -19,6 +19,7 @@ import {
   handleRegenerationBatch,
 } from './jobs/regeneration-consumer';
 import { handleRegenerationEnqueue } from './jobs/regeneration-enqueue';
+import { createGroundedRegenerationStages } from './jobs/regeneration-grounded';
 import { runRegenerationSweep } from './jobs/regeneration-sweep';
 import {
   RETENTION_CLEANUP_CRON,
@@ -211,6 +212,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
           isEnabled: () => isJobEnabled(workerEnv, 'MODULE_LESSONS'),
           logger,
         }),
+        grounded: createGroundedRegenerationStages({ env: workerEnv, logger }),
       },
     );
   },

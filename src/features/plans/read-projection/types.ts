@@ -96,6 +96,17 @@ export type ModuleDetailTask = {
   lessonContent: LessonContent | null;
   lessonContentUpdatedAt: Date | null;
   resources: ModuleDetailResource[];
+  /** Research sources the lesson cites; empty unless grounded sources are shown. */
+  sources: LessonSource[];
+};
+
+/** A research source cited by a lesson, resolved from its citation key. */
+export type LessonSource = {
+  citationKey: string;
+  title: string;
+  publisher: string | null;
+  url: string;
+  retrievedAt: Date;
 };
 
 export type ModuleLessonGenerationStatus =

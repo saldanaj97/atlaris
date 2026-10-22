@@ -442,6 +442,20 @@
       "when": 1792533446000,
       "tag": "20261020215726_add_plan_research_and_generation_quality_issues",
       "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1792593102000,
+      "tag": "20261021143142_add_user_preferences_grounded_model_slots",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792620780000,
+      "tag": "20261021221300_add_plan_ai_budget_tracking",
+      "breakpoints": true
     }
   ]
 }

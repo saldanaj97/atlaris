@@ -3,13 +3,33 @@ import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
-import { STARTER_OUTLINE_REGENERATION_MODEL_IDS } from '@/features/ai/model-operation-policy';
+import {
+  PRO_GROUNDED_REVIEW_CATALOG,
+  PRO_GROUNDED_WRITER_CATALOG,
+  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
+} from '@/features/ai/model-operation-policy';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { eq } from 'drizzle-orm';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/features/ai/grounded-generation-flag', () => ({
+  isGroundedEnabled: vi.fn(async () => false),
+}));
+
+const { isGroundedEnabled } =
+  await import('@/features/ai/grounded-generation-flag');
+const mockIsGroundedEnabled = vi.mocked(isGroundedEnabled);
+
+vi.mock('@/lib/auth/server', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/auth/server')>()),
+  hasClerkPlanFeature: vi.fn(async () => false),
+}));
+
+const { hasClerkPlanFeature } = await import('@/lib/auth/server');
+const mockHasClerkPlanFeature = vi.mocked(hasClerkPlanFeature);
 
 assertLocalIntegrationDatabaseUrl();
 
@@ -35,8 +55,8 @@ const THIRD_STARTER_MODEL_ID =
 const PRO_MODEL_ID = getPersistableModelsForTier('pro', PLAN_OPERATION).find(
   ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
-const PRO_REGEN_MODEL_ID = 'google/gemini-3.1-pro-preview';
-const PRO_LESSON_MODEL_ID = 'google/gemini-3-flash-preview';
+const PRO_REGEN_MODEL_ID = 'anthropic/claude-sonnet-5.5';
+const PRO_LESSON_MODEL_ID = 'anthropic/claude-haiku-5.5';
 const FREE_EFFECTIVE_MODEL = getDefaultModelForTier('free', PLAN_OPERATION);
 const STARTER_EFFECTIVE_MODEL = getDefaultModelForTier(
   'starter',
@@ -774,5 +794,154 @@ describe('PATCH /api/v1/user/preferences — Pro slots', () => {
     expect(clearedGet.preferredRegenerationAiModel).toBe(PRO_REGEN_MODEL_ID);
     expect(clearedGet.preferredLessonAiModel).toBeNull();
     expect(clearedGet.effectivePreferredLessonAiModel).toBe(PRO_LESSON_DEFAULT);
+  });
+});
+
+describe('PATCH /api/v1/user/preferences grounded picks', () => {
+  const testAuthUserId = `preferences-grounded-user-${Date.now()}`;
+
+  function patch(body: Record<string, unknown>) {
+    return PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      }),
+    );
+  }
+
+  async function readGroundedRow() {
+    const userRow = await db.query.users.findFirst({
+      where: (fields, operators) =>
+        operators.eq(fields.authUserId, testAuthUserId),
+    });
+    const [row] = await db
+      .select({
+        preferredWriterAiModel: userPreferences.preferredWriterAiModel,
+        preferredVerifierAiModel: userPreferences.preferredVerifierAiModel,
+        preferredAdvisorAiModel: userPreferences.preferredAdvisorAiModel,
+      })
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, userRow!.id));
+    return row;
+  }
+
+  beforeEach(async () => {
+    await ensureUser({
+      authUserId: testAuthUserId,
+      email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'pro',
+    });
+    mockIsGroundedEnabled.mockResolvedValue(true);
+    mockHasClerkPlanFeature.mockResolvedValue(true);
+    setTestUser(testAuthUserId);
+  });
+
+  afterAll(() => {
+    mockIsGroundedEnabled.mockResolvedValue(false);
+    mockHasClerkPlanFeature.mockResolvedValue(false);
+    clearTestUser();
+  });
+
+  it('saves Pro writer, verifier and advisor picks from the catalogs', async () => {
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[2],
+      preferredVerifierAiModel: PRO_GROUNDED_REVIEW_CATALOG[1],
+      preferredAdvisorAiModel: PRO_GROUNDED_REVIEW_CATALOG[0],
+    });
+
+    expect(response.status).toBe(200);
+    const data = expectJsonObject(await response.json());
+    expect(data.preferredWriterAiModel).toBe(PRO_GROUNDED_WRITER_CATALOG[2]);
+    expect(await readGroundedRow()).toEqual({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[2],
+      preferredVerifierAiModel: PRO_GROUNDED_REVIEW_CATALOG[1],
+      preferredAdvisorAiModel: PRO_GROUNDED_REVIEW_CATALOG[0],
+    });
+    expect(mockIsGroundedEnabled).toHaveBeenCalledWith('pro');
+    expect(mockHasClerkPlanFeature).toHaveBeenCalledWith(
+      testAuthUserId,
+      'grounded_model_picks',
+    );
+  });
+
+  it('rejects a Pro pick without the grounded_model_picks feature, without writing', async () => {
+    mockHasClerkPlanFeature.mockResolvedValue(false);
+    const before = await readGroundedRow();
+
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[0],
+    });
+
+    expect(response.status).toBe(403);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('GROUNDED_MODEL_PICKS_NOT_INCLUDED');
+    expect(await readGroundedRow()).toEqual(before);
+  });
+
+  it('fails the save, without writing, when the Clerk feature check is unavailable', async () => {
+    mockHasClerkPlanFeature.mockRejectedValue(new Error('clerk down'));
+    const before = await readGroundedRow();
+
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[0],
+    });
+
+    expect(response.status).toBe(500);
+    expect(await readGroundedRow()).toEqual(before);
+  });
+
+  it('rejects an off-catalog pick without writing', async () => {
+    const before = await readGroundedRow();
+
+    const response = await patch({
+      preferredVerifierAiModel: 'openai/gpt-6-luna',
+    });
+
+    expect(response.status).toBe(400);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('MODEL_INVALID');
+    expect(await readGroundedRow()).toEqual(before);
+  });
+
+  it.each(['starter', 'free'] as const)(
+    'rejects a %s pick even when it is in the catalog',
+    async (tier) => {
+      await db
+        .update(users)
+        .set({ subscriptionTier: tier })
+        .where(eq(users.authUserId, testAuthUserId));
+
+      const response = await patch({
+        preferredAdvisorAiModel: PRO_GROUNDED_REVIEW_CATALOG[0],
+      });
+
+      expect(response.status).toBe(403);
+      const data = expectJsonObject(await response.json());
+      expect(data.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
+    },
+  );
+
+  it('rejects picks while grounded generation is off for the tier', async () => {
+    mockIsGroundedEnabled.mockResolvedValue(false);
+
+    const response = await patch({
+      preferredWriterAiModel: PRO_GROUNDED_WRITER_CATALOG[0],
+    });
+
+    expect(response.status).toBe(403);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('GROUNDED_GENERATION_DISABLED');
+  });
+
+  it('does not consult the flag or the Clerk feature for legacy slots', async () => {
+    mockIsGroundedEnabled.mockClear();
+    mockHasClerkPlanFeature.mockClear();
+
+    const response = await patch({ preferredLessonAiModel: null });
+
+    expect(response.status).toBe(200);
+    expect(mockIsGroundedEnabled).not.toHaveBeenCalled();
+    expect(mockHasClerkPlanFeature).not.toHaveBeenCalled();
   });
 });

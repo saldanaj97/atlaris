@@ -5,7 +5,10 @@ import type {
 } from './service';
 import type { GeneratedModule } from './types';
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
-import type { GenerationInput } from '@/features/ai/types/provider.types';
+import type {
+  AiPlanGenerationProvider,
+  GenerationInput,
+} from '@/features/ai/types/provider.types';
 import type { DbClient } from '@/lib/db/types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
@@ -117,9 +120,15 @@ export async function validateReservation(
   return undefined;
 }
 
+type PlanLifecycleGenerationOptions = {
+  /** Replaces the tier's resolved provider (the grounded outline writer). */
+  provider?: AiPlanGenerationProvider;
+};
+
 async function runGeneration(
   dbClient: DbClient,
   params: GenerationRunParams,
+  options: PlanLifecycleGenerationOptions,
 ): Promise<GenerationRunResult> {
   const finalizedReservation = await validateReservation(dbClient, params);
   if (finalizedReservation) {
@@ -127,11 +136,13 @@ async function runGeneration(
   }
 
   const generationPurpose = parseGenerationPurpose(params.generationPurpose);
-  const { provider } = resolveModelForTier(
-    params.tier,
-    params.modelOverride ?? undefined,
-    modelOperationForGenerationPurpose(generationPurpose),
-  );
+  const provider =
+    options.provider ??
+    resolveModelForTier(
+      params.tier,
+      params.modelOverride ?? undefined,
+      modelOperationForGenerationPurpose(generationPurpose),
+    ).provider;
 
   const generationInput: GenerationInput = {
     topic: params.input.topic,
@@ -216,8 +227,9 @@ async function runGeneration(
 
 export function createPlanLifecycleGeneration(
   dbClient: DbClient,
+  options: PlanLifecycleGenerationOptions = {},
 ): PlanLifecycleGeneration {
   return {
-    runGeneration: (params) => runGeneration(dbClient, params),
+    runGeneration: (params) => runGeneration(dbClient, params, options),
   };
 }

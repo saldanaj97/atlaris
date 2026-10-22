@@ -1,3 +1,4 @@
+import type { SavedGroundedModelPicks } from '@/features/ai/model-preferences';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
@@ -18,6 +19,7 @@ import {
   type UnhandledGenerationErrorHandler,
   classifyUnhandledGenerationError,
 } from './stream-cleanup-policy';
+import { resolveGroundedWriterModelId } from '@/features/ai/model-preferences';
 import { resolveUserTier } from '@/features/billing/tier';
 import { logger } from '@/lib/logging/logger';
 
@@ -44,6 +46,8 @@ export interface StartCreateArgs {
   internalUserId: string;
   body: CreateLearningPlanInput;
   savedPreferredAiModel: string | null;
+  /** Saved grounded picks; only the Pro writer pick is read (JCS-169). */
+  savedGroundedPicks?: SavedGroundedModelPicks;
   requestId?: string;
 }
 
@@ -59,6 +63,8 @@ export interface StartRetryArgs {
   planId: string;
   plan: RetryPlanGenerationPlanSnapshot;
   savedPreferredAiModel: string | null;
+  /** Saved grounded picks; only the Pro writer pick is read (JCS-169). */
+  savedGroundedPicks?: SavedGroundedModelPicks;
   tierDb: DbClient;
   requestId?: string;
 }
@@ -93,8 +99,14 @@ async function prepareCreate(
   command: CreateSessionCommand,
   lifecycleService: PlanLifecycleService,
 ): Promise<PreparedSessionPlan> {
-  const { req, authUserId, internalUserId, body, savedPreferredAiModel } =
-    command;
+  const {
+    req,
+    authUserId,
+    internalUserId,
+    body,
+    savedPreferredAiModel,
+    savedGroundedPicks,
+  } = command;
 
   const createResult = await lifecycleService.createPlan({
     userId: internalUserId,
@@ -110,13 +122,14 @@ async function prepareCreate(
     throwCreatePlanResultError(createResult);
   }
 
-  const modelOverride = resolveCreateStreamModel({
+  const { modelOverride, groundedWriterModelId } = resolveCreateStreamModel({
     req,
     authUserId,
     internalUserId,
     planId: createResult.planId,
     tier: createResult.tier,
     savedPreferredAiModel,
+    savedGroundedPicks,
   });
 
   const generationInput = buildCreateGenerationInput({
@@ -124,6 +137,7 @@ async function prepareCreate(
     createResult,
     userId: internalUserId,
     modelOverride,
+    groundedWriterModelId,
   });
 
   return {
@@ -154,6 +168,7 @@ async function prepareRetry(
     planId,
     plan,
     savedPreferredAiModel,
+    savedGroundedPicks,
     tierDb,
   } = command;
 
@@ -164,13 +179,14 @@ async function prepareRetry(
       'Ignoring persisted plan session date with invalid ISO calendar format',
     );
   });
-  const modelOverride = resolveCreateStreamModel({
+  const { modelOverride, groundedWriterModelId } = resolveCreateStreamModel({
     req,
     authUserId,
     internalUserId,
     planId,
     tier,
     savedPreferredAiModel,
+    savedGroundedPicks,
   });
 
   return {
@@ -183,6 +199,7 @@ async function prepareRetry(
       allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
       input: retryInput,
       modelOverride,
+      groundedWriterModelId,
     },
     fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
@@ -206,6 +223,7 @@ function resolveCreateStreamModel({
   planId,
   tier,
   savedPreferredAiModel,
+  savedGroundedPicks,
 }: {
   req: Request;
   authUserId: string;
@@ -213,7 +231,8 @@ function resolveCreateStreamModel({
   planId: string;
   tier: SubscriptionTier;
   savedPreferredAiModel: string | null;
-}): string | undefined {
+  savedGroundedPicks: SavedGroundedModelPicks | undefined;
+}): { modelOverride?: string; groundedWriterModelId: string | null } {
   const { modelOverride, resolutionSource, suppliedModel } =
     resolveStreamModelResolution({
       searchParams: new URL(req.url).searchParams,
@@ -242,5 +261,19 @@ function resolveCreateStreamModel({
 
   logger[ignoredSuppliedModel ? 'warn' : 'info'](meta, message);
 
-  return modelOverride;
+  // Grounded outlines take a valid `?model=` override, else the Pro writer
+  // pick; the legacy saved outline model never applies to them (JCS-169).
+  const groundedWriterModelId = resolveGroundedWriterModelId(
+    tier,
+    resolutionSource === 'query_override' ? modelOverride : undefined,
+    savedGroundedPicks ?? NO_GROUNDED_PICKS,
+  );
+
+  return { modelOverride, groundedWriterModelId };
 }
+
+const NO_GROUNDED_PICKS: SavedGroundedModelPicks = {
+  preferredWriterAiModel: null,
+  preferredVerifierAiModel: null,
+  preferredAdvisorAiModel: null,
+};

@@ -26,6 +26,8 @@ export interface PlanRegenerationJobData {
     deadlineDate: string | null;
     model: string;
   }>;
+  reasons?: string[];
+  note?: string;
   quota?: {
     providerStartedAt: string;
   };

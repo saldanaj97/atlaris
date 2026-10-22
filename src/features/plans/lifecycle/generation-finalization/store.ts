@@ -107,10 +107,10 @@ export async function commitPlanGenerationSuccess(
 
     await markPlanGenerationSuccessInTx(tx, input.planId, finishedAt);
 
-    await recordUsageInTx(
-      tx,
-      canonicalUsageToRecordParams(input.usage, input.userId),
-    );
+    await recordUsageInTx(tx, {
+      ...canonicalUsageToRecordParams(input.usage, input.userId),
+      planId: input.planId,
+    });
     if (isInitialSuccess) {
       await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
       await tx
@@ -186,10 +186,10 @@ export async function commitPlanGenerationFailure(
       await reapplyJwtClaimsInTransaction(tx, rlsCtx);
       await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
       if (!input.retryable && input.usage) {
-        await recordUsageInTx(
-          tx,
-          canonicalUsageToRecordParams(input.usage, input.userId),
-        );
+        await recordUsageInTx(tx, {
+          ...canonicalUsageToRecordParams(input.usage, input.userId),
+          planId: input.planId,
+        });
         if (input.generationPurpose === 'initial') {
           await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
         }
@@ -226,10 +226,10 @@ export async function commitPlanGenerationFailure(
     await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
 
     if (!input.retryable && input.usage) {
-      await recordUsageInTx(
-        tx,
-        canonicalUsageToRecordParams(input.usage, input.userId),
-      );
+      await recordUsageInTx(tx, {
+        ...canonicalUsageToRecordParams(input.usage, input.userId),
+        planId: input.planId,
+      });
       if (input.generationPurpose === 'initial') {
         await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
       }

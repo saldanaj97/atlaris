@@ -64,6 +64,7 @@ overrides:
   proxy-addr: ^2.0.8
   source-map-js: ^1.2.2
   webpack: ^5.104.1
+  dompurify: ^3.4.17
 allowBuilds:
   "@openrouter/sdk": true
   "@sentry/cli": true

@@ -27,6 +27,7 @@ jobs:
   validate-dispatch:
     name: Validate dispatch branch
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Require develop
         env:

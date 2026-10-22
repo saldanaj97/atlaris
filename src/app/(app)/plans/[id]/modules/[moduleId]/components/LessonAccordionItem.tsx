@@ -7,6 +7,7 @@ import { getLessonCardClassName } from './lessonAccordionStyles';
 import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
+import { LessonSourceList } from './LessonSourceList';
 import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import {
@@ -61,6 +62,7 @@ function LessonContent({
     <>
       <LessonResourceList resources={resources} />
       <LessonBodyPanel lesson={lesson} />
+      <LessonSourceList sources={lesson.sources} />
 
       <div className='mt-6 flex justify-end'>
         <TaskCompletionButton

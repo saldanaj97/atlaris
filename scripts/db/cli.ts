@@ -30,6 +30,7 @@ function usage(): never {
       'Usage:',
       '  pnpm db start [--runtime <native|docker>]',
       '  pnpm db stop',
+      '  pnpm db prune [--yes]',
       '  pnpm db reset',
       '  pnpm db seed',
       '  pnpm db migrate',
@@ -136,6 +137,16 @@ export function parseDbArgs(argv: readonly string[]): DbCommand {
     case 'stop':
       requireNoArgs(options);
       return pnpmCommand(['exec', 'supabase', 'stop']);
+    case 'prune':
+      if (options.length > 1 || (options[0] && options[0] !== '--yes')) {
+        usage();
+      }
+      return pnpmCommand([
+        'exec',
+        'tsx',
+        'scripts/db/prune-stacks.ts',
+        ...options,
+      ]);
     case 'reset':
       requireNoArgs(options);
       return {

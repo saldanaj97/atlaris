@@ -105,7 +105,7 @@ describe('AI usage logging', () => {
       inputTokens: 10,
       outputTokens: 20,
       totalTokens: 30,
-      model: 'openai/gpt-4o',
+      model: 'openai/gpt-6-sol',
       provider: 'openrouter',
       estimatedCostCents: 3,
       providerCostMicrousd: 1_234_567,
@@ -125,11 +125,11 @@ describe('AI usage logging', () => {
     expect(row?.modelPricingSnapshot).toEqual({
       version: 1,
       source: 'local_catalog',
-      requestedModelId: 'openai/gpt-4o',
-      pricedModelId: 'openai/gpt-4o',
+      requestedModelId: 'openai/gpt-6-sol',
+      pricedModelId: 'openai/gpt-6-sol',
       inputTokens: 10,
       outputTokens: 20,
-      inputCostUsdPerMillion: 2.5,
+      inputCostUsdPerMillion: 2,
       outputCostUsdPerMillion: 10,
     });
   });
