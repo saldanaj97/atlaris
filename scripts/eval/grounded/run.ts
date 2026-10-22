@@ -199,8 +199,14 @@ class ClerkSession {
     return this.token.jwt;
   }
 
+  // Best-effort: the session expires on its own, and a failed revoke must not
+  // discard a run or cleanup that already finished.
   async revoke(): Promise<void> {
-    await clerk(`/sessions/${this.sessionId}/revoke`, { method: 'POST' });
+    try {
+      await clerk(`/sessions/${this.sessionId}/revoke`, { method: 'POST' });
+    } catch (error) {
+      log(`Could not revoke session ${this.sessionId}: ${errorMessage(error)}`);
+    }
   }
 }
 
@@ -790,22 +796,33 @@ async function classify(manifestPath: string): Promise<void> {
         modules.push(module);
         continue;
       }
-      const { stdout } = await execFileAsync(
-        resolve(JOBS_WORKER_DIR, 'node_modules/.bin/wrangler'),
-        [
-          'workflows',
-          'instances',
-          'describe',
-          STAGING_LESSONS_WORKFLOW,
-          module.workflowRunId,
-          '--json',
-        ],
-        { cwd: JOBS_WORKER_DIR, maxBuffer: 64 * 1024 * 1024 },
-      );
-      // Wrangler prints a banner before the JSON.
-      const instance = JSON.parse(stdout.slice(stdout.indexOf('{'))) as {
-        steps?: WorkflowStep[];
-      };
+      let instance: { steps?: WorkflowStep[] };
+      try {
+        const { stdout } = await execFileAsync(
+          resolve(JOBS_WORKER_DIR, 'node_modules/.bin/wrangler'),
+          [
+            'workflows',
+            'instances',
+            'describe',
+            STAGING_LESSONS_WORKFLOW,
+            module.workflowRunId,
+            '--json',
+          ],
+          { cwd: JOBS_WORKER_DIR, maxBuffer: 64 * 1024 * 1024 },
+        );
+        // Wrangler prints a banner before the JSON.
+        instance = JSON.parse(stdout.slice(stdout.indexOf('{'))) as {
+          steps?: WorkflowStep[];
+        };
+      } catch (error) {
+        // Leave this module unclassified so a rerun retries it.
+        log(
+          `${plan.topicId}: module "${module.title}": could not read workflow ${module.workflowRunId}: ${errorMessage(error)}`,
+        );
+        process.exitCode = 1;
+        modules.push(module);
+        continue;
+      }
       const result = classifyWorkflowSteps(
         instance.steps ?? [],
         module.status === 'failed',
@@ -818,8 +835,12 @@ async function classify(manifestPath: string): Promise<void> {
       modules.push({ ...module, ...result });
     }
     plans.push({ ...plan, modules });
+    // Save after each plan so an interrupted run keeps what it classified.
+    writeManifest(manifestPath, {
+      ...manifest,
+      plans: [...plans, ...manifest.plans.slice(plans.length)],
+    });
   }
-  writeManifest(manifestPath, { ...manifest, plans });
 }
 
 type CleanupEntry = {
