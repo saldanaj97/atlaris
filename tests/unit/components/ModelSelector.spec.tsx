@@ -34,6 +34,13 @@ const PRO_MODELS: AvailableModel[] = [
     tier: 'pro',
   }),
 ];
+const PRO_ONLY_MODELS: AvailableModel[] = [
+  createTestModel({
+    id: 'test-pro-only-model-1',
+    name: 'Test Pro Only Model 1',
+    tier: 'pro',
+  }),
+];
 const MODELS_BY_TIER: Record<SubscriptionTier, AvailableModel[]> = {
   free: FREE_MODELS,
   starter: FREE_MODELS,
@@ -126,6 +133,68 @@ describe('ModelSelector', () => {
     expect(
       screen.queryByText(/unlock premium models/i),
     ).not.toBeInTheDocument();
+  });
+
+  it('renders Pro-only models disabled with a Pro plan badge and keeps them unselectable', async () => {
+    const user = userEvent.setup();
+    render(
+      <ModelSelector
+        currentModel={null}
+        userTier='starter'
+        availableModels={MODELS_BY_TIER.starter}
+        proOnlyModels={PRO_ONLY_MODELS}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', {
+      name: /preferred ai model/i,
+    });
+    expect(trigger).toHaveAccessibleDescription(
+      /models marked pro plan are available when you upgrade to pro/i,
+    );
+
+    await user.click(trigger);
+    const proOnlyOption = screen.getByRole('option', {
+      name: /test pro only model 1/i,
+    });
+    expect(proOnlyOption).toHaveAttribute('aria-disabled', 'true');
+    expect(proOnlyOption).toHaveTextContent(/pro plan/i);
+    expect(proOnlyOption).not.toHaveTextContent(/\bPRO\b/);
+    expect(
+      screen.getByRole('option', { name: /test free model 1/i }),
+    ).not.toHaveAttribute('aria-disabled');
+
+    await user.click(proOnlyOption);
+    await user.keyboard('{Escape}');
+
+    expect(trigger).toHaveTextContent(/select a model/i);
+    expect(
+      screen.getByRole('button', { name: /save preferences/i }),
+    ).toBeDisabled();
+  });
+
+  it('shows no Pro plan rows or hint without Pro-only models', async () => {
+    const user = userEvent.setup();
+    render(
+      <ModelSelector
+        currentModel={null}
+        userTier='pro'
+        availableModels={MODELS_BY_TIER.pro}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', {
+      name: /preferred ai model/i,
+    });
+    expect(trigger).not.toHaveAttribute('aria-describedby');
+
+    await user.click(trigger);
+    expect(screen.queryByText(/pro plan/i)).not.toBeInTheDocument();
+    for (const option of screen.getAllByRole('option')) {
+      expect(option).not.toHaveAttribute('aria-disabled');
+    }
   });
 
   it('save button is disabled when no changes made', () => {
