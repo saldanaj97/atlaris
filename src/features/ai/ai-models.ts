@@ -16,6 +16,7 @@ import {
 import {
   getGroundedOperationPolicy,
   getModelOperationPolicy,
+  PICKER_HIDDEN_MODEL_IDS_BY_TIER,
 } from '@/features/ai/model-operation-policy';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
@@ -54,9 +55,15 @@ async function resolveTierModels(
       freeRouterFallback: false,
     };
   }
+  const hiddenModelIds: readonly string[] =
+    PICKER_HIDDEN_MODEL_IDS_BY_TIER[tier];
   const models = [
     ...(policy.usesFreeRouter ? [FREE_ROUTER_MODEL] : []),
-    ...(policy.usesTierCatalog ? await getTierModels(tier) : []),
+    ...(policy.usesTierCatalog
+      ? (await getTierModels(tier)).filter(
+          (model) => !hiddenModelIds.includes(model.id),
+        )
+      : []),
   ];
   const isListed = (modelId: string) =>
     models.some((model) => model.id === modelId);

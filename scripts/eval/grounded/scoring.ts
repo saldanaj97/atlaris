@@ -80,10 +80,11 @@ export type ModuleRun = {
 export type FailureCause = 'timeout' | 'parse' | 'other';
 
 /**
- * The per-call AI timeout both arms run with (`AI_TIMEOUT_BASE_MS` default,
- * src/lib/config/env/ai.ts). A call at this length was cut off (JCS-172).
+ * The per-call lesson timeout both arms run with (`AI_LESSON_TIMEOUT_MS`
+ * default, src/lib/config/env/ai.ts). A call at this length was cut off
+ * (JCS-172).
  */
-export const AI_CALL_TIMEOUT_MS = 120_000;
+export const AI_CALL_TIMEOUT_MS = 300_000;
 
 /** One step of a Cloudflare Workflow instance, as `wrangler ... describe --json` prints it. */
 export type WorkflowStep = {

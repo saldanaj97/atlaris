@@ -66,6 +66,11 @@ interface AiTimeoutEnv {
   readonly baseMs: number;
   readonly extensionMs: number;
   readonly extensionThresholdMs: number;
+  /**
+   * Lesson-writing calls (the module batch and the grounded writer) get their
+   * own limit: one call writes a module or a long lesson, so 120 s is too short.
+   */
+  readonly lessonMs: number;
 }
 
 /**
@@ -215,6 +220,12 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       }
       const base = getAiTimeoutBaseMs(access);
       return Math.max(0, base - 5_000);
+    },
+    get lessonMs() {
+      return parseEnvNumber(
+        access.getServerOptional('AI_LESSON_TIMEOUT_MS'),
+        300_000,
+      );
     },
   };
 

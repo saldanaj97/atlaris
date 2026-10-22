@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { ROUTES } from '@/features/navigation/routes';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
 
@@ -28,6 +28,8 @@ type ModelSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
+  /** Models shown disabled with a Pro plan badge; never selectable. */
+  proOnlyModels?: AvailableModel[];
   onSave: (modelId: string | null) => Promise<void>;
   label?: string;
   showUpgradeCta?: boolean;
@@ -35,6 +37,7 @@ type ModelSelectorProps = {
 
 const ModelDropdown = ({
   availableModels,
+  proOnlyModels = [],
   userTier,
   currentModel,
   onSave,
@@ -43,6 +46,8 @@ const ModelDropdown = ({
 }: ModelSelectorProps) => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
+  const proOnlyHintId = `${modelSelectId}-pro-only-hint`;
+  const hasProOnlyModels = proOnlyModels.length > 0;
   const {
     clearSelection,
     effectiveBaseline,
@@ -78,7 +83,11 @@ const ModelDropdown = ({
           value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
           onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
         >
-          <SelectTrigger id={triggerId} className='w-full'>
+          <SelectTrigger
+            id={triggerId}
+            className='w-full'
+            aria-describedby={hasProOnlyModels ? proOnlyHintId : undefined}
+          >
             <SelectValue placeholder='Select a model' />
           </SelectTrigger>
           <SelectContent>
@@ -97,8 +106,24 @@ const ModelDropdown = ({
                 </div>
               </SelectItem>
             ))}
+            {proOnlyModels.map((model) => (
+              <SelectItem key={model.id} value={model.id} disabled>
+                <div className='flex items-center gap-2'>
+                  <span>{model.name}</span>
+                  <Badge variant='outline'>
+                    <Lock aria-hidden='true' className='size-3' />
+                    Pro plan
+                  </Badge>
+                </div>
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
+        {hasProOnlyModels && (
+          <p id={proOnlyHintId} className='type-body text-muted-foreground'>
+            Models marked Pro plan are available when you upgrade to Pro.
+          </p>
+        )}
       </div>
 
       {selectedModelData && (
@@ -221,6 +246,7 @@ export function ModelSelector({
   userTier,
   currentModel = null,
   availableModels,
+  proOnlyModels,
   onSave,
   label,
   showUpgradeCta,
@@ -243,6 +269,7 @@ export function ModelSelector({
   return (
     <ModelDropdown
       availableModels={availableModels}
+      proOnlyModels={proOnlyModels}
       userTier={userTier}
       currentModel={currentModel}
       onSave={onSave}

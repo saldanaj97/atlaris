@@ -263,6 +263,36 @@ describe('runModuleLessonGenerationWork', () => {
     });
   });
 
+  it('cuts the provider call off at the lesson timeout', async () => {
+    const taskId = createId('task');
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockReturnValue(parsedBatch(taskId));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: workLoad(taskId),
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        provider: { generateModuleLessonBatch: vi.fn() },
+      },
+    );
+
+    expect(mocks.setupAbortAndTimeout).toHaveBeenCalledWith(
+      expect.objectContaining({ baseMs: 300_000 }),
+      undefined,
+    );
+    expect(mocks.invokeProvider).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ timeoutMs: 300_000 }),
+    );
+  });
+
   it.each([
     {
       name: 'provider',

@@ -16,6 +16,7 @@ import {
   getGroundedPickCatalog,
   getGroundedPickDefault,
   getPersistableModelsForTier,
+  getProOnlyModelsForTier,
   resolveGroundedModelPick,
   resolveGroundedWriterModelId,
   validateGroundedPick,
@@ -69,9 +70,10 @@ describe('model-preferences', () => {
       }
     });
 
-    it('Starter outline/regen persistable lists are the Starter guardrail models', async () => {
+    it('Starter outline/regen persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
       const expected = MODEL_CATALOG_FIXTURE.starter
         .map((model) => model.modelId)
+        .filter((id) => id !== 'openai/gpt-6.1-sol')
         .sort();
       for (const operation of ['initial_outline', 'regeneration'] as const) {
         expect(
@@ -111,6 +113,55 @@ describe('model-preferences', () => {
           );
         }
       }
+    });
+  });
+
+  describe('getProOnlyModelsForTier', () => {
+    it('Starter outline/regen lists hidden Starter models plus Pro guardrail models missing from Starter', async () => {
+      const starterIds = MODEL_CATALOG_FIXTURE.starter.map(
+        (model) => model.modelId,
+      );
+      const expected = [
+        'openai/gpt-6.1-sol',
+        ...MODEL_CATALOG_FIXTURE.pro
+          .map((model) => model.modelId)
+          .filter((id) => !starterIds.includes(id)),
+      ].sort();
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        const proOnly = ids(
+          await getProOnlyModelsForTier('starter', operation),
+        );
+        expect(proOnly).toEqual(expected);
+        const selectable = ids(
+          await getPersistableModelsForTier('starter', operation),
+        );
+        expect(proOnly.filter((id) => selectable.includes(id))).toEqual([]);
+      }
+    });
+
+    it('leaves out runtime-only routers on the Pro guardrail', async () => {
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'pro',
+        [
+          ...MODEL_CATALOG_FIXTURE.pro,
+          { ...MODEL_CATALOG_FIXTURE.pro[0], modelId: AI_DEFAULT_MODEL },
+        ],
+        new Date(),
+      );
+
+      const proOnly = ids(
+        await getProOnlyModelsForTier('starter', 'initial_outline'),
+      );
+      expect(proOnly).not.toContain(AI_DEFAULT_MODEL);
+      expect(proOnly).toContain(PRO_ONLY_MODEL_ID);
+    });
+
+    it('is empty for Free, Pro and Starter lessons', async () => {
+      for (const operation of MODEL_OPERATIONS) {
+        expect(await getProOnlyModelsForTier('free', operation)).toEqual([]);
+        expect(await getProOnlyModelsForTier('pro', operation)).toEqual([]);
+      }
+      expect(await getProOnlyModelsForTier('starter', 'lesson')).toEqual([]);
     });
   });
 
@@ -279,6 +330,21 @@ describe('model-preferences', () => {
         ).toBeNull();
       },
     );
+
+    it('treats a Starter saved GPT-6.1 Sol pick like one outside the guardrail', async () => {
+      const sol = 'openai/gpt-6.1-sol';
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        expect(
+          await resolveEffectivePreference('starter', sol, operation),
+        ).toBe('openai/gpt-6-luna');
+        expect(
+          await resolveSavedPreferenceForSettings('starter', sol, operation),
+        ).toBeNull();
+      }
+      expect(await resolveEffectivePreference('pro', sol, 'regeneration')).toBe(
+        sol,
+      );
+    });
 
     it('uses the Pro lesson default when the lesson slot is empty', async () => {
       expect(await resolveEffectivePreference('pro', null, 'lesson')).toBe(
