@@ -11,19 +11,22 @@ import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.type
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
-  getDefaultModelForTier,
   getModelsForTier,
+  resolveDefaultModelForTier,
 } from '@/features/ai/ai-models';
 import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import { type Logger, logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
 
 export type ModelResolution = {
   modelId: string;
   provider: AiPlanGenerationProvider;
   fallback: boolean;
   fallbackReason?: 'invalid_model' | 'tier_denied' | 'not_specified';
+  /** The operation default ran on the free router because the tier's guardrail left no paid default. */
+  freeRouterFallback?: true;
 };
 
 type ModelValidationResult =
@@ -115,13 +118,14 @@ export async function resolveModelForTier(
   providerGetter: ProviderGetter = getGenerationProviderWithModel,
   requestLogger: ModelResolverLogger = logger,
 ): Promise<ModelResolution> {
-  const defaultModelForTier = await getDefaultModelForTier(userTier, operation);
-
-  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
-  const modelSpecified = requestedModel !== undefined;
-
-  if (!modelSpecified) {
-    return {
+  const tierDefault = await resolveDefaultModelForTier(userTier, operation);
+  const defaultModelForTier = tierDefault.modelId;
+  // Alert once per generation that runs on the free-router fallback, not on
+  // every model lookup (settings, validation).
+  const defaultResolution = (
+    fallbackReason: NonNullable<ModelResolution['fallbackReason']>,
+  ): ModelResolution => {
+    const resolution: ModelResolution = {
       modelId: defaultModelForTier,
       provider: getProviderSafe(
         defaultModelForTier,
@@ -132,8 +136,31 @@ export async function resolveModelForTier(
         requestLogger,
       ),
       fallback: true,
-      fallbackReason: 'not_specified',
+      fallbackReason,
     };
+    if (!tierDefault.freeRouterFallback) {
+      return resolution;
+    }
+    Sentry.captureMessage(
+      'Generation fell back to the free router: the tier guardrail lists no paid default',
+      {
+        level: 'error',
+        fingerprint: ['model_free_router_fallback', userTier, operation],
+        tags: {
+          event: 'model_free_router_fallback',
+          tier: userTier,
+          operation,
+        },
+      },
+    );
+    return { ...resolution, freeRouterFallback: true };
+  };
+
+  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
+  const modelSpecified = requestedModel !== undefined;
+
+  if (!modelSpecified) {
+    return defaultResolution('not_specified');
   }
 
   // Explicit null or empty string → invalid_model
@@ -142,19 +169,7 @@ export async function resolveModelForTier(
       { requestedModel, userTier, operation },
       'Invalid model requested, falling back to default',
     );
-    return {
-      modelId: defaultModelForTier,
-      provider: getProviderSafe(
-        defaultModelForTier,
-        requestedModel,
-        userTier,
-        operation,
-        providerGetter,
-        requestLogger,
-      ),
-      fallback: true,
-      fallbackReason: 'invalid_model',
-    };
+    return defaultResolution('invalid_model');
   }
 
   const validation = await validateModelForTier(
@@ -168,19 +183,7 @@ export async function resolveModelForTier(
       { requestedModel, userTier, operation, reason: validation.reason },
       'Invalid or tier-denied model, falling back to default',
     );
-    return {
-      modelId: defaultModelForTier,
-      provider: getProviderSafe(
-        defaultModelForTier,
-        requestedModel,
-        userTier,
-        operation,
-        providerGetter,
-        requestLogger,
-      ),
-      fallback: true,
-      fallbackReason: validation.reason,
-    };
+    return defaultResolution(validation.reason);
   }
 
   return {

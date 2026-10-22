@@ -13,7 +13,14 @@ import {
   resolveModelForTier,
   validateModelForTier,
 } from '@/features/ai/model-resolver';
-import { describe, expect, it, vi } from 'vitest';
+import { logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@sentry/nextjs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
+  captureMessage: vi.fn(),
+}));
 
 const STARTER_DEFAULT = 'openai/gpt-6-luna';
 const STARTER_OVERRIDE = 'deepseek/deepseek-v4.1-flash';
@@ -413,6 +420,67 @@ describe('Model resolver', () => {
         });
       },
     );
+  });
+
+  describe('Free-router fallback', () => {
+    beforeEach(async () => {
+      // Starter's default (Luna) and its writer-route fallback (DeepSeek) left
+      // the guardrail, so the default becomes the free router.
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'starter',
+        MODEL_CATALOG_FIXTURE.starter.filter(
+          (model) =>
+            model.modelId !== STARTER_DEFAULT &&
+            model.modelId !== STARTER_OVERRIDE,
+        ),
+        new Date(),
+      );
+      vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.mocked(Sentry.captureMessage).mockClear();
+    });
+
+    it('flags the generation and alerts once', async () => {
+      const { result } = await resolveWithMockProvider(
+        'starter',
+        undefined,
+        'initial_outline',
+      );
+
+      expect(result).toMatchObject({
+        modelId: AI_DEFAULT_MODEL,
+        fallbackReason: 'not_specified',
+        freeRouterFallback: true,
+      });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          level: 'error',
+          fingerprint: [
+            'model_free_router_fallback',
+            'starter',
+            'initial_outline',
+          ],
+        }),
+      );
+    });
+
+    it('does not alert on lookups or a still-listed requested model', async () => {
+      await validateModelForTier('starter', STARTER_DEFAULT, 'initial_outline');
+      const { result } = await resolveWithMockProvider(
+        'starter',
+        'openai/gpt-6.1-sol',
+        'initial_outline',
+      );
+
+      expect(result.modelId).toBe('openai/gpt-6.1-sol');
+      expect(result.freeRouterFallback).toBeUndefined();
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
   });
 
   describe('Provider factory errors', () => {

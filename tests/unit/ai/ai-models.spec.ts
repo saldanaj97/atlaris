@@ -7,16 +7,11 @@ import {
   getDefaultModelForTier,
   getFallbackModelsForTier,
   getModelsForTier,
+  resolveDefaultModelForTier,
 } from '@/features/ai/ai-models';
 import { FREE_ROUTER_MODEL } from '@/features/ai/model-catalog/catalog';
 import { logger } from '@/lib/logging/logger';
-import * as Sentry from '@sentry/nextjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('@sentry/nextjs', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
-  captureMessage: vi.fn(),
-}));
 
 const fixtureIds = (tier: keyof typeof MODEL_CATALOG_FIXTURE) =>
   MODEL_CATALOG_FIXTURE[tier].map((model) => model.modelId);
@@ -37,7 +32,6 @@ function dropFromGuardrail(
 describe('AI Models Configuration', () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    vi.mocked(Sentry.captureMessage).mockClear();
   });
 
   describe('AI_DEFAULT_MODEL', () => {
@@ -134,7 +128,7 @@ describe('AI Models Configuration', () => {
       );
     });
 
-    it('adds the free router and alerts when every fallback left the guardrail', async () => {
+    it('adds the free router and logs an error when every fallback left the guardrail', async () => {
       await dropFromGuardrail('starter', [
         'openai/gpt-6-luna',
         'deepseek/deepseek-v4.1-flash',
@@ -155,30 +149,24 @@ describe('AI Models Configuration', () => {
         }),
         expect.any(String),
       );
-      expect(Sentry.captureMessage).toHaveBeenCalledWith(
-        expect.any(String),
-        expect.objectContaining({
-          level: 'error',
-          fingerprint: [
-            'model_default_not_in_guardrail',
-            'starter',
-            'initial_outline',
-          ],
-          tags: expect.objectContaining({
-            tier: 'starter',
-            operation: 'initial_outline',
-          }),
-        }),
-      );
+      expect(
+        await resolveDefaultModelForTier('starter', 'initial_outline'),
+      ).toEqual({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
     });
 
-    it('does not alert when a paid fallback is still listed', async () => {
+    it('does not flag a listed default or a paid fallback', async () => {
+      expect(
+        await resolveDefaultModelForTier('starter', 'initial_outline'),
+      ).toEqual({ modelId: 'openai/gpt-6-luna', freeRouterFallback: false });
+
       await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
       vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
-
-      await getModelsForTier('starter', 'initial_outline');
-
-      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+      expect(
+        await resolveDefaultModelForTier('starter', 'initial_outline'),
+      ).toEqual({
+        modelId: 'deepseek/deepseek-v4.1-flash',
+        freeRouterFallback: false,
+      });
     });
   });
 

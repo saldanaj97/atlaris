@@ -19,7 +19,6 @@ import {
 } from '@/features/ai/model-operation-policy';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
-import * as Sentry from '@sentry/nextjs';
 
 export { AI_DEFAULT_MODEL };
 
@@ -27,6 +26,8 @@ type TierModels = {
   readonly models: AvailableModel[];
   /** The operation default, its first listed fallback, or the free router. */
   readonly defaultModelId: string;
+  /** The default is the free router only because the guardrail left no paid default. */
+  readonly freeRouterFallback: boolean;
 };
 
 /**
@@ -47,7 +48,11 @@ async function resolveTierModels(
 ): Promise<TierModels> {
   const policy = getModelOperationPolicy(tier, operation);
   if (!policy.allowed) {
-    return { models: [], defaultModelId: policy.defaultModelId };
+    return {
+      models: [],
+      defaultModelId: policy.defaultModelId,
+      freeRouterFallback: false,
+    };
   }
   const models = [
     ...(policy.usesFreeRouter ? [FREE_ROUTER_MODEL] : []),
@@ -56,7 +61,11 @@ async function resolveTierModels(
   const isListed = (modelId: string) =>
     models.some((model) => model.id === modelId);
   if (isListed(policy.defaultModelId)) {
-    return { models, defaultModelId: policy.defaultModelId };
+    return {
+      models,
+      defaultModelId: policy.defaultModelId,
+      freeRouterFallback: false,
+    };
   }
 
   const fallbackModelId = getDefaultFallbackModelIds(tier, operation).find(
@@ -75,25 +84,25 @@ async function resolveTierModels(
       fields,
       'Operation default model is missing from the tier guardrail models; using its fallback',
     );
-    return { models, defaultModelId: fallbackModelId };
+    return {
+      models,
+      defaultModelId: fallbackModelId,
+      freeRouterFallback: false,
+    };
   }
   // Last resort: the code-owned free router, added to the list so the default
-  // stays among the models it is validated against. Paid users now get a free
-  // model, so alert the team as well as logging.
-  const message =
-    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router';
-  logger.error({ ...fields, fallbackModelId: AI_DEFAULT_MODEL }, message);
-  Sentry.captureMessage(message, {
-    level: 'error',
-    fingerprint: ['model_default_not_in_guardrail', tier, operation],
-    tags: { event: fields.event, tier, operation },
-    extra: { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
-  });
+  // stays among the models it is validated against. `resolveModelForTier`
+  // alerts once per generation that runs on it; lookups only log.
+  logger.error(
+    { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
+    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router',
+  );
   return {
     models: isListed(AI_DEFAULT_MODEL)
       ? models
       : [FREE_ROUTER_MODEL, ...models],
     defaultModelId: AI_DEFAULT_MODEL,
+    freeRouterFallback: true,
   };
 }
 
@@ -120,6 +129,21 @@ export async function getDefaultModelForTier(
   operation: ModelOperation,
 ): Promise<string> {
   return (await resolveTierModels(tier, operation)).defaultModelId;
+}
+
+/**
+ * {@link getDefaultModelForTier} plus whether that default is the free router
+ * only because the tier's guardrail left no paid default.
+ */
+export async function resolveDefaultModelForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<{ modelId: string; freeRouterFallback: boolean }> {
+  const { defaultModelId, freeRouterFallback } = await resolveTierModels(
+    tier,
+    operation,
+  );
+  return { modelId: defaultModelId, freeRouterFallback };
 }
 
 /**
