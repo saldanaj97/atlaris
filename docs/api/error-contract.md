@@ -140,4 +140,4 @@ If code is not explicitly provided, defaults are:
 - `src/lib/api/response.ts`
 - `src/lib/api/errors.ts`
 - `src/lib/api/error-response.ts`
-- `docs/rules/api/rate-limiting.md`
+- `docs/api/rate-limiting.md`

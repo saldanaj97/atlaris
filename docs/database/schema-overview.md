@@ -35,7 +35,7 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 | `generation_status`                      | `generating`, `pending_retry`, `ready`, `failed`                                                          |
 | `lesson_generation_status`               | `not_generated`, `generating`, `ready`, `failed` (per **module**; separate from plan `generation_status`) |
 | `job_status`                             | `pending`, `processing`, `completed`, `failed`                                                            |
-| `job_type`                               | values sourced from `src/lib/jobs/constants.ts`                                                           |
+| `job_type`                               | values sourced from `src/shared/constants/jobs.ts`                                                           |
 | `subscription_tier`                      | `free`, `starter`, `pro`                                                                                  |
 | `subscription_status`                    | `active`, `canceled`, `past_due`, `trialing`                                                              |
 | `plan_origin`                            | `ai`, `template`, `manual`                                                                                |

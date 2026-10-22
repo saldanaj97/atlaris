@@ -500,7 +500,7 @@ describe('deletePlan', () => {
 | Purpose              | Path                                                 |
 | -------------------- | ---------------------------------------------------- |
 | Attempt types        | `src/lib/db/queries/types/attempts.types.ts`         |
-| Query helper impl    | `src/lib/db/queries/helpers/attempts-persistence.ts` |
+| Query helper impl    | `src/lib/db/queries/helpers/attempts-persistence-success.ts` |
 | Unit test examples   | `tests/unit/db/*.spec.ts`                            |
 | Global DB mock setup | `tests/unit/setup.node.ts`                           |
 | Vitest config        | `vitest.config.ts`                                   |
