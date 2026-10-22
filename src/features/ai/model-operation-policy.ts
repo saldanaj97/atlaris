@@ -26,6 +26,17 @@ const PRO_DEFAULT_MODEL_BY_OPERATION = {
   lesson: 'anthropic/claude-haiku-5.5',
 } as const satisfies Record<ModelOperation, string>;
 
+/**
+ * Guardrail models a tier keeps only for its grounded roles: left out of the
+ * tier's selectable models, defaults and fallbacks. Starter keeps GPT-6.1 Sol
+ * for its verifier and advisor, but it costs too much for Starter outlines.
+ */
+export const PICKER_HIDDEN_MODEL_IDS_BY_TIER = {
+  free: [],
+  starter: ['openai/gpt-6.1-sol'],
+  pro: [],
+} as const satisfies Record<SubscriptionTier, readonly string[]>;
+
 export type ModelOperationPolicy = {
   readonly allowed: boolean;
   /**

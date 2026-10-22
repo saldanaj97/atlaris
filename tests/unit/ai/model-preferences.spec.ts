@@ -69,9 +69,10 @@ describe('model-preferences', () => {
       }
     });
 
-    it('Starter outline/regen persistable lists are the Starter guardrail models', async () => {
+    it('Starter outline/regen persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
       const expected = MODEL_CATALOG_FIXTURE.starter
         .map((model) => model.modelId)
+        .filter((id) => id !== 'openai/gpt-6.1-sol')
         .sort();
       for (const operation of ['initial_outline', 'regeneration'] as const) {
         expect(
@@ -279,6 +280,21 @@ describe('model-preferences', () => {
         ).toBeNull();
       },
     );
+
+    it('treats a Starter saved GPT-6.1 Sol pick like one outside the guardrail', async () => {
+      const sol = 'openai/gpt-6.1-sol';
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        expect(
+          await resolveEffectivePreference('starter', sol, operation),
+        ).toBe('openai/gpt-6-luna');
+        expect(
+          await resolveSavedPreferenceForSettings('starter', sol, operation),
+        ).toBeNull();
+      }
+      expect(await resolveEffectivePreference('pro', sol, 'regeneration')).toBe(
+        sol,
+      );
+    });
 
     it('uses the Pro lesson default when the lesson slot is empty', async () => {
       expect(await resolveEffectivePreference('pro', null, 'lesson')).toBe(

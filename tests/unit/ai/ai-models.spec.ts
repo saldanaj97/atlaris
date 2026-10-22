@@ -10,6 +10,7 @@ import {
   resolveDefaultModelForTier,
 } from '@/features/ai/ai-models';
 import { FREE_ROUTER_MODEL } from '@/features/ai/model-catalog/catalog';
+import { getGroundedModelRoute } from '@/features/ai/model-operation-policy';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -63,14 +64,37 @@ describe('AI Models Configuration', () => {
       expect(await getModelsForTier('free', 'regeneration')).toEqual([]);
     });
 
-    it('returns the Starter guardrail models for outline and regen', async () => {
+    it('returns the Starter guardrail models for outline and regen, minus grounded-only ones', async () => {
       for (const operation of ['initial_outline', 'regeneration'] as const) {
         const ids = (await getModelsForTier('starter', operation)).map(
           (m) => m.id,
         );
-        expect([...ids].sort()).toEqual(fixtureIds('starter').sort());
+        expect([...ids].sort()).toEqual(
+          fixtureIds('starter')
+            .filter((id) => id !== 'openai/gpt-6.1-sol')
+            .sort(),
+        );
         expect(ids).not.toContain(AI_DEFAULT_MODEL);
       }
+    });
+
+    it('hides GPT-6.1 Sol from Starter while its grounded routes still send it', async () => {
+      expect(fixtureIds('starter')).toContain('openai/gpt-6.1-sol');
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        const ids = (await getModelsForTier('starter', operation)).map(
+          (m) => m.id,
+        );
+        expect(ids).not.toContain('openai/gpt-6.1-sol');
+      }
+      for (const operation of ['outline_verify', 'advisor'] as const) {
+        expect(getGroundedModelRoute('starter', operation)?.[0]).toEqual({
+          modelId: 'openai/gpt-6.1-sol',
+        });
+      }
+      const proIds = (await getModelsForTier('pro', 'initial_outline')).map(
+        (m) => m.id,
+      );
+      expect(proIds).toContain('openai/gpt-6.1-sol');
     });
 
     it('returns only the free router for Starter lesson', async () => {
@@ -252,6 +276,22 @@ describe('AI Models Configuration', () => {
       expect(await getDefaultModelForTier('pro', 'regeneration')).toBe(
         AI_DEFAULT_MODEL,
       );
+    });
+
+    it('never picks a hidden model as the default', async () => {
+      // Only the hidden GPT-6.1 Sol and Haiku remain in the Starter guardrail.
+      await dropFromGuardrail('starter', [
+        'openai/gpt-6-luna',
+        'deepseek/deepseek-v4.1-flash',
+      ]);
+      vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+      expect(
+        await resolveDefaultModelForTier('starter', 'regeneration'),
+      ).toEqual({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
+      expect(
+        (await getModelsForTier('starter', 'regeneration')).map((m) => m.id),
+      ).not.toContain('openai/gpt-6.1-sol');
     });
   });
 

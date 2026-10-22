@@ -311,6 +311,32 @@ describe('Model resolver', () => {
       expect(result.modelId).not.toBe(AI_DEFAULT_MODEL);
     });
 
+    it('falls back from GPT-6.1 Sol, which Starter keeps for grounded roles only', async () => {
+      const sol = 'openai/gpt-6.1-sol';
+      expect(
+        MODEL_CATALOG_FIXTURE.starter.map((model) => model.modelId),
+      ).toContain(sol);
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        expect(await validateModelForTier('starter', sol, operation)).toEqual({
+          valid: false,
+          reason: 'tier_denied',
+        });
+        const { result } = await resolveWithMockProvider(
+          'starter',
+          sol,
+          operation,
+        );
+        expectResolution(result, {
+          modelId: STARTER_DEFAULT,
+          fallback: true,
+          fallbackReason: 'tier_denied',
+        });
+      }
+      expect(await validateModelForTier('pro', sol, 'initial_outline')).toEqual(
+        { valid: true },
+      );
+    });
+
     it('ignores a plan preference for lesson and uses the free router', async () => {
       const { result, providerGetter } = await resolveWithMockProvider(
         'starter',
@@ -473,11 +499,11 @@ describe('Model resolver', () => {
       await validateModelForTier('starter', STARTER_DEFAULT, 'initial_outline');
       const { result } = await resolveWithMockProvider(
         'starter',
-        'openai/gpt-6.1-sol',
+        'anthropic/claude-haiku-5.5',
         'initial_outline',
       );
 
-      expect(result.modelId).toBe('openai/gpt-6.1-sol');
+      expect(result.modelId).toBe('anthropic/claude-haiku-5.5');
       expect(result.freeRouterFallback).toBeUndefined();
       expect(Sentry.captureMessage).not.toHaveBeenCalled();
     });
