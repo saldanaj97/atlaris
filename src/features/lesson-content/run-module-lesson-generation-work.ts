@@ -15,6 +15,7 @@ import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { generateModuleLessonBatchWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
 import {
   cleanupTimeoutLifecycle,
+  resolveLessonTimeoutMs,
   resolveTimeoutConfig,
   setupAbortAndTimeout,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
@@ -305,7 +306,10 @@ export async function runModuleLessonGenerationWork(
 
   const clock = () => Date.now();
   const nowFn = params.now ?? (() => new Date());
-  const timeoutConfig = resolveTimeoutConfig(params.timeoutConfig, clock);
+  const timeoutConfig = resolveTimeoutConfig(
+    { baseMs: resolveLessonTimeoutMs(), ...params.timeoutConfig },
+    clock,
+  );
 
   const batchInput = buildModuleLessonBatchInput(
     buildModuleLessonBatchPromptInput(params.load),
