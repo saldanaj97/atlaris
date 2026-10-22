@@ -77,8 +77,9 @@ function git(args: string[], input?: string): string {
 }
 
 /**
- * The tracked tree is the source of truth for what exists, so results match on
- * every machine; untracked or machine-local files must not change the outcome.
+ * The tracked tree is the baseline for what exists. On-disk files that no git
+ * rule ignores also count (see `existingUnignoredPaths`), so a new file passes
+ * before it is staged; machine-local ignored files never count.
  */
 function listTrackedFiles(): string[] {
   return git(['ls-files', '-z']).split('\0').filter(Boolean);
@@ -179,6 +180,28 @@ function gitIgnoredPaths(paths: string[]): Set<string> {
   return ignored;
 }
 
+/**
+ * Paths that exist on disk and are not ignored by any git rule, including
+ * `.git/info/exclude` and global excludes. A new file passes before it is
+ * staged, while machine-local dirs (`.agents/`, `.cursor/` excludes) still
+ * fail because they will not exist in a fresh checkout.
+ */
+function existingUnignoredPaths(paths: string[]): Set<string> {
+  const onDisk = paths.filter((path) => existsSync(join(REPO_ROOT, path)));
+  if (onDisk.length === 0) return new Set();
+
+  let out = '';
+  try {
+    out = git(['check-ignore', '-z', '--stdin'], onDisk.join('\0'));
+  } catch (error) {
+    // `git check-ignore` exits 1 when nothing matches.
+    if ((error as { status?: number }).status !== 1) throw error;
+  }
+
+  const ignored = new Set(out.split('\0').filter(Boolean));
+  return new Set(onDisk.filter((path) => !ignored.has(path)));
+}
+
 function findBrokenReferences(): Reference[] {
   const tracked = listTrackedFiles();
   const roots = topLevelDirectories(tracked);
@@ -193,8 +216,22 @@ function findBrokenReferences(): Reference[] {
         !(path in (ALLOWED_MISSING_PATHS[doc] ?? {})),
     );
 
+  const candidates = [
+    ...new Set(
+      references.flatMap(({ doc, path }) => [
+        path,
+        posix.join(dirname(doc), path),
+      ]),
+    ),
+  ];
+  const present = existingUnignoredPaths(candidates);
   const ignored = gitIgnoredPaths([...new Set(references.map((r) => r.path))]);
-  return references.filter(({ path }) => !ignored.has(path));
+  return references.filter(
+    ({ doc, path }) =>
+      !ignored.has(path) &&
+      !present.has(path) &&
+      !present.has(posix.join(dirname(doc), path)),
+  );
 }
 
 describe('documentation path references', () => {
