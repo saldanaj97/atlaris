@@ -19,6 +19,7 @@ import {
 } from '@/features/ai/model-operation-policy';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import * as Sentry from '@sentry/nextjs';
 
 export { AI_DEFAULT_MODEL };
 
@@ -77,11 +78,17 @@ async function resolveTierModels(
     return { models, defaultModelId: fallbackModelId };
   }
   // Last resort: the code-owned free router, added to the list so the default
-  // stays among the models it is validated against.
-  logger.error(
-    { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
-    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router',
-  );
+  // stays among the models it is validated against. Paid users now get a free
+  // model, so alert the team as well as logging.
+  const message =
+    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router';
+  logger.error({ ...fields, fallbackModelId: AI_DEFAULT_MODEL }, message);
+  Sentry.captureMessage(message, {
+    level: 'error',
+    fingerprint: ['model_default_not_in_guardrail', tier, operation],
+    tags: { event: fields.event, tier, operation },
+    extra: { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
+  });
   return {
     models: isListed(AI_DEFAULT_MODEL)
       ? models
