@@ -224,7 +224,7 @@ describe('OpenRouterProvider', () => {
 
       const provider = new OpenRouterProvider(
         {
-          model: 'openai/gpt-4o',
+          model: 'openai/gpt-6-sol',
           fallbackModels: [AI_DEFAULT_MODEL],
         },
         client,
@@ -299,17 +299,17 @@ describe('OpenRouterProvider', () => {
       });
 
       const provider = new OpenRouterProvider(
-        { model: 'openai/gpt-4o', fallbackModels: [AI_DEFAULT_MODEL] },
+        { model: 'openai/gpt-6-sol', fallbackModels: [AI_DEFAULT_MODEL] },
         client,
       );
       const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
 
       const requestBody = send.mock.calls[0][0] as { models: string[] };
       expect(requestBody.models).toEqual([
-        `openai/gpt-4o@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+        `openai/gpt-6-sol@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
         `${AI_DEFAULT_MODEL}@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
       ]);
-      expect(result.metadata.model).toBe('openai/gpt-4o');
+      expect(result.metadata.model).toBe('openai/gpt-6-sol');
     });
 
     it.each([

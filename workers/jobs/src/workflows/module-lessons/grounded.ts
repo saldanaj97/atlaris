@@ -2,6 +2,7 @@ import type {
   LessonQualityLogFields,
   LessonQualityStepName,
 } from './lesson-quality';
+import type { PlanAiBudget } from '@/features/billing/plan-ai-budget';
 import type { GroundedLesson } from '@/features/lesson-content/grounded-lesson-writer';
 import type {
   ModuleLessonBatchPromptInput,
@@ -9,6 +10,7 @@ import type {
 } from '@/features/lesson-content/module-lesson-prompts';
 import type { ModuleLessonGenerationTarget } from '@/features/lesson-content/run-module-lesson-generation-work';
 import type { ResearchBrief } from '@/features/plans/research/contract';
+import type { NewGenerationBudgetCut } from '@/lib/db/queries/types/generation-budget-cuts.types';
 import type { NewGenerationQualityIssue } from '@/lib/db/queries/types/generation-quality-issues.types';
 import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
@@ -25,6 +27,7 @@ import {
 } from '@/features/ai/model-preferences';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
+import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import { resolveUserTier } from '@/features/billing/tier';
 import { buildGroundedLessonPromptParts } from '@/features/lesson-content/grounded-lesson-prompt';
 import {
@@ -39,6 +42,7 @@ import {
   markModuleLessonProviderStarted,
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
+import { sumPlanAiSpendMicrousd } from '@/lib/db/queries/plan-ai-budget';
 import { getLatestPlanResearch } from '@/lib/db/queries/plan-research';
 import { getGroundedModelPreferences } from '@/lib/db/queries/user-preferences';
 
@@ -86,6 +90,11 @@ export type GroundedLessonContext = {
   readonly research: ResearchBrief | null;
   /** The plan's last regeneration reasons and note as a prompt block (JCS-162). */
   readonly reason: string | null;
+  /**
+   * The plan's AI spend so far this generation and its tier's ceiling
+   * (JCS-170). Absent on claims replayed from before it.
+   */
+  readonly budget?: PlanAiBudget;
 };
 
 /**
@@ -104,7 +113,7 @@ export async function resolveGroundedLessonContext(
   if (!input.isGroundedEnabled(tier)) {
     return null;
   }
-  const [groundedPicks, latest, plan] = await Promise.all([
+  const [groundedPicks, latest, plan, spentMicrousd] = await Promise.all([
     getGroundedModelPreferences(input.target.userId, db),
     getLatestPlanResearch(input.target.planId, db),
     selectOwnedPlanById({
@@ -112,6 +121,7 @@ export async function resolveGroundedLessonContext(
       ownerUserId: input.target.userId,
       dbClient: db,
     }),
+    sumPlanAiSpendMicrousd(input.target.planId, db),
   ]);
   return {
     tier,
@@ -127,6 +137,7 @@ export async function resolveGroundedLessonContext(
       reasons: plan?.regenerationReasons,
       note: plan?.regenerationNote,
     }),
+    budget: { ceilingMicrousd: planAiCeilingMicrousd(tier), spentMicrousd },
   };
 }
 
@@ -338,6 +349,7 @@ type CheckedLessonResult =
       /** The writer call, then its verifier and repair calls. */
       readonly usages: readonly CanonicalAIUsage[];
       readonly records: readonly NewGenerationQualityIssue[];
+      readonly cuts: readonly NewGenerationBudgetCut[];
     }
   | { readonly kind: 'disabled' };
 
@@ -356,19 +368,22 @@ async function writeAndCheckLesson(
     ctx,
     index,
     written.lesson.content,
+    written.usage,
   );
   return {
     kind: 'written',
     lesson: { ...written.lesson, content: checked.content },
     usages: [written.usage, ...checked.usages],
     records: checked.records,
+    cuts: checked.cuts,
   };
 }
 
 /**
  * One call per lesson, all of the module's lessons in parallel up to the
  * tier's fan-out, each with its own parse retry, then its checks and up to
- * two repair passes. Issues found are saved before the caller commits.
+ * two repair passes. Issues found and steps the plan's AI ceiling cut are
+ * saved before the caller commits.
  * Throws when a lesson still fails after its retry or a call throws; the
  * caller runs `fail`.
  */
@@ -390,6 +405,7 @@ export async function runGroundedLessonSteps(
     step,
     ctx,
     written.flatMap((result) => result.records),
+    written.flatMap((result) => result.cuts),
   );
   return {
     kind: 'written',

@@ -17,25 +17,39 @@ export const MODEL_OPERATIONS = [
 export type ModelOperation = (typeof MODEL_OPERATIONS)[number];
 
 export const STARTER_OUTLINE_REGENERATION_MODEL_IDS = [
-  'google/gemini-2.5-flash-lite',
-  'openai/gpt-4o-mini-2024-07-18',
-  'google/gemini-3-flash-preview',
+  'openai/gpt-6-luna',
+  'anthropic/claude-haiku-5.5',
+  'deepseek/deepseek-v4.1-flash',
 ] as const;
 
 export const STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID =
   STARTER_OUTLINE_REGENERATION_MODEL_IDS[0];
 
+/**
+ * Pro catalog for every operation. Leaves out `deepseek/deepseek-v4.1-flash`,
+ * which the `atlaris-pro` OpenRouter guardrail blocks.
+ */
+export const PRO_MODEL_IDS = [
+  'openrouter/free',
+  'openai/gpt-6-luna',
+  'anthropic/claude-haiku-5.5',
+  'openai/gpt-6.1-sol',
+  'openai/gpt-6-sol',
+  'anthropic/claude-sonnet-5.5',
+  'anthropic/claude-opus-5.5',
+] as const;
+
 const PRO_DEFAULT_MODEL_BY_OPERATION = {
-  initial_outline: 'openai/gpt-5.2',
-  regeneration: 'google/gemini-3.1-pro-preview',
-  lesson: 'google/gemini-3-flash-preview',
-} as const satisfies Record<ModelOperation, string>;
+  initial_outline: 'openai/gpt-6.1-sol',
+  regeneration: 'anthropic/claude-sonnet-5.5',
+  lesson: 'anthropic/claude-haiku-5.5',
+} as const satisfies Record<ModelOperation, (typeof PRO_MODEL_IDS)[number]>;
 
 export type ModelOperationPolicy = {
   readonly allowed: boolean;
   readonly defaultModelId: string;
-  /** `'full'` is the Pro registry. Empty when the operation is not a catalog. */
-  readonly modelIds: readonly string[] | 'full';
+  /** Empty when the operation is not a catalog. */
+  readonly modelIds: readonly string[];
 };
 
 function freePolicy(operation: ModelOperation): ModelOperationPolicy {
@@ -90,7 +104,7 @@ function proPolicy(operation: ModelOperation): ModelOperationPolicy {
       return {
         allowed: true,
         defaultModelId: PRO_DEFAULT_MODEL_BY_OPERATION[operation],
-        modelIds: 'full',
+        modelIds: PRO_MODEL_IDS,
       };
     default: {
       const _never: never = operation;

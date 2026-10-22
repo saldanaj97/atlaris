@@ -7,6 +7,7 @@ import type {
 import type { StartPlanGenerationAttemptDeps } from '@/features/plans/start-plan-generation-attempt';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
+import { PRO_GROUNDED_WRITER_CATALOG } from '@/features/ai/model-operation-policy';
 import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import {
   createPlanGenerationSessionBoundary,
@@ -49,7 +50,19 @@ const PRO_QUERY_MODEL = getPersistableModelsForTier(
   ({ id }) => !STARTER_OUTLINE_MODELS.some((model) => model.id === id),
 )?.id;
 
-if (!STARTER_SAVED_MODEL || !STARTER_QUERY_MODEL || !PRO_QUERY_MODEL) {
+const PRO_OFF_WRITER_QUERY_MODEL = getPersistableModelsForTier(
+  'pro',
+  'initial_outline',
+).find(
+  ({ id }) => !(PRO_GROUNDED_WRITER_CATALOG as readonly string[]).includes(id),
+)?.id;
+
+if (
+  !STARTER_SAVED_MODEL ||
+  !STARTER_QUERY_MODEL ||
+  !PRO_QUERY_MODEL ||
+  !PRO_OFF_WRITER_QUERY_MODEL
+) {
   throw new Error('Expected outline model fixtures for model override tests');
 }
 
@@ -324,13 +337,13 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     it('keeps the writer pick when ?model= is off the writer catalog', async () => {
       await startCreate(
         buildBoundary(),
-        `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_QUERY_MODEL)}`,
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_OFF_WRITER_QUERY_MODEL)}`,
         null,
         WRITER_PICKS,
       );
 
       expect(startedWorkflowInput()).toMatchObject({
-        modelOverride: PRO_QUERY_MODEL,
+        modelOverride: PRO_OFF_WRITER_QUERY_MODEL,
         groundedWriterModelId: WRITER_PICK,
       });
     });

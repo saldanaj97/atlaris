@@ -11,12 +11,12 @@ const WEB_SEARCH_PLAN_JSON =
 export const WEB_SEARCH_STREAM_CHUNKS: readonly unknown[] = [
   {
     id: 'gen-1',
-    model: 'google/gemini-3-flash-preview',
+    model: 'anthropic/claude-haiku-5.5',
     choices: [{ index: 0, delta: { role: 'assistant', content: '' } }],
   },
   {
     id: 'gen-1',
-    model: 'google/gemini-3-flash-preview',
+    model: 'anthropic/claude-haiku-5.5',
     choices: [
       {
         index: 0,
@@ -48,14 +48,14 @@ export const WEB_SEARCH_STREAM_CHUNKS: readonly unknown[] = [
   },
   {
     id: 'gen-1',
-    model: 'google/gemini-3-flash-preview',
+    model: 'anthropic/claude-haiku-5.5',
     choices: [
       { index: 0, delta: { content: WEB_SEARCH_PLAN_JSON.slice(0, 40) } },
     ],
   },
   {
     id: 'gen-1',
-    model: 'google/gemini-3-flash-preview',
+    model: 'anthropic/claude-haiku-5.5',
     choices: [
       {
         index: 0,
@@ -77,7 +77,7 @@ export const WEB_SEARCH_STREAM_CHUNKS: readonly unknown[] = [
   },
   {
     id: 'gen-1',
-    model: 'google/gemini-3-flash-preview',
+    model: 'anthropic/claude-haiku-5.5',
     choices: [{ index: 0, delta: { content: '' }, finish_reason: null }],
     usage: {
       prompt_tokens: 4210,
@@ -108,7 +108,7 @@ export const HAIKU_FENCED_TEXT = [
 export const MID_STREAM_ERROR_CHUNKS: readonly unknown[] = [
   {
     id: 'gen-2',
-    model: 'anthropic/claude-haiku-4.5',
+    model: 'anthropic/claude-opus-5.5',
     choices: [{ index: 0, delta: { content: '{"modules":' } }],
   },
   {

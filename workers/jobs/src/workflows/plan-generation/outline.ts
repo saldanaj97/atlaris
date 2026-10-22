@@ -5,6 +5,7 @@ import type { OutlinePurpose } from '@/features/plans/outline/grounded-writer';
 import type { ResearchBrief } from '@/features/plans/research/contract';
 import type { DbClient } from '@/lib/db/types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
+import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { WorkflowStep } from 'cloudflare:workers';
 
@@ -85,15 +86,30 @@ function errorKind(error: unknown): string {
   return error instanceof Error ? error.name : 'unknown';
 }
 
+/**
+ * A quality call's step result. Steps cached before JCS-170 returned the
+ * bare value, without usage.
+ */
+type OutlineCallResult<T> = {
+  readonly value: T;
+  readonly usage: CanonicalAIUsage | null;
+};
+
+function fromCachedStep<T extends unknown[]>(
+  cached: T | { readonly value: T; readonly usage: CanonicalAIUsage },
+): OutlineCallResult<T> {
+  return Array.isArray(cached) ? { value: cached, usage: null } : cached;
+}
+
 /** Verifier issues for `modules`, or `null` when the verifier failed. */
 async function verifyOutline(
   step: Pick<WorkflowStep, 'do'>,
   ctx: OutlineStepsContext,
   name: typeof OUTLINE_STEPS.verify | typeof OUTLINE_STEPS.reverify,
   modules: readonly GeneratedModule[],
-): Promise<OutlineIssue[] | null> {
+): Promise<OutlineCallResult<OutlineIssue[]> | null> {
   try {
-    return await step.do(name, verifyStepConfig(), async () => {
+    const cached = await step.do(name, verifyStepConfig(), async () => {
       const run = await runOutlineVerifier({
         tier: ctx.tier,
         input: ctx.input,
@@ -105,8 +121,9 @@ async function verifyOutline(
         model: run.model,
         issueCount: run.issues.length,
       });
-      return run.issues;
+      return { value: run.issues, usage: run.usage };
     });
+    return fromCachedStep<OutlineIssue[]>(cached);
   } catch (error) {
     ctx.log(
       name,
@@ -123,25 +140,30 @@ async function repairOutline(
   ctx: OutlineStepsContext,
   modules: readonly GeneratedModule[],
   issues: readonly OutlineIssue[],
-): Promise<GeneratedModule[] | null> {
+): Promise<OutlineCallResult<GeneratedModule[]> | null> {
   try {
-    return await step.do(OUTLINE_STEPS.repair, repairStepConfig(), async () => {
-      const run = await runOutlineRepair({
-        tier: ctx.tier,
-        purpose: ctx.purpose,
-        modelOverride: ctx.modelOverride,
-        input: ctx.input,
-        modules,
-        issues,
-        research: ctx.research,
-      });
-      ctx.log(OUTLINE_STEPS.repair, {
-        outcome: 'repaired',
-        model: run.model,
-        issueCount: issues.length,
-      });
-      return run.modules;
-    });
+    const cached = await step.do(
+      OUTLINE_STEPS.repair,
+      repairStepConfig(),
+      async () => {
+        const run = await runOutlineRepair({
+          tier: ctx.tier,
+          purpose: ctx.purpose,
+          modelOverride: ctx.modelOverride,
+          input: ctx.input,
+          modules,
+          issues,
+          research: ctx.research,
+        });
+        ctx.log(OUTLINE_STEPS.repair, {
+          outcome: 'repaired',
+          model: run.model,
+          issueCount: issues.length,
+        });
+        return { value: run.modules, usage: run.usage };
+      },
+    );
+    return fromCachedStep<GeneratedModule[]>(cached);
   } catch (error) {
     ctx.log(
       OUTLINE_STEPS.repair,
@@ -184,33 +206,49 @@ async function saveQualityStep(
  * issues only when both verifier runs succeeded. Issues are written to
  * `generation_quality_issues` (remaining and resolved) for the outline kept.
  * Returns that outline: the repaired one, or the first when no repair ran, it
- * failed or it was worse.
+ * failed or it was worse, with the usage of every verifier and repair call
+ * (JCS-170), so finalize records it with the outline's own.
  *
  * Code checks are pure and run outside steps on step results, so a replay
  * gets the same answer.
  */
+export type OutlineQualityResult = {
+  readonly modules: GeneratedModule[];
+  /** Verifier and repair calls, in call order. */
+  readonly usages: readonly CanonicalAIUsage[];
+};
+
 export async function runOutlineQualitySteps(
   step: Pick<WorkflowStep, 'do'>,
   ctx: OutlineStepsContext,
   modules: GeneratedModule[],
-): Promise<GeneratedModule[]> {
+): Promise<OutlineQualityResult> {
   const withVerifier = isOutlineVerifierAvailable(ctx.tier);
+  const usages: CanonicalAIUsage[] = [];
+  const valueOf = <T>(result: OutlineCallResult<T> | null): T | null => {
+    if (result?.usage) {
+      usages.push(result.usage);
+    }
+    return result?.value ?? null;
+  };
 
   const verifierIssues = withVerifier
-    ? await verifyOutline(step, ctx, OUTLINE_STEPS.verify, modules)
+    ? valueOf(await verifyOutline(step, ctx, OUTLINE_STEPS.verify, modules))
     : null;
   const codeIssues = runOutlineCodeChecks(modules, ctx.input);
   const pass0 = [...codeIssues, ...(verifierIssues ?? [])];
   if (pass0.length === 0) {
-    return modules;
+    return { modules, usages };
   }
 
-  const repaired = await repairOutline(step, ctx, modules, pass0);
+  const repaired = valueOf(await repairOutline(step, ctx, modules, pass0));
   let kept = modules;
   let pass1: Parameters<typeof toOutlineQualityRecords>[1]['pass1'] = null;
   if (repaired) {
     const reverified = withVerifier
-      ? await verifyOutline(step, ctx, OUTLINE_STEPS.reverify, repaired)
+      ? valueOf(
+          await verifyOutline(step, ctx, OUTLINE_STEPS.reverify, repaired),
+        )
       : null;
     const repairedCodeIssues = runOutlineCodeChecks(repaired, ctx.input);
     const compareVerifier = verifierIssues !== null && reverified !== null;
@@ -240,5 +278,5 @@ export async function runOutlineQualitySteps(
     async (stepCtx) =>
       ctx.withDb((db) => saveQualityStep(db, ctx, records, stepCtx.attempt)),
   );
-  return kept;
+  return { modules: kept, usages };
 }

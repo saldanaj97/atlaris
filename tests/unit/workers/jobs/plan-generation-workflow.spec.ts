@@ -7,6 +7,7 @@ import {
   type PlanGenerationWorkflowParams,
   runPlanGenerationWorkflow,
 } from '../../../../workers/jobs/src/workflows/plan-generation/run';
+import { makeCanonicalUsage } from '../../../fixtures/canonical-usage.factory';
 import { ProviderRateLimitError } from '@/features/ai/providers/errors';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import {
@@ -732,7 +733,7 @@ describe('runPlanGenerationWorkflow', () => {
           event({
             ...params,
             tier: 'pro',
-            modelOverride: 'google/gemini-3.1-pro-preview',
+            modelOverride: 'anthropic/claude-sonnet-5.5',
             groundedWriterModelId: 'anthropic/claude-haiku-5.5',
           }),
           step,
@@ -756,7 +757,7 @@ describe('runPlanGenerationWorkflow', () => {
         runPlanGenerationWorkflow(
           event({
             ...params,
-            modelOverride: 'google/gemini-3.1-pro-preview',
+            modelOverride: 'anthropic/claude-sonnet-5.5',
           }),
           step,
           deps,
@@ -1023,6 +1024,71 @@ describe('runPlanGenerationWorkflow', () => {
       expect(savedIssues()).toEqual([
         ['verifier.too_advanced', 'modules[1]', 0, true],
       ]);
+    });
+
+    it('records verifier and repair usage with the outline (JCS-170)', async () => {
+      providerReturning(planText(cleanModules()));
+      const callUsage = makeCanonicalUsage({
+        inputTokens: 1,
+        outputTokens: 1,
+        totalTokens: 2,
+      });
+      mocks.runOutlineVerifier
+        .mockResolvedValueOnce({
+          issues: [VERIFIER_ISSUE],
+          model: 'v/model',
+          usage: callUsage,
+        })
+        .mockResolvedValueOnce({ issues: [], model: 'v/model', usage: null });
+      mocks.runOutlineRepair.mockResolvedValue({
+        modules: cleanModules(),
+        model: 'repair/model',
+        usage: callUsage,
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
+
+      const [, finalizeInput] = mocks.commitSuccess.mock.calls[0]!;
+      // The writer's 10 + 20 tokens, plus one verifier and one repair call.
+      expect(finalizeInput.usage).toMatchObject({
+        inputTokens: 12,
+        outputTokens: 22,
+      });
+    });
+
+    it('replays verifier and repair steps cached before JCS-170 without usage', async () => {
+      providerReturning(planText(cleanModules()));
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step: live } = createStep();
+      // Before JCS-170 these steps returned the bare issues and modules.
+      const cached: Record<string, unknown> = {
+        'outline-verify': [VERIFIER_ISSUE],
+        'outline-repair': cleanModules(),
+        'outline-reverify': [],
+      };
+      const step = {
+        do: (name: string, ...rest: unknown[]) =>
+          name in cached
+            ? Promise.resolve(cached[name])
+            : (live.do as (...args: unknown[]) => Promise<unknown>)(
+                name,
+                ...rest,
+              ),
+      } as unknown as Pick<WorkflowStep, 'do'>;
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('starter'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.runOutlineVerifier).not.toHaveBeenCalled();
+      expect(finalizedModules()).toEqual(cleanModules());
+      const [, finalizeInput] = mocks.commitSuccess.mock.calls[0]!;
+      expect(finalizeInput.usage).toMatchObject({
+        inputTokens: 10,
+        outputTokens: 20,
+      });
     });
 
     it('repairs only once and logs the issues that remain', async () => {

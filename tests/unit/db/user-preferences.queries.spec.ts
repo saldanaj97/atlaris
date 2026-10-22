@@ -159,7 +159,7 @@ describe('user preference queries', () => {
   it('upserts preferred AI model on the user preference row', async () => {
     const execute = vi.fn().mockResolvedValue([
       {
-        preferred_ai_model: 'google/gemini-2.5-flash-lite',
+        preferred_ai_model: 'openai/gpt-6-luna',
         analytics_timezone: 'UTC',
       },
     ]);
@@ -170,11 +170,11 @@ describe('user preference queries', () => {
 
     const result = await upsertUserModelPreferences(
       'user-1',
-      { preferredAiModel: 'google/gemini-2.5-flash-lite' },
+      { preferredAiModel: 'openai/gpt-6-luna' },
       dbClient,
     );
 
-    expect(result?.preferredAiModel).toBe('google/gemini-2.5-flash-lite');
+    expect(result?.preferredAiModel).toBe('openai/gpt-6-luna');
     expect(execute).toHaveBeenCalledOnce();
 
     const query = new PgDialect().sqlToQuery(execute.mock.calls[0]?.[0] as SQL);
@@ -195,8 +195,8 @@ describe('user preference queries', () => {
   it('upserts regeneration and lesson slots independently', async () => {
     const execute = vi.fn().mockResolvedValue([
       {
-        preferred_ai_model: 'openai/gpt-5.2',
-        preferred_regeneration_ai_model: 'google/gemini-3.1-pro-preview',
+        preferred_ai_model: 'openai/gpt-6.1-sol',
+        preferred_regeneration_ai_model: 'anthropic/claude-sonnet-5.5',
         preferred_lesson_ai_model: null,
         analytics_timezone: 'UTC',
       },
@@ -209,14 +209,14 @@ describe('user preference queries', () => {
     const result = await upsertUserModelPreferences(
       'user-1',
       {
-        preferredRegenerationAiModel: 'google/gemini-3.1-pro-preview',
+        preferredRegenerationAiModel: 'anthropic/claude-sonnet-5.5',
         preferredLessonAiModel: null,
       },
       dbClient,
     );
 
     expect(result?.preferredRegenerationAiModel).toBe(
-      'google/gemini-3.1-pro-preview',
+      'anthropic/claude-sonnet-5.5',
     );
     expect(result?.preferredLessonAiModel).toBeNull();
 

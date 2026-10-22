@@ -3,7 +3,7 @@ import type { GenerationInput } from '@/features/ai/types/provider.types';
 
 import { vi } from 'vitest';
 
-export const OPENROUTER_TEST_MODEL = 'google/gemini-3-flash-preview';
+export const OPENROUTER_TEST_MODEL = 'anthropic/claude-haiku-5.5';
 export const OPENROUTER_TEST_PLAN_PRESET = 'test-plan-preset';
 export const OPENROUTER_TEST_LESSON_PRESET = 'test-lesson-preset';
 

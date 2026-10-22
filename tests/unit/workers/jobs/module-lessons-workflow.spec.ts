@@ -91,6 +91,18 @@ vi.mock('@/lib/db/queries/generation-quality-issues', () => ({
   listGenerationQualityIssuesForPlan: quality.list,
 }));
 
+const budget = vi.hoisted(() => ({
+  spent: vi.fn(async () => 0),
+  insert: vi.fn(async (_cuts: unknown[]) => []),
+  count: vi.fn(async () => 0),
+}));
+
+vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
+  sumPlanAiSpendMicrousd: budget.spent,
+  insertGenerationBudgetCuts: budget.insert,
+  countGenerationBudgetCutsForModule: budget.count,
+}));
+
 const groundedPicks = vi.hoisted(() => ({
   writer: null as string | null,
   /** The legacy "Preferred lesson model"; grounded lessons must ignore it. */
@@ -240,7 +252,11 @@ function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
     isEnabled: () => true,
     // Grounded generation off: today's pipeline.
     isGroundedEnabled: () => false,
-    withDb: (fn) => fn({} as DbClient),
+    withDb: (fn) =>
+      fn({
+        transaction: async (run: (tx: DbClient) => Promise<unknown>) =>
+          run({} as DbClient),
+      } as unknown as DbClient),
     logger,
     nonRetryable: (message) =>
       Object.assign(new Error(message), { name: 'NonRetryableError' }),
@@ -1258,7 +1274,7 @@ describe('runModuleLessonsWorkflow', () => {
         it('writes and repairs Pro lessons with the writer pick, ignoring the legacy lesson pick', async () => {
           tier.value = 'pro';
           groundedPicks.writer = 'anthropic/claude-haiku-5.5';
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
 
           await expect(runFlaggedLesson()).resolves.toEqual({
             writerModel: 'anthropic/claude-haiku-5.5',
@@ -1272,7 +1288,7 @@ describe('runModuleLessonsWorkflow', () => {
         ])('uses the Pro writer default when %s', async (_case, pick) => {
           tier.value = 'pro';
           groundedPicks.writer = pick;
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
 
           await expect(runFlaggedLesson()).resolves.toEqual({
             writerModel: 'openai/gpt-6-sol',
@@ -1283,11 +1299,11 @@ describe('runModuleLessonsWorkflow', () => {
         it('ignores a writer pick below Pro', async () => {
           tier.value = 'starter';
           groundedPicks.writer = 'anthropic/claude-haiku-5.5';
-          groundedPicks.legacyLesson = 'google/gemini-3-flash-preview';
+          groundedPicks.legacyLesson = 'anthropic/claude-haiku-5.5';
           const { writerModel, repairModel } = await runFlaggedLesson();
 
           expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
-          expect(writerModel).not.toBe('google/gemini-3-flash-preview');
+          expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
           expect(repairModel).toBe(writerModel);
         });
       });
@@ -1335,6 +1351,148 @@ describe('runModuleLessonsWorkflow', () => {
             resolved: false,
           }),
         ]);
+      });
+
+      describe('plan AI ceiling (JCS-170)', () => {
+        /** Pro ceiling $2.50; optional steps stop at 80%. */
+        const CUTOFF_MICROUSD = 2_000_000;
+
+        function stillFlagged() {
+          taskIds = [TASK_A];
+          qualityReturning({
+            verifierIssues: () => [
+              { code: 'answer_key', blockRef: 'blocks[0]', message: 'Wrong.' },
+            ],
+            repaired: () => ({
+              blocks: [
+                { index: 0, block: { type: 'paragraph', text: 'Again [S1].' } },
+              ],
+            }),
+          });
+        }
+
+        it('drops the advisor and the second repair near the ceiling, and records both cuts', async () => {
+          tier.value = 'pro';
+          budget.spent.mockResolvedValueOnce(CUTOFF_MICROUSD);
+          stillFlagged();
+          const { deps } = groundedDeps();
+          const { step, calls } = createStep();
+
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+
+          expect(calls.map((call) => call.name)).toEqual([
+            'claim',
+            'lesson-1',
+            'lesson-1-verify-0',
+            'lesson-1-repair-1',
+            'lesson-1-verify-1',
+            'lessons-quality-save',
+            'parse-commit',
+          ]);
+          const [repair] = qualityCalls('grounded-lesson-repair');
+          expect(repair?.serverTools).toBeUndefined();
+          expect(repair?.toolChoice).toBeUndefined();
+          // Snapshot plus this lesson's 100-micro-USD calls before each cut.
+          const [cuts] = budget.insert.mock.calls[0] ?? [];
+          expect(cuts).toEqual([
+            {
+              planId: PLAN_ID,
+              moduleId: MODULE_ID,
+              taskId: TASK_A,
+              step: 'advisor',
+              pass: 1,
+              spentMicrousd: CUTOFF_MICROUSD + 200,
+              ceilingMicrousd: 2_500_000,
+            },
+            {
+              planId: PLAN_ID,
+              moduleId: MODULE_ID,
+              taskId: TASK_A,
+              step: 'repair',
+              pass: 2,
+              spentMicrousd: CUTOFF_MICROUSD + 400,
+              ceilingMicrousd: 2_500_000,
+            },
+          ]);
+          expect(quality.insert).toHaveBeenCalledOnce();
+        });
+
+        it('runs every optional step below the cutoff', async () => {
+          tier.value = 'pro';
+          budget.spent.mockResolvedValueOnce(CUTOFF_MICROUSD - 1_000);
+          stillFlagged();
+          const { deps } = groundedDeps();
+          const { step, calls } = createStep();
+
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+
+          expect(calls.map((call) => call.name)).toContain('lesson-1-repair-2');
+          for (const call of qualityCalls('grounded-lesson-repair')) {
+            expect(call.toolChoice).toBe('required');
+          }
+          expect(budget.insert).toHaveBeenCalledWith([], expect.anything());
+        });
+
+        it('records no advisor cut on free, which has no advisor', async () => {
+          budget.spent.mockResolvedValueOnce(40_000);
+          writerFlaggingTaskA();
+          // The repair never adds completion criteria, so pass 2 is due.
+          qualityReturning({
+            repaired: () => ({
+              blocks: cleanBlocks('Still [S1].').slice(0, 2),
+            }),
+          });
+          const { deps } = groundedDeps();
+          const { step, calls } = createStep();
+
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+
+          const names = calls.map((call) => call.name);
+          expect(names).toContain('lesson-1-repair-1');
+          expect(names).not.toContain('lesson-1-repair-2');
+          const [cuts] = budget.insert.mock.calls[0] ?? [];
+          expect(cuts).toEqual([
+            expect.objectContaining({
+              step: 'repair',
+              pass: 2,
+              ceilingMicrousd: 50_000,
+            }),
+          ]);
+        });
+
+        it('does not save the cuts twice when a retry finds its own rows', async () => {
+          tier.value = 'pro';
+          budget.spent.mockResolvedValueOnce(CUTOFF_MICROUSD);
+          stillFlagged();
+          budget.insert.mockImplementationOnce(async () => {
+            throw new Error('connection reset after insert');
+          });
+          budget.count.mockResolvedValueOnce(2);
+          const { deps } = groundedDeps();
+          const { step, calls } = createStep();
+
+          await expect(
+            runModuleLessonsWorkflow(event(), step, deps),
+          ).resolves.toEqual({ kind: 'success' });
+
+          expect(budget.insert).toHaveBeenCalledOnce();
+          expect(budget.count).toHaveBeenCalledWith(
+            PLAN_ID,
+            MODULE_ID,
+            expect.anything(),
+            expect.any(Date),
+          );
+          expect(
+            calls.find((call) => call.name === 'lessons-quality-save')
+              ?.attempts,
+          ).toBe(2);
+        });
       });
 
       it('keeps the written lesson when the repair output is not a valid lesson', async () => {

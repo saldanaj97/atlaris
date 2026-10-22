@@ -3,6 +3,7 @@ import type { LessonIssue } from '@/features/lesson-content/lesson-citation-chec
 import type { LessonQualityPass } from '@/features/lesson-content/lesson-quality-issues';
 import type { ModuleLessonBatchPromptInput } from '@/features/lesson-content/module-lesson-prompts';
 import type { ModuleLessonGenerationTarget } from '@/features/lesson-content/run-module-lesson-generation-work';
+import type { NewGenerationBudgetCut } from '@/lib/db/queries/types/generation-budget-cuts.types';
 import type { NewGenerationQualityIssue } from '@/lib/db/queries/types/generation-quality-issues.types';
 import type { DbClient } from '@/lib/db/types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
@@ -16,12 +17,17 @@ import {
 } from '../plan-generation/outline';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import {
+  isNearPlanAiCeiling,
+  usageCostMicrousd,
+} from '@/features/billing/plan-ai-budget';
+import {
   SCHEMA_INVALID_CODE,
   runLessonCodeChecks,
 } from '@/features/lesson-content/lesson-checks';
 import { toLessonQualityRecords } from '@/features/lesson-content/lesson-quality-issues';
 import {
   LESSON_REPAIR_PASSES,
+  lessonAdvisorTool,
   runLessonRepair,
 } from '@/features/lesson-content/lesson-repair';
 import {
@@ -32,6 +38,10 @@ import {
   insertGenerationQualityIssues,
   listGenerationQualityIssuesForPlan,
 } from '@/lib/db/queries/generation-quality-issues';
+import {
+  countGenerationBudgetCutsForModule,
+  insertGenerationBudgetCuts,
+} from '@/lib/db/queries/plan-ai-budget';
 
 /** Step names are final once deployed, like `MODULE_LESSONS_STEPS`. */
 export type LessonQualityStepName =
@@ -62,6 +72,9 @@ export type LessonQualityLogFields = {
   readonly model?: string;
   readonly advisor?: boolean;
   readonly issueCount?: number;
+  readonly cutCount?: number;
+  readonly spentMicrousd?: number;
+  readonly ceilingMicrousd?: number;
   readonly errorKind?: string;
   readonly err?: unknown;
 };
@@ -86,6 +99,8 @@ export type LessonQualityResult = {
   /** Verifier and repair calls, in call order. */
   readonly usages: readonly CanonicalAIUsage[];
   readonly records: readonly NewGenerationQualityIssue[];
+  /** Repair passes or advisors the plan's AI ceiling cut (JCS-170). */
+  readonly cuts: readonly NewGenerationBudgetCut[];
 };
 
 type CallResult<T> =
@@ -155,6 +170,7 @@ async function repairLesson(
   pass: number,
   content: LessonContent,
   issues: readonly LessonIssue[],
+  withAdvisor: boolean,
 ): Promise<CallResult<LessonContent>> {
   const position = index + 1;
   const name = lessonRepairStepName(position, pass);
@@ -165,6 +181,7 @@ async function repairLesson(
         planId: ctx.target.planId,
         pickedModelId: ctx.grounded.pickedModelId,
         advisorModelId: ctx.grounded.advisorModelId,
+        withAdvisor,
         promptInput: ctx.promptInput,
         taskIndex: index,
         content,
@@ -207,14 +224,20 @@ async function repairLesson(
  * ran on both. A failed repair or verifier call is logged and skipped; it
  * still uses up its pass.
  *
- * Code checks are pure and run outside steps on step results, so a replay
- * gets the same answer.
+ * Near the plan's AI ceiling (JCS-170) the first repair runs without the
+ * advisor and later passes are skipped; the verifier and first repair are
+ * required. Spend counts the claim's snapshot plus this lesson's own calls,
+ * not its siblings' in flight.
+ *
+ * Code checks and the ceiling gate are pure and run outside steps on step
+ * results, so a replay gets the same answer.
  */
 export async function runLessonQualitySteps(
   step: Pick<WorkflowStep, 'do'>,
   ctx: LessonQualityContext,
   index: number,
   written: LessonContent,
+  writerUsage: CanonicalAIUsage,
 ): Promise<LessonQualityResult> {
   const task = ctx.promptInput.tasks[index];
   if (!task) {
@@ -222,6 +245,42 @@ export async function runLessonQualitySteps(
   }
   const withVerifier = isLessonVerifierAvailable(ctx.grounded.tier);
   const usages: CanonicalAIUsage[] = [];
+  const cuts: NewGenerationBudgetCut[] = [];
+  const { budget } = ctx.grounded;
+  const hasAdvisor =
+    lessonAdvisorTool(ctx.grounded.tier, ctx.grounded.advisorModelId) !== null;
+  const spentMicrousd = () =>
+    Math.round(
+      (budget?.spentMicrousd ?? 0) +
+        [writerUsage, ...usages].reduce(
+          (sum, usage) => sum + usageCostMicrousd(usage),
+          0,
+        ),
+    );
+  const nearCeiling = () =>
+    budget !== undefined && isNearPlanAiCeiling(budget, spentMicrousd());
+  const cut = (cutStep: NewGenerationBudgetCut['step'], pass: number) => {
+    if (!budget) {
+      return;
+    }
+    const spent = spentMicrousd();
+    cuts.push({
+      planId: ctx.target.planId,
+      moduleId: ctx.target.moduleId,
+      taskId: task.taskId,
+      step: cutStep,
+      pass,
+      spentMicrousd: spent,
+      ceilingMicrousd: budget.ceilingMicrousd,
+    });
+    ctx.log(lessonRepairStepName(index + 1, pass), {
+      lesson: index + 1,
+      pass,
+      outcome: cutStep === 'repair' ? 'budget_skipped' : 'advisor_budget_cut',
+      spentMicrousd: spent,
+      ceilingMicrousd: budget.ceilingMicrousd,
+    });
+  };
   const check = async (pass: number, content: LessonContent) => {
     const codeIssues = runLessonCodeChecks(content, {
       estimatedMinutes: task.estimatedMinutes,
@@ -258,6 +317,14 @@ export async function runLessonQualitySteps(
     pass <= LESSON_REPAIR_PASSES && current.issues.length > 0;
     pass += 1
   ) {
+    const near = nearCeiling();
+    if (near && pass > 1) {
+      cut('repair', pass);
+      break;
+    }
+    if (near && hasAdvisor) {
+      cut('advisor', pass);
+    }
     const repaired = await repairLesson(
       step,
       ctx,
@@ -265,6 +332,7 @@ export async function runLessonQualitySteps(
       pass,
       content,
       current.issues,
+      hasAdvisor && !near,
     );
     if (repaired.kind !== 'ok') {
       continue;
@@ -296,6 +364,7 @@ export async function runLessonQualitySteps(
   return {
     content,
     usages,
+    cuts,
     records: toLessonQualityRecords(
       {
         planId: ctx.target.planId,
@@ -311,15 +380,22 @@ async function saveQualityStep(
   db: DbClient,
   ctx: LessonQualityContext,
   records: NewGenerationQualityIssue[],
+  cuts: NewGenerationBudgetCut[],
   attempt: number,
 ): Promise<{ readonly outcome: string }> {
   if (attempt > 1) {
     const since = new Date(ctx.attemptStartedAt);
-    const existing = await listGenerationQualityIssuesForPlan(
-      ctx.target.planId,
-      db,
-    );
+    const [existing, existingCuts] = await Promise.all([
+      listGenerationQualityIssuesForPlan(ctx.target.planId, db),
+      countGenerationBudgetCutsForModule(
+        ctx.target.planId,
+        ctx.target.moduleId,
+        db,
+        since,
+      ),
+    ]);
     if (
+      existingCuts > 0 ||
       existing.some(
         (row) =>
           row.stage === 'lesson' &&
@@ -331,30 +407,38 @@ async function saveQualityStep(
       return { outcome: 'already_saved' };
     }
   }
-  await insertGenerationQualityIssues(records, db);
+  await db.transaction(async (tx) => {
+    await insertGenerationQualityIssues(records, tx);
+    await insertGenerationBudgetCuts(cuts, tx);
+  });
   ctx.log(LESSONS_QUALITY_SAVE_STEP, {
     outcome: 'saved',
     issueCount: records.length,
+    cutCount: cuts.length,
   });
   return { outcome: 'saved' };
 }
 
 /**
  * Writes the module's lesson issues (resolved and remaining) to
- * `generation_quality_issues`. Skipped when there are none.
+ * `generation_quality_issues` and the steps its plan's AI ceiling cut to
+ * `generation_budget_cuts`, in one transaction. Skipped when there are none.
  */
 export async function saveLessonQualityIssues(
   step: Pick<WorkflowStep, 'do'>,
   ctx: LessonQualityContext,
   records: NewGenerationQualityIssue[],
+  cuts: NewGenerationBudgetCut[],
 ): Promise<void> {
-  if (records.length === 0) {
+  if (records.length === 0 && cuts.length === 0) {
     return;
   }
   await step.do(
     LESSONS_QUALITY_SAVE_STEP,
     QUALITY_SAVE_STEP_CONFIG,
     async (stepCtx) =>
-      ctx.withDb((db) => saveQualityStep(db, ctx, records, stepCtx.attempt)),
+      ctx.withDb((db) =>
+        saveQualityStep(db, ctx, records, cuts, stepCtx.attempt),
+      ),
   );
 }

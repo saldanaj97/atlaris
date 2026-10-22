@@ -151,7 +151,7 @@ describe('ModelSelectionCard', () => {
     expect(screen.getAllByRole('combobox')).toHaveLength(6);
     expect(
       screen.getByRole('combobox', { name: /writer model/i }),
-    ).toHaveTextContent('anthropic/claude-haiku-5.5');
+    ).toHaveTextContent('Claude Haiku 5.5');
     expect(
       screen.getByRole('combobox', { name: /lesson checker/i }),
     ).toHaveTextContent(/^Default/);

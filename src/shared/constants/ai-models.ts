@@ -10,15 +10,13 @@ export const AI_DEFAULT_MODEL = 'openrouter/free';
 
 const AI_MODEL_IDS = [
   'openrouter/free',
-  'anthropic/claude-haiku-4.5',
-  'google/gemini-2.5-flash-lite',
-  'google/gemini-3-flash-preview',
-  'google/gemini-3.1-pro-preview',
-  'anthropic/claude-sonnet-4.5',
-  'openai/gpt-4o-mini-2024-07-18',
-  'openai/gpt-4o',
-  'openai/gpt-5.1',
-  'openai/gpt-5.2',
+  'openai/gpt-6-luna',
+  'anthropic/claude-haiku-5.5',
+  'deepseek/deepseek-v4.1-flash',
+  'openai/gpt-6.1-sol',
+  'openai/gpt-6-sol',
+  'anthropic/claude-sonnet-5.5',
+  'anthropic/claude-opus-5.5',
 ] as const;
 
 const MODEL_ID_SET: ReadonlySet<string> = new Set(AI_MODEL_IDS);

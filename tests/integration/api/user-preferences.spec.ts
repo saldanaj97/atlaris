@@ -55,8 +55,8 @@ const THIRD_STARTER_MODEL_ID =
 const PRO_MODEL_ID = getPersistableModelsForTier('pro', PLAN_OPERATION).find(
   ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
 )?.id;
-const PRO_REGEN_MODEL_ID = 'google/gemini-3.1-pro-preview';
-const PRO_LESSON_MODEL_ID = 'google/gemini-3-flash-preview';
+const PRO_REGEN_MODEL_ID = 'anthropic/claude-sonnet-5.5';
+const PRO_LESSON_MODEL_ID = 'anthropic/claude-haiku-5.5';
 const FREE_EFFECTIVE_MODEL = getDefaultModelForTier('free', PLAN_OPERATION);
 const STARTER_EFFECTIVE_MODEL = getDefaultModelForTier(
   'starter',

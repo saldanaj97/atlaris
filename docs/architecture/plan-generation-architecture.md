@@ -268,7 +268,16 @@ Generate JSON matches `ModuleLessonGenerationApiResponseSchema` (`src/shared/sch
 | `not_found`                                        | **404** |                                       |
 | `locked`                                           | **409** | `isUnlocked` false; not order-gated   |
 
-Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId? }` with `Cache-Control: no-store`.
+Status JSON matches `ModuleLessonGenerationStatusResponseSchema`: `{ planId, moduleId, status, workflowRunId?, budgetCuts? }` with `Cache-Control: no-store`. `budgetCuts` counts the module's `generation_budget_cuts` rows (see below).
+
+### Per-plan AI ceiling (grounded, JCS-170)
+
+Each generation of a plan has an AI spend ceiling by tier, from `PLAN_AI_BUDGET` in `src/features/billing/plan-ai-budget.ts` (20% AI share; Free $0.05, Starter $1.25, Pro $2.50). That constant is the single source for the ceilings and the share.
+
+- **Spend:** `sumPlanAiSpendMicrousd` sums `ai_usage_events` with the plan's `plan_id` (provider cost, else the catalog estimate) plus `plan_research.cost_microusd`, from the plan's latest successful `generation_attempts` row. Outline, research, writer, verifier, advisor and repair calls all record usage against the plan.
+- **Gate:** the grounded lesson context snapshots spend when lessons start. Each lesson adds its own calls to that snapshot. At 80% of the ceiling (`optionalStepCutoff`), optional steps stop: the advisor on pass 1 (repair runs without it) and the second repair pass. Required steps (outline, research, writer, verifier) always run, so the plan finishes degraded rather than partial.
+- **Record:** each cut is a `generation_budget_cuts` row (step, pass, spent, ceiling) saved with the lesson's quality issues, plus a `budget_skipped` / `advisor_budget_cut` log outcome. The lesson status endpoint exposes the count as `budgetCuts`.
+- **Limits:** lessons running in parallel do not see each other's spend until the next snapshot, and usage events recorded before `plan_id` existed are not counted.
 
 For correlation, read `modules.lessonGenerationMetadata.workflow.runId` (the Cloudflare instance ID) and look it up in the Cloudflare Workflows dashboard or Workers Logs.
 

@@ -1,32 +1,40 @@
 # Available AI Models
 
-This document provides a comprehensive list of AI models available in Atlaris via OpenRouter. Models are categorized by subscription tier and include technical specifications such as context windows and token costs.
+This document lists the AI models Atlaris uses via OpenRouter when grounded generation is off. Grounded generation has its own catalogs in `src/features/ai/model-operation-policy.ts` (`GROUNDED_MODELS_BY_TIER`, `PRO_GROUNDED_WRITER_CATALOG`, `PRO_GROUNDED_REVIEW_CATALOG`).
 
 ## Model Comparison Table
 
 Persistable catalog (Settings picker). The runtime default `openrouter/free` ("Free Models Router") is also in `AVAILABLE_MODELS` but is **not** stored in `user_preferences.preferred_ai_model`.
 
-Retired ids (removed from the catalog on 2026-10-13 because OpenRouter no longer serves them): `google/gemini-3-pro-preview`, `google/gemini-2.0-flash-exp:free`, `openai/gpt-oss-20b:free`, `alibaba/tongyi-deepresearch-30b-a3b:free`, `openai/gpt-4o-mini-search-preview`. A saved preference or override that still holds one is rejected as `invalid_model` and resolves to the tier × operation default (Pro regeneration: `google/gemini-3.1-pro-preview`). The legacy `preferred_ai_model` PostgreSQL enum keeps its historical values.
+Prices and limits come from the OpenRouter models API on 2026-10-22.
 
-| Model ID                        | Name                   | Provider  | Tier | Context Window | Cost (input) | Cost (output) |
-| :------------------------------ | :--------------------- | :-------- | :--- | :------------- | :----------- | :------------ |
-| `anthropic/claude-haiku-4.5`    | Claude Haiku 4.5       | Anthropic | free | 200K tokens    | $1/M         | $5/M          |
-| `google/gemini-2.5-flash-lite`  | Gemini 2.5 Flash Lite  | Google    | pro  | 1.05M tokens   | $0.10/M      | $0.40/M       |
-| `google/gemini-3-flash-preview` | Gemini 3 Flash Preview | Google    | pro  | 1.05M tokens   | $0.50/M      | $1/M          |
-| `google/gemini-3.1-pro-preview` | Gemini 3.1 Pro Preview | Google    | pro  | 1.05M tokens   | $2/M         | $12/M         |
-| `anthropic/claude-sonnet-4.5`   | Claude Sonnet 4.5      | Anthropic | pro  | 1M tokens      | $3/M         | $15/M         |
-| `openai/gpt-4o-mini-2024-07-18` | GPT-4o-mini 2024-07-18 | OpenAI    | pro  | 128K tokens    | $0.15/M      | $0.60/M       |
-| `openai/gpt-4o`                 | GPT-4o                 | OpenAI    | pro  | 128K tokens    | $2.50/M      | $10/M         |
-| `openai/gpt-5.1`                | GPT-5.1                | OpenAI    | pro  | 400K tokens    | $1.25/M      | $10/M         |
-| `openai/gpt-5.2`                | GPT-5.2                | OpenAI    | pro  | 400K tokens    | $1.75/M      | $14/M         |
+| Model ID                       | Name                | Provider  | Tiers        | Context Window | Max output | Cost (input) | Cost (output) |
+| :----------------------------- | :------------------ | :-------- | :----------- | :------------- | :--------- | :----------- | :------------ |
+| `openai/gpt-6-luna`            | GPT-6 Luna          | OpenAI    | Starter, Pro | 1.05M tokens   | 128K       | $0.10/M      | $0.50/M       |
+| `anthropic/claude-haiku-5.5`   | Claude Haiku 5.5    | Anthropic | Starter, Pro | 1M tokens      | 128K       | $0.10/M      | $0.50/M       |
+| `deepseek/deepseek-v4.1-flash` | DeepSeek V4.1 Flash | DeepSeek  | Starter      | 1.05M tokens   | 944K       | $0.30/M      | $1.20/M       |
+| `openai/gpt-6.1-sol`           | GPT-6.1 Sol         | OpenAI    | Pro          | 1.05M tokens   | 128K       | $2/M         | $10/M         |
+| `openai/gpt-6-sol`             | GPT-6 Sol           | OpenAI    | Pro          | 1.05M tokens   | 128K       | $2/M         | $10/M         |
+| `anthropic/claude-sonnet-5.5`  | Claude Sonnet 5.5   | Anthropic | Pro          | 1M tokens      | 128K       | $2/M         | $10/M         |
+| `anthropic/claude-opus-5.5`    | Claude Opus 5.5     | Anthropic | Pro          | 1M tokens      | 128K       | $4/M         | $20/M         |
+
+DeepSeek V4.1 Flash is Starter-only: the `atlaris-pro` OpenRouter guardrail blocks it.
+
+Retired ids. Removed on 2026-10-22 when the catalog was replaced (the tier guardrails block them): `anthropic/claude-haiku-4.5`, `google/gemini-2.5-flash-lite`, `google/gemini-3-flash-preview`, `google/gemini-3.1-pro-preview`, `anthropic/claude-sonnet-4.5`, `openai/gpt-4o-mini-2024-07-18`, `openai/gpt-4o`, `openai/gpt-5.1`, `openai/gpt-5.2`. Removed on 2026-10-13 because OpenRouter no longer serves them: `google/gemini-3-pro-preview`, `google/gemini-2.0-flash-exp:free`, `openai/gpt-oss-20b:free`, `alibaba/tongyi-deepresearch-30b-a3b:free`, `openai/gpt-4o-mini-search-preview`. A saved preference or override that still holds one is rejected as `invalid_model` and resolves to the tier × operation default. Settings shows no saved pick for it. The legacy `preferred_ai_model` PostgreSQL enum keeps its historical values; the column is `text`.
 
 ## Subscription Tiers
 
-Access is gated by `getModelsForTier()` in `src/features/ai/ai-models.ts`:
+Access is gated per tier × operation by `getModelOperationPolicy()` in `src/features/ai/model-operation-policy.ts`; `getModelsForTier()` in `src/features/ai/ai-models.ts` returns the matching catalog rows.
 
-- **Free**: Models marked `free` (including the runtime `openrouter/free` router).
-- **Starter**: Same free-model set as Free (not a separate catalog).
-- **Pro**: Entire `AVAILABLE_MODELS` catalog, including premium Claude / GPT / Gemini variants.
+| Tier    | Operation             | Default                       | Catalog                                                                    |
+| :------ | :-------------------- | :---------------------------- | :------------------------------------------------------------------------- |
+| Free    | outline, lesson       | `openrouter/free`             | `openrouter/free` only                                                     |
+| Free    | regeneration          | not allowed                   | none                                                                       |
+| Starter | outline, regeneration | `openai/gpt-6-luna`           | GPT-6 Luna, Claude Haiku 5.5, DeepSeek V4.1 Flash                          |
+| Starter | lesson                | `openrouter/free`             | `openrouter/free` only                                                     |
+| Pro     | outline               | `openai/gpt-6.1-sol`          | `PRO_MODEL_IDS`: every model above except DeepSeek, plus `openrouter/free` |
+| Pro     | regeneration          | `anthropic/claude-sonnet-5.5` | `PRO_MODEL_IDS`                                                            |
+| Pro     | lesson                | `anthropic/claude-haiku-5.5`  | `PRO_MODEL_IDS`                                                            |
 
 ## Understanding Costs
 
@@ -35,25 +43,22 @@ Costs are listed per million (M) tokens:
 - **Input Cost**: The cost for the prompt/instructions sent to the model.
 - **Output Cost**: The cost for the response generated by the model.
 
-Models marked with `$0/M` are free to use for all users within their respective tier quotas.
+Usage cost is computed from this catalog when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so changing the catalog does not reprice past usage.
 
 ## Technical Specifications
 
 ### Context Window
 
-The context window represents the maximum amount of text (in tokens) the model can "remember" or process at once.
+The context window represents the maximum amount of text (in tokens) the model can "remember" or process at once. Every paid model above has a context window of about 1M tokens.
 
-- **Large Context (1M+ tokens)**: Best for complex learning plans with extensive notes or large amounts of reference material.
-- **Standard Context (128K - 400K tokens)**: Suitable for most general-purpose learning plan generations.
+### Max output
+
+`maxOutputTokens` is the per-request output ceiling `getOutputTokenCeiling()` in `src/features/ai/cost.ts` sends to the provider. Models without one (`openrouter/free`) use `DEFAULT_OUTPUT_TOKEN_CEILING`.
 
 ### Providers
 
-We integrate with multiple top-tier AI providers via OpenRouter to ensure high availability and access to the latest advancements in LLM technology:
-
-- **Google**: Known for massive context windows and fast "Flash" models.
-- **Anthropic**: Renowned for nuanced reasoning and safety.
-- **OpenAI**: Industry standard for general-purpose intelligence and multimodal capabilities.
+The catalog spans three providers via OpenRouter: OpenAI, Anthropic and DeepSeek. No default uses a Google model.
 
 ## Model Selection
 
-Users pick a preferred model under **Settings → AI model** (`/settings/ai`). The value is stored on `user_preferences.preferred_ai_model` and used for subsequent plan/lesson generation when it remains within the user's tier. Persistable options exclude `openrouter/free`; when no preference is set, runtime generation uses `AI_DEFAULT_MODEL` (`openrouter/free`).
+Users pick a preferred model under **Settings → AI model** (`/settings/ai`). The value is stored on `user_preferences.preferred_ai_model` (Pro also has `preferred_regeneration_ai_model` and `preferred_lesson_ai_model`) and used for later generation while it stays in the user's tier × operation catalog. Persistable options exclude `openrouter/free`; when no valid preference is set, generation uses the tier × operation default above.

@@ -1,11 +1,11 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { AVAILABLE_MODELS, getModelById } from '@/features/ai/ai-models';
+import { getModelById } from '@/features/ai/ai-models';
 import {
   type ModelOperation,
-  type ModelOperationPolicy,
   getModelOperationPolicy,
   MODEL_OPERATIONS,
+  PRO_MODEL_IDS,
   STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
   STARTER_OUTLINE_REGENERATION_MODEL_IDS,
 } from '@/features/ai/model-operation-policy';
@@ -20,20 +20,17 @@ const TIERS = [
 
 const CONTRACT_MODEL_IDS = [
   AI_DEFAULT_MODEL,
-  'google/gemini-2.5-flash-lite',
-  'openai/gpt-4o-mini-2024-07-18',
-  'google/gemini-3-flash-preview',
-  'openai/gpt-5.2',
-  'google/gemini-3.1-pro-preview',
+  'openai/gpt-6-luna',
+  'anthropic/claude-haiku-5.5',
+  'deepseek/deepseek-v4.1-flash',
+  'openai/gpt-6.1-sol',
+  'openai/gpt-6-sol',
+  'anthropic/claude-sonnet-5.5',
+  'anthropic/claude-opus-5.5',
 ] as const;
 
-const HAIKU_MODEL_ID = 'anthropic/claude-haiku-4.5';
-
-function catalogIds(policy: ModelOperationPolicy): readonly string[] {
-  return policy.modelIds === 'full'
-    ? AVAILABLE_MODELS.map((model) => model.id)
-    : policy.modelIds;
-}
+const PRO_ONLY_MODEL_ID = 'anthropic/claude-opus-5.5';
+const STARTER_ONLY_MODEL_ID = 'deepseek/deepseek-v4.1-flash';
 
 describe('model-operation-policy', () => {
   it('keeps every contract model id in AVAILABLE_MODELS', () => {
@@ -42,11 +39,11 @@ describe('model-operation-policy', () => {
     }
   });
 
-  it('does not treat Claude Haiku as a Free catalog model', () => {
-    expect(getModelById(HAIKU_MODEL_ID)?.tier).toBe('pro');
-    expect(getModelById(HAIKU_MODEL_ID)?.inputCostPerMillion).toBeGreaterThan(
-      0,
-    );
+  it('does not treat a paid model as a Free catalog model', () => {
+    expect(getModelById(PRO_ONLY_MODEL_ID)?.tier).toBe('pro');
+    expect(
+      getModelById(PRO_ONLY_MODEL_ID)?.inputCostPerMillion,
+    ).toBeGreaterThan(0);
   });
 
   describe('tier × operation matrix', () => {
@@ -55,7 +52,7 @@ describe('model-operation-policy', () => {
       operation: ModelOperation;
       allowed: boolean;
       defaultModelId: string;
-      expectedIds: readonly string[] | 'full';
+      expectedIds: readonly string[];
     }>([
       {
         tier: 'free',
@@ -103,22 +100,22 @@ describe('model-operation-policy', () => {
         tier: 'pro',
         operation: 'initial_outline',
         allowed: true,
-        defaultModelId: 'openai/gpt-5.2',
-        expectedIds: 'full',
+        defaultModelId: 'openai/gpt-6.1-sol',
+        expectedIds: PRO_MODEL_IDS,
       },
       {
         tier: 'pro',
         operation: 'regeneration',
         allowed: true,
-        defaultModelId: 'google/gemini-3.1-pro-preview',
-        expectedIds: 'full',
+        defaultModelId: 'anthropic/claude-sonnet-5.5',
+        expectedIds: PRO_MODEL_IDS,
       },
       {
         tier: 'pro',
         operation: 'lesson',
         allowed: true,
-        defaultModelId: 'google/gemini-3-flash-preview',
-        expectedIds: 'full',
+        defaultModelId: 'anthropic/claude-haiku-5.5',
+        expectedIds: PRO_MODEL_IDS,
       },
     ])(
       '$tier $operation → allowed=$allowed default=$defaultModelId',
@@ -140,19 +137,22 @@ describe('model-operation-policy', () => {
 
   it('Free outline and lesson ignore paid override ids', () => {
     for (const operation of ['initial_outline', 'lesson'] as const) {
-      const ids = catalogIds(getModelOperationPolicy('free', operation));
+      const ids = getModelOperationPolicy('free', operation).modelIds;
       expect(ids).toEqual([AI_DEFAULT_MODEL]);
-      expect(ids).not.toContain('openai/gpt-5.2');
+      expect(ids).not.toContain('openai/gpt-6.1-sol');
       expect(ids).not.toContain(STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID);
     }
   });
 
   it('Starter outline/regen catalogs are exactly the three allowlisted ids', () => {
     expect([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]).toEqual([
-      'google/gemini-2.5-flash-lite',
-      'openai/gpt-4o-mini-2024-07-18',
-      'google/gemini-3-flash-preview',
+      'openai/gpt-6-luna',
+      'anthropic/claude-haiku-5.5',
+      'deepseek/deepseek-v4.1-flash',
     ]);
+    expect(STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID).toBe(
+      'openai/gpt-6-luna',
+    );
 
     for (const operation of ['initial_outline', 'regeneration'] as const) {
       expect(getModelOperationPolicy('starter', operation).modelIds).toEqual(
@@ -172,9 +172,9 @@ describe('model-operation-policy', () => {
     const regeneration = getModelOperationPolicy('pro', 'regeneration');
     const lesson = getModelOperationPolicy('pro', 'lesson');
 
-    expect(outline.defaultModelId).toBe('openai/gpt-5.2');
-    expect(regeneration.defaultModelId).toBe('google/gemini-3.1-pro-preview');
-    expect(lesson.defaultModelId).toBe('google/gemini-3-flash-preview');
+    expect(outline.defaultModelId).toBe('openai/gpt-6.1-sol');
+    expect(regeneration.defaultModelId).toBe('anthropic/claude-sonnet-5.5');
+    expect(lesson.defaultModelId).toBe('anthropic/claude-haiku-5.5');
     expect(
       new Set([
         outline.defaultModelId,
@@ -184,21 +184,34 @@ describe('model-operation-policy', () => {
     ).toBe(3);
   });
 
-  it.each(TIERS)(
-    '%s catalogs never include Claude Haiku on Free or Starter',
-    (tier) => {
-      if (tier === 'pro') {
-        expect(
-          catalogIds(getModelOperationPolicy(tier, 'initial_outline')),
-        ).toContain(HAIKU_MODEL_ID);
-        return;
-      }
+  it.each(TIERS)('%s catalogs only include Claude Opus on Pro', (tier) => {
+    if (tier === 'pro') {
+      expect(
+        getModelOperationPolicy(tier, 'initial_outline').modelIds,
+      ).toContain(PRO_ONLY_MODEL_ID);
+      return;
+    }
 
-      for (const operation of MODEL_OPERATIONS) {
-        expect(
-          catalogIds(getModelOperationPolicy(tier, operation)),
-        ).not.toContain(HAIKU_MODEL_ID);
-      }
-    },
-  );
+    for (const operation of MODEL_OPERATIONS) {
+      expect(getModelOperationPolicy(tier, operation).modelIds).not.toContain(
+        PRO_ONLY_MODEL_ID,
+      );
+    }
+  });
+
+  it('keeps DeepSeek out of every Pro catalog', () => {
+    expect(getModelById(STARTER_ONLY_MODEL_ID)?.id).toBe(STARTER_ONLY_MODEL_ID);
+    expect(PRO_MODEL_IDS).not.toContain(STARTER_ONLY_MODEL_ID);
+    for (const operation of MODEL_OPERATIONS) {
+      expect(getModelOperationPolicy('pro', operation).modelIds).not.toContain(
+        STARTER_ONLY_MODEL_ID,
+      );
+    }
+  });
+
+  it('references only catalog models in Pro policies', () => {
+    for (const modelId of PRO_MODEL_IDS) {
+      expect(getModelById(modelId)?.id).toBe(modelId);
+    }
+  });
 });

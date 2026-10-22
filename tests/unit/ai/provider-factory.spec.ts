@@ -184,7 +184,7 @@ describe('AI Provider Factory', () => {
     it('returns MockGenerationProvider in test environment by default', async () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
       const provider = getGenerationProviderWithModel(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -195,7 +195,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'anthropic/claude-haiku-4.5',
+        'anthropic/claude-opus-5.5',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
@@ -206,7 +206,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
 
       expect(provider.constructor.name).toBe('RouterGenerationProvider');
@@ -217,11 +217,11 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider1 = getGenerationProviderWithModel(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
       const provider2 = getGenerationProviderWithModel('invalid/model-id');
       const provider3 = getGenerationProviderWithModel(
-        'anthropic/claude-haiku-4.5',
+        'anthropic/claude-opus-5.5',
       );
 
       expect(provider1.constructor.name).toBe('RouterGenerationProvider');
@@ -235,7 +235,7 @@ describe('AI Provider Factory', () => {
       const { getGenerationProviderWithModel } = await loadProviderFactory();
 
       const provider = getGenerationProviderWithModel(
-        'google/gemini-3-flash-preview',
+        'anthropic/claude-haiku-5.5',
       );
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');

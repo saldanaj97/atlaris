@@ -256,6 +256,7 @@ describe('outline verifier', () => {
         },
       ],
       model: 'served/model',
+      usage: expect.objectContaining({ providerCostMicrousd: 1000 }),
     });
     const body = sentBody(fetchMock);
     expect(body.models).toEqual(
@@ -335,6 +336,7 @@ describe('outline repair', () => {
       'Generic constraints',
     ]);
     expect(run.model).toBe('served/model');
+    expect(run.usage).toMatchObject({ providerCostMicrousd: 1000 });
     expect(fetchMock).toHaveBeenCalledOnce();
     const body = sentBody(fetchMock);
     expect(body.models).toEqual(

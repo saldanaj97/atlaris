@@ -11,7 +11,10 @@ import type { OpenRouterCore } from '@openrouter/sdk/core';
 import type { chatSend } from '@openrouter/sdk/funcs/chatSend';
 import type { ChatRequest } from '@openrouter/sdk/models';
 
-import { getOutputTokenCeiling } from '@/features/ai/cost';
+import {
+  DEFAULT_OUTPUT_TOKEN_CEILING,
+  getOutputTokenCeiling,
+} from '@/features/ai/cost';
 import { buildUserPrompt } from '@/features/ai/prompts';
 import {
   ProviderError,
@@ -796,7 +799,12 @@ export async function sendOpenRouterGroundedChat(
     stream: true,
     temperature,
     response_format: toWireResponseFormat(request.responseFormat),
-    max_tokens: getRouteTokenCeiling(routeModels),
+    // Grounded stages keep the 32k ceiling they had before the catalog listed
+    // their models, which bounds cost and latency of a runaway response.
+    max_tokens: Math.min(
+      getRouteTokenCeiling(routeModels),
+      DEFAULT_OUTPUT_TOKEN_CEILING,
+    ),
     ...(serverTools.length > 0 && {
       tools: serverTools.map(toWireServerTool),
     }),

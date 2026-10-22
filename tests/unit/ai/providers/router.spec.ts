@@ -81,24 +81,24 @@ describe('RouterGenerationProvider', () => {
 
     it('uses provided model in config', async () => {
       const config: RouterConfig = {
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       };
 
       const provider = new RouterGenerationProvider(config);
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('anthropic/claude-haiku-4.5');
+      expect(result.metadata.model).toBe('anthropic/claude-opus-5.5');
     });
 
     it('uses aiEnv.defaultModel when available', async () => {
-      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
+      vi.stubEnv('AI_DEFAULT_MODEL', 'deepseek/deepseek-v4.1-flash');
 
       const provider = new RouterGenerationProvider();
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('openai/gpt-4o-mini-2024-07-18');
+      expect(result.metadata.model).toBe('deepseek/deepseek-v4.1-flash');
     });
 
     it('uses MockGenerationProvider when useMock is true', async () => {
@@ -134,17 +134,17 @@ describe('RouterGenerationProvider', () => {
 
     it('does not include Google AI fallback', async () => {
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       });
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('anthropic/claude-haiku-4.5');
+      expect(result.metadata.model).toBe('anthropic/claude-opus-5.5');
     });
 
     it('forwards fallbackModels to OpenRouterProvider', async () => {
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
         fallbackModels: [AI_DEFAULT_MODEL],
       });
       const result = await provider.generate(mockInput);
@@ -154,7 +154,7 @@ describe('RouterGenerationProvider', () => {
         expect.objectContaining({
           chatRequest: expect.objectContaining({
             models: [
-              'anthropic/claude-haiku-4.5@preset/test-plan-preset',
+              'anthropic/claude-opus-5.5@preset/test-plan-preset',
               `${AI_DEFAULT_MODEL}@preset/test-plan-preset`,
             ],
           }),
@@ -179,13 +179,13 @@ describe('RouterGenerationProvider', () => {
     });
 
     it('falls back to aiEnv.defaultModel when config.model is not provided', async () => {
-      vi.stubEnv('AI_DEFAULT_MODEL', 'openai/gpt-4o-mini-2024-07-18');
+      vi.stubEnv('AI_DEFAULT_MODEL', 'deepseek/deepseek-v4.1-flash');
 
       const provider = new RouterGenerationProvider({});
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('openai/gpt-4o-mini-2024-07-18');
+      expect(result.metadata.model).toBe('deepseek/deepseek-v4.1-flash');
     });
 
     it('falls back to DEFAULT_MODEL when neither config nor env provides model', async () => {
@@ -224,7 +224,7 @@ describe('RouterGenerationProvider', () => {
         .mockResolvedValueOnce(DEFAULT_OPENROUTER_RESPONSE);
 
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       });
       const result = await provider.generate(mockInput);
 
@@ -241,7 +241,7 @@ describe('RouterGenerationProvider', () => {
         .mockResolvedValueOnce(DEFAULT_OPENROUTER_RESPONSE);
 
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       });
       const result = await provider.generate(mockInput);
 
@@ -256,7 +256,7 @@ describe('RouterGenerationProvider', () => {
       });
 
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       });
 
       await expect(provider.generate(mockInput)).rejects.toMatchObject({
@@ -305,7 +305,7 @@ describe('RouterGenerationProvider', () => {
         });
 
       const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-haiku-4.5',
+        model: 'anthropic/claude-opus-5.5',
       });
 
       await expect(provider.generate(mockInput)).rejects.toThrow(

@@ -11,13 +11,13 @@ import {
 } from '@/features/ai/model-resolver';
 import { describe, expect, it, vi } from 'vitest';
 
-const STARTER_DEFAULT = 'google/gemini-2.5-flash-lite';
-const STARTER_OVERRIDE = 'openai/gpt-4o-mini-2024-07-18';
-const PRO_OUTLINE_DEFAULT = 'openai/gpt-5.2';
-const PRO_REGEN_DEFAULT = 'google/gemini-3.1-pro-preview';
-const PRO_LESSON_DEFAULT = 'google/gemini-3-flash-preview';
-const HAIKU_MODEL_ID = 'anthropic/claude-haiku-4.5';
-const OTHER_CATALOG_ID = 'google/gemini-2.5-flash-lite';
+const STARTER_DEFAULT = 'openai/gpt-6-luna';
+const STARTER_OVERRIDE = 'deepseek/deepseek-v4.1-flash';
+const PRO_OUTLINE_DEFAULT = 'openai/gpt-6.1-sol';
+const PRO_REGEN_DEFAULT = 'anthropic/claude-sonnet-5.5';
+const PRO_LESSON_DEFAULT = 'anthropic/claude-haiku-5.5';
+const PRO_ONLY_MODEL_ID = 'anthropic/claude-opus-5.5';
+const OTHER_CATALOG_ID = 'openai/gpt-6-luna';
 /** Former catalog ids that OpenRouter no longer serves; may remain in saved rows. */
 const RETIRED_MODEL_IDS = [
   'google/gemini-3-pro-preview',
@@ -123,18 +123,18 @@ describe('Model resolver', () => {
       );
     });
 
-    it('falls back before provider when Haiku or another catalog id is requested', () => {
-      const haiku = resolveWithMockProvider(
+    it('falls back before provider when a Pro-only catalog id is requested', () => {
+      const proOnly = resolveWithMockProvider(
         'free',
-        HAIKU_MODEL_ID,
+        PRO_ONLY_MODEL_ID,
         'initial_outline',
       );
-      expectResolution(haiku.result, {
+      expectResolution(proOnly.result, {
         modelId: AI_DEFAULT_MODEL,
         fallback: true,
         fallbackReason: 'tier_denied',
       });
-      expect(haiku.providerGetter).toHaveBeenCalledWith(
+      expect(proOnly.providerGetter).toHaveBeenCalledWith(
         AI_DEFAULT_MODEL,
         'free',
         'initial_outline',
@@ -176,19 +176,38 @@ describe('Model resolver', () => {
       });
     });
 
-    it('returns tier_denied for Haiku on Free/Starter', () => {
+    it('returns tier_denied for a Pro-only model on Free/Starter', () => {
       expect(
-        validateModelForTier('free', HAIKU_MODEL_ID, 'initial_outline'),
+        validateModelForTier('free', PRO_ONLY_MODEL_ID, 'initial_outline'),
       ).toEqual({
         valid: false,
         reason: 'tier_denied',
       });
       expect(
-        validateModelForTier('starter', HAIKU_MODEL_ID, 'regeneration'),
+        validateModelForTier('starter', PRO_ONLY_MODEL_ID, 'regeneration'),
       ).toEqual({
         valid: false,
         reason: 'tier_denied',
       });
+    });
+
+    it('allows DeepSeek for Starter outline and regeneration only', () => {
+      const deepseek = 'deepseek/deepseek-v4.1-flash';
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
+        expect(validateModelForTier('starter', deepseek, operation)).toEqual({
+          valid: true,
+        });
+      }
+      for (const operation of [
+        'initial_outline',
+        'regeneration',
+        'lesson',
+      ] as const) {
+        expect(validateModelForTier('pro', deepseek, operation)).toEqual({
+          valid: false,
+          reason: 'tier_denied',
+        });
+      }
     });
 
     it('returns invalid_model for unknown model id', () => {

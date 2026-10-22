@@ -35,11 +35,11 @@ describe('planRegenerationJobPayloadSchema', () => {
     expect(
       planRegenerationJobPayloadSchema.parse({
         planId,
-        overrides: { model: 'google/gemini-3.1-pro-preview' },
+        overrides: { model: 'anthropic/claude-sonnet-5.5' },
       }),
     ).toMatchObject({
       planId,
-      overrides: { model: 'google/gemini-3.1-pro-preview' },
+      overrides: { model: 'anthropic/claude-sonnet-5.5' },
     });
   });
 

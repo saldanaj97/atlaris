@@ -57,7 +57,7 @@ describe('streamGroundedEvents', () => {
       webSearchRequests: 2,
       serverToolCallsExecuted: 3,
     });
-    expect(metadata.model).toBe('google/gemini-3-flash-preview');
+    expect(metadata.model).toBe('anthropic/claude-haiku-5.5');
     expect(metadata.finishReason).toBe('stop');
   });
 
