@@ -9,7 +9,6 @@ import {
   getModelsForTier,
 } from '@/features/ai/ai-models';
 import { FREE_ROUTER_MODEL } from '@/features/ai/model-catalog/catalog';
-import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -128,25 +127,24 @@ describe('AI Models Configuration', () => {
       );
     });
 
-    it('throws and logs when the default and every fallback left the guardrail', async () => {
+    it('adds the free router and logs an error when every fallback left the guardrail', async () => {
       await dropFromGuardrail('starter', [
         'openai/gpt-6-luna',
         'deepseek/deepseek-v4.1-flash',
       ]);
       const errorSpy = vi.spyOn(logger, 'error');
 
-      await expect(
-        getModelsForTier('starter', 'initial_outline'),
-      ).rejects.toMatchObject({
-        name: ModelResolutionError.name,
-        code: 'DEFAULT_MODEL_UNAVAILABLE',
-      });
+      const ids = (await getModelsForTier('starter', 'initial_outline')).map(
+        (m) => m.id,
+      );
+
+      expect(ids[0]).toBe(AI_DEFAULT_MODEL);
       expect(errorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           event: 'model_default_not_in_guardrail',
           tier: 'starter',
           defaultModelId: 'openai/gpt-6-luna',
-          fallbackModelId: null,
+          fallbackModelId: AI_DEFAULT_MODEL,
         }),
         expect.any(String),
       );
@@ -217,7 +215,11 @@ describe('AI Models Configuration', () => {
       );
     });
 
-    it('rejects when the default and every fallback left the guardrail', async () => {
+    it('falls back to the free router when every fallback left the guardrail', async () => {
+      await dropFromGuardrail('starter', [
+        'openai/gpt-6-luna',
+        'deepseek/deepseek-v4.1-flash',
+      ]);
       await dropFromGuardrail('pro', [
         'anthropic/claude-sonnet-5.5',
         'openai/gpt-6-sol',
@@ -225,9 +227,12 @@ describe('AI Models Configuration', () => {
       ]);
       vi.spyOn(logger, 'error').mockImplementation(() => undefined);
 
-      await expect(
-        getDefaultModelForTier('pro', 'regeneration'),
-      ).rejects.toBeInstanceOf(ModelResolutionError);
+      expect(await getDefaultModelForTier('starter', 'initial_outline')).toBe(
+        AI_DEFAULT_MODEL,
+      );
+      expect(await getDefaultModelForTier('pro', 'regeneration')).toBe(
+        AI_DEFAULT_MODEL,
+      );
     });
   });
 

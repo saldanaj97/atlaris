@@ -31,7 +31,7 @@ export type ModelOperationPolicy = {
   /**
    * Should be in the operation's models. When the guardrail drops it,
    * resolution uses the first listed model on the operation's grounded writer
-   * route, and throws when none is listed.
+   * route, then the free router.
    */
   readonly defaultModelId: string;
   /** Offers the tier's synced guardrail models. */

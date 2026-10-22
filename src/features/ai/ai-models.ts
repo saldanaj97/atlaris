@@ -17,7 +17,6 @@ import {
   getGroundedOperationPolicy,
   getModelOperationPolicy,
 } from '@/features/ai/model-operation-policy';
-import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 
@@ -25,7 +24,7 @@ export { AI_DEFAULT_MODEL };
 
 type TierModels = {
   readonly models: AvailableModel[];
-  /** The operation default, or its first allowed fallback. */
+  /** The operation default, its first listed fallback, or the free router. */
   readonly defaultModelId: string;
 };
 
@@ -66,7 +65,7 @@ async function resolveTierModels(
     tier,
     operation,
     defaultModelId: policy.defaultModelId,
-    fallbackModelId: fallbackModelId ?? null,
+    fallbackModelId,
     modelIds: models.map((model) => model.id),
     event: 'model_default_not_in_guardrail',
   };
@@ -77,20 +76,24 @@ async function resolveTierModels(
     );
     return { models, defaultModelId: fallbackModelId };
   }
+  // Last resort: the code-owned free router, added to the list so the default
+  // stays among the models it is validated against.
   logger.error(
-    fields,
-    'Operation default model and its fallbacks are missing from the tier guardrail models',
+    { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
+    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router',
   );
-  throw new ModelResolutionError(
-    `Default model "${policy.defaultModelId}" and its fallbacks are not available for ${tier} ${operation}.`,
-    { code: 'DEFAULT_MODEL_UNAVAILABLE' },
-  );
+  return {
+    models: isListed(AI_DEFAULT_MODEL)
+      ? models
+      : [FREE_ROUTER_MODEL, ...models],
+    defaultModelId: AI_DEFAULT_MODEL,
+  };
 }
 
 /**
- * Models allowed for a subscription tier and generation operation. Throws
- * when neither the operation's code-owned default nor any of its code-listed
- * fallbacks is among them (see {@link getDefaultModelForTier}).
+ * Models allowed for a subscription tier and generation operation. Includes
+ * the free router when it is the last-resort default (see
+ * {@link getDefaultModelForTier}).
  */
 export async function getModelsForTier(
   tier: SubscriptionTier,
@@ -102,8 +105,8 @@ export async function getModelsForTier(
 /**
  * The default model for a subscription tier and generation operation: the
  * code-owned default while the tier's guardrail lists it, otherwise the first
- * listed model on the operation's grounded writer route. Throws when none is
- * listed.
+ * listed model on the operation's grounded writer route, otherwise the free
+ * router.
  */
 export async function getDefaultModelForTier(
   tier: SubscriptionTier,
