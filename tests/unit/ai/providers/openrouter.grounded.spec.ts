@@ -10,6 +10,10 @@ import {
   OPENROUTER_TEST_PLAN_PRESET,
 } from './openrouter-test-helpers';
 import {
+  DEFAULT_OUTPUT_TOKEN_CEILING,
+  getOutputTokenCeiling,
+} from '@/features/ai/cost';
+import {
   ProviderError,
   ProviderTimeoutError,
 } from '@/features/ai/providers/errors';
@@ -191,6 +195,16 @@ describe('sendOpenRouterGroundedChat', () => {
     const [, , lastPart] =
       (body.messages as { content: object[] }[])[0]?.content ?? [];
     expect(lastPart).not.toHaveProperty('cache_control');
+  });
+
+  it('caps max_tokens at the default ceiling for catalog models with a larger one', async () => {
+    const { fetchMock, call } = captureFetch();
+
+    await sendOpenRouterGroundedChat(BASE_REQUEST, { fetch: fetchMock });
+
+    expect(getOutputTokenCeiling(OPENROUTER_TEST_MODEL)).toBe(128_000);
+    expect(call().body.max_tokens).toBe(DEFAULT_OUTPUT_TOKEN_CEILING);
+    expect(DEFAULT_OUTPUT_TOKEN_CEILING).toBe(32_768);
   });
 
   it("uses the tier's API key and a single gateway attempt with server tools", async () => {
