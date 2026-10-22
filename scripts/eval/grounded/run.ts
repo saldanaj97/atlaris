@@ -487,6 +487,12 @@ async function generateModules(
         );
         continue;
       }
+      if (
+        result.status === 503 &&
+        (result.body as { state?: string } | null)?.state === 'disabled'
+      ) {
+        throw new SetupError('lesson generation is disabled on this host');
+      }
       if (result.status >= 500) {
         // The next poll rereads the status, so a start that did land is seen
         // before the call is repeated.
