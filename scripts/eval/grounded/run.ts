@@ -444,22 +444,29 @@ async function generateModules(
         log(`${topicId}: module "${module.title}": ${status}`);
         continue;
       }
+      // The clock keeps running if a started module drops back to
+      // not_generated, so every started module ends within the timeout.
+      if (started !== undefined && now - started > MODULE_TIMEOUT_MS) {
+        done.set(module.id, {
+          moduleId: module.id,
+          title: module.title,
+          status: 'failed',
+          durationMs: now - started,
+          workflowRunId,
+        });
+        log(`${topicId}: module "${module.title}": timed out`);
+        continue;
+      }
       if (status === 'generating') {
         if (started === undefined) {
           startedAt.set(module.id, now);
-        } else if (now - started > MODULE_TIMEOUT_MS) {
-          done.set(module.id, {
-            moduleId: module.id,
-            title: module.title,
-            status: 'failed',
-            durationMs: now - started,
-            workflowRunId,
-          });
-          log(`${topicId}: module "${module.title}": timed out`);
         }
         continue;
       }
-      const inFlight = [...startedAt.keys()].filter((id) => !done.has(id));
+      // A started module that is no longer generating restarts in its own slot.
+      const inFlight = [...startedAt.keys()].filter(
+        (id) => id !== module.id && !done.has(id),
+      );
       if (inFlight.length >= MAX_MODULES_IN_FLIGHT || now < rateLimitedUntil) {
         continue;
       }
@@ -501,7 +508,7 @@ async function generateModules(
       serverErrors.delete(module.id);
       const body = expectOk(result, 'lesson generate') as { state: string };
       if (body.state === 'generating' || body.state === 'ready') {
-        startedAt.set(module.id, now);
+        startedAt.set(module.id, started ?? now);
       } else {
         throw new Error(`lesson generate returned state ${body.state}`);
       }
@@ -917,6 +924,12 @@ async function deletePlans(
 async function cleanup(manifestPath: string): Promise<void> {
   const baseUrl = resolveBaseUrl();
   const manifest = readManifest(manifestPath);
+  // Another host answers 404 for these plans, which would read as deleted.
+  if (baseUrl !== manifest.baseUrl) {
+    throw new Error(
+      `${manifestPath} was collected on ${manifest.baseUrl}; set EVAL_BASE_URL to it`,
+    );
+  }
   const entries: CleanupEntry[] = [
     ...manifest.plans,
     ...(manifest.abandoned ?? []).map((run) => ({
