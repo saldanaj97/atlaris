@@ -2,6 +2,10 @@ import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import {
+  inMemoryModelCatalogStore,
+  MODEL_CATALOG_FIXTURE,
+} from '../../fixtures/ai-model-catalog';
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import {
@@ -9,7 +13,14 @@ import {
   resolveModelForTier,
   validateModelForTier,
 } from '@/features/ai/model-resolver';
-import { describe, expect, it, vi } from 'vitest';
+import { logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@sentry/nextjs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
+  captureMessage: vi.fn(),
+}));
 
 const STARTER_DEFAULT = 'openai/gpt-6-luna';
 const STARTER_OVERRIDE = 'deepseek/deepseek-v4.1-flash';
@@ -46,14 +57,17 @@ describe('Model resolver', () => {
       }),
   });
 
-  const resolveWithMockProvider = (
+  const resolveWithMockProvider = async (
     userTier: SubscriptionTier,
     requestedModel: string | null | undefined,
     operation: ModelOperation,
-  ): { result: ModelResolution; providerGetter: ReturnType<typeof vi.fn> } => {
+  ): Promise<{
+    result: ModelResolution;
+    providerGetter: ReturnType<typeof vi.fn>;
+  }> => {
     const provider = createMockProvider();
     const providerGetter = vi.fn(() => provider);
-    const result = resolveModelForTier(
+    const result = await resolveModelForTier(
       userTier,
       requestedModel,
       operation,
@@ -72,8 +86,8 @@ describe('Model resolver', () => {
   };
 
   describe('Free tier', () => {
-    it('returns the free router when no model is requested', () => {
-      const { result } = resolveWithMockProvider(
+    it('returns the free router when no model is requested', async () => {
+      const { result } = await resolveWithMockProvider(
         'free',
         undefined,
         'initial_outline',
@@ -86,8 +100,8 @@ describe('Model resolver', () => {
       });
     });
 
-    it('allows the free router and ignores paid overrides', () => {
-      const allowed = resolveWithMockProvider(
+    it('allows the free router and ignores paid overrides', async () => {
+      const allowed = await resolveWithMockProvider(
         'free',
         AI_DEFAULT_MODEL,
         'initial_outline',
@@ -97,7 +111,7 @@ describe('Model resolver', () => {
         fallback: false,
       });
 
-      const denied = resolveWithMockProvider(
+      const denied = await resolveWithMockProvider(
         'free',
         PRO_OUTLINE_DEFAULT,
         'initial_outline',
@@ -109,8 +123,8 @@ describe('Model resolver', () => {
       });
     });
 
-    it('passes operation to the provider factory before work', () => {
-      const { providerGetter } = resolveWithMockProvider(
+    it('passes operation to the provider factory before work', async () => {
+      const { providerGetter } = await resolveWithMockProvider(
         'free',
         AI_DEFAULT_MODEL,
         'lesson',
@@ -123,8 +137,8 @@ describe('Model resolver', () => {
       );
     });
 
-    it('falls back before provider when a Pro-only catalog id is requested', () => {
-      const proOnly = resolveWithMockProvider(
+    it('falls back before provider when a Pro-only catalog id is requested', async () => {
+      const proOnly = await resolveWithMockProvider(
         'free',
         PRO_ONLY_MODEL_ID,
         'initial_outline',
@@ -140,7 +154,7 @@ describe('Model resolver', () => {
         'initial_outline',
       );
 
-      const otherCatalog = resolveWithMockProvider(
+      const otherCatalog = await resolveWithMockProvider(
         'free',
         OTHER_CATALOG_ID,
         'lesson',
@@ -152,8 +166,8 @@ describe('Model resolver', () => {
       });
     });
 
-    it('rejects invalid model IDs with the operation default', () => {
-      const { result } = resolveWithMockProvider(
+    it('rejects invalid model IDs with the operation default', async () => {
+      const { result } = await resolveWithMockProvider(
         'free',
         'invalid-model-id',
         'initial_outline',
@@ -168,33 +182,43 @@ describe('Model resolver', () => {
   });
 
   describe('validateModelForTier', () => {
-    it('returns valid for an allowed operation model', () => {
+    it('returns valid for an allowed operation model', async () => {
       expect(
-        validateModelForTier('free', AI_DEFAULT_MODEL, 'initial_outline'),
+        await validateModelForTier('free', AI_DEFAULT_MODEL, 'initial_outline'),
       ).toEqual({
         valid: true,
       });
     });
 
-    it('returns tier_denied for a Pro-only model on Free/Starter', () => {
+    it('returns tier_denied for a Pro-only model on Free/Starter', async () => {
       expect(
-        validateModelForTier('free', PRO_ONLY_MODEL_ID, 'initial_outline'),
+        await validateModelForTier(
+          'free',
+          PRO_ONLY_MODEL_ID,
+          'initial_outline',
+        ),
       ).toEqual({
         valid: false,
         reason: 'tier_denied',
       });
       expect(
-        validateModelForTier('starter', PRO_ONLY_MODEL_ID, 'regeneration'),
+        await validateModelForTier(
+          'starter',
+          PRO_ONLY_MODEL_ID,
+          'regeneration',
+        ),
       ).toEqual({
         valid: false,
         reason: 'tier_denied',
       });
     });
 
-    it('allows DeepSeek for Starter outline and regeneration only', () => {
+    it('allows DeepSeek for Starter outline and regeneration only', async () => {
       const deepseek = 'deepseek/deepseek-v4.1-flash';
       for (const operation of ['initial_outline', 'regeneration'] as const) {
-        expect(validateModelForTier('starter', deepseek, operation)).toEqual({
+        expect(
+          await validateModelForTier('starter', deepseek, operation),
+        ).toEqual({
           valid: true,
         });
       }
@@ -203,16 +227,44 @@ describe('Model resolver', () => {
         'regeneration',
         'lesson',
       ] as const) {
-        expect(validateModelForTier('pro', deepseek, operation)).toEqual({
+        expect(await validateModelForTier('pro', deepseek, operation)).toEqual({
           valid: false,
           reason: 'tier_denied',
         });
       }
     });
 
-    it('returns invalid_model for unknown model id', () => {
+    it('follows the synced guardrail list, not a code list', async () => {
+      const added = {
+        ...MODEL_CATALOG_FIXTURE.starter[0]!,
+        modelId: 'vendor/new-guardrail-model',
+      };
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'starter',
+        [
+          ...MODEL_CATALOG_FIXTURE.starter.filter(
+            (model) => model.modelId !== 'deepseek/deepseek-v4.1-flash',
+          ),
+          added,
+        ],
+        new Date(),
+      );
+
       expect(
-        validateModelForTier('pro', 'does/not/exist', 'initial_outline'),
+        await validateModelForTier('starter', added.modelId, 'regeneration'),
+      ).toEqual({ valid: true });
+      expect(
+        await validateModelForTier(
+          'starter',
+          'deepseek/deepseek-v4.1-flash',
+          'regeneration',
+        ),
+      ).toEqual({ valid: false, reason: 'invalid_model' });
+    });
+
+    it('returns invalid_model for unknown model id', async () => {
+      expect(
+        await validateModelForTier('pro', 'does/not/exist', 'initial_outline'),
       ).toEqual({
         valid: false,
         reason: 'invalid_model',
@@ -221,8 +273,8 @@ describe('Model resolver', () => {
   });
 
   describe('Starter tier', () => {
-    it('uses the outline default and allows an allowlist override', () => {
-      const unspecified = resolveWithMockProvider(
+    it('uses the outline default and allows an allowlist override', async () => {
+      const unspecified = await resolveWithMockProvider(
         'starter',
         undefined,
         'initial_outline',
@@ -233,7 +285,7 @@ describe('Model resolver', () => {
         fallbackReason: 'not_specified',
       });
 
-      const override = resolveWithMockProvider(
+      const override = await resolveWithMockProvider(
         'starter',
         STARTER_OVERRIDE,
         'regeneration',
@@ -244,10 +296,10 @@ describe('Model resolver', () => {
       });
     });
 
-    it('does not fall back to openrouter/free for outline/regen', () => {
-      const { result } = resolveWithMockProvider(
+    it('does not fall back to openrouter/free for outline/regen', async () => {
+      const { result } = await resolveWithMockProvider(
         'starter',
-        PRO_OUTLINE_DEFAULT,
+        PRO_ONLY_MODEL_ID,
         'initial_outline',
       );
 
@@ -259,8 +311,8 @@ describe('Model resolver', () => {
       expect(result.modelId).not.toBe(AI_DEFAULT_MODEL);
     });
 
-    it('ignores a plan preference for lesson and uses the free router', () => {
-      const { result, providerGetter } = resolveWithMockProvider(
+    it('ignores a plan preference for lesson and uses the free router', async () => {
+      const { result, providerGetter } = await resolveWithMockProvider(
         'starter',
         STARTER_DEFAULT,
         'lesson',
@@ -280,22 +332,23 @@ describe('Model resolver', () => {
   });
 
   describe('Pro tier', () => {
-    it('uses independent operation defaults instead of the first catalog row', () => {
+    it('uses independent operation defaults instead of the first catalog row', async () => {
       expect(
-        resolveWithMockProvider('pro', undefined, 'initial_outline').result
-          .modelId,
+        (await resolveWithMockProvider('pro', undefined, 'initial_outline'))
+          .result.modelId,
       ).toBe(PRO_OUTLINE_DEFAULT);
       expect(
-        resolveWithMockProvider('pro', undefined, 'regeneration').result
+        (await resolveWithMockProvider('pro', undefined, 'regeneration')).result
           .modelId,
       ).toBe(PRO_REGEN_DEFAULT);
       expect(
-        resolveWithMockProvider('pro', undefined, 'lesson').result.modelId,
+        (await resolveWithMockProvider('pro', undefined, 'lesson')).result
+          .modelId,
       ).toBe(PRO_LESSON_DEFAULT);
     });
 
-    it('allows the Free-labelled router on Pro', () => {
-      const { result } = resolveWithMockProvider(
+    it('allows the Free-labelled router on Pro', async () => {
+      const { result } = await resolveWithMockProvider(
         'pro',
         AI_DEFAULT_MODEL,
         'initial_outline',
@@ -309,8 +362,8 @@ describe('Model resolver', () => {
 
     it.each(RETIRED_MODEL_IDS)(
       'falls back to the regeneration default before the provider for retired id %s',
-      (retiredId) => {
-        const { result, providerGetter } = resolveWithMockProvider(
+      async (retiredId) => {
+        const { result, providerGetter } = await resolveWithMockProvider(
           'pro',
           retiredId,
           'regeneration',
@@ -334,8 +387,8 @@ describe('Model resolver', () => {
       },
     );
 
-    it('falls back to the operation default for invalid ids', () => {
-      const { result } = resolveWithMockProvider(
+    it('falls back to the operation default for invalid ids', async () => {
+      const { result } = await resolveWithMockProvider(
         'pro',
         'fake-model',
         'regeneration',
@@ -351,29 +404,93 @@ describe('Model resolver', () => {
     it.each([
       ["empty string ''", ''],
       ['null', null],
-    ] as const)('treats %s as invalid for Pro outline', (_label, edgeValue) => {
-      const { result } = resolveWithMockProvider(
-        'pro',
-        edgeValue,
+    ] as const)(
+      'treats %s as invalid for Pro outline',
+      async (_label, edgeValue) => {
+        const { result } = await resolveWithMockProvider(
+          'pro',
+          edgeValue,
+          'initial_outline',
+        );
+
+        expectResolution(result, {
+          modelId: PRO_OUTLINE_DEFAULT,
+          fallback: true,
+          fallbackReason: 'invalid_model',
+        });
+      },
+    );
+  });
+
+  describe('Free-router fallback', () => {
+    beforeEach(async () => {
+      // Starter's default (Luna) and its writer-route fallback (DeepSeek) left
+      // the guardrail, so the default becomes the free router.
+      await inMemoryModelCatalogStore.replaceTierModels(
+        'starter',
+        MODEL_CATALOG_FIXTURE.starter.filter(
+          (model) =>
+            model.modelId !== STARTER_DEFAULT &&
+            model.modelId !== STARTER_OVERRIDE,
+        ),
+        new Date(),
+      );
+      vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    });
+
+    afterEach(() => {
+      vi.restoreAllMocks();
+      vi.mocked(Sentry.captureMessage).mockClear();
+    });
+
+    it('flags the generation and alerts once', async () => {
+      const { result } = await resolveWithMockProvider(
+        'starter',
+        undefined,
         'initial_outline',
       );
 
-      expectResolution(result, {
-        modelId: PRO_OUTLINE_DEFAULT,
-        fallback: true,
-        fallbackReason: 'invalid_model',
+      expect(result).toMatchObject({
+        modelId: AI_DEFAULT_MODEL,
+        fallbackReason: 'not_specified',
+        freeRouterFallback: true,
       });
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          level: 'error',
+          fingerprint: [
+            'model_free_router_fallback',
+            'starter',
+            'initial_outline',
+          ],
+        }),
+      );
+    });
+
+    it('does not alert on lookups or a still-listed requested model', async () => {
+      await validateModelForTier('starter', STARTER_DEFAULT, 'initial_outline');
+      const { result } = await resolveWithMockProvider(
+        'starter',
+        'openai/gpt-6.1-sol',
+        'initial_outline',
+      );
+
+      expect(result.modelId).toBe('openai/gpt-6.1-sol');
+      expect(result.freeRouterFallback).toBeUndefined();
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
     });
   });
 
   describe('Provider factory errors', () => {
-    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for default path', () => {
+    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for default path', async () => {
       const throwingProviderGetter = () => {
         throw new Error('Missing API key');
       };
       let thrown: unknown;
       try {
-        resolveModelForTier(
+        await resolveModelForTier(
           'free',
           undefined,
           'initial_outline',
@@ -391,13 +508,13 @@ describe('Model resolver', () => {
       );
     });
 
-    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', () => {
+    it('throws ModelResolutionError with PROVIDER_INIT_FAILED when provider creation fails for explicit model path', async () => {
       const throwingProviderGetter = () => {
         throw new Error('Invalid model config');
       };
       let thrown: unknown;
       try {
-        resolveModelForTier(
+        await resolveModelForTier(
           'pro',
           PRO_OUTLINE_DEFAULT,
           'initial_outline',

@@ -1,34 +1,21 @@
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
-import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { resolveStreamModelResolution } from '@/features/plans/session/model-resolution';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
-  'starter',
-  'initial_outline',
-);
-const STARTER_PERSISTABLE_MODEL = STARTER_PERSISTABLE_MODELS[0]?.id;
-const PRO_PERSISTABLE_MODEL = getPersistableModelsForTier(
-  'pro',
-  'initial_outline',
-).find(
-  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
-)?.id;
+const STARTER_PERSISTABLE_MODEL = 'deepseek/deepseek-v4.1-flash';
+const OTHER_STARTER_PERSISTABLE_MODEL = 'anthropic/claude-haiku-5.5';
+const PRO_PERSISTABLE_MODEL = 'anthropic/claude-opus-5.5';
 // The free router is the only Free-labelled catalog model.
 const FREE_QUERY_OVERRIDE_MODEL = AI_DEFAULT_MODEL;
-
-if (!STARTER_PERSISTABLE_MODEL || !PRO_PERSISTABLE_MODEL) {
-  throw new Error('Expected model fixtures for model-resolution tests');
-}
 
 describe('resolveStreamModelResolution', () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('prefers a valid query override', () => {
-    const resolution = resolveStreamModelResolution({
+  it('prefers a valid query override', async () => {
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: FREE_QUERY_OVERRIDE_MODEL }),
       tier: 'pro',
       savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
@@ -41,10 +28,10 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
-  it('falls back to saved preference when query override fails validation', () => {
+  it('falls back to saved preference when query override fails validation', async () => {
     const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
-    const resolution = resolveStreamModelResolution({
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
       tier: 'starter',
       savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
@@ -69,10 +56,10 @@ describe('resolveStreamModelResolution', () => {
     );
   });
 
-  it('returns query_override_invalid when override fails and no saved preference exists', () => {
+  it('returns query_override_invalid when override fails and no saved preference exists', async () => {
     const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
-    const resolution = resolveStreamModelResolution({
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: 'invalid/model-id' }),
       tier: 'free',
       savedPreferredAiModel: null,
@@ -96,8 +83,8 @@ describe('resolveStreamModelResolution', () => {
     );
   });
 
-  it('falls back to tier default when no usable override exists', () => {
-    const resolution = resolveStreamModelResolution({
+  it('falls back to tier default when no usable override exists', async () => {
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams(),
       tier: 'free',
       savedPreferredAiModel: PRO_PERSISTABLE_MODEL,
@@ -108,11 +95,11 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
-  it('uses a Starter/Pro allowlist query override over the saved outline preference', () => {
-    const resolution = resolveStreamModelResolution({
+  it('uses a Starter/Pro allowlist query override over the saved outline preference', async () => {
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams({ model: STARTER_PERSISTABLE_MODEL }),
       tier: 'starter',
-      savedPreferredAiModel: STARTER_PERSISTABLE_MODELS[1]?.id ?? null,
+      savedPreferredAiModel: OTHER_STARTER_PERSISTABLE_MODEL,
     });
 
     expect(resolution).toEqual({
@@ -122,8 +109,8 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
-  it('uses saved preference when no query override is supplied', () => {
-    const resolution = resolveStreamModelResolution({
+  it('uses saved preference when no query override is supplied', async () => {
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams(),
       tier: 'starter',
       savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
@@ -135,8 +122,8 @@ describe('resolveStreamModelResolution', () => {
     });
   });
 
-  it('does not persist or apply a Free saved preference', () => {
-    const resolution = resolveStreamModelResolution({
+  it('does not persist or apply a Free saved preference', async () => {
+    const resolution = await resolveStreamModelResolution({
       searchParams: new URLSearchParams(),
       tier: 'free',
       savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,

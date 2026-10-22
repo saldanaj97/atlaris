@@ -2,8 +2,8 @@
  * Rules for which models can be persisted as user preference slots vs
  * runtime-only defaults (e.g. `openrouter/free`).
  *
- * Persistability comes from the current operation policy catalogs, not the
- * legacy PostgreSQL `preferred_ai_model` enum.
+ * Tier access comes from the operation policy and the synced guardrail
+ * models, not the legacy PostgreSQL `preferred_ai_model` enum.
  */
 
 import type {
@@ -16,12 +16,11 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import {
   getDefaultModelForTier,
   getModelsForTier,
-  isValidModelId,
 } from '@/features/ai/ai-models';
 import { getGroundedOperationPolicy } from '@/features/ai/model-operation-policy';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
-import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
 
@@ -31,23 +30,23 @@ export function isRuntimeOnlyModelId(modelId: string): boolean {
 }
 
 /**
- * Model IDs that may be stored as a saved preference and shown as explicit
- * save targets in settings. Membership is the current catalog minus runtime
- * router fallbacks such as `openrouter/free`.
+ * Model IDs that may be stored as a saved preference: a model slug other than
+ * runtime router fallbacks such as `openrouter/free`. Whether the tier may use
+ * it is `validateModelForTier`'s check.
  */
 export function isPersistableModelId(modelId: string): boolean {
-  return isValidModelId(modelId) && !isRuntimeOnlyModelId(modelId);
+  return isModelIdShape(modelId) && !isRuntimeOnlyModelId(modelId);
 }
 
 /**
  * Models the user may pick in AI settings: the current tier × operation
  * policy catalog excluding runtime-only routers.
  */
-export function getPersistableModelsForTier(
+export async function getPersistableModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): AvailableModel[] {
-  return getModelsForTier(tier, operation).filter(
+): Promise<AvailableModel[]> {
+  return (await getModelsForTier(tier, operation)).filter(
     (m) => !isRuntimeOnlyModelId(m.id),
   );
 }
@@ -112,13 +111,13 @@ export function resolveOverrideOrSavedModelId(
  * Runtime model for the current tier × operation. Never writes. Out-of-tier or
  * empty saved values fall back to the operation default.
  */
-export function resolveEffectivePreference(
+export async function resolveEffectivePreference(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
   operation: ModelOperation,
-): string {
+): Promise<string> {
   if (savedPreferredAiModel != null && savedPreferredAiModel !== '') {
-    const validation = validateModelForTier(
+    const validation = await validateModelForTier(
       tier,
       savedPreferredAiModel,
       operation,
@@ -136,11 +135,11 @@ export function resolveEffectivePreference(
  * @returns The saved model id when it is persistable and allowed for the current
  *          tier × operation; `null` means no saved preference to show in the picker.
  */
-export function resolveSavedPreferenceForSettings(
+export async function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
   operation: ModelOperation,
-): string | null {
+): Promise<string | null> {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
     logger.debug(
       { tier, operation, savedPreferredAiModel },
@@ -155,7 +154,7 @@ export function resolveSavedPreferenceForSettings(
     );
     return null;
   }
-  const validation = validateModelForTier(
+  const validation = await validateModelForTier(
     tier,
     savedPreferredAiModel,
     operation,

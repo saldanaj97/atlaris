@@ -35,16 +35,16 @@ function collectMissingFields(
   return missingFields;
 }
 
-function computeEstimatedCostCents(args: {
+async function computeEstimatedCostCents(args: {
   model: string;
   inputTokens: number;
   outputTokens: number;
   provider: string;
-}): number {
+}): Promise<number> {
   const { model, inputTokens, outputTokens, provider } = args;
 
   try {
-    return computeCostCents(model, inputTokens, outputTokens);
+    return await computeCostCents(model, inputTokens, outputTokens);
   } catch (error) {
     if (error instanceof UnknownModelError) {
       logger.warn(
@@ -88,9 +88,9 @@ function resolveProviderCostMicrousd(
  * carries a best-effort `partialUsage` so callers can still record data
  * after logging.
  */
-export function normalizeToCanonicalUsage(
+export async function normalizeToCanonicalUsage(
   metadata: ProviderMetadata | undefined,
-): CanonicalAIUsage {
+): Promise<CanonicalAIUsage> {
   const missingFields = collectMissingFields(metadata);
   const provider = metadata?.provider;
   const model = metadata?.model;
@@ -103,14 +103,14 @@ export function normalizeToCanonicalUsage(
   const resolvedTotalTokens =
     usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
   // Mock providers and synthetic flows legitimately call this with models
-  // that are not in the pricing registry; record cost as 0 in that case but
+  // that are not in the synced catalog; record cost as 0 in that case but
   // log it explicitly so the silent path stops being invisible. Any other
   // error from computeCostCents (invalid token counts, registry bug) must
   // propagate.
   const isPartial = missingFields.length > 0;
   const estimatedCostCents = isPartial
     ? 0
-    : computeEstimatedCostCents({
+    : await computeEstimatedCostCents({
         model: resolvedModel,
         inputTokens: resolvedInputTokens,
         outputTokens: resolvedOutputTokens,
@@ -148,11 +148,11 @@ export function normalizeToCanonicalUsage(
  * Always returns a {@link CanonicalAIUsage} so downstream recording can
  * proceed, but missing fields are surfaced via structured logs and Sentry.
  */
-export function safeNormalizeUsage(
+export async function safeNormalizeUsage(
   metadata: ProviderMetadata | undefined,
-): CanonicalAIUsage {
+): Promise<CanonicalAIUsage> {
   try {
-    return normalizeToCanonicalUsage(metadata);
+    return await normalizeToCanonicalUsage(metadata);
   } catch (error) {
     if (error instanceof IncompleteUsageError) {
       logger.error(

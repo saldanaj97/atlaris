@@ -330,7 +330,7 @@ async function prepareRegeneration(
   const explicitModel = payload.overrides?.model;
   if (
     explicitModel !== undefined &&
-    !validateModelForTier(tier, explicitModel, 'regeneration').valid
+    !(await validateModelForTier(tier, explicitModel, 'regeneration')).valid
   ) {
     throw new RegenerationAdmissionDeniedError(
       'Model is not allowed for regeneration on this tier.',

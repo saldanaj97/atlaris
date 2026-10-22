@@ -1,4 +1,4 @@
-import { AI_DEFAULT_MODEL, AVAILABLE_MODELS } from '@/features/ai/ai-models';
+import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
 import {
   aiEnv,
   appEnv,
@@ -698,7 +698,7 @@ describe('Environment Configuration', () => {
 
   describe('aiEnv', () => {
     describe('defaultModel', () => {
-      const validModelId = AVAILABLE_MODELS[0]?.id ?? AI_DEFAULT_MODEL;
+      const validModelId = 'openai/gpt-6-luna';
 
       it('should return configured value when AI_DEFAULT_MODEL is valid', () => {
         vi.stubEnv('AI_DEFAULT_MODEL', validModelId);
@@ -722,12 +722,12 @@ describe('Environment Configuration', () => {
         expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
       });
 
-      it('should throw when AI_DEFAULT_MODEL is not in AVAILABLE_MODELS', () => {
-        vi.stubEnv('AI_DEFAULT_MODEL', 'invalid/nonexistent-model-xyz');
+      it('should throw when AI_DEFAULT_MODEL is not a model slug', () => {
+        vi.stubEnv('AI_DEFAULT_MODEL', 'not-a-model-slug');
 
         expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
         expect(() => aiEnv.defaultModel).toThrow(
-          /AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids/,
+          /AI_DEFAULT_MODEL must be an OpenRouter model slug/,
         );
       });
     });

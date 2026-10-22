@@ -1,16 +1,19 @@
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { ModelPricingSnapshotV1 } from '@/shared/types/model-pricing-snapshot.types';
 
-import { getModelById } from '@/features/ai/ai-models';
+import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
 import { isRuntimeOnlyModelId } from '@/features/ai/model-preferences';
+import { logger } from '@/lib/logging/logger';
 
 /**
- * Builds a catalog-backed pricing snapshot for `ai_usage_events.model_pricing_snapshot`.
+ * Builds a catalog-backed pricing snapshot for `ai_usage_events.model_pricing_snapshot`
+ * from the synced guardrail pricing at record time. Stored rows keep their
+ * snapshot when the catalog changes later.
  * Returns null when provenance would be misleading (partial usage, unknown model, router).
  */
-export function buildModelPricingSnapshot(
+export async function buildModelPricingSnapshot(
   usage: CanonicalAIUsage,
-): ModelPricingSnapshotV1 | null {
+): Promise<ModelPricingSnapshotV1 | null> {
   if (usage.isPartial) {
     return null;
   }
@@ -27,7 +30,17 @@ export function buildModelPricingSnapshot(
     return null;
   }
 
-  const catalog = getModelById(usage.model);
+  let catalog;
+  try {
+    catalog = await getCatalogModel(usage.model);
+  } catch (error) {
+    // The usage row still records; only its pricing provenance is missing.
+    logger.error(
+      { modelId: usage.model, err: error, event: 'model_catalog_unavailable' },
+      'Model catalog read failed; recording usage without a pricing snapshot',
+    );
+    return null;
+  }
   if (!catalog) {
     return null;
   }

@@ -456,6 +456,13 @@
       "when": 1792620780000,
       "tag": "20261021221300_add_plan_ai_budget_tracking",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792692360000,
+      "tag": "20261022180600_create_openrouter_tier_models",
+      "breakpoints": true
     }
   ]
 }

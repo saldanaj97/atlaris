@@ -109,20 +109,23 @@ async function verifyOutline(
   modules: readonly GeneratedModule[],
 ): Promise<OutlineCallResult<OutlineIssue[]> | null> {
   try {
-    const cached = await step.do(name, verifyStepConfig(), async () => {
-      const run = await runOutlineVerifier({
-        tier: ctx.tier,
-        input: ctx.input,
-        modules,
-        research: ctx.research,
-      });
-      ctx.log(name, {
-        outcome: 'verified',
-        model: run.model,
-        issueCount: run.issues.length,
-      });
-      return { value: run.issues, usage: run.usage };
-    });
+    // withDb: usage pricing and output ceilings read the synced model catalog.
+    const cached = await step.do(name, verifyStepConfig(), async () =>
+      ctx.withDb(async () => {
+        const run = await runOutlineVerifier({
+          tier: ctx.tier,
+          input: ctx.input,
+          modules,
+          research: ctx.research,
+        });
+        ctx.log(name, {
+          outcome: 'verified',
+          model: run.model,
+          issueCount: run.issues.length,
+        });
+        return { value: run.issues, usage: run.usage };
+      }),
+    );
     return fromCachedStep<OutlineIssue[]>(cached);
   } catch (error) {
     ctx.log(
@@ -145,23 +148,24 @@ async function repairOutline(
     const cached = await step.do(
       OUTLINE_STEPS.repair,
       repairStepConfig(),
-      async () => {
-        const run = await runOutlineRepair({
-          tier: ctx.tier,
-          purpose: ctx.purpose,
-          modelOverride: ctx.modelOverride,
-          input: ctx.input,
-          modules,
-          issues,
-          research: ctx.research,
-        });
-        ctx.log(OUTLINE_STEPS.repair, {
-          outcome: 'repaired',
-          model: run.model,
-          issueCount: issues.length,
-        });
-        return { value: run.modules, usage: run.usage };
-      },
+      async () =>
+        ctx.withDb(async () => {
+          const run = await runOutlineRepair({
+            tier: ctx.tier,
+            purpose: ctx.purpose,
+            modelOverride: ctx.modelOverride,
+            input: ctx.input,
+            modules,
+            issues,
+            research: ctx.research,
+          });
+          ctx.log(OUTLINE_STEPS.repair, {
+            outcome: 'repaired',
+            model: run.model,
+            issueCount: issues.length,
+          });
+          return { value: run.modules, usage: run.usage };
+        }),
     );
     return fromCachedStep<GeneratedModule[]>(cached);
   } catch (error) {

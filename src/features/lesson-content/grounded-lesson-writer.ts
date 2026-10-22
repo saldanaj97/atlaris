@@ -97,7 +97,7 @@ export async function writeGroundedLesson(
   });
   return {
     rawText,
-    usage: safeNormalizeUsage(metadata),
+    usage: await safeNormalizeUsage(metadata),
     finishReason: metadata.finishReason,
   };
 }

@@ -480,7 +480,9 @@ describe('runModuleLessonGenerationWork', () => {
         },
       );
 
-      expect(getDefaultModelForTier(tier, 'lesson')).toBe(AI_DEFAULT_MODEL);
+      expect(await getDefaultModelForTier(tier, 'lesson')).toBe(
+        AI_DEFAULT_MODEL,
+      );
       expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
         tier,
         undefined,

@@ -8,6 +8,11 @@ import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
 } from '../../../../workers/jobs/src/workflows/module-lessons/run';
+import {
+  catalogReadsRequireDb,
+  PRICED_PROBE,
+  probeCatalog,
+} from '../../../helpers/catalog-db-scope';
 import { REGENERATION_REASON_GUIDANCE } from '@/features/plans/regeneration-orchestration/reasons';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -1117,6 +1122,44 @@ describe('runModuleLessonsWorkflow', () => {
         const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
         // Six calls: two lessons and two repairs, one usage each.
         expect(committed.usage.inputTokens).toBe(40);
+      });
+
+      it('reads the synced catalog inside verify and repair steps', async () => {
+        tier.value = 'pro';
+        qualityReturning({
+          verifierIssues: (prompt) =>
+            prompt.includes('Typed [S1].')
+              ? [{ code: 'x', blockRef: 'blocks[0]', message: 'Off topic.' }]
+              : [],
+          repaired: () => ({
+            blocks: [
+              { index: 0, block: { type: 'paragraph', text: 'Fixed [S1].' } },
+            ],
+          }),
+        });
+        const answer = quality.call.getMockImplementation()!;
+        const probes: Record<string, unknown>[] = [];
+        quality.call.mockImplementation(async (call: QualityCall) => {
+          probes.push({ stage: call.stage, ...(await probeCatalog()) });
+          return answer(call);
+        });
+        const catalog = catalogReadsRequireDb();
+        const { deps: base } = groundedDeps();
+        const { deps } = groundedDeps({
+          withDb: (fn) => catalog.scoped(() => base.withDb(fn)),
+        });
+        const { step } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(new Set(probes.map((probe) => probe.stage))).toEqual(
+          new Set(['grounded-lesson-verify', 'grounded-lesson-repair']),
+        );
+        for (const probe of probes) {
+          expect(probe).toMatchObject(PRICED_PROBE);
+        }
       });
 
       it('verifies on paid tiers, repairs with the advisor required, and stops once clean', async () => {

@@ -127,26 +127,29 @@ async function verifyLesson(
   const position = index + 1;
   const name = lessonVerifyStepName(position, pass);
   try {
-    return await step.do(name, verifyStepConfig(), async () => {
-      const run = await runLessonVerifier({
-        tier: ctx.grounded.tier,
-        planId: ctx.target.planId,
-        pickedModelId: ctx.grounded.verifierModelId,
-        promptInput: ctx.promptInput,
-        taskIndex: index,
-        content,
-        research: ctx.grounded.research,
-        timeoutMs: qualityCallTimeoutMs(),
-      });
-      ctx.log(name, {
-        lesson: position,
-        pass,
-        outcome: 'verified',
-        model: run.model,
-        issueCount: run.issues.length,
-      });
-      return { kind: 'ok', value: run.issues, usage: run.usage } as const;
-    });
+    // withDb: usage pricing and output ceilings read the synced model catalog.
+    return await step.do(name, verifyStepConfig(), async () =>
+      ctx.withDb(async () => {
+        const run = await runLessonVerifier({
+          tier: ctx.grounded.tier,
+          planId: ctx.target.planId,
+          pickedModelId: ctx.grounded.verifierModelId,
+          promptInput: ctx.promptInput,
+          taskIndex: index,
+          content,
+          research: ctx.grounded.research,
+          timeoutMs: qualityCallTimeoutMs(),
+        });
+        ctx.log(name, {
+          lesson: position,
+          pass,
+          outcome: 'verified',
+          model: run.model,
+          issueCount: run.issues.length,
+        });
+        return { kind: 'ok', value: run.issues, usage: run.usage } as const;
+      }),
+    );
   } catch (error) {
     ctx.log(
       name,
@@ -175,30 +178,32 @@ async function repairLesson(
   const position = index + 1;
   const name = lessonRepairStepName(position, pass);
   try {
-    return await step.do(name, repairStepConfig(), async () => {
-      const run = await runLessonRepair({
-        tier: ctx.grounded.tier,
-        planId: ctx.target.planId,
-        pickedModelId: ctx.grounded.pickedModelId,
-        advisorModelId: ctx.grounded.advisorModelId,
-        withAdvisor,
-        promptInput: ctx.promptInput,
-        taskIndex: index,
-        content,
-        issues,
-        research: ctx.grounded.research,
-        timeoutMs: qualityCallTimeoutMs(),
-      });
-      ctx.log(name, {
-        lesson: position,
-        pass,
-        outcome: 'repaired',
-        model: run.model,
-        advisor: run.advisor,
-        issueCount: issues.length,
-      });
-      return { kind: 'ok', value: run.content, usage: run.usage } as const;
-    });
+    return await step.do(name, repairStepConfig(), async () =>
+      ctx.withDb(async () => {
+        const run = await runLessonRepair({
+          tier: ctx.grounded.tier,
+          planId: ctx.target.planId,
+          pickedModelId: ctx.grounded.pickedModelId,
+          advisorModelId: ctx.grounded.advisorModelId,
+          withAdvisor,
+          promptInput: ctx.promptInput,
+          taskIndex: index,
+          content,
+          issues,
+          research: ctx.grounded.research,
+          timeoutMs: qualityCallTimeoutMs(),
+        });
+        ctx.log(name, {
+          lesson: position,
+          pass,
+          outcome: 'repaired',
+          model: run.model,
+          advisor: run.advisor,
+          issueCount: issues.length,
+        });
+        return { kind: 'ok', value: run.content, usage: run.usage } as const;
+      }),
+    );
   } catch (error) {
     ctx.log(
       name,

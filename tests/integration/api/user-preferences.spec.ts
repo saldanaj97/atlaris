@@ -1,14 +1,14 @@
+import { MODEL_CATALOG_FIXTURE } from '../../fixtures/ai-model-catalog';
 import { assertLocalIntegrationDatabaseUrl } from '../../helpers/assert-local-database-url';
 import { clearTestUser, setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { GET, PATCH } from '@/app/api/v1/user/preferences/route';
-import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import {
+  getModelOperationPolicy,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
-  STARTER_OUTLINE_REGENERATION_MODEL_IDS,
+  STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
-import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { userPreferences, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
@@ -42,34 +42,25 @@ type ApiModelResponse = {
   contextWindow: number;
 };
 
-const PLAN_OPERATION = 'initial_outline' as const;
-const STARTER_PERSISTABLE_MODELS = getPersistableModelsForTier(
-  'starter',
-  PLAN_OPERATION,
+// The integration DB reset seeds each tier's synced models from this fixture.
+const STARTER_SYNCED_MODEL_IDS = MODEL_CATALOG_FIXTURE.starter.map(
+  (model) => model.modelId,
 );
-const STARTER_MODEL_ID = STARTER_PERSISTABLE_MODELS[0]?.id;
-const SECOND_STARTER_MODEL_ID =
-  STARTER_PERSISTABLE_MODELS[1]?.id ?? STARTER_MODEL_ID;
-const THIRD_STARTER_MODEL_ID =
-  STARTER_PERSISTABLE_MODELS[2]?.id ?? SECOND_STARTER_MODEL_ID;
-const PRO_MODEL_ID = getPersistableModelsForTier('pro', PLAN_OPERATION).find(
-  ({ id }) => !STARTER_PERSISTABLE_MODELS.some((model) => model.id === id),
-)?.id;
+const STARTER_MODEL_ID = STARTER_SYNCED_MODEL_IDS[0];
+const SECOND_STARTER_MODEL_ID = STARTER_SYNCED_MODEL_IDS[1] ?? STARTER_MODEL_ID;
+const PRO_MODEL_ID = MODEL_CATALOG_FIXTURE.pro.find(
+  ({ modelId }) => !STARTER_SYNCED_MODEL_IDS.includes(modelId),
+)?.modelId;
 const PRO_REGEN_MODEL_ID = 'anthropic/claude-sonnet-5.5';
 const PRO_LESSON_MODEL_ID = 'anthropic/claude-haiku-5.5';
-const FREE_EFFECTIVE_MODEL = getDefaultModelForTier('free', PLAN_OPERATION);
-const STARTER_EFFECTIVE_MODEL = getDefaultModelForTier(
-  'starter',
-  PLAN_OPERATION,
-);
-const PRO_LESSON_DEFAULT = getDefaultModelForTier('pro', 'lesson');
+const FREE_EFFECTIVE_MODEL = AI_DEFAULT_MODEL;
+const STARTER_EFFECTIVE_MODEL = STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID;
+const PRO_LESSON_DEFAULT = getModelOperationPolicy(
+  'pro',
+  'lesson',
+).defaultModelId;
 
-if (
-  !STARTER_MODEL_ID ||
-  !SECOND_STARTER_MODEL_ID ||
-  !THIRD_STARTER_MODEL_ID ||
-  !PRO_MODEL_ID
-) {
+if (!STARTER_MODEL_ID || !SECOND_STARTER_MODEL_ID || !PRO_MODEL_ID) {
   throw new Error('Expected starter and pro persistable model fixtures');
 }
 
@@ -345,15 +336,10 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
-  it('can save exactly the three Starter outline IDs and leaves lesson unused', async () => {
+  it('can save every synced Starter model and leaves lesson unused', async () => {
     setTestUser(testAuthUserId);
-    expect([...STARTER_OUTLINE_REGENERATION_MODEL_IDS]).toEqual([
-      STARTER_MODEL_ID,
-      SECOND_STARTER_MODEL_ID,
-      THIRD_STARTER_MODEL_ID,
-    ]);
 
-    for (const modelId of STARTER_OUTLINE_REGENERATION_MODEL_IDS) {
+    for (const modelId of STARTER_SYNCED_MODEL_IDS) {
       const response = await PATCH(
         new Request('http://localhost/api/v1/user/preferences', {
           method: 'PATCH',
@@ -379,7 +365,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(lessonData.code).toBe('MODEL_NOT_ALLOWED_FOR_TIER');
 
     const row = await readSavedPreferenceRow(testAuthUserId);
-    expect(row?.preferredAiModel).toBe(THIRD_STARTER_MODEL_ID);
+    expect(row?.preferredAiModel).toBe(STARTER_SYNCED_MODEL_IDS.at(-1));
     expect(row?.preferredLessonAiModel).toBeNull();
     expect(row?.preferredRegenerationAiModel).toBeNull();
   });

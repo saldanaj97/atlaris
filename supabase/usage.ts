@@ -22,14 +22,15 @@ export type RecordUsageParams = {
 
 /**
  * Maps canonical usage (single source of truth) to DB row fields for both
- * lifecycle and stream persistence paths.
+ * lifecycle and stream persistence paths. Reads the model catalog, so call it
+ * before opening the transaction that records the row.
  */
-export function canonicalUsageToRecordParams(
+export async function canonicalUsageToRecordParams(
   usage: CanonicalAIUsage,
   userId: string,
   requestId?: string | null,
-): RecordUsageParams {
-  const snapshot = buildModelPricingSnapshot(usage);
+): Promise<RecordUsageParams> {
+  const snapshot = await buildModelPricingSnapshot(usage);
 
   let providerMicrousd: bigint | null = null;
   // Partial usage means provider-reported cost provenance is incomplete, so we

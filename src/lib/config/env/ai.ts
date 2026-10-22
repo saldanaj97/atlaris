@@ -7,7 +7,7 @@ import {
   parseEnvNumber,
   type ServerEnvAccess,
 } from '@/lib/config/env/shared';
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
+import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
 import {
   DEFAULT_ATTEMPT_CAP,
   resolveAttemptCap,
@@ -78,6 +78,11 @@ interface OpenRouterEnv {
    * Without a tier, `OPENROUTER_API_KEY`.
    */
   apiKeyForTier(tier?: SubscriptionTier): string | undefined;
+  /**
+   * Only `OPENROUTER_API_KEY_<TIER>`, with no fallback: the tier's model list
+   * comes from that key's guardrail, so another key would list the wrong models.
+   */
+  guardrailKeyForTier(tier: SubscriptionTier): string | undefined;
   readonly siteUrl: string | undefined;
   readonly appName: string | undefined;
   readonly baseUrl: string;
@@ -169,8 +174,10 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
       },
     },
     /**
-     * Default AI model for plan generation.
-     * AI_DEFAULT_MODEL env var overrides the hardcoded default from ai-models.ts.
+     * Model for providers built without a tier (`getGenerationProvider`).
+     * AI_DEFAULT_MODEL overrides `openrouter/free`. The tier model lists are
+     * synced from OpenRouter guardrails at runtime, so this checks only the
+     * slug's shape; OpenRouter rejects a model the key's guardrail blocks.
      */
     get defaultModel() {
       const configured = access.getServerOptional('AI_DEFAULT_MODEL');
@@ -178,9 +185,9 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
         return AI_DEFAULT_MODEL;
       }
 
-      if (!isValidModelId(configured)) {
+      if (!isModelIdShape(configured)) {
         throw new EnvValidationError(
-          `AI_DEFAULT_MODEL must be one of AVAILABLE_MODELS ids. Received: ${configured}`,
+          `AI_DEFAULT_MODEL must be an OpenRouter model slug like "vendor/model". Received: ${configured}`,
           'AI_DEFAULT_MODEL',
         );
       }
@@ -225,6 +232,9 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
           ? undefined
           : access.getServerOptional(OPENROUTER_TIER_API_KEY_NAMES[tier]);
       return tierKey ?? access.getServerOptional('OPENROUTER_API_KEY');
+    },
+    guardrailKeyForTier(tier) {
+      return access.getServerOptional(OPENROUTER_TIER_API_KEY_NAMES[tier]);
     },
     get siteUrl() {
       return access.getServerOptional('OPENROUTER_SITE_URL');

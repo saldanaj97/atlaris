@@ -107,11 +107,11 @@ function throwForInvalidModel(
   }
 }
 
-function assertCanPersistSlot(
+async function assertCanPersistSlot(
   tier: SubscriptionTier,
   slot: PreferenceSlot,
   modelId: string | null | undefined,
-): void {
+): Promise<void> {
   if (modelId === undefined || modelId === null) {
     return;
   }
@@ -129,7 +129,7 @@ function assertCanPersistSlot(
   }
 
   const operation = operationForSlot(slot);
-  const modelValidation = validateModelForTier(tier, modelId, operation);
+  const modelValidation = await validateModelForTier(tier, modelId, operation);
   if (!modelValidation.valid) {
     throwForInvalidModel(modelValidation.reason, modelId, tier);
   }
@@ -211,30 +211,41 @@ function savedSlotsFromActor(actor: {
   };
 }
 
-function toPreferencesGetResponse(
+async function toPreferencesGetResponse(
   tier: SubscriptionTier,
   saved: SavedModelPreferenceSlots,
 ) {
-  return {
-    preferredAiModel: saved.preferredAiModel,
-    preferredRegenerationAiModel: saved.preferredRegenerationAiModel,
-    preferredLessonAiModel: saved.preferredLessonAiModel,
-    effectivePreferredAiModel: resolveEffectivePreference(
+  const [
+    effectivePreferredAiModel,
+    effectivePreferredRegenerationAiModel,
+    effectivePreferredLessonAiModel,
+    availableModels,
+  ] = await Promise.all([
+    resolveEffectivePreference(
       tier,
       savedModelIdForOperation(tier, saved, 'initial_outline'),
       'initial_outline',
     ),
-    effectivePreferredRegenerationAiModel: resolveEffectivePreference(
+    resolveEffectivePreference(
       tier,
       savedModelIdForOperation(tier, saved, 'regeneration'),
       'regeneration',
     ),
-    effectivePreferredLessonAiModel: resolveEffectivePreference(
+    resolveEffectivePreference(
       tier,
       savedModelIdForOperation(tier, saved, 'lesson'),
       'lesson',
     ),
-    availableModels: getPersistableModelsForTier(tier, 'initial_outline'),
+    getPersistableModelsForTier(tier, 'initial_outline'),
+  ]);
+  return {
+    preferredAiModel: saved.preferredAiModel,
+    preferredRegenerationAiModel: saved.preferredRegenerationAiModel,
+    preferredLessonAiModel: saved.preferredLessonAiModel,
+    effectivePreferredAiModel,
+    effectivePreferredRegenerationAiModel,
+    effectivePreferredLessonAiModel,
+    availableModels,
   };
 }
 
@@ -266,10 +277,13 @@ export const GET = requestBoundary.route(
 
     const userTier = actor.subscriptionTier;
     const saved = savedSlotsFromActor(actor);
-    const fallbackModel = getDefaultModelForTier(userTier, 'initial_outline');
+    const fallbackModel = await getDefaultModelForTier(
+      userTier,
+      'initial_outline',
+    );
 
     if (actor.preferredAiModel) {
-      const modelValidation = validateModelForTier(
+      const modelValidation = await validateModelForTier(
         userTier,
         actor.preferredAiModel,
         'initial_outline',
@@ -287,7 +301,7 @@ export const GET = requestBoundary.route(
       }
     }
 
-    const response = json(toPreferencesGetResponse(userTier, saved));
+    const response = json(await toPreferencesGetResponse(userTier, saved));
     return attachRequestIdHeader(response, requestId);
   },
 );
@@ -325,13 +339,17 @@ export const PATCH = requestBoundary.route(
     const userTier = actor.subscriptionTier;
     const patch: UserModelPreferencePatch = parsed.data;
 
-    assertCanPersistSlot(userTier, 'preferredAiModel', patch.preferredAiModel);
-    assertCanPersistSlot(
+    await assertCanPersistSlot(
+      userTier,
+      'preferredAiModel',
+      patch.preferredAiModel,
+    );
+    await assertCanPersistSlot(
       userTier,
       'preferredRegenerationAiModel',
       patch.preferredRegenerationAiModel,
     );
-    assertCanPersistSlot(
+    await assertCanPersistSlot(
       userTier,
       'preferredLessonAiModel',
       patch.preferredLessonAiModel,

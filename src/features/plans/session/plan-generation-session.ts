@@ -138,7 +138,7 @@ async function startGeneration(
         lifecycleService,
         dbClient: serviceRoleDb,
         correlationId: command.requestId ?? `plan-gen-${prepared.planId}`,
-        input: prepared.generationInput,
+        input: await prepared.resolveGenerationInput(),
       },
       deps.startDeps,
     );
