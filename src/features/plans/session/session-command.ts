@@ -78,7 +78,11 @@ type RetrySessionCommand = Extract<SessionCommand, { kind: 'retry' }>;
 
 export interface PreparedSessionPlan {
   planId: string;
-  generationInput: ProcessGenerationInput;
+  /**
+   * Resolves the model and builds the input. It reads the model catalog, so
+   * call it where a failure still runs `onUnhandledError`.
+   */
+  resolveGenerationInput: () => Promise<ProcessGenerationInput>;
   fallbackClassification: FailureClassification;
   onUnhandledError: UnhandledGenerationErrorHandler;
 }
@@ -122,28 +126,27 @@ async function prepareCreate(
     throwCreatePlanResultError(createResult);
   }
 
-  const { modelOverride, groundedWriterModelId } =
-    await resolveCreateStreamModel({
-      req,
-      authUserId,
-      internalUserId,
-      planId: createResult.planId,
-      tier: createResult.tier,
-      savedPreferredAiModel,
-      savedGroundedPicks,
-    });
-
-  const generationInput = buildCreateGenerationInput({
-    body,
-    createResult,
-    userId: internalUserId,
-    modelOverride,
-    groundedWriterModelId,
-  });
-
   return {
     planId: createResult.planId,
-    generationInput,
+    resolveGenerationInput: async () => {
+      const { modelOverride, groundedWriterModelId } =
+        await resolveCreateStreamModel({
+          req,
+          authUserId,
+          internalUserId,
+          planId: createResult.planId,
+          tier: createResult.tier,
+          savedPreferredAiModel,
+          savedGroundedPicks,
+        });
+      return buildCreateGenerationInput({
+        body,
+        createResult,
+        userId: internalUserId,
+        modelOverride,
+        groundedWriterModelId,
+      });
+    },
     fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
       handleUnhandledStreamError({
@@ -180,28 +183,29 @@ async function prepareRetry(
       'Ignoring persisted plan session date with invalid ISO calendar format',
     );
   });
-  const { modelOverride, groundedWriterModelId } =
-    await resolveCreateStreamModel({
-      req,
-      authUserId,
-      internalUserId,
-      planId,
-      tier,
-      savedPreferredAiModel,
-      savedGroundedPicks,
-    });
-
   return {
     planId,
-    generationInput: {
-      planId,
-      userId: internalUserId,
-      tier,
-      generationPurpose: 'initial',
-      allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
-      input: retryInput,
-      modelOverride,
-      groundedWriterModelId,
+    resolveGenerationInput: async () => {
+      const { modelOverride, groundedWriterModelId } =
+        await resolveCreateStreamModel({
+          req,
+          authUserId,
+          internalUserId,
+          planId,
+          tier,
+          savedPreferredAiModel,
+          savedGroundedPicks,
+        });
+      return {
+        planId,
+        userId: internalUserId,
+        tier,
+        generationPurpose: 'initial',
+        allowedGenerationStatuses: PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
+        input: retryInput,
+        modelOverride,
+        groundedWriterModelId,
+      };
     },
     fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>

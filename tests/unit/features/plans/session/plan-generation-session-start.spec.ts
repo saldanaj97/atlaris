@@ -7,6 +7,7 @@ import type {
 import type { StartPlanGenerationAttemptDeps } from '@/features/plans/start-plan-generation-attempt';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
+import { selectTierModels } from '@/features/ai/model-catalog/store';
 import { PRO_GROUNDED_WRITER_CATALOG } from '@/features/ai/model-operation-policy';
 import {
   createPlanGenerationSessionBoundary,
@@ -273,6 +274,27 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     expect(error.code()).toBe('GENERATION_FAILED');
     expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
     expect(error.cause).toBe(boom);
+  });
+
+  it('marks the created plan failed when the model catalog cannot be read', async () => {
+    const boom = new Error('model catalog read failed');
+    vi.mocked(selectTierModels).mockRejectedValueOnce(boom);
+
+    const error = await expectAppError(
+      startCreate(
+        buildBoundary(),
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_QUERY_MODEL)}`,
+      ),
+    );
+
+    expect(safeMarkPlanFailedWithDbClient).toHaveBeenCalledWith(
+      PLAN_ID,
+      'internal-user',
+      expect.anything(),
+    );
+    expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
+    expect(error.cause).toBe(boom);
+    expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
   });
 
   it('forwards a valid ?model= override to the started attempt', async () => {
