@@ -57,6 +57,12 @@ A stack is identified by directory + git branch + stack name. Switching branches
 
 pg_cron cannot reach the socket-only native Postgres unless it runs as a background worker ([supabase/cli#6977](https://github.com/supabase/cli/issues/6977)), and `db reset` reverts that setting. `pnpm db start`, `pnpm db reset`, `pnpm db agent up`, and `pnpm db agent reset` apply `cron.use_background_workers = on` automatically (restarting the stack when it changes). Run these wrappers instead of calling `supabase start` or `supabase db reset` directly.
 
+### Cleaning up stacks after a merge
+
+Stacks are not removed with their worktree or branch, so each merged branch leaves its `default` stack and any `test` stack (70–220 MB each) in `~/.supabase/stacks`. Before removing a merged worktree, run `pnpm exec supabase stack destroy --yes` and `pnpm exec supabase stack destroy --stack test --yes` inside it.
+
+`pnpm db prune` catches anything missed. It lists stacks whose worktree folder is gone, or whose branch no longer exists in a folder that still does (`main`, `develop`, and `staging` are always kept). It is a dry run by default; `pnpm db prune --yes` destroys the listed stacks with their data and removes the empty folders `stack destroy` leaves behind. The list covers every managed stack on the machine, so check it before confirming.
+
 ### One-time destroy for old stacks
 
 A stack saved before ports became dynamic fails with `endpoints.sql.port cannot change`. The wrapper prints the fix. It deletes that stack's local data, and `pnpm db start` recreates it:
@@ -164,6 +170,7 @@ supabase db reset
 | Start Supabase (native)     | `pnpm db start`                                                           |
 | Start Docker fallback       | `pnpm db start --runtime docker`                                          |
 | Stop Supabase               | `pnpm db stop`                                                            |
+| Prune stale stacks          | `pnpm db prune` (dry run), then `pnpm db prune --yes`                      |
 | Reset DB + seed             | `pnpm db reset`                                                           |
 | Re-run seed only            | `pnpm db seed`                                                            |
 | Apply Clerk Billing fixture | `pnpm db fixture --user-id <users.auth_user_id> --plan pro`              |
