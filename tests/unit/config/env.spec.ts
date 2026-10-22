@@ -373,6 +373,20 @@ describe('Environment Configuration', () => {
       expect(aiTimeoutEnv.extensionThresholdMs).toBe(2000);
     });
 
+    it.each([
+      { name: 'defaults to 300 s', value: undefined, expected: 300_000 },
+      { name: 'reads an override', value: '450000', expected: 450_000 },
+      { name: 'falls back on a non-number', value: 'abc', expected: 300_000 },
+    ])('lesson timeout $name', ({ value, expected }) => {
+      const env: Record<string, string> = { AI_TIMEOUT_BASE_MS: '7000' };
+      if (value !== undefined) env.AI_LESSON_TIMEOUT_MS = value;
+      const access = createServerEnvAccess(() => env);
+      const { aiTimeoutEnv } = createAiEnvFacets(access);
+
+      expect(aiTimeoutEnv.lessonMs).toBe(expected);
+      expect(aiTimeoutEnv.baseMs).toBe(7000);
+    });
+
     it('picks the OpenRouter key for a tier, falling back to the shared key', () => {
       const env: Record<string, string> = {
         OPENROUTER_API_KEY: 'shared-key',

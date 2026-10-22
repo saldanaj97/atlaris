@@ -28,6 +28,11 @@ export function resolveTimeoutConfig(
   };
 }
 
+/** The cutoff for a lesson-writing call (`AI_LESSON_TIMEOUT_MS`). */
+export function resolveLessonTimeoutMs(): number {
+  return aiTimeoutEnv.lessonMs;
+}
+
 export function setupAbortAndTimeout(
   timeoutConfig: AdaptiveTimeoutConfig,
   externalSignal?: AbortSignal,

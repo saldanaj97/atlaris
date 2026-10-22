@@ -14,7 +14,7 @@ import {
   probeCatalog,
 } from '../../../helpers/catalog-db-scope';
 import { REGENERATION_REASON_GUIDANCE } from '@/features/plans/regeneration-orchestration/reasons';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const queries = vi.hoisted(() => ({
   load: vi.fn(),
@@ -214,14 +214,17 @@ function providerReturningEach(
 /** Runs each step like Workflows does: retries until the limit or a NonRetryableError. */
 function createStep() {
   const calls: Array<{ name: string; attempts: number }> = [];
+  /** Each step's configured timeout, by step name. */
+  const timeouts = new Map<string, unknown>();
   const step = {
     async do(
       name: string,
-      config: { retries: { limit: number } },
+      config: { retries: { limit: number }; timeout?: unknown },
       callback: (ctx: { attempt: number }) => Promise<unknown>,
     ) {
       const call = { name, attempts: 0 };
       calls.push(call);
+      timeouts.set(name, config.timeout);
       for (let attempt = 1; ; attempt += 1) {
         call.attempts = attempt;
         try {
@@ -237,7 +240,7 @@ function createStep() {
       }
     },
   };
-  return { step: step as unknown as Pick<WorkflowStep, 'do'>, calls };
+  return { step: step as unknown as Pick<WorkflowStep, 'do'>, calls, timeouts };
 }
 
 function event(
@@ -403,6 +406,66 @@ describe('runModuleLessonsWorkflow', () => {
       moduleId: MODULE_ID,
       taskCount: 2,
       rawChars: validBatchText().length,
+    });
+  });
+
+  describe('lesson timeout', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    });
+
+    /** Never settles until its signal aborts. */
+    function hangingProvider() {
+      let seen: AbortSignal | undefined;
+      const generateModuleLessonBatch = vi.fn(
+        (_input: unknown, options: { signal: AbortSignal }) => {
+          seen = options.signal;
+          return new Promise<never>((_resolve, reject) => {
+            options.signal.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          });
+        },
+      );
+      return { provider: { generateModuleLessonBatch }, signal: () => seen };
+    }
+
+    it('aborts the batch call at 300 s, not the 120 s AI base', async () => {
+      vi.useFakeTimers();
+      const { provider, signal } = hangingProvider();
+      const { deps } = makeDeps({ provider });
+      const { step, timeouts } = createStep();
+
+      const run = runModuleLessonsWorkflow(event(), step, deps);
+      await vi.advanceTimersByTimeAsync(299_999);
+      expect(signal()?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(run).resolves.toEqual({ kind: 'failed' });
+      expect(signal()?.aborted).toBe(true);
+      expect(provider.generateModuleLessonBatch).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ timeoutMs: 300_000 }),
+      );
+      expect(timeouts.get('generate')).toBe(360_000);
+    });
+
+    it('follows AI_LESSON_TIMEOUT_MS for the call and its step', async () => {
+      vi.stubEnv('AI_LESSON_TIMEOUT_MS', '450000');
+      const provider = providerReturning(validBatchText());
+      const { deps } = makeDeps({ provider });
+      const { step, timeouts } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(provider.generateModuleLessonBatch).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ timeoutMs: 450_000 }),
+      );
+      expect(timeouts.get('generate')).toBe(510_000);
     });
   });
 
@@ -846,6 +909,21 @@ describe('runModuleLessonsWorkflow', () => {
       expect(
         stepLogs(logger).find((fields) => fields.step === 'claim')?.outcome,
       ).toBe('claimed_grounded');
+    });
+
+    it('gives each lesson call 300 s and its step the margin over it', async () => {
+      const { deps } = groundedDeps();
+      const { step, timeouts } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      for (const [call] of writer.write.mock.calls) {
+        expect(call).toMatchObject({ timeoutMs: 300_000 });
+      }
+      expect(timeouts.get('lesson-1')).toBe(360_000);
+      expect(timeouts.get('lesson-2')).toBe(360_000);
     });
 
     it('retries only the lesson whose citations fail, then commits', async () => {
