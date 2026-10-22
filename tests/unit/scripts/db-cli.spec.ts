@@ -33,6 +33,21 @@ describe('pnpm db dispatcher', () => {
     });
   });
 
+  it('maps prune to the stale-stack script, dry run unless --yes', () => {
+    expect(parseDbArgs(['prune'])).toEqual({
+      executable: 'pnpm',
+      args: ['exec', 'tsx', 'scripts/db/prune-stacks.ts'],
+    });
+    expect(parseDbArgs(['prune', '--yes'])).toEqual({
+      executable: 'pnpm',
+      args: ['exec', 'tsx', 'scripts/db/prune-stacks.ts', '--yes'],
+    });
+    expect(() => parseDbArgs(['prune', '--force'])).toThrow(DbCliUsageError);
+    expect(() => parseDbArgs(['prune', '--yes', 'extra'])).toThrow(
+      DbCliUsageError,
+    );
+  });
+
   it('uses the deterministic product-testing user for shorthand fixtures', () => {
     expect(parseDbArgs(['fixture', 'starter'])).toEqual({
       executable: 'pnpm',
