@@ -46,9 +46,9 @@ Resolved by extracting `setLearningPlanGenerating()` and
 atomic insert (INSERT on creation) use the shared helper/constant, eliminating
 the inline drift risk while preserving the `lib/ → features/` dependency direction.
 
-Success/failure transitions (`markPlanGenerationSuccess`,
-`markPlanGenerationFailure`) live in
-`src/features/plans/lifecycle/adapters/plan-persistence-store.ts` (adapter-private)
+Success/failure transitions (`markPlanGenerationSuccessInTx`,
+`markPlanGenerationFailureInTx`) live in
+`src/features/plans/lifecycle/plan-persistence-store.ts`
 — they touch billing-adjacent fields (`isQuotaEligible`, `finalizedAt`) and
 belong in the plans feature domain.
 

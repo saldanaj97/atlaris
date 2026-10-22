@@ -8,22 +8,26 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 
 - **Lint:** Oxlint, not ESLint. `pnpm lint`; one file: `pnpm exec oxlint <files> --max-warnings=0`. Includes `@shadcn/lint`; see `docs/development/shadcn-lint.md`.
 - **Format:** oxfmt, not Prettier. `pnpm exec oxfmt <files>` (`--check` to verify).
-- **Typecheck:** `pnpm typecheck` (runs `next typegen`, `tsrs`, then `pnpm check:type:workers` for `workers/jobs`; ignores dev-server types in `.next/dev`).
+- **Typecheck:** `pnpm typecheck` (runs `next typegen`, `tsrs`, then `pnpm check:type:workers` for `workers/jobs` and `tests/unit/workers`; ignores dev-server types in `.next/dev`).
 - **Tests:** `pnpm test unit <paths...>`, `pnpm test integration <paths...>`, or `pnpm test security`; more in `tests/AGENTS.md`.
 - **Dev server:** `pnpm dev` (Portless, Webpack; secrets injected by 1Password `op run`). `--ui` runs UI-only Turbopack, `--db` starts Supabase first, `doctor` runs read-only diagnostics. In a linked worktree the URL is `https://<branch>.atlaris.localhost`; `portless get atlaris` prints it.
 - **UI checks:** `pnpm exec tsx scripts/dev/tw-classes.ts <classes>` prints the CSS Tailwind generates; `pnpm exec tsx scripts/dev/screenshot.ts <routes>` screenshots the running dev server at several widths in both themes.
-- **Paths:** `cn` is `@/lib/utils` (`src/lib/utils/index.ts`).
-- **Next.js docs:** read them only when changing Next.js APIs or conventions (routing, data fetching, caching, config). Find a guide by name with `rg --files node_modules/next/dist/docs | rg <topic>`; folders are numbered (`01-app/01-getting-started`, `02-guides`, `03-api-reference`).
+- **Paths:** `cn` is `@/lib/utils` (`src/lib/utils/index.ts`). Tables are in `supabase/schema/tables/`, enums in `supabase/enums.ts`, query helpers in `src/lib/db/queries/`.
+- **Next.js docs:** read them only when changing Next.js APIs or conventions (routing, data fetching, caching, config). Find a guide by name with `rg --files node_modules/next/dist/docs | rg <topic>`; folders are numbered (`01-app/01-getting-started`, `02-guides`, `03-api-reference`). This bullet sets the scope for the auto-generated Next.js block at the end of this file.
 
 ## Project documentation (`docs/`)
 
-**Docs index:** `[docs/README.md](docs/README.md)` is the directory of every folder and file under `docs/`. Use it to find and open relevant project docs for the current request — architecture, API contracts, database, development, security, styles, testing, CI/CD, and third-party service notes under `docs/third-party-services/` (Clerk CLI, Portless, etc.).
+**Docs index:** `[docs/README.md](docs/README.md)` lists every folder and file under `docs/`; open it for any area not listed here. For these areas, open the doc before reading code:
 
-Before implementing or answering from guesswork when the topic is already documented:
-
-1. Skim `[docs/README.md](docs/README.md)` for matching sections/files.
-2. Read only the docs that apply to the request (do not load the whole tree by default).
-3. Prefer those docs over inventing setup, contracts, or runbook steps that already exist.
+- **Plan or lesson generation** (grounded pipeline, Worker workflow steps, per-plan AI ceiling): `docs/architecture/plan-generation-architecture.md`
+- **Model routing, tiers, per-model pricing:** `docs/ai/available-models.md`
+- **Jobs Worker** (`workers/jobs`): `workers/AGENTS.md`, then `docs/architecture/cloudflare-jobs-runtime.md`
+- **DB schema, migrations, RLS:** `supabase/AGENTS.md`, `docs/database/schema-overview.md`
+- **Local database:** `docs/development/local-database.md`
+- **Tests:** `tests/AGENTS.md`
+- **Proxy, site gate, flags:** `docs/development/environment.md` ("Flag and gate ownership"); the `/api/internal` exemptions are in `docs/architecture/internal-worker-routes.md` ("Middleware")
+- **Secrets:** `docs/development/secrets-sync.md`
+- **CI and deploy:** `docs/ci-cd/pipeline-and-deployment-strategy.md`, `docs/development/deploy.md`
 
 **Keep the index current:** Whenever you add, remove, rename, or move a file or folder under `docs/` (including any subfolder), update `[docs/README.md](docs/README.md)` in the same change — section table entry, description, and the text tree at the bottom. Do not leave the index stale.
 
@@ -33,7 +37,7 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 
 **Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
 
-**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md`, then only the chapters of `docs/styles/design-system.md` that its "Find the right chapter" table names. The latter is the canonical intended design specification; current code and tests govern product behavior. Shared foundations and JCS-65 implementation slices are adopted; JCS-65 and JCS-97 were closed on 2026-10-14 without a separate integrated visual-acceptance pass.
+**Design context:** Before introducing UI or changing shared components, tokens, responsive behavior, visual states, interface patterns, marketing copy or brand usage, read `DESIGN.md`, then only the chapters of `docs/styles/design-system.md` that its "Find the right chapter" table names. The latter is the canonical intended design specification; current code and tests govern product behavior.
 
 ### 1. Think Before Coding
 
@@ -143,13 +147,8 @@ These cover recurring review findings from the 2025-10 → 2026-10 PR retrospect
 
 # Core Principles
 
-- Simplicity First: Make every change as simple as possible. Impact minimal code. Strive for elegant solutions, but balance with pragmatism. Don't over-engineer simple fixes.
 - No Laziness: Find root causes. No temporary fixes. Senior developer standards.
-- Minimal Impact: Only touch what's necessary. No side effects with new bugs.
-- Self-Improvement: Learn from mistakes. Iterate until mastered.
-- Verification: Prove correctness when it matters — diffs, targeted tests, logs, demos. Full-suite runs follow `.cursor/rules/selective-verification.mdc`, not every small change.
 - Autonomy: Take ownership. Fix bugs without hand-holding. Be proactive in finding and resolving issues when they arise.
-- Testing: Apply the central selective-verification policy and relevant engineering rules for behavioral coverage.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
