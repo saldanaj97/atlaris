@@ -115,6 +115,7 @@ Test standards and smoke tests.
 | File | Description |
 |------|-------------|
 | [db-test-patterns.md](./testing/db-test-patterns.md) | Drizzle query helper test patterns |
+| [grounded-eval.md](./testing/grounded-eval.md) | Grounded vs v15 eval on staging (JCS-163): pass bar, runner, judge, spot-check |
 | [playwright-local-smoke.md](./testing/playwright-local-smoke.md) | Current Playwright local smoke lane |
 | [smoke-test-results-2026-04-01.md](./testing/smoke-test-results-2026-04-01.md) | Smoke results snapshot (2026-04-01) |
 | [test-standards.md](./testing/test-standards.md) | Vitest + Testing Library guidelines |
@@ -181,6 +182,7 @@ docs/
 │   └── design-system.md
 ├── testing/
 │   ├── db-test-patterns.md
+│   ├── grounded-eval.md
 │   ├── playwright-local-smoke.md
 │   ├── smoke-test-results-2026-04-01.md
 │   └── test-standards.md
