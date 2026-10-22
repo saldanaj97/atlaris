@@ -714,6 +714,10 @@ async function collect(options: {
   if (manifest.arm !== options.arm || manifest.tier !== options.tier) {
     throw new Error(`${options.out} holds ${manifest.arm}/${manifest.tier}`);
   }
+  // `cleanup` deletes on the manifest's host only, so one manifest, one host.
+  if (manifest.baseUrl !== baseUrl) {
+    throw new Error(`${options.out} was collected on ${manifest.baseUrl}`);
+  }
   const topics = EVAL_TOPICS.filter((t) => {
     if (options.topicIds && !options.topicIds.includes(t.id)) {
       return false;
