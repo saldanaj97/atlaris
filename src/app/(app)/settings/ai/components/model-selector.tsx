@@ -21,9 +21,6 @@ import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
 
-/** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
-const NO_MODEL_VALUE = '__no_model_selected__';
-
 type ModelSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
@@ -79,10 +76,8 @@ const ModelDropdown = ({
     <div className='space-y-4'>
       <div className='space-y-2'>
         <Label htmlFor={triggerId}>{label}</Label>
-        <Select
-          value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
-          onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
-        >
+        {/* Radix Select stays controlled with `value=''` and shows the placeholder. */}
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
           <SelectTrigger
             id={triggerId}
             className='w-full'
@@ -91,9 +86,6 @@ const ModelDropdown = ({
             <SelectValue placeholder='Select a model' />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value={NO_MODEL_VALUE}>
-              <span className='text-muted-foreground'>Select a model</span>
-            </SelectItem>
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
