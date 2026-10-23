@@ -1,165 +1,189 @@
 import {
-  AVAILABLE_MODELS,
-  getModelById,
-  getModelsForTier,
-} from '@/features/ai/ai-models';
+  inMemoryModelCatalogStore,
+  MODEL_CATALOG_FIXTURE,
+} from '../../fixtures/ai-model-catalog';
+import { getModelsForTier } from '@/features/ai/ai-models';
 import {
   computeCostCents,
   DEFAULT_OUTPUT_TOKEN_CEILING,
   getOutputTokenCeiling,
+  UnknownModelError,
 } from '@/features/ai/cost';
-import { describe, expect, it } from 'vitest';
+import { selectCatalogModel } from '@/features/ai/model-catalog/store';
+import { logger } from '@/lib/logging/logger';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const SYNCED_MODELS = Object.values(MODEL_CATALOG_FIXTURE).flat();
+const GPT_6_SOL = 'openai/gpt-6-sol';
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 // ─── computeCostCents ────────────────────────────────────────────
 
 describe('computeCostCents', () => {
-  it('throws for unknown model', () => {
-    expect(() => computeCostCents('unknown-model', 1000, 500)).toThrow(
+  it('throws for unknown model', async () => {
+    await expect(computeCostCents('unknown-model', 1000, 500)).rejects.toThrow(
       /Unknown model "unknown-model"/,
     );
   });
 
-  it('returns 0 when both token counts are 0', () => {
-    expect(computeCostCents('openai/gpt-6-sol', 0, 0)).toBe(0);
+  it('returns 0 when both token counts are 0', async () => {
+    expect(await computeCostCents('openai/gpt-6-sol', 0, 0)).toBe(0);
   });
 
-  it('returns 0 for free models', () => {
-    expect(computeCostCents('openrouter/free', 100_000, 50_000)).toBe(0);
+  it('returns 0 for the free router', async () => {
+    expect(await computeCostCents('openrouter/free', 100_000, 50_000)).toBe(0);
   });
 
-  it('prices the Pro regeneration default from the catalog', () => {
+  it('prices the Pro regeneration default from the synced catalog', async () => {
     // anthropic/claude-sonnet-5.5: $2/M input, $10/M output
     // 1M input = 200 cents, 500K output = 500 cents
     expect(
-      computeCostCents('anthropic/claude-sonnet-5.5', 1_000_000, 500_000),
+      await computeCostCents('anthropic/claude-sonnet-5.5', 1_000_000, 500_000),
     ).toBe(700);
   });
 
-  it('computes cost correctly for paid models', () => {
-    // anthropic/claude-opus-5.5: inputCostPerMillion = 4, outputCostPerMillion = 20
-    // 1M input tokens at $4/M = $4.00 = 400 cents
-    // 500K output tokens at $20/M = $10.00 = 1000 cents
-    // Total = 1400 cents
+  it('reads the synced price, not a code constant', async () => {
+    // deepseek/deepseek-v4.1-flash synced at $0.07/M in, $0.50/M out
     expect(
-      computeCostCents('anthropic/claude-opus-5.5', 1_000_000, 500_000),
-    ).toBe(1400);
-  });
+      await computeCostCents(
+        'deepseek/deepseek-v4.1-flash',
+        10_000_000,
+        2_000_000,
+      ),
+    ).toBe(170);
 
-  it('rounds to nearest cent', () => {
-    // 100 input tokens at $2/M = $0.0002 = 0.02 cents → rounds to 0
-    expect(computeCostCents('openai/gpt-6-sol', 100, 0)).toBe(0);
-    // 12_500 input tokens at $2/M = $0.025 = 2.5 cents → rounds to 3
-    expect(computeCostCents('openai/gpt-6-sol', 12_500, 0)).toBe(3);
-  });
-
-  it('is deterministic — same input always produces same output', () => {
-    const model = 'openai/gpt-6-sol';
-    const input = 123_456;
-    const output = 78_901;
-    const results = Array.from({ length: 100 }, () =>
-      computeCostCents(model, input, output),
+    await inMemoryModelCatalogStore.replaceTierModels(
+      'starter',
+      MODEL_CATALOG_FIXTURE.starter.map((model) =>
+        model.modelId === 'deepseek/deepseek-v4.1-flash'
+          ? { ...model, inputCostPerMillion: 0.3, outputCostPerMillion: 1.2 }
+          : model,
+      ),
+      new Date(),
     );
-    const unique = new Set(results);
-    expect(unique.size).toBe(1);
+
+    expect(
+      await computeCostCents(
+        'deepseek/deepseek-v4.1-flash',
+        10_000_000,
+        2_000_000,
+      ),
+    ).toBe(540);
   });
 
-  it('computes cost for every paid model in the registry', () => {
-    const paidModels = AVAILABLE_MODELS.filter(
+  it('rounds to nearest cent', async () => {
+    // 100 input tokens at $2/M = $0.0002 = 0.02 cents → rounds to 0
+    expect(await computeCostCents('openai/gpt-6-sol', 100, 0)).toBe(0);
+    // 12_500 input tokens at $2/M = $0.025 = 2.5 cents → rounds to 3
+    expect(await computeCostCents('openai/gpt-6-sol', 12_500, 0)).toBe(3);
+  });
+
+  it('computes a positive cost for every paid synced model', async () => {
+    const paidModels = SYNCED_MODELS.filter(
       (m) => m.inputCostPerMillion > 0 || m.outputCostPerMillion > 0,
     );
     expect(paidModels.length).toBeGreaterThan(0);
     for (const model of paidModels) {
-      const cost = computeCostCents(model.id, 1_000_000, 1_000_000);
-      // Cost should be positive for non-trivial usage on paid models
-      expect(cost).toBeGreaterThan(0);
+      expect(
+        await computeCostCents(model.modelId, 1_000_000, 1_000_000),
+      ).toBeGreaterThan(0);
     }
+  });
+
+  it('treats an unreadable catalog as an unknown model and logs it', async () => {
+    vi.mocked(selectCatalogModel).mockRejectedValueOnce(
+      new Error('no database client'),
+    );
+    const errorSpy = vi.spyOn(logger, 'error');
+
+    await expect(
+      computeCostCents('openai/gpt-6-sol', 1000, 500),
+    ).rejects.toBeInstanceOf(UnknownModelError);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'model_catalog_unavailable' }),
+      expect.any(String),
+    );
   });
 });
 
 // ─── getOutputTokenCeiling ───────────────────────────────────────
 
 describe('getOutputTokenCeiling', () => {
-  it('returns the model-defined maxOutputTokens when present', () => {
-    const model = getModelById('openai/gpt-6-sol');
-    expect(model?.maxOutputTokens).toBe(128_000);
-    expect(getOutputTokenCeiling(model?.id ?? '')).toBe(128_000);
+  it('returns the synced maxOutputTokens when present', async () => {
+    expect(await getOutputTokenCeiling(GPT_6_SOL)).toBe(128_000);
+    expect(await getOutputTokenCeiling('deepseek/deepseek-v4.1-flash')).toBe(
+      943_718,
+    );
   });
 
-  it('returns DEFAULT_OUTPUT_TOKEN_CEILING for models without maxOutputTokens', () => {
-    // openrouter/free has no maxOutputTokens
-    const model = getModelById('openrouter/free');
-    expect(model?.maxOutputTokens).toBeUndefined();
-    expect(getOutputTokenCeiling('openrouter/free')).toBe(
+  it('returns DEFAULT_OUTPUT_TOKEN_CEILING for the free router', async () => {
+    expect(await getOutputTokenCeiling('openrouter/free')).toBe(
       DEFAULT_OUTPUT_TOKEN_CEILING,
     );
   });
 
-  it('returns DEFAULT_OUTPUT_TOKEN_CEILING for unknown models', () => {
-    expect(getOutputTokenCeiling('nonexistent/model')).toBe(
+  it('returns DEFAULT_OUTPUT_TOKEN_CEILING when the guardrail publishes no limit', async () => {
+    await inMemoryModelCatalogStore.replaceTierModels(
+      'pro',
+      MODEL_CATALOG_FIXTURE.pro.map((model) =>
+        model.modelId === 'openai/gpt-6-sol'
+          ? { ...model, maxOutputTokens: null }
+          : model,
+      ),
+      new Date(),
+    );
+    expect(await getOutputTokenCeiling(GPT_6_SOL)).toBe(
       DEFAULT_OUTPUT_TOKEN_CEILING,
     );
   });
 
-  it('returns a ceiling for every model in the registry', () => {
-    for (const model of AVAILABLE_MODELS) {
-      const ceiling = getOutputTokenCeiling(model.id);
-      expect(ceiling).toBeGreaterThan(0);
-      expect(Number.isFinite(ceiling)).toBe(true);
-    }
+  it('returns DEFAULT_OUTPUT_TOKEN_CEILING for unknown models', async () => {
+    expect(await getOutputTokenCeiling('nonexistent/model')).toBe(
+      DEFAULT_OUTPUT_TOKEN_CEILING,
+    );
   });
 
-  it('respects each model-specific ceiling', () => {
-    const modelsWithCeilings = AVAILABLE_MODELS.filter(
-      (m) => m.maxOutputTokens != null,
+  it('returns DEFAULT_OUTPUT_TOKEN_CEILING when the catalog cannot be read', async () => {
+    vi.mocked(selectCatalogModel).mockRejectedValueOnce(
+      new Error('no database client'),
     );
-    expect(modelsWithCeilings.length).toBeGreaterThan(0);
-    for (const model of modelsWithCeilings) {
-      expect(getOutputTokenCeiling(model.id)).toBe(model.maxOutputTokens);
-    }
+    vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+
+    expect(await getOutputTokenCeiling(GPT_6_SOL)).toBe(
+      DEFAULT_OUTPUT_TOKEN_CEILING,
+    );
   });
 });
 
 // ─── Tier consistency ────────────────────────────────────────────
 
 describe('tier consistency', () => {
-  it('enforces the same ceiling for a model regardless of user tier', () => {
-    const freeOutlineModels = getModelsForTier('free', 'initial_outline');
-    const proOutlineModels = getModelsForTier('pro', 'initial_outline');
+  it('enforces the same ceiling for a model regardless of user tier', async () => {
+    const starterModels = await getModelsForTier('starter', 'initial_outline');
+    const proModels = await getModelsForTier('pro', 'initial_outline');
+    const shared = starterModels.filter((model) =>
+      proModels.some((pro) => pro.id === model.id),
+    );
+    expect(shared.length).toBeGreaterThan(0);
 
-    for (const freeModel of freeOutlineModels) {
-      const proCounterpart = proOutlineModels.find(
-        (m) => m.id === freeModel.id,
-      );
-      if (!proCounterpart) {
-        throw new Error(
-          `Free-tier model "${freeModel.id}" has no pro-tier counterpart`,
-        );
-      }
-
-      const freeCeiling = getOutputTokenCeiling(freeModel.id);
-      const proCeiling = getOutputTokenCeiling(proCounterpart.id);
-      expect(freeCeiling).toBe(proCeiling);
+    for (const model of shared) {
+      expect(await getOutputTokenCeiling(model.id)).toBe(model.maxOutputTokens);
     }
   });
 
-  it('Free and Starter lesson catalogs share the free router; outline catalogs differ', () => {
-    expect(getModelsForTier('free', 'lesson').map((m) => m.id)).toEqual(
-      getModelsForTier('starter', 'lesson').map((m) => m.id),
-    );
-    expect(
-      getModelsForTier('free', 'initial_outline').map((m) => m.id),
-    ).not.toEqual(
-      getModelsForTier('starter', 'initial_outline').map((m) => m.id),
-    );
-  });
+  it('Free and Starter lesson and outline lists differ', async () => {
+    const ids = async (...args: Parameters<typeof getModelsForTier>) =>
+      (await getModelsForTier(...args)).map((m) => m.id);
 
-  it('getOutputTokenCeiling is a pure function of modelId (no tier parameter)', () => {
-    const allModels = AVAILABLE_MODELS;
-    for (const model of allModels) {
-      const ceiling1 = getOutputTokenCeiling(model.id);
-      const ceiling2 = getOutputTokenCeiling(model.id);
-      expect(ceiling1).toBe(ceiling2);
-    }
+    expect(await ids('free', 'lesson')).not.toEqual(
+      await ids('starter', 'lesson'),
+    );
+    expect(await ids('free', 'initial_outline')).not.toEqual(
+      await ids('starter', 'initial_outline'),
+    );
   });
 });
 

@@ -7,8 +7,8 @@ import type {
 import type { StartPlanGenerationAttemptDeps } from '@/features/plans/start-plan-generation-attempt';
 import type { CreateLearningPlanInput } from '@/features/plans/validation/learningPlans.types';
 
+import { selectTierModels } from '@/features/ai/model-catalog/store';
 import { PRO_GROUNDED_WRITER_CATALOG } from '@/features/ai/model-operation-policy';
-import { getPersistableModelsForTier } from '@/features/ai/model-preferences';
 import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -37,33 +37,18 @@ vi.mock('@/features/plans/session/stream-cleanup', async (importOriginal) => ({
 const PLAN_ID = '0b5e2c1d-6f4a-4e3b-9c8d-7a6b5c4d3e2f';
 const ATTEMPT_ID = '5a0d7b6c-1e9f-4d8a-8b3c-2f1a0b9c8d74';
 
-const STARTER_OUTLINE_MODELS = getPersistableModelsForTier(
-  'starter',
-  'initial_outline',
-);
-const STARTER_SAVED_MODEL = STARTER_OUTLINE_MODELS[0]?.id;
-const STARTER_QUERY_MODEL = STARTER_OUTLINE_MODELS[1]?.id;
-const PRO_QUERY_MODEL = getPersistableModelsForTier(
-  'pro',
-  'initial_outline',
-).find(
-  ({ id }) => !STARTER_OUTLINE_MODELS.some((model) => model.id === id),
-)?.id;
-
-const PRO_OFF_WRITER_QUERY_MODEL = getPersistableModelsForTier(
-  'pro',
-  'initial_outline',
-).find(
-  ({ id }) => !(PRO_GROUNDED_WRITER_CATALOG as readonly string[]).includes(id),
-)?.id;
+const STARTER_SAVED_MODEL = 'deepseek/deepseek-v4.1-flash';
+const STARTER_QUERY_MODEL = 'anthropic/claude-haiku-5.5';
+const PRO_QUERY_MODEL = 'openai/gpt-6-sol';
+/** In the Pro guardrail but not a grounded writer route. */
+const PRO_OFF_WRITER_QUERY_MODEL = 'anthropic/claude-opus-5.5';
 
 if (
-  !STARTER_SAVED_MODEL ||
-  !STARTER_QUERY_MODEL ||
-  !PRO_QUERY_MODEL ||
-  !PRO_OFF_WRITER_QUERY_MODEL
+  (PRO_GROUNDED_WRITER_CATALOG as readonly string[]).includes(
+    PRO_OFF_WRITER_QUERY_MODEL,
+  )
 ) {
-  throw new Error('Expected outline model fixtures for model override tests');
+  throw new Error('Expected an off-writer Pro model fixture');
 }
 
 const body: CreateLearningPlanInput = {
@@ -289,6 +274,27 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     expect(error.code()).toBe('GENERATION_FAILED');
     expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
     expect(error.cause).toBe(boom);
+  });
+
+  it('marks the created plan failed when the model catalog cannot be read', async () => {
+    const boom = new Error('model catalog read failed');
+    vi.mocked(selectTierModels).mockRejectedValueOnce(boom);
+
+    const error = await expectAppError(
+      startCreate(
+        buildBoundary(),
+        `http://localhost/api/v1/plans?model=${encodeURIComponent(PRO_QUERY_MODEL)}`,
+      ),
+    );
+
+    expect(safeMarkPlanFailedWithDbClient).toHaveBeenCalledWith(
+      PLAN_ID,
+      'internal-user',
+      expect.anything(),
+    );
+    expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
+    expect(error.cause).toBe(boom);
+    expect(mocks.reserveAttemptSlot).not.toHaveBeenCalled();
   });
 
   it('forwards a valid ?model= override to the started attempt', async () => {

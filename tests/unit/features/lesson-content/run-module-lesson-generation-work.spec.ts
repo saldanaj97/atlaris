@@ -2,8 +2,17 @@ import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-less
 import type { DbClient } from '@/lib/db/types';
 
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
-import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
+import { STARTER_DEFAULT_MODEL_ID } from '@/features/ai/model-operation-policy';
+import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
+import {
+  lessonServedByFreeRouterFallback,
+  reportLessonRouteFallback,
+  resolveModuleLessonProvider,
+  runModuleLessonGenerationWork,
+} from '@/features/lesson-content/run-module-lesson-generation-work';
+import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import * as Sentry from '@sentry/nextjs';
 import { makeDbClient } from '@tests/fixtures/db-mocks';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -20,6 +29,21 @@ const mocks = vi.hoisted(() => ({
   resolveUserTier: vi.fn(),
   getUserPreferences: vi.fn(),
   readPlanContentAccess: vi.fn(),
+  sumPlanAiSpendMicrousd: vi.fn(),
+  getGenerationProviderWithModel: vi.fn(),
+}));
+
+vi.mock('@sentry/nextjs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
+  captureMessage: vi.fn(),
+}));
+
+vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
+  sumPlanAiSpendMicrousd: mocks.sumPlanAiSpendMicrousd,
+}));
+
+vi.mock('@/features/ai/providers/factory', () => ({
+  getGenerationProviderWithModel: mocks.getGenerationProviderWithModel,
 }));
 
 vi.mock('@/lib/db/queries/module-lesson-generation', () => ({
@@ -117,6 +141,10 @@ function workLoad(taskId = createId('task')) {
 
 describe('runModuleLessonGenerationWork', () => {
   beforeEach(() => {
+    mocks.sumPlanAiSpendMicrousd.mockReset();
+    mocks.sumPlanAiSpendMicrousd.mockResolvedValue(0);
+    mocks.getGenerationProviderWithModel.mockReset();
+    vi.mocked(Sentry.captureMessage).mockClear();
     mocks.revertClaim.mockReset();
     mocks.revertClaim.mockResolvedValue(undefined);
     mocks.commitFailure.mockReset();
@@ -261,6 +289,36 @@ describe('runModuleLessonGenerationWork', () => {
       moduleId,
       providerStartedAt: '2026-08-20T18:00:00.000Z',
     });
+  });
+
+  it('cuts the provider call off at the lesson timeout', async () => {
+    const taskId = createId('task');
+    mocks.invokeProvider.mockResolvedValue(providerOk());
+    mocks.parseBatch.mockReturnValue(parsedBatch(taskId));
+
+    await runModuleLessonGenerationWork(
+      {
+        load: workLoad(taskId),
+        userId: createId('user'),
+        planId: createId('plan'),
+        moduleId: createId('module'),
+      },
+      {
+        serverDbClient: fakeDb,
+        resolveGenerationEnabled: async () => true,
+        provider: { generateModuleLessonBatch: vi.fn() },
+      },
+    );
+
+    expect(mocks.setupAbortAndTimeout).toHaveBeenCalledWith(
+      expect.objectContaining({ baseMs: 300_000 }),
+      undefined,
+    );
+    expect(mocks.invokeProvider).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      expect.objectContaining({ timeoutMs: 300_000 }),
+    );
   });
 
   it.each([
@@ -456,13 +514,22 @@ describe('runModuleLessonGenerationWork', () => {
     );
   });
 
-  it.each(['free', 'starter'] as const)(
-    '%s lesson work without modelOverride resolves openrouter/free',
-    async (tier) => {
+  it.each([
+    ['free', AI_DEFAULT_MODEL],
+    ['starter', STARTER_DEFAULT_MODEL_ID],
+  ] as const)(
+    '%s lesson work without modelOverride resolves %s and ignores a saved Pro lesson pick',
+    async (tier, defaultModelId) => {
       mocks.resolveUserTier.mockResolvedValue(tier);
+      mocks.getUserPreferences.mockResolvedValue({
+        preferredAiModel: null,
+        preferredRegenerationAiModel: null,
+        preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
+        analyticsTimezone: 'UTC',
+      });
       mocks.resolveModelForTier.mockReturnValue({
         provider: { generateModuleLessonBatch: vi.fn() },
-        modelId: AI_DEFAULT_MODEL,
+        modelId: defaultModelId,
       });
       mocks.invokeProvider.mockResolvedValue(providerOk());
       mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
@@ -480,7 +547,7 @@ describe('runModuleLessonGenerationWork', () => {
         },
       );
 
-      expect(getDefaultModelForTier(tier, 'lesson')).toBe(AI_DEFAULT_MODEL);
+      expect(await getDefaultModelForTier(tier, 'lesson')).toBe(defaultModelId);
       expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
         tier,
         undefined,
@@ -567,6 +634,248 @@ describe('runModuleLessonGenerationWork', () => {
       'pro',
       'openai/gpt-6.1-sol',
       'lesson',
+    );
+  });
+
+  describe('resolveModuleLessonProvider plan AI ceiling', () => {
+    const freeProvider = { generateModuleLessonBatch: vi.fn() };
+    const lunaProvider = { generateModuleLessonBatch: vi.fn() };
+
+    beforeEach(() => {
+      mocks.resolveUserTier.mockResolvedValue('starter');
+      mocks.getUserPreferences.mockResolvedValue({
+        preferredAiModel: null,
+        preferredRegenerationAiModel: null,
+        preferredLessonAiModel: null,
+        analyticsTimezone: 'UTC',
+      });
+      mocks.getGenerationProviderWithModel.mockReturnValue(freeProvider);
+      mocks.resolveModelForTier.mockResolvedValue({
+        provider: lunaProvider,
+        modelId: STARTER_DEFAULT_MODEL_ID,
+      });
+    });
+
+    it('runs a Starter lesson at the plan AI ceiling on the free router', async () => {
+      const planId = createId('plan');
+      mocks.sumPlanAiSpendMicrousd.mockResolvedValue(
+        planAiCeilingMicrousd('starter'),
+      );
+
+      const resolution = await resolveModuleLessonProvider(
+        { userId: createId('user'), planId },
+        fakeDb,
+      );
+
+      expect(resolution).toEqual({
+        provider: freeProvider,
+        route: {
+          tier: 'starter',
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
+      });
+      expect(mocks.sumPlanAiSpendMicrousd).toHaveBeenCalledWith(planId, fakeDb);
+      expect(mocks.getGenerationProviderWithModel).toHaveBeenCalledWith(
+        AI_DEFAULT_MODEL,
+        'starter',
+        'lesson',
+      );
+      expect(mocks.resolveModelForTier).not.toHaveBeenCalled();
+    });
+
+    it('runs a Starter lesson under the plan AI ceiling on GPT-6 Luna', async () => {
+      mocks.sumPlanAiSpendMicrousd.mockResolvedValue(
+        planAiCeilingMicrousd('starter') - 1,
+      );
+
+      const resolution = await resolveModuleLessonProvider(
+        { userId: createId('user'), planId: createId('plan') },
+        fakeDb,
+      );
+
+      expect(resolution).toEqual({
+        provider: lunaProvider,
+        route: {
+          tier: 'starter',
+          primaryModelId: STARTER_DEFAULT_MODEL_ID,
+          fallbackModelIds: [AI_DEFAULT_MODEL],
+        },
+      });
+      expect(mocks.getGenerationProviderWithModel).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('reportLessonRouteFallback', () => {
+    const route = {
+      tier: 'starter',
+      primaryModelId: STARTER_DEFAULT_MODEL_ID,
+      fallbackModelIds: [AI_DEFAULT_MODEL],
+    } as const;
+    const freeModel = 'nvidia/nemotron-3.5-lightning:free';
+
+    it('ignores the primary, mock providers and routes without fallbacks', () => {
+      reportLessonRouteFallback(route, {
+        provider: 'openrouter',
+        model: `${STARTER_DEFAULT_MODEL_ID}-20261001`,
+      });
+      reportLessonRouteFallback(route, {
+        provider: 'mock',
+        model: 'mock-module-lesson-batch-v1',
+      });
+      reportLessonRouteFallback(
+        {
+          tier: 'pro',
+          primaryModelId: 'anthropic/claude-haiku-5.5',
+          fallbackModelIds: [],
+        },
+        { provider: 'openrouter', model: 'anthropic/claude-haiku-5.5-x' },
+      );
+      reportLessonRouteFallback(
+        {
+          tier: 'starter',
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
+        { provider: 'openrouter', model: freeModel },
+      );
+      expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
+
+    it('warns and alerts when a fallback model served a paid lesson', () => {
+      const warn = vi.spyOn(logger, 'warn');
+
+      reportLessonRouteFallback(route, {
+        provider: 'openrouter',
+        model: freeModel,
+      });
+
+      const fields = {
+        event: 'lesson_route_fallback',
+        tier: 'starter',
+        primaryModelId: STARTER_DEFAULT_MODEL_ID,
+        servedModel: freeModel,
+      };
+      expect(warn).toHaveBeenCalledWith(fields, expect.any(String));
+      expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      expect(Sentry.captureMessage).toHaveBeenCalledWith(
+        expect.any(String),
+        expect.objectContaining({
+          level: 'warning',
+          fingerprint: ['lesson_route_fallback', 'starter'],
+          extra: fields,
+        }),
+      );
+      warn.mockRestore();
+    });
+  });
+
+  describe('free-router fallback flag (DEV-175)', () => {
+    const starterRoute = {
+      tier: 'starter',
+      primaryModelId: STARTER_DEFAULT_MODEL_ID,
+      fallbackModelIds: [AI_DEFAULT_MODEL],
+    } as const;
+    const freeModel = 'nvidia/nemotron-3.5-lightning:free';
+
+    it('flags a guardrail fallback or a free-router route fallback on a paid tier', () => {
+      expect(
+        lessonServedByFreeRouterFallback(
+          {
+            tier: 'pro',
+            primaryModelId: AI_DEFAULT_MODEL,
+            fallbackModelIds: [],
+            freeRouterFallback: true,
+          },
+          false,
+        ),
+      ).toBe(true);
+      expect(lessonServedByFreeRouterFallback(starterRoute, true)).toBe(true);
+    });
+
+    it('does not flag free tiers, the primary, or a non-free fallback route', () => {
+      expect(lessonServedByFreeRouterFallback(undefined, true)).toBe(false);
+      expect(
+        lessonServedByFreeRouterFallback(
+          { ...starterRoute, tier: 'free', freeRouterFallback: true },
+          true,
+        ),
+      ).toBe(false);
+      expect(lessonServedByFreeRouterFallback(starterRoute, false)).toBe(false);
+      expect(
+        lessonServedByFreeRouterFallback(
+          { ...starterRoute, fallbackModelIds: ['openai/gpt-6-mini'] },
+          true,
+        ),
+      ).toBe(false);
+    });
+
+    it('carries a guardrail free-router fallback onto the lesson route', async () => {
+      const provider = { generateModuleLessonBatch: vi.fn() };
+      mocks.resolveUserTier.mockResolvedValue('pro');
+      mocks.resolveModelForTier.mockResolvedValue({
+        provider,
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        freeRouterFallback: true,
+      });
+
+      const resolution = await resolveModuleLessonProvider(
+        { userId: createId('user'), planId: createId('plan') },
+        fakeDb,
+      );
+
+      expect(resolution.route).toEqual({
+        tier: 'pro',
+        primaryModelId: AI_DEFAULT_MODEL,
+        fallbackModelIds: [],
+        freeRouterFallback: true,
+      });
+    });
+
+    it.each([
+      ['the free router served it', freeModel, { freeRouterFallback: true }],
+      ['GPT-6 Luna served it', `${STARTER_DEFAULT_MODEL_ID}-20261001`, {}],
+    ] as const)(
+      'commits Starter lesson metadata when %s',
+      async (_label, servedModel, expectedFlag) => {
+        mocks.resolveUserTier.mockResolvedValue('starter');
+        mocks.resolveModelForTier.mockResolvedValue({
+          provider: { generateModuleLessonBatch: vi.fn() },
+          modelId: STARTER_DEFAULT_MODEL_ID,
+          fallback: true,
+        });
+        mocks.invokeProvider.mockResolvedValue({
+          ...providerOk(),
+          metadata: {
+            ...providerOk().metadata,
+            provider: 'openrouter',
+            model: servedModel,
+          },
+        });
+        const taskId = createId('task');
+        mocks.parseBatch.mockReturnValue(parsedBatch(taskId));
+
+        const result = await runModuleLessonGenerationWork(
+          {
+            load: workLoad(taskId),
+            userId: createId('user'),
+            planId: createId('plan'),
+            moduleId: createId('module'),
+          },
+          {
+            serverDbClient: fakeDb,
+            resolveGenerationEnabled: async () => true,
+          },
+        );
+
+        expect(result.kind).toBe('success');
+        const committed = mocks.commitSuccess.mock.calls[0]?.[1];
+        expect(committed.metadata).toEqual({
+          version: 1,
+          ...expectedFlag,
+        });
+      },
     );
   });
 });

@@ -11,19 +11,22 @@ import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.type
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
-  getDefaultModelForTier,
   getModelsForTier,
-  isValidModelId,
+  resolveDefaultModelForTier,
 } from '@/features/ai/ai-models';
+import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
 import { ModelResolutionError } from '@/features/ai/model-resolution-error';
 import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import { type Logger, logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
 
 export type ModelResolution = {
   modelId: string;
   provider: AiPlanGenerationProvider;
   fallback: boolean;
   fallbackReason?: 'invalid_model' | 'tier_denied' | 'not_specified';
+  /** The operation default ran on the free router because the tier's guardrail left no paid default. */
+  freeRouterFallback?: true;
 };
 
 type ModelValidationResult =
@@ -39,26 +42,22 @@ type ModelResolverLogger = {
 };
 
 /**
- * Validates whether a requested model is both known and allowed for a
- * tier × operation catalog. Does not throw; callers fall back.
+ * Validates whether a requested model is allowed for a tier × operation:
+ * `tier_denied` when another tier's guardrail lists it, `invalid_model` when
+ * none does. Throws only when the default check or catalog read fails.
  */
-export function validateModelForTier(
+export async function validateModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string,
   operation: ModelOperation,
-): ModelValidationResult {
-  if (!isValidModelId(requestedModel)) {
-    return { valid: false, reason: 'invalid_model' };
+): Promise<ModelValidationResult> {
+  const allowedModels = await getModelsForTier(userTier, operation);
+  if (allowedModels.some((model) => model.id === requestedModel)) {
+    return { valid: true };
   }
-
-  const allowedModels = getModelsForTier(userTier, operation);
-  const isAllowed = allowedModels.some((model) => model.id === requestedModel);
-
-  if (!isAllowed) {
-    return { valid: false, reason: 'tier_denied' };
-  }
-
-  return { valid: true };
+  return (await getCatalogModel(requestedModel))
+    ? { valid: false, reason: 'tier_denied' }
+    : { valid: false, reason: 'invalid_model' };
 }
 
 /**
@@ -112,20 +111,21 @@ function getProviderSafe(
  * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
  * @returns ModelResolution with the resolved provider and metadata
  */
-export function resolveModelForTier(
+export async function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string | null | undefined,
   operation: ModelOperation,
   providerGetter: ProviderGetter = getGenerationProviderWithModel,
   requestLogger: ModelResolverLogger = logger,
-): ModelResolution {
-  const defaultModelForTier = getDefaultModelForTier(userTier, operation);
-
-  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
-  const modelSpecified = requestedModel !== undefined;
-
-  if (!modelSpecified) {
-    return {
+): Promise<ModelResolution> {
+  const tierDefault = await resolveDefaultModelForTier(userTier, operation);
+  const defaultModelForTier = tierDefault.modelId;
+  // Alert once per generation that runs on the free-router fallback, not on
+  // every model lookup (settings, validation).
+  const defaultResolution = (
+    fallbackReason: NonNullable<ModelResolution['fallbackReason']>,
+  ): ModelResolution => {
+    const resolution: ModelResolution = {
       modelId: defaultModelForTier,
       provider: getProviderSafe(
         defaultModelForTier,
@@ -136,8 +136,31 @@ export function resolveModelForTier(
         requestLogger,
       ),
       fallback: true,
-      fallbackReason: 'not_specified',
+      fallbackReason,
     };
+    if (!tierDefault.freeRouterFallback) {
+      return resolution;
+    }
+    Sentry.captureMessage(
+      'Generation fell back to the free router: the tier guardrail lists no paid default',
+      {
+        level: 'error',
+        fingerprint: ['model_free_router_fallback', userTier, operation],
+        tags: {
+          event: 'model_free_router_fallback',
+          tier: userTier,
+          operation,
+        },
+      },
+    );
+    return { ...resolution, freeRouterFallback: true };
+  };
+
+  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
+  const modelSpecified = requestedModel !== undefined;
+
+  if (!modelSpecified) {
+    return defaultResolution('not_specified');
   }
 
   // Explicit null or empty string → invalid_model
@@ -146,41 +169,21 @@ export function resolveModelForTier(
       { requestedModel, userTier, operation },
       'Invalid model requested, falling back to default',
     );
-    return {
-      modelId: defaultModelForTier,
-      provider: getProviderSafe(
-        defaultModelForTier,
-        requestedModel,
-        userTier,
-        operation,
-        providerGetter,
-        requestLogger,
-      ),
-      fallback: true,
-      fallbackReason: 'invalid_model',
-    };
+    return defaultResolution('invalid_model');
   }
 
-  const validation = validateModelForTier(userTier, requestedModel, operation);
+  const validation = await validateModelForTier(
+    userTier,
+    requestedModel,
+    operation,
+  );
 
   if (!validation.valid) {
     requestLogger.warn(
       { requestedModel, userTier, operation, reason: validation.reason },
       'Invalid or tier-denied model, falling back to default',
     );
-    return {
-      modelId: defaultModelForTier,
-      provider: getProviderSafe(
-        defaultModelForTier,
-        requestedModel,
-        userTier,
-        operation,
-        providerGetter,
-        requestLogger,
-      ),
-      fallback: true,
-      fallbackReason: validation.reason,
-    };
+    return defaultResolution(validation.reason);
   }
 
   return {

@@ -9,7 +9,7 @@ import { GroundedModelPicker } from '@/app/(app)/settings/ai/components/Grounded
 import { ModelPreferencesSelector } from '@/app/(app)/settings/ai/components/ModelPreferencesSelector';
 import { Button } from '@/components/ui/button';
 import { RouteEmptyState } from '@/components/ui/route-empty-state';
-import { getDefaultModelForTier, getModelById } from '@/features/ai/ai-models';
+import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import {
   GROUNDED_MODEL_PICKS_FEATURE,
@@ -18,6 +18,7 @@ import {
   getGroundedPickCatalog,
   getGroundedPickDefault,
   getPersistableModelsForTier,
+  getProOnlyModelsForTier,
   resolveGroundedModelPick,
   resolveSavedPreferenceForSettings,
 } from '@/features/ai/model-preferences';
@@ -48,10 +49,6 @@ const GROUNDED_PICK_COPY = {
   GroundedPickRole,
   { label: string; description: string }
 >;
-
-function groundedModelLabel(modelId: string): string {
-  return getModelById(modelId)?.name ?? modelId;
-}
 
 /**
  * Grounded pickers need Pro, the grounded flag on for Pro, and the Clerk plan
@@ -116,17 +113,20 @@ export async function ModelSelectionCard() {
         </div>
       );
     case 'starter': {
-      const availableModels = getPersistableModelsForTier(
-        userTier,
-        'initial_outline',
+      const [availableModels, proOnlyModels, currentModel, tierDefaultId] =
+        await Promise.all([
+          getPersistableModelsForTier(userTier, 'initial_outline'),
+          getProOnlyModelsForTier(userTier, 'initial_outline'),
+          resolveSavedPreferenceForSettings(
+            userTier,
+            user.preferredAiModel,
+            'initial_outline',
+          ),
+          getDefaultModelForTier(userTier, 'initial_outline'),
+        ]);
+      const tierDefaultMeta = availableModels.find(
+        (model) => model.id === tierDefaultId,
       );
-      const currentModel = resolveSavedPreferenceForSettings(
-        userTier,
-        user.preferredAiModel,
-        'initial_outline',
-      );
-      const tierDefaultId = getDefaultModelForTier(userTier, 'initial_outline');
-      const tierDefaultMeta = getModelById(tierDefaultId);
       const tierDefaultLabel =
         tierDefaultMeta?.name ?? 'your tier default model';
 
@@ -149,7 +149,7 @@ export async function ModelSelectionCard() {
             ) : (
               <>
                 New plans use <strong>{tierDefaultLabel}</strong> until you save
-                a preference. Only persistable models appear here.
+                a preference. Only models your plan can save are selectable.
               </>
             )}
           </p>
@@ -157,35 +157,39 @@ export async function ModelSelectionCard() {
             currentModel={currentModel}
             userTier={userTier}
             availableModels={availableModels}
+            proOnlyModels={proOnlyModels}
           />
         </div>
       );
     }
     case 'pro': {
-      const outlineModels = getPersistableModelsForTier(
-        userTier,
-        'initial_outline',
-      );
-      const regenerationModels = getPersistableModelsForTier(
-        userTier,
-        'regeneration',
-      );
-      const lessonModels = getPersistableModelsForTier(userTier, 'lesson');
-      const outlineModel = resolveSavedPreferenceForSettings(
-        userTier,
-        user.preferredAiModel,
-        'initial_outline',
-      );
-      const regenerationModel = resolveSavedPreferenceForSettings(
-        userTier,
-        user.preferredRegenerationAiModel,
-        'regeneration',
-      );
-      const lessonModel = resolveSavedPreferenceForSettings(
-        userTier,
-        user.preferredLessonAiModel,
-        'lesson',
-      );
+      const [
+        outlineModels,
+        regenerationModels,
+        lessonModels,
+        outlineModel,
+        regenerationModel,
+        lessonModel,
+      ] = await Promise.all([
+        getPersistableModelsForTier(userTier, 'initial_outline'),
+        getPersistableModelsForTier(userTier, 'regeneration'),
+        getPersistableModelsForTier(userTier, 'lesson'),
+        resolveSavedPreferenceForSettings(
+          userTier,
+          user.preferredAiModel,
+          'initial_outline',
+        ),
+        resolveSavedPreferenceForSettings(
+          userTier,
+          user.preferredRegenerationAiModel,
+          'regeneration',
+        ),
+        resolveSavedPreferenceForSettings(
+          userTier,
+          user.preferredLessonAiModel,
+          'lesson',
+        ),
+      ]);
 
       return (
         <div className='space-y-8 py-3.5 first:pt-0 last:pb-0'>
@@ -217,7 +221,14 @@ export async function ModelSelectionCard() {
             label='Preferred lesson model'
             showUpgradeCta={false}
           />
-          {groundedPicks && <GroundedModelPicks picks={groundedPicks} />}
+          {groundedPicks && (
+            <GroundedModelPicks
+              picks={groundedPicks}
+              modelNames={
+                new Map(outlineModels.map((model) => [model.id, model.name]))
+              }
+            />
+          )}
         </div>
       );
     }
@@ -229,7 +240,16 @@ export async function ModelSelectionCard() {
 }
 
 /** Pro picks for grounded generation; shown only when `canShowGroundedPicks`. */
-function GroundedModelPicks({ picks }: { picks: SavedGroundedModelPicks }) {
+function GroundedModelPicks({
+  picks,
+  modelNames,
+}: {
+  picks: SavedGroundedModelPicks;
+  /** Display names from the Pro guardrail models. */
+  modelNames: ReadonlyMap<string, string>;
+}) {
+  const groundedModelLabel = (modelId: string) =>
+    modelNames.get(modelId) ?? modelId;
   return (
     <section aria-labelledby='grounded-model-picks' className='space-y-6'>
       <div className='space-y-2'>

@@ -8,8 +8,13 @@ import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
 } from '../../../../workers/jobs/src/workflows/module-lessons/run';
+import {
+  catalogReadsRequireDb,
+  PRICED_PROBE,
+  probeCatalog,
+} from '../../../helpers/catalog-db-scope';
 import { REGENERATION_REASON_GUIDANCE } from '@/features/plans/regeneration-orchestration/reasons';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const queries = vi.hoisted(() => ({
   load: vi.fn(),
@@ -209,14 +214,17 @@ function providerReturningEach(
 /** Runs each step like Workflows does: retries until the limit or a NonRetryableError. */
 function createStep() {
   const calls: Array<{ name: string; attempts: number }> = [];
+  /** Each step's configured timeout, by step name. */
+  const timeouts = new Map<string, unknown>();
   const step = {
     async do(
       name: string,
-      config: { retries: { limit: number } },
+      config: { retries: { limit: number }; timeout?: unknown },
       callback: (ctx: { attempt: number }) => Promise<unknown>,
     ) {
       const call = { name, attempts: 0 };
       calls.push(call);
+      timeouts.set(name, config.timeout);
       for (let attempt = 1; ; attempt += 1) {
         call.attempts = attempt;
         try {
@@ -232,7 +240,7 @@ function createStep() {
       }
     },
   };
-  return { step: step as unknown as Pick<WorkflowStep, 'do'>, calls };
+  return { step: step as unknown as Pick<WorkflowStep, 'do'>, calls, timeouts };
 }
 
 function event(
@@ -398,6 +406,66 @@ describe('runModuleLessonsWorkflow', () => {
       moduleId: MODULE_ID,
       taskCount: 2,
       rawChars: validBatchText().length,
+    });
+  });
+
+  describe('lesson timeout', () => {
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.unstubAllEnvs();
+    });
+
+    /** Never settles until its signal aborts. */
+    function hangingProvider() {
+      let seen: AbortSignal | undefined;
+      const generateModuleLessonBatch = vi.fn(
+        (_input: unknown, options: { signal: AbortSignal }) => {
+          seen = options.signal;
+          return new Promise<never>((_resolve, reject) => {
+            options.signal.addEventListener('abort', () =>
+              reject(new DOMException('aborted', 'AbortError')),
+            );
+          });
+        },
+      );
+      return { provider: { generateModuleLessonBatch }, signal: () => seen };
+    }
+
+    it('aborts the batch call at 300 s, not the 120 s AI base', async () => {
+      vi.useFakeTimers();
+      const { provider, signal } = hangingProvider();
+      const { deps } = makeDeps({ provider });
+      const { step, timeouts } = createStep();
+
+      const run = runModuleLessonsWorkflow(event(), step, deps);
+      await vi.advanceTimersByTimeAsync(299_999);
+      expect(signal()?.aborted).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+
+      await expect(run).resolves.toEqual({ kind: 'failed' });
+      expect(signal()?.aborted).toBe(true);
+      expect(provider.generateModuleLessonBatch).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ timeoutMs: 300_000 }),
+      );
+      expect(timeouts.get('generate')).toBe(360_000);
+    });
+
+    it('follows AI_LESSON_TIMEOUT_MS for the call and its step', async () => {
+      vi.stubEnv('AI_LESSON_TIMEOUT_MS', '450000');
+      const provider = providerReturning(validBatchText());
+      const { deps } = makeDeps({ provider });
+      const { step, timeouts } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(provider.generateModuleLessonBatch).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ timeoutMs: 450_000 }),
+      );
+      expect(timeouts.get('generate')).toBe(510_000);
     });
   });
 
@@ -843,6 +911,21 @@ describe('runModuleLessonsWorkflow', () => {
       ).toBe('claimed_grounded');
     });
 
+    it('gives each lesson call 300 s and its step the margin over it', async () => {
+      const { deps } = groundedDeps();
+      const { step, timeouts } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      for (const [call] of writer.write.mock.calls) {
+        expect(call).toMatchObject({ timeoutMs: 300_000 });
+      }
+      expect(timeouts.get('lesson-1')).toBe(360_000);
+      expect(timeouts.get('lesson-2')).toBe(360_000);
+    });
+
     it('retries only the lesson whose citations fail, then commits', async () => {
       writerReturning((taskId, attempt) =>
         taskId === TASK_A && attempt === 1 ? 'Made up [S9].' : 'Typed [S1].',
@@ -1117,6 +1200,44 @@ describe('runModuleLessonsWorkflow', () => {
         const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
         // Six calls: two lessons and two repairs, one usage each.
         expect(committed.usage.inputTokens).toBe(40);
+      });
+
+      it('reads the synced catalog inside verify and repair steps', async () => {
+        tier.value = 'pro';
+        qualityReturning({
+          verifierIssues: (prompt) =>
+            prompt.includes('Typed [S1].')
+              ? [{ code: 'x', blockRef: 'blocks[0]', message: 'Off topic.' }]
+              : [],
+          repaired: () => ({
+            blocks: [
+              { index: 0, block: { type: 'paragraph', text: 'Fixed [S1].' } },
+            ],
+          }),
+        });
+        const answer = quality.call.getMockImplementation()!;
+        const probes: Record<string, unknown>[] = [];
+        quality.call.mockImplementation(async (call: QualityCall) => {
+          probes.push({ stage: call.stage, ...(await probeCatalog()) });
+          return answer(call);
+        });
+        const catalog = catalogReadsRequireDb();
+        const { deps: base } = groundedDeps();
+        const { deps } = groundedDeps({
+          withDb: (fn) => catalog.scoped(() => base.withDb(fn)),
+        });
+        const { step } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        expect(new Set(probes.map((probe) => probe.stage))).toEqual(
+          new Set(['grounded-lesson-verify', 'grounded-lesson-repair']),
+        );
+        for (const probe of probes) {
+          expect(probe).toMatchObject(PRICED_PROBE);
+        }
       });
 
       it('verifies on paid tiers, repairs with the advisor required, and stops once clean', async () => {

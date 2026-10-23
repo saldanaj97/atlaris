@@ -61,4 +61,9 @@ export type ProviderMetadata = {
   usage?: ProviderUsage;
   /** Last streamed `finish_reason` (`stop`, `length`, …); set once the stream is read. */
   finishReason?: string;
+  /**
+   * A paid tier's generation ran on the free router because its guardrail left
+   * no paid default (DEV-174). Persisted on the attempt for the plan page notice.
+   */
+  freeRouterFallback?: true;
 };

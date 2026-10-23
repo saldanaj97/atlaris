@@ -20,9 +20,9 @@ function makeCanonicalUsage(
   };
 }
 
-describe('canonicalUsageToRecordParams', () => {
-  it('omits provider-only provenance fields for partial usage', () => {
-    const params = canonicalUsageToRecordParams(
+describe('canonicalUsageToRecordParams', async () => {
+  it('omits provider-only provenance fields for partial usage', async () => {
+    const params = await canonicalUsageToRecordParams(
       makeCanonicalUsage({
         providerCostMicrousd: 1_000,
         isPartial: true,

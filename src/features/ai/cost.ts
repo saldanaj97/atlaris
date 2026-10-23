@@ -7,12 +7,15 @@
  *
  * All persistence, billing, and provider code should import from this module.
  * Ceilings are model-specific and tier-independent: the same model always
- * gets the same ceiling regardless of the user's subscription tier.
+ * gets the same ceiling regardless of the user's subscription tier. Pricing
+ * and limits come from the synced guardrail catalog (`model-catalog`).
  *
  * @module features/ai/cost
  */
 
-import { getModelById } from '@/features/ai/ai-models';
+import type { AvailableModel } from '@/features/ai/types/model.types';
+
+import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -39,17 +42,38 @@ export class UnknownModelError extends Error {
 }
 
 /**
+ * The catalog entry for `modelId`, or `null` when it is unknown or the catalog
+ * cannot be read. The jobs Worker's grounded quality and research steps run
+ * without a database client, so the read fails there; those calls fall back to
+ * the unknown-model behavior (0 estimated cost, default ceiling) and the plan
+ * budget uses OpenRouter's reported cost.
+ */
+async function lookUpPricedModel(
+  modelId: string,
+): Promise<AvailableModel | null> {
+  try {
+    return await getCatalogModel(modelId);
+  } catch (error) {
+    logger.error(
+      { modelId, err: error, event: 'model_catalog_unavailable' },
+      'Model catalog read failed; treating the model as unknown',
+    );
+    return null;
+  }
+}
+
+/**
  * Compute estimated cost in **USD cents** from model pricing and token counts.
  *
- * Throws when the model is not in the registry (unknown models must not
+ * Throws when the model is not in the catalog (unknown models must not
  * silently waive charges). Returns 0 when both counts are zero.
- * The result is deterministic: identical inputs always produce identical output.
+ * Identical inputs and catalog pricing always produce identical output.
  */
-export function computeCostCents(
+export async function computeCostCents(
   modelId: string,
   inputTokens: number,
   outputTokens: number,
-): number {
+): Promise<number> {
   if (
     !Number.isFinite(inputTokens) ||
     !Number.isFinite(outputTokens) ||
@@ -61,7 +85,7 @@ export function computeCostCents(
     );
   }
 
-  const model = getModelById(modelId);
+  const model = await lookUpPricedModel(modelId);
   if (!model) {
     logger.error({ modelId }, 'Unknown model in computeCostCents');
     throw new UnknownModelError(modelId);
@@ -86,8 +110,8 @@ export function computeCostCents(
  * Callers at the provider boundary pass this value as `maxTokens` to
  * prevent unbounded output generation.
  */
-export function getOutputTokenCeiling(modelId: string): number {
-  const model = getModelById(modelId);
+export async function getOutputTokenCeiling(modelId: string): Promise<number> {
+  const model = await lookUpPricedModel(modelId);
   if (!model) {
     logger.warn(
       { modelId },

@@ -2,8 +2,8 @@
  * Rules for which models can be persisted as user preference slots vs
  * runtime-only defaults (e.g. `openrouter/free`).
  *
- * Persistability comes from the current operation policy catalogs, not the
- * legacy PostgreSQL `preferred_ai_model` enum.
+ * Tier access comes from the operation policy and the synced guardrail
+ * models, not the legacy PostgreSQL `preferred_ai_model` enum.
  */
 
 import type {
@@ -16,12 +16,16 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import {
   getDefaultModelForTier,
   getModelsForTier,
-  isValidModelId,
 } from '@/features/ai/ai-models';
-import { getGroundedOperationPolicy } from '@/features/ai/model-operation-policy';
+import { getTierModels } from '@/features/ai/model-catalog/catalog';
+import {
+  getGroundedOperationPolicy,
+  getModelOperationPolicy,
+  PICKER_HIDDEN_MODEL_IDS_BY_TIER,
+} from '@/features/ai/model-operation-policy';
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { logger } from '@/lib/logging/logger';
-import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
 
@@ -31,25 +35,63 @@ export function isRuntimeOnlyModelId(modelId: string): boolean {
 }
 
 /**
- * Model IDs that may be stored as a saved preference and shown as explicit
- * save targets in settings. Membership is the current catalog minus runtime
- * router fallbacks such as `openrouter/free`.
+ * Model IDs that may be stored as a saved preference: a model slug other than
+ * runtime router fallbacks such as `openrouter/free`. Whether the tier may use
+ * it is `validateModelForTier`'s check.
  */
 export function isPersistableModelId(modelId: string): boolean {
-  return isValidModelId(modelId) && !isRuntimeOnlyModelId(modelId);
+  return isModelIdShape(modelId) && !isRuntimeOnlyModelId(modelId);
 }
 
 /**
  * Models the user may pick in AI settings: the current tier × operation
- * policy catalog excluding runtime-only routers.
+ * policy catalog excluding runtime-only routers. Only Pro picks a lesson
+ * model; other tiers' lessons are code-owned.
  */
-export function getPersistableModelsForTier(
+export async function getPersistableModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): AvailableModel[] {
-  return getModelsForTier(tier, operation).filter(
+): Promise<AvailableModel[]> {
+  if (operation === 'lesson' && tier !== 'pro') {
+    return [];
+  }
+  return (await getModelsForTier(tier, operation)).filter(
     (m) => !isRuntimeOnlyModelId(m.id),
   );
+}
+
+/**
+ * Models Starter sees in its picker but cannot pick (Settings shows them
+ * disabled with a Pro plan badge): its picker-hidden guardrail models plus Pro
+ * guardrail models missing from the Starter guardrail, without runtime-only
+ * routers. Empty for Free, Pro, lessons and operations that offer no guardrail
+ * models.
+ * Validation still rejects these models (`tier_denied`).
+ */
+export async function getProOnlyModelsForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<AvailableModel[]> {
+  if (
+    tier !== 'starter' ||
+    operation === 'lesson' ||
+    !getModelOperationPolicy(tier, operation).usesTierCatalog
+  ) {
+    return [];
+  }
+  const [starterModels, proModels] = await Promise.all([
+    getTierModels('starter'),
+    getTierModels('pro'),
+  ]);
+  const hiddenModelIds: readonly string[] =
+    PICKER_HIDDEN_MODEL_IDS_BY_TIER.starter;
+  const starterModelIds = new Set(starterModels.map((model) => model.id));
+  // Disjoint by construction: hidden models are on the Starter guardrail, the
+  // Pro ones are not, so each id appears once.
+  return [
+    ...starterModels.filter((model) => hiddenModelIds.includes(model.id)),
+    ...proModels.filter((model) => !starterModelIds.has(model.id)),
+  ].filter((model) => !isRuntimeOnlyModelId(model.id));
 }
 
 export type SavedModelPreferenceSlots = {
@@ -61,6 +103,8 @@ export type SavedModelPreferenceSlots = {
 /**
  * Which saved column feeds an operation. Starter/Free regeneration reuse the
  * single outline slot; Pro regeneration and lesson slots are independent.
+ * Starter/Free lessons are code-owned, so a lesson pick saved on Pro does not
+ * carry over after a downgrade.
  */
 export function savedModelIdForOperation(
   tier: SubscriptionTier,
@@ -83,7 +127,7 @@ export function savedModelIdForOperation(
         }
       }
     case 'lesson':
-      return saved.preferredLessonAiModel;
+      return tier === 'pro' ? saved.preferredLessonAiModel : null;
     default: {
       const _never: never = operation;
       throw new Error(`Unhandled model operation: ${String(_never)}`);
@@ -112,13 +156,13 @@ export function resolveOverrideOrSavedModelId(
  * Runtime model for the current tier × operation. Never writes. Out-of-tier or
  * empty saved values fall back to the operation default.
  */
-export function resolveEffectivePreference(
+export async function resolveEffectivePreference(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
   operation: ModelOperation,
-): string {
+): Promise<string> {
   if (savedPreferredAiModel != null && savedPreferredAiModel !== '') {
-    const validation = validateModelForTier(
+    const validation = await validateModelForTier(
       tier,
       savedPreferredAiModel,
       operation,
@@ -136,11 +180,11 @@ export function resolveEffectivePreference(
  * @returns The saved model id when it is persistable and allowed for the current
  *          tier × operation; `null` means no saved preference to show in the picker.
  */
-export function resolveSavedPreferenceForSettings(
+export async function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
   operation: ModelOperation,
-): string | null {
+): Promise<string | null> {
   if (savedPreferredAiModel == null || savedPreferredAiModel === '') {
     logger.debug(
       { tier, operation, savedPreferredAiModel },
@@ -155,7 +199,7 @@ export function resolveSavedPreferenceForSettings(
     );
     return null;
   }
-  const validation = validateModelForTier(
+  const validation = await validateModelForTier(
     tier,
     savedPreferredAiModel,
     operation,

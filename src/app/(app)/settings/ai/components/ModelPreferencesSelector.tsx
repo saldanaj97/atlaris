@@ -12,6 +12,7 @@ type ModelPreferencesSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
+  proOnlyModels?: AvailableModel[];
   preferenceField?: PreferenceField;
   label?: string;
   showUpgradeCta?: boolean;
@@ -24,6 +25,7 @@ export function ModelPreferencesSelector({
   currentModel,
   userTier,
   availableModels,
+  proOnlyModels,
   preferenceField = 'preferredAiModel',
   label,
   showUpgradeCta,
@@ -40,6 +42,7 @@ export function ModelPreferencesSelector({
       currentModel={currentModel}
       userTier={userTier}
       availableModels={availableModels}
+      proOnlyModels={proOnlyModels}
       onSave={handleSave}
       label={label}
       showUpgradeCta={showUpgradeCta}

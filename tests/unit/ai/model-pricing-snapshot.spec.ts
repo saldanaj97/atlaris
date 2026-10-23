@@ -1,5 +1,9 @@
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 
+import {
+  inMemoryModelCatalogStore,
+  MODEL_CATALOG_FIXTURE,
+} from '../../fixtures/ai-model-catalog';
 import { buildModelPricingSnapshot } from '@/features/ai/model-pricing-snapshot';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
@@ -19,9 +23,9 @@ function baseComplete(overrides?: Partial<CanonicalAIUsage>): CanonicalAIUsage {
   };
 }
 
-describe('buildModelPricingSnapshot', () => {
-  it('returns a v1 snapshot for a catalog-backed non-router model', () => {
-    const snap = buildModelPricingSnapshot(baseComplete());
+describe('buildModelPricingSnapshot', async () => {
+  it('returns a v1 snapshot for a catalog-backed non-router model', async () => {
+    const snap = await buildModelPricingSnapshot(baseComplete());
     expect(snap).not.toBeNull();
     expect(snap?.version).toBe(1);
     expect(snap?.source).toBe('local_catalog');
@@ -35,9 +39,27 @@ describe('buildModelPricingSnapshot', () => {
     expect(snap?.outputCostUsdPerMillion).toBeGreaterThan(0);
   });
 
-  it('returns null for partial usage', () => {
+  it('snapshots the synced price at the time of the call', async () => {
+    await inMemoryModelCatalogStore.replaceTierModels(
+      'pro',
+      MODEL_CATALOG_FIXTURE.pro.map((model) =>
+        model.modelId === 'openai/gpt-6-sol'
+          ? { ...model, inputCostPerMillion: 3, outputCostPerMillion: 15 }
+          : model,
+      ),
+      new Date(),
+    );
+
+    expect(await buildModelPricingSnapshot(baseComplete())).toMatchObject({
+      pricedModelId: 'openai/gpt-6-sol',
+      inputCostUsdPerMillion: 3,
+      outputCostUsdPerMillion: 15,
+    });
+  });
+
+  it('returns null for partial usage', async () => {
     expect(
-      buildModelPricingSnapshot(
+      await buildModelPricingSnapshot(
         baseComplete({
           isPartial: true,
           missingFields: ['model'],
@@ -46,9 +68,9 @@ describe('buildModelPricingSnapshot', () => {
     ).toBeNull();
   });
 
-  it('returns null for runtime router model', () => {
+  it('returns null for runtime router model', async () => {
     expect(
-      buildModelPricingSnapshot(
+      await buildModelPricingSnapshot(
         baseComplete({
           model: AI_DEFAULT_MODEL,
         }),
@@ -56,9 +78,9 @@ describe('buildModelPricingSnapshot', () => {
     ).toBeNull();
   });
 
-  it('returns null for unknown model ids', () => {
+  it('returns null for unknown model ids', async () => {
     expect(
-      buildModelPricingSnapshot(
+      await buildModelPricingSnapshot(
         baseComplete({
           model: 'unknown/unknown-model-xyz',
         }),

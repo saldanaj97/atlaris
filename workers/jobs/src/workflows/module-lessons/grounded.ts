@@ -25,7 +25,7 @@ import {
   resolveGroundedModelPick,
   resolveGroundedWriterModelId,
 } from '@/features/ai/model-preferences';
-import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
+import { resolveLessonTimeoutMs } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
 import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import { resolveUserTier } from '@/features/billing/tier';
@@ -234,7 +234,7 @@ async function lessonStep(
       // Absent on claims replayed from before JCS-162.
       reason: ctx.grounded.reason ?? undefined,
     }),
-    timeoutMs: resolveTimeoutConfig().baseMs,
+    timeoutMs: resolveLessonTimeoutMs(),
   });
   const logged = {
     lesson: position,

@@ -80,6 +80,7 @@ Local development, env, deploy, and logging.
 
 | File | Description |
 |------|-------------|
+| [agent-sessions.md](./development/agent-sessions.md) | `scripts/dev/agent-session.ts`: sign agents in as per-tier test users through Clerk Agent Tasks (local and staging only) |
 | [commands.md](./development/commands.md) | Common `pnpm` and dev commands |
 | [deploy.md](./development/deploy.md) | Staged Production pointer + migration cutover notes |
 | [environment.md](./development/environment.md) | Environment variables and logging guidelines |
@@ -165,6 +166,7 @@ docs/
 │   ├── client-usage.md
 │   └── schema-overview.md
 ├── development/
+│   ├── agent-sessions.md
 │   ├── commands.md
 │   ├── deploy.md
 │   ├── environment.md

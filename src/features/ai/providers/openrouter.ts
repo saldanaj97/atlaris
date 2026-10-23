@@ -156,11 +156,11 @@ function buildRouteModels(
   return routeModels;
 }
 
-function getRouteTokenCeiling(routeModels: readonly string[]): number {
-  return routeModels.reduce(
-    (lowest, modelId) => Math.min(lowest, getOutputTokenCeiling(modelId)),
-    Number.POSITIVE_INFINITY,
-  );
+async function getRouteTokenCeiling(
+  routeModels: readonly string[],
+): Promise<number> {
+  const ceilings = await Promise.all(routeModels.map(getOutputTokenCeiling));
+  return Math.min(...ceilings);
 }
 
 function mergeStreamUsageIntoMetadata(
@@ -529,7 +529,7 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             stream: true,
             temperature: this.temperature,
             responseFormat: { type: 'json_object' as const },
-            maxTokens: getRouteTokenCeiling(this.routeModels),
+            maxTokens: await getRouteTokenCeiling(this.routeModels),
           };
           response = await this.client.chat.send(requestBody, requestOptions);
         } catch (err) {
@@ -790,6 +790,7 @@ export async function sendOpenRouterGroundedChat(
   const gateway = resolveAiGatewayConfig();
   const siteUrl = openRouterEnv.siteUrl;
   const appName = openRouterEnv.appName;
+  const routeTokenCeiling = await getRouteTokenCeiling(routeModels);
 
   const body = {
     ...buildPresetModelRoute(routeModels, presetSlug),
@@ -801,10 +802,7 @@ export async function sendOpenRouterGroundedChat(
     response_format: toWireResponseFormat(request.responseFormat),
     // Grounded stages keep the 32k ceiling they had before the catalog listed
     // their models, which bounds cost and latency of a runaway response.
-    max_tokens: Math.min(
-      getRouteTokenCeiling(routeModels),
-      DEFAULT_OUTPUT_TOKEN_CEILING,
-    ),
+    max_tokens: Math.min(routeTokenCeiling, DEFAULT_OUTPUT_TOKEN_CEILING),
     ...(serverTools.length > 0 && {
       tools: serverTools.map(toWireServerTool),
     }),

@@ -8,6 +8,11 @@ import {
   runPlanGenerationWorkflow,
 } from '../../../../workers/jobs/src/workflows/plan-generation/run';
 import { makeCanonicalUsage } from '../../../fixtures/canonical-usage.factory';
+import {
+  catalogReadsRequireDb,
+  PRICED_PROBE,
+  probeCatalog,
+} from '../../../helpers/catalog-db-scope';
 import { ProviderRateLimitError } from '@/features/ai/providers/errors';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import {
@@ -1056,6 +1061,52 @@ describe('runPlanGenerationWorkflow', () => {
         inputTokens: 12,
         outputTokens: 22,
       });
+    });
+
+    it('reads the synced catalog inside research, verify and repair steps', async () => {
+      providerReturning(planText(cleanModules()));
+      const probes: Record<string, unknown>[] = [];
+      const probe = async (call: string) =>
+        probes.push({ call, ...(await probeCatalog()) });
+      mocks.runPlanResearch.mockImplementation(async () => {
+        await probe('research');
+        return {
+          research: RESEARCH,
+          droppedSourceCount: 0,
+          mode: 'fast',
+          searchCount: 1,
+          costMicrousd: 1_000,
+          model: 'served/model',
+        };
+      });
+      mocks.runOutlineVerifier.mockImplementation(async () => {
+        await probe('verify');
+        return {
+          issues: probes.length > 2 ? [] : [VERIFIER_ISSUE],
+          model: 'v',
+        };
+      });
+      mocks.runOutlineRepair.mockImplementation(async () => {
+        await probe('repair');
+        return { modules: cleanModules(), model: 'repair/model' };
+      });
+      const catalog = catalogReadsRequireDb();
+      const { deps } = makeDeps({
+        isGroundedEnabled: () => true,
+        withDb: (fn) => catalog.scoped(() => fn(makeDb())),
+      });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(groundedEvent('starter'), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(probes).toEqual(
+        ['research', 'verify', 'repair', 'verify'].map((call) => ({
+          call,
+          ...PRICED_PROBE,
+        })),
+      );
     });
 
     it('replays verifier and repair steps cached before JCS-170 without usage', async () => {

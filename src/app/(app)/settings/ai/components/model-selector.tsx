@@ -12,22 +12,24 @@ import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
 import { ROUTES } from '@/features/navigation/routes';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { useId } from 'react';
-
-/** Placeholder value so Radix Select stays controlled (never uncontrolled↔controlled). */
-const NO_MODEL_VALUE = '__no_model_selected__';
 
 type ModelSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
+  /** Models shown disabled with a Pro plan badge; never selectable. */
+  proOnlyModels?: AvailableModel[];
   onSave: (modelId: string | null) => Promise<void>;
   label?: string;
   showUpgradeCta?: boolean;
@@ -35,6 +37,7 @@ type ModelSelectorProps = {
 
 const ModelDropdown = ({
   availableModels,
+  proOnlyModels = [],
   userTier,
   currentModel,
   onSave,
@@ -43,6 +46,8 @@ const ModelDropdown = ({
 }: ModelSelectorProps) => {
   const modelSelectId = useId();
   const triggerId = `${modelSelectId}-trigger`;
+  const proOnlyHintId = `${modelSelectId}-pro-only-hint`;
+  const hasProOnlyModels = proOnlyModels.length > 0;
   const {
     clearSelection,
     effectiveBaseline,
@@ -74,31 +79,65 @@ const ModelDropdown = ({
     <div className='space-y-4'>
       <div className='space-y-2'>
         <Label htmlFor={triggerId}>{label}</Label>
-        <Select
-          value={selectedModel === '' ? NO_MODEL_VALUE : selectedModel}
-          onValueChange={(v) => setSelectedModel(v === NO_MODEL_VALUE ? '' : v)}
-        >
-          <SelectTrigger id={triggerId} className='w-full'>
+        {/* Radix Select stays controlled with `value=''` and shows the placeholder. */}
+        <Select value={selectedModel} onValueChange={setSelectedModel}>
+          <SelectTrigger
+            id={triggerId}
+            className='w-full'
+            aria-describedby={hasProOnlyModels ? proOnlyHintId : undefined}
+          >
             <SelectValue placeholder='Select a model' />
           </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={NO_MODEL_VALUE}>
-              <span className='text-muted-foreground'>Select a model</span>
-            </SelectItem>
+          <SelectContent
+            align='start'
+            className='min-w-(--radix-select-trigger-width)'
+          >
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
                   <span>{model.name}</span>
+                  {/* Secondary matches the popover and card matches the trigger, so swap only in the list. */}
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
+                    className={
+                      model.tier === 'free'
+                        ? undefined
+                        : 'in-data-[slot=select-content]:bg-card'
+                    }
                   >
-                    {model.tier.toUpperCase()}
+                    {model.tier === 'free' ? 'Free' : 'Paid'}
                   </Badge>
                 </div>
               </SelectItem>
             ))}
+            {hasProOnlyModels && (
+              <SelectGroup>
+                <SelectSeparator />
+                {/* The open list can cover the hint below the trigger, so repeat it here. */}
+                <SelectLabel>Upgrade to Pro to use these models</SelectLabel>
+                {proOnlyModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id} disabled>
+                    <div className='flex items-center gap-2'>
+                      <span>{model.name}</span>
+                      <Badge
+                        variant='outline'
+                        className='border-disabled-border text-disabled-foreground'
+                      >
+                        <Lock aria-hidden='true' className='size-3' />
+                        Pro plan
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
+        {hasProOnlyModels && (
+          <p id={proOnlyHintId} className='type-body text-muted-foreground'>
+            Models marked Pro plan are available when you upgrade to Pro.
+          </p>
+        )}
       </div>
 
       {selectedModelData && (
@@ -116,7 +155,7 @@ const ModelDropdown = ({
                   selectedModelData.tier === 'free' ? 'default' : 'secondary'
                 }
               >
-                {selectedModelData.tier.toUpperCase()}
+                {selectedModelData.tier === 'free' ? 'Free' : 'Paid'}
               </Badge>
             </div>
 
@@ -221,6 +260,7 @@ export function ModelSelector({
   userTier,
   currentModel = null,
   availableModels,
+  proOnlyModels,
   onSave,
   label,
   showUpgradeCta,
@@ -243,6 +283,7 @@ export function ModelSelector({
   return (
     <ModelDropdown
       availableModels={availableModels}
+      proOnlyModels={proOnlyModels}
       userTier={userTier}
       currentModel={currentModel}
       onSave={onSave}

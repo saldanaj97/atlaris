@@ -16,7 +16,7 @@ This directory is the maintained source for verifying user-facing Atlaris behavi
 
 - Start every recipe from the baseline state unless its preconditions say otherwise.
 - Prefer ARIA roles and accessible names over CSS selectors or DOM position.
-- Drive the browser with Cursor browser tools against the doctor URL.
+- Drive the browser with your host's browser tools (see `SKILL.md` "Drive") against the doctor URL.
 - Treat every name below as literal.
 - Restore mutated user data only when the feature file says to. Keep proof artifacts.
 

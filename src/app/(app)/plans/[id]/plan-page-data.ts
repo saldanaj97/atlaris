@@ -1,4 +1,5 @@
 import type {
+  FreeRouterNotice,
   PlanAccessResult,
   PlanRegenerationState,
 } from '@/app/(app)/plans/[id]/types';
@@ -9,6 +10,7 @@ import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { getPlanDetailForRead } from '@/features/plans/read-projection/service';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
+import { getPlanFreeRouterFallback } from '@/lib/db/queries/plan-free-router-fallback';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -72,4 +74,22 @@ export async function loadPlanRegenerationState(
     return { canRegenerate: true, isRegenerating: activeJob !== null };
   });
   return state ?? { canRegenerate: false, isRegenerating: false };
+}
+
+/**
+ * The free-router notice for a paid viewer (DEV-175), or null when nothing the
+ * plan shows ran on the free router. Free plans always run on the free router,
+ * so free viewers never get one. Call after the plan loaded.
+ */
+export async function loadPlanFreeRouterNotice(
+  planId: string,
+): Promise<FreeRouterNotice | null> {
+  const notice = await requestBoundary.component(async ({ actor, db }) => {
+    if (actor.subscriptionTier === 'free') {
+      return null;
+    }
+    const fallback = await getPlanFreeRouterFallback(planId, db);
+    return fallback.outline || fallback.lessonModuleCount > 0 ? fallback : null;
+  });
+  return notice ?? null;
 }

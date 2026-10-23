@@ -544,6 +544,11 @@ export async function commitModuleLessonBatchSuccess(
   const nowFn = input.now ?? (() => new Date());
   const finishedAt = nowFn();
   const metadata = ModuleLessonGenerationMetadataSchema.parse(input.metadata);
+  const usageParams = await canonicalUsageToRecordParams(
+    input.usage,
+    input.userId,
+    input.requestId,
+  );
 
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
@@ -590,14 +595,7 @@ export async function commitModuleLessonBatchSuccess(
       );
     }
 
-    await recordUsageInTx(tx, {
-      ...canonicalUsageToRecordParams(
-        input.usage,
-        input.userId,
-        input.requestId,
-      ),
-      planId: input.planId,
-    });
+    await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
   });
 }
 

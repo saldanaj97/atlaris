@@ -12,6 +12,7 @@ import {
   hasGroundedRegenerationQuota,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
+  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
@@ -246,13 +247,13 @@ describe('GROUNDED_PRESET_BY_OPERATION', () => {
 });
 
 describe('legacy policy with grounded generation off', () => {
-  it('keeps the current free and starter lesson models', () => {
+  it('keeps the legacy free and starter lesson models', () => {
     expect(getModelOperationPolicy('free', 'lesson').defaultModelId).toBe(
       AI_DEFAULT_MODEL,
     );
     expect(getModelOperationPolicy('free', 'regeneration').allowed).toBe(false);
     expect(getModelOperationPolicy('starter', 'lesson').defaultModelId).toBe(
-      AI_DEFAULT_MODEL,
+      STARTER_DEFAULT_MODEL_ID,
     );
   });
 });

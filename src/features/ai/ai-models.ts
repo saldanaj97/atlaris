@@ -3,165 +3,163 @@ import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 /**
- * OpenRouter AI Model Configuration
- *
- * This module defines all available OpenRouter models with metadata for UI display
- * and tier-gating. Operation catalogs and defaults live in
- * `model-operation-policy.ts`; catalog `tier` labels are not proof of zero cost.
+ * The models each tier × operation offers: its tier's OpenRouter guardrail
+ * list (`model-catalog`) and/or the `openrouter/free` router, per
+ * `model-operation-policy.ts`. Catalog `tier` labels are not proof of zero cost.
  *
  * @module lib/ai/ai-models
  */
-import { getModelOperationPolicy } from '@/features/ai/model-operation-policy';
-import { AI_DEFAULT_MODEL, isValidModelId } from '@/shared/constants/ai-models';
+import {
+  FREE_ROUTER_MODEL,
+  getTierModels,
+} from '@/features/ai/model-catalog/catalog';
+import {
+  getGroundedOperationPolicy,
+  getModelOperationPolicy,
+  PICKER_HIDDEN_MODEL_IDS_BY_TIER,
+} from '@/features/ai/model-operation-policy';
+import { logger } from '@/lib/logging/logger';
+import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 
-export { AI_DEFAULT_MODEL, isValidModelId };
+export { AI_DEFAULT_MODEL };
 
-/**
- * Complete list of available OpenRouter models.
- * Models are listed in order of recommendation within their tier.
- */
-export const AVAILABLE_MODELS = [
-  // Free tier models - accessible to all users
-  {
-    id: 'openrouter/free',
-    name: 'Free Models Router',
-    provider: 'OpenRouter',
-    description:
-      'Routes each request to a compatible free OpenRouter model. Zero cost, but the exact backend and output limits vary by request.',
-    tier: 'free',
-    contextWindow: 200_000,
-    inputCostPerMillion: 0,
-    outputCostPerMillion: 0,
-  },
-
-  // Pro-labelled catalog models. Catalog `tier` is not proof of zero cost.
-  {
-    id: 'openai/gpt-6-luna',
-    name: 'GPT-6 Luna',
-    provider: 'OpenAI',
-    description: 'Fast, low-cost OpenAI model for everyday plan generation.',
-    tier: 'pro',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 0.1,
-    outputCostPerMillion: 0.5,
-  },
-  {
-    id: 'anthropic/claude-haiku-5.5',
-    name: 'Claude Haiku 5.5',
-    provider: 'Anthropic',
-    description:
-      'Fast and efficient model from Anthropic with strong reasoning capabilities.',
-    tier: 'pro',
-    contextWindow: 1_000_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 0.1,
-    outputCostPerMillion: 0.5,
-  },
-  {
-    id: 'deepseek/deepseek-v4.1-flash',
-    name: 'DeepSeek V4.1 Flash',
-    provider: 'DeepSeek',
-    description: 'Low-cost DeepSeek flash model with a very large context.',
-    tier: 'pro',
-    contextWindow: 1_048_576,
-    maxOutputTokens: 943_718,
-    inputCostPerMillion: 0.3,
-    outputCostPerMillion: 1.2,
-  },
-  {
-    id: 'openai/gpt-6.1-sol',
-    name: 'GPT-6.1 Sol',
-    provider: 'OpenAI',
-    description:
-      'Latest frontier OpenAI model for complex, multi-step planning.',
-    tier: 'pro',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 2,
-    outputCostPerMillion: 10,
-  },
-  {
-    id: 'openai/gpt-6-sol',
-    name: 'GPT-6 Sol',
-    provider: 'OpenAI',
-    description:
-      'Frontier OpenAI model with strong performance across diverse tasks.',
-    tier: 'pro',
-    contextWindow: 1_050_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 2,
-    outputCostPerMillion: 10,
-  },
-  {
-    id: 'anthropic/claude-sonnet-5.5',
-    name: 'Claude Sonnet 5.5',
-    provider: 'Anthropic',
-    description:
-      'Premium model with exceptional reasoning and nuanced understanding.',
-    tier: 'pro',
-    contextWindow: 1_000_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 2,
-    outputCostPerMillion: 10,
-  },
-  {
-    id: 'anthropic/claude-opus-5.5',
-    name: 'Claude Opus 5.5',
-    provider: 'Anthropic',
-    description:
-      'Most capable Anthropic model for the hardest reasoning tasks.',
-    tier: 'pro',
-    contextWindow: 1_000_000,
-    maxOutputTokens: 128_000,
-    inputCostPerMillion: 4,
-    outputCostPerMillion: 20,
-  },
-] satisfies AvailableModel[];
+type TierModels = {
+  readonly models: AvailableModel[];
+  /** The operation default, its first listed fallback, or the free router. */
+  readonly defaultModelId: string;
+  /** The default is the free router only because the guardrail left no paid default. */
+  readonly freeRouterFallback: boolean;
+};
 
 /**
- * Get a model by its OpenRouter ID.
- *
- * @param id - The OpenRouter model ID (e.g., 'openai/gpt-6-luna')
- * @returns The model metadata or undefined if not found
+ * The operation's code-listed fallbacks for a default the guardrail dropped:
+ * its grounded writer route (`GROUNDED_MODELS_BY_TIER`), in order.
  */
-export function getModelById(id: string): AvailableModel | undefined {
-  return AVAILABLE_MODELS.find((model) => model.id === id);
-}
-
-/**
- * Get models allowed for a subscription tier and generation operation.
- */
-export function getModelsForTier(
+function getDefaultFallbackModelIds(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): AvailableModel[] {
+): string[] {
+  const grounded = getGroundedOperationPolicy(tier, operation);
+  return grounded.allowed ? grounded.models.map((model) => model.modelId) : [];
+}
+
+async function resolveTierModels(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<TierModels> {
   const policy = getModelOperationPolicy(tier, operation);
-  return policy.modelIds.map((id) => {
-    const model = getModelById(id);
-    if (!model) {
-      throw new Error(`Operation policy references unknown model "${id}"`);
-    }
-    return model;
-  });
+  if (!policy.allowed) {
+    return {
+      models: [],
+      defaultModelId: policy.defaultModelId,
+      freeRouterFallback: false,
+    };
+  }
+  const hiddenModelIds: readonly string[] =
+    PICKER_HIDDEN_MODEL_IDS_BY_TIER[tier];
+  const models = [
+    ...(policy.usesFreeRouter ? [FREE_ROUTER_MODEL] : []),
+    ...(policy.usesTierCatalog
+      ? (await getTierModels(tier)).filter(
+          (model) => !hiddenModelIds.includes(model.id),
+        )
+      : []),
+  ];
+  const isListed = (modelId: string) =>
+    models.some((model) => model.id === modelId);
+  if (isListed(policy.defaultModelId)) {
+    return {
+      models,
+      defaultModelId: policy.defaultModelId,
+      freeRouterFallback: false,
+    };
+  }
+
+  const fallbackModelId = getDefaultFallbackModelIds(tier, operation).find(
+    isListed,
+  );
+  const fields = {
+    tier,
+    operation,
+    defaultModelId: policy.defaultModelId,
+    fallbackModelId,
+    modelIds: models.map((model) => model.id),
+    event: 'model_default_not_in_guardrail',
+  };
+  if (fallbackModelId) {
+    logger.warn(
+      fields,
+      'Operation default model is missing from the tier guardrail models; using its fallback',
+    );
+    return {
+      models,
+      defaultModelId: fallbackModelId,
+      freeRouterFallback: false,
+    };
+  }
+  // Last resort: the code-owned free router, added to the list so the default
+  // stays among the models it is validated against. `resolveModelForTier`
+  // alerts once per generation that runs on it; lookups only log.
+  logger.error(
+    { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
+    'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router',
+  );
+  return {
+    models: isListed(AI_DEFAULT_MODEL)
+      ? models
+      : [FREE_ROUTER_MODEL, ...models],
+    defaultModelId: AI_DEFAULT_MODEL,
+    freeRouterFallback: true,
+  };
 }
 
 /**
- * Get the default model for a subscription tier and generation operation.
+ * Models allowed for a subscription tier and generation operation. Includes
+ * the free router when it is the last-resort default (see
+ * {@link getDefaultModelForTier}).
  */
-export function getDefaultModelForTier(
+export async function getModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): string {
-  return getModelOperationPolicy(tier, operation).defaultModelId;
+): Promise<AvailableModel[]> {
+  return (await resolveTierModels(tier, operation)).models;
+}
+
+/**
+ * The default model for a subscription tier and generation operation: the
+ * code-owned default while the tier's guardrail lists it, otherwise the first
+ * listed model on the operation's grounded writer route, otherwise the free
+ * router.
+ */
+export async function getDefaultModelForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<string> {
+  return (await resolveTierModels(tier, operation)).defaultModelId;
+}
+
+/**
+ * {@link getDefaultModelForTier} plus whether that default is the free router
+ * only because the tier's guardrail left no paid default.
+ */
+export async function resolveDefaultModelForTier(
+  tier: SubscriptionTier,
+  operation: ModelOperation,
+): Promise<{ modelId: string; freeRouterFallback: boolean }> {
+  const { defaultModelId, freeRouterFallback } = await resolveTierModels(
+    tier,
+    operation,
+  );
+  return { modelId: defaultModelId, freeRouterFallback };
 }
 
 /**
  * Returns the ordered provider fallback route for a resolved primary model.
  *
  * Free never falls back to a paid model. Starter outline/regen never falls
- * back to `openrouter/free`. Starter/Free lesson uses the free router with
- * no paid fallback. Pro keeps an empty provider fallback list.
+ * back to `openrouter/free`. A Starter lesson falls back to `openrouter/free`
+ * when its paid model fails; Free lessons already run on it. Pro keeps an
+ * empty provider fallback list.
  */
 export function getFallbackModelsForTier(
   tier: SubscriptionTier,

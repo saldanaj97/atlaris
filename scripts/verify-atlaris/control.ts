@@ -32,6 +32,10 @@ import {
   smokeAuthAppUrl,
 } from '@tests/helpers/smoke/mode-config';
 import {
+  createNativeSmokeDatabase,
+  dropNativeSmokeDatabase,
+} from '@tests/helpers/smoke/native-smoke-database';
+import {
   startSmokePostgresContainer,
   stopSmokePostgresContainer,
 } from '@tests/helpers/smoke/postgres-container';
@@ -43,6 +47,7 @@ import {
   writeSmokeStateFile,
 } from '@tests/helpers/smoke/state-file';
 import { assertSeededSmokeUserPresent } from '@tests/helpers/smoke/verify-seed';
+import { isNativeTestDbEnabled } from '@tests/setup/native-test-stack';
 import { execFileSync, spawn } from 'node:child_process';
 import {
   existsSync,
@@ -394,6 +399,7 @@ async function cleanup(): Promise<void> {
   );
   // ponytail: never fall back to the current port owner when listenPid is null
   await terminateOwned(recordedListenerPid(run), isOwnedListenerCommand, 500);
+  // Native runs record no container; their database is dropped by the supervisor.
   if (run.containerId) {
     dockerStop(run.containerId);
   }
@@ -443,7 +449,9 @@ async function launch(mode: Mode): Promise<void> {
   loadRepoEnv(root);
   mkdirSync(artifactsDir(), { recursive: true });
 
+  const nativeTestDb = isNativeTestDbEnabled();
   let container: StartedPostgreSqlContainer | null = null;
+  let nativeSmokeDbUrl: string | null = null;
   let app: ChildProcess | null = null;
   let stateFile: string | null = null;
   let shuttingDown = false;
@@ -457,6 +465,7 @@ async function launch(mode: Mode): Promise<void> {
       killPid(app.pid, 'SIGTERM');
     }
     await stopSmokePostgresContainer(container);
+    await dropNativeSmokeDatabase(nativeSmokeDbUrl);
     if (stateFile) {
       cleanupSmokeStateFile(stateFile);
     }
@@ -471,8 +480,14 @@ async function launch(mode: Mode): Promise<void> {
   });
 
   try {
-    const started = await startSmokePostgresContainer();
-    container = started;
+    let connectionUrl: string;
+    if (nativeTestDb) {
+      nativeSmokeDbUrl = await createNativeSmokeDatabase();
+      connectionUrl = nativeSmokeDbUrl;
+    } else {
+      container = await startSmokePostgresContainer();
+      connectionUrl = container.getConnectionUri();
+    }
     writeRun({
       mode,
       url,
@@ -480,10 +495,9 @@ async function launch(mode: Mode): Promise<void> {
       supervisorPid: process.pid,
       appPid: null,
       listenPid: null,
-      containerId: started.getId(),
+      containerId: container?.getId() ?? '',
       stateFile: '',
     });
-    const connectionUrl = started.getConnectionUri();
     await prepareSmokeDatabase(connectionUrl);
     await assertSeededSmokeUserPresent(connectionUrl);
 

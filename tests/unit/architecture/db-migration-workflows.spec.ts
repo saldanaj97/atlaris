@@ -422,8 +422,8 @@ describe('Supabase migration workflows', () => {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
     expect(journal.entries.at(-1)).toMatchObject({
-      idx: 64,
-      tag: '20261021221300_add_plan_ai_budget_tracking',
+      idx: 65,
+      tag: '20261022180600_create_openrouter_tier_models',
     });
     expect(migrationFiles).toContain(
       '20260825151604_add_user_entitlement_fields.sql',

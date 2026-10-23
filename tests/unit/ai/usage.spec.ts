@@ -12,30 +12,10 @@ vi.mock('@sentry/nextjs', () => ({
   captureException: vi.fn(),
 }));
 
-// Mock getModelById for cost calculation tests
-vi.mock('@/features/ai/ai-models', () => ({
-  getModelById: (id: string) => {
-    const models: Record<
-      string,
-      { inputCostPerMillion: number; outputCostPerMillion: number }
-    > = {
-      'openai/gpt-6-sol': {
-        inputCostPerMillion: 2.5,
-        outputCostPerMillion: 10,
-      },
-      'openrouter/free': {
-        inputCostPerMillion: 0,
-        outputCostPerMillion: 0,
-      },
-    };
-    return models[id] ?? undefined;
-  },
-}));
-
 // ─── normalizeToCanonicalUsage ───────────────────────────────────
 
-describe('normalizeToCanonicalUsage', () => {
-  it('normalizes complete provider metadata into canonical shape', () => {
+describe('normalizeToCanonicalUsage', async () => {
+  it('normalizes complete provider metadata into canonical shape', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -46,7 +26,7 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    const result = normalizeToCanonicalUsage(metadata);
+    const result = await normalizeToCanonicalUsage(metadata);
 
     expect(result).toEqual({
       inputTokens: 500,
@@ -61,7 +41,7 @@ describe('normalizeToCanonicalUsage', () => {
     });
   });
 
-  it('maps providerReportedCostUsd to providerCostMicrousd when usage is complete', () => {
+  it('maps providerReportedCostUsd to providerCostMicrousd when usage is complete', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -72,13 +52,13 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    const result = normalizeToCanonicalUsage(metadata);
+    const result = await normalizeToCanonicalUsage(metadata);
 
     expect(result.providerCostMicrousd).toBe(1234);
     expect(result.isPartial).toBe(false);
   });
 
-  it('preserves zero providerReportedCostUsd when usage is complete', () => {
+  it('preserves zero providerReportedCostUsd when usage is complete', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -89,10 +69,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(normalizeToCanonicalUsage(metadata).providerCostMicrousd).toBe(0);
+    expect(
+      (await normalizeToCanonicalUsage(metadata)).providerCostMicrousd,
+    ).toBe(0);
   });
 
-  it('ignores invalid providerReportedCostUsd values when usage is otherwise complete', () => {
+  it('ignores invalid providerReportedCostUsd values when usage is otherwise complete', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -103,10 +85,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(normalizeToCanonicalUsage(metadata).providerCostMicrousd).toBeNull();
+    expect(
+      (await normalizeToCanonicalUsage(metadata)).providerCostMicrousd,
+    ).toBeNull();
   });
 
-  it('never reports providerCostMicrousd for partial usage', () => {
+  it('never reports providerCostMicrousd for partial usage', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -116,12 +100,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
       expect.unreachable('Expected IncompleteUsageError');
     } catch (error) {
       const usageError = error as IncompleteUsageError;
@@ -129,7 +113,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('computes totalTokens when not provided by the provider', () => {
+  it('computes totalTokens when not provided by the provider', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -139,12 +123,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    const result = normalizeToCanonicalUsage(metadata);
+    const result = await normalizeToCanonicalUsage(metadata);
 
     expect(result.totalTokens).toBe(500);
   });
 
-  it('throws IncompleteUsageError when provider is missing', () => {
+  it('throws IncompleteUsageError when provider is missing', async () => {
     const metadata: ProviderMetadata = {
       model: 'openai/gpt-6-sol',
       usage: {
@@ -153,12 +137,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       expect(error).toBeInstanceOf(IncompleteUsageError);
       const usageError = error as IncompleteUsageError;
@@ -168,7 +152,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('throws IncompleteUsageError when model is missing', () => {
+  it('throws IncompleteUsageError when model is missing', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       usage: {
@@ -177,12 +161,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toContain('model');
@@ -190,7 +174,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('throws IncompleteUsageError when inputTokens is missing', () => {
+  it('throws IncompleteUsageError when inputTokens is missing', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -199,12 +183,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toContain('inputTokens');
@@ -213,7 +197,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('throws IncompleteUsageError when outputTokens is missing', () => {
+  it('throws IncompleteUsageError when outputTokens is missing', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -222,12 +206,12 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toContain('outputTokens');
@@ -236,18 +220,18 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('throws IncompleteUsageError when usage object is entirely missing', () => {
+  it('throws IncompleteUsageError when usage object is entirely missing', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
     };
 
-    expect(() => normalizeToCanonicalUsage(metadata)).toThrow(
+    await expect(normalizeToCanonicalUsage(metadata)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toContain('inputTokens');
@@ -257,13 +241,13 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('throws IncompleteUsageError when metadata is undefined', () => {
-    expect(() => normalizeToCanonicalUsage(undefined)).toThrow(
+  it('throws IncompleteUsageError when metadata is undefined', async () => {
+    await expect(normalizeToCanonicalUsage(undefined)).rejects.toThrow(
       IncompleteUsageError,
     );
 
     try {
-      normalizeToCanonicalUsage(undefined);
+      await normalizeToCanonicalUsage(undefined);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toEqual([
@@ -286,7 +270,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('reports multiple missing fields at once', () => {
+  it('reports multiple missing fields at once', async () => {
     const metadata: ProviderMetadata = {
       usage: {
         promptTokens: 100,
@@ -294,7 +278,7 @@ describe('normalizeToCanonicalUsage', () => {
     };
 
     try {
-      normalizeToCanonicalUsage(metadata);
+      await normalizeToCanonicalUsage(metadata);
     } catch (error) {
       const usageError = error as IncompleteUsageError;
       expect(usageError.missingFields).toEqual(
@@ -304,7 +288,7 @@ describe('normalizeToCanonicalUsage', () => {
     }
   });
 
-  it('does not throw when all required fields are present, even if zero', () => {
+  it('does not throw when all required fields are present, even if zero', async () => {
     const metadata: ProviderMetadata = {
       provider: 'mock',
       model: 'mock-v1',
@@ -315,7 +299,7 @@ describe('normalizeToCanonicalUsage', () => {
       },
     };
 
-    const result = normalizeToCanonicalUsage(metadata);
+    const result = await normalizeToCanonicalUsage(metadata);
 
     expect(result).toEqual({
       inputTokens: 0,
@@ -333,8 +317,8 @@ describe('normalizeToCanonicalUsage', () => {
 
 // ─── safeNormalizeUsage ──────────────────────────────────────────
 
-describe('safeNormalizeUsage', () => {
-  it('returns canonical usage for complete metadata', () => {
+describe('safeNormalizeUsage', async () => {
+  it('returns canonical usage for complete metadata', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
@@ -345,17 +329,17 @@ describe('safeNormalizeUsage', () => {
       },
     };
 
-    const result = safeNormalizeUsage(metadata);
+    const result = await safeNormalizeUsage(metadata);
 
     expect(result.inputTokens).toBe(500);
     expect(result.outputTokens).toBe(1000);
     expect(result.provider).toBe('openrouter');
   });
 
-  it('returns partial usage (not throw) for incomplete metadata', () => {
+  it('returns partial usage (not throw) for incomplete metadata', async () => {
     const metadata: ProviderMetadata = {};
 
-    const result = safeNormalizeUsage(metadata);
+    const result = await safeNormalizeUsage(metadata);
 
     expect(result.provider).toBe('unknown');
     expect(result.model).toBe('unknown');
@@ -363,8 +347,8 @@ describe('safeNormalizeUsage', () => {
     expect(result.outputTokens).toBe(0);
   });
 
-  it('returns partial usage for undefined metadata', () => {
-    const result = safeNormalizeUsage(undefined);
+  it('returns partial usage for undefined metadata', async () => {
+    const result = await safeNormalizeUsage(undefined);
 
     expect(result).toEqual({
       inputTokens: 0,
@@ -379,14 +363,14 @@ describe('safeNormalizeUsage', () => {
     });
   });
 
-  it('returns partial usage with available fields preserved', () => {
+  it('returns partial usage with available fields preserved', async () => {
     const metadata: ProviderMetadata = {
       provider: 'openrouter',
       model: 'openai/gpt-6-sol',
       // usage is missing entirely
     };
 
-    const result = safeNormalizeUsage(metadata);
+    const result = await safeNormalizeUsage(metadata);
 
     expect(result.provider).toBe('openrouter');
     expect(result.model).toBe('openai/gpt-6-sol');

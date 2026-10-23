@@ -10,7 +10,10 @@ import {
   resolveGroundedLessonContext,
   runGroundedLessonSteps,
 } from './grounded';
-import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
+import {
+  resolveLessonTimeoutMs,
+  resolveTimeoutConfig,
+} from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
 import { sumUsages } from '@/features/ai/usage';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
@@ -77,7 +80,10 @@ const RETRYABLE_PARSE_ERROR_KINDS: ReadonlySet<string> = new Set([
 /** Which provider call this is: the first, or the one retry after a parse failure. */
 type GenerationAttempt = 1 | 2;
 
-/** Margin over the AI timeout so the provider abort fires before the step's. */
+/**
+ * Margin over the lesson timeout so the provider abort fires before the
+ * step's. It also covers the provider's stream allowance and the DB writes.
+ */
 const GENERATE_STEP_TIMEOUT_MARGIN_MS = 60_000;
 
 /** Claim is DB-only and replay-safe: retry transient failures. */
@@ -96,14 +102,13 @@ export const FAIL_STEP_CONFIG = {
 
 /**
  * Never retried: an uncertain provider outcome would repeat the OpenRouter
- * call. The timeout covers the adaptive AI timeout (base + one extension).
+ * call. Wraps one lesson-writing call (batch or grounded), so the timeout
+ * covers the lesson timeout.
  */
 export function generateStepConfig() {
-  const timeout = resolveTimeoutConfig();
   return {
     retries: { limit: 0, delay: 0 },
-    timeout:
-      timeout.baseMs + timeout.extensionMs + GENERATE_STEP_TIMEOUT_MARGIN_MS,
+    timeout: resolveLessonTimeoutMs() + GENERATE_STEP_TIMEOUT_MARGIN_MS,
   } as const;
 }
 
@@ -137,6 +142,7 @@ type GenerateStepResult =
       readonly kind: 'generated';
       readonly rawText: string;
       readonly usage: CanonicalAIUsage;
+      readonly freeRouterFallback?: true;
     }
   | { readonly kind: 'disabled' };
 
@@ -322,8 +328,12 @@ async function generateStep(
     return { kind: 'disabled' };
   }
 
-  const provider = await resolveModuleLessonProvider(
-    { userId: run.target.userId, modelOverride: run.params.modelOverride },
+  const { provider, route } = await resolveModuleLessonProvider(
+    {
+      userId: run.target.userId,
+      planId: run.target.planId,
+      modelOverride: run.params.modelOverride,
+    },
     db,
     run.deps.provider,
   );
@@ -331,8 +341,9 @@ async function generateStep(
     target: run.target,
     batchInput: buildModuleLessonBatchInput(promptInput),
     provider,
+    route,
     dbClient: db,
-    timeoutConfig: resolveTimeoutConfig(),
+    timeoutConfig: resolveTimeoutConfig({ baseMs: resolveLessonTimeoutMs() }),
     now: run.now,
   });
 
@@ -343,7 +354,12 @@ async function generateStep(
     finishReason: batch.finishReason,
     outcome: 'generated',
   });
-  return { kind: 'generated', rawText: batch.rawText, usage: batch.usage };
+  return {
+    kind: 'generated',
+    rawText: batch.rawText,
+    usage: batch.usage,
+    ...(batch.freeRouterFallback ? { freeRouterFallback: true } : {}),
+  };
 }
 
 /**

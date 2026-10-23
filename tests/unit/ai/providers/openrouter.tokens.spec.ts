@@ -71,7 +71,7 @@ describe('OpenRouterProvider', () => {
         maxTokens: number;
         [key: string]: unknown;
       };
-      expect(requestBody.maxTokens).toBe(getOutputTokenCeiling(model));
+      expect(requestBody.maxTokens).toBe(await getOutputTokenCeiling(model));
     });
 
     it('uses default ceiling for unknown models', async () => {

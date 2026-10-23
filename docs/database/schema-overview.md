@@ -35,7 +35,7 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 | `generation_status`                      | `generating`, `pending_retry`, `ready`, `failed`                                                          |
 | `lesson_generation_status`               | `not_generated`, `generating`, `ready`, `failed` (per **module**; separate from plan `generation_status`) |
 | `job_status`                             | `pending`, `processing`, `completed`, `failed`                                                            |
-| `job_type`                               | values sourced from `src/lib/jobs/constants.ts`                                                           |
+| `job_type`                               | values sourced from `src/shared/constants/jobs.ts`                                                           |
 | `subscription_tier`                      | `free`, `starter`, `pro`                                                                                  |
 | `subscription_status`                    | `active`, `canceled`, `past_due`, `trialing`                                                              |
 | `plan_origin`                            | `ai`, `template`, `manual`                                                                                |
@@ -69,7 +69,7 @@ RLS is enforced through request-scoped Postgres session state:
 - user-facing policies are explicitly scoped to `authenticated`
 - service-role access is reserved for tests, workers, migrations, and other system flows
 
-Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` are authenticated **select-only** for the plan owner; writes are service-role only. `clerk_webhook_events`, `email_notification_deliveries`, and `email_notification_delivery_runs` use deny-all RLS (service-role only).
+Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` are authenticated **select-only** for the plan owner; writes are service-role only. `clerk_webhook_events`, `email_notification_deliveries`, `email_notification_delivery_runs`, and `openrouter_tier_models` use deny-all RLS (service-role only).
 
 Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDATE`; `DELETE` is intentionally absent from both the policy set and table grants.
 
@@ -95,6 +95,7 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 | `clerk_webhook_event_claims`       | `(event_id)` primary key, `(claim_expires_at)`                                                         |
 | `email_notification_deliveries`    | `(user_id, category, delivery_key)` unique                                                             |
 | `email_notification_delivery_runs` | `(run_kind, scheduler_date_utc)` unique; unique `workflow_run_id` when set                             |
+| `openrouter_tier_models`           | `(tier, model_id)` primary key                                                                         |
 
 ## Ownership and retention
 

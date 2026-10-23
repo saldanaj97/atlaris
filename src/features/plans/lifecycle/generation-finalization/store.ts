@@ -74,6 +74,10 @@ export async function commitPlanGenerationSuccess(
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
   const usageMonth = getCurrentMonth(finishedAt);
   const isInitialSuccess = input.generationPurpose === 'initial';
+  const usageParams = await canonicalUsageToRecordParams(
+    input.usage,
+    input.userId,
+  );
 
   const attempt = await dbClient.transaction(async (tx) => {
     await reapplyJwtClaimsInTransaction(tx, rlsCtx);
@@ -107,10 +111,7 @@ export async function commitPlanGenerationSuccess(
 
     await markPlanGenerationSuccessInTx(tx, input.planId, finishedAt);
 
-    await recordUsageInTx(tx, {
-      ...canonicalUsageToRecordParams(input.usage, input.userId),
-      planId: input.planId,
-    });
+    await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
     if (isInitialSuccess) {
       await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
       await tx
@@ -180,16 +181,17 @@ export async function commitPlanGenerationFailure(
   const finishedAt = nowFn();
   const usageMonth = getCurrentMonth(finishedAt);
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
+  const usageParams =
+    !input.retryable && input.usage
+      ? await canonicalUsageToRecordParams(input.usage, input.userId)
+      : null;
 
   if (input.variant === 'plan_only') {
     await dbClient.transaction(async (tx) => {
       await reapplyJwtClaimsInTransaction(tx, rlsCtx);
       await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
-      if (!input.retryable && input.usage) {
-        await recordUsageInTx(tx, {
-          ...canonicalUsageToRecordParams(input.usage, input.userId),
-          planId: input.planId,
-        });
+      if (usageParams) {
+        await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
         if (input.generationPurpose === 'initial') {
           await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
         }
@@ -225,11 +227,8 @@ export async function commitPlanGenerationFailure(
 
     await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
 
-    if (!input.retryable && input.usage) {
-      await recordUsageInTx(tx, {
-        ...canonicalUsageToRecordParams(input.usage, input.userId),
-        planId: input.planId,
-      });
+    if (usageParams) {
+      await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
       if (input.generationPurpose === 'initial') {
         await incrementUsageInTx(tx, input.userId, usageMonth, 'plan');
       }

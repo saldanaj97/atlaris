@@ -1,10 +1,14 @@
 'use client';
 
-import type { PlanRegenerationState } from '@/app/(app)/plans/[id]/types';
+import type {
+  FreeRouterNotice,
+  PlanRegenerationState,
+} from '@/app/(app)/plans/[id]/types';
 import type { ClientPlanDetail } from '@/shared/types/client.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 import { batchUpdateTaskProgressAction } from '@/app/(app)/plans/[id]/actions';
+import { FreeRouterFallbackNotice } from '@/app/(app)/plans/[id]/components/FreeRouterFallbackNotice';
 import { PlanOverviewHeader } from '@/app/(app)/plans/[id]/components/PlanOverviewHeader';
 import { PlanPendingState } from '@/app/(app)/plans/[id]/components/PlanPendingState';
 import { PlanSummaryRail } from '@/app/(app)/plans/[id]/components/PlanSummaryRail';
@@ -28,6 +32,7 @@ import { toast } from 'sonner';
 interface PlanDetailClientProps {
   plan: ClientPlanDetail;
   regeneration?: PlanRegenerationState;
+  freeRouterNotice?: FreeRouterNotice | null;
 }
 
 /**
@@ -36,6 +41,7 @@ interface PlanDetailClientProps {
 export function PlanDetails({
   plan,
   regeneration,
+  freeRouterNotice,
 }: PlanDetailClientProps): ReactElement {
   const modules = plan.modules;
   const initialStatuses = getStatusesFromModules(modules);
@@ -118,6 +124,13 @@ export function PlanDetails({
             activeModuleId={activeModuleId}
             regeneration={regeneration}
           />
+
+          {freeRouterNotice ? (
+            <FreeRouterFallbackNotice
+              notice={freeRouterNotice}
+              regeneration={regeneration}
+            />
+          ) : null}
 
           <div className='mt-8 grid gap-6 xl:grid-cols-[minmax(0,1fr)_18rem]'>
             <PlanTimeline
