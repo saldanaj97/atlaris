@@ -325,7 +325,11 @@ describe('classifyWorkflowSteps', () => {
         ],
         true,
       ),
-    ).toEqual({ failureCause: 'timeout', longestCallMs: 120_000 });
+    ).toEqual({
+      failureCause: 'timeout',
+      longestCallMs: 120_000,
+      hitCallCap: false,
+    });
   });
 
   it('reads a failed parse step as a parse failure', () => {
@@ -345,7 +349,11 @@ describe('classifyWorkflowSteps', () => {
         ],
         true,
       ),
-    ).toEqual({ failureCause: 'parse', longestCallMs: 60_000 });
+    ).toEqual({
+      failureCause: 'parse',
+      longestCallMs: 60_000,
+      hitCallCap: false,
+    });
   });
 
   it('records only the longest call for a ready module', () => {
@@ -354,6 +362,30 @@ describe('classifyWorkflowSteps', () => {
         [{ name: 'generate-1', attempts: [attempt('46:14', '47:44', true)] }],
         false,
       ),
-    ).toEqual({ longestCallMs: 90_000 });
+    ).toEqual({ longestCallMs: 90_000, hitCallCap: false });
+  });
+
+  it('counts a verify call cut off at its shorter cap', () => {
+    expect(
+      classifyWorkflowSteps(
+        [
+          { name: 'generate-1', attempts: [attempt('40:00', '41:00', true)] },
+          {
+            name: 'lesson-1-verify-1',
+            attempts: [
+              attempt('41:00', '44:00', false, {
+                name: 'TimeoutError',
+                message: 'timed out',
+              }),
+            ],
+          },
+        ],
+        true,
+      ),
+    ).toEqual({
+      failureCause: 'timeout',
+      longestCallMs: 180_000,
+      hitCallCap: true,
+    });
   });
 });

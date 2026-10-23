@@ -159,6 +159,7 @@ function isLocalHostname(hostname: string): boolean {
   return (
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
+    hostname === '[::1]' ||
     hostname.endsWith('.localhost')
   );
 }
@@ -186,7 +187,9 @@ export function resolveRedirectUrl(
   if (!allowed) {
     throw new AgentSessionError(
       `Refusing ${origin.host}: --env ${args.env} accepts ${
-        args.env === 'local' ? 'localhost and *.localhost' : STAGING_ORIGIN
+        args.env === 'local'
+          ? 'localhost, 127.0.0.1, [::1] and *.localhost'
+          : STAGING_ORIGIN
       } only`,
     );
   }

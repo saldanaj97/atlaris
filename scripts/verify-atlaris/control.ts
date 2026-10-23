@@ -399,9 +399,17 @@ async function cleanup(): Promise<void> {
   );
   // ponytail: never fall back to the current port owner when listenPid is null
   await terminateOwned(recordedListenerPid(run), isOwnedListenerCommand, 500);
-  // Native runs record no container; their database is dropped by the supervisor.
   if (run.containerId) {
     dockerStop(run.containerId);
+  }
+  // Native runs record no container; drop their database in case the
+  // supervisor died before its own shutdown handler ran.
+  try {
+    await dropNativeSmokeDatabase(run.nativeSmokeDbUrl ?? null);
+  } catch (error) {
+    console.warn(
+      `VERIFY_CLEANUP could not drop the native smoke database: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   if (run.stateFile) {
     cleanupSmokeStateFile(run.stateFile);
@@ -496,6 +504,7 @@ async function launch(mode: Mode): Promise<void> {
       appPid: null,
       listenPid: null,
       containerId: container?.getId() ?? '',
+      ...(nativeSmokeDbUrl ? { nativeSmokeDbUrl } : {}),
       stateFile: '',
     });
     await prepareSmokeDatabase(connectionUrl);

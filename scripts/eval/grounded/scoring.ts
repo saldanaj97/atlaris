@@ -75,6 +75,8 @@ export type ModuleRun = {
    * writes a whole module per call; grounded writes one lesson per call.
    */
   readonly longestCallMs?: number;
+  /** A provider call ran to its own timeout; set by `run.ts classify`. */
+  readonly hitCallCap?: boolean;
 };
 
 export type FailureCause = 'timeout' | 'parse' | 'other';
@@ -85,6 +87,14 @@ export type FailureCause = 'timeout' | 'parse' | 'other';
  * (JCS-172).
  */
 export const AI_CALL_TIMEOUT_MS = 300_000;
+
+/**
+ * The lesson verify and repair calls' timeout: the default AI timeout plus one
+ * extension (`qualityCallTimeoutMs`, workers/jobs lesson-quality.ts).
+ */
+export const QUALITY_CALL_TIMEOUT_MS = 180_000;
+
+const QUALITY_STEP = /^lesson-\d+-(verify|repair)-/;
 
 /** One step of a Cloudflare Workflow instance, as `wrangler ... describe --json` prints it. */
 export type WorkflowStep = {
@@ -103,21 +113,31 @@ export type WorkflowStep = {
 const BOOKKEEPING_STEP = /^(claim|fail|parse-commit)/;
 
 /**
- * Reads a lesson workflow's steps: the longest provider-call attempt, and for
- * a failed module the cause of its last failed attempt. An aborted or
- * timed-out call is `timeout`; a failed parse step is `parse`.
+ * Reads a lesson workflow's steps: the longest provider-call attempt, whether
+ * any call ran to its own cap, and for a failed module the cause of its last
+ * failed attempt. An aborted or timed-out call is `timeout`; a failed parse
+ * step is `parse`.
  */
 export function classifyWorkflowSteps(
   steps: readonly WorkflowStep[],
   failed: boolean,
-): { failureCause?: FailureCause; longestCallMs?: number } {
+): {
+  failureCause?: FailureCause;
+  longestCallMs?: number;
+  hitCallCap: boolean;
+} {
   let longestCallMs: number | undefined;
+  let hitCallCap = false;
   let lastFailure: { step: string; name: string; message: string } | undefined;
   for (const step of steps) {
     for (const attempt of step.attempts ?? []) {
       if (!BOOKKEEPING_STEP.test(step.name) && attempt.start && attempt.end) {
         const ms = Date.parse(attempt.end) - Date.parse(attempt.start);
         longestCallMs = Math.max(longestCallMs ?? 0, ms);
+        const cap = QUALITY_STEP.test(step.name)
+          ? QUALITY_CALL_TIMEOUT_MS
+          : AI_CALL_TIMEOUT_MS;
+        hitCallCap ||= ms >= cap;
       }
       if (attempt.success === false && !step.name.startsWith('fail')) {
         lastFailure = {
@@ -129,7 +149,7 @@ export function classifyWorkflowSteps(
     }
   }
   if (!failed) {
-    return { longestCallMs };
+    return { longestCallMs, hitCallCap };
   }
   const failureCause: FailureCause = !lastFailure
     ? 'other'
@@ -139,7 +159,7 @@ export function classifyWorkflowSteps(
       : lastFailure.step.startsWith('parse-commit')
         ? 'parse'
         : 'other';
-  return { failureCause, longestCallMs };
+  return { failureCause, longestCallMs, hitCallCap };
 }
 
 /** Failed modules by cause, for the reliability line of the report. */
@@ -147,10 +167,11 @@ export function summarizeReliability(modules: readonly ModuleRun[]): string {
   const failed = modules.filter((m) => m.status === 'failed');
   const count = (cause: FailureCause | undefined) =>
     failed.filter((m) => m.failureCause === cause).length;
+  // Manifests classified before `hitCallCap` only know the longest call.
   const atCap = modules.filter(
-    (m) => (m.longestCallMs ?? 0) >= AI_CALL_TIMEOUT_MS,
+    (m) => m.hitCallCap ?? (m.longestCallMs ?? 0) >= AI_CALL_TIMEOUT_MS,
   ).length;
-  return `${failed.length} of ${modules.length} failed (timeout ${count('timeout')}, parse ${count('parse')}, other ${count('other')}, unclassified ${count(undefined)}); ${atCap} module(s) with a call at the ${AI_CALL_TIMEOUT_MS / 1000} s cap`;
+  return `${failed.length} of ${modules.length} failed (timeout ${count('timeout')}, parse ${count('parse')}, other ${count('other')}, unclassified ${count(undefined)}); ${atCap} module(s) with a call at its timeout cap`;
 }
 
 /** `[S1]`, or several keys in one bracket: `[S1, S3]`. */

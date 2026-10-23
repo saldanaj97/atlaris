@@ -15,7 +15,10 @@
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
 
-import { getCatalogModel } from '@/features/ai/model-catalog/catalog';
+import {
+  getCatalogModel,
+  getMemoizedCatalogModel,
+} from '@/features/ai/model-catalog/catalog';
 import { logger } from '@/lib/logging/logger';
 
 /**
@@ -42,31 +45,49 @@ export class UnknownModelError extends Error {
 }
 
 /**
- * The catalog entry for `modelId`, or `null` when it is unknown or the catalog
- * cannot be read. The jobs Worker's grounded quality and research steps run
- * without a database client, so the read fails there; those calls fall back to
- * the unknown-model behavior (0 estimated cost, default ceiling) and the plan
- * budget uses OpenRouter's reported cost.
+ * Thrown by {@link computeCostCents} when the catalog cannot be read, so
+ * callers can tell an outage apart from a model no guardrail lists.
+ */
+export class ModelCatalogUnavailableError extends Error {
+  constructor(
+    public readonly modelId: string,
+    options?: ErrorOptions,
+  ) {
+    super(
+      `Model catalog unavailable in computeCostCents for "${modelId}" — cannot determine pricing.`,
+      options,
+    );
+    this.name = 'ModelCatalogUnavailableError';
+  }
+}
+
+/**
+ * The catalog entry for `modelId`, `null` when it is unknown, or
+ * {@link ModelCatalogUnavailableError} when the catalog cannot be read (for
+ * example a jobs Worker call made outside `withDb`).
  */
 async function lookUpPricedModel(
   modelId: string,
+  lookUp: (modelId: string) => Promise<AvailableModel | null>,
 ): Promise<AvailableModel | null> {
   try {
-    return await getCatalogModel(modelId);
+    return await lookUp(modelId);
   } catch (error) {
     logger.error(
       { modelId, err: error, event: 'model_catalog_unavailable' },
-      'Model catalog read failed; treating the model as unknown',
+      'Model catalog read failed',
     );
-    return null;
+    throw new ModelCatalogUnavailableError(modelId, { cause: error });
   }
 }
 
 /**
  * Compute estimated cost in **USD cents** from model pricing and token counts.
  *
- * Throws when the model is not in the catalog (unknown models must not
- * silently waive charges). Returns 0 when both counts are zero.
+ * Throws {@link UnknownModelError} when the model is not in the catalog
+ * (unknown models must not silently waive charges) and
+ * {@link ModelCatalogUnavailableError} when the catalog cannot be read.
+ * Returns 0 when both counts are zero.
  * Identical inputs and catalog pricing always produce identical output.
  */
 export async function computeCostCents(
@@ -85,7 +106,7 @@ export async function computeCostCents(
     );
   }
 
-  const model = await lookUpPricedModel(modelId);
+  const model = await lookUpPricedModel(modelId, getCatalogModel);
   if (!model) {
     logger.error({ modelId }, 'Unknown model in computeCostCents');
     throw new UnknownModelError(modelId);
@@ -111,7 +132,13 @@ export async function computeCostCents(
  * prevent unbounded output generation.
  */
 export async function getOutputTokenCeiling(modelId: string): Promise<number> {
-  const model = await lookUpPricedModel(modelId);
+  let model: AvailableModel | null;
+  try {
+    model = await lookUpPricedModel(modelId, getMemoizedCatalogModel);
+  } catch (error) {
+    if (!(error instanceof ModelCatalogUnavailableError)) throw error;
+    return DEFAULT_OUTPUT_TOKEN_CEILING;
+  }
   if (!model) {
     logger.warn(
       { modelId },

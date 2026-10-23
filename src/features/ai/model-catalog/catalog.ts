@@ -3,9 +3,10 @@
  * into `openrouter_tier_models` (DEV-174). A guardrail change reaches users on
  * the next refresh, with no code change or deploy.
  *
- * Refresh-on-read: a read whose rows are older than {@link MODEL_CATALOG_TTL_MS}
- * (or missing) syncs that tier first, when this runtime has the tier's own key.
- * The jobs Worker has no tier keys, so it only reads what the app synced.
+ * Refresh-on-read: a read whose rows are missing syncs that tier first; a read
+ * whose rows are older than {@link MODEL_CATALOG_TTL_MS} returns them and syncs
+ * in the background. Either needs the tier's own key. The jobs Worker has no
+ * tier keys, so it only reads what the app synced (or the migration seeded).
  */
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
@@ -82,6 +83,13 @@ export async function syncTierModelCatalog(
 ): Promise<TierModelSyncResult> {
   const apiKey = openRouterEnv.guardrailKeyForTier(tier);
   if (!apiKey) {
+    if (!warnedNoKeyTiers.has(tier)) {
+      warnedNoKeyTiers.add(tier);
+      logger.warn(
+        { tier, event: 'model_catalog_sync_skipped_no_key' },
+        'No OpenRouter guardrail key for this tier; serving the stored models without syncing',
+      );
+    }
     return { status: 'skipped', reason: 'no_tier_key' };
   }
   try {
@@ -107,6 +115,13 @@ export async function syncTierModelCatalog(
 
 const inFlightSyncs = new Map<SubscriptionTier, Promise<TierModelSyncResult>>();
 const retryAfterByTier = new Map<SubscriptionTier, number>();
+/** Logged once per process: the jobs Worker never has tier keys. */
+const warnedNoKeyTiers = new Set<SubscriptionTier>();
+const inFlightReads = new Map<SubscriptionTier, Promise<AvailableModel[]>>();
+const memoizedCatalogModels = new Map<
+  string,
+  { readonly model: AvailableModel | null; readonly expiresAt: number }
+>();
 
 /** One sync per tier per process at a time; backs off after a failure. */
 async function refreshTier(tier: SubscriptionTier): Promise<boolean> {
@@ -124,6 +139,9 @@ async function refreshTier(tier: SubscriptionTier): Promise<boolean> {
   if (result.status === 'failed') {
     retryAfterByTier.set(tier, Date.now() + MODEL_CATALOG_RETRY_MS);
   }
+  if (result.status === 'synced') {
+    memoizedCatalogModels.clear();
+  }
   return result.status === 'synced';
 }
 
@@ -135,15 +153,37 @@ function isStale(rows: readonly OpenRouterTierModelRow[]): boolean {
   return Date.now() - oldest > MODEL_CATALOG_TTL_MS;
 }
 
-/** `tier`'s guardrail models, refreshed first when stale. */
-export async function getTierModels(
+async function readTierModels(
   tier: SubscriptionTier,
 ): Promise<AvailableModel[]> {
   let rows = await selectTierModels(tier);
-  if (isStale(rows) && (await refreshTier(tier))) {
-    rows = await selectTierModels(tier);
+  if (rows.length === 0) {
+    if (await refreshTier(tier)) {
+      rows = await selectTierModels(tier);
+    }
+  } else if (isStale(rows)) {
+    // Serve the stale rows; the next read sees the refresh. A sync logs and
+    // never rejects, so nothing is lost by not awaiting it.
+    void refreshTier(tier);
   }
   return rows.map(toAvailableModel);
+}
+
+/**
+ * `tier`'s guardrail models: synced first when none are stored, refreshed in
+ * the background when stale. Concurrent reads of a tier share one query.
+ */
+export async function getTierModels(
+  tier: SubscriptionTier,
+): Promise<AvailableModel[]> {
+  let pending = inFlightReads.get(tier);
+  if (!pending) {
+    pending = readTierModels(tier).finally(() => {
+      inFlightReads.delete(tier);
+    });
+    inFlightReads.set(tier, pending);
+  }
+  return pending;
 }
 
 /**
@@ -160,8 +200,31 @@ export async function getCatalogModel(
   return row ? toAvailableModel(row) : null;
 }
 
-/** Test-only: clears the per-process sync state. */
+/**
+ * {@link getCatalogModel}, remembered per process for
+ * {@link MODEL_CATALOG_TTL_MS} (cleared by a sync), for per-call lookups such
+ * as output ceilings. Failed reads are not remembered.
+ */
+export async function getMemoizedCatalogModel(
+  modelId: string,
+): Promise<AvailableModel | null> {
+  const memo = memoizedCatalogModels.get(modelId);
+  if (memo && memo.expiresAt > Date.now()) {
+    return memo.model;
+  }
+  const model = await getCatalogModel(modelId);
+  memoizedCatalogModels.set(modelId, {
+    model,
+    expiresAt: Date.now() + MODEL_CATALOG_TTL_MS,
+  });
+  return model;
+}
+
+/** Test-only: clears the per-process sync, read and lookup state. */
 export function resetModelCatalogStateForTests(): void {
   inFlightSyncs.clear();
   retryAfterByTier.clear();
+  warnedNoKeyTiers.clear();
+  inFlightReads.clear();
+  memoizedCatalogModels.clear();
 }

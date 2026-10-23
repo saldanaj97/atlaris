@@ -145,6 +145,15 @@ describe('resolveRedirectUrl', () => {
     ).toBe('https://dev-183.atlaris.localhost/settings/ai');
   });
 
+  it('accepts the IPv6 loopback for --env local', () => {
+    expect(
+      resolveRedirectUrl(
+        createArgs({ env: 'local', base: 'http://[::1]:3000', path: '/plans' }),
+        (explicit) => explicit!,
+      ),
+    ).toBe('http://[::1]:3000/plans');
+  });
+
   it('lands on staging for --env staging', () => {
     expect(resolveRedirectUrl(createArgs({ path: '/plans?tab=all' }))).toBe(
       'https://staging.atlaris.app/plans?tab=all',

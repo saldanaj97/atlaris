@@ -228,6 +228,18 @@ export async function resolveModuleLessonProvider(
   };
 }
 
+/** Matches a dated snapshot suffix such as `-20261001` or `-2026-10-01`. */
+const DATED_SNAPSHOT_SUFFIX = /^-\d{4}-?\d{2}-?\d{2}$/;
+
+/** The served slug is the primary itself or a dated snapshot of it. */
+function isServedAsPrimary(servedModel: string, primaryModelId: string) {
+  return (
+    servedModel === primaryModelId ||
+    (servedModel.startsWith(primaryModelId) &&
+      DATED_SNAPSHOT_SUFFIX.test(servedModel.slice(primaryModelId.length)))
+  );
+}
+
 /**
  * Warns when OpenRouter served a paid-tier lesson from a fallback route model
  * instead of the resolved primary (DEV-180). Only routes that list fallbacks
@@ -246,7 +258,7 @@ export function reportLessonRouteFallback(
     route.fallbackModelIds.length === 0 ||
     metadata.provider !== 'openrouter' ||
     !servedModel ||
-    servedModel.startsWith(route.primaryModelId)
+    isServedAsPrimary(servedModel, route.primaryModelId)
   ) {
     return false;
   }

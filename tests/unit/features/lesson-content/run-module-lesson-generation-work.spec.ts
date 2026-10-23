@@ -768,6 +768,18 @@ describe('runModuleLessonGenerationWork', () => {
       );
       warn.mockRestore();
     });
+
+    it.each(['openai/gpt-6-luna', 'openai/gpt-6:free'])(
+      'alerts when the served slug %s only extends the primary',
+      (servedModel) => {
+        reportLessonRouteFallback(
+          { ...route, primaryModelId: 'openai/gpt-6' },
+          { provider: 'openrouter', model: servedModel },
+        );
+
+        expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
+      },
+    );
   });
 
   describe('free-router fallback flag (DEV-175)', () => {

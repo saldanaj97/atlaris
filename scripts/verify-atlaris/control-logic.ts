@@ -13,6 +13,8 @@ export type RunFile = {
   appPid: number | null;
   listenPid: number | null;
   containerId: string;
+  /** Native runs: the smoke database to drop when the supervisor cannot. */
+  nativeSmokeDbUrl?: string;
   stateFile: string;
 };
 
@@ -150,6 +152,8 @@ function isRunFile(value: unknown): value is RunFile {
     isOptionalPid(record.appPid) &&
     isOptionalPid(record.listenPid) &&
     typeof record.containerId === 'string' &&
+    (record.nativeSmokeDbUrl === undefined ||
+      typeof record.nativeSmokeDbUrl === 'string') &&
     typeof record.stateFile === 'string'
   );
 }

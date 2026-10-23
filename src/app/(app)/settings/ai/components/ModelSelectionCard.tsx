@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
+import { getMemoizedCatalogModel } from '@/features/ai/model-catalog/catalog';
 import {
   GROUNDED_MODEL_PICKS_FEATURE,
   GROUNDED_PICK_FIELD_BY_ROLE,
@@ -76,6 +77,29 @@ async function canShowGroundedPicks(actor: {
 }
 
 /**
+ * Display names for every grounded pick option and default, from any tier's
+ * synced models; an id no guardrail lists shows as itself.
+ */
+async function loadGroundedModelNames(): Promise<Map<string, string>> {
+  const ids = new Set(
+    GROUNDED_PICK_ROLES.flatMap((role) => {
+      const defaultModel = getGroundedPickDefault('pro', role);
+      return [
+        ...getGroundedPickCatalog(role),
+        ...(defaultModel ? [defaultModel] : []),
+      ];
+    }),
+  );
+  const entries = await Promise.all(
+    [...ids].map(
+      async (id) =>
+        [id, (await getMemoizedCatalogModel(id))?.name ?? id] as const,
+    ),
+  );
+  return new Map(entries);
+}
+
+/**
  * Async component that fetches user subscription data and renders the model selector.
  */
 export async function ModelSelectionCard() {
@@ -124,9 +148,11 @@ export async function ModelSelectionCard() {
           ),
           getDefaultModelForTier(userTier, 'initial_outline'),
         ]);
-      const tierDefaultMeta = availableModels.find(
-        (model) => model.id === tierDefaultId,
-      );
+      // The default can be outside the persistable list (the free router
+      // when the guardrail left no paid default), so fall back to the catalog.
+      const tierDefaultMeta =
+        availableModels.find((model) => model.id === tierDefaultId) ??
+        (await getMemoizedCatalogModel(tierDefaultId));
       const tierDefaultLabel =
         tierDefaultMeta?.name ?? 'your tier default model';
 
@@ -170,6 +196,7 @@ export async function ModelSelectionCard() {
         outlineModel,
         regenerationModel,
         lessonModel,
+        groundedModelNames,
       ] = await Promise.all([
         getPersistableModelsForTier(userTier, 'initial_outline'),
         getPersistableModelsForTier(userTier, 'regeneration'),
@@ -189,6 +216,7 @@ export async function ModelSelectionCard() {
           user.preferredLessonAiModel,
           'lesson',
         ),
+        groundedPicks ? loadGroundedModelNames() : null,
       ]);
 
       return (
@@ -221,12 +249,10 @@ export async function ModelSelectionCard() {
             label='Preferred lesson model'
             showUpgradeCta={false}
           />
-          {groundedPicks && (
+          {groundedPicks && groundedModelNames && (
             <GroundedModelPicks
               picks={groundedPicks}
-              modelNames={
-                new Map(outlineModels.map((model) => [model.id, model.name]))
-              }
+              modelNames={groundedModelNames}
             />
           )}
         </div>
@@ -245,7 +271,7 @@ function GroundedModelPicks({
   modelNames,
 }: {
   picks: SavedGroundedModelPicks;
-  /** Display names from the Pro guardrail models. */
+  /** Display names from the synced guardrail models. */
   modelNames: ReadonlyMap<string, string>;
 }) {
   const groundedModelLabel = (modelId: string) =>

@@ -112,6 +112,23 @@ describe('syncTierModelCatalog', () => {
     });
     expect(fetchImpl).not.toHaveBeenCalled();
   });
+
+  it('warns once per tier when the runtime lacks the tier key', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY_STARTER', '');
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'model_catalog_sync_skipped_no_key',
+        tier: 'starter',
+      }),
+      expect.any(String),
+    );
+  });
 });
 
 describe('getTierModels', () => {
@@ -126,8 +143,31 @@ describe('getTierModels', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('refreshes stale rows before reading', async () => {
+  it('serves stale rows and refreshes them in the background', async () => {
     seedModelCatalogFixture(new Date(Date.now() - MODEL_CATALOG_TTL_MS - 1));
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(new Response(JSON.stringify({ data: [NEW_MODEL] })));
+
+    const stale = await getTierModels('starter');
+
+    expect(stale.map((m) => m.id).sort()).toEqual(
+      MODEL_CATALOG_FIXTURE.starter.map((m) => m.modelId).sort(),
+    );
+    expect(fetchSpy).toHaveBeenCalledOnce();
+    await vi.waitFor(async () => {
+      expect((await getTierModels('starter')).map((m) => m.id)).toEqual([
+        'openai/gpt-5.2',
+      ]);
+    });
+  });
+
+  it('syncs before reading when the tier has no rows', async () => {
+    await inMemoryModelCatalogStore.replaceTierModels(
+      'starter',
+      [],
+      new Date(),
+    );
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({ data: [NEW_MODEL] })));
@@ -136,6 +176,16 @@ describe('getTierModels', () => {
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     expect(models.map((m) => m.id)).toEqual(['openai/gpt-5.2']);
+  });
+
+  it('shares one query between concurrent reads', async () => {
+    const { selectTierModels } =
+      await import('@/features/ai/model-catalog/store');
+    vi.mocked(selectTierModels).mockClear();
+
+    await Promise.all([getTierModels('starter'), getTierModels('starter')]);
+
+    expect(selectTierModels).toHaveBeenCalledOnce();
   });
 
   it('serves stale rows after a failed refresh and backs off', async () => {
@@ -147,6 +197,7 @@ describe('getTierModels', () => {
       .mockResolvedValue(new Response('down', { status: 503 }));
 
     const first = await getTierModels('starter');
+    await vi.waitFor(() => expect(logger.error).toHaveBeenCalled());
     await getTierModels('starter');
 
     expect(first.map((m) => m.id).sort()).toEqual([...starterIds()].sort());
