@@ -12,6 +12,7 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 - **Tests:** `pnpm test unit <paths...>`, `pnpm test integration <paths...>`, or `pnpm test security`; more in `tests/AGENTS.md`.
 - **Dev server:** `pnpm dev` (Portless, Webpack; secrets injected by 1Password `op run`). `--ui` runs UI-only Turbopack, `--db` starts Supabase first, `doctor` runs read-only diagnostics. In a linked worktree the URL is `https://<branch>.atlaris.localhost`; `portless get atlaris` prints it.
 - **UI checks:** `pnpm exec tsx scripts/dev/tw-classes.ts <classes>` prints the CSS Tailwind generates; `pnpm exec tsx scripts/dev/screenshot.ts <routes>` screenshots the running dev server at several widths in both themes.
+- **Signed-in sessions:** `scripts/dev/agent-session.ts --env <local|staging> --tier <free|starter|pro>` prints a one-time Clerk Agent Task sign-in URL; use it instead of signing in by hand. Run it under `op run`; see `docs/development/agent-sessions.md`.
 - **Paths:** `cn` is `@/lib/utils` (`src/lib/utils/index.ts`). Tables are in `supabase/schema/tables/`, enums in `supabase/enums.ts`, query helpers in `src/lib/db/queries/`.
 - **Next.js docs:** read them only when changing Next.js APIs or conventions (routing, data fetching, caching, config). Find a guide by name with `rg --files node_modules/next/dist/docs | rg <topic>`; folders are numbered (`01-app/01-getting-started`, `02-guides`, `03-api-reference`). This bullet sets the scope for the auto-generated Next.js block at the end of this file.
 
