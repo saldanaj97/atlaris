@@ -12,7 +12,10 @@ import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
+  SelectSeparator,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -85,30 +88,49 @@ const ModelDropdown = ({
           >
             <SelectValue placeholder='Select a model' />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            align='start'
+            className='min-w-(--radix-select-trigger-width)'
+          >
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
                   <span>{model.name}</span>
+                  {/* Secondary matches the popover and card matches the trigger, so swap only in the list. */}
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
+                    className={
+                      model.tier === 'free'
+                        ? undefined
+                        : 'in-data-[slot=select-content]:bg-card'
+                    }
                   >
                     {model.tier === 'free' ? 'Free' : 'Paid'}
                   </Badge>
                 </div>
               </SelectItem>
             ))}
-            {proOnlyModels.map((model) => (
-              <SelectItem key={model.id} value={model.id} disabled>
-                <div className='flex items-center gap-2'>
-                  <span>{model.name}</span>
-                  <Badge variant='outline'>
-                    <Lock aria-hidden='true' className='size-3' />
-                    Pro plan
-                  </Badge>
-                </div>
-              </SelectItem>
-            ))}
+            {hasProOnlyModels && (
+              <SelectGroup>
+                <SelectSeparator />
+                {/* The open list can cover the hint below the trigger, so repeat it here. */}
+                <SelectLabel>Upgrade to Pro to use these models</SelectLabel>
+                {proOnlyModels.map((model) => (
+                  <SelectItem key={model.id} value={model.id} disabled>
+                    <div className='flex items-center gap-2'>
+                      <span>{model.name}</span>
+                      <Badge
+                        variant='outline'
+                        className='border-disabled-border text-disabled-foreground'
+                      >
+                        <Lock aria-hidden='true' className='size-3' />
+                        Pro plan
+                      </Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            )}
           </SelectContent>
         </Select>
         {hasProOnlyModels && (
