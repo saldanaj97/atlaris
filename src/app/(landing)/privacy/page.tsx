@@ -134,7 +134,11 @@ export default function PrivacyPage(): ReactElement {
             analytics.
           </li>
           <li>
-            <strong>Sentry:</strong> error monitoring and diagnostics.
+            <strong>Sentry:</strong> error monitoring and diagnostics. When
+            something fails, Sentry receives technical details such as the
+            error, the page or request involved, and your browser and device
+            type. Error reports do not include your name, email address, or IP
+            address, but may include internal account or plan identifiers.
           </li>
           <li>
             <strong>Resend:</strong> delivery of email.
@@ -176,7 +180,9 @@ export default function PrivacyPage(): ReactElement {
           related billing events, along with records we must keep for legal,
           tax, or fraud-prevention reasons. Copies in backups or at our
           providers may persist for a limited time until they expire in the
-          ordinary course.
+          ordinary course. Sentry cannot delete one person&rsquo;s error
+          reports, so deleting your account does not remove them; Sentry deletes
+          all error and diagnostic data automatically within 30 days.
         </p>
       </LegalSection>
 
