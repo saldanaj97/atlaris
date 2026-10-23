@@ -1,6 +1,8 @@
 import type { NextResponse } from 'next/server';
 
 const CLERK_FRONTEND_API_SRC = 'https://*.clerk.accounts.dev';
+/** Clerk abuse and fraud protection (bot protection bootstrap script and iframe). */
+const CLERK_PROTECTION_SRC = 'https://*.protect.clerk.com';
 const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
 const STRIPE_CHECKOUT_SRC = 'https://js.stripe.com';
 const STRIPE_HOOKS_SRC = 'https://hooks.stripe.com';
@@ -60,6 +62,7 @@ export function createContentSecurityPolicy(
         "'unsafe-inline'",
         "'unsafe-eval'",
         ...clerkSrc,
+        CLERK_PROTECTION_SRC,
         CLOUDFLARE_CHALLENGES_SRC,
         STRIPE_CHECKOUT_SRC,
       ]
@@ -67,6 +70,7 @@ export function createContentSecurityPolicy(
         "'self'",
         `'nonce-${input.nonce}'`,
         ...clerkSrc,
+        CLERK_PROTECTION_SRC,
         CLOUDFLARE_CHALLENGES_SRC,
         STRIPE_CHECKOUT_SRC,
       ];
@@ -78,7 +82,7 @@ export function createContentSecurityPolicy(
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
     "connect-src 'self' https: wss:",
-    `frame-src 'self' ${CLOUDFLARE_CHALLENGES_SRC} ${STRIPE_CHECKOUT_SRC} ${STRIPE_HOOKS_SRC}`,
+    `frame-src 'self' ${CLERK_PROTECTION_SRC} ${CLOUDFLARE_CHALLENGES_SRC} ${STRIPE_CHECKOUT_SRC} ${STRIPE_HOOKS_SRC}`,
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

@@ -17,10 +17,10 @@ describe('proxy security headers', () => {
         .find((directive) => directive.startsWith('script-src ')) ?? '';
 
     expect(scriptSrc).toBe(
-      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://challenges.cloudflare.com https://js.stripe.com",
+      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://*.protect.clerk.com https://challenges.cloudflare.com https://js.stripe.com",
     );
     expect(csp).toContain(
-      "frame-src 'self' https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
+      "frame-src 'self' https://*.protect.clerk.com https://challenges.cloudflare.com https://js.stripe.com https://hooks.stripe.com",
     );
     expect(csp).toContain("connect-src 'self' https: wss:");
     expect(scriptSrc).not.toContain("'unsafe-inline'");
@@ -33,6 +33,7 @@ describe('proxy security headers', () => {
     expect(csp).toContain("'unsafe-eval'");
     expect(csp).toContain("'unsafe-inline'");
     expect(csp).toContain('https://*.clerk.accounts.dev');
+    expect(csp).toContain('https://*.protect.clerk.com');
   });
 
   it('allows the production Clerk Frontend API host from the publishable key', () => {
@@ -48,7 +49,7 @@ describe('proxy security headers', () => {
         .find((directive) => directive.startsWith('script-src ')) ?? '';
 
     expect(scriptSrc).toBe(
-      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://clerk.atlaris.app https://challenges.cloudflare.com https://js.stripe.com",
+      "script-src 'self' 'nonce-request-nonce' https://*.clerk.accounts.dev https://clerk.atlaris.app https://*.protect.clerk.com https://challenges.cloudflare.com https://js.stripe.com",
     );
   });
 
