@@ -174,11 +174,13 @@ describe('tier consistency', () => {
     }
   });
 
-  it('Free and Starter lesson lists share the free router; outline lists differ', async () => {
+  it('Free and Starter lesson and outline lists differ', async () => {
     const ids = async (...args: Parameters<typeof getModelsForTier>) =>
       (await getModelsForTier(...args)).map((m) => m.id);
 
-    expect(await ids('free', 'lesson')).toEqual(await ids('starter', 'lesson'));
+    expect(await ids('free', 'lesson')).not.toEqual(
+      await ids('starter', 'lesson'),
+    );
     expect(await ids('free', 'initial_outline')).not.toEqual(
       await ids('starter', 'initial_outline'),
     );

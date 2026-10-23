@@ -17,8 +17,11 @@ export const MODEL_OPERATIONS = [
 
 export type ModelOperation = (typeof MODEL_OPERATIONS)[number];
 
-export const STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID =
-  'openai/gpt-6-luna';
+/**
+ * Starter's default for every operation. Lessons fall back to
+ * `openrouter/free` when it fails (`getFallbackModelsForTier`).
+ */
+export const STARTER_DEFAULT_MODEL_ID = 'openai/gpt-6-luna';
 
 const PRO_DEFAULT_MODEL_BY_OPERATION = {
   initial_outline: 'openai/gpt-6.1-sol',
@@ -81,14 +84,13 @@ function starterPolicy(operation: ModelOperation): ModelOperationPolicy {
   switch (operation) {
     case 'initial_outline':
     case 'regeneration':
+    case 'lesson':
       return {
         allowed: true,
-        defaultModelId: STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+        defaultModelId: STARTER_DEFAULT_MODEL_ID,
         usesTierCatalog: true,
         usesFreeRouter: false,
       };
-    case 'lesson':
-      return FREE_ROUTER_ONLY;
     default: {
       const _never: never = operation;
       throw new Error(`Unhandled model operation: ${String(_never)}`);

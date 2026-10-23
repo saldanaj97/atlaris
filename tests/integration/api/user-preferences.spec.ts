@@ -8,7 +8,7 @@ import {
   PICKER_HIDDEN_MODEL_IDS_BY_TIER,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
-  STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { userPreferences, users } from '@supabase/schema';
@@ -61,7 +61,7 @@ const PRO_MODEL_ID = MODEL_CATALOG_FIXTURE.pro.find(
 const PRO_REGEN_MODEL_ID = 'anthropic/claude-sonnet-5.5';
 const PRO_LESSON_MODEL_ID = 'anthropic/claude-haiku-5.5';
 const FREE_EFFECTIVE_MODEL = AI_DEFAULT_MODEL;
-const STARTER_EFFECTIVE_MODEL = STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID;
+const STARTER_EFFECTIVE_MODEL = STARTER_DEFAULT_MODEL_ID;
 const PRO_LESSON_DEFAULT = getModelOperationPolicy(
   'pro',
   'lesson',
@@ -342,6 +342,45 @@ describe('PATCH /api/v1/user/preferences', () => {
 
     const secondData = expectJsonObject(await secondResponse.json());
     expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
+  });
+
+  it('GET keeps Starter lessons on the default when a Pro lesson pick is saved', async () => {
+    // Own user, so the saved lesson pick doesn't leak into other cases.
+    const authUserId = `${testAuthUserId}-lesson`;
+    await ensureUser({
+      authUserId,
+      email: `${authUserId}@example.com`,
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+    // The outline pick is saved too: the actor lookup currently drops every
+    // saved slot when `preferred_ai_model` is null.
+    const patchResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferredAiModel: STARTER_MODEL_ID,
+          preferredLessonAiModel: PRO_LESSON_MODEL_ID,
+        }),
+      }),
+    );
+    expect(patchResponse.status).toBe(200);
+    // Downgrade: Starter's guardrail also lists the saved Pro lesson pick.
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'starter' })
+      .where(eq(users.authUserId, authUserId));
+
+    const response = await GET(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'GET',
+      }),
+    );
+    expect(response.status).toBe(200);
+    const data = expectJsonObject(await response.json());
+    expect(data.preferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
+    expect(data.effectivePreferredLessonAiModel).toBe(STARTER_DEFAULT_MODEL_ID);
   });
 
   it('can save every selectable Starter model and leaves lesson unused', async () => {

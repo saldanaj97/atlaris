@@ -45,12 +45,16 @@ export function isPersistableModelId(modelId: string): boolean {
 
 /**
  * Models the user may pick in AI settings: the current tier × operation
- * policy catalog excluding runtime-only routers.
+ * policy catalog excluding runtime-only routers. Only Pro picks a lesson
+ * model; other tiers' lessons are code-owned.
  */
 export async function getPersistableModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
 ): Promise<AvailableModel[]> {
+  if (operation === 'lesson' && tier !== 'pro') {
+    return [];
+  }
   return (await getModelsForTier(tier, operation)).filter(
     (m) => !isRuntimeOnlyModelId(m.id),
   );
@@ -60,7 +64,8 @@ export async function getPersistableModelsForTier(
  * Models Starter sees in its picker but cannot pick (Settings shows them
  * disabled with a Pro plan badge): its picker-hidden guardrail models plus Pro
  * guardrail models missing from the Starter guardrail, without runtime-only
- * routers. Empty for Free, Pro and operations that offer no guardrail models.
+ * routers. Empty for Free, Pro, lessons and operations that offer no guardrail
+ * models.
  * Validation still rejects these models (`tier_denied`).
  */
 export async function getProOnlyModelsForTier(
@@ -69,6 +74,7 @@ export async function getProOnlyModelsForTier(
 ): Promise<AvailableModel[]> {
   if (
     tier !== 'starter' ||
+    operation === 'lesson' ||
     !getModelOperationPolicy(tier, operation).usesTierCatalog
   ) {
     return [];
@@ -97,6 +103,8 @@ export type SavedModelPreferenceSlots = {
 /**
  * Which saved column feeds an operation. Starter/Free regeneration reuse the
  * single outline slot; Pro regeneration and lesson slots are independent.
+ * Starter/Free lessons are code-owned, so a lesson pick saved on Pro does not
+ * carry over after a downgrade.
  */
 export function savedModelIdForOperation(
   tier: SubscriptionTier,
@@ -119,7 +127,7 @@ export function savedModelIdForOperation(
         }
       }
     case 'lesson':
-      return saved.preferredLessonAiModel;
+      return tier === 'pro' ? saved.preferredLessonAiModel : null;
     default: {
       const _never: never = operation;
       throw new Error(`Unhandled model operation: ${String(_never)}`);

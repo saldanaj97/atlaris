@@ -6,7 +6,7 @@ import {
   type ModelOperationPolicy,
   getModelOperationPolicy,
   MODEL_OPERATIONS,
-  STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
@@ -53,7 +53,7 @@ describe('model-operation-policy', () => {
         tier: 'starter',
         operation: 'initial_outline',
         allowed: true,
-        defaultModelId: STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+        defaultModelId: STARTER_DEFAULT_MODEL_ID,
         usesTierCatalog: true,
         usesFreeRouter: false,
       },
@@ -61,7 +61,7 @@ describe('model-operation-policy', () => {
         tier: 'starter',
         operation: 'regeneration',
         allowed: true,
-        defaultModelId: STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+        defaultModelId: STARTER_DEFAULT_MODEL_ID,
         usesTierCatalog: true,
         usesFreeRouter: false,
       },
@@ -69,9 +69,9 @@ describe('model-operation-policy', () => {
         tier: 'starter',
         operation: 'lesson',
         allowed: true,
-        defaultModelId: AI_DEFAULT_MODEL,
-        usesTierCatalog: false,
-        usesFreeRouter: true,
+        defaultModelId: STARTER_DEFAULT_MODEL_ID,
+        usesTierCatalog: true,
+        usesFreeRouter: false,
       },
       {
         tier: 'pro',
@@ -112,10 +112,8 @@ describe('model-operation-policy', () => {
     });
   });
 
-  it('keeps the Starter outline/regen default on GPT-6 Luna', () => {
-    expect(STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID).toBe(
-      'openai/gpt-6-luna',
-    );
+  it('keeps every Starter default on GPT-6 Luna', () => {
+    expect(STARTER_DEFAULT_MODEL_ID).toBe('openai/gpt-6-luna');
   });
 
   it('Pro operation defaults are independent', () => {

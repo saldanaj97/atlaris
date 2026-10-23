@@ -99,9 +99,12 @@ describe('model-preferences', () => {
       expect(proModels.some((m) => m.id === AI_DEFAULT_MODEL)).toBe(false);
     });
 
-    it('matches the operation models minus runtime-only ids', async () => {
+    it('matches the operation models minus runtime-only ids where the tier picks that operation', async () => {
       for (const tier of ['free', 'starter', 'pro'] as const) {
         for (const operation of MODEL_OPERATIONS) {
+          if (operation === 'lesson' && tier !== 'pro') {
+            continue;
+          }
           expect(
             (await getPersistableModelsForTier(tier, operation)).map(
               (m) => m.id,
@@ -181,7 +184,7 @@ describe('model-preferences', () => {
       ['free', PRO_ONLY_MODEL_ID, null, 'initial_outline'],
       ['free', AI_DEFAULT_MODEL, null, 'initial_outline'],
       ['starter', STARTER_MODEL_ID, STARTER_MODEL_ID, 'initial_outline'],
-      ['starter', STARTER_MODEL_ID, null, 'lesson'],
+      ['starter', PRO_ONLY_MODEL_ID, null, 'lesson'],
       ['starter', PRO_ONLY_MODEL_ID, null, 'initial_outline'],
       ['pro', PRO_ONLY_MODEL_ID, PRO_ONLY_MODEL_ID, 'initial_outline'],
       ['pro', RETIRED_MODEL_ID, null, 'initial_outline'],
@@ -209,6 +212,11 @@ describe('model-preferences', () => {
       expect(savedModelIdForOperation('free', saved, 'regeneration')).toBe(
         saved.preferredAiModel,
       );
+    });
+
+    it('ignores the lesson slot for Starter/Free, whose lessons are code-owned', () => {
+      expect(savedModelIdForOperation('starter', saved, 'lesson')).toBeNull();
+      expect(savedModelIdForOperation('free', saved, 'lesson')).toBeNull();
     });
 
     it('Pro regeneration and lesson use their own slots', () => {

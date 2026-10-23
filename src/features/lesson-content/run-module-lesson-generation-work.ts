@@ -7,9 +7,15 @@ import type {
 } from '@/features/lesson-content/generate-module-lessons.types';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ModuleLessonGenerationMetadata } from '@/shared/types/lesson-content.types';
 
+import {
+  AI_DEFAULT_MODEL,
+  getFallbackModelsForTier,
+} from '@/features/ai/ai-models';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { generateModuleLessonBatchWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
@@ -19,7 +25,9 @@ import {
   resolveTimeoutConfig,
   setupAbortAndTimeout,
 } from '@/features/ai/orchestrator/timeout-lifecycle';
+import { getGenerationProviderWithModel } from '@/features/ai/providers/factory';
 import { safeNormalizeUsage } from '@/features/ai/usage';
+import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import { resolveUserTier } from '@/features/billing/tier';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import {
@@ -37,8 +45,10 @@ import {
   markModuleLessonProviderStarted,
   revertModuleLessonGeneratingToNotGenerated,
 } from '@/lib/db/queries/module-lesson-generation';
+import { sumPlanAiSpendMicrousd } from '@/lib/db/queries/plan-ai-budget';
 import { getUserPreferences } from '@/lib/db/queries/user-preferences';
 import { logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
 /** The owned module a claimed lesson generation run works on. */
@@ -126,12 +136,31 @@ export function buildModuleLessonBatchInput(
   };
 }
 
-/** Current tier, then the explicit override or the saved lesson model. */
+/** The resolved route's tier and models; absent for an injected provider. */
+export type ModuleLessonRoute = {
+  readonly tier: SubscriptionTier;
+  readonly primaryModelId: string;
+  readonly fallbackModelIds: readonly string[];
+};
+
+export type ModuleLessonProviderResolution = {
+  readonly provider: ModuleLessonProvider;
+  readonly route?: ModuleLessonRoute;
+};
+
+/**
+ * Current tier, then the explicit override or the saved lesson model. A paid
+ * plan at its AI ceiling (JCS-170) runs the lesson on the free router.
+ */
 export async function resolveModuleLessonProvider(
-  params: { readonly userId: string; readonly modelOverride?: string | null },
+  params: {
+    readonly userId: string;
+    readonly planId: string;
+    readonly modelOverride?: string | null;
+  },
   dbClient: DbClient,
   provider?: ModuleLessonProvider,
-): Promise<ModuleLessonProvider> {
+): Promise<ModuleLessonProviderResolution> {
   const currentTier = await resolveUserTier(params.userId, dbClient);
   let requestedModel = params.modelOverride ?? undefined;
   if (requestedModel == null || requestedModel === '') {
@@ -144,10 +173,90 @@ export async function resolveModuleLessonProvider(
     );
   }
 
-  return (
-    provider ??
-    (await resolveModelForTier(currentTier, requestedModel, 'lesson')).provider
+  if (provider) {
+    return { provider };
+  }
+
+  if (currentTier !== 'free') {
+    const spentMicrousd = await sumPlanAiSpendMicrousd(params.planId, dbClient);
+    if (spentMicrousd >= planAiCeilingMicrousd(currentTier)) {
+      logger.warn(
+        {
+          event: 'plan_ai_ceiling_lesson_free_router',
+          tier: currentTier,
+          planId: params.planId,
+          spentMicrousd,
+        },
+        'Plan reached its AI ceiling; running the lesson on the free router',
+      );
+      return {
+        provider: getGenerationProviderWithModel(
+          AI_DEFAULT_MODEL,
+          currentTier,
+          'lesson',
+        ),
+        route: {
+          tier: currentTier,
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
+      };
+    }
+  }
+
+  const resolution = await resolveModelForTier(
+    currentTier,
+    requestedModel,
+    'lesson',
   );
+  return {
+    provider: resolution.provider,
+    route: {
+      tier: currentTier,
+      primaryModelId: resolution.modelId,
+      fallbackModelIds: getFallbackModelsForTier(
+        currentTier,
+        resolution.modelId,
+        'lesson',
+      ),
+    },
+  };
+}
+
+/**
+ * Warns when OpenRouter served a paid-tier lesson from a fallback route model
+ * instead of the resolved primary (DEV-180). Only routes that list fallbacks
+ * qualify; a free-router fallback serves a concrete `:free` model, so the
+ * served name is compared with the primary, not the fallback list.
+ */
+export function reportLessonRouteFallback(
+  route: ModuleLessonRoute | undefined,
+  metadata: Pick<ProviderMetadata, 'provider' | 'model'>,
+): void {
+  const servedModel = metadata.model;
+  if (
+    !route ||
+    route.tier === 'free' ||
+    route.fallbackModelIds.length === 0 ||
+    metadata.provider !== 'openrouter' ||
+    !servedModel ||
+    servedModel.startsWith(route.primaryModelId)
+  ) {
+    return;
+  }
+  const fields = {
+    event: 'lesson_route_fallback',
+    tier: route.tier,
+    primaryModelId: route.primaryModelId,
+    servedModel,
+  };
+  logger.warn(fields, 'Lesson was served by a fallback route model');
+  Sentry.captureMessage('Lesson was served by a fallback route model', {
+    level: 'warning',
+    fingerprint: ['lesson_route_fallback', route.tier],
+    tags: { event: fields.event, tier: route.tier },
+    extra: fields,
+  });
 }
 
 // --- provider --------------------------------------------------------------
@@ -161,6 +270,7 @@ export async function generateModuleLessonRawBatch(input: {
   readonly target: ModuleLessonGenerationTarget;
   readonly batchInput: ModuleLessonBatchInput;
   readonly provider: ModuleLessonProvider;
+  readonly route?: ModuleLessonRoute;
   readonly dbClient: DbClient;
   readonly timeoutConfig: AdaptiveTimeoutConfig;
   readonly now: () => Date;
@@ -189,6 +299,7 @@ export async function generateModuleLessonRawBatch(input: {
     const rawText = await bufferModuleLessonBatchStream(providerResult.stream, {
       signal: controller.signal,
     });
+    reportLessonRouteFallback(input.route, providerResult.metadata);
 
     return {
       rawText,
@@ -329,7 +440,7 @@ export async function runModuleLessonGenerationWork(
   let providerStarted = false;
 
   try {
-    const provider = await resolveModuleLessonProvider(
+    const { provider, route } = await resolveModuleLessonProvider(
       params,
       serverDbClient,
       deps.provider,
@@ -339,6 +450,7 @@ export async function runModuleLessonGenerationWork(
       target,
       batchInput,
       provider,
+      route,
       dbClient: serverDbClient,
       timeoutConfig,
       now: nowFn,
