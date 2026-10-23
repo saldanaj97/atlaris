@@ -8,7 +8,7 @@ import {
   PICKER_HIDDEN_MODEL_IDS_BY_TIER,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
-  STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID,
+  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { userPreferences, users } from '@supabase/schema';
@@ -61,7 +61,7 @@ const PRO_MODEL_ID = MODEL_CATALOG_FIXTURE.pro.find(
 const PRO_REGEN_MODEL_ID = 'anthropic/claude-sonnet-5.5';
 const PRO_LESSON_MODEL_ID = 'anthropic/claude-haiku-5.5';
 const FREE_EFFECTIVE_MODEL = AI_DEFAULT_MODEL;
-const STARTER_EFFECTIVE_MODEL = STARTER_OUTLINE_REGENERATION_DEFAULT_MODEL_ID;
+const STARTER_EFFECTIVE_MODEL = STARTER_DEFAULT_MODEL_ID;
 const PRO_LESSON_DEFAULT = getModelOperationPolicy(
   'pro',
   'lesson',

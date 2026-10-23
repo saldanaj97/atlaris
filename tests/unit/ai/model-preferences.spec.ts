@@ -70,22 +70,16 @@ describe('model-preferences', () => {
       }
     });
 
-    it('Starter outline/regen persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
+    it('Starter persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
       const expected = MODEL_CATALOG_FIXTURE.starter
         .map((model) => model.modelId)
         .filter((id) => id !== 'openai/gpt-6.1-sol')
         .sort();
-      for (const operation of ['initial_outline', 'regeneration'] as const) {
+      for (const operation of MODEL_OPERATIONS) {
         expect(
           ids(await getPersistableModelsForTier('starter', operation)),
         ).toEqual(expected);
       }
-    });
-
-    it('Starter lesson persistable list is empty', async () => {
-      expect(await getPersistableModelsForTier('starter', 'lesson')).toEqual(
-        [],
-      );
     });
 
     it('Pro persistable list is the Pro guardrail models without the router', async () => {
@@ -156,12 +150,11 @@ describe('model-preferences', () => {
       expect(proOnly).toContain(PRO_ONLY_MODEL_ID);
     });
 
-    it('is empty for Free, Pro and Starter lessons', async () => {
+    it('is empty for Free and Pro', async () => {
       for (const operation of MODEL_OPERATIONS) {
         expect(await getProOnlyModelsForTier('free', operation)).toEqual([]);
         expect(await getProOnlyModelsForTier('pro', operation)).toEqual([]);
       }
-      expect(await getProOnlyModelsForTier('starter', 'lesson')).toEqual([]);
     });
   });
 
@@ -181,7 +174,7 @@ describe('model-preferences', () => {
       ['free', PRO_ONLY_MODEL_ID, null, 'initial_outline'],
       ['free', AI_DEFAULT_MODEL, null, 'initial_outline'],
       ['starter', STARTER_MODEL_ID, STARTER_MODEL_ID, 'initial_outline'],
-      ['starter', STARTER_MODEL_ID, null, 'lesson'],
+      ['starter', PRO_ONLY_MODEL_ID, null, 'lesson'],
       ['starter', PRO_ONLY_MODEL_ID, null, 'initial_outline'],
       ['pro', PRO_ONLY_MODEL_ID, PRO_ONLY_MODEL_ID, 'initial_outline'],
       ['pro', RETIRED_MODEL_ID, null, 'initial_outline'],
@@ -209,6 +202,11 @@ describe('model-preferences', () => {
       expect(savedModelIdForOperation('free', saved, 'regeneration')).toBe(
         saved.preferredAiModel,
       );
+    });
+
+    it('ignores the lesson slot for Starter/Free, whose lessons are code-owned', () => {
+      expect(savedModelIdForOperation('starter', saved, 'lesson')).toBeNull();
+      expect(savedModelIdForOperation('free', saved, 'lesson')).toBeNull();
     });
 
     it('Pro regeneration and lesson use their own slots', () => {

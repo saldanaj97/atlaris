@@ -337,23 +337,38 @@ describe('Model resolver', () => {
       );
     });
 
-    it('ignores a plan preference for lesson and uses the free router', async () => {
+    it('runs lessons on GPT-6 Luna, not the free router', async () => {
       const { result, providerGetter } = await resolveWithMockProvider(
         'starter',
-        STARTER_DEFAULT,
+        undefined,
         'lesson',
       );
 
       expectResolution(result, {
-        modelId: AI_DEFAULT_MODEL,
+        modelId: STARTER_DEFAULT,
         fallback: true,
-        fallbackReason: 'tier_denied',
+        fallbackReason: 'not_specified',
       });
+      expect(result.freeRouterFallback).toBeUndefined();
       expect(providerGetter).toHaveBeenCalledWith(
-        AI_DEFAULT_MODEL,
+        STARTER_DEFAULT,
         'starter',
         'lesson',
       );
+    });
+
+    it('denies a Pro-only lesson model and uses GPT-6 Luna', async () => {
+      const { result } = await resolveWithMockProvider(
+        'starter',
+        PRO_ONLY_MODEL_ID,
+        'lesson',
+      );
+
+      expectResolution(result, {
+        modelId: STARTER_DEFAULT,
+        fallback: true,
+        fallbackReason: 'tier_denied',
+      });
     });
   });
 

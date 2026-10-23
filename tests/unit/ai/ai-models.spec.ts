@@ -64,8 +64,12 @@ describe('AI Models Configuration', () => {
       expect(await getModelsForTier('free', 'regeneration')).toEqual([]);
     });
 
-    it('returns the Starter guardrail models for outline and regen, minus grounded-only ones', async () => {
-      for (const operation of ['initial_outline', 'regeneration'] as const) {
+    it('returns the Starter guardrail models for every operation, minus grounded-only ones', async () => {
+      for (const operation of [
+        'initial_outline',
+        'regeneration',
+        'lesson',
+      ] as const) {
         const ids = (await getModelsForTier('starter', operation)).map(
           (m) => m.id,
         );
@@ -95,13 +99,6 @@ describe('AI Models Configuration', () => {
         (m) => m.id,
       );
       expect(proIds).toContain('openai/gpt-6.1-sol');
-    });
-
-    it('returns only the free router for Starter lesson', async () => {
-      const ids = (await getModelsForTier('starter', 'lesson')).map(
-        (m) => m.id,
-      );
-      expect(ids).toEqual([AI_DEFAULT_MODEL]);
     });
 
     it('returns the free router plus the Pro guardrail models for Pro', async () => {
@@ -213,10 +210,11 @@ describe('AI Models Configuration', () => {
       );
     });
 
-    it('returns the free router for Starter lesson', async () => {
-      expect(await getDefaultModelForTier('starter', 'lesson')).toBe(
-        AI_DEFAULT_MODEL,
-      );
+    it('returns GPT-6 Luna for Starter lesson, not the free router', async () => {
+      expect(await resolveDefaultModelForTier('starter', 'lesson')).toEqual({
+        modelId: 'openai/gpt-6-luna',
+        freeRouterFallback: false,
+      });
     });
 
     it('returns operation-specific Pro defaults, not the cheapest synced row', async () => {

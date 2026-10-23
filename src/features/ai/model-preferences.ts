@@ -97,6 +97,8 @@ export type SavedModelPreferenceSlots = {
 /**
  * Which saved column feeds an operation. Starter/Free regeneration reuse the
  * single outline slot; Pro regeneration and lesson slots are independent.
+ * Starter/Free lessons are code-owned, so a lesson pick saved on Pro does not
+ * carry over after a downgrade.
  */
 export function savedModelIdForOperation(
   tier: SubscriptionTier,
@@ -119,7 +121,7 @@ export function savedModelIdForOperation(
         }
       }
     case 'lesson':
-      return saved.preferredLessonAiModel;
+      return tier === 'pro' ? saved.preferredLessonAiModel : null;
     default: {
       const _never: never = operation;
       throw new Error(`Unhandled model operation: ${String(_never)}`);

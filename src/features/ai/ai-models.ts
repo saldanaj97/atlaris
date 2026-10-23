@@ -157,8 +157,9 @@ export async function resolveDefaultModelForTier(
  * Returns the ordered provider fallback route for a resolved primary model.
  *
  * Free never falls back to a paid model. Starter outline/regen never falls
- * back to `openrouter/free`. Starter/Free lesson uses the free router with
- * no paid fallback. Pro keeps an empty provider fallback list.
+ * back to `openrouter/free`. A Starter lesson falls back to `openrouter/free`
+ * when its paid model fails; Free lessons already run on it. Pro keeps an
+ * empty provider fallback list.
  */
 export function getFallbackModelsForTier(
   tier: SubscriptionTier,

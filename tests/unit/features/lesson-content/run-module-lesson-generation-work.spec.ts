@@ -486,13 +486,22 @@ describe('runModuleLessonGenerationWork', () => {
     );
   });
 
-  it.each(['free', 'starter'] as const)(
-    '%s lesson work without modelOverride resolves openrouter/free',
-    async (tier) => {
+  it.each([
+    ['free', AI_DEFAULT_MODEL],
+    ['starter', 'openai/gpt-6-luna'],
+  ] as const)(
+    '%s lesson work without modelOverride resolves %s and ignores a saved Pro lesson pick',
+    async (tier, defaultModelId) => {
       mocks.resolveUserTier.mockResolvedValue(tier);
+      mocks.getUserPreferences.mockResolvedValue({
+        preferredAiModel: null,
+        preferredRegenerationAiModel: null,
+        preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
+        analyticsTimezone: 'UTC',
+      });
       mocks.resolveModelForTier.mockReturnValue({
         provider: { generateModuleLessonBatch: vi.fn() },
-        modelId: AI_DEFAULT_MODEL,
+        modelId: defaultModelId,
       });
       mocks.invokeProvider.mockResolvedValue(providerOk());
       mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
@@ -510,9 +519,7 @@ describe('runModuleLessonGenerationWork', () => {
         },
       );
 
-      expect(await getDefaultModelForTier(tier, 'lesson')).toBe(
-        AI_DEFAULT_MODEL,
-      );
+      expect(await getDefaultModelForTier(tier, 'lesson')).toBe(defaultModelId);
       expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
         tier,
         undefined,
