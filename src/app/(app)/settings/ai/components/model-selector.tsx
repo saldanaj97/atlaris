@@ -88,7 +88,10 @@ const ModelDropdown = ({
           >
             <SelectValue placeholder='Select a model' />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            align='start'
+            className='min-w-(--radix-select-trigger-width)'
+          >
             {availableModels.map((model) => (
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
