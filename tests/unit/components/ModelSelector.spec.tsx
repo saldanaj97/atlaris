@@ -197,6 +197,93 @@ describe('ModelSelector', () => {
     }
   });
 
+  it('shows the placeholder without a placeholder option when no model is selected', async () => {
+    const user = userEvent.setup();
+    render(
+      <ModelSelector
+        currentModel={null}
+        userTier='starter'
+        availableModels={MODELS_BY_TIER.starter}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', {
+      name: /preferred ai model/i,
+    });
+    expect(trigger).toHaveAttribute('data-placeholder');
+    expect(trigger).toHaveTextContent(/select a model/i);
+
+    await user.click(trigger);
+    expect(
+      screen.queryByRole('option', { name: /select a model/i }),
+    ).not.toBeInTheDocument();
+    for (const option of screen.getAllByRole('option')) {
+      expect(option).not.toHaveAttribute('aria-selected', 'true');
+    }
+  });
+
+  it('returns the trigger to the placeholder after Clear selection', async () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const user = userEvent.setup();
+    render(
+      <ModelSelector
+        currentModel={null}
+        userTier='starter'
+        availableModels={MODELS_BY_TIER.starter}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    await selectFirstFreeModel(user);
+    const trigger = screen.getByRole('combobox', {
+      name: /preferred ai model/i,
+    });
+    expect(trigger).not.toHaveAttribute('data-placeholder');
+    expect(trigger).toHaveTextContent(FIRST_FREE_MODEL.name);
+
+    await user.click(screen.getByRole('button', { name: /clear selection/i }));
+
+    expect(trigger).toHaveAttribute('data-placeholder');
+    expect(trigger).toHaveTextContent(/select a model/i);
+    await user.click(trigger);
+    for (const option of screen.getAllByRole('option')) {
+      expect(option).not.toHaveAttribute('aria-selected', 'true');
+    }
+    expect(
+      consoleError.mock.calls.filter(([message]) =>
+        /uncontrolled|controlled/i.test(String(message)),
+      ),
+    ).toEqual([]);
+    consoleError.mockRestore();
+  });
+
+  it('returns the trigger to the placeholder after Use tier default', async () => {
+    const user = userEvent.setup();
+    render(
+      <ModelSelector
+        currentModel={FIRST_FREE_MODEL.id}
+        userTier='starter'
+        availableModels={MODELS_BY_TIER.starter}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const trigger = screen.getByRole('combobox', {
+      name: /preferred ai model/i,
+    });
+    expect(trigger).toHaveTextContent(FIRST_FREE_MODEL.name);
+
+    await user.click(screen.getByRole('button', { name: /use tier default/i }));
+
+    await waitFor(() => {
+      expect(trigger).toHaveAttribute('data-placeholder');
+    });
+    expect(trigger).toHaveTextContent(/select a model/i);
+  });
+
   it('save button is disabled when no changes made', () => {
     render(
       <ModelSelector
