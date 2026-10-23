@@ -86,7 +86,10 @@ export function GroundedModelPicker({
           >
             <SelectValue />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent
+            align='start'
+            className='min-w-(--radix-select-trigger-width)'
+          >
             <SelectItem value={DEFAULT_VALUE}>
               Default ({defaultLabel})
             </SelectItem>
