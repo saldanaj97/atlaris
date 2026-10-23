@@ -281,11 +281,14 @@ export function reportLessonRouteFallback(
 /**
  * Whether a paid-tier lesson ran on the free router: its guardrail left no
  * paid default, or OpenRouter served it from a route whose only fallback is
- * the free router ({@link reportLessonRouteFallback} returned true).
+ * the free router ({@link reportLessonRouteFallback} returned true) and the
+ * served model is a `:free` one. A paid variant the primary check misses
+ * (`-preview`, `:thinking`) still alerts but is not shown as the free router.
  */
 export function lessonServedByFreeRouterFallback(
   route: ModuleLessonRoute | undefined,
   servedByRouteFallback: boolean,
+  servedModel?: string,
 ): boolean {
   if (!route || route.tier === 'free') {
     return false;
@@ -293,6 +296,7 @@ export function lessonServedByFreeRouterFallback(
   return (
     route.freeRouterFallback === true ||
     (servedByRouteFallback &&
+      servedModel?.endsWith(':free') === true &&
       route.fallbackModelIds.every((modelId) => modelId === AI_DEFAULT_MODEL))
   );
 }
@@ -340,6 +344,7 @@ export async function generateModuleLessonRawBatch(input: {
     const freeRouterFallback = lessonServedByFreeRouterFallback(
       input.route,
       reportLessonRouteFallback(input.route, providerResult.metadata),
+      providerResult.metadata.model,
     );
 
     return {

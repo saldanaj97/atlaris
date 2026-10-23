@@ -11,7 +11,10 @@ import { Button } from '@/components/ui/button';
 import { RouteEmptyState } from '@/components/ui/route-empty-state';
 import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
-import { getMemoizedCatalogModel } from '@/features/ai/model-catalog/catalog';
+import {
+  getMemoizedCatalogModel,
+  getTierModels,
+} from '@/features/ai/model-catalog/catalog';
 import {
   GROUNDED_MODEL_PICKS_FEATURE,
   GROUNDED_PICK_FIELD_BY_ROLE,
@@ -77,8 +80,9 @@ async function canShowGroundedPicks(actor: {
 }
 
 /**
- * Display names for every grounded pick option and default, from any tier's
- * synced models; an id no guardrail lists shows as itself.
+ * Display names for every grounded pick option and default, from Pro's synced
+ * models in one read; an id the guardrail doesn't list, or every id when the
+ * catalog can't be read, shows as itself.
  */
 async function loadGroundedModelNames(): Promise<Map<string, string>> {
   const ids = new Set(
@@ -90,13 +94,18 @@ async function loadGroundedModelNames(): Promise<Map<string, string>> {
       ];
     }),
   );
-  const entries = await Promise.all(
-    [...ids].map(
-      async (id) =>
-        [id, (await getMemoizedCatalogModel(id))?.name ?? id] as const,
-    ),
-  );
-  return new Map(entries);
+  let names = new Map<string, string>();
+  try {
+    names = new Map(
+      (await getTierModels('pro')).map((model) => [model.id, model.name]),
+    );
+  } catch (error) {
+    logger.warn(
+      { error },
+      'Model catalog read failed; grounded pickers show model ids',
+    );
+  }
+  return new Map([...ids].map((id) => [id, names.get(id) ?? id]));
 }
 
 /**

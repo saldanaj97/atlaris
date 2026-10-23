@@ -4,6 +4,8 @@ import type {
   LessonContentBlock,
 } from '@/shared/types/lesson-content.types';
 
+import { aiTimeoutEnv } from '@/lib/config/env';
+
 /**
  * Pure scoring for the grounded-generation eval (JCS-163). The CLIs in this
  * folder collect runs and judge lessons; everything that decides pass or
@@ -82,17 +84,21 @@ export type ModuleRun = {
 export type FailureCause = 'timeout' | 'parse' | 'other';
 
 /**
- * The per-call lesson timeout both arms run with (`AI_LESSON_TIMEOUT_MS`
- * default, src/lib/config/env/ai.ts). A call at this length was cut off
- * (JCS-172).
+ * The per-call lesson timeout both arms run with (`AI_LESSON_TIMEOUT_MS`). A
+ * call at this length was cut off (JCS-172). Read from the same env the
+ * Worker uses, so set it to the target Worker's value when that overrides it.
  */
-export const AI_CALL_TIMEOUT_MS = 300_000;
+export function aiCallTimeoutMs(): number {
+  return aiTimeoutEnv.lessonMs;
+}
 
 /**
- * The lesson verify and repair calls' timeout: the default AI timeout plus one
+ * The lesson verify and repair calls' timeout: the base AI timeout plus one
  * extension (`qualityCallTimeoutMs`, workers/jobs lesson-quality.ts).
  */
-export const QUALITY_CALL_TIMEOUT_MS = 180_000;
+export function qualityCallTimeoutMs(): number {
+  return aiTimeoutEnv.baseMs + aiTimeoutEnv.extensionMs;
+}
 
 const QUALITY_STEP = /^lesson-\d+-(verify|repair)-/;
 
@@ -135,8 +141,8 @@ export function classifyWorkflowSteps(
         const ms = Date.parse(attempt.end) - Date.parse(attempt.start);
         longestCallMs = Math.max(longestCallMs ?? 0, ms);
         const cap = QUALITY_STEP.test(step.name)
-          ? QUALITY_CALL_TIMEOUT_MS
-          : AI_CALL_TIMEOUT_MS;
+          ? qualityCallTimeoutMs()
+          : aiCallTimeoutMs();
         hitCallCap ||= ms >= cap;
       }
       if (attempt.success === false && !step.name.startsWith('fail')) {
@@ -169,7 +175,7 @@ export function summarizeReliability(modules: readonly ModuleRun[]): string {
     failed.filter((m) => m.failureCause === cause).length;
   // Manifests classified before `hitCallCap` only know the longest call.
   const atCap = modules.filter(
-    (m) => m.hitCallCap ?? (m.longestCallMs ?? 0) >= AI_CALL_TIMEOUT_MS,
+    (m) => m.hitCallCap ?? (m.longestCallMs ?? 0) >= aiCallTimeoutMs(),
   ).length;
   return `${failed.length} of ${modules.length} failed (timeout ${count('timeout')}, parse ${count('parse')}, other ${count('other')}, unclassified ${count(undefined)}); ${atCap} module(s) with a call at its timeout cap`;
 }

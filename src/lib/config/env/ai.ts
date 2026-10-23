@@ -7,10 +7,7 @@ import {
   parseEnvNumber,
   type ServerEnvAccess,
 } from '@/lib/config/env/shared';
-import {
-  AI_DEFAULT_MODEL,
-  isCodeOwnedModelId,
-} from '@/shared/constants/ai-models';
+import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
 import {
   DEFAULT_ATTEMPT_CAP,
   resolveAttemptCap,
@@ -183,8 +180,9 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     },
     /**
      * Model for providers built without a tier (`getGenerationProvider`).
-     * AI_DEFAULT_MODEL overrides `openrouter/free` with another model the
-     * code names; the tier model lists are synced separately at runtime.
+     * AI_DEFAULT_MODEL overrides `openrouter/free`. The tier model lists are
+     * synced from OpenRouter guardrails at runtime, so this checks only the
+     * slug's shape; OpenRouter rejects a model the key's guardrail blocks.
      */
     get defaultModel() {
       const configured = access.getServerOptional('AI_DEFAULT_MODEL');
@@ -192,9 +190,9 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
         return AI_DEFAULT_MODEL;
       }
 
-      if (!isCodeOwnedModelId(configured)) {
+      if (!isModelIdShape(configured)) {
         throw new EnvValidationError(
-          `AI_DEFAULT_MODEL must be a model the code names (for example "openai/gpt-6-luna"). Received: ${configured}`,
+          `AI_DEFAULT_MODEL must be an OpenRouter model slug like "vendor/model". Received: ${configured}`,
           'AI_DEFAULT_MODEL',
         );
       }

@@ -490,7 +490,11 @@ async function launch(mode: Mode): Promise<void> {
   try {
     let connectionUrl: string;
     if (nativeTestDb) {
-      nativeSmokeDbUrl = await createNativeSmokeDatabase();
+      // A name of its own: cleanup from a stale run file can then drop only
+      // this run's database, never the shared smoke runner's.
+      nativeSmokeDbUrl = await createNativeSmokeDatabase(
+        `atlaris_verify_smoke_${Date.now()}`,
+      );
       connectionUrl = nativeSmokeDbUrl;
     } else {
       container = await startSmokePostgresContainer();

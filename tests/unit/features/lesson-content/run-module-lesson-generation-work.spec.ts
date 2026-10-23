@@ -802,25 +802,42 @@ describe('runModuleLessonGenerationWork', () => {
           false,
         ),
       ).toBe(true);
-      expect(lessonServedByFreeRouterFallback(starterRoute, true)).toBe(true);
+      expect(
+        lessonServedByFreeRouterFallback(starterRoute, true, freeModel),
+      ).toBe(true);
     });
 
     it('does not flag free tiers, the primary, or a non-free fallback route', () => {
-      expect(lessonServedByFreeRouterFallback(undefined, true)).toBe(false);
+      expect(lessonServedByFreeRouterFallback(undefined, true, freeModel)).toBe(
+        false,
+      );
       expect(
         lessonServedByFreeRouterFallback(
           { ...starterRoute, tier: 'free', freeRouterFallback: true },
           true,
+          freeModel,
         ),
       ).toBe(false);
-      expect(lessonServedByFreeRouterFallback(starterRoute, false)).toBe(false);
+      expect(
+        lessonServedByFreeRouterFallback(starterRoute, false, freeModel),
+      ).toBe(false);
       expect(
         lessonServedByFreeRouterFallback(
           { ...starterRoute, fallbackModelIds: ['openai/gpt-6-mini'] },
           true,
+          freeModel,
         ),
       ).toBe(false);
     });
+
+    it.each(['openai/gpt-6-luna-preview', 'openai/gpt-6-luna:thinking'])(
+      'does not flag a paid variant %s the primary check missed',
+      (servedModel) => {
+        expect(
+          lessonServedByFreeRouterFallback(starterRoute, true, servedModel),
+        ).toBe(false);
+      },
+    );
 
     it('carries a guardrail free-router fallback onto the lesson route', async () => {
       const provider = { generateModuleLessonBatch: vi.fn() };

@@ -71,6 +71,7 @@ async function computeEstimatedCostCents(args: {
           event: 'model_catalog_unavailable_cost_skipped',
           modelId: model,
           provider,
+          err: error.cause,
         },
         `Model catalog unavailable for "${model}" — recording 0 estimated cost`,
       );

@@ -6,13 +6,18 @@ import {
 } from '../../../fixtures/ai-model-catalog';
 import {
   getCatalogModel,
+  getMemoizedCatalogModel,
   getTierModels,
   MODEL_CATALOG_RETRY_MS,
   MODEL_CATALOG_TTL_MS,
   resetModelCatalogStateForTests,
   syncTierModelCatalog,
 } from '@/features/ai/model-catalog/catalog';
-import { replaceTierModels } from '@/features/ai/model-catalog/store';
+import {
+  replaceTierModels,
+  selectCatalogModel,
+  selectTierModels,
+} from '@/features/ai/model-catalog/store';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -171,14 +176,12 @@ describe('getTierModels', () => {
     expect(models.map((m) => m.id)).toEqual(['openai/gpt-5.2']);
   });
 
-  it('shares one query between concurrent reads', async () => {
-    const { selectTierModels } =
-      await import('@/features/ai/model-catalog/store');
+  it('runs its own query for each concurrent read', async () => {
     vi.mocked(selectTierModels).mockClear();
 
     await Promise.all([getTierModels('starter'), getTierModels('starter')]);
 
-    expect(selectTierModels).toHaveBeenCalledOnce();
+    expect(selectTierModels).toHaveBeenCalledTimes(2);
   });
 
   it('serves stale rows after a failed refresh and backs off', async () => {
@@ -236,5 +239,57 @@ describe('getCatalogModel', () => {
     expect(await getCatalogModel('openai/gpt-6-luna')).toMatchObject({
       inputCostPerMillion: 0.2,
     });
+  });
+
+  it('warns once when pricing comes from seeded rows no sync replaced', async () => {
+    seedModelCatalogFixture(new Date(0));
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await getCatalogModel('openai/gpt-6-luna');
+    await getCatalogModel('openai/gpt-6-luna');
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'model_catalog_seed_pricing',
+        modelId: 'openai/gpt-6-luna',
+      }),
+      expect.any(String),
+    );
+  });
+});
+
+describe('getMemoizedCatalogModel', () => {
+  it('does not remember an unknown model', async () => {
+    vi.mocked(selectCatalogModel).mockClear();
+
+    await getMemoizedCatalogModel('vendor/listed-later');
+    await getMemoizedCatalogModel('vendor/listed-later');
+
+    expect(selectCatalogModel).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not remember a lookup that raced a sync', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    vi.mocked(selectCatalogModel).mockImplementationOnce(async (modelId) => {
+      await gate;
+      return inMemoryModelCatalogStore.selectCatalogModel(modelId);
+    });
+    const lookup = getMemoizedCatalogModel('openai/gpt-6-luna');
+
+    seedModelCatalogFixture(new Date(Date.now() - MODEL_CATALOG_TTL_MS - 1));
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ data: [NEW_MODEL] })),
+    );
+    await getTierModels('starter');
+    release();
+    await lookup;
+
+    vi.mocked(selectCatalogModel).mockClear();
+    await getMemoizedCatalogModel('openai/gpt-6-luna');
+    expect(selectCatalogModel).toHaveBeenCalledOnce();
   });
 });

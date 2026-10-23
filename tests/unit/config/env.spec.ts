@@ -736,17 +736,14 @@ describe('Environment Configuration', () => {
         expect(aiEnv.defaultModel).toBe(AI_DEFAULT_MODEL);
       });
 
-      it.each(['not-a-model-slug', 'openai/gpt-6-lunaa'])(
-        'should throw when AI_DEFAULT_MODEL is %s, not a model the code names',
-        (configured) => {
-          vi.stubEnv('AI_DEFAULT_MODEL', configured);
+      it('should throw when AI_DEFAULT_MODEL is not a model slug', () => {
+        vi.stubEnv('AI_DEFAULT_MODEL', 'not-a-model-slug');
 
-          expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
-          expect(() => aiEnv.defaultModel).toThrow(
-            /AI_DEFAULT_MODEL must be a model the code names/,
-          );
-        },
-      );
+        expect(() => aiEnv.defaultModel).toThrow(EnvValidationError);
+        expect(() => aiEnv.defaultModel).toThrow(
+          /AI_DEFAULT_MODEL must be an OpenRouter model slug/,
+        );
+      });
     });
 
     describe('provider', () => {

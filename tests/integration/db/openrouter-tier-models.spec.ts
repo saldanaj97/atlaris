@@ -8,8 +8,18 @@ import {
 import { logger } from '@/lib/logging/logger';
 import { openRouterTierModels } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+const SEED_MIGRATION_SQL = readFileSync(
+  resolve(
+    process.cwd(),
+    'supabase/migrations/20261023210000_seed_openrouter_tier_models.sql',
+  ),
+  'utf8',
+);
 
 const GUARDRAIL_BODY = {
   data: [
@@ -92,5 +102,29 @@ describe('openrouter_tier_models sync', () => {
     );
     expect(models[0]?.inputCostPerMillion).toBe(0.07);
     expect(models.at(-1)?.id).toBe('openai/gpt-6.1-sol');
+  });
+
+  it('seeds only tiers with no rows', async () => {
+    await db
+      .delete(openRouterTierModels)
+      .where(eq(openRouterTierModels.tier, 'starter'));
+
+    await db.execute(sql.raw(SEED_MIGRATION_SQL));
+
+    const starterRows = await db
+      .select({
+        modelId: openRouterTierModels.modelId,
+        syncedAt: openRouterTierModels.syncedAt,
+      })
+      .from(openRouterTierModels)
+      .where(eq(openRouterTierModels.tier, 'starter'));
+    expect(starterRows.map((row) => row.modelId).sort()).toEqual([
+      'anthropic/claude-haiku-5.5',
+      'deepseek/deepseek-v4.1-flash',
+      'openai/gpt-6-luna',
+      'openai/gpt-6.1-sol',
+    ]);
+    expect(starterRows.every((row) => row.syncedAt.getTime() === 0)).toBe(true);
+    expect(await tierModelIds('pro')).toEqual(fixtureIds('pro'));
   });
 });

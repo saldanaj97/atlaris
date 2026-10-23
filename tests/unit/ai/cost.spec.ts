@@ -99,7 +99,7 @@ describe('computeCostCents', () => {
     }
   });
 
-  it('reports an unreadable catalog apart from an unknown model and logs it', async () => {
+  it('reports an unreadable catalog apart from an unknown model, leaving the log to the caller', async () => {
     vi.mocked(selectCatalogModel).mockRejectedValueOnce(
       new Error('no database client'),
     );
@@ -108,10 +108,7 @@ describe('computeCostCents', () => {
     await expect(
       computeCostCents('openai/gpt-6-sol', 1000, 500),
     ).rejects.toBeInstanceOf(ModelCatalogUnavailableError);
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ event: 'model_catalog_unavailable' }),
-      expect.any(String),
-    );
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -165,10 +162,17 @@ describe('getOutputTokenCeiling', () => {
     vi.mocked(selectCatalogModel).mockRejectedValueOnce(
       new Error('no database client'),
     );
-    vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(logger, 'error')
+      .mockImplementation(() => undefined);
 
     expect(await getOutputTokenCeiling(GPT_6_SOL)).toBe(
       DEFAULT_OUTPUT_TOKEN_CEILING,
+    );
+    expect(errorSpy).toHaveBeenCalledOnce();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'model_catalog_unavailable' }),
+      expect.any(String),
     );
   });
 });

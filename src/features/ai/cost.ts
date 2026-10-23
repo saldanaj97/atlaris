@@ -64,7 +64,7 @@ export class ModelCatalogUnavailableError extends Error {
 /**
  * The catalog entry for `modelId`, `null` when it is unknown, or
  * {@link ModelCatalogUnavailableError} when the catalog cannot be read (for
- * example a jobs Worker call made outside `withDb`).
+ * example a jobs Worker call made outside `withDb`). The caller logs it.
  */
 async function lookUpPricedModel(
   modelId: string,
@@ -73,10 +73,6 @@ async function lookUpPricedModel(
   try {
     return await lookUp(modelId);
   } catch (error) {
-    logger.error(
-      { modelId, err: error, event: 'model_catalog_unavailable' },
-      'Model catalog read failed',
-    );
     throw new ModelCatalogUnavailableError(modelId, { cause: error });
   }
 }
@@ -136,7 +132,14 @@ export async function getOutputTokenCeiling(modelId: string): Promise<number> {
   try {
     model = await lookUpPricedModel(modelId, getMemoizedCatalogModel);
   } catch (error) {
-    if (!(error instanceof ModelCatalogUnavailableError)) throw error;
+    logger.error(
+      {
+        modelId,
+        err: error instanceof Error ? error.cause : error,
+        event: 'model_catalog_unavailable',
+      },
+      'Model catalog read failed — falling back to DEFAULT_OUTPUT_TOKEN_CEILING',
+    );
     return DEFAULT_OUTPUT_TOKEN_CEILING;
   }
   if (!model) {

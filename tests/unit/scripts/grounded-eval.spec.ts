@@ -16,7 +16,7 @@ import {
   summarizeArm,
 } from '../../../scripts/eval/grounded/scoring';
 import { planRequestBody } from '../../../scripts/eval/grounded/topics';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 function lesson(
   arm: ScoredLesson['arm'],
@@ -387,5 +387,19 @@ describe('classifyWorkflowSteps', () => {
       longestCallMs: 180_000,
       hitCallCap: true,
     });
+  });
+
+  it('uses the configured lesson timeout as the call cap', () => {
+    vi.stubEnv('AI_LESSON_TIMEOUT_MS', '90000');
+    try {
+      expect(
+        classifyWorkflowSteps(
+          [{ name: 'generate-1', attempts: [attempt('46:14', '47:44', true)] }],
+          false,
+        ),
+      ).toEqual({ longestCallMs: 90_000, hitCallCap: true });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });
