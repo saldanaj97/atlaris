@@ -45,12 +45,16 @@ export function isPersistableModelId(modelId: string): boolean {
 
 /**
  * Models the user may pick in AI settings: the current tier × operation
- * policy catalog excluding runtime-only routers.
+ * policy catalog excluding runtime-only routers. Only Pro picks a lesson
+ * model; other tiers' lessons are code-owned.
  */
 export async function getPersistableModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
 ): Promise<AvailableModel[]> {
+  if (operation === 'lesson' && tier !== 'pro') {
+    return [];
+  }
   return (await getModelsForTier(tier, operation)).filter(
     (m) => !isRuntimeOnlyModelId(m.id),
   );
@@ -60,7 +64,8 @@ export async function getPersistableModelsForTier(
  * Models Starter sees in its picker but cannot pick (Settings shows them
  * disabled with a Pro plan badge): its picker-hidden guardrail models plus Pro
  * guardrail models missing from the Starter guardrail, without runtime-only
- * routers. Empty for Free, Pro and operations that offer no guardrail models.
+ * routers. Empty for Free, Pro, lessons and operations that offer no guardrail
+ * models.
  * Validation still rejects these models (`tier_denied`).
  */
 export async function getProOnlyModelsForTier(
@@ -69,6 +74,7 @@ export async function getProOnlyModelsForTier(
 ): Promise<AvailableModel[]> {
   if (
     tier !== 'starter' ||
+    operation === 'lesson' ||
     !getModelOperationPolicy(tier, operation).usesTierCatalog
   ) {
     return [];

@@ -12,6 +12,7 @@ import {
   hasGroundedRegenerationQuota,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
+  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
@@ -252,7 +253,7 @@ describe('legacy policy with grounded generation off', () => {
     );
     expect(getModelOperationPolicy('free', 'regeneration').allowed).toBe(false);
     expect(getModelOperationPolicy('starter', 'lesson').defaultModelId).toBe(
-      'openai/gpt-6-luna',
+      STARTER_DEFAULT_MODEL_ID,
     );
   });
 });

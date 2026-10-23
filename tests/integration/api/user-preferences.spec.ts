@@ -344,6 +344,45 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
+  it('GET keeps Starter lessons on the default when a Pro lesson pick is saved', async () => {
+    // Own user, so the saved lesson pick doesn't leak into other cases.
+    const authUserId = `${testAuthUserId}-lesson`;
+    await ensureUser({
+      authUserId,
+      email: `${authUserId}@example.com`,
+      subscriptionTier: 'pro',
+    });
+    setTestUser(authUserId);
+    // The outline pick is saved too: the actor lookup currently drops every
+    // saved slot when `preferred_ai_model` is null.
+    const patchResponse = await PATCH(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          preferredAiModel: STARTER_MODEL_ID,
+          preferredLessonAiModel: PRO_LESSON_MODEL_ID,
+        }),
+      }),
+    );
+    expect(patchResponse.status).toBe(200);
+    // Downgrade: Starter's guardrail also lists the saved Pro lesson pick.
+    await db
+      .update(users)
+      .set({ subscriptionTier: 'starter' })
+      .where(eq(users.authUserId, authUserId));
+
+    const response = await GET(
+      new Request('http://localhost/api/v1/user/preferences', {
+        method: 'GET',
+      }),
+    );
+    expect(response.status).toBe(200);
+    const data = expectJsonObject(await response.json());
+    expect(data.preferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
+    expect(data.effectivePreferredLessonAiModel).toBe(STARTER_DEFAULT_MODEL_ID);
+  });
+
   it('can save every selectable Starter model and leaves lesson unused', async () => {
     setTestUser(testAuthUserId);
 

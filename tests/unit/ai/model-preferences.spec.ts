@@ -70,16 +70,22 @@ describe('model-preferences', () => {
       }
     });
 
-    it('Starter persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
+    it('Starter outline/regen persistable lists are the Starter guardrail models minus grounded-only ones', async () => {
       const expected = MODEL_CATALOG_FIXTURE.starter
         .map((model) => model.modelId)
         .filter((id) => id !== 'openai/gpt-6.1-sol')
         .sort();
-      for (const operation of MODEL_OPERATIONS) {
+      for (const operation of ['initial_outline', 'regeneration'] as const) {
         expect(
           ids(await getPersistableModelsForTier('starter', operation)),
         ).toEqual(expected);
       }
+    });
+
+    it('Starter lesson persistable list is empty', async () => {
+      expect(await getPersistableModelsForTier('starter', 'lesson')).toEqual(
+        [],
+      );
     });
 
     it('Pro persistable list is the Pro guardrail models without the router', async () => {
@@ -93,9 +99,12 @@ describe('model-preferences', () => {
       expect(proModels.some((m) => m.id === AI_DEFAULT_MODEL)).toBe(false);
     });
 
-    it('matches the operation models minus runtime-only ids', async () => {
+    it('matches the operation models minus runtime-only ids where the tier picks that operation', async () => {
       for (const tier of ['free', 'starter', 'pro'] as const) {
         for (const operation of MODEL_OPERATIONS) {
+          if (operation === 'lesson' && tier !== 'pro') {
+            continue;
+          }
           expect(
             (await getPersistableModelsForTier(tier, operation)).map(
               (m) => m.id,
@@ -150,11 +159,12 @@ describe('model-preferences', () => {
       expect(proOnly).toContain(PRO_ONLY_MODEL_ID);
     });
 
-    it('is empty for Free and Pro', async () => {
+    it('is empty for Free, Pro and Starter lessons', async () => {
       for (const operation of MODEL_OPERATIONS) {
         expect(await getProOnlyModelsForTier('free', operation)).toEqual([]);
         expect(await getProOnlyModelsForTier('pro', operation)).toEqual([]);
       }
+      expect(await getProOnlyModelsForTier('starter', 'lesson')).toEqual([]);
     });
   });
 

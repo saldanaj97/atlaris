@@ -1,4 +1,5 @@
 import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
+import { STARTER_DEFAULT_MODEL_ID } from '@/features/ai/model-operation-policy';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import * as Sentry from '@sentry/nextjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -27,7 +28,7 @@ vi.mock('@openrouter/sdk/funcs/chatSend', () => ({
     ),
 }));
 
-const LUNA = 'openai/gpt-6-luna';
+const LUNA = STARTER_DEFAULT_MODEL_ID;
 const LESSON_PRESET = 'test-lesson-preset';
 const lessonInput = { userPrompt: 'lesson user prompt', taskIds: ['task-1'] };
 
@@ -80,9 +81,9 @@ describe('Starter lesson model route (DEV-180)', () => {
     expect(Sentry.captureMessage).not.toHaveBeenCalled();
   });
 
-  it('records the free model OpenRouter served when Luna failed', async () => {
-    // OpenRouter answers from the next route model when Luna errors or times
-    // out upstream, and names the model that served the response.
+  it('records the model OpenRouter served on the [luna, free] fallback route', async () => {
+    // OpenRouter answers from the next route model when Luna errors upstream
+    // and names the model that served the response.
     const servedFreeModel = 'nvidia/nemotron-3.5-lightning:free';
     mockSend.mockResolvedValueOnce({
       model: servedFreeModel,
@@ -92,6 +93,13 @@ describe('Starter lesson model route (DEV-180)', () => {
     const { provider } = await resolveStarterLessonProvider();
     const result = await provider.generateModuleLessonBatch(lessonInput);
 
+    const [{ chatRequest }] = mockSend.mock.calls[0] as [
+      { chatRequest: Record<string, unknown> },
+    ];
+    expect(chatRequest.models).toEqual([
+      `${LUNA}@preset/${LESSON_PRESET}`,
+      `${AI_DEFAULT_MODEL}@preset/${LESSON_PRESET}`,
+    ]);
     expect(result.metadata.model).toBe(servedFreeModel);
   });
 });

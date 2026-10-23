@@ -327,8 +327,12 @@ async function generateStep(
     return { kind: 'disabled' };
   }
 
-  const provider = await resolveModuleLessonProvider(
-    { userId: run.target.userId, modelOverride: run.params.modelOverride },
+  const { provider, route } = await resolveModuleLessonProvider(
+    {
+      userId: run.target.userId,
+      planId: run.target.planId,
+      modelOverride: run.params.modelOverride,
+    },
     db,
     run.deps.provider,
   );
@@ -336,6 +340,7 @@ async function generateStep(
     target: run.target,
     batchInput: buildModuleLessonBatchInput(promptInput),
     provider,
+    route,
     dbClient: db,
     timeoutConfig: resolveTimeoutConfig({ baseMs: resolveLessonTimeoutMs() }),
     now: run.now,

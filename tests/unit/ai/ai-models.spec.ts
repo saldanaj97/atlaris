@@ -10,7 +10,10 @@ import {
   resolveDefaultModelForTier,
 } from '@/features/ai/ai-models';
 import { FREE_ROUTER_MODEL } from '@/features/ai/model-catalog/catalog';
-import { getGroundedModelRoute } from '@/features/ai/model-operation-policy';
+import {
+  getGroundedModelRoute,
+  STARTER_DEFAULT_MODEL_ID,
+} from '@/features/ai/model-operation-policy';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -130,19 +133,19 @@ describe('AI Models Configuration', () => {
     });
 
     it('warns and keeps the list when the default falls back', async () => {
-      await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
+      await dropFromGuardrail('starter', [STARTER_DEFAULT_MODEL_ID]);
       const warnSpy = vi.spyOn(logger, 'warn');
 
       const ids = (await getModelsForTier('starter', 'initial_outline')).map(
         (m) => m.id,
       );
 
-      expect(ids).not.toContain('openai/gpt-6-luna');
+      expect(ids).not.toContain(STARTER_DEFAULT_MODEL_ID);
       expect(warnSpy).toHaveBeenCalledWith(
         expect.objectContaining({
           event: 'model_default_not_in_guardrail',
           tier: 'starter',
-          defaultModelId: 'openai/gpt-6-luna',
+          defaultModelId: STARTER_DEFAULT_MODEL_ID,
           fallbackModelId: 'deepseek/deepseek-v4.1-flash',
         }),
         expect.any(String),
@@ -151,7 +154,7 @@ describe('AI Models Configuration', () => {
 
     it('adds the free router and logs an error when every fallback left the guardrail', async () => {
       await dropFromGuardrail('starter', [
-        'openai/gpt-6-luna',
+        STARTER_DEFAULT_MODEL_ID,
         'deepseek/deepseek-v4.1-flash',
       ]);
       const errorSpy = vi.spyOn(logger, 'error');
@@ -165,7 +168,7 @@ describe('AI Models Configuration', () => {
         expect.objectContaining({
           event: 'model_default_not_in_guardrail',
           tier: 'starter',
-          defaultModelId: 'openai/gpt-6-luna',
+          defaultModelId: STARTER_DEFAULT_MODEL_ID,
           fallbackModelId: AI_DEFAULT_MODEL,
         }),
         expect.any(String),
@@ -178,9 +181,12 @@ describe('AI Models Configuration', () => {
     it('does not flag a listed default or a paid fallback', async () => {
       expect(
         await resolveDefaultModelForTier('starter', 'initial_outline'),
-      ).toEqual({ modelId: 'openai/gpt-6-luna', freeRouterFallback: false });
+      ).toEqual({
+        modelId: STARTER_DEFAULT_MODEL_ID,
+        freeRouterFallback: false,
+      });
 
-      await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
+      await dropFromGuardrail('starter', [STARTER_DEFAULT_MODEL_ID]);
       vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
       expect(
         await resolveDefaultModelForTier('starter', 'initial_outline'),
@@ -203,16 +209,16 @@ describe('AI Models Configuration', () => {
 
     it('returns GPT-6 Luna for Starter outline and regen', async () => {
       expect(await getDefaultModelForTier('starter', 'initial_outline')).toBe(
-        'openai/gpt-6-luna',
+        STARTER_DEFAULT_MODEL_ID,
       );
       expect(await getDefaultModelForTier('starter', 'regeneration')).toBe(
-        'openai/gpt-6-luna',
+        STARTER_DEFAULT_MODEL_ID,
       );
     });
 
     it('returns GPT-6 Luna for Starter lesson, not the free router', async () => {
       expect(await resolveDefaultModelForTier('starter', 'lesson')).toEqual({
-        modelId: 'openai/gpt-6-luna',
+        modelId: STARTER_DEFAULT_MODEL_ID,
         freeRouterFallback: false,
       });
     });
@@ -230,7 +236,7 @@ describe('AI Models Configuration', () => {
     });
 
     it('uses the first listed fallback when the default left the guardrail', async () => {
-      await dropFromGuardrail('starter', ['openai/gpt-6-luna']);
+      await dropFromGuardrail('starter', [STARTER_DEFAULT_MODEL_ID]);
       await dropFromGuardrail('pro', ['anthropic/claude-sonnet-5.5']);
       vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
 
@@ -258,7 +264,7 @@ describe('AI Models Configuration', () => {
 
     it('falls back to the free router when every fallback left the guardrail', async () => {
       await dropFromGuardrail('starter', [
-        'openai/gpt-6-luna',
+        STARTER_DEFAULT_MODEL_ID,
         'deepseek/deepseek-v4.1-flash',
       ]);
       await dropFromGuardrail('pro', [
@@ -279,7 +285,7 @@ describe('AI Models Configuration', () => {
     it('never picks a hidden model as the default', async () => {
       // Only the hidden GPT-6.1 Sol and Haiku remain in the Starter guardrail.
       await dropFromGuardrail('starter', [
-        'openai/gpt-6-luna',
+        STARTER_DEFAULT_MODEL_ID,
         'deepseek/deepseek-v4.1-flash',
       ]);
       vi.spyOn(logger, 'error').mockImplementation(() => undefined);
@@ -308,7 +314,7 @@ describe('AI Models Configuration', () => {
       expect(
         getFallbackModelsForTier(
           'starter',
-          'openai/gpt-6-luna',
+          STARTER_DEFAULT_MODEL_ID,
           'initial_outline',
         ),
       ).toEqual([]);
@@ -323,7 +329,7 @@ describe('AI Models Configuration', () => {
 
     it('uses openrouter/free as the only Starter/Free lesson fallback', () => {
       expect(
-        getFallbackModelsForTier('starter', 'openai/gpt-6-luna', 'lesson'),
+        getFallbackModelsForTier('starter', STARTER_DEFAULT_MODEL_ID, 'lesson'),
       ).toEqual([AI_DEFAULT_MODEL]);
       expect(
         getFallbackModelsForTier('free', AI_DEFAULT_MODEL, 'lesson'),
