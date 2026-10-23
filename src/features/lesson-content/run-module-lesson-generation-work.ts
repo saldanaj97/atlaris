@@ -7,11 +7,15 @@ import type {
 } from '@/features/lesson-content/generate-module-lessons.types';
 import type { ModuleLessonGenerationContext } from '@/lib/db/queries/module-lesson-generation';
 import type { DbClient } from '@/lib/db/types';
+import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 import type { CanonicalAIUsage } from '@/shared/types/ai-usage.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { ModuleLessonGenerationMetadata } from '@/shared/types/lesson-content.types';
 
-import { AI_DEFAULT_MODEL } from '@/features/ai/ai-models';
+import {
+  AI_DEFAULT_MODEL,
+  getFallbackModelsForTier,
+} from '@/features/ai/ai-models';
 import { resolveOverrideOrSavedModelId } from '@/features/ai/model-preferences';
 import { resolveModelForTier } from '@/features/ai/model-resolver';
 import { generateModuleLessonBatchWithInstrumentation } from '@/features/ai/orchestrator/provider-invocation';
@@ -132,10 +136,11 @@ export function buildModuleLessonBatchInput(
   };
 }
 
-/** The resolved route's tier and primary model; absent for an injected provider. */
+/** The resolved route's tier and models; absent for an injected provider. */
 export type ModuleLessonRoute = {
   readonly tier: SubscriptionTier;
   readonly primaryModelId: string;
+  readonly fallbackModelIds: readonly string[];
 };
 
 export type ModuleLessonProviderResolution = {
@@ -190,7 +195,11 @@ export async function resolveModuleLessonProvider(
           currentTier,
           'lesson',
         ),
-        route: { tier: currentTier, primaryModelId: AI_DEFAULT_MODEL },
+        route: {
+          tier: currentTier,
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
       };
     }
   }
@@ -202,22 +211,34 @@ export async function resolveModuleLessonProvider(
   );
   return {
     provider: resolution.provider,
-    route: { tier: currentTier, primaryModelId: resolution.modelId },
+    route: {
+      tier: currentTier,
+      primaryModelId: resolution.modelId,
+      fallbackModelIds: getFallbackModelsForTier(
+        currentTier,
+        resolution.modelId,
+        'lesson',
+      ),
+    },
   };
 }
 
 /**
  * Warns when OpenRouter served a paid-tier lesson from a fallback route model
- * instead of the resolved primary (DEV-180).
+ * instead of the resolved primary (DEV-180). Only routes that list fallbacks
+ * qualify; a free-router fallback serves a concrete `:free` model, so the
+ * served name is compared with the primary, not the fallback list.
  */
 export function reportLessonRouteFallback(
   route: ModuleLessonRoute | undefined,
-  servedModel: string | undefined,
+  metadata: Pick<ProviderMetadata, 'provider' | 'model'>,
 ): void {
+  const servedModel = metadata.model;
   if (
     !route ||
     route.tier === 'free' ||
-    route.primaryModelId === AI_DEFAULT_MODEL ||
+    route.fallbackModelIds.length === 0 ||
+    metadata.provider !== 'openrouter' ||
     !servedModel ||
     servedModel.startsWith(route.primaryModelId)
   ) {
@@ -278,7 +299,7 @@ export async function generateModuleLessonRawBatch(input: {
     const rawText = await bufferModuleLessonBatchStream(providerResult.stream, {
       signal: controller.signal,
     });
-    reportLessonRouteFallback(input.route, providerResult.metadata.model);
+    reportLessonRouteFallback(input.route, providerResult.metadata);
 
     return {
       rawText,

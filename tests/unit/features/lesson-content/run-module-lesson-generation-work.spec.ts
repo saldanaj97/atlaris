@@ -668,7 +668,11 @@ describe('runModuleLessonGenerationWork', () => {
 
       expect(resolution).toEqual({
         provider: freeProvider,
-        route: { tier: 'starter', primaryModelId: AI_DEFAULT_MODEL },
+        route: {
+          tier: 'starter',
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
       });
       expect(mocks.sumPlanAiSpendMicrousd).toHaveBeenCalledWith(planId, fakeDb);
       expect(mocks.getGenerationProviderWithModel).toHaveBeenCalledWith(
@@ -691,34 +695,65 @@ describe('runModuleLessonGenerationWork', () => {
 
       expect(resolution).toEqual({
         provider: lunaProvider,
-        route: { tier: 'starter', primaryModelId: STARTER_DEFAULT_MODEL_ID },
+        route: {
+          tier: 'starter',
+          primaryModelId: STARTER_DEFAULT_MODEL_ID,
+          fallbackModelIds: [AI_DEFAULT_MODEL],
+        },
       });
       expect(mocks.getGenerationProviderWithModel).not.toHaveBeenCalled();
     });
   });
 
   describe('reportLessonRouteFallback', () => {
-    it('warns and alerts when a fallback model served a paid lesson, not when the primary did', () => {
-      const warn = vi.spyOn(logger, 'warn');
-      const route = {
-        tier: 'starter',
-        primaryModelId: STARTER_DEFAULT_MODEL_ID,
-      } as const;
+    const route = {
+      tier: 'starter',
+      primaryModelId: STARTER_DEFAULT_MODEL_ID,
+      fallbackModelIds: [AI_DEFAULT_MODEL],
+    } as const;
+    const freeModel = 'nvidia/nemotron-3.5-lightning:free';
 
-      reportLessonRouteFallback(route, `${STARTER_DEFAULT_MODEL_ID}-20261001`);
+    it('ignores the primary, mock providers and routes without fallbacks', () => {
+      reportLessonRouteFallback(route, {
+        provider: 'openrouter',
+        model: `${STARTER_DEFAULT_MODEL_ID}-20261001`,
+      });
+      reportLessonRouteFallback(route, {
+        provider: 'mock',
+        model: 'mock-module-lesson-batch-v1',
+      });
       reportLessonRouteFallback(
-        { tier: 'starter', primaryModelId: AI_DEFAULT_MODEL },
-        'nvidia/nemotron-3.5-lightning:free',
+        {
+          tier: 'pro',
+          primaryModelId: 'anthropic/claude-haiku-5.5',
+          fallbackModelIds: [],
+        },
+        { provider: 'openrouter', model: 'anthropic/claude-haiku-5.5-x' },
+      );
+      reportLessonRouteFallback(
+        {
+          tier: 'starter',
+          primaryModelId: AI_DEFAULT_MODEL,
+          fallbackModelIds: [],
+        },
+        { provider: 'openrouter', model: freeModel },
       );
       expect(Sentry.captureMessage).not.toHaveBeenCalled();
+    });
 
-      reportLessonRouteFallback(route, 'nvidia/nemotron-3.5-lightning:free');
+    it('warns and alerts when a fallback model served a paid lesson', () => {
+      const warn = vi.spyOn(logger, 'warn');
+
+      reportLessonRouteFallback(route, {
+        provider: 'openrouter',
+        model: freeModel,
+      });
 
       const fields = {
         event: 'lesson_route_fallback',
         tier: 'starter',
         primaryModelId: STARTER_DEFAULT_MODEL_ID,
-        servedModel: 'nvidia/nemotron-3.5-lightning:free',
+        servedModel: freeModel,
       };
       expect(warn).toHaveBeenCalledWith(fields, expect.any(String));
       expect(Sentry.captureMessage).toHaveBeenCalledTimes(1);
