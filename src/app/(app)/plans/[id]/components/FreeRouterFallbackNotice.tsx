@@ -6,7 +6,7 @@ import type {
 import { GenerationAlertPanel } from './generation-alert-panel';
 
 /** Names the content the free router generated, as the sentence subject. */
-export function describeFreeRouterContent(notice: FreeRouterNotice): string {
+function describeFreeRouterContent(notice: FreeRouterNotice): string {
   const lessons =
     notice.lessonModuleCount === 1
       ? 'lessons in 1 module'
