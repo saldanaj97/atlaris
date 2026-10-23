@@ -114,7 +114,7 @@ If you need a new variable:
 
 The application uses Clerk Auth for UI, route protection, and server session reads.
 
-**Clerk UI delivery:** Auth and billing UI load from Clerk’s CDN through the default `@clerk/nextjs` `ClerkProvider` path (`src/app/layout.tsx`). The app does **not** pin or bundle `@clerk/ui`. CSP allows Clerk Frontend API scripts via `https://*.clerk.accounts.dev` in `src/lib/proxy/security-headers.ts`. If sign-in, UserButton, or pricing UI fails to load, check that CSP allowlist and network access to Clerk accounts hosts before assuming an app bug. Appearance and localization still come from Atlaris props on `ClerkProvider`.
+**Clerk UI delivery:** Auth and billing UI load from Clerk’s CDN through the default `@clerk/nextjs` `ClerkProvider` path (`src/app/layout.tsx`). The app does **not** pin or bundle `@clerk/ui`. CSP allows Clerk Frontend API scripts via `https://*.clerk.accounts.dev` (plus the Production Frontend API host decoded from the publishable key) and Clerk's bot protection via `https://*.protect.clerk.com` (`script-src` and `frame-src`) in `src/lib/proxy/security-headers.ts`. If sign-in, UserButton, or pricing UI fails to load, check that CSP allowlist and network access to Clerk accounts hosts before assuming an app bug. Appearance and localization still come from Atlaris props on `ClerkProvider`.
 
 Key auth-related server variables include:
 
