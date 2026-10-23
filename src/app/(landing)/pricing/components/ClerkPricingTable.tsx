@@ -19,7 +19,7 @@ import {
   SubscriptionDetailsButton,
 } from '@clerk/nextjs/experimental';
 import Link from 'next/link';
-import { useEffect, useRef, useState, type ComponentProps } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 type ClerkFeature = { name?: string | null };
 
@@ -41,12 +41,7 @@ type ClerkSubscriptionSnapshot = {
   }>;
 };
 
-type ClerkBillingAppearance = NonNullable<
-  ComponentProps<typeof CheckoutButton>['checkoutProps']
->['appearance'];
-
 type ClerkPricingTableProps = {
-  appearance: ClerkBillingAppearance;
   newSubscriptionRedirectUrl: string;
   /** Maintenance or launch waitlist: plans stay visible but every CTA goes through the proxy instead of Clerk modals. */
   appClosed?: boolean;
@@ -161,7 +156,6 @@ function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
 }
 
 export function ClerkPricingTable({
-  appearance,
   newSubscriptionRedirectUrl,
   appClosed = false,
 }: ClerkPricingTableProps) {
@@ -331,9 +325,7 @@ export function ClerkPricingTable({
 
         if (userId && shouldManageSubscription(plan.slug, activePaidPlanSlug)) {
           return (
-            <SubscriptionDetailsButton
-              subscriptionDetailsProps={{ appearance }}
-            >
+            <SubscriptionDetailsButton>
               <button className={actionClassName} ref={actionRef} type='button'>
                 {plan.slug === activePaidPlanSlug
                   ? 'Current plan'
@@ -384,7 +376,6 @@ export function ClerkPricingTable({
             />
             {userId ? (
               <CheckoutButton
-                checkoutProps={{ appearance }}
                 newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
                 planId={plan.id}
                 planPeriod={planPeriod}

@@ -18,23 +18,6 @@ export const metadata: Metadata = {
     'Compare Atlaris plans and choose the subscription that fits your learning goals.',
 };
 
-/** Clerk Billing appearance aligned to current semantic tokens. */
-const pricingAppearance = {
-  variables: {
-    borderRadius: '2rem',
-    colorBackground: 'transparent',
-    colorPrimary: 'var(--primary)',
-    colorText: 'var(--foreground)',
-    colorTextSecondary: 'var(--muted-foreground)',
-    fontFamily: 'var(--font-family-display)',
-  },
-  elements: {
-    rootBox: 'w-full',
-    pricingTable: 'w-full',
-    pricingTableCard: 'shadow-none',
-  },
-} as const;
-
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
   // The proxy keeps /pricing live while a site gate is on; skip the account DB read.
@@ -56,7 +39,6 @@ export default async function PricingPage(): Promise<ReactElement> {
       <PricingShell>
         {showClerkBilling ? (
           <ClerkPricingTable
-            appearance={pricingAppearance}
             appClosed={appClosed}
             newSubscriptionRedirectUrl={checkoutReturnUrl}
           />
