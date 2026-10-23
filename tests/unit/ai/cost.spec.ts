@@ -7,14 +7,20 @@ import {
   computeCostCents,
   DEFAULT_OUTPUT_TOKEN_CEILING,
   getOutputTokenCeiling,
-  UnknownModelError,
+  ModelCatalogUnavailableError,
 } from '@/features/ai/cost';
+import { resetModelCatalogStateForTests } from '@/features/ai/model-catalog/catalog';
 import { selectCatalogModel } from '@/features/ai/model-catalog/store';
 import { logger } from '@/lib/logging/logger';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const SYNCED_MODELS = Object.values(MODEL_CATALOG_FIXTURE).flat();
 const GPT_6_SOL = 'openai/gpt-6-sol';
+
+// Output ceilings are remembered per process; each test starts clean.
+beforeEach(() => {
+  resetModelCatalogStateForTests();
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -93,7 +99,7 @@ describe('computeCostCents', () => {
     }
   });
 
-  it('treats an unreadable catalog as an unknown model and logs it', async () => {
+  it('reports an unreadable catalog apart from an unknown model, leaving the log to the caller', async () => {
     vi.mocked(selectCatalogModel).mockRejectedValueOnce(
       new Error('no database client'),
     );
@@ -101,11 +107,8 @@ describe('computeCostCents', () => {
 
     await expect(
       computeCostCents('openai/gpt-6-sol', 1000, 500),
-    ).rejects.toBeInstanceOf(UnknownModelError);
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ event: 'model_catalog_unavailable' }),
-      expect.any(String),
-    );
+    ).rejects.toBeInstanceOf(ModelCatalogUnavailableError);
+    expect(errorSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -117,6 +120,15 @@ describe('getOutputTokenCeiling', () => {
     expect(await getOutputTokenCeiling('deepseek/deepseek-v4.1-flash')).toBe(
       943_718,
     );
+  });
+
+  it('reads the catalog once for repeated lookups of a model', async () => {
+    vi.mocked(selectCatalogModel).mockClear();
+
+    await getOutputTokenCeiling(GPT_6_SOL);
+    await getOutputTokenCeiling(GPT_6_SOL);
+
+    expect(selectCatalogModel).toHaveBeenCalledOnce();
   });
 
   it('returns DEFAULT_OUTPUT_TOKEN_CEILING for the free router', async () => {
@@ -150,10 +162,17 @@ describe('getOutputTokenCeiling', () => {
     vi.mocked(selectCatalogModel).mockRejectedValueOnce(
       new Error('no database client'),
     );
-    vi.spyOn(logger, 'error').mockImplementation(() => undefined);
+    const errorSpy = vi
+      .spyOn(logger, 'error')
+      .mockImplementation(() => undefined);
 
     expect(await getOutputTokenCeiling(GPT_6_SOL)).toBe(
       DEFAULT_OUTPUT_TOKEN_CEILING,
+    );
+    expect(errorSpy).toHaveBeenCalledOnce();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'model_catalog_unavailable' }),
+      expect.any(String),
     );
   });
 });

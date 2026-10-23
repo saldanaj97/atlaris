@@ -140,17 +140,20 @@ export async function getDefaultModelForTier(
 
 /**
  * {@link getDefaultModelForTier} plus whether that default is the free router
- * only because the tier's guardrail left no paid default.
+ * only because the tier's guardrail left no paid default, and the
+ * {@link getModelsForTier} list it was resolved from.
  */
 export async function resolveDefaultModelForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
-): Promise<{ modelId: string; freeRouterFallback: boolean }> {
-  const { defaultModelId, freeRouterFallback } = await resolveTierModels(
-    tier,
-    operation,
-  );
-  return { modelId: defaultModelId, freeRouterFallback };
+): Promise<{
+  modelId: string;
+  freeRouterFallback: boolean;
+  models: AvailableModel[];
+}> {
+  const { defaultModelId, freeRouterFallback, models } =
+    await resolveTierModels(tier, operation);
+  return { modelId: defaultModelId, freeRouterFallback, models };
 }
 
 /**

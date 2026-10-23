@@ -399,9 +399,17 @@ async function cleanup(): Promise<void> {
   );
   // ponytail: never fall back to the current port owner when listenPid is null
   await terminateOwned(recordedListenerPid(run), isOwnedListenerCommand, 500);
-  // Native runs record no container; their database is dropped by the supervisor.
   if (run.containerId) {
     dockerStop(run.containerId);
+  }
+  // Native runs record no container; drop their database in case the
+  // supervisor died before its own shutdown handler ran.
+  try {
+    await dropNativeSmokeDatabase(run.nativeSmokeDbUrl ?? null);
+  } catch (error) {
+    console.warn(
+      `VERIFY_CLEANUP could not drop the native smoke database: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   if (run.stateFile) {
     cleanupSmokeStateFile(run.stateFile);
@@ -482,7 +490,11 @@ async function launch(mode: Mode): Promise<void> {
   try {
     let connectionUrl: string;
     if (nativeTestDb) {
-      nativeSmokeDbUrl = await createNativeSmokeDatabase();
+      // A name of its own: cleanup from a stale run file can then drop only
+      // this run's database, never the shared smoke runner's.
+      nativeSmokeDbUrl = await createNativeSmokeDatabase(
+        `atlaris_test_verify_smoke_${Date.now()}`,
+      );
       connectionUrl = nativeSmokeDbUrl;
     } else {
       container = await startSmokePostgresContainer();
@@ -496,6 +508,7 @@ async function launch(mode: Mode): Promise<void> {
       appPid: null,
       listenPid: null,
       containerId: container?.getId() ?? '',
+      ...(nativeSmokeDbUrl ? { nativeSmokeDbUrl } : {}),
       stateFile: '',
     });
     await prepareSmokeDatabase(connectionUrl);

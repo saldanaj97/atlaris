@@ -8,14 +8,16 @@ Each tier's selectable models come from that tier's OpenRouter guardrail, not fr
 
 `src/features/ai/model-catalog/` syncs it into `openrouter_tier_models`, keyed by `(tier, model_id)`:
 
-| Piece                  | File                  | What it does                                                                                                                                                                   |
-| :--------------------- | :-------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `fetchGuardrailModels` | `guardrail-models.ts` | Fetches with a 5s timeout. Skips and logs a malformed or variable (`-1`) priced model. A non-2xx response, a malformed body, or a list with no valid model throws.             |
-| `syncTierModelCatalog` | `catalog.ts`          | Replaces the tier's rows in one transaction after a successful fetch. On any failure it keeps the last good rows and logs `model_catalog_sync_failed`.                         |
-| `getTierModels`        | `catalog.ts`          | Reads a tier's rows, cheapest first. Refresh-on-read: rows older than 15 minutes (or none) sync first. After a failed sync, reads use the stored rows for 60s before retrying. |
-| `getCatalogModel`      | `catalog.ts`          | Pricing and limits for one model id from the most recently synced tier. `openrouter/free` returns the code-owned `FREE_ROUTER_MODEL`.                                          |
+| Piece                  | File                  | What it does                                                                                                                                                                                                                                                                                                                           |
+| :--------------------- | :-------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fetchGuardrailModels` | `guardrail-models.ts` | Fetches with a 5s timeout. Skips and logs a malformed or variable (`-1`) priced model. A non-2xx response, a malformed body, or a list with no valid model throws.                                                                                                                                                                     |
+| `syncTierModelCatalog` | `catalog.ts`          | Replaces the tier's rows in one transaction after a successful fetch. On any failure it keeps the last good rows and logs `model_catalog_sync_failed`.                                                                                                                                                                                 |
+| `getTierModels`        | `catalog.ts`          | Reads a tier's rows, cheapest first. Refresh-on-read: rows older than 15 minutes (or none) sync first, and the read waits for that sync. Concurrent reads share one sync but each runs its own query, because the Worker binds the database per Workflow step. After a failed sync, reads use the stored rows for 60s before retrying. |
+| `getCatalogModel`      | `catalog.ts`          | Pricing and limits for one model id from the most recently synced tier. `openrouter/free` returns the code-owned `FREE_ROUTER_MODEL`. A row still carrying the seed's epoch `synced_at` logs `model_catalog_seed_pricing` once per model and process.                                                                                  |
 
-A runtime syncs a tier only when it has that tier's own key; there is no fallback to `OPENROUTER_API_KEY`. The Next.js app has all three keys and keeps the table fresh. The jobs Worker has only `OPENROUTER_API_KEY`, so it reads what the app synced and never syncs.
+A runtime syncs a tier only when it has that tier's own key; there is no fallback to `OPENROUTER_API_KEY`. The Next.js app has all three keys and keeps the table fresh. The jobs Worker has only `OPENROUTER_API_KEY`, so it reads what the app synced and never syncs; a runtime without a tier's key logs `model_catalog_sync_skipped_no_key` once per process.
+
+Migration `20261023210000_seed_openrouter_tier_models.sql` seeds Starter and Pro, only when the tier has no rows, with the pre-guardrail code list at an epoch `synced_at`, so the Worker never reads an empty tier and the app's first read replaces the rows. Until a sync succeeds, those seeded prices are what cost and ceilings use.
 
 The table is deny-all under RLS; only the service-role client reads or writes it.
 
@@ -47,7 +49,7 @@ Starter lessons are code-owned: Settings offers no lesson picker, the preference
 
 ## Costs and output ceilings
 
-`computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. Every jobs Worker step that makes a model call runs inside `withDb`, so it reads the table. When the table cannot be read, cost lookups log `model_catalog_unavailable`, the estimate falls back to unknown, and the ceiling falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`; provider-reported cost still applies.
+`computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. Every jobs Worker step that makes a model call runs inside `withDb`, so it reads the table. When the table cannot be read, `computeCostCents` throws `ModelCatalogUnavailableError` (apart from `UnknownModelError`); usage records log `model_catalog_unavailable_cost_skipped` and store a 0 estimate, so provider-reported cost is the only cost on that row. `getOutputTokenCeiling` logs `model_catalog_unavailable` and falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`. Ceilings use `getMemoizedCatalogModel`, which remembers a found model per process for 15 minutes or until a sync; unknown models and lookups that raced a sync are not remembered.
 
 Usage cost is computed when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so a guardrail price change never reprices past usage.
 

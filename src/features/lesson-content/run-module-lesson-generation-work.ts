@@ -228,6 +228,18 @@ export async function resolveModuleLessonProvider(
   };
 }
 
+/** Matches a dated snapshot suffix such as `-20261001` or `-2026-10-01`. */
+const DATED_SNAPSHOT_SUFFIX = /^-\d{4}-?\d{2}-?\d{2}$/;
+
+/** The served slug is the primary itself or a dated snapshot of it. */
+function isServedAsPrimary(servedModel: string, primaryModelId: string) {
+  return (
+    servedModel === primaryModelId ||
+    (servedModel.startsWith(primaryModelId) &&
+      DATED_SNAPSHOT_SUFFIX.test(servedModel.slice(primaryModelId.length)))
+  );
+}
+
 /**
  * Warns when OpenRouter served a paid-tier lesson from a fallback route model
  * instead of the resolved primary (DEV-180). Only routes that list fallbacks
@@ -246,7 +258,7 @@ export function reportLessonRouteFallback(
     route.fallbackModelIds.length === 0 ||
     metadata.provider !== 'openrouter' ||
     !servedModel ||
-    servedModel.startsWith(route.primaryModelId)
+    isServedAsPrimary(servedModel, route.primaryModelId)
   ) {
     return false;
   }
@@ -269,11 +281,14 @@ export function reportLessonRouteFallback(
 /**
  * Whether a paid-tier lesson ran on the free router: its guardrail left no
  * paid default, or OpenRouter served it from a route whose only fallback is
- * the free router ({@link reportLessonRouteFallback} returned true).
+ * the free router ({@link reportLessonRouteFallback} returned true) and the
+ * served model is a `:free` one. A paid variant the primary check misses
+ * (`-preview`, `:thinking`) still alerts but is not shown as the free router.
  */
 export function lessonServedByFreeRouterFallback(
   route: ModuleLessonRoute | undefined,
   servedByRouteFallback: boolean,
+  servedModel?: string,
 ): boolean {
   if (!route || route.tier === 'free') {
     return false;
@@ -281,6 +296,7 @@ export function lessonServedByFreeRouterFallback(
   return (
     route.freeRouterFallback === true ||
     (servedByRouteFallback &&
+      servedModel?.endsWith(':free') === true &&
       route.fallbackModelIds.every((modelId) => modelId === AI_DEFAULT_MODEL))
   );
 }
@@ -328,6 +344,7 @@ export async function generateModuleLessonRawBatch(input: {
     const freeRouterFallback = lessonServedByFreeRouterFallback(
       input.route,
       reportLessonRouteFallback(input.route, providerResult.metadata),
+      providerResult.metadata.model,
     );
 
     return {

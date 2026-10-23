@@ -7,6 +7,7 @@
  */
 
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
+import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -45,13 +46,15 @@ type ModelResolverLogger = {
  * Validates whether a requested model is allowed for a tier × operation:
  * `tier_denied` when another tier's guardrail lists it, `invalid_model` when
  * none does. Throws only when the default check or catalog read fails.
+ * Pass `allowedModels` when the caller already resolved the tier's models.
  */
 export async function validateModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string,
   operation: ModelOperation,
+  allowedModels?: readonly AvailableModel[],
 ): Promise<ModelValidationResult> {
-  const allowedModels = await getModelsForTier(userTier, operation);
+  allowedModels ??= await getModelsForTier(userTier, operation);
   if (allowedModels.some((model) => model.id === requestedModel)) {
     return { valid: true };
   }
@@ -176,6 +179,7 @@ export async function resolveModelForTier(
     userTier,
     requestedModel,
     operation,
+    tierDefault.models,
   );
 
   if (!validation.valid) {
