@@ -17,6 +17,11 @@ function publishableKey(kind: 'test' | 'live', frontendApi: string): string {
   return `pk_${kind}_${Buffer.from(`${frontendApi}$`).toString('base64')}`;
 }
 
+/** A placeholder secret key of the given instance kind; never a real key. */
+function secretKey(kind: 'test' | 'live'): string {
+  return `sk_${kind}_example`;
+}
+
 const DEV_KEYS = {
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: publishableKey(
     'test',
@@ -77,14 +82,20 @@ describe('requireDevelopmentClerkKeys', () => {
   });
 
   it('refuses a production secret key without printing it', () => {
-    const secret = 'sk_live_example';
+    const productionKey = secretKey('live');
     expect(() =>
-      requireDevelopmentClerkKeys({ ...DEV_KEYS, CLERK_SECRET_KEY: secret }),
+      requireDevelopmentClerkKeys({
+        ...DEV_KEYS,
+        CLERK_SECRET_KEY: productionKey,
+      }),
     ).toThrow(/Refusing: CLERK_SECRET_KEY/);
     try {
-      requireDevelopmentClerkKeys({ ...DEV_KEYS, CLERK_SECRET_KEY: secret });
+      requireDevelopmentClerkKeys({
+        ...DEV_KEYS,
+        CLERK_SECRET_KEY: productionKey,
+      });
     } catch (error) {
-      expect(String(error)).not.toContain(secret);
+      expect(String(error)).not.toContain(productionKey);
     }
   });
 
@@ -239,7 +250,7 @@ describe('runAgentSession', () => {
           'live',
           'clerk.atlaris.app',
         ),
-        CLERK_SECRET_KEY: 'sk_live_example',
+        CLERK_SECRET_KEY: secretKey('live'),
       }),
     ).rejects.toThrow(/Refusing/);
     expect(createClerkClient).not.toHaveBeenCalled();
