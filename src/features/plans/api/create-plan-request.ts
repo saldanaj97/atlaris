@@ -125,8 +125,9 @@ export async function parseCreatePlanRequest({
           route: sentryRoute,
           source: 'payload-log',
         },
+        // No authUserId: Sentry cannot delete one user's events (DEV-184).
         extra: {
-          authUserId,
+          correlationId,
           payload: fallback,
         },
       },
