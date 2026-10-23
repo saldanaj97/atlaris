@@ -96,10 +96,14 @@ const ModelDropdown = ({
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
                   <span>{model.name}</span>
-                  {/* The secondary fill matches the popover, so use the surface fill. */}
+                  {/* Secondary matches the popover and card matches the trigger, so swap only in the list. */}
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
-                    className={model.tier === 'free' ? undefined : 'bg-card'}
+                    className={
+                      model.tier === 'free'
+                        ? undefined
+                        : 'in-data-[slot=select-content]:bg-card'
+                    }
                   >
                     {model.tier === 'free' ? 'Free' : 'Paid'}
                   </Badge>
