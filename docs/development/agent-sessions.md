@@ -6,7 +6,7 @@ The script creates an Agent Task for the tier's test user and prints a one-time 
 
 ## Run it
 
-The Clerk keys come from the local 1Password Environment, the same one `pnpm dev` uses. Local and staging share one Clerk Development instance, so the same keys serve both.
+On a laptop, the Clerk keys come from the local 1Password Environment, the same one `pnpm dev` uses. Cloud sessions get them from environment variables instead; see [Cloud sessions](#cloud-sessions). Local and staging share one Clerk Development instance, so the same keys serve both.
 
 ```bash
 source ~/.config/atlaris/dev.sh
@@ -68,3 +68,23 @@ On every non-free run the script reminds you of this on stderr.
   - Send `x-vercel-protection-bypass` from automation, scoped to `staging.atlaris.app` requests.
 - The desktop app's built-in browser pane accepts the ticket but blocks the redirect to `localhost`. Use Playwright for local runs.
 - The grounded eval runner (`scripts/eval/grounded/run.ts`) calls the API with bearer tokens from BAPI sessions, not through a browser, so it does not use this script.
+
+## Cloud sessions
+
+Tested in a Claude Code cloud session on 2026-10-23.
+
+- **Keys:** the cloud environment's variables supply `CLERK_SECRET_KEY` and `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`. Don't use `op run` or `--no-masking`; call the script directly with `pnpm exec tsx scripts/dev/agent-session.ts …`.
+- **Database:** run `pnpm db agent up`. The session runs as root, so it relies on `SUPABASE_NATIVE_POSTGRES_USER=ubuntu`, which the environment sets.
+- **Dev server:** start it in real Clerk mode, then run the script with `--env local --base http://localhost:3183`:
+
+  ```bash
+  env -u DEV_AUTH_USER_ID LOCAL_PRODUCT_TESTING=false \
+    node_modules/.bin/next dev --webpack --hostname localhost --port 3183
+  ```
+
+- **Playwright:**
+  - Import from `@playwright/test`. The standalone `playwright` package isn't installed.
+  - Launch with `executablePath: '/opt/pw-browsers/chromium'`. `@playwright/test` 1.64 expects headless-shell build 1248, but the image only has build 1243.
+  - Don't run `playwright install`.
+- **Result:** a fresh link landed on `/dashboard`, and `/api/v1/user/profile` returned 200 with `agent-free@atlaris.app` / `free`.
+- **Teardown:** stop the dev server, then run `pnpm db stop`. `next dev` rewrites the block at the bottom of `AGENTS.md`; revert it if you won't commit it.
