@@ -77,7 +77,7 @@ describe('requireDevelopmentClerkKeys', () => {
   });
 
   it('refuses a production secret key without printing it', () => {
-    const secret = 'sk_live_prodsecret123';
+    const secret = 'sk_live_example';
     expect(() =>
       requireDevelopmentClerkKeys({ ...DEV_KEYS, CLERK_SECRET_KEY: secret }),
     ).toThrow(/Refusing: CLERK_SECRET_KEY/);
@@ -239,7 +239,7 @@ describe('runAgentSession', () => {
           'live',
           'clerk.atlaris.app',
         ),
-        CLERK_SECRET_KEY: 'sk_live_prodsecret123',
+        CLERK_SECRET_KEY: 'sk_live_example',
       }),
     ).rejects.toThrow(/Refusing/);
     expect(createClerkClient).not.toHaveBeenCalled();
