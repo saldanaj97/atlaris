@@ -143,23 +143,16 @@ describe('getTierModels', () => {
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 
-  it('serves stale rows and refreshes them in the background', async () => {
+  it('refreshes stale rows before reading', async () => {
     seedModelCatalogFixture(new Date(Date.now() - MODEL_CATALOG_TTL_MS - 1));
     const fetchSpy = vi
       .spyOn(globalThis, 'fetch')
       .mockResolvedValue(new Response(JSON.stringify({ data: [NEW_MODEL] })));
 
-    const stale = await getTierModels('starter');
+    const models = await getTierModels('starter');
 
-    expect(stale.map((m) => m.id).sort()).toEqual(
-      MODEL_CATALOG_FIXTURE.starter.map((m) => m.modelId).sort(),
-    );
     expect(fetchSpy).toHaveBeenCalledOnce();
-    await vi.waitFor(async () => {
-      expect((await getTierModels('starter')).map((m) => m.id)).toEqual([
-        'openai/gpt-5.2',
-      ]);
-    });
+    expect(models.map((m) => m.id)).toEqual(['openai/gpt-5.2']);
   });
 
   it('syncs before reading when the tier has no rows', async () => {
@@ -197,7 +190,6 @@ describe('getTierModels', () => {
       .mockResolvedValue(new Response('down', { status: 503 }));
 
     const first = await getTierModels('starter');
-    await vi.waitFor(() => expect(logger.error).toHaveBeenCalled());
     await getTierModels('starter');
 
     expect(first.map((m) => m.id).sort()).toEqual([...starterIds()].sort());

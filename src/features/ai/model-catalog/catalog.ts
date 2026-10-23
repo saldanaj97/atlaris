@@ -3,10 +3,10 @@
  * into `openrouter_tier_models` (DEV-174). A guardrail change reaches users on
  * the next refresh, with no code change or deploy.
  *
- * Refresh-on-read: a read whose rows are missing syncs that tier first; a read
- * whose rows are older than {@link MODEL_CATALOG_TTL_MS} returns them and syncs
- * in the background. Either needs the tier's own key. The jobs Worker has no
- * tier keys, so it only reads what the app synced (or the migration seeded).
+ * Refresh-on-read: a read whose rows are older than {@link MODEL_CATALOG_TTL_MS}
+ * (or missing) syncs that tier first, when this runtime has the tier's own key.
+ * The jobs Worker has no tier keys, so it only reads what the app synced (or
+ * the migration seeded).
  */
 
 import type { AvailableModel } from '@/features/ai/types/model.types';
@@ -157,21 +157,16 @@ async function readTierModels(
   tier: SubscriptionTier,
 ): Promise<AvailableModel[]> {
   let rows = await selectTierModels(tier);
-  if (rows.length === 0) {
-    if (await refreshTier(tier)) {
-      rows = await selectTierModels(tier);
-    }
-  } else if (isStale(rows)) {
-    // Serve the stale rows; the next read sees the refresh. A sync logs and
-    // never rejects, so nothing is lost by not awaiting it.
-    void refreshTier(tier);
+  // Awaited: a serverless runtime may stop un-awaited work after the response.
+  if (isStale(rows) && (await refreshTier(tier))) {
+    rows = await selectTierModels(tier);
   }
   return rows.map(toAvailableModel);
 }
 
 /**
- * `tier`'s guardrail models: synced first when none are stored, refreshed in
- * the background when stale. Concurrent reads of a tier share one query.
+ * `tier`'s guardrail models, refreshed first when stale. Concurrent reads of a
+ * tier share one query and one refresh.
  */
 export async function getTierModels(
   tier: SubscriptionTier,
