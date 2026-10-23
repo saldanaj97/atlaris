@@ -284,6 +284,44 @@ describe('ModelSelector', () => {
     expect(trigger).toHaveTextContent(/select a model/i);
   });
 
+  it('labels model prices Free or Paid on rows and the detail card', async () => {
+    const user = userEvent.setup();
+    const paidModel = PRO_MODELS[PRO_MODELS.length - 1];
+    render(
+      <ModelSelector
+        currentModel={paidModel.id}
+        userTier='pro'
+        availableModels={MODELS_BY_TIER.pro}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const detailBadge = () =>
+      screen
+        .getByRole('heading', { level: 3 })
+        .closest('[data-slot="card"]')
+        ?.querySelector('[data-slot="badge"]');
+    expect(detailBadge()).toHaveTextContent(/^Paid$/);
+
+    await user.click(
+      screen.getByRole('combobox', { name: /preferred ai model/i }),
+    );
+    expect(
+      screen.getByRole('option', { name: /test pro model 1/i }),
+    ).toHaveTextContent(/Paid$/);
+    expect(
+      screen.getByRole('option', { name: /test free model 1/i }),
+    ).toHaveTextContent(/Free$/);
+    for (const option of screen.getAllByRole('option')) {
+      expect(option).not.toHaveTextContent(/\bPRO\b|\bFREE\b/);
+    }
+
+    await user.click(
+      screen.getByRole('option', { name: /test free model 1/i }),
+    );
+    expect(detailBadge()).toHaveTextContent(/^Free$/);
+  });
+
   it('save button is disabled when no changes made', () => {
     render(
       <ModelSelector

@@ -93,7 +93,7 @@ const ModelDropdown = ({
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
                   >
-                    {model.tier.toUpperCase()}
+                    {model.tier === 'free' ? 'Free' : 'Paid'}
                   </Badge>
                 </div>
               </SelectItem>
@@ -133,7 +133,7 @@ const ModelDropdown = ({
                   selectedModelData.tier === 'free' ? 'default' : 'secondary'
                 }
               >
-                {selectedModelData.tier.toUpperCase()}
+                {selectedModelData.tier === 'free' ? 'Free' : 'Paid'}
               </Badge>
             </div>
 
