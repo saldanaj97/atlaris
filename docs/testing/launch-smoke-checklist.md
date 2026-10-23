@@ -209,7 +209,8 @@ Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the pr
 
    **Pass:** the redirect URL no longer contains `/waitlist`. A signed-out `/dashboard` may still answer `307`, but to Clerk sign-in, not to `/waitlist`. `https://atlaris.app/auth/sign-up` answers `200`, and `/waitlist` redirects home.
 
-6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Delete the throwaway as in check 8.
-7. Run checks 3–5 and 10 once more without the override cookie.
+6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 7.
+7. Run checks 3–5 and 10 once more without the override cookie, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
+8. Delete the step 6 account as in check 8.
 
 **Rollback:** set `launch-waitlist` back to **Waitlist** in Vercel Flags (applies within 60 s), set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy.
