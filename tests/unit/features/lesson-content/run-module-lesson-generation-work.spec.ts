@@ -5,6 +5,7 @@ import { getDefaultModelForTier } from '@/features/ai/ai-models';
 import { STARTER_DEFAULT_MODEL_ID } from '@/features/ai/model-operation-policy';
 import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import {
+  lessonServedByFreeRouterFallback,
   reportLessonRouteFallback,
   resolveModuleLessonProvider,
   runModuleLessonGenerationWork,
@@ -767,5 +768,114 @@ describe('runModuleLessonGenerationWork', () => {
       );
       warn.mockRestore();
     });
+  });
+
+  describe('free-router fallback flag (DEV-175)', () => {
+    const starterRoute = {
+      tier: 'starter',
+      primaryModelId: STARTER_DEFAULT_MODEL_ID,
+      fallbackModelIds: [AI_DEFAULT_MODEL],
+    } as const;
+    const freeModel = 'nvidia/nemotron-3.5-lightning:free';
+
+    it('flags a guardrail fallback or a free-router route fallback on a paid tier', () => {
+      expect(
+        lessonServedByFreeRouterFallback(
+          {
+            tier: 'pro',
+            primaryModelId: AI_DEFAULT_MODEL,
+            fallbackModelIds: [],
+            freeRouterFallback: true,
+          },
+          false,
+        ),
+      ).toBe(true);
+      expect(lessonServedByFreeRouterFallback(starterRoute, true)).toBe(true);
+    });
+
+    it('does not flag free tiers, the primary, or a non-free fallback route', () => {
+      expect(lessonServedByFreeRouterFallback(undefined, true)).toBe(false);
+      expect(
+        lessonServedByFreeRouterFallback(
+          { ...starterRoute, tier: 'free', freeRouterFallback: true },
+          true,
+        ),
+      ).toBe(false);
+      expect(lessonServedByFreeRouterFallback(starterRoute, false)).toBe(false);
+      expect(
+        lessonServedByFreeRouterFallback(
+          { ...starterRoute, fallbackModelIds: ['openai/gpt-6-mini'] },
+          true,
+        ),
+      ).toBe(false);
+    });
+
+    it('carries a guardrail free-router fallback onto the lesson route', async () => {
+      const provider = { generateModuleLessonBatch: vi.fn() };
+      mocks.resolveUserTier.mockResolvedValue('pro');
+      mocks.resolveModelForTier.mockResolvedValue({
+        provider,
+        modelId: AI_DEFAULT_MODEL,
+        fallback: true,
+        freeRouterFallback: true,
+      });
+
+      const resolution = await resolveModuleLessonProvider(
+        { userId: createId('user'), planId: createId('plan') },
+        fakeDb,
+      );
+
+      expect(resolution.route).toEqual({
+        tier: 'pro',
+        primaryModelId: AI_DEFAULT_MODEL,
+        fallbackModelIds: [],
+        freeRouterFallback: true,
+      });
+    });
+
+    it.each([
+      ['the free router served it', freeModel, { freeRouterFallback: true }],
+      ['GPT-6 Luna served it', `${STARTER_DEFAULT_MODEL_ID}-20261001`, {}],
+    ] as const)(
+      'commits Starter lesson metadata when %s',
+      async (_label, servedModel, expectedFlag) => {
+        mocks.resolveUserTier.mockResolvedValue('starter');
+        mocks.resolveModelForTier.mockResolvedValue({
+          provider: { generateModuleLessonBatch: vi.fn() },
+          modelId: STARTER_DEFAULT_MODEL_ID,
+          fallback: true,
+        });
+        mocks.invokeProvider.mockResolvedValue({
+          ...providerOk(),
+          metadata: {
+            ...providerOk().metadata,
+            provider: 'openrouter',
+            model: servedModel,
+          },
+        });
+        const taskId = createId('task');
+        mocks.parseBatch.mockReturnValue(parsedBatch(taskId));
+
+        const result = await runModuleLessonGenerationWork(
+          {
+            load: workLoad(taskId),
+            userId: createId('user'),
+            planId: createId('plan'),
+            moduleId: createId('module'),
+          },
+          {
+            serverDbClient: fakeDb,
+            resolveGenerationEnabled: async () => true,
+          },
+        );
+
+        expect(result.kind).toBe('success');
+        const committed = mocks.commitSuccess.mock.calls[0]?.[1];
+        expect(committed.metadata).toEqual({
+          version: 1,
+          ...expectedFlag,
+        });
+      },
+    );
   });
 });

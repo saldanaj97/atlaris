@@ -109,6 +109,8 @@ export const ModuleLessonGenerationMetadataSchema = z.strictObject({
     ])
     .optional(),
   providerStartedAt: z.iso.datetime().optional(),
+  /** A paid tier's lessons were served by the free router (DEV-175). */
+  freeRouterFallback: z.literal(true).optional(),
 });
 
 const ModuleLessonGenerationApiBaseSchema = z.strictObject({

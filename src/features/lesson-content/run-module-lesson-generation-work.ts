@@ -73,6 +73,8 @@ export type ModuleLessonRawBatch = {
   readonly usage: CanonicalAIUsage;
   /** Provider `finish_reason` when streamed (`length` means the output was cut off). */
   readonly finishReason?: string;
+  /** A paid tier's lessons were served by the free router (DEV-175). */
+  readonly freeRouterFallback?: true;
 };
 
 // --- prepare ---------------------------------------------------------------
@@ -141,6 +143,8 @@ export type ModuleLessonRoute = {
   readonly tier: SubscriptionTier;
   readonly primaryModelId: string;
   readonly fallbackModelIds: readonly string[];
+  /** The primary is the free router only because the guardrail left no paid default. */
+  readonly freeRouterFallback?: true;
 };
 
 export type ModuleLessonProviderResolution = {
@@ -219,6 +223,7 @@ export async function resolveModuleLessonProvider(
         resolution.modelId,
         'lesson',
       ),
+      ...(resolution.freeRouterFallback ? { freeRouterFallback: true } : {}),
     },
   };
 }
@@ -227,12 +232,13 @@ export async function resolveModuleLessonProvider(
  * Warns when OpenRouter served a paid-tier lesson from a fallback route model
  * instead of the resolved primary (DEV-180). Only routes that list fallbacks
  * qualify; a free-router fallback serves a concrete `:free` model, so the
- * served name is compared with the primary, not the fallback list.
+ * served name is compared with the primary, not the fallback list. Returns
+ * whether it warned.
  */
 export function reportLessonRouteFallback(
   route: ModuleLessonRoute | undefined,
   metadata: Pick<ProviderMetadata, 'provider' | 'model'>,
-): void {
+): boolean {
   const servedModel = metadata.model;
   if (
     !route ||
@@ -242,7 +248,7 @@ export function reportLessonRouteFallback(
     !servedModel ||
     servedModel.startsWith(route.primaryModelId)
   ) {
-    return;
+    return false;
   }
   const fields = {
     event: 'lesson_route_fallback',
@@ -257,6 +263,26 @@ export function reportLessonRouteFallback(
     tags: { event: fields.event, tier: route.tier },
     extra: fields,
   });
+  return true;
+}
+
+/**
+ * Whether a paid-tier lesson ran on the free router: its guardrail left no
+ * paid default, or OpenRouter served it from a route whose only fallback is
+ * the free router ({@link reportLessonRouteFallback} returned true).
+ */
+export function lessonServedByFreeRouterFallback(
+  route: ModuleLessonRoute | undefined,
+  servedByRouteFallback: boolean,
+): boolean {
+  if (!route || route.tier === 'free') {
+    return false;
+  }
+  return (
+    route.freeRouterFallback === true ||
+    (servedByRouteFallback &&
+      route.fallbackModelIds.every((modelId) => modelId === AI_DEFAULT_MODEL))
+  );
 }
 
 // --- provider --------------------------------------------------------------
@@ -299,12 +325,16 @@ export async function generateModuleLessonRawBatch(input: {
     const rawText = await bufferModuleLessonBatchStream(providerResult.stream, {
       signal: controller.signal,
     });
-    reportLessonRouteFallback(input.route, providerResult.metadata);
+    const freeRouterFallback = lessonServedByFreeRouterFallback(
+      input.route,
+      reportLessonRouteFallback(input.route, providerResult.metadata),
+    );
 
     return {
       rawText,
       usage: await safeNormalizeUsage(providerResult.metadata),
       finishReason: providerResult.metadata.finishReason,
+      ...(freeRouterFallback ? { freeRouterFallback: true } : {}),
     };
   } finally {
     cleanupTimeoutLifecycle(lifecycle);
@@ -313,10 +343,16 @@ export async function generateModuleLessonRawBatch(input: {
 
 // --- persist ---------------------------------------------------------------
 
-/** Parses buffered text against the prompt's task order, then commits. */
+/**
+ * Parses buffered text against the prompt's task order, then commits. A
+ * free-router batch marks the module's metadata for the plan page notice.
+ */
 export async function persistModuleLessonBatch(input: {
   readonly target: ModuleLessonGenerationTarget;
-  readonly batch: ModuleLessonRawBatch;
+  readonly batch: Pick<
+    ModuleLessonRawBatch,
+    'rawText' | 'usage' | 'freeRouterFallback'
+  >;
   readonly expectedTaskIds: readonly string[];
   readonly metadata: ModuleLessonGenerationMetadata;
   readonly dbClient: DbClient;
@@ -330,7 +366,9 @@ export async function persistModuleLessonBatch(input: {
   await commitModuleLessonBatchSuccess(input.dbClient, {
     ...input.target,
     parsed,
-    metadata: input.metadata,
+    metadata: input.batch.freeRouterFallback
+      ? { ...input.metadata, freeRouterFallback: true }
+      : input.metadata,
     usage: input.batch.usage,
     requestId: null,
     now: input.now,

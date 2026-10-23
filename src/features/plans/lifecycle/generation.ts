@@ -136,15 +136,17 @@ async function runGeneration(
   }
 
   const generationPurpose = parseGenerationPurpose(params.generationPurpose);
-  const provider =
-    options.provider ??
-    (
-      await resolveModelForTier(
-        params.tier,
-        params.modelOverride ?? undefined,
-        modelOperationForGenerationPurpose(generationPurpose),
-      )
-    ).provider;
+  let provider = options.provider;
+  let freeRouterFallback = false;
+  if (!provider) {
+    const resolution = await resolveModelForTier(
+      params.tier,
+      params.modelOverride ?? undefined,
+      modelOperationForGenerationPurpose(generationPurpose),
+    );
+    provider = resolution.provider;
+    freeRouterFallback = resolution.freeRouterFallback === true;
+  }
 
   const generationInput: GenerationInput = {
     topic: params.input.topic,
@@ -223,7 +225,9 @@ async function runGeneration(
   return {
     status: 'success',
     modules: exec.modules as GeneratedModule[],
-    metadata: exec.metadata,
+    metadata: freeRouterFallback
+      ? { ...exec.metadata, freeRouterFallback: true }
+      : exec.metadata,
     usage: await safeNormalizeUsage(exec.metadata),
     durationMs: exec.durationMs,
     reservation: exec.reservation,

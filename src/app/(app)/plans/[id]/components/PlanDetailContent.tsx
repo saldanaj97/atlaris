@@ -3,6 +3,7 @@ import { PlanDetails } from './PlanDetails';
 import { getPlanError, isPlanSuccess } from '@/app/(app)/plans/[id]/helpers';
 import {
   loadPlanForPage,
+  loadPlanFreeRouterNotice,
   loadPlanRegenerationState,
 } from '@/app/(app)/plans/[id]/plan-page-data';
 import { FreeAccessPlanSelector } from '@/app/(app)/plans/components/FreeAccessPlanSelector';
@@ -80,9 +81,18 @@ export async function PlanDetailContent({ planId }: PlanDetailContentProps) {
     }
   }
 
-  const regeneration = await loadPlanRegenerationState(planId);
+  const [regeneration, freeRouterNotice] = await Promise.all([
+    loadPlanRegenerationState(planId),
+    loadPlanFreeRouterNotice(planId),
+  ]);
   logger.debug({ planId }, 'Plan detail payload ready for rendering');
-  return <PlanDetails plan={planResult.data} regeneration={regeneration} />;
+  return (
+    <PlanDetails
+      plan={planResult.data}
+      regeneration={regeneration}
+      freeRouterNotice={freeRouterNotice}
+    />
+  );
 }
 
 /**

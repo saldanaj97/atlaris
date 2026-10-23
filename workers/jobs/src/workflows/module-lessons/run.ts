@@ -142,6 +142,7 @@ type GenerateStepResult =
       readonly kind: 'generated';
       readonly rawText: string;
       readonly usage: CanonicalAIUsage;
+      readonly freeRouterFallback?: true;
     }
   | { readonly kind: 'disabled' };
 
@@ -353,7 +354,12 @@ async function generateStep(
     finishReason: batch.finishReason,
     outcome: 'generated',
   });
-  return { kind: 'generated', rawText: batch.rawText, usage: batch.usage };
+  return {
+    kind: 'generated',
+    rawText: batch.rawText,
+    usage: batch.usage,
+    ...(batch.freeRouterFallback ? { freeRouterFallback: true } : {}),
+  };
 }
 
 /**
