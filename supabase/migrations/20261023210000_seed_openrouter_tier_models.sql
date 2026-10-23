@@ -2,7 +2,7 @@
 -- guardrail sync (DEV-174), so the jobs Worker, which has no tier keys, never
 -- reads an empty catalog before the app's first sync. `synced_at` is the epoch,
 -- so the app treats these rows as stale and replaces them on its first read.
--- Rows a sync already wrote are kept.
+-- A tier a sync already filled is left alone.
 INSERT INTO "openrouter_tier_models" (
 	"tier",
 	"model_id",
@@ -47,4 +47,9 @@ FROM (
 	"tiers"
 )
 CROSS JOIN LATERAL unnest("models"."tiers") AS "tiers" ("tier")
+WHERE NOT EXISTS (
+	SELECT 1
+	FROM "openrouter_tier_models" AS "existing"
+	WHERE "existing"."tier" = "tiers"."tier"::"subscription_tier"
+)
 ON CONFLICT ("tier", "model_id") DO NOTHING;
