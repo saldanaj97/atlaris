@@ -9,32 +9,13 @@
  * The base URL defaults to `portless get atlaris` (worktree-aware). Uses
  * Playwright Chromium when installed, otherwise the local Chrome.
  */
+import { resolveDevBaseUrl } from './dev-url';
 import { chromium } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { parseArgs } from 'node:util';
 
 type ColorScheme = 'dark' | 'light';
-
-function resolveBaseUrl(explicit: string | undefined): string {
-  if (explicit) return explicit.replace(/\/$/, '');
-  // portless refuses to run when it sees pnpm/npm launcher variables.
-  const env = { ...process.env };
-  for (const key of Object.keys(env)) {
-    if (key.startsWith('npm_')) delete env[key];
-  }
-  try {
-    return execFileSync('portless', ['get', 'atlaris'], {
-      encoding: 'utf8',
-      env,
-    })
-      .trim()
-      .replace(/\/$/, '');
-  } catch {
-    throw new Error('Could not resolve the dev URL; pass --base <url>.');
-  }
-}
 
 function parseList(value: string): string[] {
   return value
@@ -58,7 +39,7 @@ async function main(): Promise<void> {
     },
   });
 
-  const baseUrl = resolveBaseUrl(values.base);
+  const baseUrl = resolveDevBaseUrl(values.base);
   const routes = positionals.length > 0 ? positionals : ['/dashboard'];
   const widths = parseList(values.widths).map(Number);
   const themes = parseList(values.themes) as ColorScheme[];

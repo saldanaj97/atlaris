@@ -9,7 +9,7 @@ Clerk Auth remains hosted. The local stack replaces the database only: Studio is
 | Environment                    | Database                                                                                              |
 | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Local developer                | Native Supabase stack, one per worktree (`pnpm db start`)                                             |
-| Cloud agents (Codex, Cursor Cloud) | Native Supabase stack on the agent VM via `pnpm db agent`                                         |
+| Cloud agents (Codex, Cursor Cloud, Claude Code cloud sessions) | Native Supabase stack on the agent VM via `pnpm db agent`                                         |
 | Local automated tests          | Native named `test` stack with `--native-db` / `ATLARIS_TEST_DB=native`; Testcontainers PostgreSQL 17 when unset |
 | CircleCI DB-backed tests       | Docker executor PostgreSQL 17 secondary container (unchanged)                                         |
 | Staging                        | Hosted Supabase `atlaris-dev`, for integration and manual smoke checks only                           |
@@ -83,7 +83,7 @@ A worktree's stack records its runtime when created, so `--runtime docker` is re
 
 ## Cloud agent database
 
-Codex and Cursor Cloud agents run `pnpm db agent up` before database work. It starts the same native stack on the agent VM, applies pending migrations, and writes `.env.local` with the loopback URL. The seed runs only on the stack's first start and on `reset`; `up` verifies the seed user and fails if it is missing, so repair that with `pnpm db agent reset`. The native path was verified on Linux arm64 (Debian 12, glibc 2.36) as a non-root user.
+Codex, Cursor Cloud, and Claude Code cloud sessions run `pnpm db agent up` before database work. It starts the same native stack on the agent VM, applies pending migrations, and writes `.env.local` with the loopback URL. The seed runs only on the stack's first start and on `reset`; `up` verifies the seed user and fails if it is missing, so repair that with `pnpm db agent reset`. The native path was verified on Linux arm64 (Debian 12, glibc 2.36) as a non-root user. On 2026-10-23, `up` also worked in a Claude Code cloud session as root with `SUPABASE_NATIVE_POSTGRES_USER=ubuntu`: 68/68 migrations applied, seed user present, overall PASS.
 
 - The first start downloads about 483 MB from GitHub, so the VM needs outbound access to github.com.
 - As root, set `SUPABASE_NATIVE_POSTGRES_USER` to an existing non-root OS user; the native runtime will not run Postgres as root.
