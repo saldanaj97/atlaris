@@ -10,6 +10,12 @@ const mocks = vi.hoisted(() => ({
   requirePlanContentAccess: vi.fn(),
   getGroundedModelPreferences: vi.fn(),
   actorTier: 'starter' as 'free' | 'starter' | 'pro',
+  captureException: vi.fn(),
+}));
+
+vi.mock('@sentry/nextjs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
+  captureException: mocks.captureException,
 }));
 
 vi.mock('@/lib/db/queries/user-preferences', async (importOriginal) => ({
@@ -242,6 +248,7 @@ describe('POST /api/v1/plans', () => {
     const boundary = makeBoundary();
     const logger = makeLogger();
     const post = createPlanCreateHandler({ boundary, logger });
+    mocks.captureException.mockClear();
     // Promise resolution probes `then`; every other access throws so the
     // warn path does not depend on field access order.
     const payload = new Proxy(
@@ -268,6 +275,13 @@ describe('POST /api/v1/plans', () => {
       }),
       'Plan create payload log failed',
     );
+    expect(mocks.captureException).toHaveBeenCalledOnce();
+    const [, captureContext] = mocks.captureException.mock.calls[0] ?? [];
+    expect(captureContext).toMatchObject({
+      extra: { payload: { payloadType: 'object' } },
+    });
+    expect(captureContext.extra).not.toHaveProperty('authUserId');
+    expect(JSON.stringify(captureContext)).not.toContain('auth-1');
     expect(boundary.startCreate).not.toHaveBeenCalled();
   });
 

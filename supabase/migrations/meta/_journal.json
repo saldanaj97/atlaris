@@ -463,6 +463,13 @@
       "when": 1792692360000,
       "tag": "20261022180600_create_openrouter_tier_models",
       "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792789200000,
+      "tag": "20261023210000_seed_openrouter_tier_models",
+      "breakpoints": true
     }
   ]
 }

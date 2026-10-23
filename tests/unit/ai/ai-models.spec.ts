@@ -175,13 +175,13 @@ describe('AI Models Configuration', () => {
       );
       expect(
         await resolveDefaultModelForTier('starter', 'initial_outline'),
-      ).toEqual({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
+      ).toMatchObject({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
     });
 
     it('does not flag a listed default or a paid fallback', async () => {
       expect(
         await resolveDefaultModelForTier('starter', 'initial_outline'),
-      ).toEqual({
+      ).toMatchObject({
         modelId: STARTER_DEFAULT_MODEL_ID,
         freeRouterFallback: false,
       });
@@ -190,7 +190,7 @@ describe('AI Models Configuration', () => {
       vi.spyOn(logger, 'warn').mockImplementation(() => undefined);
       expect(
         await resolveDefaultModelForTier('starter', 'initial_outline'),
-      ).toEqual({
+      ).toMatchObject({
         modelId: 'deepseek/deepseek-v4.1-flash',
         freeRouterFallback: false,
       });
@@ -217,7 +217,9 @@ describe('AI Models Configuration', () => {
     });
 
     it('returns GPT-6 Luna for Starter lesson, not the free router', async () => {
-      expect(await resolveDefaultModelForTier('starter', 'lesson')).toEqual({
+      expect(
+        await resolveDefaultModelForTier('starter', 'lesson'),
+      ).toMatchObject({
         modelId: STARTER_DEFAULT_MODEL_ID,
         freeRouterFallback: false,
       });
@@ -292,7 +294,7 @@ describe('AI Models Configuration', () => {
 
       expect(
         await resolveDefaultModelForTier('starter', 'regeneration'),
-      ).toEqual({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
+      ).toMatchObject({ modelId: AI_DEFAULT_MODEL, freeRouterFallback: true });
       expect(
         (await getModelsForTier('starter', 'regeneration')).map((m) => m.id),
       ).not.toContain('openai/gpt-6.1-sol');

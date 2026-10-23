@@ -49,7 +49,11 @@ vi.mock('@/features/ai/model-catalog/store', async () => {
 beforeEach(async () => {
   const { seedModelCatalogFixture } =
     await import('../fixtures/ai-model-catalog');
+  // The state module imports no logger or env, so specs that mock env stay safe.
+  const { resetModelCatalogStateForTests } =
+    await import('@/features/ai/model-catalog/catalog-state');
   seedModelCatalogFixture();
+  resetModelCatalogStateForTests();
 });
 
 // Prevent unit tests from importing a real DB client.

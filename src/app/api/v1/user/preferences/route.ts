@@ -344,21 +344,27 @@ export const PATCH = requestBoundary.route(
     const userTier = actor.subscriptionTier;
     const patch: UserModelPreferencePatch = parsed.data;
 
-    await assertCanPersistSlot(
-      userTier,
-      'preferredAiModel',
-      patch.preferredAiModel,
-    );
-    await assertCanPersistSlot(
-      userTier,
-      'preferredRegenerationAiModel',
-      patch.preferredRegenerationAiModel,
-    );
-    await assertCanPersistSlot(
-      userTier,
-      'preferredLessonAiModel',
-      patch.preferredLessonAiModel,
-    );
+    // Checked together; the first failing slot, in this order, is reported.
+    const slotChecks = await Promise.allSettled([
+      assertCanPersistSlot(
+        userTier,
+        'preferredAiModel',
+        patch.preferredAiModel,
+      ),
+      assertCanPersistSlot(
+        userTier,
+        'preferredRegenerationAiModel',
+        patch.preferredRegenerationAiModel,
+      ),
+      assertCanPersistSlot(
+        userTier,
+        'preferredLessonAiModel',
+        patch.preferredLessonAiModel,
+      ),
+    ]);
+    for (const check of slotChecks) {
+      if (check.status === 'rejected') throw check.reason;
+    }
     await assertCanPersistGroundedPicks(userTier, actor.authUserId, patch);
 
     const updatedPreferences = await upsertUserModelPreferences(

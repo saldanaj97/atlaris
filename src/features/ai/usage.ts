@@ -11,7 +11,11 @@
 
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
-import { computeCostCents, UnknownModelError } from '@/features/ai/cost';
+import {
+  computeCostCents,
+  ModelCatalogUnavailableError,
+  UnknownModelError,
+} from '@/features/ai/cost';
 import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { logger } from '@/lib/logging/logger';
 import {
@@ -55,6 +59,21 @@ async function computeEstimatedCostCents(args: {
           provider,
         },
         `Unknown model "${model}" — recording 0 estimated cost`,
+      );
+      return 0;
+    }
+    if (error instanceof ModelCatalogUnavailableError) {
+      // Not an unknown model: the price exists but could not be read. The row
+      // still records, with provider-reported cost when OpenRouter sent it.
+      logger.error(
+        {
+          source: 'canonical-usage',
+          event: 'model_catalog_unavailable_cost_skipped',
+          modelId: model,
+          provider,
+          err: error.cause,
+        },
+        `Model catalog unavailable for "${model}" — recording 0 estimated cost`,
       );
       return 0;
     }
