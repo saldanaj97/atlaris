@@ -162,6 +162,11 @@ describe('ModelSelector', () => {
     expect(proOnlyOption).toHaveTextContent(/pro plan/i);
     expect(proOnlyOption).not.toHaveTextContent(/\bPRO\b/);
     expect(
+      screen.getByRole('group', {
+        name: /upgrade to pro to use these models/i,
+      }),
+    ).toContainElement(proOnlyOption);
+    expect(
       screen.getByRole('option', { name: /test free model 1/i }),
     ).not.toHaveAttribute('aria-disabled');
 
@@ -192,6 +197,7 @@ describe('ModelSelector', () => {
 
     await user.click(trigger);
     expect(screen.queryByText(/pro plan/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('group')).not.toBeInTheDocument();
     for (const option of screen.getAllByRole('option')) {
       expect(option).not.toHaveAttribute('aria-disabled');
     }
