@@ -197,7 +197,7 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 
 Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the provider dashboards. Background: [environment.md, Vercel Flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
 
-1. **Clerk** Dashboard (production instance) → **Access mode** → select **Open** → **Save**. The app is still gated, so no one reaches the app's sign-up yet.
+1. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). The app is still gated, so no one reaches the app's sign-up yet.
 2. **Vercel** → Atlaris project → Flags → `launch-waitlist` → set Production to **Launched** (`false`).
 3. Wait at least 60 s (`SITE_GATE_CACHE_TTL_MS`). Check from a browser **without** the override cookie.
 4. **Vercel** → Settings → Environment Variables → Production → remove `LAUNCH_WAITLIST`, then redeploy the current Production deployment so running instances drop it. Vercel env changes reach only new deployments. Keep the `launch-waitlist` flag itself defined in Vercel Flags: it has no `defaultValue`, so deleting it makes every evaluation throw.
@@ -212,4 +212,4 @@ Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the pr
 6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Delete the throwaway as in check 8.
 7. Run checks 3–5 and 10 once more without the override cookie.
 
-**Rollback:** set `launch-waitlist` back to **Waitlist** in Vercel Flags (applies within 60 s), set Clerk Access mode back to **Waitlist**, and restore `LAUNCH_WAITLIST=true` in Production with a redeploy.
+**Rollback:** set `launch-waitlist` back to **Waitlist** in Vercel Flags (applies within 60 s), set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy.
