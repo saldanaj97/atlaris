@@ -106,7 +106,6 @@ async function renderPricingTable(
     await import('@/app/(landing)/pricing/components/ClerkPricingTable');
   render(
     <ClerkPricingTable
-      appearance={{}}
       appClosed={options.appClosed}
       newSubscriptionRedirectUrl='/settings/billing'
     />,
@@ -330,10 +329,7 @@ describe('ClerkPricingTable', () => {
     let markup: string;
     try {
       markup = renderToString(
-        <ClerkPricingTable
-          appearance={{}}
-          newSubscriptionRedirectUrl='/settings/billing'
-        />,
+        <ClerkPricingTable newSubscriptionRedirectUrl='/settings/billing' />,
       );
     } finally {
       vi.unstubAllGlobals();
@@ -358,10 +354,7 @@ describe('ClerkPricingTable', () => {
       await act(async () => {
         root = hydrateRoot(
           container,
-          <ClerkPricingTable
-            appearance={{}}
-            newSubscriptionRedirectUrl='/settings/billing'
-          />,
+          <ClerkPricingTable newSubscriptionRedirectUrl='/settings/billing' />,
           { onRecoverableError },
         );
       });
