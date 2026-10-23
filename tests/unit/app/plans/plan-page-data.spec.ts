@@ -1,5 +1,6 @@
 import {
   loadPlanForPage,
+  loadPlanFreeRouterNotice,
   loadPlanRegenerationState,
 } from '@/app/(app)/plans/[id]/plan-page-data';
 import { describe, expect, it, vi } from 'vitest';
@@ -9,11 +10,17 @@ const {
   getPlanDetailForReadMock,
   isGroundedEnabledMock,
   getActiveRegenerationJobMock,
+  getPlanFreeRouterFallbackMock,
 } = vi.hoisted(() => ({
   requestBoundaryComponentMock: vi.fn(),
   getPlanDetailForReadMock: vi.fn(),
   isGroundedEnabledMock: vi.fn(),
   getActiveRegenerationJobMock: vi.fn(),
+  getPlanFreeRouterFallbackMock: vi.fn(),
+}));
+
+vi.mock('@/lib/db/queries/plan-free-router-fallback', () => ({
+  getPlanFreeRouterFallback: getPlanFreeRouterFallbackMock,
 }));
 
 vi.mock('@/features/ai/grounded-generation-flag', () => ({
@@ -111,5 +118,55 @@ describe('loadPlanRegenerationState', () => {
       canRegenerate: false,
       isRegenerating: false,
     });
+  });
+});
+
+describe('loadPlanFreeRouterNotice', () => {
+  function signedInAs(subscriptionTier: string, db = {}) {
+    requestBoundaryComponentMock.mockImplementationOnce(async (resolver) =>
+      resolver({ actor: { id: 'user-1', subscriptionTier }, db }),
+    );
+  }
+
+  it.each(['starter', 'pro'])(
+    'returns the fallback for a %s viewer whose plan used the free router',
+    async (tier) => {
+      const db = {};
+      signedInAs(tier, db);
+      getPlanFreeRouterFallbackMock.mockResolvedValueOnce({
+        outline: true,
+        lessonModuleCount: 2,
+      });
+
+      await expect(loadPlanFreeRouterNotice('plan-1')).resolves.toEqual({
+        outline: true,
+        lessonModuleCount: 2,
+      });
+      expect(getPlanFreeRouterFallbackMock).toHaveBeenCalledWith('plan-1', db);
+    },
+  );
+
+  it('returns null for a paid viewer when nothing used the free router', async () => {
+    signedInAs('pro');
+    getPlanFreeRouterFallbackMock.mockResolvedValueOnce({
+      outline: false,
+      lessonModuleCount: 0,
+    });
+
+    await expect(loadPlanFreeRouterNotice('plan-1')).resolves.toBeNull();
+  });
+
+  it('returns null for a free viewer without querying', async () => {
+    getPlanFreeRouterFallbackMock.mockClear();
+    signedInAs('free');
+
+    await expect(loadPlanFreeRouterNotice('plan-1')).resolves.toBeNull();
+    expect(getPlanFreeRouterFallbackMock).not.toHaveBeenCalled();
+  });
+
+  it('returns null when the viewer is signed out', async () => {
+    requestBoundaryComponentMock.mockResolvedValueOnce(null);
+
+    await expect(loadPlanFreeRouterNotice('plan-1')).resolves.toBeNull();
   });
 });
