@@ -493,7 +493,7 @@ async function launch(mode: Mode): Promise<void> {
       // A name of its own: cleanup from a stale run file can then drop only
       // this run's database, never the shared smoke runner's.
       nativeSmokeDbUrl = await createNativeSmokeDatabase(
-        `atlaris_verify_smoke_${Date.now()}`,
+        `atlaris_test_verify_smoke_${Date.now()}`,
       );
       connectionUrl = nativeSmokeDbUrl;
     } else {

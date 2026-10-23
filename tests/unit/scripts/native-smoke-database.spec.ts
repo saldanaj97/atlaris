@@ -20,12 +20,12 @@ describe('dropNativeSmokeDatabase', () => {
     vi.spyOn(console, 'log').mockImplementation(() => undefined);
 
     await dropNativeSmokeDatabase(
-      `${STACK}/atlaris_verify_smoke_1792790000000`,
+      `${STACK}/atlaris_test_verify_smoke_1792790000000`,
     );
 
     expect(dropDatabase).toHaveBeenCalledWith(
       `${STACK}/postgres`,
-      'atlaris_verify_smoke_1792790000000',
+      'atlaris_test_verify_smoke_1792790000000',
     );
   });
 

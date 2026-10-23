@@ -14,7 +14,7 @@ import { startNativeTestStack } from '@tests/setup/native-test-stack';
 
 const SMOKE_DB_NAME = 'atlaris_test_smoke';
 /** Names this module creates; a drop refuses any other database. */
-const SMOKE_DB_NAME_PATTERN = /^atlaris_(test|verify)_smoke(_\d+)?$/;
+const SMOKE_DB_NAME_PATTERN = /^atlaris_test_(verify_)?smoke(_\d+)?$/;
 
 export async function createNativeSmokeDatabase(
   name: string = SMOKE_DB_NAME,
