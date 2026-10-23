@@ -137,8 +137,9 @@ export default function PrivacyPage(): ReactElement {
             <strong>Sentry:</strong> error monitoring and diagnostics. When
             something fails, Sentry receives technical details such as the
             error, the page or request involved, and your browser and device
-            type. Error reports do not include your name, email address, or IP
-            address, but may include internal account or plan identifiers.
+            type. We don&rsquo;t attach your name, email address, or IP address
+            to error reports, but they may include internal account or plan
+            identifiers.
           </li>
           <li>
             <strong>Resend:</strong> delivery of email.
