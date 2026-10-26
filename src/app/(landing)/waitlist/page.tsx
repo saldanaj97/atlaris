@@ -25,12 +25,8 @@ export const metadata: Metadata = {
   },
 };
 
-/** Copy keyed by the auth route the proxy redirected from (`?from=`). */
+/** Copy keyed by the auth route the proxy redirected from (`?from=`). Sign-in stays open for invited users. */
 const COPY_BY_SOURCE = {
-  'sign-in': {
-    overline: 'Accounts open at launch',
-    body: 'Atlaris isn’t open yet, so there’s no account to sign in to. Join the waitlist and we’ll email your invite when it opens.',
-  },
   'sign-up': {
     overline: 'Sign-ups open soon',
     body: 'Atlaris isn’t open yet. Join the waitlist and we’ll email your invite when it opens.',
@@ -48,9 +44,7 @@ export default async function WaitlistPage({
 }) {
   const { from } = await searchParams;
   const copy =
-    from === 'sign-in' || from === 'sign-up'
-      ? COPY_BY_SOURCE[from]
-      : COPY_BY_SOURCE.default;
+    from === 'sign-up' ? COPY_BY_SOURCE[from] : COPY_BY_SOURCE.default;
 
   return (
     <LandingPageShell>

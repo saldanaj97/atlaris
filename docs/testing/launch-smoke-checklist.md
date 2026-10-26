@@ -6,7 +6,7 @@ Every production action here (checkouts, account deletion, flag, env and Clerk c
 
 ## Open decisions before the first batch
 
-1. **How invited batches get past the gate.** `launch-waitlist` is one global value: `resolveSiteGate()` in `src/lib/proxy/site-gate.ts` takes no user, and the proxy (`src/proxy.ts`) redirects every non-exempt path to `/waitlist` while it is on. Inviting someone from the Clerk waitlist lets them create a Clerk account, but Atlaris still sends them to `/waitlist`. Only requests with the `vercel-flag-overrides` cookie get through. No Linear issue covers per-user admission yet, so batches need a decision (or a code change) before 2026-10-30.
+1. **How invited batches get past the gate.** Decided in [DEV-190](https://linear.app/saldana-software/issue/DEV-190): while `launch-waitlist` is on, the gate lets any signed-in user through (maintenance still blocks everyone). Clerk's sign-up mode is **Waitlist**, so only invited or admin-created users have an account. Before batch 1, check Clerk Dashboard (production) → **Users**: every existing account gets past the gate.
 2. **How to pay for production checkouts.** See [Checkout in production](#checkout-in-production-decision).
 
 ## Before you start
@@ -61,13 +61,13 @@ User: none. Signed out, **no** override cookie.
 
 User: a new throwaway address you can read.
 
-While the flag is on, Clerk's sign-up mode is **Waitlist**, so only an invited address can finish sign-up, and the app's `/auth/sign-up` redirects to `/waitlist` without the override.
+While the flag is on, Clerk's sign-up mode is **Waitlist**, so only an invited address can finish sign-up. The app's `/auth/sign-up` redirects signed-out visitors to `/waitlist` without the override. The invitation itself opens Clerk's Account Portal (`accounts.atlaris.app/sign-up`), not the app.
 
 1. In Clerk Dashboard → Waitlist, select **Invite** on the throwaway entry from check 1.
 2. With the override set, open `https://atlaris.app/auth/sign-up` with DevTools open.
-3. Sign up through the "Accept invitation" link in Clerk's "Waitlist invitation" email.
+3. In a private window **without** the override, sign up through the "Accept invitation" link in Clerk's "Waitlist invitation" email.
 
-**Pass:** the Clerk sign-up form renders on `/auth/sign-up`; the console shows no Content Security Policy violation for `*.protect.clerk.com` (allowed in `script-src` and `frame-src` by `src/lib/proxy/security-headers.ts`); sign-up completes and a `users` row exists for the new Clerk user ID. If the invitation link opens Clerk's hosted Account Portal instead of `atlaris.app/auth/sign-up`, the app page's CSP is only proven by step 2's console check; the full in-app sign-up is proven on launch day ([Flag-off](#launch-day-flag-off), step 6).
+**Pass:** the Clerk sign-up form renders on `/auth/sign-up`, and the console shows no Content Security Policy violation for `*.protect.clerk.com` (allowed in `script-src` and `frame-src` by `src/lib/proxy/security-headers.ts`). After step 3, the browser lands on `https://atlaris.app/dashboard` signed in, with no `/waitlist` redirect, and a `users` row exists for the new Clerk user ID. The full in-app sign-up on `/auth/sign-up` is proven on launch day ([Flag-off](#launch-day-flag-off), step 6).
 
 ## 3. Free plan end to end
 
@@ -197,9 +197,9 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 
 Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the provider dashboards. Background: [environment.md, Vercel Flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
 
-1. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). The app is still gated, so no one reaches the app's sign-up yet.
-2. **Vercel** → Atlaris project → Flags → `launch-waitlist` → set Production to **Launched** (`false`).
-3. Wait at least 60 s (`SITE_GATE_CACHE_TTL_MS`). Check from a browser **without** the override cookie.
+1. **Vercel** → Atlaris project → Flags → `launch-waitlist` → set Production to **Launched** (`false`).
+2. Wait at least 60 s (`SITE_GATE_CACHE_TTL_MS`). Check from a browser **without** the override cookie.
+3. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). Do this after the flag: signed-in users already get past the waitlist gate (DEV-190), so opening Clerk first would let anyone sign up on the Account Portal and get in before launch. Between steps 1 and 3, `/auth/sign-up` shows Clerk's "Sign ups are currently disabled" for a minute.
 4. **Vercel** → Settings → Environment Variables → Production → remove `LAUNCH_WAITLIST`, then redeploy the current Production deployment so running instances drop it. Vercel env changes reach only new deployments. Keep the `launch-waitlist` flag itself defined in Vercel Flags: it has no `defaultValue`, so deleting it makes every evaluation throw.
 5. Confirm the redirect is gone:
 
@@ -213,4 +213,4 @@ Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the pr
 7. Run checks 3–5 and 10 once more without the override cookie, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
 8. Delete the step 6 account as in check 8.
 
-**Rollback:** set `launch-waitlist` back to **Waitlist** in Vercel Flags (applies within 60 s), set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy.
+**Rollback:** set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**) first, then set `launch-waitlist` back to **Waitlist** in Vercel Flags (applies within 60 s), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy. Accounts created while sign-up was open stay signed in and keep getting past the waitlist gate; ban or delete them in Clerk if they must lose access.

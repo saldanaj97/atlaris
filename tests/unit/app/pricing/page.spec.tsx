@@ -8,6 +8,11 @@ const mocks = vi.hoisted(() => ({
   resolveSiteGateMock: vi.fn(),
   shouldUseClerkUiMock: vi.fn(() => true),
   cookiesHasMock: vi.fn(),
+  getSessionSafeMock: vi.fn(),
+}));
+
+vi.mock('@/lib/auth/server', () => ({
+  getSessionSafe: mocks.getSessionSafeMock,
 }));
 
 vi.mock('next/headers', () => ({
@@ -101,10 +106,16 @@ describe('PricingPage', () => {
     );
   });
 
-  it.each(['maintenance', 'waitlist'] as const)(
-    'keeps pricing visible behind the %s gate without reading account billing state',
-    async (gate) => {
+  it.each([
+    ['maintenance', 'user_1'],
+    ['waitlist', null],
+  ] as const)(
+    'keeps pricing visible behind the %s gate without reading account billing state (user %s)',
+    async (gate, userId) => {
       mocks.resolveSiteGateMock.mockResolvedValue(gate);
+      mocks.getSessionSafeMock.mockResolvedValue({
+        session: userId ? { user: { id: userId } } : null,
+      });
 
       await renderPricingPage();
 
@@ -117,6 +128,20 @@ describe('PricingPage', () => {
       );
     },
   );
+
+  it('opens pricing to a signed-in user behind the launch waitlist', async () => {
+    mocks.resolveSiteGateMock.mockResolvedValue('waitlist');
+    mocks.getSessionSafeMock.mockResolvedValue({
+      session: { user: { id: 'user_invited' } },
+    });
+
+    await renderPricingPage();
+
+    expect(mocks.getOptionalCheckoutBillingSignatureMock).toHaveBeenCalled();
+    expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
+      expect.objectContaining({ appClosed: false }),
+    );
+  });
 
   it.each([false, true])(
     'bypasses the site gate cache only when the flag override cookie is present (%s)',
