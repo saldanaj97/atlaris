@@ -82,7 +82,7 @@ The phased migration runner refuses to continue when the drop version is already
 
 After deploying a release that includes new Supabase migrations:
 
-1. Before deploying code that needs new schema, manually dispatch the environment workflow's `expand` phase (`staging-db-migrations.yaml` from `develop`, `production-db-migrations.yaml` from `main`). For staging, verify the native `develop` Preview is healthy; migration phases remain operator-dispatched.
+1. Apply the `expand` phase before code that needs new schema serves traffic. Production: `production-db-migrations.yaml` runs `expand` automatically on each `main` push that changes `supabase/migrations/**`; confirm that run succeeded (re-run it or dispatch `expand` from `main` if it failed). Staging: manually dispatch `staging-db-migrations.yaml` phase `expand` from `develop`, then verify the native `develop` Preview is healthy. Supabase's GitHub integration has **Deploy to production** turned off for `atlaris-prod` (since 2026-10-26, DEV-191). With it on, the integration applied every pending file in `supabase/migrations/` about 30 seconds after each `main` push, racing this workflow and skipping the expand/contract guards in `scripts/db/run-phased-migrations.sh` (a contract migration could reach Production without the health confirmation). Keep it off: this workflow is the only path that applies Production migrations.
 2. After rollout health and any migration-specific archive checks pass, dispatch `contract` with confirmation `post-deploy-health-verified`. Do not apply hosted migrations with a broad root `supabase db push --include-all`. `scripts/db/run-phased-migrations.sh` classifies every local `supabase/migrations/*.sql` into exhaustive `EXPAND_MIGRATIONS` or `CONTRACT_MIGRATIONS` arrays; contract applies only pending contract files in a temporary workspace via `supabase migration up --linked --include-all --yes` and fails if any expand migration is still pending.
 3. Each successful phase runs the read-only effective-privilege attestation automatically (`scripts/db/run-phased-migrations.sh` → `bash scripts/db/attest-effective-privileges.sh <expand|contract>`). To re-run it against the linked target, use:
 
@@ -92,10 +92,11 @@ bash scripts/db/attest-effective-privileges.sh expand
 bash scripts/db/attest-effective-privileges.sh contract
 ```
 
-It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants. Full checklist and allowlist paths: [client-usage.md — Privilege model and attestation](../database/client-usage.md#privilege-model-and-attestation).
-4. Set worker tokens in the target environment for enabled internal routes:
-   - `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
-   - `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
+It fails closed if browser roles can bypass RLS, if any public application table lacks RLS, if effective table or column grants exceed the client allowlists, if `task_progress` loses its allowed writes, or if client roles can reach service-only tables, security-definer functions, the private schema, or unsafe default table-write grants. Full checklist and allowlist paths: [client-usage.md — Privilege model and attestation](../database/client-usage.md#privilege-model-and-attestation). 4. Set worker tokens in the target environment for enabled internal routes:
+
+- `WORKER_HEALTH_TOKEN` for `GET /api/health/worker` operator metrics
+- `RETENTION_CLEANUP_ENABLED=true` and/or `PLAN_CLEANUP_ENABLED=true` plus `MAINTENANCE_WORKER_TOKEN` only when enabling maintenance routes
+
 5. Verify plan cleanup when `JOB_PLAN_CLEANUP_ENABLED=true` on the jobs Worker:
    - Confirm the Worker's `*/15 * * * *` cron runs `job=plan-cleanup` successfully in Workers Logs.
    - The manual route `POST /api/internal/maintenance/plans/cleanup` needs `PLAN_CLEANUP_ENABLED=true` and `MAINTENANCE_WORKER_TOKEN` in Vercel; it is for manual operations only.
@@ -113,10 +114,11 @@ vercel flags disable module-lesson-generation --environment preview --scope <tea
 vercel flags disable module-lesson-generation --environment production --scope <team>
 ```
 
-   - Confirm `vercel flags inspect module-lesson-generation --scope <team>` reports `Off` for Development, Preview, and Production before the first smoke.
-   - Leave the Vercel Flag `module-lesson-generation` disabled until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
-   - Enable only the environment being validated after that check; restore it to `Off` after controlled Preview verification. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
-   - After enablement, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md`.
+- Confirm `vercel flags inspect module-lesson-generation --scope <team>` reports `Off` for Development, Preview, and Production before the first smoke.
+- Leave the Vercel Flag `module-lesson-generation` disabled until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
+- Enable only the environment being validated after that check; restore it to `Off` after controlled Preview verification. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
+- After enablement, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md`.
+
 7. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
