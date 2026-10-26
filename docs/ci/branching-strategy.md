@@ -1,7 +1,7 @@
 # CI/CD & Branching Strategy
 
 **Audience:** New contributors and junior developers  
-**Last Updated:** August 2026
+**Last Updated:** October 2026
 
 ## Overview
 
@@ -54,7 +54,7 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
     │                                                             │
     │   Merge to develop ──> Full CI ──> DB migrations ──> Staging │
     │                                                             │
-    │   Merge to main ─────> Full CI ──> DB migrations (expand)    │
+    │   Merge to main ─────> Full CI + DB migrations (auto expand) │
     │        ──> native Production deployment                     │
     │        ──> JCS-52 Deployment Checks ──> alias gate          │
     │        ──> DB migrations (contract)                          │
@@ -77,13 +77,13 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 
 ## Environments
 
-| Environment | Branch Source | URL | Purpose |
-| ----------- | ------------- | --- | ------- |
-| **Local / Local Preview** | Your branch | `localhost:3000` | Development and local integration |
-| **Preview** | `develop` and `hotfix/*` | Vercel preview | Staging build for `develop`; `hotfix/*` previews give hotfix PRs into `main` the required Vercel status. Feature branches get no Vercel deployment |
-| **Staging** | `develop` | Hosted staging / preview | Integration testing with non-Production services |
-| **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains |
-| **Live Production** | `main` | Production URL | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating |
+| Environment                 | Branch Source                     | URL                            | Purpose                                                                                                                                            |
+| --------------------------- | --------------------------------- | ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Local / Local Preview**   | Your branch                       | `localhost:3000`               | Development and local integration                                                                                                                  |
+| **Preview**                 | `develop` and `hotfix/*`          | Vercel preview                 | Staging build for `develop`; `hotfix/*` previews give hotfix PRs into `main` the required Vercel status. Feature branches get no Vercel deployment |
+| **Staging**                 | `develop`                         | Hosted staging / preview       | Integration testing with non-Production services                                                                                                   |
+| **Staged Production proof** | Exact `main` SHA on `origin/main` | Protected generated Vercel URL | Post-push unaliased rehearsal; does not govern native Production aliases or domains                                                                |
+| **Live Production**         | `main`                            | Production URL                 | Live users after native Vercel deployment; JCS-52 will add Deployment Checks for Production gating                                                 |
 
 ### Deployment Mechanism
 
@@ -91,7 +91,7 @@ Merge the promotion PR with **Create a merge commit**. A squash or rebase merge 
 - **Preview DB**: isolated preview Supabase Postgres per your Vercel + Supabase setup (set `POSTGRES_URL` for preview).
 - **Staging**: the `develop` branch's Vercel Preview deployment is the hosted staging surface; use non-Production services and dispatch migration phases when needed.
 - **Staged Production**: before JCS-52, operators run a post-push unaliased rehearsal from a clean checkout after the exact `main` SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
-- **Production migrations**: operators dispatch `.github/workflows/production-db-migrations.yaml` from `main` in explicit expand (before exercising the Production binary) and contract (after alias assignment + health) phases.
+- **Production migrations**: `.github/workflows/production-db-migrations.yaml` runs phase `expand` automatically on each `main` push that changes `supabase/migrations/**`; operators dispatch phase `contract` from `main` after alias assignment + health. Supabase's GitHub integration no longer deploys to Production (see [workflow 4](#4-production-db-migrationsyaml---production-database-migration-workflow)).
 
 ---
 
@@ -148,17 +148,22 @@ CircleCI `build` is the PR gate for the Next.js build: it runs `pnpm build` with
 
 ### 4. `production-db-migrations.yaml` - Production Database Migration Workflow
 
-**Trigger:** Manual `workflow_dispatch` from `main`
+**Triggers:**
+
+- Push to `main` that changes `supabase/migrations/**`: always phase `expand`, never contract
+- Manual `workflow_dispatch` from `main`: phase `expand` or `contract`
 
 **What it does:**
 
 - `validate-dispatch` fails (does not skip) when the ref is not `refs/heads/main`
-- Checks out the dispatch SHA (`${{ github.sha }}`)
+- Checks out the triggering SHA (`${{ github.sha }}`)
 - Links the Supabase CLI to the project in `PRODUCTION_PROJECT_ID`
 - `expand` applies only pending `EXPAND_MIGRATIONS` in a phase-specific workspace via `supabase migration up --linked --include-all --yes`
 - `contract` requires `post-deploy-health-verified`, applies only pending `CONTRACT_MIGRATIONS` the same way, and fails if any expand migration is still pending
 
 **Purpose:** Preserve expand/deploy/contract ordering for the production database.
+
+Supabase's GitHub integration has **Deploy to production** turned off for `atlaris-prod` (since 2026-10-26, DEV-191). With it on, the integration applied every pending file in `supabase/migrations/` about 30 seconds after each `main` push, racing this workflow and skipping the expand/contract guards in `scripts/db/run-phased-migrations.sh` (a contract migration could reach Production without the health confirmation). Keep it off: this workflow is the only path that applies Production migrations.
 
 ---
 
@@ -201,7 +206,7 @@ git commit -m "feat: ..."
 
 1. Merge release PR
 2. Full CI runs (CircleCI `ci-trunk`; `integration-tests` / `security-tests` skip when `detect-changes` finds no integration-path files)
-3. An operator dispatches `production-db-migrations.yaml` phase `expand` when schema changes require it
+3. `production-db-migrations.yaml` runs phase `expand` automatically when the merge changes `supabase/migrations/**`
 4. Vercel's Git integration creates the Production deployment for the `main` push. Before JCS-52 is available, use the post-push unaliased rehearsal from a clean checkout after that SHA exists on `origin/main`; it does not govern native Production alias/domain assignment. Only JCS-52's native Vercel Deployment Check enforced by Deployment Protection can gate live alias assignment. See [staged-production-deployment.md](../ci-cd/staged-production-deployment.md).
 5. After alias assignment + health/archive checks, the operator dispatches phase `contract`
 
@@ -209,11 +214,11 @@ git commit -m "feat: ..."
 
 ## Database Migrations
 
-| Stage          | What happens                                                           |
-| -------------- | ---------------------------------------------------------------------- |
-| **PR**         | Developer commits Supabase migration files under `supabase/migrations` |
-| **Staging**    | Migration changes: operator dispatches `expand`, verifies the native `develop` Preview, then dispatches confirmed `contract` |
-| **Production** | Operator dispatches `expand`, verifies the native `main` release is healthy, then dispatches confirmed `contract` on `main`; after JCS-52 is operational, its native Deployment Checks gate automatic aliasing, while native `main` traffic is independent before then |
+| Stage          | What happens                                                                                                                                                                                                                                                                                       |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PR**         | Developer commits Supabase migration files under `supabase/migrations`                                                                                                                                                                                                                             |
+| **Staging**    | Migration changes: operator dispatches `expand`, verifies the native `develop` Preview, then dispatches confirmed `contract`                                                                                                                                                                       |
+| **Production** | The `main` push runs `expand` automatically; the operator verifies the native `main` release is healthy, then dispatches confirmed `contract` on `main`; after JCS-52 is operational, its native Deployment Checks gate automatic aliasing, while native `main` traffic is independent before then |
 
 Migration-related changes include:
 

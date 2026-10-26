@@ -38,7 +38,7 @@ The 10 topics are listed in `topics.ts`. Every plan asks for 4 hours a week, the
 | `EVAL_JUDGE_OPENROUTER_API_KEY` | `score.ts` | A separate key, so judge spend stays out of the tier keys                       |
 | `EVAL_JUDGE_MODEL`              | `score.ts` | Optional judge override                                                         |
 
-Every plan gets its own throwaway Clerk user (`eval-…@atlaris.app`), so per-user rate limits never hold plans back. For Starter and Pro, the runner provisions the user and then sets `users.subscription_tier` through `supabase db query --linked`, and it refuses any linked project other than staging. The staging Clerk allowlist admits only `atlaris.app`, which is why throwaway users use that domain. The launch waitlist must be off for the users, or the runner stops on the redirect.
+Every plan gets its own throwaway Clerk user (`eval-…@atlaris.app`), so per-user rate limits never hold plans back. For Starter and Pro, the runner provisions the user and then sets `users.subscription_tier` through `supabase db query --linked`, and it refuses any linked project other than staging. The staging Clerk allowlist admits only `atlaris.app`, which is why throwaway users use that domain. The runner sends each user's Clerk session token, so the users pass the launch waitlist like any signed-in user; maintenance mode still stops the runner on the redirect.
 
 ## Run
 

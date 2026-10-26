@@ -70,7 +70,6 @@ describe('Supabase migration workflows', () => {
       const [validateJob, deployJob] = workflow.split('\n  deploy:');
 
       expect(workflow).toContain('workflow_dispatch:');
-      expect(workflow).not.toContain('\n  push:');
       expect(workflow).toContain('phase:');
       expect(validateJob).toContain('validate-dispatch:');
       expect(validateJob).not.toContain('environment:');
@@ -125,20 +124,61 @@ describe('Supabase migration workflows', () => {
     const workflow = readWorkflow('production-db-migrations.yaml');
 
     expect(workflow).toContain(
-      'run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}',
+      "run-name: Production migrations (${{ inputs.phase || 'expand' }}) @ ${{ github.sha }}",
+    );
+  });
+
+  it('keeps Staging migrations dispatch-only', () => {
+    expect(readWorkflow('staging-db-migrations.yaml')).not.toContain(
+      '\n  push:',
+    );
+  });
+
+  it('runs Production expand on main pushes that change migrations', () => {
+    const workflow = readWorkflow('production-db-migrations.yaml');
+    const triggers = workflow.slice(
+      workflow.indexOf('\non:\n'),
+      workflow.indexOf('\npermissions:'),
+    );
+    const pushTrigger = triggers.slice(
+      triggers.indexOf('\n  push:\n'),
+      triggers.indexOf('\n  workflow_dispatch:'),
+    );
+
+    expect(pushTrigger).toBe(
+      '\n  push:\n    branches:\n      - main\n    paths:\n      - supabase/migrations/**',
+    );
+    expect(triggers).not.toContain('pull_request');
+  });
+
+  it('never lets a Production push run select contract', () => {
+    const workflow = readWorkflow('production-db-migrations.yaml');
+
+    expect(workflow).toContain(
+      "MIGRATION_PHASE: ${{ github.event_name == 'workflow_dispatch' && inputs.phase || 'expand' }}",
+    );
+    expect(workflow).toContain(
+      "CONTRACT_CONFIRMATION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_contract || '' }}",
+    );
+    expect(workflow.match(/MIGRATION_PHASE:/g)).toHaveLength(1);
+    expect(workflow.match(/CONTRACT_CONFIRMATION:/g)).toHaveLength(1);
+  });
+
+  it('separates Staging expand migrations from confirmed contract migrations', () => {
+    const workflow = readWorkflow('staging-db-migrations.yaml');
+
+    expect(workflow).toContain('MIGRATION_PHASE: ${{ inputs.phase }}');
+    expect(workflow).toContain(
+      'CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}',
     );
   });
 
   it.each(migrationWorkflows)(
-    '$fileName separates expand migrations from confirmed contract migrations',
+    '$fileName runs the phased migration script with a contract confirmation input',
     ({ fileName }) => {
       const workflow = readWorkflow(fileName);
 
       expect(workflow).toContain('confirm_contract:');
-      expect(workflow).toContain('MIGRATION_PHASE: ${{ inputs.phase }}');
-      expect(workflow).toContain(
-        'CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}',
-      );
       expect(workflow).toContain('bash scripts/db/run-phased-migrations.sh');
     },
   );

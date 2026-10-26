@@ -171,19 +171,46 @@ describe('SiteHeader', () => {
     },
   );
 
-  it.each(['maintenance', 'waitlist'] as const)(
-    'renders signed-in visitors as signed out behind the %s gate',
-    async (gate) => {
-      mocks.resolveSiteGate.mockResolvedValue(gate);
+  it('renders signed-in visitors as signed out behind the maintenance gate', async () => {
+    mocks.resolveSiteGate.mockResolvedValue('maintenance');
 
-      render(await SiteHeader({ loadAccountProfile: false }));
+    render(await SiteHeader({ loadAccountProfile: false }));
 
-      expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
-        'data-authenticated',
-        'false',
-      );
-      expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
-      expect(mocks.currentUser).not.toHaveBeenCalled();
-    },
-  );
+    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+      'data-authenticated',
+      'false',
+    );
+    expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
+    expect(mocks.currentUser).not.toHaveBeenCalled();
+  });
+
+  it('renders signed-in users as signed in behind the launch waitlist', async () => {
+    mocks.resolveSiteGate.mockResolvedValue('waitlist');
+    mocks.requestBoundaryComponent.mockResolvedValue({
+      tier: 'free',
+      canCreatePlan: true,
+    });
+
+    render(await SiteHeader({ loadAccountProfile: false }));
+
+    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+      'data-authenticated',
+      'true',
+    );
+    expect(screen.getByTestId('site-header-chrome')).toHaveTextContent(':free');
+  });
+
+  it('renders signed-out visitors as signed out behind the launch waitlist', async () => {
+    mocks.resolveSiteGate.mockResolvedValue('waitlist');
+    mocks.getSessionSafe.mockResolvedValue({ session: null });
+    mocks.getShellAuthUserId.mockReturnValue(undefined);
+
+    render(await SiteHeader({ loadAccountProfile: false }));
+
+    expect(screen.getByTestId('site-header-chrome')).toHaveAttribute(
+      'data-authenticated',
+      'false',
+    );
+    expect(mocks.requestBoundaryComponent).not.toHaveBeenCalled();
+  });
 });
