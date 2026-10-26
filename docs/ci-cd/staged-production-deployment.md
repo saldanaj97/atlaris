@@ -1,7 +1,7 @@
 # Staged Production deployment lane
 
 **Audience:** Operators releasing Atlaris to live Production  
-**Last Updated:** August 2026
+**Last Updated:** October 2026
 
 ## Why this exists
 
@@ -13,12 +13,12 @@ Before JCS-52 is available, this lane offers a post-push, unaliased rehearsal of
 
 ## Validation layers
 
-| Lane | Purpose | Production domains |
-| ---- | ------- | ------------------ |
-| Local Preview | Fast local iteration with non-Production services (1Password-backed lane in JCS-50; local product testing / `pnpm dev` until that lands) | Untouched |
-| Hosted Preview / Staging | Hosted platform behavior with isolated non-Production services | Untouched |
-| **Staged Production proof** | Exact Vercel Production build + Production-scoped config, generated URL only | Unaffected by this unaliased rehearsal |
-| Live Production | JCS-52-approved exact candidate | Move automatically only after the required Deployment Check passes |
+| Lane                        | Purpose                                                                                                                                  | Production domains                                                 |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Local Preview               | Fast local iteration with non-Production services (1Password-backed lane in JCS-50; local product testing / `pnpm dev` until that lands) | Untouched                                                          |
+| Hosted Preview / Staging    | Hosted platform behavior with isolated non-Production services                                                                           | Untouched                                                          |
+| **Staged Production proof** | Exact Vercel Production build + Production-scoped config, generated URL only                                                             | Unaffected by this unaliased rehearsal                             |
+| Live Production             | JCS-52-approved exact candidate                                                                                                          | Move automatically only after the required Deployment Check passes |
 
 This lane complements Local Preview and Staging. It does not replace them.
 
@@ -53,7 +53,7 @@ Until JCS-52 is operational:
 - Operator access to inspect deployments, aliases, and Deployment Protection in the Vercel dashboard.
 - Hosted Staging acceptance already complete for the same release candidate SHA.
 - CircleCI `ci-trunk` for that SHA has succeeded (the workflow still starts on every push to `main`; `integration-tests` / `security-tests` skip when there were no integration-path changes).
-- If the release needs new schema, Production migration workflow `expand` is already applied and verified before exercising the staged binary. See [deploy.md](../development/deploy.md) and `.github/workflows/production-db-migrations.yaml`.
+- If the release needs new schema, the automatic Production migration `expand` run for that `main` push (`.github/workflows/production-db-migrations.yaml`) succeeded before exercising the staged binary. Supabase's GitHub integration no longer deploys migrations to Production, so that workflow is the only path. See [deploy.md](../development/deploy.md).
 
 ## 1. Preflight and migration ordering
 
@@ -78,7 +78,7 @@ Also confirm manually before continuing:
 1. Intended release candidate equals that SHA (no local-only commits).
 2. CircleCI `ci-trunk` for the SHA has succeeded (integration/security jobs skip when there were no integration-path changes).
 3. Hosted Staging acceptance for the same SHA is done.
-4. Required Production `expand` migrations (if any) are done.
+4. The automatic Production `expand` run for this SHA (if the push changed `supabase/migrations/**`) succeeded.
 5. Current Production domain / alias target is recorded so later alias movement can be detected:
 
 ```bash
@@ -103,14 +103,14 @@ This rehearsal keeps Production environment variables in Vercel and its own depl
 
 Record:
 
-| Field | Value |
-| ----- | ----- |
-| Deployment ID | |
-| Generated URL | |
-| Target environment | Production |
-| Exact commit SHA | |
-| State (`READY` / `ERROR`) | |
-| Native `main` alias/domain state (observed separately) | |
+| Field                                                  | Value      |
+| ------------------------------------------------------ | ---------- |
+| Deployment ID                                          |            |
+| Generated URL                                          |            |
+| Target environment                                     | Production |
+| Exact commit SHA                                       |            |
+| State (`READY` / `ERROR`)                              |            |
+| Native `main` alias/domain state (observed separately) |            |
 
 The `--skip-domain` rehearsal deployment has no alias of its own. Native `main` alias/domain state is independent; do not infer traffic control from this rehearsal.
 
@@ -132,13 +132,13 @@ Minimum checks:
 
 Separate smoke evidence categories when recording results:
 
-| Evidence | What it proves |
-| -------- | -------------- |
-| Build success | Artifact compiled and reached `READY` |
-| Provider ingress | Request reached the generated URL through protection |
-| Vercel / runtime behavior | Production target and runtime path for that deployment |
-| Persisted application state | Only if an explicitly approved write test was run |
-| Native live-domain assignment | Current alias target observed outside this rehearsal |
+| Evidence                      | What it proves                                         |
+| ----------------------------- | ------------------------------------------------------ |
+| Build success                 | Artifact compiled and reached `READY`                  |
+| Provider ingress              | Request reached the generated URL through protection   |
+| Vercel / runtime behavior     | Production target and runtime path for that deployment |
+| Persisted application state   | Only if an explicitly approved write test was run      |
+| Native live-domain assignment | Current alias target observed outside this rehearsal   |
 
 Do **not** exercise destructive or scheduled operational paths. Any write-capable acceptance is a separate, explicitly approved test with a controlled Production test identity, verified terminal state, and clear cleanup ownership.
 

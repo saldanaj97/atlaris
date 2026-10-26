@@ -1,7 +1,14 @@
 name: Deploy Migrations to Production
-run-name: Production migrations (${{ inputs.phase }}) @ ${{ github.sha }}
+run-name: Production migrations (${{ inputs.phase || 'expand' }}) @ ${{ github.sha }}
 
 on:
+  # Merges to main apply pending expand migrations automatically. Contract
+  # stays a manual dispatch with the post-deploy-health-verified confirmation.
+  push:
+    branches:
+      - main
+    paths:
+      - supabase/migrations/**
   workflow_dispatch:
     inputs:
       phase:
@@ -74,7 +81,7 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.PRODUCTION_DB_PASSWORD }}
           SUPABASE_PROJECT_ID: ${{ secrets.PRODUCTION_PROJECT_ID }}
-          MIGRATION_PHASE: ${{ inputs.phase }}
-          CONTRACT_CONFIRMATION: ${{ inputs.confirm_contract }}
+          MIGRATION_PHASE: ${{ github.event_name == 'workflow_dispatch' && inputs.phase || 'expand' }}
+          CONTRACT_CONFIRMATION: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_contract || '' }}
         shell: bash
         run: bash scripts/db/run-phased-migrations.sh
