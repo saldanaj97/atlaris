@@ -130,7 +130,7 @@ The options considered:
 
 User and card per [the decision above](#checkout-in-production-decision):
 
-- **Batch run (staging):** a Free user on `https://staging.atlaris.app`: a new sign-up, or for agents `scripts/dev/agent-session.ts --env staging --tier free` ([agent-sessions.md](../development/agent-sessions.md)). Card `4242 4242 4242 4242`.
+- **Batch run (staging):** a new throwaway sign-up on `https://staging.atlaris.app` for each run, deleted at the end of check 7. Don't use `scripts/dev/agent-session.ts --tier free`: it always signs in the same `agent-free@atlaris.app` user, which would still be on Pro at the next run. Card `4242 4242 4242 4242`. Check the result in the **staging** Supabase project's SQL Editor and in Clerk Dashboard (**Development** instance) → Webhooks, not in production.
 - **Launch day (production):** the throwaway from checks 2 and 3 (currently Free), override set, the owner's real card.
 
 1. Open `/pricing`, select **Begin with Starter**, tick "I agree to automatic … renewal and the Terms of Service", and complete Clerk checkout.
@@ -152,6 +152,8 @@ User: the same user as check 6 (now Starter), in the same environment.
 1. `/pricing` → **Begin with Pro** → consent → checkout.
 
 **Pass:** Settings → Billing says "You're currently on the Pro plan."; `subscription_tier = 'pro'` in the DB; webhook deliveries `200`.
+
+**Batch run (staging) cleanup:** delete the staging throwaway at `/settings/profile` → **Delete account**, which ends its subscription before deleting the Clerk user. The next batch run starts from a new Free user.
 
 ## 8. Account deletion clears DB and PostHog (DEV-184)
 
