@@ -4,6 +4,7 @@ import {
   isSiteGateExempt,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
+  resolveViewerSiteGate,
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
@@ -152,12 +153,39 @@ describe('middleware policy', () => {
     expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
   });
 
-  it.each(['/auth/sign-in', '/auth/sign-up', '/dashboard', '/maintenance'])(
+  it.each([
+    '/auth/sign-up',
+    '/auth/sign-up/verify',
+    '/auth/sign-in-other',
+    '/dashboard',
+    '/maintenance',
+  ])(
     'redirects %s to /waitlist while the launch waitlist is on',
     (pathname) => {
       expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(
         '/waitlist',
       );
+    },
+  );
+
+  it.each(['/auth/sign-in', '/auth/sign-in/', '/auth/sign-in/factor-one'])(
+    'keeps %s live while the launch waitlist is on so invited users can sign back in',
+    (pathname) => {
+      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
+    },
+  );
+
+  it.each([
+    [null, false, null],
+    [null, true, null],
+    ['waitlist', false, 'waitlist'],
+    ['waitlist', true, null],
+    ['maintenance', false, 'maintenance'],
+    ['maintenance', true, 'maintenance'],
+  ] as const)(
+    'resolveViewerSiteGate(%s, signedIn=%s) is %s',
+    (gate, signedIn, expected) => {
+      expect(resolveViewerSiteGate(gate, signedIn)).toBe(expected);
     },
   );
 

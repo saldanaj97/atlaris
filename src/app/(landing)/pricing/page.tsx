@@ -9,6 +9,8 @@ import { buildCheckoutReturnRedirectUrl } from '@/features/billing/checkout-retu
 import { getOptionalCheckoutBillingSignature } from '@/features/billing/checkout-return-server';
 import { ROUTES } from '@/features/navigation/routes';
 import { shouldUseClerkUi } from '@/lib/auth/local-identity';
+import { getSessionSafe } from '@/lib/auth/server';
+import { resolveViewerSiteGate } from '@/lib/proxy/middleware-policy';
 import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
 import { cookies } from 'next/headers';
 
@@ -21,10 +23,13 @@ export const metadata: Metadata = {
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
   // The proxy keeps /pricing live while a site gate is on; skip the account DB read.
-  const appClosed =
-    (await resolveSiteGate({
-      bypassCache: (await cookies()).has(FLAG_OVERRIDES_COOKIE),
-    })) !== null;
+  const siteGate = await resolveSiteGate({
+    bypassCache: (await cookies()).has(FLAG_OVERRIDES_COOKIE),
+  });
+  // Signed-in users pass the launch waitlist, so they get the live checkout.
+  const signedIn =
+    siteGate === 'waitlist' && Boolean((await getSessionSafe()).session);
+  const appClosed = resolveViewerSiteGate(siteGate, signedIn) !== null;
   const checkoutBaseline =
     showClerkBilling && !appClosed
       ? await getOptionalCheckoutBillingSignature()

@@ -100,6 +100,18 @@ export function isSiteGateExempt(pathname: string): boolean {
   );
 }
 
+/**
+ * The gate one viewer sees. The launch waitlist admits anyone with a Clerk session:
+ * while Clerk's sign-up mode is Waitlist, only invited or admin-created users have one.
+ * Maintenance holds everyone.
+ */
+export function resolveViewerSiteGate(
+  gate: SiteGate | null,
+  signedIn: boolean,
+): SiteGate | null {
+  return gate === 'waitlist' && signedIn ? null : gate;
+}
+
 /** Redirect target while a site gate is on (or off), or null when the route is allowed. */
 export function resolveSiteGateRedirectPath(
   gate: SiteGate | null,
@@ -118,6 +130,13 @@ export function resolveSiteGateRedirectPath(
 
   const target = SITE_GATE_PAGES[gate];
   if (path === target) {
+    return null;
+  }
+  // Invited users sign back in here; Clerk's Waitlist mode decides who has an account.
+  if (
+    gate === 'waitlist' &&
+    resolveSiteGateRedirectSource(path) === 'sign-in'
+  ) {
     return null;
   }
   // `/` sends signed-in users to the dashboard; keep everyone on the landing page.

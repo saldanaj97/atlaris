@@ -145,6 +145,8 @@ export default async function RootLayout({
             localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
+            // Clerk's "Join waitlist" links (Waitlist sign-up mode) open the app's page, not the Account Portal.
+            waitlistUrl='/waitlist'
           >
             <PostHogUserIdentifier />
             {appContent}

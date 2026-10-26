@@ -32,7 +32,7 @@ describe('WaitlistPage', () => {
 
   it.each([
     [undefined, 'Opening soon', /getting ready to open/],
-    ['sign-in', 'Accounts open at launch', /no account to sign in to/],
+    ['sign-in', 'Opening soon', /getting ready to open/],
     ['sign-up', 'Sign-ups open soon', /isn’t open yet\. Join the waitlist/],
     ['unexpected', 'Opening soon', /getting ready to open/],
   ])('tailors copy for from=%s', async (from, overline, body) => {

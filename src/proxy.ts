@@ -6,6 +6,7 @@ import {
   isSiteGateExempt,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
+  resolveViewerSiteGate,
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
@@ -71,10 +72,12 @@ const withCorrelationId = (
 };
 
 type ProtectRequest = () => Promise<NextResponse | undefined>;
+type IsSignedIn = () => Promise<boolean>;
 
 async function handleProxyRequest(
   request: NextRequest,
   protectRequest: ProtectRequest,
+  isSignedIn: IsSignedIn,
 ): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
 
@@ -85,9 +88,14 @@ async function handleProxyRequest(
 
   // Maintenance mode / launch waitlist. Exempt paths never redirect, so skip the flag reads.
   if (!isSiteGateExempt(pathname)) {
-    const siteGate = await resolveSiteGate({
+    const flagGate = await resolveSiteGate({
       bypassCache: request.cookies.has(FLAG_OVERRIDES_COOKIE),
     });
+    // Only the waitlist depends on the viewer, so other gates skip the session read.
+    const siteGate =
+      flagGate === 'waitlist'
+        ? resolveViewerSiteGate(flagGate, await isSignedIn())
+        : flagGate;
     const gateTarget = resolveSiteGateRedirectPath(siteGate, pathname, {
       allowGatePagePreview: appEnv.isDevelopment,
     });
@@ -139,10 +147,15 @@ async function handleProxyRequest(
 
 const clerkProxy = clerkMiddleware(
   async (auth, request: NextRequest) =>
-    handleProxyRequest(request, async () => {
-      await auth.protect();
-      return undefined;
-    }),
+    handleProxyRequest(
+      request,
+      async () => {
+        await auth.protect();
+        return undefined;
+      },
+      // clerkMiddleware already authenticated the request, so this adds no network call.
+      async () => (await auth()).userId !== null,
+    ),
   {
     signInUrl: '/auth/sign-in',
     signUpUrl: '/auth/sign-up',
@@ -160,14 +173,19 @@ function proxy(request: NextRequest, event: NextFetchEvent) {
     return clerkProxy(request, event);
   }
 
-  return handleProxyRequest(request, async () => {
-    const signInUrl = new URL('/auth/sign-in', request.url);
-    signInUrl.searchParams.set(
-      'redirect_url',
-      `${request.nextUrl.pathname}${request.nextUrl.search}`,
-    );
-    return NextResponse.redirect(signInUrl);
-  });
+  return handleProxyRequest(
+    request,
+    async () => {
+      const signInUrl = new URL('/auth/sign-in', request.url);
+      signInUrl.searchParams.set(
+        'redirect_url',
+        `${request.nextUrl.pathname}${request.nextUrl.search}`,
+      );
+      return NextResponse.redirect(signInUrl);
+    },
+    // No Clerk keys locally, so no session to admit.
+    async () => false,
+  );
 }
 
 export default proxy;

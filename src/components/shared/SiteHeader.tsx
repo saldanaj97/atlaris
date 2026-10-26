@@ -16,6 +16,7 @@ import {
 import { getSessionSafe } from '@/lib/auth/server';
 import { devAuthEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
+import { resolveViewerSiteGate } from '@/lib/proxy/middleware-policy';
 import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
 import { currentUser } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
@@ -56,8 +57,9 @@ export default async function SiteHeader({
     resolveSiteGate({ bypassCache: bypassSiteGateCache }),
   ]);
   // Marketing pages stay live while a site gate is on. Render them signed out
-  // so Clerk's account menu can't open a path around the gate redirect.
-  const authUserId = siteGate
+  // so Clerk's account menu can't open a path around the gate redirect. Signed-in
+  // users pass the launch waitlist, so they keep their account chrome.
+  const authUserId = resolveViewerSiteGate(siteGate, Boolean(session?.user?.id))
     ? undefined
     : getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;
