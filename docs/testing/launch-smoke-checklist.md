@@ -4,10 +4,10 @@ Run this list in **production** before each waitlist batch is invited and again 
 
 Every production action here (checkouts, account deletion, flag, env and Clerk changes) needs the owner's go-ahead for that run. Provider dashboard steps (Vercel, Clerk, Stripe, Supabase, PostHog, Sentry, OpenRouter) are done by the owner. A failing check gets its own Linear bug, linked from DEV-187. Times are America/Chicago.
 
-## Open decisions before the first batch
+## Decisions before the first batch
 
 1. **How invited batches get past the gate.** Decided in [DEV-190](https://linear.app/saldana-software/issue/DEV-190): while `launch-waitlist` is on, the gate lets any signed-in user through (maintenance still blocks everyone). Clerk's sign-up mode is **Waitlist**, so only invited or admin-created users have an account. Before batch 1, check Clerk Dashboard (production) → **Users**: every existing account gets past the gate.
-2. **How to pay for production checkouts.** See [Checkout in production](#checkout-in-production-decision).
+2. **How to pay for production checkouts.** Decided 2026-10-26: option B. Batch runs do checks 6 and 7 on staging with a test card; launch day does them once in production with a real card, refunded in Stripe. See [Checkout in production](#checkout-in-production-decision).
 
 ## Before you start
 
@@ -30,7 +30,8 @@ OpenRouter balance before:            after:
 Key usage before (free/starter/pro):  after:
 Sentry: new issues since <start time> in atlaris / atlaris-jobs:
 1 Waitlist form   2 Sign-up page   3 Free plan   4 Starter plan   5 Pro plan
-6 Starter checkout   7 Pro checkout   8 Account deletion   9 Notification email
+6 Starter checkout   7 Pro checkout (staging on batch runs, production on launch day)
+8 Account deletion   9 Notification email
 Failures (Linear bug links):
 ```
 
@@ -112,19 +113,25 @@ Same steps as check 4 (Pro has no week limit).
 
 The issue says "Clerk test card", but test cards are a **development-instance** feature. Clerk's development instances use a shared Stripe test account; a production instance must connect its own Stripe account, and development Stripe accounts can't be used for production ([Clerk Billing overview](https://clerk.com/docs/guides/billing/overview)). Stripe also prohibits testing live mode with real payment details ([Stripe testing](https://docs.stripe.com/testing)), and Clerk Billing has no refund feature, so refunds go through the Stripe Dashboard. The Clerk docs don't mention coupons or promo codes. So in production, `4242 4242 4242 4242` will not complete a checkout.
 
-Options for the owner to pick (record the choice on DEV-187):
+**Decided 2026-10-26: option B** (recorded on DEV-187).
 
-| Option                                                                            | Cost and effort                                                                                                                                                                               | What it proves                                                      |
-| --------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| **A. Real card, then refund** (recommended once before batch 1 and on launch day) | Pays $25 (Starter) and the Pro upgrade on the owner's card; refund both in the Stripe Dashboard right after. Stripe keeps its processing fee on refunded charges; check Stripe's pricing page | Live checkout → Clerk webhook → Atlaris tier, with the real gateway |
-| **B. Staging checkout every batch, A only on launch day**                         | Staging uses the Clerk development gateway and test cards ([manual real-checkout verification](../development/environment.md#manual-real-checkout-verification-opt-in-not-default-ci))        | Code path every batch; live gateway only once                       |
-| **C. Ask Clerk support about a 100% discount for production**                     | Unknown; not in Clerk's docs                                                                                                                                                                  | Same as A without the charge, if it exists                          |
+- **Batch runs:** do checks 6 and 7 on staging (`https://staging.atlaris.app`) with the Stripe test card `4242 4242 4242 4242`. Staging shares the Clerk Development instance with local, so its gateway accepts test cards ([manual real-checkout verification](../development/environment.md#manual-real-checkout-verification-opt-in-not-default-ci)). Production batch runs skip checks 6 and 7.
+- **Launch day:** do checks 6 and 7 once in production with the owner's real card, then refund both charges in the Stripe Dashboard (check 8, step 3).
 
-Batches between those runs can skip checks 6 and 7 when no billing code changed since the last pass.
+The options considered:
+
+| Option                                                             | Cost and effort                                                                                                                                                                               | What it proves                                                      |
+| ------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| A. Real card, then refund, before batch 1 and on launch day        | Pays $25 (Starter) and the Pro upgrade on the owner's card; refund both in the Stripe Dashboard right after. Stripe keeps its processing fee on refunded charges; check Stripe's pricing page | Live checkout → Clerk webhook → Atlaris tier, with the real gateway |
+| **B. Staging checkout every batch, A only on launch day** (chosen) | Staging uses the Clerk development gateway and test cards                                                                                                                                     | Code path every batch; live gateway only once                       |
+| C. Ask Clerk support about a 100% discount for production          | Unknown; not in Clerk's docs                                                                                                                                                                  | Same as A without the charge, if it exists                          |
 
 ## 6. Starter checkout on `/pricing`
 
-User: the throwaway from checks 2 and 3 (currently Free). Override set. Card per the decision above.
+User and card per [the decision above](#checkout-in-production-decision):
+
+- **Batch run (staging):** a new throwaway sign-up on `https://staging.atlaris.app` for each run, deleted at the end of check 7. Use an `@atlaris.app` address you can read: the staging Clerk allowlist admits only that domain ([grounded-eval.md](./grounded-eval.md)). Don't use `scripts/dev/agent-session.ts --tier free`: it always signs in the same `agent-free@atlaris.app` user, which would still be on Pro at the next run. Card `4242 4242 4242 4242`. Check the result in the **staging** Supabase project's SQL Editor and in Clerk Dashboard (**Development** instance) → Webhooks, not in production.
+- **Launch day (production):** the throwaway from checks 2 and 3 (currently Free), override set, the owner's real card.
 
 1. Open `/pricing`, select **Begin with Starter**, tick "I agree to automatic … renewal and the Terms of Service", and complete Clerk checkout.
 2. You land on `/settings/billing?checkout=1…`, which shows "Updating your subscription…" until the webhook projection catches up.
@@ -140,19 +147,21 @@ Billing architecture and failure modes: [clerk-billing-architecture.md](../archi
 
 ## 7. Pro checkout on `/pricing`
 
-User: the same throwaway (now Starter). Override set.
+User: the same user as check 6 (now Starter), in the same environment.
 
 1. `/pricing` → **Begin with Pro** → consent → checkout.
 
 **Pass:** Settings → Billing says "You're currently on the Pro plan."; `subscription_tier = 'pro'` in the DB; webhook deliveries `200`.
 
+**Batch run (staging) cleanup:** delete the staging throwaway at `/settings/profile` → **Delete account**, which ends its subscription before deleting the Clerk user. The next batch run starts from a new Free user.
+
 ## 8. Account deletion clears DB and PostHog (DEV-184)
 
-User: the same throwaway (paid). Never delete a shared `qa-*` user.
+User: the production throwaway from checks 2 and 3: paid on launch day, still Free on batch runs (those skip production checkouts). Never delete a shared `qa-*` user.
 
 1. Note the throwaway's Clerk user ID.
 2. `/settings/profile` → **Delete account** → confirm **Delete account** in "Delete your account?" (Clerk asks to re-verify if the session is older than 10 minutes).
-3. If option A was used, refund the charges in the Stripe Dashboard.
+3. On launch day, refund the real-card charges from checks 6 and 7 in the Stripe Dashboard.
 
 **Pass:**
 
