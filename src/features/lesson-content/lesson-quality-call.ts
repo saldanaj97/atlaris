@@ -13,7 +13,11 @@ import { NOTES_PROMPT_MAX_CHARS } from '@/features/ai/constants';
 import { sendOpenRouterGroundedChat } from '@/features/ai/providers/openrouter';
 import { extractFirstJsonObject } from '@/features/ai/providers/openrouter-json';
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
-import { safeNormalizeUsage } from '@/features/ai/usage';
+import {
+  completeUsageOrNull,
+  safeNormalizeUsage,
+  withBilledUsage,
+} from '@/features/ai/usage';
 import {
   optionalSanitizedLine,
   suggestedLessonBodyBudgetChars,
@@ -34,7 +38,8 @@ export type LessonQualityCallResult = {
  * One verifier or repair request for a lesson. `prompt_cache_key` is the plan
  * ID, like the writer's, so calls for the same plan reuse the cached brief
  * and module outline. Throws `ProviderInvalidResponseError` when the output
- * holds no JSON object.
+ * holds no JSON object; the error carries the call's billed usage
+ * (`billedUsageOf`).
  */
 export async function sendLessonQualityCall(
   call: {
@@ -72,11 +77,15 @@ export async function sendLessonQualityCall(
     },
     deps,
   );
-  const text = await bufferModuleLessonBatchStream(stream, {
-    signal: call.signal,
-  });
+  const value = await withBilledUsage(
+    () => completeUsageOrNull(metadata),
+    async () =>
+      extractFirstJsonObject(
+        await bufferModuleLessonBatchStream(stream, { signal: call.signal }),
+      ),
+  );
   return {
-    value: extractFirstJsonObject(text),
+    value,
     usage: await safeNormalizeUsage(metadata),
     model: metadata.model ?? primary.modelId,
   };

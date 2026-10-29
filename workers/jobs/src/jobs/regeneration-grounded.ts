@@ -73,6 +73,7 @@ export function createGroundedRegenerationStages(deps: {
     research: async (stage) => {
       const outcome = await runPlanResearchSteps(createInlineStep(), {
         planId: stage.planId,
+        userId: stage.userId,
         tier: stage.tier,
         input: stage.input,
         guidance: stage.guidance,
@@ -87,6 +88,7 @@ export function createGroundedRegenerationStages(deps: {
         createInlineStep(),
         {
           planId: stage.planId,
+          userId: stage.userId,
           tier: stage.tier,
           purpose: 'regeneration',
           modelOverride: stage.modelOverride,

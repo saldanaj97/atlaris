@@ -11,6 +11,7 @@ import {
   getGroundedModelRoute,
 } from '@/features/ai/model-operation-policy';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
+import { withBilledUsage } from '@/features/ai/usage';
 import {
   buildLessonBriefPart,
   buildModuleOutlinePart,
@@ -182,9 +183,9 @@ export async function runLessonVerifier(
     },
     deps,
   );
-  return {
-    issues: parseLessonVerifierOutput(value, params.content),
-    model,
-    usage,
-  };
+  const issues = await withBilledUsage(
+    async () => usage,
+    async () => parseLessonVerifierOutput(value, params.content),
+  );
+  return { issues, model, usage };
 }

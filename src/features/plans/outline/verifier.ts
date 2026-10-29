@@ -12,7 +12,11 @@ import {
 } from '@/features/ai/model-operation-policy';
 import { buildUserPrompt } from '@/features/ai/prompts';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
-import { safeNormalizeUsage } from '@/features/ai/usage';
+import {
+  completeUsageOrNull,
+  safeNormalizeUsage,
+  withBilledUsage,
+} from '@/features/ai/usage';
 import {
   OUTLINE_SCOPE_CONTRACT,
   buildResearchBriefPart,
@@ -158,8 +162,12 @@ export async function runOutlineVerifier(
     },
     deps,
   );
+  const issues = await withBilledUsage(
+    () => completeUsageOrNull(metadata),
+    async () => parseVerifierOutput(value, params.modules),
+  );
   return {
-    issues: parseVerifierOutput(value, params.modules),
+    issues,
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
     usage: await safeNormalizeUsage(metadata),
   };

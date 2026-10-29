@@ -15,6 +15,7 @@ import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
 import { sendOpenRouterGroundedChat } from '@/features/ai/providers/openrouter';
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
+import { completeUsageOrNull, withBilledUsage } from '@/features/ai/usage';
 import { checkResearchOutput } from '@/features/plans/research/contract';
 
 /** Tagged on AI Gateway log entries. */
@@ -135,8 +136,11 @@ export async function runPlanResearch(
     },
     deps,
   );
-  const text = await readText(stream);
-  const checked = checkResearchOutput(text, metadata.citations);
+  // A rejected brief was still billed, searches included (`billedUsageOf`).
+  const checked = await withBilledUsage(
+    () => completeUsageOrNull(metadata),
+    async () => checkResearchOutput(await readText(stream), metadata.citations),
+  );
   const cost = metadata.usage.providerReportedCostUsd;
 
   return {

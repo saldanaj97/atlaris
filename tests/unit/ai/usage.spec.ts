@@ -1,8 +1,12 @@
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
+import { makeCanonicalUsage } from '../../fixtures/canonical-usage.factory';
 import {
+  billedUsageOf,
   normalizeToCanonicalUsage,
   safeNormalizeUsage,
+  sumUsages,
+  withBilledUsage,
 } from '@/features/ai/usage';
 import { IncompleteUsageError } from '@/shared/types/ai-usage.types';
 import { describe, expect, it, vi } from 'vitest';
@@ -405,5 +409,73 @@ describe('IncompleteUsageError', () => {
     expect(error.partialUsage).toBe(partialUsage);
     expect(error.missingFields).toEqual(['provider', 'model']);
     expect(error).toBeInstanceOf(Error);
+  });
+});
+
+// ─── sumUsages ───────────────────────────────────────────────────
+
+describe('sumUsages', () => {
+  it('keeps reported costs when one call has none, adding its estimate (DEV-185)', () => {
+    // An advisor repair reports $0.30, which its tokens' catalog price misses.
+    const summed = sumUsages([
+      makeCanonicalUsage({
+        estimatedCostCents: 1,
+        providerCostMicrousd: 300_000,
+      }),
+      makeCanonicalUsage({ estimatedCostCents: 2, providerCostMicrousd: null }),
+    ]);
+
+    expect(summed.providerCostMicrousd).toBe(320_000);
+    expect(summed.estimatedCostCents).toBe(3);
+  });
+
+  it('leaves the provider cost unknown when no call reported one', () => {
+    const summed = sumUsages([
+      makeCanonicalUsage({ estimatedCostCents: 1 }),
+      makeCanonicalUsage({ estimatedCostCents: 2 }),
+    ]);
+
+    expect(summed.providerCostMicrousd).toBeNull();
+    expect(summed.estimatedCostCents).toBe(3);
+  });
+});
+
+// ─── withBilledUsage ─────────────────────────────────────────────
+
+describe('withBilledUsage', () => {
+  it('attaches the usage of a billed call to the error that discards it', async () => {
+    const usage = makeCanonicalUsage({ providerCostMicrousd: 12_000 });
+    const rejected = new Error('no JSON object');
+
+    const run = withBilledUsage(
+      async () => usage,
+      async () => {
+        throw rejected;
+      },
+    );
+
+    await expect(run).rejects.toBe(rejected);
+    expect(billedUsageOf(rejected)).toBe(usage);
+  });
+
+  it('attaches nothing when the usage never arrived', async () => {
+    const cutOff = new Error('stream timed out');
+
+    await expect(
+      withBilledUsage(
+        async () => null,
+        async () => {
+          throw cutOff;
+        },
+      ),
+    ).rejects.toBe(cutOff);
+    expect(billedUsageOf(cutOff)).toBeNull();
+  });
+
+  it('returns the result and reads no usage when nothing throws', async () => {
+    const usage = vi.fn(async () => makeCanonicalUsage());
+
+    await expect(withBilledUsage(usage, async () => 'ok')).resolves.toBe('ok');
+    expect(usage).not.toHaveBeenCalled();
   });
 });

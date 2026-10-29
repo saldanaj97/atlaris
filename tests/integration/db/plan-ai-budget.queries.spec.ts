@@ -1,6 +1,9 @@
+import { withBilledUsage } from '@/features/ai/usage';
+import { commitModuleLessonGenerationFailure } from '@/lib/db/queries/module-lesson-generation';
 import {
   countGenerationBudgetCutsForModule,
   insertGenerationBudgetCuts,
+  recordDiscardedCallUsage,
   sumPlanAiSpendMicrousd,
 } from '@/lib/db/queries/plan-ai-budget';
 import {
@@ -8,10 +11,12 @@ import {
   generationAttempts,
   generationBudgetCuts,
   learningPlans,
+  modules,
   planResearch,
   tasks,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
+import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
 import { createTestPlan } from '@tests/fixtures/plans';
 import { truncateAll } from '@tests/helpers/db/truncate';
@@ -138,6 +143,66 @@ describe('plan AI budget queries', () => {
     await expect(
       sumPlanAiSpendMicrousd('00000000-0000-4000-8000-000000000000', db),
     ).resolves.toBe(0);
+  });
+
+  it('counts a discarded call whose error carries its billed usage (DEV-185)', async () => {
+    const { userId, plan } = await createLessonFixture('discarded');
+    const rejected = await withBilledUsage(
+      async () =>
+        makeCanonicalUsage({
+          provider: 'openrouter',
+          model: 'test/model',
+          providerCostMicrousd: 42_000,
+        }),
+      async () => {
+        throw new Error('no JSON object');
+      },
+    ).catch((error: unknown) => error);
+
+    await recordDiscardedCallUsage(rejected, { userId, planId: plan.id }, db);
+    await recordDiscardedCallUsage(
+      new Error('stream cut off'),
+      { userId, planId: plan.id },
+      db,
+    );
+
+    const rows = await db
+      .select()
+      .from(aiUsageEvents)
+      .where(eq(aiUsageEvents.planId, plan.id));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      userId,
+      model: 'test/model',
+      providerCostMicrousd: BigInt(42_000),
+    });
+    await expect(sumPlanAiSpendMicrousd(plan.id, db)).resolves.toBe(42_000);
+  });
+
+  it('counts the spend a failed module run records with its failure (DEV-185)', async () => {
+    const { userId, plan, module } = await createLessonFixture('failed-module');
+    await db
+      .update(modules)
+      .set({ lessonGenerationStatus: 'generating' })
+      .where(eq(modules.id, module.id));
+    const input = {
+      userId,
+      planId: plan.id,
+      moduleId: module.id,
+      usage: makeCanonicalUsage({
+        provider: 'openrouter',
+        model: 'test/model',
+        providerCostMicrousd: 610_000,
+      }),
+    };
+
+    await commitModuleLessonGenerationFailure(db, input);
+    // A retried fail step finds the module failed: nothing is recorded twice.
+    await expect(
+      commitModuleLessonGenerationFailure(db, input),
+    ).rejects.toThrow('did not match exactly one row');
+
+    await expect(sumPlanAiSpendMicrousd(plan.id, db)).resolves.toBe(610_000);
   });
 
   it('records cuts and counts them per module, from a start time', async () => {

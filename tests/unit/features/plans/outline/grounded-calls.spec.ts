@@ -11,6 +11,7 @@ import {
 import { ParserError } from '@/features/ai/parser';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 import { readableStreamToAsyncIterable } from '@/features/ai/streaming/utils';
+import { billedUsageOf } from '@/features/ai/usage';
 import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
 import { runOutlineRepair } from '@/features/plans/outline/repair';
 import {
@@ -203,9 +204,16 @@ describe('grounded outline writer', () => {
       { fetch: textFetch('Sorry, I cannot help with that.') },
     );
 
-    await expect(provider.generate(INPUT)).rejects.toBeInstanceOf(
-      ProviderInvalidResponseError,
-    );
+    const error = await provider
+      .generate(INPUT)
+      .catch((caught: unknown) => caught);
+    expect(error).toBeInstanceOf(ProviderInvalidResponseError);
+    // The call was billed though its output is unusable (DEV-185).
+    expect(billedUsageOf(error)).toMatchObject({
+      inputTokens: 100,
+      outputTokens: 50,
+      providerCostMicrousd: 1_000,
+    });
   });
 });
 
@@ -350,18 +358,19 @@ describe('outline repair', () => {
   });
 
   it('throws when the repaired outline fails validation', async () => {
-    await expect(
-      runOutlineRepair(
-        {
-          tier: 'free',
-          purpose: 'initial',
-          input: INPUT,
-          modules: MODULES,
-          issues: [],
-          research: null,
-        },
-        { fetch: textFetch(JSON.stringify({ modules: [] })) },
-      ),
-    ).rejects.toBeInstanceOf(ParserError);
+    const error = await runOutlineRepair(
+      {
+        tier: 'free',
+        purpose: 'initial',
+        input: INPUT,
+        modules: MODULES,
+        issues: [],
+        research: null,
+      },
+      { fetch: textFetch(JSON.stringify({ modules: [] })) },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(ParserError);
+    expect(billedUsageOf(error)?.providerCostMicrousd).toBe(1_000);
   });
 });

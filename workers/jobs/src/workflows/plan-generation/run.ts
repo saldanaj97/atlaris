@@ -475,6 +475,7 @@ export async function runPlanGenerationWorkflow(
       current = 'research-save';
       const outcome = await runPlanResearchSteps(step, {
         planId: input.planId,
+        userId: input.userId,
         tier: input.tier,
         input: input.input,
         attemptStartedAt: input.reservation.startedAt,
@@ -510,6 +511,7 @@ export async function runPlanGenerationWorkflow(
         step,
         {
           planId: input.planId,
+          userId: input.userId,
           tier: input.tier,
           purpose: generationPurpose,
           modelOverride: input.groundedWriterModelId ?? null,

@@ -404,12 +404,15 @@ export async function recordModuleLessonGenerationFailure(input: {
   readonly now: () => Date;
   readonly providerStarted: boolean;
   readonly workflowRunId?: string;
+  /** Calls the failed run was billed for, recorded with the failure. */
+  readonly usage?: CanonicalAIUsage;
 }): Promise<void> {
   const { target } = input;
   try {
     await commitModuleLessonGenerationFailure(input.dbClient, {
       ...target,
       now: input.now,
+      ...(input.usage && { usage: input.usage }),
     });
   } catch (persistErr) {
     logger.error(

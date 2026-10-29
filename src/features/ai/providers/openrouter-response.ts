@@ -122,6 +122,38 @@ export function extractResponseModel(response: unknown): string | undefined {
   return undefined;
 }
 
+/**
+ * What the upstream provider billed for a BYOK call, in USD: 0 for a call that
+ * is not BYOK, `null` when a BYOK call does not say. On a BYOK call
+ * `usage.cost` is only OpenRouter's fee (0 within its free BYOK allowance),
+ * so this is the rest of the call's cost. Reads the SDK's camelCase and the
+ * wire's snake_case fields.
+ */
+export function byokUpstreamCostUsd(
+  usage: Record<string, unknown>,
+): number | null {
+  if (usage.isByok !== true && usage.is_byok !== true) {
+    return 0;
+  }
+  const details = usage.costDetails ?? usage.cost_details;
+  const upstream = isObjectRecord(details)
+    ? (details.upstreamInferenceCost ?? details.upstream_inference_cost)
+    : undefined;
+  if (upstream === undefined || upstream === null) {
+    return null;
+  }
+  if (
+    typeof upstream !== 'number' ||
+    !Number.isFinite(upstream) ||
+    upstream < 0
+  ) {
+    throw new ProviderInvalidResponseError(
+      'OpenRouter upstream_inference_cost must be a non-negative finite number when present',
+    );
+  }
+  return upstream;
+}
+
 export function normalizeUsage(
   usage: OpenRouterUsage | undefined | null,
 ): ProviderUsage {
@@ -144,7 +176,11 @@ export function normalizeUsage(
           'OpenRouter usage.cost must be non-negative when present',
         );
       }
-      return { ...base, providerReportedCostUsd: rawCost };
+      // A BYOK call without its upstream cost records the catalog estimate.
+      const upstream = byokUpstreamCostUsd(usage);
+      return upstream === null
+        ? base
+        : { ...base, providerReportedCostUsd: rawCost + upstream };
     }
   }
 

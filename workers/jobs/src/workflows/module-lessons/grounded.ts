@@ -27,6 +27,7 @@ import {
 } from '@/features/ai/model-preferences';
 import { resolveLessonTimeoutMs } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { ParserError } from '@/features/ai/parser';
+import { sumUsages } from '@/features/ai/usage';
 import { planAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import { resolveUserTier } from '@/features/billing/tier';
 import { buildGroundedLessonPromptParts } from '@/features/lesson-content/grounded-lesson-prompt';
@@ -166,6 +167,12 @@ export type GroundedLessonStepsContext = {
   >[1];
   readonly nonRetryable: (message: string) => Error;
   readonly now: () => Date;
+  /**
+   * Gets the usage of each call as its step result comes back (a replay
+   * repeats it), unparseable lessons included, so a run that fails later can
+   * still record what it spent.
+   */
+  readonly onSpend: (usages: readonly CanonicalAIUsage[]) => void;
   readonly log: (
     step: GroundedLessonStepName | LessonQualityStepName,
     fields: GroundedLessonLogFields | LessonQualityLogFields,
@@ -184,8 +191,20 @@ type LessonStepResult =
       readonly errorKind: string;
       readonly errorMessage: string;
       readonly retryable: boolean;
+      /**
+       * The call was billed though its lesson is thrown away. Absent on steps
+       * cached before DEV-185.
+       */
+      readonly usage?: CanonicalAIUsage;
     }
   | { readonly kind: 'disabled' };
+
+type WrittenLesson = {
+  readonly kind: 'written';
+  readonly lesson: GroundedLesson;
+  /** Every writer call for the lesson, failed parses first. */
+  readonly usages: readonly [CanonicalAIUsage, ...CanonicalAIUsage[]];
+};
 
 export type GroundedLessonsResult =
   | {
@@ -272,6 +291,7 @@ async function lessonStep(
       errorKind: error.kind,
       errorMessage,
       retryable: RETRYABLE_PARSE_ERROR_KINDS.has(error.kind),
+      usage: raw.usage,
     };
   }
 }
@@ -281,14 +301,21 @@ async function writeLessonWithRetry(
   step: Pick<WorkflowStep, 'do'>,
   ctx: GroundedLessonStepsContext,
   index: number,
-): Promise<Exclude<LessonStepResult, { kind: 'parse_failed' }>> {
+): Promise<WrittenLesson | { readonly kind: 'disabled' }> {
   const position = index + 1;
   const first = await step.do(
     groundedLessonStepName(position, 1),
     ctx.generateStepConfig,
     async () => ctx.withDb((db) => lessonStep(db, ctx, index, 1)),
   );
-  if (first.kind !== 'parse_failed') {
+  const firstUsage = first.kind === 'disabled' ? undefined : first.usage;
+  if (firstUsage) {
+    ctx.onSpend([firstUsage]);
+  }
+  if (first.kind === 'written') {
+    return { kind: 'written', lesson: first.lesson, usages: [first.usage] };
+  }
+  if (first.kind === 'disabled') {
     return first;
   }
   if (!first.retryable) {
@@ -301,12 +328,22 @@ async function writeLessonWithRetry(
     ctx.generateStepConfig,
     async () => ctx.withDb((db) => lessonStep(db, ctx, index, 2)),
   );
+  if (second.kind !== 'disabled' && second.usage) {
+    ctx.onSpend([second.usage]);
+  }
   if (second.kind === 'parse_failed') {
     throw ctx.nonRetryable(
       `Lesson ${position} could not be parsed (${second.errorKind}): ${second.errorMessage}`,
     );
   }
-  return second;
+  if (second.kind === 'disabled') {
+    return second;
+  }
+  return {
+    kind: 'written',
+    lesson: second.lesson,
+    usages: firstUsage ? [firstUsage, second.usage] : [second.usage],
+  };
 }
 
 /**
@@ -346,7 +383,7 @@ type CheckedLessonResult =
   | {
       readonly kind: 'written';
       readonly lesson: GroundedLesson;
-      /** The writer call, then its verifier and repair calls. */
+      /** The writer calls (failed parses first), then its verifier and repair calls. */
       readonly usages: readonly CanonicalAIUsage[];
       readonly records: readonly NewGenerationQualityIssue[];
       readonly cuts: readonly NewGenerationBudgetCut[];
@@ -368,12 +405,13 @@ async function writeAndCheckLesson(
     ctx,
     index,
     written.lesson.content,
-    written.usage,
+    sumUsages(written.usages),
   );
+  ctx.onSpend(checked.usages);
   return {
     kind: 'written',
     lesson: { ...written.lesson, content: checked.content },
-    usages: [written.usage, ...checked.usages],
+    usages: [...written.usages, ...checked.usages],
     records: checked.records,
     cuts: checked.cuts,
   };

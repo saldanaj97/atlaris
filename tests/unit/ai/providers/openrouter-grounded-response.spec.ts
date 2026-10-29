@@ -102,4 +102,24 @@ describe('normalizeGroundedUsage', () => {
       ProviderInvalidResponseError,
     );
   });
+
+  it('adds the upstream cost of a BYOK call to its reported cost (DEV-185)', () => {
+    expect(
+      normalizeGroundedUsage({
+        cost: 0,
+        is_byok: true,
+        cost_details: { upstream_inference_cost: 0.03 },
+      }),
+    ).toMatchObject({ providerReportedCostUsd: 0.03 });
+  });
+
+  it('ignores upstream cost on a call that is not BYOK', () => {
+    expect(
+      normalizeGroundedUsage({
+        cost: 0.03,
+        is_byok: false,
+        cost_details: { upstream_inference_cost: 0.03 },
+      }),
+    ).toMatchObject({ providerReportedCostUsd: 0.03 });
+  });
 });
