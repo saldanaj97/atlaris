@@ -144,8 +144,9 @@ describe('syncTierModelCatalog', () => {
     );
   });
 
-  it('alerts once when the app runtime lacks the tier key', async () => {
+  it('alerts once when the hosted app lacks the tier key', async () => {
     vi.stubEnv('OPENROUTER_API_KEY_STARTER', '');
+    vi.stubEnv('VERCEL', '1');
     vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
@@ -160,9 +161,9 @@ describe('syncTierModelCatalog', () => {
     );
   });
 
-  it('only logs a missing tier key in the jobs Worker', async () => {
+  it('only logs a missing tier key off Vercel (local dev, jobs Worker)', async () => {
     vi.stubEnv('OPENROUTER_API_KEY_STARTER', '');
-    vi.stubEnv('WORKER_ENV', 'production');
+    vi.stubEnv('VERCEL', '');
     const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
 
     await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));

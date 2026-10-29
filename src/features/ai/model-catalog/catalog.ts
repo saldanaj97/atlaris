@@ -32,7 +32,7 @@ import {
   selectCatalogModel,
   selectTierModels,
 } from '@/features/ai/model-catalog/store';
-import { openRouterEnv, optionalEnv } from '@/lib/config/env';
+import { isHostedDeployEnv, openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import * as Sentry from '@sentry/nextjs';
@@ -84,9 +84,12 @@ function toAvailableModel(row: OpenRouterTierModelRow): AvailableModel {
   };
 }
 
-/** Every jobs Worker mode sets `WORKER_ENV`; the Next app never does. */
-function isJobsWorkerRuntime(): boolean {
-  return optionalEnv('WORKER_ENV') !== undefined;
+/**
+ * The Next app deployed on Vercel (production or preview), which should have
+ * every tier key. Local dev may lack them, and the jobs Worker never has them.
+ */
+function isHostedAppRuntime(): boolean {
+  return isHostedDeployEnv(process.env);
 }
 
 /**
@@ -129,9 +132,9 @@ export async function syncTierModelCatalog(
         { tier, event: 'model_catalog_sync_skipped_no_key' },
         'No OpenRouter guardrail key for this tier; serving the stored models without syncing',
       );
-      // Expected in the jobs Worker, which never has tier keys; the app
-      // should have all three.
-      if (!isJobsWorkerRuntime()) {
+      // Expected locally and in the jobs Worker; the hosted app should have
+      // all three.
+      if (isHostedAppRuntime()) {
         Sentry.captureMessage(
           'The app has no OpenRouter guardrail key for this tier, so its model catalog never syncs',
           {
