@@ -197,12 +197,36 @@ async function refreshTier(tier: SubscriptionTier): Promise<boolean> {
   return result.status === 'synced';
 }
 
+function oldestSyncedAt(rows: readonly OpenRouterTierModelRow[]): number {
+  return Math.min(...rows.map((row) => row.syncedAt.getTime()));
+}
+
 function isStale(rows: readonly OpenRouterTierModelRow[]): boolean {
   if (rows.length === 0) {
     return true;
   }
-  const oldest = Math.min(...rows.map((row) => row.syncedAt.getTime()));
-  return Date.now() - oldest > MODEL_CATALOG_TTL_MS;
+  return Date.now() - oldestSyncedAt(rows) > MODEL_CATALOG_TTL_MS;
+}
+
+/**
+ * Ends this process's run of failed syncs when the rows show another instance
+ * synced the tier after the run began, so a later transient failure here
+ * starts a new run instead of alerting on the old one.
+ */
+function endFailureRunIfSyncedElsewhere(
+  tier: SubscriptionTier,
+  rows: readonly OpenRouterTierModelRow[],
+) {
+  const failingSince = syncFailingSinceByTier.get(tier);
+  if (
+    failingSince === undefined ||
+    rows.length === 0 ||
+    oldestSyncedAt(rows) < failingSince
+  ) {
+    return;
+  }
+  syncFailingSinceByTier.delete(tier);
+  alertedSyncFailingTiers.delete(tier);
 }
 
 /**
@@ -215,6 +239,7 @@ export async function getTierModels(
   tier: SubscriptionTier,
 ): Promise<AvailableModel[]> {
   let rows = await selectTierModels(tier);
+  endFailureRunIfSyncedElsewhere(tier, rows);
   // Awaited: a serverless runtime may stop un-awaited work after the response.
   if (isStale(rows) && (await refreshTier(tier))) {
     rows = await selectTierModels(tier);

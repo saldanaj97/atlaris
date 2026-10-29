@@ -274,6 +274,25 @@ describe('getTierModels', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
 
+  it('ends a failure run when another instance synced the tier', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response('down', { status: 503 }),
+    );
+    const start = Date.now();
+
+    await syncTierModelCatalog('starter');
+    vi.setSystemTime(start + 1);
+    seedModelCatalogFixture(new Date());
+    await getTierModels('starter');
+
+    vi.setSystemTime(start + MODEL_CATALOG_TTL_MS + 2);
+    await getTierModels('starter');
+
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+  });
+
   it('shares one refresh between concurrent stale reads', async () => {
     seedModelCatalogFixture(new Date(Date.now() - MODEL_CATALOG_TTL_MS - 1));
     const fetchSpy = vi
