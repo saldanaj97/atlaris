@@ -19,7 +19,14 @@ import {
   selectTierModels,
 } from '@/features/ai/model-catalog/store';
 import { logger } from '@/lib/logging/logger';
+import * as Sentry from '@sentry/nextjs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@sentry/nextjs', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@sentry/nextjs')>()),
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
 
 const NEW_MODEL = {
   id: 'openai/gpt-5.2',
@@ -46,6 +53,8 @@ const starterIds = () =>
 beforeEach(() => {
   resetModelCatalogStateForTests();
   vi.mocked(replaceTierModels).mockClear();
+  vi.mocked(Sentry.captureException).mockClear();
+  vi.mocked(Sentry.captureMessage).mockClear();
   vi.stubEnv('OPENROUTER_API_KEY_STARTER', 'starter-key');
 });
 
@@ -133,6 +142,68 @@ describe('syncTierModelCatalog', () => {
       }),
       expect.any(String),
     );
+  });
+
+  it('alerts once when the app runtime lacks the tier key', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY_STARTER', '');
+    vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+
+    expect(Sentry.captureMessage).toHaveBeenCalledOnce();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        fingerprint: ['model_catalog_sync_skipped_no_key', 'starter'],
+      }),
+    );
+  });
+
+  it('only logs a missing tier key in the jobs Worker', async () => {
+    vi.stubEnv('OPENROUTER_API_KEY_STARTER', '');
+    vi.stubEnv('WORKER_ENV', 'production');
+    const warnSpy = vi.spyOn(logger, 'warn').mockImplementation(() => {});
+
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
+  });
+
+  it('alerts once when a tier keeps failing past the TTL, and resets on success', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+    const down = respondWith({ error: 'unauthorized' }, 401);
+    const start = Date.now();
+
+    await syncTierModelCatalog('starter', down);
+    vi.setSystemTime(start + MODEL_CATALOG_TTL_MS - 1);
+    await syncTierModelCatalog('starter', down);
+    expect(Sentry.captureException).not.toHaveBeenCalled();
+
+    vi.setSystemTime(start + MODEL_CATALOG_TTL_MS + 1);
+    await syncTierModelCatalog('starter', down);
+    vi.setSystemTime(start + MODEL_CATALOG_TTL_MS + MODEL_CATALOG_RETRY_MS);
+    await syncTierModelCatalog('starter', down);
+    expect(Sentry.captureException).toHaveBeenCalledOnce();
+    expect(Sentry.captureException).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        fingerprint: ['model_catalog_sync_failing', 'starter'],
+      }),
+    );
+
+    await syncTierModelCatalog('starter', respondWith({ data: [NEW_MODEL] }));
+    const restart = Date.now();
+    await syncTierModelCatalog('starter', down);
+    vi.setSystemTime(restart + MODEL_CATALOG_TTL_MS - 1);
+    await syncTierModelCatalog('starter', down);
+    expect(Sentry.captureException).toHaveBeenCalledOnce();
+
+    vi.setSystemTime(restart + MODEL_CATALOG_TTL_MS + 1);
+    await syncTierModelCatalog('starter', down);
+    expect(Sentry.captureException).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -256,6 +327,19 @@ describe('getCatalogModel', () => {
       }),
       expect.any(String),
     );
+    expect(Sentry.captureMessage).toHaveBeenCalledOnce();
+    expect(Sentry.captureMessage).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({
+        fingerprint: ['model_catalog_seed_pricing', 'starter'],
+      }),
+    );
+  });
+
+  it('does not alert on synced pricing', async () => {
+    await getCatalogModel('openai/gpt-6-luna');
+
+    expect(Sentry.captureMessage).not.toHaveBeenCalled();
   });
 });
 

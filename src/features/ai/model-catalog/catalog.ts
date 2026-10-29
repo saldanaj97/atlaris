@@ -13,10 +13,12 @@ import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
+  alertedSyncFailingTiers,
   catalogSyncGeneration,
   inFlightSyncs,
   memoizedCatalogModels,
   retryAfterByTier,
+  syncFailingSinceByTier,
   warnedNoKeyTiers,
   warnedSeedPricingModels,
 } from '@/features/ai/model-catalog/catalog-state';
@@ -30,9 +32,10 @@ import {
   selectCatalogModel,
   selectTierModels,
 } from '@/features/ai/model-catalog/store';
-import { openRouterEnv } from '@/lib/config/env';
+import { openRouterEnv, optionalEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import * as Sentry from '@sentry/nextjs';
 
 export const MODEL_CATALOG_TTL_MS = 15 * 60_000;
 
@@ -81,6 +84,35 @@ function toAvailableModel(row: OpenRouterTierModelRow): AvailableModel {
   };
 }
 
+/** Every jobs Worker mode sets `WORKER_ENV`; the Next app never does. */
+function isJobsWorkerRuntime(): boolean {
+  return optionalEnv('WORKER_ENV') !== undefined;
+}
+
+/**
+ * Alerts once per run of failed syncs, when the run outlasts
+ * {@link MODEL_CATALOG_TTL_MS} (the tier's prices are stale by then), rather
+ * than on every retry. A successful sync ends the run.
+ */
+function alertIfSyncKeepsFailing(tier: SubscriptionTier, error: unknown) {
+  const now = Date.now();
+  const failingSince = syncFailingSinceByTier.get(tier) ?? now;
+  syncFailingSinceByTier.set(tier, failingSince);
+  if (
+    now - failingSince <= MODEL_CATALOG_TTL_MS ||
+    alertedSyncFailingTiers.has(tier)
+  ) {
+    return;
+  }
+  alertedSyncFailingTiers.add(tier);
+  Sentry.captureException(error, {
+    level: 'error',
+    fingerprint: ['model_catalog_sync_failing', tier],
+    tags: { event: 'model_catalog_sync_failing', tier },
+    extra: { failingForMs: now - failingSince },
+  });
+}
+
 /**
  * Fetches `tier`'s guardrail list and replaces its rows. Any failure (no key,
  * HTTP, unparseable or empty list, DB) keeps the last good rows.
@@ -97,6 +129,18 @@ export async function syncTierModelCatalog(
         { tier, event: 'model_catalog_sync_skipped_no_key' },
         'No OpenRouter guardrail key for this tier; serving the stored models without syncing',
       );
+      // Expected in the jobs Worker, which never has tier keys; the app
+      // should have all three.
+      if (!isJobsWorkerRuntime()) {
+        Sentry.captureMessage(
+          'The app has no OpenRouter guardrail key for this tier, so its model catalog never syncs',
+          {
+            level: 'error',
+            fingerprint: ['model_catalog_sync_skipped_no_key', tier],
+            tags: { event: 'model_catalog_sync_skipped_no_key', tier },
+          },
+        );
+      }
     }
     return { status: 'skipped', reason: 'no_tier_key' };
   }
@@ -107,6 +151,8 @@ export async function syncTierModelCatalog(
       fetchImpl,
     });
     await replaceTierModels(tier, models, new Date());
+    syncFailingSinceByTier.delete(tier);
+    alertedSyncFailingTiers.delete(tier);
     logger.info(
       { tier, modelCount: models.length, event: 'model_catalog_synced' },
       'Synced tier model catalog from OpenRouter guardrail',
@@ -117,6 +163,7 @@ export async function syncTierModelCatalog(
       { tier, err: error, event: 'model_catalog_sync_failed' },
       'Tier model catalog sync failed; keeping the last synced models',
     );
+    alertIfSyncKeepsFailing(tier, error);
     return { status: 'failed', error };
   }
 }
@@ -196,6 +243,14 @@ export async function getCatalogModel(
     logger.warn(
       { modelId, event: 'model_catalog_seed_pricing' },
       'Pricing a model from seeded catalog rows that no sync has replaced',
+    );
+    Sentry.captureMessage(
+      'Pricing a model from seeded catalog rows that no sync has replaced',
+      {
+        level: 'warning',
+        fingerprint: ['model_catalog_seed_pricing', row.tier],
+        tags: { event: 'model_catalog_seed_pricing', tier: row.tier, modelId },
+      },
     );
   }
   return toAvailableModel(row);
