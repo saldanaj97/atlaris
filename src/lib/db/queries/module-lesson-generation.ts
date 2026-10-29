@@ -604,10 +604,14 @@ export type CommitModuleLessonGenerationFailureInput = {
   readonly planId: string;
   readonly moduleId: string;
   readonly now?: () => Date;
+  /** Usage of the calls the failed run was billed for, recorded against the plan. */
+  readonly usage?: CanonicalAIUsage;
 };
 
 /**
- * Marks module lesson generation failed without touching task `lesson_content` (own transaction).
+ * Marks module lesson generation failed without touching task `lesson_content`
+ * (own transaction), recording `usage` in it when given, so a retried failure
+ * step that finds the module no longer generating records nothing twice.
  */
 export async function commitModuleLessonGenerationFailure(
   dbClient: DbClient,
@@ -615,6 +619,9 @@ export async function commitModuleLessonGenerationFailure(
 ): Promise<void> {
   const nowFn = input.now ?? (() => new Date());
   const failedAt = nowFn();
+  const usageParams = input.usage
+    ? await canonicalUsageToRecordParams(input.usage, input.userId)
+    : null;
   const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   await dbClient.transaction(async (tx) => {
@@ -642,6 +649,10 @@ export async function commitModuleLessonGenerationFailure(
       throw new Error(
         'Module lesson generation failure update did not match exactly one row',
       );
+    }
+
+    if (usageParams) {
+      await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
     }
   });
 }

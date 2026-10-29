@@ -36,6 +36,12 @@ const mocks = vi.hoisted(() => ({
   runOutlineRepair: vi.fn(),
   insertQualityIssues: vi.fn(),
   listQualityIssues: vi.fn(),
+  recordDiscardedCallUsage: vi.fn(async () => undefined),
+}));
+
+vi.mock('@/lib/db/queries/plan-ai-budget', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/queries/plan-ai-budget')>()),
+  recordDiscardedCallUsage: mocks.recordDiscardedCallUsage,
 }));
 
 // The grounded writer, verifier and repair calls are covered with fixture
@@ -774,6 +780,30 @@ describe('runPlanGenerationWorkflow', () => {
       );
     });
 
+    it('records each rejected research attempt in its step (DEV-185)', async () => {
+      const rejected: unknown[] = [];
+      mocks.runPlanResearch.mockImplementation(async () => {
+        const error = new Error('brief failed its contract');
+        rejected.push(error);
+        throw error;
+      });
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(rejected).toHaveLength(3);
+      expect(mocks.recordDiscardedCallUsage.mock.calls).toEqual(
+        rejected.map((error) => [
+          error,
+          expect.objectContaining({ userId: USER_ID, planId: PLAN_ID }),
+          expect.anything(),
+        ]),
+      );
+    });
+
     it('retries research twice, then saves failed_skipped and still generates', async () => {
       mocks.runPlanResearch.mockRejectedValue(new Error('provider down'));
       const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
@@ -1185,6 +1215,21 @@ describe('runPlanGenerationWorkflow', () => {
       ).toMatchObject({ issueCount: 4 });
     });
 
+    it('records a discarded repair call before skipping it (DEV-185)', async () => {
+      const rejected = new Error('repair output failed to parse');
+      mocks.runOutlineRepair.mockRejectedValue(rejected);
+      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { step } = createStep();
+
+      await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
+
+      expect(mocks.recordDiscardedCallUsage).toHaveBeenCalledExactlyOnceWith(
+        rejected,
+        expect.objectContaining({ userId: USER_ID, planId: PLAN_ID }),
+        expect.anything(),
+      );
+    });
+
     it('finalizes the first outline and logs every issue open when the repair fails', async () => {
       mocks.runOutlineRepair.mockRejectedValue(new Error('provider down'));
       const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
@@ -1228,6 +1273,13 @@ describe('runPlanGenerationWorkflow', () => {
       expect(mocks.runOutlineRepair).not.toHaveBeenCalled();
       expect(mocks.insertQualityIssues).not.toHaveBeenCalled();
       expect(finalizedModules()).toEqual(cleanModules());
+      // Each attempt's discarded call is recorded where it ran (DEV-185).
+      expect(mocks.recordDiscardedCallUsage).toHaveBeenCalledTimes(2);
+      expect(mocks.recordDiscardedCallUsage).toHaveBeenCalledWith(
+        expect.objectContaining({ message: 'bad output' }),
+        expect.objectContaining({ userId: USER_ID, planId: PLAN_ID }),
+        expect.anything(),
+      );
     });
 
     it('skips repair and logging when the outline passes every check', async () => {

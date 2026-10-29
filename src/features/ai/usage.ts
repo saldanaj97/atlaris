@@ -17,6 +17,7 @@ import {
   UnknownModelError,
 } from '@/features/ai/cost';
 import { usdCostToMicrousdInteger } from '@/features/ai/provider-cost-microusd';
+import { usageCostMicrousd } from '@/features/billing/plan-ai-budget';
 import { logger } from '@/lib/logging/logger';
 import {
   type CanonicalAIUsage,
@@ -197,7 +198,14 @@ export async function safeNormalizeUsage(
   }
 }
 
-/** One usage record for several calls: token and cost totals, model and provider of the first. */
+/**
+ * One usage record for several calls: token and cost totals, model and
+ * provider of the first. When any call has an OpenRouter-reported cost, the
+ * provider total adds each call's reported cost, or its catalog estimate when
+ * it has none, so the row costs what the calls cost one by one. The estimate
+ * leaves out web search, advisor and cache-write charges, so letting one call
+ * without a reported cost turn the whole row into an estimate undercounts.
+ */
 export function sumUsages(
   usages: readonly [CanonicalAIUsage, ...CanonicalAIUsage[]],
 ): CanonicalAIUsage {
@@ -213,11 +221,65 @@ export function sumUsages(
       (sum, u) => sum + u.estimatedCostCents,
       0,
     ),
-    // A total is known only when every call's cost is.
-    providerCostMicrousd: usages.every((u) => u.providerCostMicrousd !== null)
-      ? usages.reduce((sum, u) => sum + (u.providerCostMicrousd ?? 0), 0)
+    providerCostMicrousd: usages.some((u) => u.providerCostMicrousd !== null)
+      ? usages.reduce((sum, u) => sum + usageCostMicrousd(u), 0)
       : null,
     isPartial: usages.some((u) => u.isPartial),
     missingFields,
   };
+}
+
+/** Usage of a billed call whose output was then discarded, by the error that discarded it. */
+const billedUsageByError = new WeakMap<object, CanonicalAIUsage>();
+
+/**
+ * Complete usage for a finished call, or `null` when its usage never fully
+ * arrived (for example a stream cut off before the closing usage chunk).
+ */
+export async function completeUsageOrNull(
+  metadata: ProviderMetadata,
+): Promise<CanonicalAIUsage | null> {
+  try {
+    return await normalizeToCanonicalUsage(metadata);
+  } catch (error) {
+    if (error instanceof IncompleteUsageError) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/**
+ * Runs `use` on a call's output. When it throws, the error carries the call's
+ * usage (read it with {@link billedUsageOf}), because OpenRouter bills a call
+ * whose output is unreadable or rejected. The step that made the call records
+ * it, since a step's thrown result, and with it the usage, is not kept.
+ */
+export async function withBilledUsage<T>(
+  usage: () => Promise<CanonicalAIUsage | null>,
+  use: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await use();
+  } catch (error) {
+    if (typeof error === 'object' && error !== null) {
+      const billed = await usage();
+      if (billed) {
+        billedUsageByError.set(error, billed);
+      } else {
+        logger.warn(
+          { source: 'canonical-usage', event: 'discarded_call_usage_unknown' },
+          'A discarded AI call has no usage; its cost is not recorded',
+        );
+      }
+    }
+    throw error;
+  }
+}
+
+/** The usage {@link withBilledUsage} attached to `error`, if any. */
+export function billedUsageOf(error: unknown): CanonicalAIUsage | null {
+  return typeof error === 'object' && error !== null
+    ? (billedUsageByError.get(error) ?? null)
+    : null;
 }

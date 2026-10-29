@@ -19,6 +19,7 @@ import {
   readableStreamToAsyncIterable,
   toStream,
 } from '@/features/ai/streaming/utils';
+import { completeUsageOrNull, withBilledUsage } from '@/features/ai/usage';
 import { buildGroundedOutlineUserParts } from '@/features/plans/outline/contract';
 import { openRouterEnv } from '@/lib/config/env/ai';
 
@@ -90,7 +91,8 @@ async function readText(stream: ReadableStream<string>): Promise<string> {
 /**
  * One grounded JSON request: the model route, preset and prompt parts, read
  * to the end so the metadata is complete. Throws `ProviderInvalidResponseError`
- * when the output holds no JSON object.
+ * when the output holds no JSON object; the error carries the call's billed
+ * usage (`billedUsageOf`).
  */
 export async function sendGroundedJsonCall(
   call: GroundedJsonCall,
@@ -114,8 +116,11 @@ export async function sendGroundedJsonCall(
     },
     deps,
   );
-  const text = await readText(stream);
-  return { value: extractFirstJsonObject(text), metadata };
+  const value = await withBilledUsage(
+    () => completeUsageOrNull(metadata),
+    async () => extractFirstJsonObject(await readText(stream)),
+  );
+  return { value, metadata };
 }
 
 /**

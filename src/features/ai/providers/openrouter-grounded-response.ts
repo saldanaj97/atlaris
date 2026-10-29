@@ -7,7 +7,10 @@ import {
   ProviderError,
   ProviderInvalidResponseError,
 } from '@/features/ai/providers/errors';
-import { isObjectRecord } from '@/features/ai/providers/openrouter-response';
+import {
+  byokUpstreamCostUsd,
+  isObjectRecord,
+} from '@/features/ai/providers/openrouter-response';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 
 /** A source the model cited, from a streamed `url_citation` annotation. */
@@ -28,7 +31,7 @@ export type OpenRouterGroundedUsage = ProviderUsage & {
 
 /**
  * Filled in while the stream is read; complete once it closes. `usage.cost`
- * already includes advisor cost.
+ * already includes advisor cost; a BYOK call adds its upstream cost to it.
  */
 export type OpenRouterGroundedMetadata = ProviderMetadata & {
   usage: OpenRouterGroundedUsage;
@@ -63,7 +66,9 @@ function readCost(usage: Record<string, unknown>): number | undefined {
       'OpenRouter usage.cost must be a non-negative finite number when present',
     );
   }
-  return cost;
+  // A BYOK call without its upstream cost records the catalog estimate.
+  const upstream = byokUpstreamCostUsd(usage);
+  return upstream === null ? undefined : cost + upstream;
 }
 
 /**

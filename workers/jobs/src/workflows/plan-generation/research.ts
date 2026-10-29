@@ -10,6 +10,7 @@ import {
   researchModeForTier,
   runPlanResearch,
 } from '@/features/plans/research/run-research';
+import { recordDiscardedCallUsage } from '@/lib/db/queries/plan-ai-budget';
 import {
   getLatestPlanResearch,
   insertPlanResearch,
@@ -69,6 +70,8 @@ export type ResearchLogFields = {
 
 export type ResearchStepsContext = {
   readonly planId: string;
+  /** Owner of the plan, for usage of research calls whose brief was rejected. */
+  readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
   /** Regeneration feedback that steers the search (JCS-162). */
@@ -84,12 +87,18 @@ export type ResearchStepsContext = {
 };
 
 async function researchStep(
+  db: DbClient,
   ctx: ResearchStepsContext,
 ): Promise<ResearchStepResult> {
+  // A rejected attempt is billed but saves no `plan_research` row, so its
+  // cost goes to `ai_usage_events`.
   const run = await runPlanResearch({
     tier: ctx.tier,
     input: ctx.input,
     guidance: ctx.guidance,
+  }).catch(async (error: unknown) => {
+    await recordDiscardedCallUsage(error, ctx, db);
+    throw error;
   });
   ctx.log('research', {
     outcome: 'researched',
@@ -173,7 +182,7 @@ export async function runPlanResearchSteps(
       RESEARCH_STEPS.research,
       researchStepConfig(),
       // withDb: the call's output ceiling reads the synced model catalog.
-      async () => ctx.withDb(() => researchStep(ctx)),
+      async () => ctx.withDb((db) => researchStep(db, ctx)),
     );
   } catch (error) {
     ctx.log(

@@ -47,6 +47,62 @@ describe('normalizeUsage (OpenRouter cost)', () => {
       }),
     ).toThrow(ProviderInvalidResponseError);
   });
+
+  // DEV-185: on a BYOK call `cost` is only OpenRouter's fee (often 0); the
+  // provider bills the key owner `upstreamInferenceCost` on top.
+  it('adds the upstream cost of a BYOK call to its reported cost', () => {
+    const u = normalizeUsage({
+      promptTokens: 1,
+      completionTokens: 2,
+      cost: 0.0005,
+      isByok: true,
+      costDetails: { upstreamInferenceCost: 0.01 },
+    });
+    expect(u.providerReportedCostUsd).toBeCloseTo(0.0105, 10);
+  });
+
+  it('counts the upstream cost of a BYOK call with a zero fee', () => {
+    const u = normalizeUsage({
+      promptTokens: 1,
+      completionTokens: 2,
+      cost: 0,
+      isByok: true,
+      costDetails: { upstreamInferenceCost: 0.02 },
+    });
+    expect(u.providerReportedCostUsd).toBe(0.02);
+  });
+
+  it('leaves a BYOK call without its upstream cost to the estimate', () => {
+    const u = normalizeUsage({
+      promptTokens: 1,
+      completionTokens: 2,
+      cost: 0,
+      isByok: true,
+    });
+    expect(u.providerReportedCostUsd).toBeUndefined();
+  });
+
+  it('ignores upstream cost on a call that is not BYOK', () => {
+    const u = normalizeUsage({
+      promptTokens: 1,
+      completionTokens: 2,
+      cost: 0.01,
+      costDetails: { upstreamInferenceCost: 0.01 },
+    });
+    expect(u.providerReportedCostUsd).toBe(0.01);
+  });
+
+  it('throws when a BYOK upstream cost is negative', () => {
+    expect(() =>
+      normalizeUsage({
+        promptTokens: 1,
+        completionTokens: 2,
+        cost: 0,
+        isByok: true,
+        costDetails: { upstreamInferenceCost: -1 },
+      }),
+    ).toThrow(ProviderInvalidResponseError);
+  });
 });
 
 describe('isUsageShape (OpenRouter cost)', () => {

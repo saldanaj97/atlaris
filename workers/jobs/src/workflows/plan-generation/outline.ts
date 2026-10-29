@@ -21,6 +21,7 @@ import {
   insertGenerationQualityIssues,
   listGenerationQualityIssuesForPlan,
 } from '@/lib/db/queries/generation-quality-issues';
+import { recordDiscardedCallUsage } from '@/lib/db/queries/plan-ai-budget';
 
 /** Step names are final once deployed (see `PLAN_GENERATION_STEPS`). */
 export const OUTLINE_STEPS = {
@@ -67,6 +68,8 @@ export type OutlineLogFields = ResearchLogFields & {
 
 export type OutlineStepsContext = {
   readonly planId: string;
+  /** Owner of the plan, for usage of calls whose output was discarded. */
+  readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly purpose: OutlinePurpose;
   readonly modelOverride: string | null;
@@ -111,12 +114,15 @@ async function verifyOutline(
   try {
     // withDb: usage pricing and output ceilings read the synced model catalog.
     const cached = await step.do(name, verifyStepConfig(), async () =>
-      ctx.withDb(async () => {
+      ctx.withDb(async (db) => {
         const run = await runOutlineVerifier({
           tier: ctx.tier,
           input: ctx.input,
           modules,
           research: ctx.research,
+        }).catch(async (error: unknown) => {
+          await recordDiscardedCallUsage(error, ctx, db);
+          throw error;
         });
         ctx.log(name, {
           outcome: 'verified',
@@ -149,7 +155,7 @@ async function repairOutline(
       OUTLINE_STEPS.repair,
       repairStepConfig(),
       async () =>
-        ctx.withDb(async () => {
+        ctx.withDb(async (db) => {
           const run = await runOutlineRepair({
             tier: ctx.tier,
             purpose: ctx.purpose,
@@ -158,6 +164,9 @@ async function repairOutline(
             modules,
             issues,
             research: ctx.research,
+          }).catch(async (error: unknown) => {
+            await recordDiscardedCallUsage(error, ctx, db);
+            throw error;
           });
           ctx.log(OUTLINE_STEPS.repair, {
             outcome: 'repaired',

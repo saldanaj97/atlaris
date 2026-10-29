@@ -21,10 +21,10 @@ function makeCanonicalUsage(
 }
 
 describe('canonicalUsageToRecordParams', async () => {
-  it('omits provider-only provenance fields for partial usage', async () => {
+  it('omits the pricing snapshot for partial usage', async () => {
     const params = await canonicalUsageToRecordParams(
       makeCanonicalUsage({
-        providerCostMicrousd: 1_000,
+        providerCostMicrousd: null,
         isPartial: true,
         missingFields: ['provider'],
       }),
@@ -33,5 +33,19 @@ describe('canonicalUsageToRecordParams', async () => {
 
     expect(params.providerCostMicrousd).toBeUndefined();
     expect(params.modelPricingSnapshot).toBeUndefined();
+  });
+
+  it('keeps the reported cost of a summed row that has a partial call (DEV-185)', async () => {
+    // `sumUsages` of a call with usage and one whose usage never arrived.
+    const params = await canonicalUsageToRecordParams(
+      makeCanonicalUsage({
+        providerCostMicrousd: 1_000,
+        isPartial: true,
+        missingFields: ['inputTokens', 'outputTokens'],
+      }),
+      'user-1',
+    );
+
+    expect(params.providerCostMicrousd).toBe(BigInt(1_000));
   });
 });

@@ -14,7 +14,11 @@ import { pacePlan } from '@/features/ai/pacing';
 import { parseGenerationStream } from '@/features/ai/parser';
 import { buildUserPrompt } from '@/features/ai/prompts';
 import { toStream } from '@/features/ai/streaming/utils';
-import { safeNormalizeUsage } from '@/features/ai/usage';
+import {
+  completeUsageOrNull,
+  safeNormalizeUsage,
+  withBilledUsage,
+} from '@/features/ai/usage';
 import {
   OUTLINE_SCOPE_CONTRACT,
   buildResearchBriefPart,
@@ -107,11 +111,17 @@ export async function runOutlineRepair(
     },
     deps,
   );
-  const parsed = await parseGenerationStream(toStream(value), {
-    signal: params.signal,
-  });
+  const modules = await withBilledUsage(
+    () => completeUsageOrNull(metadata),
+    async () => {
+      const parsed = await parseGenerationStream(toStream(value), {
+        signal: params.signal,
+      });
+      return pacePlan(parsed.modules, params.input);
+    },
+  );
   return {
-    modules: pacePlan(parsed.modules, params.input),
+    modules,
     model: metadata.model ?? models[0]?.modelId ?? 'unknown',
     usage: await safeNormalizeUsage(metadata),
   };

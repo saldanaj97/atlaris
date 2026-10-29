@@ -91,6 +91,7 @@ export type RegenerationRunInput = {
 /** What a grounded regeneration's research and outline-quality stages see. */
 export type GroundedRegenerationStageInput = {
   readonly planId: string;
+  readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
   /** Reasons and note as a prompt block (JCS-162), or `null`. */
@@ -578,6 +579,7 @@ export async function processRegenerationRun(
   const guidance = grounded ? buildRegenerationGuidance(feedback) : null;
   const stage = (): GroundedRegenerationStageInput => ({
     planId: input.planId,
+    userId: input.userId,
     tier,
     input: generationInput,
     guidance,

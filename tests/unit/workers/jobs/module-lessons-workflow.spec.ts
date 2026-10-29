@@ -100,12 +100,14 @@ const budget = vi.hoisted(() => ({
   spent: vi.fn(async () => 0),
   insert: vi.fn(async (_cuts: unknown[]) => []),
   count: vi.fn(async () => 0),
+  recordDiscarded: vi.fn(async () => undefined),
 }));
 
 vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
   sumPlanAiSpendMicrousd: budget.spent,
   insertGenerationBudgetCuts: budget.insert,
   countGenerationBudgetCutsForModule: budget.count,
+  recordDiscardedCallUsage: budget.recordDiscarded,
 }));
 
 const groundedPicks = vi.hoisted(() => ({
@@ -948,6 +950,12 @@ describe('runModuleLessonsWorkflow', () => {
       );
       expect(writer.write).toHaveBeenCalledTimes(3);
       expect(calls.every((call) => call.attempts === 1)).toBe(true);
+      // The rejected first call was billed too (DEV-185).
+      const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+      expect(committed.usage).toMatchObject({
+        inputTokens: 30,
+        providerCostMicrousd: 300,
+      });
     });
 
     it('records the module failed when a lesson still fails after its retry', async () => {
@@ -967,6 +975,31 @@ describe('runModuleLessonsWorkflow', () => {
       expect(names).not.toContain('parse-commit');
       expect(queries.commitSuccess).not.toHaveBeenCalled();
       expect(moduleRow.status).toBe('failed');
+      // Both rejected TASK_A calls and the written TASK_B (DEV-185).
+      expect(queries.commitFailure).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          planId: PLAN_ID,
+          userId: USER_ID,
+          usage: expect.objectContaining({
+            inputTokens: 30,
+            providerCostMicrousd: 300,
+          }),
+        }),
+      );
+    });
+
+    it('records no usage with the failure when no call was billed', async () => {
+      writer.write.mockRejectedValue(new Error('provider down'));
+      const { deps } = groundedDeps();
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'failed' });
+
+      const [, failed] = queries.commitFailure.mock.calls[0] ?? [];
+      expect(failed).not.toHaveProperty('usage');
     });
 
     it('forbids citations and drops the brief when the plan has no research', async () => {
@@ -1634,6 +1667,33 @@ describe('runModuleLessonsWorkflow', () => {
               (fields as { outcome?: string }).outcome === 'failed_skipped',
           ),
         ).toHaveLength(2);
+      });
+
+      it('records each discarded verifier call in its step attempt (DEV-185)', async () => {
+        tier.value = 'pro';
+        taskIds = [TASK_A];
+        const rejected: unknown[] = [];
+        quality.call.mockImplementation(async () => {
+          const error = new Error('no JSON object');
+          rejected.push(error);
+          throw error;
+        });
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        const verify = calls.find((call) => call.name === 'lesson-1-verify-0');
+        expect(verify?.attempts).toBe(2);
+        expect(budget.recordDiscarded.mock.calls).toEqual(
+          rejected.map((error) => [
+            error,
+            expect.objectContaining({ userId: USER_ID, planId: PLAN_ID }),
+            expect.anything(),
+          ]),
+        );
       });
 
       it('ships the lesson with code checks when the verifier fails', async () => {

@@ -474,6 +474,7 @@ async function failStep(
   db: DbClient,
   run: RunContext,
   failedStep: CurrentStep,
+  spent: readonly CanonicalAIUsage[],
 ): Promise<{ readonly outcome: string }> {
   if (failedStep === 'claim') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -497,12 +498,14 @@ async function failStep(
     return { outcome: 'not_owned' };
   }
 
+  const [firstSpent, ...restSpent] = spent;
   await recordModuleLessonGenerationFailure({
     target: run.target,
     dbClient: db,
     now: run.now,
     providerStarted: Boolean(metadata.providerStartedAt),
     workflowRunId: run.instanceId,
+    ...(firstSpent && { usage: sumUsages([firstSpent, ...restSpent]) }),
   });
   logStep(run, 'fail', { taskCount, outcome: 'failure_recorded' });
   return { outcome: 'failure_recorded' };
@@ -518,6 +521,7 @@ async function runGroundedLessons(
   claim: Extract<ClaimStepResult, { kind: 'claimed' }>,
   grounded: GroundedLessonContext,
   setCurrent: (step: CurrentStep) => void,
+  onSpend: (usages: readonly CanonicalAIUsage[]) => void,
 ): Promise<ModuleLessonsWorkflowOutcome> {
   const written = await runGroundedLessonSteps(step, {
     target: run.target,
@@ -530,6 +534,7 @@ async function runGroundedLessons(
     revertArgs: revertArgs(run),
     nonRetryable: run.deps.nonRetryable,
     now: run.now,
+    onSpend,
     log: (stepName, fields, level = 'info') =>
       run.deps.logger[level](
         {
@@ -596,6 +601,9 @@ export async function runModuleLessonsWorkflow(
   };
 
   let current: CurrentStep = 'claim';
+  // Grounded calls billed so far: recorded on failure, since only a
+  // successful commit records the module's usage.
+  const spent: CanonicalAIUsage[] = [];
   try {
     const claim = await step.do(
       MODULE_LESSONS_STEPS.claim,
@@ -607,9 +615,16 @@ export async function runModuleLessonsWorkflow(
     }
     if (claim.grounded) {
       current = GROUNDED_LESSONS_STAGE;
-      return await runGroundedLessons(step, run, claim, claim.grounded, (s) => {
-        current = s;
-      });
+      return await runGroundedLessons(
+        step,
+        run,
+        claim,
+        claim.grounded,
+        (s) => {
+          current = s;
+        },
+        (usages) => spent.push(...usages),
+      );
     }
 
     current = 'generate';
@@ -677,7 +692,7 @@ export async function runModuleLessonsWorkflow(
     );
     const failedStep = current;
     await step.do(MODULE_LESSONS_STEPS.fail, FAIL_STEP_CONFIG, async () =>
-      deps.withDb((db) => failStep(db, run, failedStep)),
+      deps.withDb((db) => failStep(db, run, failedStep, spent)),
     );
     return { kind: 'failed' };
   }

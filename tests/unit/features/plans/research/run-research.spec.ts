@@ -6,6 +6,7 @@ import {
   GROUNDED_PRESET_SLUGS,
   getGroundedOperationPolicy,
 } from '@/features/ai/model-operation-policy';
+import { billedUsageOf } from '@/features/ai/usage';
 import { runPlanResearch } from '@/features/plans/research/run-research';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -187,6 +188,43 @@ describe('runPlanResearch', () => {
       searchCount: 3,
       costMicrousd: 21_500,
       model: 'served/model',
+    });
+  });
+
+  it('keeps the billed cost on the error when the brief is rejected (DEV-185)', async () => {
+    const [, last] = RESEARCH_STREAM_CHUNKS as [unknown, { usage: unknown }];
+    const rejectedChunks = [
+      {
+        model: 'served/model',
+        choices: [
+          {
+            index: 0,
+            delta: { content: 'I could not find sources.' },
+            finish_reason: 'stop',
+          },
+        ],
+        usage: last.usage,
+      },
+    ];
+    const fetchMock = vi.fn<typeof fetch>(() =>
+      Promise.resolve(
+        new Response(toByteStream(toSseBody(rejectedChunks)), {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        }),
+      ),
+    );
+
+    const error = await runPlanResearch(
+      { tier: 'starter', input: INPUT },
+      { fetch: fetchMock },
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect(billedUsageOf(error)).toMatchObject({
+      inputTokens: 900,
+      outputTokens: 300,
+      providerCostMicrousd: 21_500,
     });
   });
 });
