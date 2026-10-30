@@ -5,6 +5,8 @@ import { z } from 'zod';
 
 export type JobSwitchVars = {
   JOBS_PAUSED?: string;
+  /** Plan research calls Parallel directly (DEV-171); unset is off. */
+  PARALLEL_DIRECT_RESEARCH?: string;
 } & Partial<Record<`JOB_${JobName}_ENABLED`, string>> &
   Partial<Record<`GROUNDED_GENERATION_${Uppercase<SubscriptionTier>}`, string>>;
 
@@ -53,6 +55,7 @@ const workerEnvSchema = z.object({
   EMAIL_TEST_RECIPIENT_ALLOWLIST: optionalString,
   POSTHOG_PERSONAL_API_KEY: optionalString,
   JOBS_PAUSED: optionalString,
+  PARALLEL_DIRECT_RESEARCH: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),
   ),

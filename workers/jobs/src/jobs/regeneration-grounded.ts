@@ -3,7 +3,10 @@ import type { GroundedRegenerationStages } from '@/features/jobs/regeneration-ru
 import type { Logger } from '@/lib/logging/logger';
 import type { WorkflowStep } from 'cloudflare:workers';
 
-import { isGroundedGenerationEnabled } from '../switches';
+import {
+  isDirectResearchEnabled,
+  isGroundedGenerationEnabled,
+} from '../switches';
 import { runOutlineQualitySteps } from '../workflows/plan-generation/outline';
 import { runPlanResearchSteps } from '../workflows/plan-generation/research';
 import { REGENERATION_JOB_TAG } from './regeneration-shared';
@@ -77,6 +80,7 @@ export function createGroundedRegenerationStages(deps: {
         tier: stage.tier,
         input: stage.input,
         guidance: stage.guidance,
+        directSearch: isDirectResearchEnabled(deps.env),
         attemptStartedAt: stage.attemptStartedAt,
         withDb: (fn) => fn(stage.db),
         log: log(stage.planId),

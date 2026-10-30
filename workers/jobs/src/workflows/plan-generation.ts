@@ -1,7 +1,11 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
 import { createWorkflowModuleLessonStarter } from '../jobs/regeneration-consumer';
-import { isGroundedGenerationEnabled, isJobEnabled } from '../switches';
+import {
+  isDirectResearchEnabled,
+  isGroundedGenerationEnabled,
+  isJobEnabled,
+} from '../switches';
 import {
   type PlanGenerationWorkflowParams,
   runPlanGenerationWorkflow,
@@ -34,6 +38,7 @@ export class PlanGenerationWorkflowEntrypoint extends WorkflowEntrypoint<
     return runPlanGenerationWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'PLAN_GENERATION'),
       isGroundedEnabled: (tier) => isGroundedGenerationEnabled(env, tier),
+      isDirectResearchEnabled: () => isDirectResearchEnabled(env),
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       // Lessons for the first modules start through the lessons Workflow.
       startModuleLessons: createWorkflowModuleLessonStarter({

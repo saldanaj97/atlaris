@@ -105,6 +105,13 @@ interface OpenRouterEnv {
 }
 
 /**
+ * Parallel Search API configuration for direct plan research (DEV-171).
+ */
+interface ParallelEnv {
+  readonly apiKey: string | undefined;
+}
+
+/**
  * Attempt-cap env values used to normalize generation retry limits.
  */
 interface AttemptsEnv {
@@ -118,6 +125,7 @@ interface AiEnvFacets {
   readonly aiEnv: AiEnvConfig;
   readonly aiTimeoutEnv: AiTimeoutEnv;
   readonly openRouterEnv: OpenRouterEnv;
+  readonly parallelEnv: ParallelEnv;
   readonly attemptsEnv: AttemptsEnv;
 }
 
@@ -278,6 +286,12 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     },
   };
 
+  const parallelEnv: ParallelEnv = {
+    get apiKey() {
+      return access.getServerOptional('PARALLEL_API_KEY');
+    },
+  };
+
   const attemptsEnv: AttemptsEnv = {
     get cap() {
       return parseEnvNumber(
@@ -291,6 +305,7 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     aiEnv,
     aiTimeoutEnv,
     openRouterEnv,
+    parallelEnv,
     attemptsEnv,
   };
 }
@@ -301,6 +316,7 @@ const defaultAiFacets = createAiEnvFacets(defaultAiAccess);
 export const aiEnv = defaultAiFacets.aiEnv;
 export const aiTimeoutEnv = defaultAiFacets.aiTimeoutEnv;
 export const openRouterEnv = defaultAiFacets.openRouterEnv;
+export const parallelEnv = defaultAiFacets.parallelEnv;
 
 /** Per-plan generation attempt cap (env-overridable, validated >= 1). */
 export function getAttemptCap(): number {

@@ -286,6 +286,7 @@ function makeDeps(overrides: Partial<PlanGenerationWorkflowDeps> = {}) {
     isEnabled: () => true,
     // Grounded generation off: today's pipeline.
     isGroundedEnabled: () => false,
+    isDirectResearchEnabled: () => false,
     withDb: (fn) => fn(makeDb()),
     startModuleLessons: vi.fn(),
     logger,
@@ -702,6 +703,7 @@ describe('runPlanGenerationWorkflow', () => {
       expect(mocks.runPlanResearch).toHaveBeenCalledWith({
         tier: 'free',
         input: params.input,
+        directSearch: false,
       });
       expect(mocks.insertPlanResearch).toHaveBeenCalledWith(
         {
@@ -728,11 +730,34 @@ describe('runPlanGenerationWorkflow', () => {
         stepLogs(logger).find((fields) => fields.step === 'research'),
       ).toMatchObject({
         outcome: 'researched',
+        directSearch: false,
+        mode: 'fast',
         model: 'served/model',
         sourceCount: 1,
         droppedSourceCount: 1,
         searchCount: 3,
       });
+    });
+
+    it('researches directly when the Worker switch is on (DEV-171)', async () => {
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: () => true,
+        isDirectResearchEnabled: () => true,
+      });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(mocks.runPlanResearch).toHaveBeenCalledWith({
+        tier: 'free',
+        input: params.input,
+        directSearch: true,
+      });
+      expect(
+        stepLogs(logger).find((fields) => fields.step === 'research'),
+      ).toMatchObject({ outcome: 'researched', directSearch: true });
     });
 
     it('writes the grounded outline with the writer pick, never the legacy override', async () => {

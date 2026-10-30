@@ -1,10 +1,11 @@
 import {
   groundedGenerationTiers,
+  isDirectResearchEnabled,
   isGroundedGenerationEnabled,
   isJobEnabled,
   isJobsPaused,
 } from '../../../../workers/jobs/src/switches';
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('isJobsPaused', () => {
   it.each([
@@ -82,6 +83,33 @@ describe('isGroundedGenerationEnabled', () => {
         'starter',
       ),
     ).toBe(true);
+  });
+});
+
+describe('isDirectResearchEnabled (DEV-171)', () => {
+  beforeEach(() => {
+    vi.stubEnv('PARALLEL_API_KEY', 'parallel-key');
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it.each([
+    [undefined, false],
+    ['true', true],
+  ])('PARALLEL_DIRECT_RESEARCH=%j → %s', (value, expected) => {
+    expect(isDirectResearchEnabled({ PARALLEL_DIRECT_RESEARCH: value })).toBe(
+      expected,
+    );
+  });
+
+  it('stays off without PARALLEL_API_KEY, so research keeps working', () => {
+    vi.stubEnv('PARALLEL_API_KEY', '');
+
+    expect(isDirectResearchEnabled({ PARALLEL_DIRECT_RESEARCH: 'true' })).toBe(
+      false,
+    );
   });
 });
 

@@ -147,6 +147,8 @@ export type PlanGenerationWorkflowDeps = {
    * switches mean off.
    */
   readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
+  /** `isDirectResearchEnabled(env)`: research searches Parallel directly (DEV-171). */
+  readonly isDirectResearchEnabled: () => boolean;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   /** Starts module lessons after success (the Worker's lessons Workflow starter). */
@@ -478,6 +480,7 @@ export async function runPlanGenerationWorkflow(
         userId: input.userId,
         tier: input.tier,
         input: input.input,
+        directSearch: deps.isDirectResearchEnabled(),
         attemptStartedAt: input.reservation.startedAt,
         withDb: deps.withDb,
         log: (name, fields, level) => logStep(run, name, fields, level),

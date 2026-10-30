@@ -62,6 +62,9 @@ export type ResearchLogFields = {
   readonly outcome: string;
   readonly errorKind?: string;
   readonly err?: unknown;
+  /** Which path ran (DEV-171) and its web search mode. */
+  readonly directSearch?: boolean;
+  readonly mode?: ResearchMode;
   readonly model?: string;
   readonly sourceCount?: number;
   readonly droppedSourceCount?: number;
@@ -76,6 +79,8 @@ export type ResearchStepsContext = {
   readonly input: GenerationInput;
   /** Regeneration feedback that steers the search (JCS-162). */
   readonly guidance?: string | null;
+  /** `isDirectResearchEnabled(env)`: search Parallel directly (DEV-171). */
+  readonly directSearch: boolean;
   /** Research rows for the plan created from here on belong to this attempt. */
   readonly attemptStartedAt: string;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -96,12 +101,15 @@ async function researchStep(
     tier: ctx.tier,
     input: ctx.input,
     guidance: ctx.guidance,
+    directSearch: ctx.directSearch,
   }).catch(async (error: unknown) => {
     await recordDiscardedCallUsage(error, ctx, db);
     throw error;
   });
   ctx.log('research', {
     outcome: 'researched',
+    directSearch: ctx.directSearch,
+    mode: run.mode,
     model: run.model,
     sourceCount: run.research.sources.length,
     droppedSourceCount: run.droppedSourceCount,

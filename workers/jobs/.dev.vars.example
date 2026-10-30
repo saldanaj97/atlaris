@@ -4,5 +4,9 @@
 # In the deployed modes (staging/production) the job switches below are Worker
 # secrets too; locally they come from this file.
 
+# Direct plan research (DEV-171): the switch and the Parallel Search key.
+# PARALLEL_DIRECT_RESEARCH=false
+# PARALLEL_API_KEY=
+
 # Job switches:
 # JOBS_PAUSED=false
