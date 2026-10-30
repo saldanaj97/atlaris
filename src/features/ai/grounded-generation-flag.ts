@@ -16,7 +16,7 @@ export async function isGroundedEnabled(
     return await groundedGeneration(tier);
   } catch (error) {
     logger.warn(
-      { tier, error },
+      { tier, err: error },
       'grounded-generation flag evaluation failed; running ungrounded',
     );
     return false;

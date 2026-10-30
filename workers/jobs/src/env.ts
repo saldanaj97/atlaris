@@ -38,11 +38,13 @@ const workerEnvSchema = z.object({
   WORKER_ENV: z.enum(['development', 'staging', 'production']),
   SENTRY_DSN: z.string(),
   SENTRY_RELEASE: optionalString,
+  // `typeof === 'function'` rather than `in`, so a proxy-backed binding that
+  // resolves methods on access still validates.
   FLAGS: z.custom<Flagship>(
     (value) =>
       typeof value === 'object' &&
       value !== null &&
-      'getBooleanDetails' in value,
+      typeof (value as Partial<Flagship>).getBooleanDetails === 'function',
   ),
   REGENERATION_QUEUE: z.custom<Queue>(
     (value) => typeof value === 'object' && value !== null && 'send' in value,

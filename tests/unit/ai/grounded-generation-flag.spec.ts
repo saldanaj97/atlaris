@@ -38,7 +38,7 @@ describe('isGroundedEnabled', () => {
 
     await expect(isGroundedEnabled('pro')).resolves.toBe(false);
     expect(warn).toHaveBeenCalledWith(
-      { tier: 'pro', error },
+      { tier: 'pro', err: error },
       expect.stringContaining('grounded-generation'),
     );
   });
