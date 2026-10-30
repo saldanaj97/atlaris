@@ -80,6 +80,30 @@ describe('runRetentionCleanup', () => {
     },
   );
 
+  it('reports a skip on an unreadable flag to Sentry', async () => {
+    const { deps, captureException } = makeDeps('flag_unavailable');
+
+    await runRetentionCleanup(deps);
+
+    expect(captureException).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: 'Retention cleanup skipped: a flag could not be read',
+      }),
+      { tags: { job: 'retention-cleanup', runtime: 'cloudflare-worker' } },
+    );
+  });
+
+  it.each(['paused', 'disabled'] as const)(
+    'does not report a deliberate %s skip to Sentry',
+    async (gate) => {
+      const { deps, captureException } = makeDeps(gate);
+
+      await runRetentionCleanup(deps);
+
+      expect(captureException).not.toHaveBeenCalled();
+    },
+  );
+
   it('reports with job tags and rethrows on failure', async () => {
     const error = new Error('boom');
     retention.run.mockRejectedValue(error);

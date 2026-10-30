@@ -41,12 +41,16 @@ export async function runRetentionCleanup(
         'Retention cleanup disabled; skipped',
       );
       return 'skipped';
-    case 'flag_unavailable':
-      deps.logger.warn(
-        { job: RETENTION_CLEANUP_JOB },
-        'Retention cleanup skipped: a flag could not be read',
-      );
+    case 'flag_unavailable': {
+      const message = 'Retention cleanup skipped: a flag could not be read';
+      deps.logger.warn({ job: RETENTION_CLEANUP_JOB }, message);
+      // A missing or broken flag would skip every night; report it so it is
+      // noticed rather than only logged.
+      deps.captureException(new Error(message), {
+        tags: { job: RETENTION_CLEANUP_JOB, runtime: 'cloudflare-worker' },
+      });
       return 'skipped';
+    }
   }
 
   try {
