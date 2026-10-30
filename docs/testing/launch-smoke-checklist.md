@@ -193,7 +193,7 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 2. Make sure the user has an incomplete plan and no activity after midnight in its time zone (`user_preferences.analytics_timezone`, default `UTC`, synced when the user opens `/analytics/usage`).
 3. The daily run fires at `0 14 * * *` UTC: 09:00 CDT through 2026-10-31, 08:00 CST from 2026-11-01.
 
-**Pass:** the daily reminder email arrives from `RESEND_FROM` with working links to `atlaris.app`. If not, walk the "Why didn't this user get email?" checklist in [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md); scheduled runs need the `email-notification-delivery` Flagship flag on for `production` and `jobs-paused` off. Before setting this check up, confirm the flag is on: a production with no `email_notification_delivery_runs` rows has never run a scheduled delivery. Don't use the manual run route for this check: it starts a run for every opted-in user.
+**Pass:** the daily reminder email arrives from `RESEND_FROM` with working links to `atlaris.app`. If not, walk the "Why didn't this user get email?" checklist in [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md); scheduled runs need the production Worker with the `jobs-paused` Flagship flag off. Before setting this check up, confirm scheduled delivery has run: a production with no `email_notification_delivery_runs` rows has never run a scheduled delivery. Don't use the manual run route for this check: it starts a run for every opted-in user.
 
 ## 10. Close the run
 

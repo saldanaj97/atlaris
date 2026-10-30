@@ -39,7 +39,7 @@ export class EmailDeliveryWorkflowEntrypoint extends WorkflowEntrypoint<
     registerWorkerFlags(this.env);
     const env = this.env;
     return runEmailDeliveryWorkflow(event, step, {
-      isEnabled: isEmailDeliveryEnabled,
+      isEnabled: () => isEmailDeliveryEnabled(env.WORKER_ENV),
       recipientGuard: resolveEmailRecipientGuard(env),
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       createSender: createConfiguredEmailSender,

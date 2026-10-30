@@ -28,6 +28,7 @@ import {
 } from './jobs/retention-cleanup';
 import {
   isDirectResearchEnabled,
+  isEmailDeliveryEnabled,
   isJobsPaused,
   isModuleLessonsEnabled,
   isRetentionCleanupEnabled,
@@ -39,7 +40,6 @@ import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
 } from '@/features/jobs/regeneration-run';
-import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
 import { JOBS_COMMAND_PATHS } from '@/lib/jobs-worker/contract';
 import { createLogger } from '@/lib/logging/logger';
 import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
@@ -140,7 +140,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
       });
       return handleEmailDeliveryRunsCommand(verified, {
         isPaused: isJobsPaused,
-        isDeliveryEnabled: resolveEmailNotificationDeliveryEnabled,
+        isDeliveryEnabled: () => isEmailDeliveryEnabled(workerEnv.WORKER_ENV),
         withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
         workflow: workerEnv.EMAIL_DELIVERY_WORKFLOW,
         logger,

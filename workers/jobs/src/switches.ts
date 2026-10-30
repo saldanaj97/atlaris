@@ -1,5 +1,6 @@
+import type { WorkerEnv } from './env';
+
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
-import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
 import {
   jobRetentionCleanup,
   jobsPaused,
@@ -36,11 +37,16 @@ export async function isRetentionCleanupEnabled(): Promise<boolean> {
   }
 }
 
-/** Email delivery runs only while not paused and `email-notification-delivery` is on. */
-export async function isEmailDeliveryEnabled(): Promise<boolean> {
-  return (
-    !(await isJobsPaused()) && (await resolveEmailNotificationDeliveryEnabled())
-  );
+/**
+ * Worker email delivery (scheduled runs, the manual command, every page)
+ * runs only in production and while not paused. It does not read
+ * `email-notification-delivery`: that flag gates the app's manual trigger
+ * route, and it is off in production while scheduled email sends.
+ */
+export async function isEmailDeliveryEnabled(
+  workerEnv: WorkerEnv['WORKER_ENV'],
+): Promise<boolean> {
+  return workerEnv === 'production' && !(await isJobsPaused());
 }
 
 /** Module lessons run only while not paused and `module-lesson-generation` is on. */

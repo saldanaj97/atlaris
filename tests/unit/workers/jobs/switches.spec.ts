@@ -62,18 +62,30 @@ describe.sequential('Worker job switches (Flagship)', () => {
     });
   });
 
-  describe.each([
-    [
-      'isEmailDeliveryEnabled',
-      isEmailDeliveryEnabled,
-      'email-notification-delivery',
-    ],
-    [
-      'isModuleLessonsEnabled',
-      isModuleLessonsEnabled,
-      'module-lesson-generation',
-    ],
-  ] as const)('%s', (_name, isEnabled, flag) => {
+  describe('isEmailDeliveryEnabled', () => {
+    it('runs in production only, whatever email-notification-delivery says', async () => {
+      useFlags({ 'email-notification-delivery': false });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(true);
+      useFlags({ 'email-notification-delivery': true });
+      await expect(isEmailDeliveryEnabled('staging')).resolves.toBe(false);
+      await expect(isEmailDeliveryEnabled('development')).resolves.toBe(false);
+    });
+
+    it('is off while jobs are paused', async () => {
+      useFlags({ 'jobs-paused': true });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(false);
+    });
+
+    it('keeps sending when the jobs-paused read fails', async () => {
+      useFlags({ 'jobs-paused': 'error' });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(true);
+    });
+  });
+
+  describe('isModuleLessonsEnabled', () => {
+    const isEnabled = isModuleLessonsEnabled;
+    const flag = 'module-lesson-generation';
+
     it(`follows ${flag}`, async () => {
       useFlags({ [flag]: true });
       await expect(isEnabled()).resolves.toBe(true);

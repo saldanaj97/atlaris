@@ -84,7 +84,7 @@ type StepAttempt<T> =
   | { kind: 'stop'; message: string };
 
 export type EmailDeliveryWorkflowDeps = {
-  /** `isEmailDeliveryEnabled()`: not paused and `email-notification-delivery` on. */
+  /** `isEmailDeliveryEnabled(WORKER_ENV)`: production only, and not paused. */
   isEnabled: () => Promise<boolean>;
   recipientGuard: EmailRecipientGuard;
   /** Runs `fn` with a database client that lives for this step only. */

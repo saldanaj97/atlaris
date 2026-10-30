@@ -35,7 +35,7 @@ export type EmailDeliveryRunsCommand = z.infer<typeof commandSchema>;
 export type EmailDeliveryRunsDeps = {
   /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
   isPaused: () => Promise<boolean>;
-  /** `resolveEmailNotificationDeliveryEnabled()`: fails closed. */
+  /** `isEmailDeliveryEnabled(WORKER_ENV)`: production only. */
   isDeliveryEnabled: () => Promise<boolean>;
   withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   workflow: Pick<Workflow<EmailDeliveryWorkflowParams>, 'create' | 'get'>;

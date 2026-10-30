@@ -115,7 +115,7 @@ It fails closed if browser roles can bypass RLS, if any public application table
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
    - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.
    - Enable the Flagship flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
-   - Confirm the jobs Worker's email Workflow schedules exist and the `email-notification-delivery` Flagship flag is in the intended state (it gates scheduled and manual runs); keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
+   - Confirm the jobs Worker's email Workflow schedules exist (the production Worker sends while `jobs-paused` is off); keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
 See also:
 
@@ -129,7 +129,7 @@ See also:
 The jobs Worker's Workflow schedules are the only email scheduler. The Vercel Cron entries and `CRON_SECRET` were removed in B7a (JCS-134).
 
 1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies `20260710151930_create_email_notification_delivery_runs`, the delivery ledger, and `20260811100200_enforce_resolved_email_delivery_payload_minimization` without opening the contract gate.
-2. Deploy the Worker, then the application, with the `email-notification-delivery` flag off.
+2. Deploy the Worker, then the application. Since DEV-193 the production Worker sends scheduled email as soon as it is deployed; only `jobs-paused` (which pauses every job) holds it back.
 3. Leave the `email-notification-delivery` Flagship flag disabled and verify the manual route returns the intentional `disabled` outcome without creating a run.
 4. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Cloudflare Workflow instance, and delivery ledger before enabling broader delivery.
 
