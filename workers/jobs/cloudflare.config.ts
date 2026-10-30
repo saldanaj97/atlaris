@@ -26,6 +26,8 @@ const DEPLOYED_SECRETS = [
   // and its authentication token.
   'OPENROUTER_BASE_URL',
   'CF_AI_GATEWAY_TOKEN',
+  // Parallel Search for direct plan research (DEV-171; `PARALLEL_DIRECT_RESEARCH`).
+  'PARALLEL_API_KEY',
   'RESEND_API_KEY',
   'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
 ] as const;

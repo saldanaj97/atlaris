@@ -162,10 +162,15 @@ export type GroundedModelChoice = {
   readonly researchMode?: ResearchMode;
 };
 
-/** Per-request web search caps (`max_results`, `max_total_results`). */
+/**
+ * Per-request web search caps (`max_results`, `max_total_results`). A direct
+ * Parallel search (DEV-171) sends one request for `maxTotalResults` results
+ * and caps their excerpts at `maxExcerptChars` in total.
+ */
 export type ResearchLimits = {
   readonly maxResults: number;
   readonly maxTotalResults: number;
+  readonly maxExcerptChars: number;
 };
 
 export type GroundedOperationPolicy =
@@ -185,6 +190,8 @@ export type GroundedOperationPolicy =
 /** OpenRouter presets added for grounded generation. */
 export const GROUNDED_PRESET_SLUGS = {
   research: 'atlaris-grounded-research',
+  /** Writes the brief from search results we pass in (DEV-171). */
+  researchDirect: 'atlaris-grounded-research-direct',
   verifier: 'atlaris-grounded-verifier',
   repair: 'atlaris-grounded-repair',
 } as const;
@@ -236,10 +243,11 @@ export const PRO_GROUNDED_REVIEW_CATALOG = [
   'anthropic/claude-haiku-5.5',
 ] as const;
 
+// About 2k excerpt characters per result.
 const RESEARCH_LIMITS_BY_TIER = {
-  free: { maxResults: 3, maxTotalResults: 6 },
-  starter: { maxResults: 5, maxTotalResults: 15 },
-  pro: { maxResults: 8, maxTotalResults: 24 },
+  free: { maxResults: 3, maxTotalResults: 6, maxExcerptChars: 12_000 },
+  starter: { maxResults: 5, maxTotalResults: 15, maxExcerptChars: 30_000 },
+  pro: { maxResults: 8, maxTotalResults: 24, maxExcerptChars: 48_000 },
 } as const satisfies Record<SubscriptionTier, ResearchLimits>;
 
 type GroundedRole = 'research' | 'writer' | 'verifier' | 'advisor';

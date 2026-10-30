@@ -1,6 +1,7 @@
 import type { JobSwitchVars } from './env';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { parallelEnv } from '@/lib/config/env/ai';
 import { toBoolean } from '@/lib/config/env/shared';
 
 /** Jobs with a `JOB_<NAME>_ENABLED` switch (design note, Decision 7). */
@@ -50,6 +51,19 @@ export function groundedGenerationTiers(
 ): SubscriptionTier[] {
   return GROUNDED_GENERATION_TIERS.filter((tier) =>
     isGroundedGenerationEnabled(env, tier),
+  );
+}
+
+/**
+ * Plan research searches Parallel directly instead of using OpenRouter's
+ * `web_search` tool (DEV-171) only when this switch is `true` and
+ * `PARALLEL_API_KEY` is set; absent means off. Without the key the switch
+ * stays off, so flipping it before the key is synced keeps research working.
+ */
+export function isDirectResearchEnabled(env: JobSwitchVars): boolean {
+  return (
+    toBoolean(env.PARALLEL_DIRECT_RESEARCH, false) &&
+    Boolean(parallelEnv.apiKey)
   );
 }
 
