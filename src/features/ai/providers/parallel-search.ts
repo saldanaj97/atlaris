@@ -20,11 +20,11 @@ import { z } from 'zod';
 export const PARALLEL_SEARCH_URL = 'https://api.parallel.ai/v1/search';
 
 /** Covers `advanced` mode, which takes several seconds; the step timeout is larger. */
-export const PARALLEL_SEARCH_TIMEOUT_MS = 60_000;
+const PARALLEL_SEARCH_TIMEOUT_MS = 60_000;
 
 /** Recorded as the `model` of a search-only usage event (no model call ran). */
-export const PARALLEL_SEARCH_MODEL_ID = 'parallel/search';
-export const PARALLEL_PROVIDER = 'parallel';
+const PARALLEL_SEARCH_MODEL_ID = 'parallel/search';
+const PARALLEL_PROVIDER = 'parallel';
 
 const LOG_SOURCE = 'parallel-search';
 const ERROR_MESSAGE_MAX_CHARS = 300;
@@ -73,7 +73,7 @@ export function parallelSearchUsage(
   };
 }
 
-export type ParallelSearchRequest = {
+type ParallelSearchRequest = {
   /** Natural-language goal behind the search. */
   readonly objective: string;
   /** 2–3 keyword queries of 3–6 words each. */
@@ -92,8 +92,7 @@ export type ParallelSearchResult = {
   readonly excerpts: readonly string[];
 };
 
-export type ParallelSearchResponse = {
-  readonly searchId: string;
+type ParallelSearchResponse = {
   /** Results Parallel returned and billed, usable or not. */
   readonly resultCount: number;
   /** The usable results, by decreasing relevance; never empty. */
@@ -205,7 +204,7 @@ async function readSearchResponse(
       'Parallel search returned results without excerpts',
     );
   }
-  return { searchId, resultCount, results: [first, ...rest] };
+  return { resultCount, results: [first, ...rest] };
 }
 
 /**

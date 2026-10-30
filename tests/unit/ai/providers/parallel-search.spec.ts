@@ -92,7 +92,6 @@ describe('searchParallel', () => {
       advanced_settings: { max_results: 6 },
     });
     expect(response).toEqual({
-      searchId: 'search_1',
       resultCount: 2,
       results: [
         {
@@ -136,7 +135,6 @@ describe('searchParallel', () => {
     await expect(
       searchParallel(REQUEST, { fetch: fetchMock }),
     ).resolves.toEqual({
-      searchId: 'search_2',
       resultCount: 3,
       results: [{ url: OWNERSHIP_URL, title: 'Ownership', excerpts: [] }],
     });

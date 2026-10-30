@@ -6,7 +6,8 @@ import { z } from 'zod';
 /**
  * The research step's output (JCS-158). The outline (2b) reads `brief`; lessons
  * (3a) cite `sources` by `key`. Keys run `S1`, `S2`, … with no gaps, and every
- * `url` was cited by the web search in the same response.
+ * `url` came from the same run's web search: an OpenRouter `url_citation`
+ * annotation, or a Parallel result on the direct path (DEV-171).
  */
 export type ResearchCitationKey = `S${number}`;
 
@@ -49,7 +50,7 @@ export class ResearchOutputError extends Error {
 
 export type CheckedResearch = {
   readonly research: ResearchBrief;
-  /** Sources dropped because no `url_citation` annotation named their URL. */
+  /** Sources dropped because no citation from the run's search named their URL. */
   readonly droppedSourceCount: number;
 };
 

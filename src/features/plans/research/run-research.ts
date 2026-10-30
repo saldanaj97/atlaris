@@ -93,7 +93,7 @@ export function buildResearchUserPrompt(
  * any regeneration feedback as the objective, plus keyword queries built from
  * the topic's first words. Built in code, so no model call precedes the search.
  */
-export function buildResearchSearch(
+function buildResearchSearch(
   input: ResearchInput,
   guidance?: string | null,
 ): { objective: string; searchQueries: string[] } {
@@ -141,7 +141,7 @@ function frameSafe(text: string): string {
  * `S1…Sn` in rank order. The model cites these keys; the contract check then
  * keeps only sources whose URL is one of these.
  */
-export function buildSearchResultsPrompt(
+function buildSearchResultsPrompt(
   results: readonly ParallelSearchResult[],
 ): string {
   const lines = [
@@ -235,9 +235,11 @@ type RunPlanResearchParams = {
 };
 
 /**
- * One research call for a plan: web search (Parallel engine) with the tier's
- * research models, mode and limits, then the contract checks. Throws on any
- * provider, parse or contract failure; the workflow step owns retries.
+ * One research call for a plan with the tier's research models, mode and
+ * limits, then the contract checks. Off the switch, the model searches with
+ * OpenRouter's `web_search` tool (Parallel engine); with `directSearch` we
+ * search Parallel first (`runDirectResearch`). Throws on any provider, parse
+ * or contract failure; the workflow step owns retries.
  */
 export async function runPlanResearch(
   params: RunPlanResearchParams,

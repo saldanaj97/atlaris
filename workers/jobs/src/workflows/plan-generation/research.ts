@@ -29,7 +29,8 @@ const RESEARCH_STEP_TIMEOUT_MARGIN_MS = 60_000;
 
 /**
  * Two retries, then the run continues without research. Gateway retries are
- * off for server-tool calls, so these are the only ones.
+ * off for the `web_search` server-tool call; on the direct path (DEV-171) the
+ * Parallel search has none and the model call keeps the gateway's own.
  */
 export function researchStepConfig() {
   const timeout = resolveTimeoutConfig();
