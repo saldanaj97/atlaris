@@ -1,5 +1,6 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
+import { registerWorkerFlags } from '../flags';
 import { isJobEnabled } from '../switches';
 import { resolveEmailRecipientGuard } from './email-delivery/recipient-allowlist';
 import {
@@ -35,6 +36,7 @@ export class EmailDeliveryWorkflowEntrypoint extends WorkflowEntrypoint<
     step: WorkflowStep,
   ) {
     parseWorkerEnv(this.env);
+    registerWorkerFlags(this.env);
     const env = this.env;
     return runEmailDeliveryWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'EMAIL_DELIVERY'),

@@ -11,6 +11,7 @@ function makeEnv(overrides: Record<string, unknown> = {}): WorkerEnv {
       connectionString: 'postgres://u:secret-pw@127.0.0.1:5432/db',
     },
     CF_VERSION_METADATA: { id: 'version-1', tag: '', timestamp: '' },
+    FLAGS: { getBooleanDetails: async () => ({ value: false }) },
     REGENERATION_QUEUE: { send: async () => {}, sendBatch: async () => {} },
     EMAIL_DELIVERY_WORKFLOW: { create: async () => {}, get: async () => {} },
     MODULE_LESSONS_WORKFLOW: { create: async () => {}, get: async () => {} },
@@ -33,6 +34,12 @@ describe('parseWorkerEnv', () => {
   it('names a missing Hyperdrive binding', () => {
     expect(() => parseWorkerEnv(makeEnv({ HYPERDRIVE: undefined }))).toThrow(
       new WorkerEnvError(['HYPERDRIVE']),
+    );
+  });
+
+  it('names a missing Flagship binding', () => {
+    expect(() => parseWorkerEnv(makeEnv({ FLAGS: undefined }))).toThrow(
+      'Invalid Worker environment: FLAGS',
     );
   });
 

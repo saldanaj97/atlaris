@@ -118,7 +118,7 @@ describe('handleRegenerationBatch', () => {
 
   it('passes the grounded regeneration stages to the run', async () => {
     const grounded = {
-      isEnabled: vi.fn(() => true),
+      isEnabled: vi.fn(async () => true),
       research: vi.fn(),
       outlineQuality: vi.fn(),
     };

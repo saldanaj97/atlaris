@@ -3,6 +3,7 @@ import type { DbClient } from '@/lib/db/types';
 
 import { withInvocationDb } from './db';
 import { parseWorkerEnv, type WorkerEnv } from './env';
+import { registerWorkerFlags } from './flags';
 import {
   EMAIL_DELIVERY_RUNS_PATH,
   handleEmailDeliveryRunsCommand,
@@ -80,6 +81,7 @@ export const PlanGenerationWorkflow = Sentry.instrumentWorkflowWithSentry(
 export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
   async fetch(request, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
     const { pathname } = new URL(request.url);
 
     if (
@@ -140,6 +142,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
 
   async scheduled(controller, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
     const withDb: WithDb = (fn) =>
       withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn);
 
@@ -197,6 +200,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
 
   async queue(batch, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
 
     await handleRegenerationBatch(
       batch as MessageBatch<RegenerationQueueMessage>,

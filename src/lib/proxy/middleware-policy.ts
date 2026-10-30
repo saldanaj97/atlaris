@@ -9,9 +9,6 @@ const PROTECTED_PREFIXES = [
   '/analytics',
 ] as const;
 
-/** Public routes required by platform integrations (not user app surfaces). */
-const MAINTENANCE_MODE_BYPASS_PREFIXES = ['/.well-known/vercel/flags'] as const;
-
 /** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/health/worker',
@@ -90,9 +87,6 @@ function isSiteGatePage(path: string): boolean {
 export function isSiteGateExempt(pathname: string): boolean {
   const path = stripTrailingSlash(pathname);
   return (
-    MAINTENANCE_MODE_BYPASS_PREFIXES.some((prefix) =>
-      path.startsWith(prefix),
-    ) ||
     // Internal worker/maintenance routes enforce their own worker token auth.
     isInternalWorkerRoute(path) ||
     (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path) ||

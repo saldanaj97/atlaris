@@ -1,93 +1,211 @@
+// Feature flags, evaluated in Cloudflare Flagship. The app evaluates over
+// HTTP through the OpenFeature server provider with a short response cache;
+// the jobs Worker registers its `FLAGS` binding with `setFlagEvaluator()`.
+// Flag keys match the Flagship app; every flag is boolean and fails closed.
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { Adapter } from 'flags';
 
-import { vercelAdapter } from '@flags-sdk/vercel';
-import { flag } from 'flags/next';
+import { flagshipEnv } from '@/lib/config/env/flagship';
+import { logger } from '@/lib/logging/logger';
 
-const fallbackAdapter = (): Adapter<boolean, unknown> => ({
-  decide: ({ defaultValue }) =>
-    typeof defaultValue === 'boolean' ? defaultValue : false,
-});
-
-const tierListFallbackAdapter = (): Adapter<SubscriptionTier[], unknown> => ({
-  decide: () => [],
-});
-
-export const maintenanceMode = flag<boolean>({
-  key: 'maintenance-mode',
-  adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
-  description: 'Route all app traffic to the maintenance page.',
-  options: [
-    { value: false, label: 'Available' },
-    { value: true, label: 'Maintenance mode' },
-  ],
-});
+/** Attributes Flagship targeting rules can read. `environment` is always set. */
+export type FlagContext = Readonly<Record<string, string>>;
 
 /**
- * Pre-launch gate: marketing pages stay live, app and auth routes go to /waitlist.
- * No defaultValue: evaluation errors throw so the site gate falls back to LAUNCH_WAITLIST.
+ * What a flag source must offer: the Flagship binding on the Worker and an
+ * OpenFeature client on the app both have this method.
  */
-export const launchWaitlist = flag<boolean>({
-  key: 'launch-waitlist',
-  adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
-  description:
-    'Send app and auth traffic to the launch waitlist page before launch.',
-  options: [
-    { value: false, label: 'Launched' },
-    { value: true, label: 'Waitlist' },
-  ],
-});
+export interface FlagEvaluator {
+  getBooleanDetails(
+    key: string,
+    defaultValue: boolean,
+    context?: FlagContext,
+  ): Promise<{ readonly value: boolean; readonly errorCode?: string }>;
+}
+
+/** How long the app reuses an evaluation for the same flag and context. */
+export const FLAG_CACHE_TTL_MS = 30_000;
 
 /**
- * Global environment-level kill switch for opted-in email notification delivery.
- * Fail-closed: missing/unavailable evaluation must not enable sends.
+ * How long a failed evaluation is remembered per flag and context. The
+ * provider never caches errors, so without this every caller would wait the
+ * full request timeout while Flagship or the token is down. Only the failure
+ * is cached; a success within the window still comes from the provider.
  */
-export const emailNotificationDelivery = flag<boolean>({
-  key: 'email-notification-delivery',
-  defaultValue: false,
-  adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
-  description:
-    'Allow the scheduled worker to send opted-in email notifications.',
-  options: [
-    { value: false, label: 'Disabled' },
-    { value: true, label: 'Enabled' },
-  ],
-});
+export const FLAG_FAILURE_TTL_MS = 30_000;
+
+/** Evaluation timeout for the HTTP provider (`AbortSignal.timeout` style). */
+const FLAG_REQUEST_TIMEOUT_MS = 5_000;
+
+export class FlagEvaluationError extends Error {
+  constructor(
+    readonly flagKey: string,
+    readonly code: string,
+    options?: ErrorOptions,
+  ) {
+    super(`Flag "${flagKey}" could not be evaluated (${code}).`, options);
+    this.name = 'FlagEvaluationError';
+  }
+}
+
+let evaluator: FlagEvaluator | null = null;
+let pendingEvaluator: Promise<FlagEvaluator> | null = null;
+const failures = new Map<
+  string,
+  { readonly error: FlagEvaluationError; readonly expiresAt: number }
+>();
 
 /**
- * Durable operational kill switch for module lesson generation (sync + workflow).
- * Fail-closed: missing/unavailable evaluation must not start generation.
+ * Replaces the flag source. The jobs Worker passes its Flagship binding;
+ * tests pass a fake; `null` returns to the app's HTTP provider.
  */
-export const moduleLessonGeneration = flag<boolean>({
-  key: 'module-lesson-generation',
-  defaultValue: false,
-  adapter: process.env.FLAGS ? vercelAdapter() : fallbackAdapter(),
-  description:
-    'Allow synchronous and workflow-backed module lesson generation.',
-  options: [
-    { value: false, label: 'Disabled' },
-    { value: true, label: 'Enabled' },
-  ],
-});
+export function setFlagEvaluator(next: FlagEvaluator | null): void {
+  evaluator = next;
+  pendingEvaluator = null;
+  failures.clear();
+}
+
+/** Builds the OpenFeature client once per process; a failed setup is retried on the next call. */
+async function createHttpEvaluator(): Promise<FlagEvaluator> {
+  const [{ OpenFeature }, { FlagshipServerProvider }] = await Promise.all([
+    import('@openfeature/server-sdk'),
+    import('@cloudflare/flagship/server'),
+  ]);
+  await OpenFeature.setProviderAndWait(
+    new FlagshipServerProvider({
+      appId: flagshipEnv.appId,
+      accountId: flagshipEnv.accountId,
+      authToken: flagshipEnv.apiToken,
+      timeout: FLAG_REQUEST_TIMEOUT_MS,
+      cacheTtl: FLAG_CACHE_TTL_MS,
+    }),
+  );
+  return OpenFeature.getClient();
+}
+
+async function resolveEvaluator(): Promise<FlagEvaluator | null> {
+  if (evaluator !== null) return evaluator;
+  if (!flagshipEnv.isConfigured) return null;
+  pendingEvaluator ??= createHttpEvaluator()
+    .then((client) => {
+      evaluator = client;
+      return client;
+    })
+    .catch((error: unknown) => {
+      pendingEvaluator = null;
+      throw error;
+    });
+  return pendingEvaluator;
+}
+
+function failureKey(key: string, context: FlagContext): string {
+  const attributes = Object.keys(context)
+    .sort()
+    .map((name) => `${name}=${context[name]}`)
+    .join('&');
+  return `${key}?${attributes}`;
+}
+
+/** Remembers a failure for `FLAG_FAILURE_TTL_MS` and logs it once per window. */
+function recordFailure(
+  key: string,
+  context: FlagContext,
+  error: FlagEvaluationError,
+): FlagEvaluationError {
+  failures.set(failureKey(key, context), {
+    error,
+    expiresAt: Date.now() + FLAG_FAILURE_TTL_MS,
+  });
+  logger.warn(
+    { flagKey: key, context, code: error.code, err: error.cause ?? error },
+    `Flag evaluation failed; serving the fail-closed value for ${FLAG_FAILURE_TTL_MS / 1000} s`,
+  );
+  return error;
+}
 
 /**
- * Tiers that run the grounded generation pipeline (research, verify, advisor).
- * Fail-closed: the default and any evaluation error mean no tier.
+ * Evaluates a boolean flag. Throws `FlagEvaluationError` when Flagship reports
+ * an error (missing flag, type mismatch, network) or when a hosted deployment
+ * has no provider configured, so callers can apply their own fail-safe. A
+ * failure is rethrown without a provider call until `FLAG_FAILURE_TTL_MS`
+ * passes.
  */
-export const groundedGeneration = flag<SubscriptionTier[]>({
-  key: 'grounded-generation',
-  defaultValue: [],
-  adapter: process.env.FLAGS ? vercelAdapter() : tierListFallbackAdapter(),
-  description:
-    'Tiers that run grounded generation instead of the current pipeline.',
-  options: [
-    { value: [], label: 'Off' },
-    { value: ['free'], label: 'Free' },
-    { value: ['starter'], label: 'Starter' },
-    { value: ['pro'], label: 'Pro' },
-    { value: ['free', 'starter'], label: 'Free and Starter' },
-    { value: ['free', 'pro'], label: 'Free and Pro' },
-    { value: ['starter', 'pro'], label: 'Starter and Pro' },
-    { value: ['free', 'starter', 'pro'], label: 'All tiers' },
-  ],
-});
+async function evaluateBoolean(
+  key: string,
+  defaultValue: boolean,
+  context?: FlagContext,
+): Promise<boolean> {
+  const fullContext: FlagContext = {
+    environment: flagshipEnv.environment,
+    ...context,
+  };
+  const remembered = failures.get(failureKey(key, fullContext));
+  if (remembered !== undefined && remembered.expiresAt > Date.now()) {
+    throw remembered.error;
+  }
+
+  let source: FlagEvaluator | null;
+  try {
+    source = await resolveEvaluator();
+  } catch (error) {
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, 'PROVIDER_SETUP_FAILED', { cause: error }),
+    );
+  }
+  if (source === null) {
+    if (flagshipEnv.isRequired) {
+      // A hosted deploy without the FLAGSHIP_* variables is an outage too:
+      // remembered and logged like any other failure.
+      throw recordFailure(
+        key,
+        fullContext,
+        new FlagEvaluationError(key, 'PROVIDER_NOT_CONFIGURED'),
+      );
+    }
+    return defaultValue;
+  }
+
+  let details: Awaited<ReturnType<FlagEvaluator['getBooleanDetails']>>;
+  try {
+    details = await source.getBooleanDetails(key, defaultValue, fullContext);
+  } catch (error) {
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, 'EVALUATION_FAILED', { cause: error }),
+    );
+  }
+  if (details.errorCode) {
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, details.errorCode),
+    );
+  }
+  return details.value;
+}
+
+/** Route all app traffic to the maintenance page. */
+export const maintenanceMode = (): Promise<boolean> =>
+  evaluateBoolean('maintenance-mode', false);
+
+/** Pre-launch gate: marketing pages stay live, app and auth routes go to /waitlist. */
+export const launchWaitlist = (): Promise<boolean> =>
+  evaluateBoolean('launch-waitlist', false);
+
+/** Allow the jobs Worker to send opted-in email notifications. */
+export const emailNotificationDelivery = (): Promise<boolean> =>
+  evaluateBoolean('email-notification-delivery', false);
+
+/** Allow synchronous and workflow-backed module lesson generation. */
+export const moduleLessonGeneration = (): Promise<boolean> =>
+  evaluateBoolean('module-lesson-generation', false);
+
+/**
+ * Whether `tier` runs the grounded generation pipeline (research, verify,
+ * advisor). Targeting rules on the `subscriptionTier` attribute choose the
+ * tiers; the flag's default variation applies to the rest.
+ */
+export const groundedGeneration = (tier: SubscriptionTier): Promise<boolean> =>
+  evaluateBoolean('grounded-generation', false, { subscriptionTier: tier });

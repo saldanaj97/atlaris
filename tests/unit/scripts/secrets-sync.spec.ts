@@ -219,9 +219,8 @@ describe('planSync', () => {
         'SUPABASE_SECRET_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
         'VERCEL_BYPASS_PROTECTION_TOKEN',
-        'FLAGS',
         'CUSTOM_OWNED',
-        'FLAGS_SECRET',
+        'FLAGSHIP_API_TOKEN',
       ],
       existing: new Set(),
       integrationOwned: new Set(['CUSTOM_OWNED']),
@@ -230,7 +229,7 @@ describe('planSync', () => {
       plan
         .filter((entry) => entry.action !== 'skip')
         .map((entry) => entry.name),
-    ).toEqual(['FLAGS_SECRET']);
+    ).toEqual(['FLAGSHIP_API_TOKEN']);
   });
 
   it('formats names and reasons but never values', () => {

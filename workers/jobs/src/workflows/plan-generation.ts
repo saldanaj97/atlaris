@@ -1,15 +1,13 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
+import { registerWorkerFlags } from '../flags';
 import { createWorkflowModuleLessonStarter } from '../jobs/regeneration-consumer';
-import {
-  isDirectResearchEnabled,
-  isGroundedGenerationEnabled,
-  isJobEnabled,
-} from '../switches';
+import { isDirectResearchEnabled, isJobEnabled } from '../switches';
 import {
   type PlanGenerationWorkflowParams,
   runPlanGenerationWorkflow,
 } from './plan-generation/run';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { createLogger } from '@/lib/logging/logger';
 import {
   type WorkflowEvent,
@@ -34,10 +32,11 @@ export class PlanGenerationWorkflowEntrypoint extends WorkflowEntrypoint<
     step: WorkflowStep,
   ) {
     parseWorkerEnv(this.env);
+    registerWorkerFlags(this.env);
     const env = this.env;
     return runPlanGenerationWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'PLAN_GENERATION'),
-      isGroundedEnabled: (tier) => isGroundedGenerationEnabled(env, tier),
+      isGroundedEnabled,
       isDirectResearchEnabled: () => isDirectResearchEnabled(env),
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       // Lessons for the first modules start through the lessons Workflow.

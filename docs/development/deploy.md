@@ -103,27 +103,18 @@ It fails closed if browser roles can bypass RLS, if any public application table
 6. Verify scheduled retention cleanup: the jobs Worker's `0 3 * * *` cron owns it (requires `JOB_RETENTION_CLEANUP_ENABLED=true`). Confirm Workers Logs show "Completed retention cleanup" at 03:00 UTC. The `retention-cleanup` pg_cron job from migration `20260522223908_schedule_retention_cleanup.sql` is history: production `cron.job` is empty, and the pg_cron job must not be re-registered (see the retention runbook).
 
 7. Enable module lesson generation when the hosted environment should serve it:
-   - Register the boolean flag before the first smoke test if it does not already exist:
+   - The boolean flag `module-lesson-generation` lives in the Cloudflare Flagship app `atlaris-plan-generation` (Cloudflare dashboard → Flagship, or `pnpm exec cf flagship apps flags list --app-id <id>` from `workers/jobs/`; the id is `FLAGSHIP_APP_ID` in `workers/jobs/cloudflare.config.ts`). Both hosted environments share the app and tell themselves apart by the `environment` attribute (`staging`, `production`).
+   - Confirm the flag's default variation is **off** before the first smoke: `pnpm exec cf flagship apps flags evaluate <app-id> --flag-key module-lesson-generation --context '{"environment":"production"}'`.
 
-```bash
-vercel flags create module-lesson-generation \
-  --description "Allow synchronous and workflow-backed module lesson generation" \
-  --scope <team>
-vercel flags disable module-lesson-generation --environment development --scope <team>
-vercel flags disable module-lesson-generation --environment preview --scope <team>
-vercel flags disable module-lesson-generation --environment production --scope <team>
-```
-
-- Confirm `vercel flags inspect module-lesson-generation --scope <team>` reports `Off` for Development, Preview, and Production before the first smoke.
-- Leave the Vercel Flag `module-lesson-generation` disabled until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
-- Enable only the environment being validated after that check; restore it to `Off` after controlled Preview verification. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
+- Leave `module-lesson-generation` off until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
+- Enable only the environment being validated after that check, with a targeting rule on `environment` (`staging` for Preview), and remove the rule after controlled Preview verification. Flagship propagates within about 30 s; the app caches evaluations for another 30 s. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
 - After enablement, verify from an authenticated session that lesson generation does not return `503 disabled` for an unlocked module. See `docs/architecture/plan-generation-architecture.md` (module lesson generation) and `docs/development/environment.md`.
 
 7. Enable opted-in email notification delivery only after the env and ledger are ready:
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
    - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.
-   - Enable the Vercel Flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
+   - Enable the Flagship flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
    - Confirm the jobs Worker's email Workflow schedules and `JOB_EMAIL_DELIVERY_ENABLED` are set; keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
 See also:
@@ -139,7 +130,7 @@ The jobs Worker's Workflow schedules are the only email scheduler. The Vercel Cr
 
 1. Run the migration workflow's `expand` phase before deploying code that starts email workflows. Its explicit safe list applies `20260710151930_create_email_notification_delivery_runs`, the delivery ledger, and `20260811100200_enforce_resolved_email_delivery_payload_minimization` without opening the contract gate.
 2. Deploy the Worker with `JOB_EMAIL_DELIVERY_ENABLED` off, then the application.
-3. Leave the `email-notification-delivery` Vercel Flag disabled and verify the manual route returns the intentional `disabled` outcome without creating a run.
+3. Leave the `email-notification-delivery` Flagship flag disabled and verify the manual route returns the intentional `disabled` outcome without creating a run.
 4. Enable a safe opted-in account, trigger one manual logical run, and inspect its database run, Cloudflare Workflow instance, and delivery ledger before enabling broader delivery.
 
 See [`docs/architecture/email-notification-delivery-runbook.md`](../architecture/email-notification-delivery-runbook.md) for duplicate, failure, and `needs_review` recovery.

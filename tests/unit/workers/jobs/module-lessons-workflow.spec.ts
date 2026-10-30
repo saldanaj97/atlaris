@@ -261,7 +261,7 @@ function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
   const deps: ModuleLessonsWorkflowDeps = {
     isEnabled: () => true,
     // Grounded generation off: today's pipeline.
-    isGroundedEnabled: () => false,
+    isGroundedEnabled: async () => false,
     withDb: (fn) =>
       fn({
         transaction: async (run: (tx: DbClient) => Promise<unknown>) =>
@@ -833,7 +833,7 @@ describe('runModuleLessonsWorkflow', () => {
     };
 
     function groundedDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
-      return makeDeps({ isGroundedEnabled: () => true, ...overrides });
+      return makeDeps({ isGroundedEnabled: async () => true, ...overrides });
     }
 
     beforeEach(() => {
