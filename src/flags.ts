@@ -5,6 +5,7 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { flagshipEnv } from '@/lib/config/env/flagship';
+import { logger } from '@/lib/logging/logger';
 
 /** Attributes Flagship targeting rules can read. `environment` is always set. */
 export type FlagContext = Readonly<Record<string, string>>;
@@ -24,6 +25,14 @@ export interface FlagEvaluator {
 /** How long the app reuses an evaluation for the same flag and context. */
 export const FLAG_CACHE_TTL_MS = 30_000;
 
+/**
+ * How long a failed evaluation is remembered per flag and context. The
+ * provider never caches errors, so without this every caller would wait the
+ * full request timeout while Flagship or the token is down. Only the failure
+ * is cached; a success within the window still comes from the provider.
+ */
+export const FLAG_FAILURE_TTL_MS = 30_000;
+
 /** Evaluation timeout for the HTTP provider (`AbortSignal.timeout` style). */
 const FLAG_REQUEST_TIMEOUT_MS = 5_000;
 
@@ -31,14 +40,19 @@ export class FlagEvaluationError extends Error {
   constructor(
     readonly flagKey: string,
     readonly code: string,
+    options?: ErrorOptions,
   ) {
-    super(`Flag "${flagKey}" could not be evaluated (${code}).`);
+    super(`Flag "${flagKey}" could not be evaluated (${code}).`, options);
     this.name = 'FlagEvaluationError';
   }
 }
 
 let evaluator: FlagEvaluator | null = null;
 let pendingEvaluator: Promise<FlagEvaluator> | null = null;
+const failures = new Map<
+  string,
+  { readonly error: FlagEvaluationError; readonly expiresAt: number }
+>();
 
 /**
  * Replaces the flag source. The jobs Worker passes its Flagship binding;
@@ -47,6 +61,7 @@ let pendingEvaluator: Promise<FlagEvaluator> | null = null;
 export function setFlagEvaluator(next: FlagEvaluator | null): void {
   evaluator = next;
   pendingEvaluator = null;
+  failures.clear();
 }
 
 /** Builds the OpenFeature client once per process; a failed setup is retried on the next call. */
@@ -82,29 +97,85 @@ async function resolveEvaluator(): Promise<FlagEvaluator | null> {
   return pendingEvaluator;
 }
 
+function failureKey(key: string, context: FlagContext): string {
+  const attributes = Object.keys(context)
+    .sort()
+    .map((name) => `${name}=${context[name]}`)
+    .join('&');
+  return `${key}?${attributes}`;
+}
+
+/** Remembers a failure for `FLAG_FAILURE_TTL_MS` and logs it once per window. */
+function recordFailure(
+  key: string,
+  context: FlagContext,
+  error: FlagEvaluationError,
+): FlagEvaluationError {
+  failures.set(failureKey(key, context), {
+    error,
+    expiresAt: Date.now() + FLAG_FAILURE_TTL_MS,
+  });
+  logger.warn(
+    { flagKey: key, context, code: error.code, err: error.cause ?? error },
+    `Flag evaluation failed; serving the fail-closed value for ${FLAG_FAILURE_TTL_MS / 1000} s`,
+  );
+  return error;
+}
+
 /**
  * Evaluates a boolean flag. Throws `FlagEvaluationError` when Flagship reports
  * an error (missing flag, type mismatch, network) or when a hosted deployment
- * has no provider configured, so callers can apply their own fail-safe.
+ * has no provider configured, so callers can apply their own fail-safe. A
+ * failure is rethrown without a provider call until `FLAG_FAILURE_TTL_MS`
+ * passes.
  */
 async function evaluateBoolean(
   key: string,
   defaultValue: boolean,
   context?: FlagContext,
 ): Promise<boolean> {
-  const source = await resolveEvaluator();
+  const fullContext: FlagContext = {
+    environment: flagshipEnv.environment,
+    ...context,
+  };
+  const remembered = failures.get(failureKey(key, fullContext));
+  if (remembered !== undefined && remembered.expiresAt > Date.now()) {
+    throw remembered.error;
+  }
+
+  let source: FlagEvaluator | null;
+  try {
+    source = await resolveEvaluator();
+  } catch (error) {
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, 'PROVIDER_SETUP_FAILED', { cause: error }),
+    );
+  }
   if (source === null) {
     if (flagshipEnv.isRequired) {
       throw new FlagEvaluationError(key, 'PROVIDER_NOT_CONFIGURED');
     }
     return defaultValue;
   }
-  const details = await source.getBooleanDetails(key, defaultValue, {
-    environment: flagshipEnv.environment,
-    ...context,
-  });
+
+  let details: Awaited<ReturnType<FlagEvaluator['getBooleanDetails']>>;
+  try {
+    details = await source.getBooleanDetails(key, defaultValue, fullContext);
+  } catch (error) {
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, 'EVALUATION_FAILED', { cause: error }),
+    );
+  }
   if (details.errorCode) {
-    throw new FlagEvaluationError(key, details.errorCode);
+    throw recordFailure(
+      key,
+      fullContext,
+      new FlagEvaluationError(key, details.errorCode),
+    );
   }
   return details.value;
 }
