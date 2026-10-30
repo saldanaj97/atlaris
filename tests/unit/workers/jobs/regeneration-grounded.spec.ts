@@ -41,15 +41,13 @@ describe('createGroundedRegenerationStages research (DEV-171)', () => {
   });
 
   afterEach(() => {
-    vi.unstubAllEnvs();
     mocks.runPlanResearchSteps.mockReset();
   });
 
-  // The switch's own on/off rules are covered in switches.spec.ts.
-  it('researches directly when the Worker switch is on', async () => {
-    vi.stubEnv('PARALLEL_API_KEY', 'parallel-key');
+  // The flag's own on/off rules are covered in switches.spec.ts.
+  it('researches directly when parallel-direct-research is on', async () => {
     const stages = createGroundedRegenerationStages({
-      env: { PARALLEL_DIRECT_RESEARCH: 'true' },
+      isDirectResearchEnabled: async () => true,
       logger: { info: vi.fn(), warn: vi.fn() },
     });
 

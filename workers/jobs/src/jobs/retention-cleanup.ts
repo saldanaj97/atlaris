@@ -8,7 +8,7 @@ export const RETENTION_CLEANUP_CRON = '0 3 * * *';
 export const RETENTION_CLEANUP_JOB = 'retention-cleanup';
 
 export type RetentionCleanupDeps = {
-  /** `isJobEnabled(env, 'RETENTION_CLEANUP')`: false when switched off or paused. */
+  /** `isRetentionCleanupEnabled()`: false when `job-retention-cleanup` is off or jobs are paused. */
   enabled: boolean;
   logger: Pick<Logger, 'info'>;
   /** Runs `fn` with this invocation's database client. */

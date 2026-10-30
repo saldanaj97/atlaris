@@ -5,7 +5,6 @@ import {
   runRetentionCleanup,
   type RetentionCleanupDeps,
 } from '../../../../workers/jobs/src/jobs/retention-cleanup';
-import { isJobEnabled } from '../../../../workers/jobs/src/switches';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const retention = vi.hoisted(() => ({ run: vi.fn() }));
@@ -63,17 +62,6 @@ describe('runRetentionCleanup', () => {
 
     expect(withDb).not.toHaveBeenCalled();
     expect(retention.run).not.toHaveBeenCalled();
-  });
-
-  it('skips when jobs are paused even if the switch is on', async () => {
-    const enabled = isJobEnabled(
-      { JOBS_PAUSED: 'true', JOB_RETENTION_CLEANUP_ENABLED: 'true' },
-      'RETENTION_CLEANUP',
-    );
-    const { deps, withDb } = makeDeps(enabled);
-
-    await expect(runRetentionCleanup(deps)).resolves.toBe('skipped');
-    expect(withDb).not.toHaveBeenCalled();
   });
 
   it('reports with job tags and rethrows on failure', async () => {

@@ -1,9 +1,7 @@
-import type { JobSwitchVars } from '../env';
 import type { ModuleLessonsWorkflowParams } from '../workflows/module-lessons/run';
 import type { SigningSecrets } from './signature';
 import type { Logger } from '@/lib/logging/logger';
 
-import { isJobEnabled, isJobsPaused } from '../switches';
 import {
   findInstance,
   moduleLessonsInstanceSucceeded,
@@ -17,7 +15,9 @@ import {
 } from '@/lib/jobs-worker/contract';
 
 export type ModuleLessonsStartDeps = {
-  readonly env: SigningSecrets & JobSwitchVars;
+  readonly env: SigningSecrets;
+  /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
+  readonly isPaused: () => Promise<boolean>;
   readonly workflow: Pick<
     Workflow<ModuleLessonsWorkflowParams>,
     'create' | 'get'
@@ -56,11 +56,8 @@ export async function handleModuleLessonsStart(
     return Response.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  if (isJobsPaused(deps.env)) {
+  if (await deps.isPaused()) {
     return Response.json({ code: 'jobs_paused' }, { status: 503 });
-  }
-  if (!isJobEnabled(deps.env, 'MODULE_LESSONS')) {
-    return Response.json({ code: 'job_disabled' }, { status: 503 });
   }
 
   const instanceId = await moduleLessonsInstanceId(

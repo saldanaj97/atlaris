@@ -283,10 +283,10 @@ function event(
 function makeDeps(overrides: Partial<PlanGenerationWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: PlanGenerationWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
     // Grounded generation off: today's pipeline.
     isGroundedEnabled: async () => false,
-    isDirectResearchEnabled: () => false,
+    isDirectResearchEnabled: async () => false,
     withDb: (fn) => fn(makeDb()),
     startModuleLessons: vi.fn(),
     logger,
@@ -474,7 +474,7 @@ describe('runPlanGenerationWorkflow', () => {
   });
 
   it('settles the attempt as retryable without a provider call when the switch is off', async () => {
-    const { deps } = makeDeps({ isEnabled: () => false });
+    const { deps } = makeDeps({ isEnabled: async () => false });
     const { step, calls } = createStep();
 
     await expect(
@@ -771,7 +771,7 @@ describe('runPlanGenerationWorkflow', () => {
     it('researches directly when the Worker switch is on (DEV-171)', async () => {
       const { deps, logger } = makeDeps({
         isGroundedEnabled: async () => true,
-        isDirectResearchEnabled: () => true,
+        isDirectResearchEnabled: async () => true,
       });
       const { step } = createStep();
 
@@ -929,7 +929,7 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('skips research without a search when the switch is off', async () => {
       const { deps } = makeDeps({
-        isEnabled: () => false,
+        isEnabled: async () => false,
         isGroundedEnabled: async () => true,
       });
       const { step, calls } = createStep();

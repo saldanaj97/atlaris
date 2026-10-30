@@ -1,7 +1,8 @@
 // Feature flags, evaluated in Cloudflare Flagship. The app evaluates over
 // HTTP through the OpenFeature server provider with a short response cache;
 // the jobs Worker registers its `FLAGS` binding with `setFlagEvaluator()`.
-// Flag keys match the Flagship app; every flag is boolean and fails closed.
+// Flag keys match the Flagship app; every flag is boolean and fails closed,
+// except `jobs-paused`, whose caller treats a failed read as "not paused".
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { flagshipEnv } from '@/lib/config/env/flagship';
@@ -201,6 +202,18 @@ export const emailNotificationDelivery = (): Promise<boolean> =>
 /** Allow synchronous and workflow-backed module lesson generation. */
 export const moduleLessonGeneration = (): Promise<boolean> =>
   evaluateBoolean('module-lesson-generation', false);
+
+/** Pause every jobs Worker job (Worker only; callers fail open). */
+export const jobsPaused = (): Promise<boolean> =>
+  evaluateBoolean('jobs-paused', false);
+
+/** Plan research searches Parallel directly instead of OpenRouter `web_search` (Worker only). */
+export const parallelDirectResearch = (): Promise<boolean> =>
+  evaluateBoolean('parallel-direct-research', false);
+
+/** Allow the jobs Worker's nightly retention cleanup, which deletes rows. */
+export const jobRetentionCleanup = (): Promise<boolean> =>
+  evaluateBoolean('job-retention-cleanup', true);
 
 /**
  * Whether `tier` runs the grounded generation pipeline (research, verify,

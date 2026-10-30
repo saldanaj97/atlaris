@@ -53,7 +53,7 @@ Derived from the `openrouter_tier_models` (service-only) and `generation_budget_
 
 ## Retention Cleanup
 
-Retention cleanup is database-owned through `private.cleanup_retained_db_rows()`. The jobs Worker cron (`0 3 * * *`, `workers/jobs/src/jobs/retention-cleanup.ts`, switch `JOB_RETENTION_CLEANUP_ENABLED`) is the only scheduler; the Supabase `pg_cron` job `retention-cleanup` is history.
+Retention cleanup is database-owned through `private.cleanup_retained_db_rows()`. The jobs Worker cron (`0 3 * * *`, `workers/jobs/src/jobs/retention-cleanup.ts`, Flagship flag `job-retention-cleanup`) is the only scheduler; the Supabase `pg_cron` job `retention-cleanup` is history.
 
 - The manual HTTP fallback is `POST /api/internal/maintenance/retention/cleanup`.
 - Enable the manual route with `RETENTION_CLEANUP_ENABLED=true`.

@@ -27,7 +27,7 @@ function makeEnv(overrides: Record<string, unknown> = {}): WorkerEnv {
 
 describe('parseWorkerEnv', () => {
   it('returns the runtime env object unchanged when valid', () => {
-    const env = makeEnv({ JOBS_PAUSED: 'true', JOB_PLAN_CLEANUP_ENABLED: '1' });
+    const env = makeEnv();
     expect(parseWorkerEnv(env)).toBe(env);
   });
 
@@ -53,10 +53,9 @@ describe('parseWorkerEnv', () => {
     );
   });
 
-  it('rejects a non-string job switch', () => {
-    expect(() =>
-      parseWorkerEnv(makeEnv({ JOB_REGENERATION_ENABLED: true })),
-    ).toThrow(new WorkerEnvError(['JOB_REGENERATION_ENABLED']));
+  it('ignores old job switch secrets left on the Worker (DEV-193)', () => {
+    const env = makeEnv({ JOBS_PAUSED: 'true', JOB_REGENERATION_ENABLED: '' });
+    expect(parseWorkerEnv(env)).toBe(env);
   });
 
   it('names invalid keys without echoing their values', () => {

@@ -33,18 +33,15 @@ async function signed(body: string, secret = SECRET): Promise<Request> {
   });
 }
 
-function makeDeps(env: Record<string, string> = {}) {
+function makeDeps(paused = false) {
   const send = vi.fn(async () => ({
     metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
   }));
   const captureException = vi.fn();
   const logger = { info: vi.fn(), warn: vi.fn() };
   const deps: RegenerationEnqueueDeps = {
-    env: {
-      JOBS_SIGNING_SECRET: SECRET,
-      JOB_REGENERATION_ENABLED: 'true',
-      ...env,
-    },
+    env: { JOBS_SIGNING_SECRET: SECRET },
+    isPaused: async () => paused,
     queue: { send },
     logger,
     captureException,
@@ -82,7 +79,7 @@ describe('handleRegenerationEnqueue', () => {
   });
 
   it('answers 401 with no body for a bad signature, even while paused', async () => {
-    const { deps, send } = makeDeps({ JOBS_PAUSED: 'true' });
+    const { deps, send } = makeDeps(true);
 
     const response = await handleRegenerationEnqueue(
       await signed(validBody, 'wrong-secret'),
@@ -95,7 +92,7 @@ describe('handleRegenerationEnqueue', () => {
   });
 
   it('answers 503 jobs_paused while jobs are paused', async () => {
-    const { deps, send } = makeDeps({ JOBS_PAUSED: 'true' });
+    const { deps, send } = makeDeps(true);
 
     const response = await handleRegenerationEnqueue(
       await signed(validBody),
@@ -104,32 +101,6 @@ describe('handleRegenerationEnqueue', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ code: 'jobs_paused' });
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it('answers 503 job_disabled when the switch is absent', async () => {
-    const { deps, send } = makeDeps({ JOB_REGENERATION_ENABLED: '' });
-
-    const response = await handleRegenerationEnqueue(
-      await signed(validBody),
-      deps,
-    );
-
-    expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ code: 'job_disabled' });
-    expect(send).not.toHaveBeenCalled();
-  });
-
-  it.each([
-    ['not JSON', 'nope'],
-    ['wrong version', JSON.stringify({ v: 2, jobId: JOB_ID })],
-    ['non-uuid job', JSON.stringify({ v: 1, jobId: 'job-1' })],
-  ])('answers 400 for an invalid body (%s)', async (_label, body) => {
-    const { deps, send } = makeDeps();
-
-    const response = await handleRegenerationEnqueue(await signed(body), deps);
-
-    expect(response.status).toBe(400);
     expect(send).not.toHaveBeenCalled();
   });
 

@@ -139,8 +139,8 @@ type GenerateStepResult =
     };
 
 export type PlanGenerationWorkflowDeps = {
-  /** `isJobEnabled(env, 'PLAN_GENERATION')`: the Worker switch. */
-  readonly isEnabled: () => boolean;
+  /** `!isJobsPaused()`: false while Flagship `jobs-paused` is on. */
+  readonly isEnabled: () => Promise<boolean>;
   /**
    * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier`
    * runs grounded generation (research, JCS-158; grounded outline, JCS-159).
@@ -148,8 +148,11 @@ export type PlanGenerationWorkflowDeps = {
    * instance.
    */
   readonly isGroundedEnabled: (tier: SubscriptionTier) => Promise<boolean>;
-  /** `isDirectResearchEnabled(env)`: research searches Parallel directly (DEV-171). */
-  readonly isDirectResearchEnabled: () => boolean;
+  /**
+   * `isDirectResearchEnabled()` (the `parallel-direct-research` flag): research
+   * searches Parallel directly (DEV-171). Read inside the first step.
+   */
+  readonly isDirectResearchEnabled: () => Promise<boolean>;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   /** Starts module lessons after success (the Worker's lessons Workflow starter). */
@@ -332,8 +335,8 @@ async function generateStep(
   run: RunContext,
   generationProvider?: AiPlanGenerationProvider,
 ): Promise<GenerateStepResult> {
-  // Switch dropped since the command was accepted: no provider call (Decision 7).
-  if (!run.deps.isEnabled()) {
+  // Jobs paused since the command was accepted: no provider call (Decision 7).
+  if (!(await run.deps.isEnabled())) {
     logStep(run, 'generate', { outcome: 'disabled' });
     return { kind: 'disabled' };
   }
@@ -477,8 +480,9 @@ export async function runPlanGenerationWorkflow(
         // dropped switch skips both, so no search runs (Decision 7).
         return {
           grounded:
-            deps.isEnabled() && (await deps.isGroundedEnabled(input.tier)),
-          directSearch: deps.isDirectResearchEnabled(),
+            (await deps.isEnabled()) &&
+            (await deps.isGroundedEnabled(input.tier)),
+          directSearch: await deps.isDirectResearchEnabled(),
         };
       },
     );

@@ -40,14 +40,14 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 ### Send nuances
 
-- Kill switches differ by trigger. Scheduled runs read only the Worker secrets `JOB_EMAIL_DELIVERY_ENABLED` and `JOBS_PAUSED`. The Flagship flag `email-notification-delivery` (fail-closed) gates only the manual maintenance route. See [Feature flags](../development/environment.md#feature-flags-cloudflare-flagship).
+- Kill switches: the Flagship flag `email-notification-delivery` (fail-closed) gates every run — the manual maintenance route, the Worker's manual command, scheduled firings before they reserve work, and each page step before it sends. The `jobs-paused` flag also stops the Worker (DEV-193 removed the `JOB_EMAIL_DELIVERY_ENABLED` switch). See [Feature flags](../development/environment.md#feature-flags-cloudflare-flagship).
 - Live sends require `RESEND_API_KEY`, `RESEND_FROM`, a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (unpadded base64url encoding of at least 32 random bytes), and production HTTPS `APP_URL` for deeplinks/unsubscribe URLs.
 - In a daily pass, a `streak_reminder` can suppress `daily_reminder` for the same user (`suppressed_by_streak_reminder` in `delivery-service.ts`).
 
 ### “Why didn’t this user get email?” checklist
 
 1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
-2. For scheduled runs, Worker secret `JOB_EMAIL_DELIVERY_ENABLED=true` and `JOBS_PAUSED` not `true` (the Flagship flag `email-notification-delivery` matters only for a manual trigger); `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
+2. The Flagship flag `email-notification-delivery` on for the environment and `jobs-paused` off; `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
 3. Recipient has a non-empty, current Clerk-projected email and qualifies for the requested category. The Clerk watermark orders lifecycle projections; it does not exclude an otherwise valid existing recipient:
    - Daily reminder: no activity today in the user's local time zone and an incomplete plan.
    - Streak reminder: no activity today and activity on each of the prior three local days.
@@ -75,7 +75,7 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 | Item | Worker behavior |
 | --- | --- |
 | Trigger | Workflow `atlaris-email-delivery-<env>` (class `EmailDeliveryWorkflow`) with `schedules` `0 14 * * *` (daily) and `30 14 * * MON` (weekly; Cloudflare numbers weekdays from 1 = Sunday, so never `* * 1`) |
-| Gate | `JOB_EMAIL_DELIVERY_ENABLED=true` and `JOBS_PAUSED` not `true` (Worker secrets) are the only gate for scheduled runs; the flag is not read on the scheduled path. A scheduled firing with the switch off exits before reserving work |
+| Gate              | `email-notification-delivery` on and `jobs-paused` off (Flagship flags), read inside the `claim-run` and page steps. A scheduled firing with the flag off exits before reserving work                                                                                        |
 | Run key | The first step (`claim-run`) derives `runKind` and `schedulerDateUtc` from `event.schedule`, reserves `(run_kind, scheduler_date_utc)`, and claims it. A duplicate firing exits without sending |
 | Pages | One step per page (`page-<n>`), 20 recipients each, to stay under the Free plan's 50 external subrequests per step. At most 1,024 steps per instance, so about 20,000 recipients per run |
 | Retries | Each step retries 3 times. The delay is the domain's `retryAfter` (60 seconds for provider back-off, the 15-minute lease for an unknown send outcome). The last attempt fails the run (`retry_exhausted`); permanent failures fail it at once. Nothing resends automatically |
@@ -98,7 +98,7 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 
 The app's manual route (`/api/internal/maintenance/notifications/email`) checks the `email-notification-delivery` Flagship flag, then sends this command with `dispatchEmailDeliveryToWorker` (`JOBS_WORKER_URL`, `JOBS_SIGNING_SECRET`). It is for manual operations only; the Worker's schedules run the daily and weekly sends.
 
-**Switches.** Staging: set `EMAIL_TEST_RECIPIENT_ALLOWLIST`, then `JOB_EMAIL_DELIVERY_ENABLED=true`. Production: `JOB_EMAIL_DELIVERY_ENABLED=true` on the Worker. To stop delivery, switch it off or set `JOBS_PAUSED=true`. Each switch is a Worker secret you flip yourself with `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <true|false>` from `workers/jobs`; never from Git. The run key and ledger prevent double-sending across restarts.
+**Switches.** Staging: set `EMAIL_TEST_RECIPIENT_ALLOWLIST`, then turn `email-notification-delivery` on for `environment = staging`. Production: turn it on for `environment = production`. To stop delivery, turn the flag off or `jobs-paused` on. You flip them in the Flagship dashboard (app `atlaris-plan-generation`); never from Git. The run key and ledger prevent double-sending across restarts.
 
 ## Inspect a run
 
@@ -173,7 +173,7 @@ This action resets the run cursor but retains the logical date and domain delive
 
 ## Stop delivery or roll back
 
-- Switch off `JOB_EMAIL_DELIVERY_ENABLED` (or set `JOBS_PAUSED=true`) on the Worker (a Worker secret; flip it as in **Switches** above) to stop scheduled runs before they reserve work and to pause a running instance before its next page. The `email-notification-delivery` Flagship flag gates only the manual route.
+- Turn `email-notification-delivery` off (or `jobs-paused` on), as in **Switches** above, to stop scheduled runs before they reserve work and to pause a running instance before its next page.
 - Do not re-enable the deleted GitHub scheduler as a parallel fallback. Resolve the durable run and resume it through the manual route after correction.
 
 ## Deployment checks

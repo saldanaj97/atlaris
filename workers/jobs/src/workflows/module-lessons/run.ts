@@ -156,8 +156,8 @@ type ParseCommitStepResult =
     };
 
 export type ModuleLessonsWorkflowDeps = {
-  /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
-  readonly isEnabled: () => boolean;
+  /** `isModuleLessonsEnabled()`: not paused and `module-lesson-generation` on. */
+  readonly isEnabled: () => Promise<boolean>;
   /**
    * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier` runs grounded
    * generation. Unset switches mean off.
@@ -238,7 +238,7 @@ async function claimStep(
   );
   const taskCount = load?.tasks.length ?? 0;
 
-  if (!run.deps.isEnabled()) {
+  if (!(await run.deps.isEnabled())) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, 'claim', { taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
@@ -256,7 +256,7 @@ async function claimStep(
 
   const gate = await checkModuleLessonGenerationGate(target, {
     dbClient: db,
-    resolveGenerationEnabled: async () => run.deps.isEnabled(),
+    resolveGenerationEnabled: run.deps.isEnabled,
   });
   if (gate !== 'open') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -321,8 +321,8 @@ async function generateStep(
 ): Promise<GenerateStepResult> {
   const stepName: StepName = attempt === 1 ? 'generate' : 'generate-retry';
   const taskCount = promptInput.tasks.length;
-  // Switch dropped since the claim: release it, as on a flag drop today.
-  if (!run.deps.isEnabled()) {
+  // Flag dropped or jobs paused since the claim: release it.
+  if (!(await run.deps.isEnabled())) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, stepName, { attempt, taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };

@@ -127,8 +127,7 @@ describe('readDeclaredVarNames', () => {
       }
       for (const name of [
         'JOBS_SIGNING_SECRET',
-        'JOBS_PAUSED',
-        'JOB_PLAN_GENERATION_ENABLED',
+        'PARALLEL_API_KEY',
         'HYPERDRIVE',
       ]) {
         expect(declared.has(name)).toBe(false);
@@ -185,27 +184,14 @@ describe('planSync', () => {
     ]);
   });
 
-  it('never writes build secrets, job switches, or declared vars to a Worker', () => {
+  it('never writes build secrets or declared vars to a Worker', () => {
     const plan = planSync({
       provider: 'cloudflare',
-      names: [
-        'SENTRY_AUTH_TOKEN',
-        'JOBS_PAUSED',
-        'JOB_MODULE_LESSONS_ENABLED',
-        'RESEND_FROM',
-      ],
+      names: ['SENTRY_AUTH_TOKEN', 'RESEND_FROM'],
       existing: new Set(),
       declaredVars: new Set(['RESEND_FROM']),
     });
-    expect(plan.map((entry) => entry.action)).toEqual([
-      'skip',
-      'skip',
-      'skip',
-      'skip',
-    ]);
-    expect(plan.find((entry) => entry.name === 'JOBS_PAUSED')?.reason).toMatch(
-      /cf workers secrets update/,
-    );
+    expect(plan.map((entry) => entry.action)).toEqual(['skip', 'skip']);
     expect(plan.find((entry) => entry.name === 'RESEND_FROM')?.reason).toBe(
       'declared in cloudflare.config.ts',
     );

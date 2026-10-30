@@ -72,12 +72,6 @@ const INTEGRATION_MANAGED = [
 ];
 /** Workers Builds build secrets, not runtime secrets. */
 const WORKER_BUILD_ONLY = new Set(['SENTRY_AUTH_TOKEN']);
-/**
- * Job switches are Worker secrets declared in cloudflare.config.ts. An operator
- * flips them with `cf workers secrets update`; they are never synced from
- * 1Password (design note, Decision 7).
- */
-const WORKER_SWITCH = /^(?:JOBS_PAUSED|JOB_[A-Z0-9_]+_ENABLED)$/;
 const VARIABLE_NAME = /^[A-Z_][A-Z0-9_]*$/;
 
 export class SecretsSyncUsageError extends Error {
@@ -250,13 +244,6 @@ export function planSync(input: {
     if (input.provider === 'cloudflare') {
       if (WORKER_BUILD_ONLY.has(name)) {
         return { name, action: 'skip', reason: 'Workers Builds build secret' };
-      }
-      if (WORKER_SWITCH.test(name)) {
-        return {
-          name,
-          action: 'skip',
-          reason: 'job switch; flip with `cf workers secrets update`',
-        };
       }
       if (input.declaredVars?.has(name)) {
         return {

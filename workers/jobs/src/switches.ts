@@ -1,40 +1,68 @@
-import type { JobSwitchVars } from './env';
-
+import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
+import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
+import {
+  jobRetentionCleanup,
+  jobsPaused,
+  parallelDirectResearch,
+} from '@/flags';
 import { parallelEnv } from '@/lib/config/env/ai';
-import { toBoolean } from '@/lib/config/env/shared';
 
-/** Jobs with a `JOB_<NAME>_ENABLED` switch (design note, Decision 7). */
-export const JOB_NAMES = [
-  'PLAN_CLEANUP',
-  'RETENTION_CLEANUP',
-  'EMAIL_DELIVERY',
-  'REGENERATION',
-  'MODULE_LESSONS',
-  'PLAN_GENERATION',
-  'POSTHOG_DELETION',
-] as const;
-
-export type JobName = (typeof JOB_NAMES)[number];
-
-/** `JOBS_PAUSED=true` pauses every job; absent means not paused. */
-export function isJobsPaused(env: JobSwitchVars): boolean {
-  return toBoolean(env.JOBS_PAUSED, false);
+/**
+ * Flagship `jobs-paused` pauses every job (design note, Decision 7). A failed
+ * read fails open to "not paused": a Flagship outage must not stop plan
+ * generation, and `maintenance-mode` still stops the app sending new work.
+ */
+export async function isJobsPaused(): Promise<boolean> {
+  try {
+    return await jobsPaused();
+  } catch {
+    return false;
+  }
 }
 
-/** A job runs only when its switch is `true` and jobs are not paused. */
-export function isJobEnabled(env: JobSwitchVars, job: JobName): boolean {
-  return !isJobsPaused(env) && toBoolean(env[`JOB_${job}_ENABLED`], false);
+/**
+ * Retention cleanup deletes data, so it keeps its own flag,
+ * `job-retention-cleanup` (default on). Fails closed: a failed read skips one
+ * nightly run.
+ */
+export async function isRetentionCleanupEnabled(): Promise<boolean> {
+  if (await isJobsPaused()) {
+    return false;
+  }
+  try {
+    return await jobRetentionCleanup();
+  } catch {
+    return false;
+  }
+}
+
+/** Email delivery runs only while not paused and `email-notification-delivery` is on. */
+export async function isEmailDeliveryEnabled(): Promise<boolean> {
+  return (
+    !(await isJobsPaused()) && (await resolveEmailNotificationDeliveryEnabled())
+  );
+}
+
+/** Module lessons run only while not paused and `module-lesson-generation` is on. */
+export async function isModuleLessonsEnabled(): Promise<boolean> {
+  return (
+    !(await isJobsPaused()) && (await resolveModuleLessonGenerationEnabled())
+  );
 }
 
 /**
  * Plan research searches Parallel directly instead of using OpenRouter's
- * `web_search` tool (DEV-171) only when this switch is `true` and
- * `PARALLEL_API_KEY` is set; absent means off. Without the key the switch
- * stays off, so flipping it before the key is synced keeps research working.
+ * `web_search` tool (DEV-171) only when Flagship `parallel-direct-research`
+ * is on and `PARALLEL_API_KEY` is set. Without the key the flag stays off, so
+ * flipping it before the key is synced keeps research working. Fails closed.
  */
-export function isDirectResearchEnabled(env: JobSwitchVars): boolean {
-  return (
-    toBoolean(env.PARALLEL_DIRECT_RESEARCH, false) &&
-    Boolean(parallelEnv.apiKey)
-  );
+export async function isDirectResearchEnabled(): Promise<boolean> {
+  if (!parallelEnv.apiKey) {
+    return false;
+  }
+  try {
+    return await parallelDirectResearch();
+  } catch {
+    return false;
+  }
 }

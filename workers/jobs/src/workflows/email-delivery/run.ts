@@ -84,8 +84,8 @@ type StepAttempt<T> =
   | { kind: 'stop'; message: string };
 
 export type EmailDeliveryWorkflowDeps = {
-  /** `isJobEnabled(env, 'EMAIL_DELIVERY')`: the Worker form of the delivery flag. */
-  isEnabled: () => boolean;
+  /** `isEmailDeliveryEnabled()`: not paused and `email-notification-delivery` on. */
+  isEnabled: () => Promise<boolean>;
   recipientGuard: EmailRecipientGuard;
   /** Runs `fn` with a database client that lives for this step only. */
   withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -223,13 +223,13 @@ type ClaimTarget =
   | { kind: 'manual'; runId: string };
 
 /** Resolves what the first step claims, or why the instance exits early. */
-function resolveClaimTarget(
+async function resolveClaimTarget(
   event: Readonly<WorkflowEvent<EmailDeliveryWorkflowParams>>,
   workflowRunId: string,
   deps: EmailDeliveryWorkflowDeps,
-):
-  | ClaimTarget
-  | Extract<ClaimResult, { kind: 'disabled' | 'unknown_schedule' }> {
+): Promise<
+  ClaimTarget | Extract<ClaimResult, { kind: 'disabled' | 'unknown_schedule' }>
+> {
   if (!event.schedule) {
     const params = paramsSchema.safeParse(event.payload);
     if (!params.success) {
@@ -247,7 +247,7 @@ function resolveClaimTarget(
     return { kind: 'unknown_schedule' };
   }
   // Same order as the Vercel cron route: stop before reserving work.
-  if (!deps.isEnabled()) {
+  if (!(await deps.isEnabled())) {
     logRunEvent(deps, 'info', 'scheduled_run_disabled', {
       ...scheduled,
       workflowRunId,
@@ -269,7 +269,7 @@ async function claimRun(
   attempt: number,
   deps: EmailDeliveryWorkflowDeps,
 ): Promise<ClaimResult> {
-  const target = resolveClaimTarget(event, workflowRunId, deps);
+  const target = await resolveClaimTarget(event, workflowRunId, deps);
   if (target.kind !== 'scheduled' && target.kind !== 'manual') {
     return target;
   }
@@ -363,9 +363,9 @@ async function attemptPage(
     };
   }
 
-  // The Worker env is fixed for one step invocation, so this check covers
-  // every Resend call the page makes.
-  const pauseReason = !deps.isEnabled()
+  // Read once per step invocation, so this check covers every Resend call
+  // the page makes.
+  const pauseReason = !(await deps.isEnabled())
     ? 'delivery_switch_disabled'
     : deps.recipientGuard.kind === 'unconfigured'
       ? 'test_recipient_allowlist_missing'

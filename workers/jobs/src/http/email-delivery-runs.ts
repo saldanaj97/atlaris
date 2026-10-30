@@ -1,9 +1,7 @@
-import type { JobSwitchVars } from '../env';
 import type { EmailDeliveryWorkflowParams } from '../workflows/email-delivery/run';
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
-import { isJobEnabled, isJobsPaused } from '../switches';
 import { findInstance } from '../workflow-instance';
 import {
   createEmailNotificationDeliveryReferenceTimestamp,
@@ -35,7 +33,10 @@ const commandSchema = z.strictObject({
 export type EmailDeliveryRunsCommand = z.infer<typeof commandSchema>;
 
 export type EmailDeliveryRunsDeps = {
-  switches: JobSwitchVars;
+  /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
+  isPaused: () => Promise<boolean>;
+  /** `resolveEmailNotificationDeliveryEnabled()`: fails closed. */
+  isDeliveryEnabled: () => Promise<boolean>;
   withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   workflow: Pick<Workflow<EmailDeliveryWorkflowParams>, 'create' | 'get'>;
   logger: Pick<Logger, 'info' | 'error'>;
@@ -162,10 +163,10 @@ export async function handleEmailDeliveryRunsCommand(
     return Response.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  if (isJobsPaused(deps.switches)) {
+  if (await deps.isPaused()) {
     return Response.json({ code: 'jobs_paused' }, { status: 503 });
   }
-  if (!isJobEnabled(deps.switches, 'EMAIL_DELIVERY')) {
+  if (!(await deps.isDeliveryEnabled())) {
     return Response.json({ code: 'job_disabled' }, { status: 503 });
   }
 

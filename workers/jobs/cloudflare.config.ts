@@ -2,10 +2,9 @@
 // docs/architecture/cloudflare-jobs-runtime.md (Decisions 1, 2, 5).
 // Without `--mode` the config is local-only (`pnpm workers dev`) and is never
 // deployed. Bindings, vars, and secrets are per mode, so each mode lists its own.
-// Job switches (JOBS_PAUSED, JOB_*_ENABLED) are Worker secrets in the deployed
-// modes (design note, Decision 7): declared here so a deploy keeps them, and
-// flipped with `cf workers secrets update`, never from Git. Feature flags are
-// evaluated through the Flagship binding (DEV-192).
+// Feature flags and the job switches (`jobs-paused`, `job-retention-cleanup`,
+// `parallel-direct-research`; design note, Decision 7) are evaluated through
+// the Flagship binding (DEV-192, DEV-193) and flipped in the dashboard.
 import { bindings, defineConfig, exports, triggers } from 'cf/config';
 
 type DeployedMode = 'staging' | 'production';
@@ -34,22 +33,10 @@ const DEPLOYED_SECRETS = [
   // and its authentication token.
   'OPENROUTER_BASE_URL',
   'CF_AI_GATEWAY_TOKEN',
-  // Parallel Search for direct plan research (DEV-171; `PARALLEL_DIRECT_RESEARCH`).
+  // Parallel Search for direct plan research (DEV-171; flag `parallel-direct-research`).
   'PARALLEL_API_KEY',
   'RESEND_API_KEY',
   'EMAIL_UNSUBSCRIBE_TOKEN_SECRET',
-] as const;
-
-/** Job switches; keep in step with JOB_NAMES in src/switches.ts. */
-const JOB_SWITCHES = [
-  'JOBS_PAUSED',
-  'JOB_PLAN_CLEANUP_ENABLED',
-  'JOB_RETENTION_CLEANUP_ENABLED',
-  'JOB_EMAIL_DELIVERY_ENABLED',
-  'JOB_REGENERATION_ENABLED',
-  'JOB_MODULE_LESSONS_ENABLED',
-  'JOB_PLAN_GENERATION_ENABLED',
-  'JOB_POSTHOG_DELETION_ENABLED',
 ] as const;
 
 const DEPLOYED: Record<
@@ -178,7 +165,6 @@ function deployedWorker(mode: DeployedMode) {
       RESEND_REPLY_TO: bindings.text('support@atlaris.app'),
       LOG_LEVEL: bindings.text('info'),
       ...secrets(DEPLOYED_SECRETS),
-      ...secrets(JOB_SWITCHES),
       FLAGS: bindings.flagship({ id: FLAGSHIP_APP_ID }),
       HYPERDRIVE: bindings.hyperdrive({ id: target.hyperdriveId }),
       REGENERATION_QUEUE: queue.binding,

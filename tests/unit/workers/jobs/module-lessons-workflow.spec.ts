@@ -259,7 +259,7 @@ function event(
 function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: ModuleLessonsWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
     // Grounded generation off: today's pipeline.
     isGroundedEnabled: async () => false,
     withDb: (fn) =>
@@ -473,7 +473,7 @@ describe('runModuleLessonsWorkflow', () => {
 
   it('reverts the claim and stops when the switch is off', async () => {
     const provider = providerReturning(validBatchText());
-    const { deps } = makeDeps({ isEnabled: () => false, provider });
+    const { deps } = makeDeps({ isEnabled: async () => false, provider });
     const { step, calls } = createStep();
 
     await expect(
@@ -494,10 +494,10 @@ describe('runModuleLessonsWorkflow', () => {
 
   it('reverts the claim when the switch drops before the provider call', async () => {
     const enabled = vi
-      .fn<() => boolean>()
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(true)
-      .mockReturnValue(false);
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false);
     const provider = providerReturning(validBatchText());
     const { deps } = makeDeps({ isEnabled: enabled, provider });
     const { step } = createStep();
@@ -661,7 +661,7 @@ describe('runModuleLessonsWorkflow', () => {
         };
       }),
     };
-    const { deps } = makeDeps({ provider, isEnabled: () => enabled });
+    const { deps } = makeDeps({ provider, isEnabled: async () => enabled });
     const { step, calls } = createStep();
 
     await expect(
@@ -1746,10 +1746,10 @@ describe('runModuleLessonsWorkflow', () => {
 
     it('reverts the claim when the switch drops before a lesson call', async () => {
       const enabled = vi
-        .fn<() => boolean>()
-        .mockReturnValueOnce(true)
-        .mockReturnValueOnce(true)
-        .mockReturnValue(false);
+        .fn<() => Promise<boolean>>()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(true)
+        .mockResolvedValue(false);
       const { deps } = groundedDeps({ isEnabled: enabled });
       const { step } = createStep();
 
