@@ -155,7 +155,13 @@ async function evaluateBoolean(
   }
   if (source === null) {
     if (flagshipEnv.isRequired) {
-      throw new FlagEvaluationError(key, 'PROVIDER_NOT_CONFIGURED');
+      // A hosted deploy without the FLAGSHIP_* variables is an outage too:
+      // remembered and logged like any other failure.
+      throw recordFailure(
+        key,
+        fullContext,
+        new FlagEvaluationError(key, 'PROVIDER_NOT_CONFIGURED'),
+      );
     }
     return defaultValue;
   }

@@ -56,4 +56,21 @@ describe('Worker flags', () => {
 
     await expect(isGroundedEnabled('pro')).resolves.toBe(false);
   });
+
+  it('keeps the failure cache when the same binding registers again', async () => {
+    const env = makeFlagEnv({ value: true, errorCode: 'GENERAL' });
+    registerWorkerFlags(env);
+    await expect(isGroundedEnabled('pro')).resolves.toBe(false);
+
+    // The next invocation on a reused isolate registers the same binding.
+    registerWorkerFlags(env);
+    await expect(isGroundedEnabled('pro')).resolves.toBe(false);
+    expect(env.getBooleanDetails).toHaveBeenCalledOnce();
+
+    // A different binding (a new isolate) starts clean.
+    const next = makeFlagEnv({ value: true });
+    registerWorkerFlags(next);
+    await expect(isGroundedEnabled('pro')).resolves.toBe(true);
+    expect(next.getBooleanDetails).toHaveBeenCalledOnce();
+  });
 });

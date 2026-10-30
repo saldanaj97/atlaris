@@ -67,6 +67,15 @@ describe('flags', () => {
     const { maintenanceMode, FlagEvaluationError } = await import('@/flags');
 
     await expect(maintenanceMode()).rejects.toBeInstanceOf(FlagEvaluationError);
+    await expect(maintenanceMode()).rejects.toMatchObject({
+      code: 'PROVIDER_NOT_CONFIGURED',
+    });
+    // Remembered and logged once like any other failure.
+    expect(mocks.warn).toHaveBeenCalledOnce();
+    expect(mocks.warn).toHaveBeenCalledWith(
+      expect.objectContaining({ code: 'PROVIDER_NOT_CONFIGURED' }),
+      expect.any(String),
+    );
   });
 
   it('evaluates through the registered evaluator with the environment and tier', async () => {
