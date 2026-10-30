@@ -160,14 +160,14 @@ Policies check ownership either directly (`user_id = currentUserId`) or through 
 
 ## Database Client Selection
 
-| Context                      | What to use                        | Why                                                    |
-| ---------------------------- | ---------------------------------- | ------------------------------------------------------ |
-| Request / test context establishment | Ambient `getDb()` only inside `withAuth` / `requestBoundary` / `runWithTestContext` (those wrappers already hold `rlsDb`). Do not call `getDb()` from route, action, query, or feature-helper bodies. | Establishes the RLS client on request context and passes it as `db` / `dbClient`. |
-| Query / feature helpers below request establishment | Explicit required `dbClient` (JCS-62). Request paths pass the RLS-scoped client from `requestBoundary` (`actor` / `db`). Named worker / workflow owners pass or own a service-role client. | Ambient `getDb()` stays only at true request / test context establishment (`withAuth` / `requestBoundary` / `runWithTestContext`). Helpers must not default to ambient acquisition. |
-| First-user provisioning      | `provisionUserFromVerifiedAuthSession` (service-role) | Authenticated role cannot INSERT `users` after contract cutover |
-| Tests / integration tests    | `db` from `@supabase/service-role` | Bypasses RLS for test data setup                       |
-| Workers / background jobs / workflow steps | `db` from `@supabase/service-role` | No user session; server-owned writes after prior auth checks |
-| Clerk webhooks               | `db` from `@supabase/service-role` | System-originated, no user session, signature-verified |
+| Context                                             | What to use                                                                                                                                                                                           | Why                                                                                                                                                                                 |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Request / test context establishment                | Ambient `getDb()` only inside `withAuth` / `requestBoundary` / `runWithTestContext` (those wrappers already hold `rlsDb`). Do not call `getDb()` from route, action, query, or feature-helper bodies. | Establishes the RLS client on request context and passes it as `db` / `dbClient`.                                                                                                   |
+| Query / feature helpers below request establishment | Explicit required `dbClient` (JCS-62). Request paths pass the RLS-scoped client from `requestBoundary` (`actor` / `db`). Named worker / workflow owners pass or own a service-role client.            | Ambient `getDb()` stays only at true request / test context establishment (`withAuth` / `requestBoundary` / `runWithTestContext`). Helpers must not default to ambient acquisition. |
+| First-user provisioning                             | `provisionUserFromVerifiedAuthSession` (service-role)                                                                                                                                                 | Authenticated role cannot INSERT `users` after contract cutover                                                                                                                     |
+| Tests / integration tests                           | `db` from `@supabase/service-role`                                                                                                                                                                    | Bypasses RLS for test data setup                                                                                                                                                    |
+| Workers / background jobs / workflow steps          | `db` from `@supabase/service-role`                                                                                                                                                                    | No user session; server-owned writes after prior auth checks                                                                                                                        |
+| Clerk webhooks                                      | `db` from `@supabase/service-role`                                                                                                                                                                    | System-originated, no user session, signature-verified                                                                                                                              |
 
 ### Fail-closed design
 
@@ -197,14 +197,13 @@ throw new MissingRequestDbContextError(); // No fallback — fail hard
 
 Settings is a **routed ledger** under `/settings`, not an embedded Clerk `UserProfile`. `/settings` redirects to `/settings/profile`. Profile edits go through the custom `ProfileForm` and app APIs (`PUT /api/v1/user/profile`); entitlements stay on the Postgres projection updated by Clerk Billing webhooks.
 
-| Section id | Route | Contents |
-| ---------- | ----- | -------- |
-| `profile` | `/settings/profile` | Custom profile form |
-| `billing` | `/settings/billing` | Subscription rows + post-checkout sync |
-| `usage` | `/settings/usage` | Usage / quota |
-| `ai` | `/settings/ai` | AI preferences |
-| `integrations` | `/settings/integrations` | Placeholders (e.g. Google Calendar “Coming Soon”) |
-| `notifications` | `/settings/notifications` | Email notification preferences |
+| Section id      | Route                     | Contents                               |
+| --------------- | ------------------------- | -------------------------------------- |
+| `profile`       | `/settings/profile`       | Custom profile form                    |
+| `billing`       | `/settings/billing`       | Subscription rows + post-checkout sync |
+| `usage`         | `/settings/usage`         | Usage / quota                          |
+| `ai`            | `/settings/ai`            | AI preferences                         |
+| `notifications` | `/settings/notifications` | Email notification preferences         |
 
 Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-section-ids.ts`. Nav: `SettingsSectionNavigation` uses `Link`s and `aria-current` from the pathname.
 
@@ -226,20 +225,20 @@ Source of section ids: `SETTINGS_SECTIONS` in `src/app/(app)/settings/settings-s
 
 ## Code Locations
 
-| Component             | File                              |
-| --------------------- | --------------------------------- |
-| Auth + legacy shims   | `src/lib/api/auth.ts`             |
-| Request boundary      | `src/lib/api/request-boundary.ts` |
-| Request context       | `src/lib/api/context.ts`          |
-| RLS client factory    | `supabase/rls.ts`                 |
-| DB client resolver    | `supabase/runtime.ts`             |
-| Service-role client   | `supabase/service-role.ts`        |
-| Clerk Auth config     | `src/lib/auth/server.ts`          |
-| Quota / usage logic   | `src/features/billing/usage-metrics.ts` |
-| Settings layout       | `src/app/(app)/settings/layout.tsx` |
+| Component             | File                                             |
+| --------------------- | ------------------------------------------------ |
+| Auth + legacy shims   | `src/lib/api/auth.ts`                            |
+| Request boundary      | `src/lib/api/request-boundary.ts`                |
+| Request context       | `src/lib/api/context.ts`                         |
+| RLS client factory    | `supabase/rls.ts`                                |
+| DB client resolver    | `supabase/runtime.ts`                            |
+| Service-role client   | `supabase/service-role.ts`                       |
+| Clerk Auth config     | `src/lib/auth/server.ts`                         |
+| Quota / usage logic   | `src/features/billing/usage-metrics.ts`          |
+| Settings layout       | `src/app/(app)/settings/layout.tsx`              |
 | Settings section ids  | `src/app/(app)/settings/settings-section-ids.ts` |
-| RLS policies (schema) | `supabase/schema/tables/*.ts`     |
-| Query modules         | `src/lib/db/queries/*.ts`         |
+| RLS policies (schema) | `supabase/schema/tables/*.ts`                    |
+| Query modules         | `src/lib/db/queries/*.ts`                        |
 
 ## Related docs
 

@@ -319,7 +319,7 @@ describe('ClerkPricingTable', () => {
     expect(screen.getByText('$8')).toBeVisible();
   });
 
-  it('hydrates monthly server markup before applying a validated annual checkout URL', async () => {
+  it('hydrates server markup before applying a validated annual checkout URL', async () => {
     const { ClerkPricingTable } =
       await import('@/app/(landing)/pricing/components/ClerkPricingTable');
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
@@ -344,9 +344,11 @@ describe('ClerkPricingTable', () => {
     container.innerHTML = markup;
     document.body.append(container);
 
+    // Plans load on the client, so the server cannot know yet whether a
+    // yearly price exists and renders no billing period toggle.
     expect(
-      within(container).getByRole('button', { name: 'Monthly' }),
-    ).toHaveAttribute('aria-pressed', 'true');
+      within(container).queryByRole('group', { name: 'Billing period' }),
+    ).not.toBeInTheDocument();
 
     const onRecoverableError = vi.fn();
     let root: ReturnType<typeof hydrateRoot> | undefined;
@@ -719,7 +721,7 @@ describe('ClerkPricingTable', () => {
     );
   });
 
-  it('marks yearly pricing as coming soon when no plan has an annual price', async () => {
+  it('hides the billing period toggle when no plan has an annual price', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
@@ -733,8 +735,14 @@ describe('ClerkPricingTable', () => {
     await renderPricingTable();
 
     expect(
-      await screen.findByRole('button', { name: 'Yearly · Soon' }),
-    ).toBeDisabled();
+      await screen.findByRole('article', { name: 'Starter' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('group', { name: 'Billing period' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /yearly/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a retryable error when plan loading fails and recovers without export copy', async () => {

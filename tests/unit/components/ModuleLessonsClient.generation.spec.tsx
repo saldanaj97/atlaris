@@ -76,14 +76,16 @@ describe('ModuleLessonsClient generation', () => {
       );
       expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
       expect(
-        screen.getByRole('button', { name: 'Retry lesson generation' }),
+        screen.getByRole('button', { name: 'Write lessons' }),
       ).toBeInTheDocument();
+      expect(
+        screen.getByText('Not written yet. Atlaris writes them when you ask.'),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Failed')).not.toBeInTheDocument();
     });
 
     await act(async () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Retry lesson generation' }),
-      );
+      fireEvent.click(screen.getByRole('button', { name: 'Write lessons' }));
     });
 
     await waitFor(() => {
@@ -323,7 +325,7 @@ describe('ModuleLessonsClient generation', () => {
     expect(refreshMock).toHaveBeenCalledTimes(2);
     expect(screen.queryByText('Generating lessons…')).not.toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: 'Retry lesson generation' }),
+      screen.getByRole('button', { name: 'Write lessons' }),
     ).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(1, GENERATE_URL, {
       method: 'POST',

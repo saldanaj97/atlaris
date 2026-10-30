@@ -2,6 +2,7 @@ import {
   getDashboardPlanData,
   listDashboardPlanSummaries,
 } from '@/features/plans/read-projection/service';
+import { setTaskProgressBatch } from '@/lib/db/queries/tasks';
 import { taskProgress, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestModule, createTestTask } from '@tests/fixtures/modules';
@@ -169,6 +170,60 @@ describe('dashboard plan summaries', () => {
     });
 
     expect(resumePlan?.plan.id).toBe(selectedPlan.id);
+  });
+
+  it('keeps task activity from locked Free plans out of the dashboard feed', async () => {
+    const userId = await createUser('activity-locked-free', 'free');
+    const selectedPlan = await createTestPlan({
+      userId,
+      topic: 'Selected plan',
+      createdAt: new Date('2026-08-20T00:00:00.000Z'),
+    });
+    const selectedModule = await createTestModule({ planId: selectedPlan.id });
+    const selectedTask = await createTestTask({
+      moduleId: selectedModule.id,
+      title: 'Visible task',
+    });
+    const lockedPlan = await createTestPlan({
+      userId,
+      topic: 'Locked plan',
+      createdAt: new Date('2026-08-21T00:00:00.000Z'),
+    });
+    const lockedModule = await createTestModule({ planId: lockedPlan.id });
+    const lockedTask = await createTestTask({
+      moduleId: lockedModule.id,
+      title: 'Locked task',
+    });
+
+    await setTaskProgressBatch(
+      userId,
+      [{ taskId: selectedTask.id, status: 'completed' }],
+      db,
+    );
+    await setTaskProgressBatch(
+      userId,
+      [{ taskId: lockedTask.id, status: 'completed' }],
+      db,
+    );
+
+    const selectedAt = new Date('2026-08-22T00:00:00.000Z');
+    await db
+      .update(users)
+      .set({
+        initialPlanGeneratedAt: selectedAt,
+        freeAccessPlanId: selectedPlan.id,
+        freeAccessPlanSelectedAt: selectedAt,
+      })
+      .where(eq(users.id, userId));
+
+    const { recentActivity } = await getDashboardPlanData({
+      userId,
+      dbClient: db,
+    });
+
+    expect(recentActivity.map((row) => row.taskTitle)).toEqual([
+      'Visible task',
+    ]);
   });
 
   it('aggregates overall progress across every plan, not the recent-20 window', async () => {

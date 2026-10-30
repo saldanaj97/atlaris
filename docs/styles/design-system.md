@@ -241,7 +241,7 @@ Use the supplied standalone SVG mark as the canonical mark geometry. For a compl
 | Small favicon            | `brand/favicon-16.svg`                  | Retain simplified details; do not shrink the full mark as a substitute.                      |
 | 32px favicon             | `brand/favicon-32.svg`                  | Keep the supplied small-format export.                                                       |
 | Complete lockups         | `logo-on-dark.png`, `logo-on-light.png` | Different visible bounds and weight; do not swap at equal canvas width as equivalent assets. |
-| Social graphic           | `brand/og-default.png`                  | 1200 × 630 export from the existing source; metadata uses this path.                        |
+| Social graphic           | `brand/og-default.png`                  | 1200 × 630 export from the existing source; metadata uses this path.                         |
 
 ### Draft usage rules
 
@@ -346,23 +346,23 @@ Use `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for the draft cod
 
 All nominal pixel sizes assume a 16px root. The authoring file uses rem sizes and unitless line heights. Do not force the user’s default root size to 16px.
 
-| Role            | Family      | Size / nominal line | Weight | Tracking | Use                       |
-| --------------- | ----------- | ------------------- | ------ | -------- | ------------------------- |
-| display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.        |
-| display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts. |
+| Role            | Family      | Size / nominal line | Weight | Tracking | Use                        |
+| --------------- | ----------- | ------------------- | ------ | -------- | -------------------------- |
+| display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.         |
+| display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts.  |
 | display-section | Sora        | 30–36 / ×1.08       | 600    | −0.035em | Marketing section heading. |
-| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.    |
-| title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.        |
-| title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title. |
-| section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.     |
-| card            | Work Sans   | 20 / 28px           | 600    | 0        | Card/subsection.          |
-| reading         | Work Sans   | 16 / 26px           | 400    | 0        | Lesson prose.             |
-| body            | Work Sans   | 14 / 22px           | 400    | 0        | Compact application copy. |
-| label           | Work Sans   | 14 / 20px           | 500    | 0        | Controls.                 |
-| input           | Work Sans   | 16 / 24px           | 400    | 0        | Editable field values.    |
-| meta            | Work Sans   | 12 / 18px           | 400    | 0        | Nonessential metadata.    |
-| eyebrow         | Work Sans   | 12 / 16px           | 600    | +1.6px   | Short uppercase labels.   |
-| code            | System mono | 14 / 22px           | 400    | 0        | Code examples.            |
+| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.     |
+| title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.         |
+| title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title.  |
+| section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.      |
+| card            | Work Sans   | 20 / 28px           | 600    | 0        | Card/subsection.           |
+| reading         | Work Sans   | 16 / 26px           | 400    | 0        | Lesson prose.              |
+| body            | Work Sans   | 14 / 22px           | 400    | 0        | Compact application copy.  |
+| label           | Work Sans   | 14 / 20px           | 500    | 0        | Controls.                  |
+| input           | Work Sans   | 16 / 24px           | 400    | 0        | Editable field values.     |
+| meta            | Work Sans   | 12 / 18px           | 400    | 0        | Nonessential metadata.     |
+| eyebrow         | Work Sans   | 12 / 16px           | 600    | +1.6px   | Short uppercase labels.    |
+| code            | System mono | 14 / 22px           | 400    | 0        | Code examples.             |
 
 Keep headings semantic: an h2 does not become an h1 to obtain a larger visual size. Use the `semantic.type.*` role independently from the HTML element. Keep one primary page heading and a logical outline. Essential instructions use body/reading roles, not metadata or tracked uppercase.
 
@@ -853,7 +853,7 @@ _Source: Components v0.3. Chapter text retained from its source stage; reference
 
 The route source contains `/`, `/landing`, `/dashboard`, `/plans`, `/plans/new`, `/analytics`, `/analytics/usage`, `/analytics/achievements`, `/settings`, `/pricing`, `/about`, plus auth and a plan-detail helper. Route existence is not a mandate to put everything in the sidebar. No Projects, Resources, Notes, Community, global search or notifications feature is inferred from a mockup. [R14]
 
-The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with New plan as an action. Retain auth, entitlement and account controls in the real shell. Achievements remains a separate existing route with its previously documented Coming Soon status, not an invented badge dashboard. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
+The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with New plan as an action. Retain auth, entitlement and account controls in the real shell. Achievements is not built; its old route redirects to usage analytics, and no badge dashboard is inferred from the mockup. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
 
 Navigation uses links and an appropriately named `<nav>`. Mark the current destination with `aria-current="page"`, a persistent marker and the selected-surface token. Use 44px minimum item height, 8px radius and 8px icon/text gap. A current item can still show hover and keyboard focus. Do not give ordinary site navigation `role="menu"`; it is not a desktop command menu. [A01; W08]
 
@@ -1632,17 +1632,17 @@ This package is documentation and local reference tooling, not a repository patc
 
 ### 27.2 Ownership and proposed destinations
 
-| Responsibility           | Current or supplied owner                                                                         | Proposed adoption action                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target tokens            | Package `tokens/atlaris.tokens.json`                                                              | Commit one canonical authoring file, for example `design-system/tokens/atlaris.tokens.json`. This destination does not yet exist by assertion. |
-| Generated CSS / catalog  | Package compiler and `dist/`                                                                      | Choose a generated destination such as `src/styles/generated/atlaris-tokens.css`; never hand-edit its values.                                  |
-| Runtime theme            | `src/app/globals.css`                                                                             | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                                            |
-| Agent design entry point | `DESIGN.md`                                                                                       | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter.                 |
-| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10. |
-| Detailed docs            | This package's sections and registries                                                            | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                                 |
-| Existing font loaders    | `src/app/layout.tsx`                                                                              | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                                          |
-| Theme state              | `src/app/ThemeProvider.tsx`                                                                       | Keep class-based dark mode, default system preference and provider behavior.                                                                   |
-| Brand / metadata         | Supplied assets and root metadata                                                                 | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                                           |
+| Responsibility           | Current or supplied owner                                                                                                        | Proposed adoption action                                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Target tokens            | Package `tokens/atlaris.tokens.json`                                                                                             | Commit one canonical authoring file, for example `design-system/tokens/atlaris.tokens.json`. This destination does not yet exist by assertion. |
+| Generated CSS / catalog  | Package compiler and `dist/`                                                                                                     | Choose a generated destination such as `src/styles/generated/atlaris-tokens.css`; never hand-edit its values.                                  |
+| Runtime theme            | `src/app/globals.css`                                                                                                            | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                                            |
+| Agent design entry point | `DESIGN.md`                                                                                                                      | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter.                 |
+| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10.                   |
+| Detailed docs            | This package's sections and registries                                                                                           | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                                 |
+| Existing font loaders    | `src/app/layout.tsx`                                                                                                             | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                                          |
+| Theme state              | `src/app/ThemeProvider.tsx`                                                                                                      | Keep class-based dark mode, default system preference and provider behavior.                                                                   |
+| Brand / metadata         | Supplied assets and root metadata                                                                                                | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                                           |
 
 The current `DESIGN.md` explicitly describes copper/plum and tells agents to edit runtime CSS first. Leaving it unchanged after adopting this target would cause conflicting instructions. Change the authority model in a deliberate migration record; do not quietly declare the new package live while old instructions still control agent work. The supplied compiler is an Atlaris-specific DTCG-type subset implementation, not a universal design-tool importer. [G03; F02 §§11–13; S17]
 
@@ -1761,20 +1761,20 @@ The design-system writing phase is complete. Use this candidate to make the rema
 
 JCS-96 records how the supplied launch screenshots map to actual Atlaris product behavior. Static artwork is visual evidence only; a label, metric, avatar, icon or price is adopted only when current route, data, auth and billing contracts support it. This issue owns launch copy and information-architecture decisions. It does not add product features, data sources or billing terms.
 
-| Reference signal | Status | Repository adoption |
-| ---------------- | ------ | ------------------- |
-| Marketing hero and calls to action | Keep / adapt | Keep the current landing, pricing and About copy. Landing `Begin tonight` goes to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA goes to `/auth/sign-in`; an authenticated visitor gets `/dashboard`. |
-| Public information architecture | Keep | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About. |
-| Authenticated navigation | Adapt | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics` with Usage and Achievements), and Settings (`/settings`). The mobile menu remains the responsive composition. |
-| Sidebar-only mockup destinations | Omit | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons. |
-| Plan creation and entitlement actions | Keep / adapt | Authenticated `New Plan` uses `/plans/new` when `canCreatePlan` is true; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture. |
-| Pricing cards and checkout | Adapt | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
-| Dashboard and usage analytics | Keep / adapt | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics. |
-| Achievements | Defer | `/analytics/achievements` is an explicit “Coming soon” surface; the mockup does not authorize a working achievement system. |
-| About and builder copy | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch. |
-| Social proof and aggregate statistics | Omit | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source. |
-| Account and settings | Keep / adapt | Use the existing settings ledger (Profile, Plan & billing, Usage, AI model, Integrations and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts. |
-| Brand imagery and metadata | Defer | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset. |
+| Reference signal                      | Status                           | Repository adoption                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Marketing hero and calls to action    | Keep / adapt                     | Keep the current landing, pricing and About copy. Landing `Begin tonight` goes to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA goes to `/auth/sign-in`; an authenticated visitor gets `/dashboard`.                                                                            |
+| Public information architecture       | Keep                             | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About.                                                                                                                                                                                                                                      |
+| Authenticated navigation              | Adapt                            | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics` with Usage and Achievements), and Settings (`/settings`). The mobile menu remains the responsive composition.                                                                                                                                                                                                              |
+| Sidebar-only mockup destinations      | Omit                             | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons.                                                                                                                                                                                                                                   |
+| Plan creation and entitlement actions | Keep / adapt                     | Authenticated `New Plan` uses `/plans/new` when `canCreatePlan` is true; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture.                                                                                                                                                                            |
+| Pricing cards and checkout            | Adapt                            | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
+| Dashboard and usage analytics         | Keep / adapt                     | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics.                                                                                                                                                                                                        |
+| Achievements                          | Defer                            | `/analytics/achievements` redirects to `/analytics/usage` until achievement tracking exists; the mockup does not authorize a working achievement system.                                                                                                                                                                                                                                            |
+| About and builder copy                | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch.                                                                                                                                           |
+| Social proof and aggregate statistics | Omit                             | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source.                                                                                                                                                                                                                               |
+| Account and settings                  | Keep / adapt                     | Use the existing settings ledger (Profile, Plan & billing, Usage, AI model, Integrations and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts.                                                                                                                                                                               |
+| Brand imagery and metadata            | Defer                            | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset.                                                                                                                                                                                                                                |
 
 Ownership remains explicit: JCS-96 owns this launch copy and information-architecture map; JCS-87 owns the authenticated sidebar composition; JCS-94 owns controls and action recipes; JCS-95 owns feedback and overlay compositions; JCS-6 owns brand assets and metadata. Clerk billing architecture owns plan and entitlement semantics, and the usage analytics metric contract owns analytics meanings. A future destination or claim change updates its owning issue and this record together.
 
@@ -1786,19 +1786,19 @@ The unresolved owner decision is whether the current About attribution — “Ju
 
 JCS-98 records the post-migration audit of tracked design documents and agent guidance. Implementation children of JCS-65 are Done on Linear. This cleanup does not claim JCS-97 visual acceptance, does not delete runtime theme behavior, and does not rewrite inherited handbook chapters.
 
-| Path | Disposition | Status |
-| ---- | ----------- | ------ |
-| `docs/styles/after-hours-direction.md` | Already absent from `develop` before this change | Deleted earlier; do not restore |
-| `docs/styles/style-guide.md` | Removed compatibility pointer | Deleted; authority is `DESIGN.md` → this file |
-| `.cursor/rules/design-after-hours.mdc` | Removed stale After Hours agent rule (pointed at the missing direction file and treated `style-guide.md` as recipes) | Replaced by `.cursor/rules/design-system.mdc` |
-| `DESIGN.md`, `AGENTS.md`, `docs/README.md` | Dropped compatibility-pointer language | Current agent/docs entry points only |
-| Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md` | Historical provenance of the `f8994dc` snapshot | Keep; not current authority |
-| `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior | Retained |
-| `src/styles/generated/atlaris-tokens.css` | Generated dark token artifact | Retained; do not hand-edit |
-| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository | Retained as documented provenance |
-| `Atlaris-style-guide.pdf` alias in **A01** | External inventory hash alias | Historical provenance only |
-| `.cursor/rules/redesign.md` | Generic diagnostic skill, not After Hours brand guidance | Retained; Design Values there are not the Atlaris token source |
-| Verify-atlaris pricing assertion | Current launch headline vs the retired smoke string | Retained as a test instruction; no longer labeled After Hours |
+| Path                                                                           | Disposition                                                                                                          | Status                                                         |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `docs/styles/after-hours-direction.md`                                         | Already absent from `develop` before this change                                                                     | Deleted earlier; do not restore                                |
+| `docs/styles/style-guide.md`                                                   | Removed compatibility pointer                                                                                        | Deleted; authority is `DESIGN.md` → this file                  |
+| `.cursor/rules/design-after-hours.mdc`                                         | Removed stale After Hours agent rule (pointed at the missing direction file and treated `style-guide.md` as recipes) | Replaced by `.cursor/rules/design-system.mdc`                  |
+| `DESIGN.md`, `AGENTS.md`, `docs/README.md`                                     | Dropped compatibility-pointer language                                                                               | Current agent/docs entry points only                           |
+| Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md`       | Historical provenance of the `f8994dc` snapshot                                                                      | Keep; not current authority                                    |
+| `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior                                                                                     | Retained                                                       |
+| `src/styles/generated/atlaris-tokens.css`                                      | Generated dark token artifact                                                                                        | Retained; do not hand-edit                                     |
+| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository                                                                                              | Retained as documented provenance                              |
+| `Atlaris-style-guide.pdf` alias in **A01**                                     | External inventory hash alias                                                                                        | Historical provenance only                                     |
+| `.cursor/rules/redesign.md`                                                    | Generic diagnostic skill, not After Hours brand guidance                                                             | Retained; Design Values there are not the Atlaris token source |
+| Verify-atlaris pricing assertion                                               | Current launch headline vs the retired smoke string                                                                  | Retained as a test instruction; no longer labeled After Hours  |
 
 Non-runtime “After Hours” comments on `StarField` and `PLAN_CHART_COLORS` were rewritten so they describe current semantic usage instead of the retired peach/plum brand.
 

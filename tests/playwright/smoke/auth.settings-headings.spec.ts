@@ -7,7 +7,6 @@ const SETTINGS_ROUTES = [
   { path: '/settings/billing', heading: 'Plan & billing' },
   { path: '/settings/usage', heading: 'Usage' },
   { path: '/settings/ai', heading: 'AI model' },
-  { path: '/settings/integrations', heading: 'Integrations' },
   { path: '/settings/notifications', heading: 'Notifications' },
 ] as const;
 

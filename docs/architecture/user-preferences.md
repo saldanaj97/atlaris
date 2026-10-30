@@ -44,7 +44,6 @@ Ops delivery runbook: [email-notification-delivery-runbook.md](./email-notificat
 | `/settings/billing`       | Plan & billing (DB snapshot + checkout sync) |
 | `/settings/usage`         | Billing meters (not learning analytics)      |
 | `/settings/ai`            | AI model preference                          |
-| `/settings/integrations`  | Integrations                                 |
 | `/settings/notifications` | Email notification preferences               |
 
 Deep links: `/settings/notifications`, `/settings/billing?checkout=1&checkoutBaseline=...`. Nav: `SettingsSectionNavigation` from the pathname.

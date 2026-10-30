@@ -59,27 +59,24 @@ export function PricingCards({
 
   return (
     <div className={styles.stack}>
-      <div className={styles.periodDock}>
-        <fieldset aria-label='Billing period' className={styles.periodList}>
-          {(['month', 'annual'] as const).map((value) => (
-            <button
-              aria-pressed={period === value}
-              className={styles.periodTrigger}
-              data-state={period === value ? 'active' : 'inactive'}
-              disabled={value === 'annual' && !annualAvailable}
-              key={value}
-              onClick={() => onPeriodChange(value)}
-              type='button'
-            >
-              {value === 'month'
-                ? 'Monthly'
-                : annualAvailable
-                  ? 'Yearly'
-                  : 'Yearly · Soon'}
-            </button>
-          ))}
-        </fieldset>
-      </div>
+      {annualAvailable ? (
+        <div className={styles.periodDock}>
+          <fieldset aria-label='Billing period' className={styles.periodList}>
+            {(['month', 'annual'] as const).map((value) => (
+              <button
+                aria-pressed={period === value}
+                className={styles.periodTrigger}
+                data-state={period === value ? 'active' : 'inactive'}
+                key={value}
+                onClick={() => onPeriodChange(value)}
+                type='button'
+              >
+                {value === 'month' ? 'Monthly' : 'Yearly'}
+              </button>
+            ))}
+          </fieldset>
+        </div>
+      ) : null}
 
       <div ref={rootRef} className={styles.cards}>
         <div aria-busy={loading} className={styles.table}>

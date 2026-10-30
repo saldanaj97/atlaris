@@ -203,11 +203,7 @@
   />
   <text x="1138" y="335" class="eyebrow">THIS WEEK</text>
   <text x="1138" y="397" class="display ui" font-size="36">4 hrs planned</text>
-  <text x="1138" y="430" class="secondary ui">Weekly target</text>
-  <line x1="1138" y1="462" x2="1528" y2="462" stroke="#253244" stroke-width="2" />
-  <text x="1138" y="507" class="body ui">Progress tracking coming soon</text>
-  <text x="1138" y="541" class="muted ui">Completed learning time will appear</text>
-  <text x="1138" y="570" class="muted ui">here once it can be measured.</text>
+  <text x="1138" y="430" class="secondary ui">From the hours you set for this plan</text>
 
   <!-- Activity feed -->
   <rect
@@ -222,62 +218,58 @@
   />
   <text x="322" y="701" class="display ui" font-size="26">Activity feed</text>
   <text x="322" y="733" class="secondary ui">
-    Plans generated, progress made, and routes completed.
+    Tasks you started or finished, and plans you created.
   </text>
   <line x1="286" y1="757" x2="1564" y2="757" stroke="#253244" stroke-width="2" />
 
-  <circle cx="337" cy="802" r="18" fill="#1c1933" stroke="#8b78ff" stroke-width="2" />
   <path
     d="m329 802 5 5 10-11"
     fill="none"
-    stroke="#ae9cff"
+    stroke="#8c9cb2"
     stroke-width="2.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <text x="380" y="796" class="eyebrow">PLAN GENERATED</text>
-  <text x="380" y="824" class="body ui">TypeScript for React</text>
+  <text x="380" y="796" class="body ui">TypeScript for React</text>
+  <text x="380" y="824" class="small ui">Plan created</text>
   <text x="1518" y="808" text-anchor="end" class="small ui">Example event</text>
   <line x1="322" y1="850" x2="1528" y2="850" stroke="#253244" stroke-width="2" />
 
-  <circle cx="337" cy="895" r="18" fill="#13283e" stroke="#78b9ff" stroke-width="2" />
   <path
     d="m330 898 5-6 9 4"
     fill="none"
-    stroke="#78b9ff"
+    stroke="#8c9cb2"
     stroke-width="2.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <text x="380" y="889" class="eyebrow">PROGRESS MADE</text>
-  <text x="380" y="917" class="body ui">TypeScript for React</text>
+  <text x="380" y="889" class="body ui">Generics in component props</text>
+  <text x="380" y="917" class="small ui">Started · TypeScript for React</text>
   <text x="1518" y="901" text-anchor="end" class="small ui">Example event</text>
   <line x1="322" y1="943" x2="1528" y2="943" stroke="#253244" stroke-width="2" />
 
-  <circle cx="337" cy="988" r="18" fill="#102b26" stroke="#65d7af" stroke-width="2" />
   <path
     d="m329 988 5 5 10-11"
     fill="none"
-    stroke="#65d7af"
+    stroke="#8c9cb2"
     stroke-width="2.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <text x="380" y="982" class="eyebrow">PLAN COMPLETED</text>
-  <text x="380" y="1010" class="body ui">Foundations of Web Accessibility</text>
+  <text x="380" y="982" class="body ui">Keyboard focus order</text>
+  <text x="380" y="1010" class="small ui">Completed · Foundations of Web Accessibility · 45 min</text>
   <text x="1518" y="994" text-anchor="end" class="small ui">Example event</text>
   <line x1="322" y1="1036" x2="1528" y2="1036" stroke="#253244" stroke-width="2" />
 
-  <circle cx="337" cy="1081" r="18" fill="#13283e" stroke="#78b9ff" stroke-width="2" />
   <path
     d="m330 1084 5-6 9 4"
     fill="none"
-    stroke="#78b9ff"
+    stroke="#8c9cb2"
     stroke-width="2.5"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <text x="380" y="1075" class="eyebrow">PROGRESS MADE</text>
-  <text x="380" y="1103" class="body ui">Accessible component patterns</text>
+  <text x="380" y="1075" class="body ui">Accessible component patterns</text>
+  <text x="380" y="1103" class="small ui">Completed · Foundations of Web Accessibility · 1 hr</text>
   <text x="1518" y="1087" text-anchor="end" class="small ui">Example event</text>
 </svg>

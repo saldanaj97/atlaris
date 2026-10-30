@@ -5,40 +5,49 @@ import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Loader2 } from 'lucide-react';
 
-function getGenerationStatusLabel(
-  lessonGeneration: ModuleLessonGenerationSummary,
-  isFailed: boolean,
-): string {
-  if (isFailed) {
-    return 'Failed';
-  }
+/**
+ * What the panel can truthfully say: a run failed, nothing has been written
+ * yet (no run is going), or a run is in progress.
+ */
+type PanelState = 'failed' | 'not_started' | 'running';
 
-  switch (lessonGeneration.status) {
-    case 'not_generated':
-      return 'Preparing';
-    case 'generating':
-      return 'Generating';
-    case 'ready':
-      return 'Ready';
+function getPanelState(
+  status: Exclude<ModuleLessonGenerationSummary['status'], 'ready'>,
+  isPending: boolean,
+): PanelState {
+  switch (status) {
     case 'failed':
-      return 'Failed';
+      return 'failed';
+    case 'generating':
+      return 'running';
+    case 'not_generated':
+      return isPending ? 'running' : 'not_started';
     default: {
-      const _exhaustive: never = lessonGeneration.status;
+      const _exhaustive: never = status;
       return _exhaustive;
     }
   }
 }
 
 function GenerationDescription({
-  lessonGeneration,
+  state,
   generationTakingLong,
-  isFailed,
 }: {
-  lessonGeneration: ModuleLessonGenerationSummary;
+  state: PanelState;
   generationTakingLong: boolean;
-  isFailed: boolean;
 }) {
-  const badge = getGenerationStatusLabel(lessonGeneration, isFailed);
+  if (state === 'not_started') {
+    return (
+      <div className='min-w-0'>
+        <h3 className='type-card text-foreground'>Lessons for this module</h3>
+        <p className='mt-2 type-body text-muted-foreground'>
+          Not written yet. Atlaris writes them when you ask.
+        </p>
+      </div>
+    );
+  }
+
+  const isFailed = state === 'failed';
 
   return (
     <div className='min-w-0'>
@@ -55,7 +64,9 @@ function GenerationDescription({
         </p>
       )}
       <div className='mt-4 flex flex-wrap items-center gap-2'>
-        <Badge variant={isFailed ? 'destructive' : 'info'}>{badge}</Badge>
+        <Badge variant={isFailed ? 'destructive' : 'info'}>
+          {isFailed ? 'Failed' : 'Generating'}
+        </Badge>
         {generationTakingLong && !isFailed ? (
           <p className='type-label text-warning'>
             Generation taking longer than expected
@@ -67,33 +78,33 @@ function GenerationDescription({
 }
 
 function GenerationAction({
+  state,
   isPending,
-  isFailed,
   onRetry,
 }: {
+  state: PanelState;
   isPending: boolean;
-  isFailed: boolean;
   onRetry: () => void;
 }) {
-  if (isFailed) {
+  if (state === 'running') {
     return (
-      <Button
-        onClick={onRetry}
-        disabled={isPending}
-        className='w-full sm:w-auto'
-      >
-        {isPending ? 'Generating…' : 'Retry lesson generation'}
-      </Button>
+      <div className='flex items-center gap-2 type-label text-primary'>
+        <span className='animate-spin motion-reduce:animate-none'>
+          <Loader2 className='size-4' />
+        </span>
+        Generating lessons…
+      </div>
     );
   }
 
   return (
-    <div className='flex items-center gap-2 type-label text-primary'>
-      <span className='animate-spin motion-reduce:animate-none'>
-        <Loader2 className='size-4' />
-      </span>
-      Generating lessons…
-    </div>
+    <Button onClick={onRetry} disabled={isPending} className='w-full sm:w-auto'>
+      {isPending
+        ? 'Generating…'
+        : state === 'failed'
+          ? 'Retry lesson generation'
+          : 'Write lessons'}
+    </Button>
   );
 }
 
@@ -112,27 +123,20 @@ export function GenerationStatePanel({
     return null;
   }
 
-  const isFailed =
-    lessonGeneration.status === 'failed' ||
-    (lessonGeneration.status === 'not_generated' && !isPending);
+  const state = getPanelState(lessonGeneration.status, isPending);
 
   return (
     <Surface
-      variant={isFailed ? 'inset' : 'muted'}
+      variant={state === 'failed' ? 'inset' : 'muted'}
       padding='compact'
       className='mb-6 flex flex-col gap-4'
       aria-live='polite'
     >
       <GenerationDescription
-        lessonGeneration={lessonGeneration}
+        state={state}
         generationTakingLong={generationTakingLong}
-        isFailed={isFailed}
       />
-      <GenerationAction
-        isPending={isPending}
-        isFailed={isFailed}
-        onRetry={onRetry}
-      />
+      <GenerationAction state={state} isPending={isPending} onRetry={onRetry} />
     </Surface>
   );
 }

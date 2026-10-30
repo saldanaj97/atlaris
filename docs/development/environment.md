@@ -185,7 +185,7 @@ Clerk Billing local fixtures do not require Stripe app env vars. Use `pnpm db fi
 
 **Fixture mode does not exercise checkout or webhooks.** It only updates the Postgres entitlement projection for local product testing.
 
-Google Calendar is intentionally not implemented right now. The settings page keeps a static `Coming Soon` placeholder so the product surface remains visible without implying a partial OAuth flow.
+Google Calendar is intentionally not implemented right now. Settings shows no placeholder for it; add a settings surface only when the integration ships.
 
 ### Clerk development checkout (fixture vs real payment flow)
 

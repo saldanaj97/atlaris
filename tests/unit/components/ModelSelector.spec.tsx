@@ -328,6 +328,28 @@ describe('ModelSelector', () => {
     expect(detailBadge()).toHaveTextContent(/^Free$/);
   });
 
+  it('shows max output only when the catalog reports it', () => {
+    const { maxOutputTokens: _maxOutputTokens, ...unknownOutputModel } =
+      createTestModel({
+        id: 'test-unknown-output-model',
+        name: 'Test Unknown Output Model',
+        contextWindow: 200_000,
+      });
+    render(
+      <ModelSelector
+        currentModel={unknownOutputModel.id}
+        userTier='free'
+        availableModels={[unknownOutputModel]}
+        onSave={defaultOnSave}
+      />,
+    );
+
+    const maxOutput = screen.getByText('Max output').nextElementSibling;
+    expect(maxOutput).toHaveTextContent(/^—$/);
+    expect(screen.getByText('200K tokens')).toBeInTheDocument();
+    expect(screen.queryByText('100K tokens')).not.toBeInTheDocument();
+  });
+
   it('save button is disabled when no changes made', () => {
     render(
       <ModelSelector

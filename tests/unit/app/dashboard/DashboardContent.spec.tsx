@@ -67,6 +67,17 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      recentActivity: [
+        {
+          id: 'evt-1',
+          planId: plan.id,
+          planTopic: 'TypeScript',
+          taskTitle: 'Read the handbook',
+          status: 'completed',
+          taskEstimatedMinutes: 45,
+          occurredAt: new Date(),
+        },
+      ],
       progress: {
         percent: 0,
         completedModules: 0,
@@ -89,7 +100,14 @@ describe('DashboardContent', () => {
       'href',
       `/plans/${plan.id}/modules/${summary.modules[0]?.id}`,
     );
-    expect(screen.getByText('Progress tracking coming soon')).toBeVisible();
+    expect(
+      screen.queryByText('Progress tracking coming soon'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('From the hours you set for this plan'),
+    ).toBeVisible();
+    expect(screen.getByText('Read the handbook')).toBeVisible();
+    expect(screen.getByText('Completed · TypeScript · 45 min')).toBeVisible();
     expect(
       screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
     ).not.toBeInTheDocument();
@@ -117,6 +135,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      recentActivity: [],
       progress: {
         percent: 0,
         completedModules: 0,
@@ -150,6 +169,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [],
       resumePlan: undefined,
+      recentActivity: [],
       progress: emptyProgress,
     });
 
@@ -197,6 +217,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [resume],
       resumePlan: resume,
+      recentActivity: [],
       progress: {
         percent: 10,
         completedModules: 1,

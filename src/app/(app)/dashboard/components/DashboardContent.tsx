@@ -74,8 +74,9 @@ export async function DashboardContent() {
     resumePlan: activePlan,
     canCreatePlan,
     progress,
+    recentActivity,
   } = result;
-  const activities = generateActivities(summaries).slice(0, 8);
+  const activities = generateActivities(summaries, recentActivity).slice(0, 8);
 
   return (
     <div className='space-y-4'>

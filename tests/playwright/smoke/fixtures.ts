@@ -15,7 +15,6 @@ export const ANON_PROTECTED_ROUTES = [
   '/settings',
   '/analytics',
   '/analytics/usage',
-  '/analytics/achievements',
 ] as const;
 
 interface PlanInput {

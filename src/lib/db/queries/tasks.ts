@@ -2,6 +2,7 @@ import type {
   DbTask,
   DbLearningActivityEvent,
   DbTaskProgress,
+  RecentLearningActivityRow,
   TasksDbClient,
 } from '@/lib/db/queries/types/tasks.types';
 import type { ProgressStatus } from '@/shared/types/db.types';
@@ -14,7 +15,7 @@ import {
   taskProgress,
   tasks,
 } from '@supabase/schema';
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 
 interface TaskProgressBatchScope {
   planId?: string;
@@ -71,6 +72,35 @@ export async function getLearningActivityEventsForUser(
     .from(learningActivityEvents)
     .where(eq(learningActivityEvents.userId, userId))
     .orderBy(asc(learningActivityEvents.occurredAt));
+}
+
+/**
+ * Newest task status changes for a user, with the task title and plan topic.
+ */
+export async function getRecentLearningActivityForUser(
+  userId: string,
+  dbClient: TasksDbClient,
+  limit: number,
+): Promise<RecentLearningActivityRow[]> {
+  return dbClient
+    .select({
+      id: learningActivityEvents.id,
+      planId: learningActivityEvents.planId,
+      planTopic: learningPlans.topic,
+      taskTitle: tasks.title,
+      status: learningActivityEvents.status,
+      taskEstimatedMinutes: learningActivityEvents.taskEstimatedMinutes,
+      occurredAt: learningActivityEvents.occurredAt,
+    })
+    .from(learningActivityEvents)
+    .innerJoin(tasks, eq(learningActivityEvents.taskId, tasks.id))
+    .innerJoin(
+      learningPlans,
+      eq(learningActivityEvents.planId, learningPlans.id),
+    )
+    .where(eq(learningActivityEvents.userId, userId))
+    .orderBy(desc(learningActivityEvents.occurredAt))
+    .limit(limit);
 }
 
 /**

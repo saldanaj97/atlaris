@@ -1,3 +1,4 @@
+import type { RecentLearningActivityRow } from '@/lib/db/queries/types/tasks.types';
 import type { GenerationStatus } from '@/shared/types/db.types';
 
 import {
@@ -46,59 +47,96 @@ afterEach(() => {
   vi.useRealTimers();
 });
 
+function activityEvent(
+  overrides: Partial<RecentLearningActivityRow> &
+    Pick<RecentLearningActivityRow, 'id' | 'status' | 'occurredAt'>,
+): RecentLearningActivityRow {
+  return {
+    planId: 'plan-events',
+    planTopic: 'Event plan',
+    taskTitle: 'Read the docs',
+    taskEstimatedMinutes: 45,
+    ...overrides,
+  };
+}
+
 describe('generateActivities', () => {
-  it('emits labeled dashboard events with machine-readable timestamps', () => {
+  it('builds the feed from recorded task events and recent plans, newest first', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date('2026-06-22T12:00:00.000Z'));
 
-    const generated = planSummary({
-      id: 'plan-generated',
-      topic: 'Generated plan',
+    const created = planSummary({
+      id: 'plan-created',
+      topic: 'Created plan',
       createdAt: '2026-06-22T10:00:00.000Z',
       updatedAt: '2026-06-22T10:00:00.000Z',
     });
-    const progressing = planSummary({
+    const events = [
+      activityEvent({
+        id: 'evt-completed',
+        status: 'completed',
+        occurredAt: new Date('2026-06-22T11:00:00.000Z'),
+      }),
+      activityEvent({
+        id: 'evt-started',
+        status: 'in_progress',
+        taskTitle: 'Write a component',
+        occurredAt: new Date('2026-06-22T09:00:00.000Z'),
+      }),
+    ];
+
+    expect(generateActivities([created], events)).toEqual([
+      expect.objectContaining({
+        id: 'event-evt-completed',
+        kind: 'task-completed',
+        planId: 'plan-events',
+        title: 'Read the docs',
+        planTopic: 'Event plan',
+        minutes: 45,
+        occurredAt: '2026-06-22T11:00:00.000Z',
+      }),
+      expect.objectContaining({
+        id: 'plan-plan-created',
+        kind: 'plan-created',
+        title: 'Created plan',
+        occurredAt: '2026-06-22T10:00:00.000Z',
+      }),
+      expect.objectContaining({
+        id: 'event-evt-started',
+        kind: 'task-started',
+        title: 'Write a component',
+        minutes: undefined,
+        occurredAt: '2026-06-22T09:00:00.000Z',
+      }),
+    ]);
+  });
+
+  it('does not infer activity from plan completion or update time', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-06-22T12:00:00.000Z'));
+
+    const partlyDone = planSummary({
       id: 'plan-progress',
       topic: 'Progressing plan',
       completedTasks: 1,
       completion: 0.5,
-      createdAt: '2026-06-20T10:00:00.000Z',
+      createdAt: '2026-06-01T10:00:00.000Z',
       updatedAt: '2026-06-22T11:00:00.000Z',
     });
-    const completed = planSummary({
+    const allDone = planSummary({
       id: 'plan-completed',
       topic: 'Completed plan',
       completedTasks: 2,
       completion: 1,
-      createdAt: '2026-06-19T10:00:00.000Z',
+      createdAt: '2026-06-01T10:00:00.000Z',
       updatedAt: '2026-06-22T09:00:00.000Z',
     });
 
-    const activities = generateActivities([generated, progressing, completed]);
-
-    expect(activities).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({
-          kind: 'generated',
-          title: 'Generated plan',
-          occurredAt: '2026-06-22T10:00:00.000Z',
-        }),
-        expect.objectContaining({
-          kind: 'progress',
-          title: 'Progressing plan',
-          occurredAt: '2026-06-22T11:00:00.000Z',
-        }),
-        expect.objectContaining({
-          kind: 'completed',
-          title: 'Completed plan',
-          occurredAt: '2026-06-22T09:00:00.000Z',
-        }),
-      ]),
-    );
+    expect(generateActivities([partlyDone, allDone], [])).toEqual([]);
   });
 
   it.each(['generating', 'pending_retry', 'failed'] as const)(
-    'does not label a %s plan as generated',
+    'does not list a %s plan as created',
     (generationStatus) => {
       vi.useFakeTimers();
       vi.setSystemTime(new Date('2026-06-22T12:00:00.000Z'));
@@ -111,11 +149,7 @@ describe('generateActivities', () => {
         updatedAt: '2026-06-22T10:00:00.000Z',
       });
 
-      expect(generateActivities([plan])).not.toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({ kind: 'generated' }),
-        ]),
-      );
+      expect(generateActivities([plan], [])).toEqual([]);
     },
   );
 });

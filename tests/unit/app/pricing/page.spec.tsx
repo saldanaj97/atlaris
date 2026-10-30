@@ -165,9 +165,6 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('group', { name: /billing period/i }),
-    ).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Free' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Starter' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Pro' })).toBeVisible();
@@ -177,7 +174,7 @@ describe('PricingPage', () => {
     ).toHaveLength(3);
 
     expect(
-      screen.getByRole('button', { name: 'Yearly · Soon' }),
-    ).toBeDisabled();
+      screen.queryByRole('group', { name: 'Billing period' }),
+    ).not.toBeInTheDocument();
   });
 });

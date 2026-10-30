@@ -8,7 +8,7 @@ interface ActivityFeedProps {
   activities: ActivityItem[];
 }
 
-/** Dashboard ledger for generated, progressed, and completed plans. */
+/** Dashboard ledger of task status changes and newly created plans. */
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
     <Card
@@ -21,7 +21,7 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
           Activity feed
         </h2>
         <p className='mt-1 type-body text-muted-foreground'>
-          Plans generated, progress made, and routes completed.
+          Tasks you started or finished, and plans you created.
         </p>
       </header>
 

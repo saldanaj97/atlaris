@@ -17,8 +17,8 @@ const EXPERIENCE_POINTS = [
     icon: BookOpen,
   },
   {
-    title: 'Track your progress',
-    copy: 'Stay oriented with a clear view of your journey.',
+    title: 'See how far each plan has come',
+    copy: 'Mark tasks done. Every plan shows its percent complete and the next task.',
     icon: BarChart3,
   },
 ] as const;

@@ -42,11 +42,6 @@ const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     description: 'Generation preferences',
   },
   {
-    id: SETTINGS_SECTIONS.integrations,
-    label: 'Integrations',
-    description: 'Connected tools',
-  },
-  {
     id: SETTINGS_SECTIONS.notifications,
     label: 'Notifications',
     description: 'Email preferences',
@@ -68,11 +63,6 @@ function getSettingsContentHeading(
       return {
         title: 'AI model',
         description: 'Generation preferences',
-      };
-    case SETTINGS_SECTIONS.integrations:
-      return {
-        title: 'Integrations',
-        description: 'Connected tools',
       };
     case SETTINGS_SECTIONS.notifications:
       return {
