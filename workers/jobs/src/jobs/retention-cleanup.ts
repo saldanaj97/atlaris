@@ -1,3 +1,4 @@
+import type { RetentionCleanupGate } from '../switches';
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 import type { captureException as sentryCaptureException } from '@sentry/cloudflare';
@@ -8,9 +9,9 @@ export const RETENTION_CLEANUP_CRON = '0 3 * * *';
 export const RETENTION_CLEANUP_JOB = 'retention-cleanup';
 
 export type RetentionCleanupDeps = {
-  /** `isRetentionCleanupEnabled()`: false when `job-retention-cleanup` is off or jobs are paused. */
-  enabled: boolean;
-  logger: Pick<Logger, 'info'>;
+  /** `retentionCleanupGate()`: `run`, or why this run skips. */
+  gate: RetentionCleanupGate;
+  logger: Pick<Logger, 'info' | 'warn'>;
   /** Runs `fn` with this invocation's database client. */
   withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   captureException: typeof sentryCaptureException;
@@ -25,12 +26,27 @@ export type RetentionCleanupResult =
 export async function runRetentionCleanup(
   deps: RetentionCleanupDeps,
 ): Promise<RetentionCleanupResult> {
-  if (!deps.enabled) {
-    deps.logger.info(
-      { job: RETENTION_CLEANUP_JOB },
-      'Retention cleanup disabled or jobs paused; skipped',
-    );
-    return 'skipped';
+  switch (deps.gate) {
+    case 'run':
+      break;
+    case 'paused':
+      deps.logger.info(
+        { job: RETENTION_CLEANUP_JOB },
+        'Jobs paused; retention cleanup skipped',
+      );
+      return 'skipped';
+    case 'disabled':
+      deps.logger.info(
+        { job: RETENTION_CLEANUP_JOB },
+        'Retention cleanup disabled; skipped',
+      );
+      return 'skipped';
+    case 'flag_unavailable':
+      deps.logger.warn(
+        { job: RETENTION_CLEANUP_JOB },
+        'Retention cleanup skipped: a flag could not be read',
+      );
+      return 'skipped';
   }
 
   try {

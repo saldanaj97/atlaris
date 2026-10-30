@@ -184,6 +184,35 @@ describe('planSync', () => {
     ]);
   });
 
+  it('skips the nine retired job switches instead of pushing them back', () => {
+    const retired = [
+      'JOBS_PAUSED',
+      'PARALLEL_DIRECT_RESEARCH',
+      'JOB_PLAN_CLEANUP_ENABLED',
+      'JOB_RETENTION_CLEANUP_ENABLED',
+      'JOB_EMAIL_DELIVERY_ENABLED',
+      'JOB_REGENERATION_ENABLED',
+      'JOB_MODULE_LESSONS_ENABLED',
+      'JOB_PLAN_GENERATION_ENABLED',
+      'JOB_POSTHOG_DELETION_ENABLED',
+    ];
+    const plan = planSync({
+      provider: 'cloudflare',
+      names: [...retired, 'PARALLEL_API_KEY'],
+      existing: new Set(['JOBS_PAUSED']),
+    });
+    for (const name of retired) {
+      expect(plan.find((entry) => entry.name === name)).toEqual({
+        name,
+        action: 'skip',
+        reason: 'retired switch (DEV-193), delete from 1Password',
+      });
+    }
+    expect(
+      plan.find((entry) => entry.name === 'PARALLEL_API_KEY')?.action,
+    ).toBe('add');
+  });
+
   it('never writes build secrets or declared vars to a Worker', () => {
     const plan = planSync({
       provider: 'cloudflare',

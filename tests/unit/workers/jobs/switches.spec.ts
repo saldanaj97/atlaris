@@ -3,7 +3,8 @@ import {
   isEmailDeliveryEnabled,
   isJobsPaused,
   isModuleLessonsEnabled,
-  isRetentionCleanupEnabled,
+  readJobsPaused,
+  retentionCleanupGate,
 } from '../../../../workers/jobs/src/switches';
 import { type FlagEvaluator, setFlagEvaluator } from '@/flags';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -43,22 +44,39 @@ describe.sequential('Worker job switches (Flagship)', () => {
     });
   });
 
-  describe('isRetentionCleanupEnabled', () => {
+  describe('readJobsPaused', () => {
+    it.each([
+      [false, 'running'],
+      [true, 'paused'],
+      ['error', 'unknown'],
+    ] as const)('jobs-paused=%s → %s', async (value, expected) => {
+      useFlags({ 'jobs-paused': value });
+      await expect(readJobsPaused()).resolves.toBe(expected);
+    });
+  });
+
+  describe('retentionCleanupGate', () => {
     it('follows job-retention-cleanup', async () => {
       useFlags({ 'job-retention-cleanup': true });
-      await expect(isRetentionCleanupEnabled()).resolves.toBe(true);
+      await expect(retentionCleanupGate('running')).resolves.toBe('run');
       useFlags({ 'job-retention-cleanup': false });
-      await expect(isRetentionCleanupEnabled()).resolves.toBe(false);
+      await expect(retentionCleanupGate('running')).resolves.toBe('disabled');
     });
 
-    it('is off while jobs are paused', async () => {
-      useFlags({ 'jobs-paused': true, 'job-retention-cleanup': true });
-      await expect(isRetentionCleanupEnabled()).resolves.toBe(false);
+    it('skips while jobs are paused', async () => {
+      useFlags({ 'job-retention-cleanup': true });
+      await expect(retentionCleanupGate('paused')).resolves.toBe('paused');
     });
 
-    it('fails closed: a failed read skips the cleanup', async () => {
+    it('fails closed when either flag read failed', async () => {
+      useFlags({ 'job-retention-cleanup': true });
+      await expect(retentionCleanupGate('unknown')).resolves.toBe(
+        'flag_unavailable',
+      );
       useFlags({ 'job-retention-cleanup': 'error' });
-      await expect(isRetentionCleanupEnabled()).resolves.toBe(false);
+      await expect(retentionCleanupGate('running')).resolves.toBe(
+        'flag_unavailable',
+      );
     });
   });
 

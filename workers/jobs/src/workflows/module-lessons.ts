@@ -1,7 +1,7 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
 import { registerWorkerFlags } from '../flags';
-import { isModuleLessonsEnabled } from '../switches';
+import { isJobsPaused, isModuleLessonsEnabled } from '../switches';
 import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
@@ -35,6 +35,7 @@ export class ModuleLessonsWorkflowEntrypoint extends WorkflowEntrypoint<
     const env = this.env;
     return runModuleLessonsWorkflow(event, step, {
       isEnabled: isModuleLessonsEnabled,
+      isPaused: isJobsPaused,
       isGroundedEnabled,
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       logger,

@@ -55,6 +55,7 @@ function makeDeps(
   const deps: ModuleLessonsStartDeps = {
     env: { JOBS_SIGNING_SECRET: SECRET },
     isPaused: async () => paused,
+    isGenerationEnabled: async () => true,
     workflow: { create, get, ...workflow },
     logger: { info: vi.fn(), error: vi.fn() },
     nowMs: NOW_MS,
@@ -232,6 +233,20 @@ describe('handleModuleLessonsStart', () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ code: 'jobs_paused' });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('answers 503 job_disabled while module-lesson-generation is off', async () => {
+    const { deps, create } = makeDeps();
+    const disabled = { ...deps, isGenerationEnabled: async () => false };
+
+    const response = await handleModuleLessonsStart(
+      await signed(JSON.stringify(command)),
+      disabled,
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ code: 'job_disabled' });
     expect(create).not.toHaveBeenCalled();
   });
 

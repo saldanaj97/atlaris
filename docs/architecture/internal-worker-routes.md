@@ -45,7 +45,7 @@ Requests that supply both Bearer and the custom header are rejected.
 
 ## Email delivery recovery
 
-The daily and weekly runs are started by the Worker's Workflow schedules, not by the app. The manual route authenticates with `MAINTENANCE_WORKER_TOKEN`, checks the `email-notification-delivery` Flagship flag, and sends a signed `POST /v1/email-delivery/runs` to the jobs Worker (`dispatchEmailDeliveryToWorker`). The Worker reserves or requeues the run and starts the Cloudflare Workflow instance, so the route returns promptly with the database run ID and the instance ID; pagination, retries, and provider sends happen in Workflow steps. A Worker that is paused or has the email switch off reads as `outcome: disabled`; an invalid action for the run state is a `409`; any other Worker failure is a `503`.
+The daily and weekly runs are started by the Worker's Workflow schedules, not by the app. The manual route authenticates with `MAINTENANCE_WORKER_TOKEN`, checks the `email-notification-delivery` Flagship flag, and sends a signed `POST /v1/email-delivery/runs` to the jobs Worker (`dispatchEmailDeliveryToWorker`). The Worker reserves or requeues the run and starts the Cloudflare Workflow instance, so the route returns promptly with the database run ID and the instance ID; pagination, retries, and provider sends happen in Workflow steps. A Worker that is paused or is not production reads as `outcome: disabled`; an invalid action for the run state is a `409`; any other Worker failure is a `503`.
 
 The manual route accepts only:
 

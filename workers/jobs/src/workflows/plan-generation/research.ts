@@ -80,7 +80,7 @@ export type ResearchStepsContext = {
   readonly input: GenerationInput;
   /** Regeneration feedback that steers the search (JCS-162). */
   readonly guidance?: string | null;
-  /** `isDirectResearchEnabled(env)`: search Parallel directly (DEV-171). */
+  /** `isDirectResearchEnabled()`: search Parallel directly (DEV-171). */
   readonly directSearch: boolean;
   /** Research rows for the plan created from here on belong to this attempt. */
   readonly attemptStartedAt: string;

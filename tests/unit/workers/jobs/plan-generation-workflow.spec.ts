@@ -789,6 +789,19 @@ describe('runPlanGenerationWorkflow', () => {
       ).toMatchObject({ outcome: 'researched', directSearch: true });
     });
 
+    it('does not read parallel-direct-research when grounded generation is off', async () => {
+      const isDirectResearchEnabled = vi.fn(async () => true);
+      const { deps } = makeDeps({ isDirectResearchEnabled });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(isDirectResearchEnabled).not.toHaveBeenCalled();
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+    });
+
     it('writes the grounded outline with the writer pick, never the legacy override', async () => {
       const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();

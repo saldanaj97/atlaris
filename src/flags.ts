@@ -118,7 +118,7 @@ function recordFailure(
   });
   logger.warn(
     { flagKey: key, context, code: error.code, err: error.cause ?? error },
-    `Flag evaluation failed; serving the fail-closed value for ${FLAG_FAILURE_TTL_MS / 1000} s`,
+    `Flag evaluation failed; callers apply their fallback for ${FLAG_FAILURE_TTL_MS / 1000} s`,
   );
   return error;
 }
@@ -195,7 +195,10 @@ export const maintenanceMode = (): Promise<boolean> =>
 export const launchWaitlist = (): Promise<boolean> =>
   evaluateBoolean('launch-waitlist', false);
 
-/** Allow the jobs Worker to send opted-in email notifications. */
+/**
+ * Allow the app's manual email route to start a delivery run. The jobs Worker
+ * does not read it; stopping Worker email takes `jobs-paused`.
+ */
 export const emailNotificationDelivery = (): Promise<boolean> =>
   evaluateBoolean('email-notification-delivery', false);
 

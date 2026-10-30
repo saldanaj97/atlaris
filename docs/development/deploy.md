@@ -114,7 +114,7 @@ It fails closed if browser roles can bypass RLS, if any public application table
    - Confirm `APP_URL` is the canonical https origin for that environment (required for unsubscribe and deeplink URLs; production throws if unset).
    - Configure `RESEND_API_KEY`, `RESEND_FROM`, and `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (see `emailEnv` in `docs/development/environment.md`).
    - Apply the email notification deliveries ledger migration and `20260811100200_enforce_resolved_email_delivery_payload_minimization` in the expand phase. After rollout health verification, the confirmed contract phase applies `20260811100300_scrub_resolved_email_delivery_payloads` to scrub historical resolved payloads and validate the invariant; then run the non-PII inventory in the email delivery runbook.
-   - Enable the Flagship flag `email-notification-delivery` after a smoke pass. The flag is fail-closed / default disabled.
+   - The production Worker sends scheduled email once deployed, whatever `email-notification-delivery` says; turn `jobs-paused` on first if it must wait. That flag (fail-closed, default disabled) gates only the app's manual route, so leave it off unless you need manual runs (see Email notification delivery below).
    - Confirm the jobs Worker's email Workflow schedules exist (the production Worker sends while `jobs-paused` is off); keep `MAINTENANCE_WORKER_TOKEN` for manual recovery only. See `docs/architecture/internal-worker-routes.md`.
 
 See also:

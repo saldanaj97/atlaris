@@ -478,11 +478,13 @@ export async function runPlanGenerationWorkflow(
         await deps.withDb((db) => recordWorkflowStep(db, run));
         // Grounded research (JCS-158) feeds the grounded outline (JCS-159). A
         // dropped switch skips both, so no search runs (Decision 7).
+        const isGrounded =
+          (await deps.isEnabled()) &&
+          (await deps.isGroundedEnabled(input.tier));
         return {
-          grounded:
-            (await deps.isEnabled()) &&
-            (await deps.isGroundedEnabled(input.tier)),
-          directSearch: await deps.isDirectResearchEnabled(),
+          grounded: isGrounded,
+          // Only grounded research searches, so only it reads the flag.
+          directSearch: isGrounded && (await deps.isDirectResearchEnabled()),
         };
       },
     );

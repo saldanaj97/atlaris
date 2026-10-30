@@ -1,3 +1,4 @@
+import type { RetentionCleanupGate } from '../../../../workers/jobs/src/switches';
 import type { DbClient } from '@/lib/db/types';
 
 import {
@@ -16,12 +17,12 @@ vi.mock('@/lib/db/queries/admin/retention', () => ({
 const fakeDb = { tag: 'worker-db' } as unknown as DbClient;
 const now = new Date('2026-10-06T03:00:00.000Z');
 
-function makeDeps(enabled = true) {
-  const logger = { info: vi.fn() };
+function makeDeps(gate: RetentionCleanupGate = 'run') {
+  const logger = { info: vi.fn(), warn: vi.fn() };
   const captureException = vi.fn();
   const withDb = vi.fn((fn: (db: DbClient) => Promise<unknown>) => fn(fakeDb));
   const deps = {
-    enabled,
+    gate,
     logger,
     withDb,
     captureException,
@@ -55,14 +56,29 @@ describe('runRetentionCleanup', () => {
     );
   });
 
-  it('skips without db access when the switch is off', async () => {
-    const { deps, withDb } = makeDeps(false);
+  it.each([
+    ['paused', 'info', 'Jobs paused; retention cleanup skipped'],
+    ['disabled', 'info', 'Retention cleanup disabled; skipped'],
+    [
+      'flag_unavailable',
+      'warn',
+      'Retention cleanup skipped: a flag could not be read',
+    ],
+  ] as const)(
+    'skips without db access when the gate is %s, with its own log',
+    async (gate, level, message) => {
+      const { deps, logger, withDb } = makeDeps(gate);
 
-    await expect(runRetentionCleanup(deps)).resolves.toBe('skipped');
+      await expect(runRetentionCleanup(deps)).resolves.toBe('skipped');
 
-    expect(withDb).not.toHaveBeenCalled();
-    expect(retention.run).not.toHaveBeenCalled();
-  });
+      expect(withDb).not.toHaveBeenCalled();
+      expect(retention.run).not.toHaveBeenCalled();
+      expect(logger[level]).toHaveBeenCalledWith(
+        { job: 'retention-cleanup' },
+        message,
+      );
+    },
+  );
 
   it('reports with job tags and rethrows on failure', async () => {
     const error = new Error('boom');

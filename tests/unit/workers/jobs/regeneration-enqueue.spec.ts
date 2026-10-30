@@ -104,6 +104,19 @@ describe('handleRegenerationEnqueue', () => {
     expect(send).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['not JSON', 'nope'],
+    ['wrong version', JSON.stringify({ v: 2, jobId: JOB_ID })],
+    ['non-uuid job', JSON.stringify({ v: 1, jobId: 'job-1' })],
+  ])('answers 400 for an invalid body (%s)', async (_label, body) => {
+    const { deps, send } = makeDeps();
+
+    const response = await handleRegenerationEnqueue(await signed(body), deps);
+
+    expect(response.status).toBe(400);
+    expect(send).not.toHaveBeenCalled();
+  });
+
   it('answers 500 and reports to Sentry when the queue send fails', async () => {
     const { deps, send, captureException } = makeDeps();
     const failure = new Error('queue unavailable');

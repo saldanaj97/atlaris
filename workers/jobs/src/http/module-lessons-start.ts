@@ -18,6 +18,12 @@ export type ModuleLessonsStartDeps = {
   readonly env: SigningSecrets;
   /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
   readonly isPaused: () => Promise<boolean>;
+  /**
+   * `resolveModuleLessonGenerationEnabled()`: Flagship
+   * `module-lesson-generation`, fail closed. With `isPaused` it is the check
+   * the Workflow's claim step runs, so a start it would refuse is refused here.
+   */
+  readonly isGenerationEnabled: () => Promise<boolean>;
   readonly workflow: Pick<
     Workflow<ModuleLessonsWorkflowParams>,
     'create' | 'get'
@@ -58,6 +64,9 @@ export async function handleModuleLessonsStart(
 
   if (await deps.isPaused()) {
     return Response.json({ code: 'jobs_paused' }, { status: 503 });
+  }
+  if (!(await deps.isGenerationEnabled())) {
+    return Response.json({ code: 'job_disabled' }, { status: 503 });
   }
 
   const instanceId = await moduleLessonsInstanceId(

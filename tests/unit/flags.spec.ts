@@ -189,7 +189,7 @@ describe('flags', () => {
         code: 'GENERAL',
         context: { environment: 'development', subscriptionTier: 'pro' },
       }),
-      expect.stringContaining('fail-closed'),
+      expect.stringContaining('callers apply their fallback'),
     );
 
     // Another flag, and the same flag with another context, are not affected.
