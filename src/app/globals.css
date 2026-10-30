@@ -1,34 +1,34 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '../styles/generated/atlaris-tokens.css';
+@import '../styles/atlaris-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   color-scheme: light;
-  /* JCS-86 light extension: the external package supplies dark values only. */
+  /* Midnight light theme. Dark values live in src/styles/atlaris-tokens.css. */
   --background: #f8fafc;
-  --foreground: #070b10;
+  --foreground: #02070a;
   --card: #ffffff;
-  --card-foreground: #070b10;
+  --card-foreground: #02070a;
   --popover: #eef2f7;
-  --popover-foreground: #070b10;
-  --primary: #5b4bb7;
-  --primary-dark: #493a9a;
+  --popover-foreground: #02070a;
+  --primary: #b8441f;
+  --primary-dark: #963515;
   --primary-foreground: #f8fafc;
-  --action-primary: #8b78ff;
-  --action-primary-hover: #a08fff;
-  --action-primary-pressed: #7c68eb;
-  --action-primary-foreground: #070b10;
+  --action-primary: #fc734d;
+  --action-primary-hover: #fd8b69;
+  --action-primary-pressed: #e8603a;
+  --action-primary-foreground: #02070a;
   --action-soft: color-mix(in srgb, var(--primary) 10%, var(--background));
-  --link: #5b4bb7;
-  --link-hover: #493a9a;
+  --link: #03699e;
+  --link-hover: #02527c;
   --secondary: #eef2f7;
-  --secondary-foreground: #070b10;
+  --secondary-foreground: #02070a;
   --muted: #e2e8f0;
   --muted-foreground: #526174;
   --accent: #e2e8f0;
-  --accent-foreground: #070b10;
+  --accent-foreground: #02070a;
   --destructive: #b42318;
   --destructive-foreground: #f8fafc;
   --action-destructive: #c7344f;
@@ -45,25 +45,25 @@
   --disabled-foreground: #62738a;
   --disabled-border: #b8c5d6;
   --panel: #ffffff;
-  --panel-foreground: #070b10;
+  --panel-foreground: #02070a;
   --panel-muted: #eef2f7;
   --panel-border: #b8c5d6;
   --border: #b8c5d6;
   --input: #62738a;
-  --ring: #493a9a;
-  --chart-1: #5b4bb7;
-  --chart-2: #175cd3;
+  --ring: #0278b4;
+  --chart-1: #0278b4;
+  --chart-2: #c2491f;
   --chart-3: #087f5b;
   --chart-4: #8a5a00;
   --chart-5: #b42318;
   --sidebar: #ffffff;
-  --sidebar-foreground: #070b10;
-  --sidebar-primary: #8b78ff;
-  --sidebar-primary-foreground: #070b10;
+  --sidebar-foreground: #02070a;
+  --sidebar-primary: #fc734d;
+  --sidebar-primary-foreground: #02070a;
   --sidebar-accent: #e2e8f0;
-  --sidebar-accent-foreground: #070b10;
+  --sidebar-accent-foreground: #02070a;
   --sidebar-border: #b8c5d6;
-  --sidebar-ring: #493a9a;
+  --sidebar-ring: #0278b4;
   --app-background-image: none;
   --app-background-size: auto;
 
@@ -119,8 +119,8 @@
   color-scheme: dark;
 }
 
-/* Generated dark primitives are owned by the external token package. This bridge
- * maps the reviewed semantic roles onto the application's existing API. */
+/* Dark primitives live in src/styles/atlaris-tokens.css. This bridge maps the
+ * reviewed semantic roles onto the application's existing API. */
 [data-atlaris-theme='dark'] {
   color-scheme: dark;
   --background: var(--at-semantic-color-background-canvas);
@@ -129,7 +129,7 @@
   --card-foreground: var(--at-semantic-color-text-primary);
   --popover: var(--at-semantic-color-background-raised);
   --popover-foreground: var(--at-semantic-color-text-primary);
-  --primary: var(--at-semantic-color-text-link);
+  --primary: var(--at-semantic-color-text-accent);
   --primary-dark: var(--at-semantic-color-action-primary-background);
   --primary-foreground: var(--at-semantic-color-action-primary-foreground);
   --action-primary: var(--at-semantic-color-action-primary-background);

@@ -8,7 +8,7 @@ Earlier section text is preserved with its originating reference IDs. Use the so
 
 ## Repository adoption status
 
-This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopts the shared cool-black/lavender foundations through `src/app/globals.css`, generated dark tokens and the existing shared page primitives. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
+This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopted the shared foundations through `src/app/globals.css`, the dark token file and the existing shared page primitives. On 2026-10-30 the palette moved from cool-black/lavender to **Midnight** (§03); lavender references in inherited chapter text below describe the earlier palette and are superseded by §03. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
 
 JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 recorded the launch copy and information-architecture map. JCS-98 removed the superseded After Hours agent rule and the `docs/styles/style-guide.md` compatibility pointer so those files cannot appear current. JCS-97 (integrated visual acceptance) was closed on 2026-10-14 without a separate acceptance pass. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
 
@@ -16,35 +16,11 @@ JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 
 
 Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
-### External token generation
+### Token source
 
-Keep the reference package outside this repository for the redesign. Its `tokens/atlaris.tokens.json` remains the editable token source; `scripts/token-compiler.py` supplies validation and CSS generation using Python 3.10+ and the standard library. No package copy, dependency installation, repository generator or application build dependency on a local Downloads path is needed.
+`src/styles/atlaris-tokens.css` is the single editable source for dark tokens (primitive, semantic and component layers on `[data-atlaris-theme="dark"]`). The light theme is authored once in `:root` in `src/app/globals.css`, and the semantic bridge in the same file maps both onto the application's existing CSS variables. Edit values in those two places only.
 
-The supplied rc1 package does **not** contain the `scripts/build.py` mentioned in the original handbook. Running `token-compiler.py` directly also does not emit files: call its existing functions instead. Set `ATLARIS_DESIGN_PACKAGE` to the external package directory, then run:
-
-```bash
-python3 - "$ATLARIS_DESIGN_PACKAGE" <<'PY'
-from pathlib import Path
-import runpy
-import sys
-import tempfile
-
-package = Path(sys.argv[1]).expanduser().resolve()
-compiler = runpy.run_path(str(package / "scripts/token-compiler.py"))
-compiler["validate"]()
-checks = compiler["contrast_checks"]()
-if not checks or not all(check["as_expected"] for check in checks):
-    raise SystemExit("Unexpected token contrast result")
-css = compiler["generate_css"]()
-output = Path(tempfile.mkdtemp(prefix="atlaris-design-tokens-")) / "atlaris-tokens.css"
-output.write_text(css, encoding="utf-8")
-print(output)
-PY
-```
-
-This writes only a temporary CSS artifact after validation succeeds. It reads the external source without changing the reference package. Intentional rejected contrast pairs must remain rejected (`as_expected` checks that distinction); this is not an application accessibility certification.
-
-The verified generated artifact is adopted at `src/styles/generated/atlaris-tokens.css`; its values remain generated and must not be edited by hand. Regenerate from the external JSON when dark values change and review the semantic bridge in `src/app/globals.css`. The original package is dark-only: the approved light extension is authored once in the existing `:root` runtime tokens, not copied into a competing dark palette or into the external reference package. The machine-specific package location and generation evidence must stay out of application configuration and must not be committed.
+Until 2026-10-30 the dark file was generated from `tokens/atlaris.tokens.json` in an external reference package with `scripts/token-compiler.py`. That package was not available on the machine doing the Midnight change, so the repository took ownership of the values and the generation step was retired. Keep the primitive → semantic → component alias structure when editing, and re-run the pair checks in §03 for any color change.
 
 ### JCS-86 foundation boundaries
 
@@ -53,7 +29,7 @@ The verified generated artifact is adopted at `src/styles/generated/atlaris-toke
 - The legacy Tailwind `--spacing: 0.2rem` remains for unmigrated consumers. Foundation recipes use explicit dimensions from the quarter-rem reference scale; changing the global multiplier would enlarge every numeric spacing utility by 25%. Control geometry belongs to JCS-94 and route-specific spacing to each page issue.
 - JCS-94 owns complete control and action recipes. JCS-95 owns feedback and overlay compositions (dialogs, sheets, confirmations, toasts and state surfaces). Changes required now to preserve readable action labels, status text, control boundaries and focus are compatibility work for the new token roles.
 - JCS-87 owns sidebar composition. Page layouts, marketing imagery/copy, reader compositions, analytics presentation and JCS-6 brand assets remain their own issues. Shared token adoption does not claim those designs are complete.
-- Local application checks and browser evidence are recorded with JCS-86. Package contrast checks cover source pairs, not all rendered pages or an application-wide accessibility certification.
+- Local application checks and browser evidence are recorded with JCS-86. The §03 contrast contract covers token pairs, not all rendered pages or an application-wide accessibility certification.
 
 ## Contents
 
@@ -96,11 +72,11 @@ _Source: Final-stage draft synthesis. New final-stage requirements and synthesis
 
 ### 00.1 Purpose and release status
 
-Atlaris helps a learner turn a goal into a learning plan and return to the next useful piece of work. This system codifies the supplied cool-black/lavender direction without expanding the product merely to reproduce generated artwork. The four page families remain marketing, application, learning reader and standalone utility. [F01–F04]
+Atlaris helps a learner turn a goal into a learning plan and return to the next useful piece of work. This system codifies the Midnight direction (cool-black, cantaloupe action, electric-blue lines) without expanding the product merely to reproduce generated artwork. The four page families remain marketing, application, learning reader and standalone utility. [F01–F04]
 
 **Version 1.0-rc1 is the complete 00–27 documentation release candidate.** “Complete” refers to chapter coverage and the assembled reference package. It does not mean that every draft decision is approved, the product is migrated, the assets are production-ready, or the application conforms to an accessibility standard. No repository, deployment, account or original brand file was changed by this work.
 
-The target is a restrained, content-led interface: cool-black surfaces, clear light text, lavender emphasis, explicit interaction boundaries and occasional atmospheric imagery. Working views prioritize readable learning content over promotional decoration. The typography remains Work Sans for UI and Sora for display as comparison candidates; no exact font identification or canonical full vector wordmark is claimed. [F01 pp. 3–6; F02 §§02–04]
+The target is a restrained, content-led interface: cool-black surfaces, clear light text, cantaloupe emphasis, explicit interaction boundaries and occasional atmospheric imagery. Working views prioritize readable learning content over promotional decoration. The typography remains Work Sans for UI and Sora for display as comparison candidates; no exact font identification or canonical full vector wordmark is claimed. [F01 pp. 3–6; F02 §§02–04]
 
 ### 00.2 The complete chapter map
 
@@ -120,7 +96,7 @@ The companion Markdown is the detailed reference. The PDF is a visual summary; i
 | Question                                             | Source of truth                                                                           | What does not establish it                                              |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | What is the approved visual direction?               | Supplied final artwork, with provenance from the inventory.                               | Older generated variants or the repository's earlier copper/plum brand. |
-| What numeric design values does this candidate use?  | `tokens/atlaris.tokens.json`, interpreted through documented recipes.                     | Pixels sampled from screenshots or manually edited generated CSS.       |
+| What numeric design values does this candidate use?  | `src/styles/atlaris-tokens.css` (dark) and `:root` in `src/app/globals.css` (light).      | Pixels sampled from screenshots or manually edited generated CSS.       |
 | What functionality and data are currently available? | Pinned repository contracts and current authoritative server responses at implementation. | Demo content, prototype actions or decorative sidebar labels.           |
 | What is actually running?                            | The compiled application and its current configuration.                                   | A proposed target token or static source review.                        |
 | What is required for accessibility?                  | Applicable WCAG success criteria, with the selected project policies in §25.              | A contrast swatch, APG example, or automated pass count alone.          |
@@ -171,7 +147,7 @@ These principles are a synthesis of the supplied inventory, foundations, compone
 
 ### 01.2 Give each decision one clear primary action
 
-**Rule:** use lavender emphasis intentionally. Supporting actions remain neutral or quiet, while destructive emphasis belongs to the irreversible commit. Multiple regions can each contain a primary action; the policy is not an arbitrary one-button limit for an entire page. [F02 §13; F03 §14; F04 §20.3]
+**Rule:** use cantaloupe emphasis intentionally. Supporting actions remain neutral or quiet, while destructive emphasis belongs to the irreversible commit. Multiple regions can each contain a primary action; the policy is not an arbitrary one-button limit for an entire page. [F02 §13; F03 §14; F04 §20.3]
 
 **Apply:** “Create plan” can lead the generation form; Cancel remains secondary. A completed badge is not another bright action button.
 
@@ -263,70 +239,123 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ## 03 — Color
 
-### Dark-first, not dark-only
+### Midnight palette
 
-This draft specifies the approved **cool-black / lavender** direction. It does not remove the application’s existing light/system preference, and it does not invent a light application theme from a light-logo asset. New dark tokens are scoped to `[data-atlaris-theme="dark"]`; there is no global `:root` or production `.dark` override. [A01 §§4, 11]
+Atlaris uses the **Midnight** palette, adopted 2026-10-30 for the pre-launch refinements. It replaces the earlier cool-black/lavender direction. Three source colors carry it: **Midnight Black `#02070A`**, **Electric Blue `#0297DE`** and **Cantaloupe Orange `#FC734D`**. Neutrals are mixed from midnight toward `#F4F7FA`, so every surface keeps the same blue-black cast and no grey is neutral.
 
-The two mark colors are exact asset values. Their reuse as surface/text colors, all remaining UI values, and the interaction-state assignments are proposed normalization decisions. The old plum/copper values remain the verified repository baseline, not the target theme. [A01 §4; R01]
+The roles are fixed. Cantaloupe is the action and brand-emphasis color, used for the primary button, the current navigation item, selected tabs, progress fills and one highlighted moment per screen. Electric blue is never a button fill: it is a line, a link or a ring (inline links, focus, the first chart series, information status). Keep blue and cantaloupe from sitting side by side as two solid fills.
 
-### Main semantic roles
+The app is dark-first, not dark-only. Dark values live in `src/styles/atlaris-tokens.css` on `[data-atlaris-theme="dark"]`; the light theme lives in `:root` in `src/app/globals.css`. Light, dark and system preferences all stay supported.
 
-| Role             | Hex     | Use                                               |
-| ---------------- | ------- | ------------------------------------------------- |
-| Canvas           | #070B10 | Opaque working background.                        |
-| Surface          | #0B1118 | Cards, panels and fields.                         |
-| Raised           | #111A25 | Menus and elevated regions.                       |
-| Neutral hover    | #1B2838 | Opaque neutral hover/pressed fill.                |
-| Selected surface | #1C1933 | Current navigation and restrained accent regions. |
-| Primary text     | #F8FAFC | Headings, labels and primary content.             |
-| Secondary text   | #B8C5D6 | Supporting prose.                                 |
-| Muted text       | #8C9CB2 | Metadata and placeholders; no additional opacity. |
-| Link             | #AE9CFF | Underlined inline links.                          |
-| Focus ring       | #B3A2FF | Opaque outline separated from the control.        |
-| Subtle divider   | #253244 | Nonessential grouping and separators.             |
-| Control boundary | #62738A | Field and outline-control identification.         |
-| Strong boundary  | #8C9CB2 | Higher-emphasis/hover boundary.                   |
+### Dark primitives
+
+| Primitive      | Hex     | Primitive        | Hex     |
+| -------------- | ------- | ---------------- | ------- |
+| `neutral-1000` | #02070A | `cantaloupe-950` | #2A140D |
+| `neutral-950`  | #0A1219 | `cantaloupe-600` | #E8603A |
+| `neutral-900`  | #121C26 | `cantaloupe-500` | #FC734D |
+| `neutral-850`  | #182433 | `cantaloupe-400` | #FD8B69 |
+| `neutral-800`  | #233142 | `cantaloupe-300` | #FEA083 |
+| `neutral-600`  | #5E6F86 | `electric-950`   | #04243A |
+| `neutral-400`  | #8A9AAE | `electric-500`   | #0297DE |
+| `neutral-200`  | #B5C2D1 | `electric-400`   | #2EAEEA |
+| `neutral-50`   | #E1E7EE | `electric-300`   | #5FBDF0 |
+| `neutral-0`    | #F4F7FA | `electric-200`   | #8FD1F5 |
+
+Green, amber and rose (status and destructive) are unchanged from the previous palette.
+
+### Main semantic roles (dark)
+
+| Role             | Hex     | Use                                                   |
+| ---------------- | ------- | ----------------------------------------------------- |
+| Canvas           | #02070A | Opaque working background.                            |
+| Surface          | #0A1219 | Cards, panels and fields.                             |
+| Raised           | #121C26 | Menus and elevated regions.                           |
+| Neutral hover    | #182433 | Opaque neutral hover/pressed fill.                    |
+| Selected surface | #2A140D | Current navigation, selected rows, soft-primary fill. |
+| Primary text     | #F4F7FA | Headings, labels and primary content.                 |
+| Secondary text   | #B5C2D1 | Supporting prose.                                     |
+| Muted text       | #8A9AAE | Metadata and placeholders; no additional opacity.     |
+| Accent text      | #FEA083 | Brand emphasis and `--primary` text/icons.            |
+| Link             | #5FBDF0 | Underlined inline links; hover #8FD1F5.               |
+| Focus ring       | #2EAEEA | Opaque outline separated from the control.            |
+| Subtle divider   | #233142 | Nonessential grouping and separators.                 |
+| Control boundary | #5E6F86 | Field and outline-control identification.             |
+| Strong boundary  | #8A9AAE | Higher-emphasis/hover boundary.                       |
+| Selection        | #5FBDF0 | Text selection, with canvas-colored text.             |
 
 ### Action colors
 
 | Action           | Default | Hover   | Pressed | Label   |
 | ---------------- | ------- | ------- | ------- | ------- |
-| Primary          | #8B78FF | #A08FFF | #7C68EB | #070B10 |
-| Destructive fill | #C7344F | #CE3954 | #BA2C46 | #F8FAFC |
-| Inverse          | #F8FAFC | #E2E8F0 | #B8C5D6 | #070B10 |
+| Primary          | #FC734D | #FD8B69 | #E8603A | #02070A |
+| Destructive fill | #C7344F | #CE3954 | #BA2C46 | #F4F7FA |
+| Inverse          | #F4F7FA | #E1E7EE | #B5C2D1 | #02070A |
 
-Use lavender for the main application action. White/inverse is a defined marketing or utility treatment, not a competing second primary action. Inline links have their own role. Errors use a separate foreground/border token rather than borrowing the destructive button’s fill.
+Use cantaloupe for the main application action, with a dark label in both themes. White labels on cantaloupe fail (2.73:1). White/inverse is a marketing or utility treatment, not a competing second primary action. Inline links have their own blue role. Errors use a separate foreground/border token rather than borrowing the destructive button's fill.
 
-Secondary controls use raised neutral surfaces and primary text. Outline controls use the control boundary. Ghost controls rely on their label/icon and interaction state, not a barely visible outline. Disabled controls use opaque `#111A25` / `#8C9CB2`; the specimen does not multiply their opacity.
+Secondary controls use raised neutral surfaces and primary text. Outline controls use the control boundary. Ghost controls rely on their label/icon and interaction state, not a barely visible outline. Disabled controls use opaque `#121C26` / `#8A9AAE`.
 
-### Status and chart roles
+### Light theme
+
+| Role                      | Hex                         | Notes                                                 |
+| ------------------------- | --------------------------- | ----------------------------------------------------- |
+| Canvas / card             | #F8FAFC / #FFFFFF           | Unchanged cool light surfaces.                        |
+| Primary text              | #02070A                     | Midnight black.                                       |
+| Muted text                | #526174                     | Unchanged.                                            |
+| Accent text (`--primary`) | #B8441F                     | Dark cantaloupe for text and icons on light surfaces. |
+| Accent pressed            | #963515                     | `--primary-dark`.                                     |
+| Primary action            | #FC734D / #FD8B69 / #E8603A | Same fills as dark; label #02070A.                    |
+| Link / hover              | #03699E / #02527C           | Electric blue darkened for text on white.             |
+| Focus ring                | #0278B4                     | Also chart series 1.                                  |
+| Chart series 2            | #C2491F                     | Dark cantaloupe.                                      |
+
+Borders, inputs, status and destructive light values are unchanged from the earlier light extension.
+
+### Status and chart roles (dark)
 
 | Status         | Foreground / border | Subtle background |
 | -------------- | ------------------- | ----------------- |
 | Success        | #65D7AF             | #102B26           |
 | Warning        | #F0C765             | #2E2514           |
 | Danger / error | #FF8C94             | #30191F           |
-| Information    | #78B9FF             | #13283E           |
+| Information    | #5FBDF0             | #04243A           |
 
-Every status needs text or another non-color indicator. The five categorical chart colors are `#A08FFF`, `#78B9FF`, `#65D7AF`, `#F0C765`, `#FF8C94`. Pair them with labels and, where needed, distinct dashes/markers. These are visual roles, not permission to add metrics. Preserve the existing eight-week pulse and its seven summary metrics. [A01 §8]
+The five categorical chart colors are `#2EAEEA` (electric), `#FD8B69` (cantaloupe), `#65D7AF`, `#F0C765`, `#FF8C94`. Series 2 and 5 are both warm, so pair every series with a label and, where they sit next to each other, a distinct dash or marker. Every status needs text or another non-color indicator.
 
 ### Contrast contract
 
-The bundle contains **65 opaque sRGB contrast checks: 63 intended passing pairs and 2 deliberately rejected combinations**. Computations compare unrounded values with their threshold; the table display is rounded. These are color-pair tests, not a WCAG conformance declaration. [W01, W05, W06]
+Opaque sRGB pairs, WCAG 2 formula, unrounded values compared with the threshold. These are color-pair checks, not a WCAG conformance declaration. Re-run them whenever a value in `src/styles/atlaris-tokens.css` or the light `:root` changes.
 
-| Pair                         | Ratio   | Decision                                            |
-| ---------------------------- | ------- | --------------------------------------------------- |
-| Primary text / surface       | 18.12:1 | Use.                                                |
-| Muted text / surface         | 6.78:1  | Use at full opacity.                                |
-| Dark label / primary         | 5.85:1  | Use.                                                |
-| Dark label / primary pressed | 4.73:1  | Use at full opacity; do not darken further.         |
-| White label / primary        | 3.22:1  | Reject for ordinary-size button text.               |
-| Control border / surface     | 3.92:1  | Use for necessary control boundaries.               |
-| Subtle divider / surface     | 1.46:1  | Decoration only; reject as the sole field boundary. |
+| Pair                               | Ratio   | Decision                                        |
+| ---------------------------------- | ------- | ----------------------------------------------- |
+| Primary text / surface             | 17.54:1 | Use.                                            |
+| Secondary text / surface           | 10.42:1 | Use.                                            |
+| Muted text / surface               | 6.57:1  | Use at full opacity.                            |
+| Muted text / neutral hover         | 5.46:1  | Use.                                            |
+| Control boundary / surface         | 3.68:1  | Use for required control boundaries.            |
+| Control boundary / raised          | 3.36:1  | Use.                                            |
+| Subtle divider / surface           | 1.43:1  | Decoration only; reject as a field boundary.    |
+| Dark label / primary               | 7.42:1  | Use.                                            |
+| Dark label / primary hover         | 8.75:1  | Use.                                            |
+| Dark label / primary pressed       | 5.94:1  | Use.                                            |
+| White label / primary              | 2.73:1  | Reject.                                         |
+| Accent text / canvas               | 10.19:1 | Use.                                            |
+| Accent text / selected surface     | 8.78:1  | Use for soft-primary labels.                    |
+| Primary text / selected surface    | 16.22:1 | Use for the current navigation item.            |
+| Link / surface                     | 9.00:1  | Use.                                            |
+| Info text / info background        | 7.60:1  | Use.                                            |
+| Focus ring / canvas                | 8.06:1  | Use.                                            |
+| Focus ring / primary fill          | 1.09:1  | Reject adjacency; keep the dark focus offset.   |
+| Light: primary text / canvas       | 19.18:1 | Use.                                            |
+| Light: accent text / canvas        | 5.12:1  | Use.                                            |
+| Light: accent text / action-soft   | 4.75:1  | Use.                                            |
+| Light: white label / accent        | 5.41:1  | Use for `--primary-foreground` on `bg-primary`. |
+| Light: link / canvas               | 5.66:1  | Use.                                            |
+| Light: focus ring / canvas         | 4.58:1  | Use.                                            |
+| Light: dark label / primary action | 7.42:1  | Use.                                            |
 
-Standard text needs 4.5:1; large text can use 3:1 under the WCAG definition. Do not classify a 20px semibold label as “large” automatically. Required visual control information and graphical objects need 3:1 against adjacent colors. Decorative boundaries are a different case. Inactive controls are contrast-exempt, but this system voluntarily keeps their labels legible. [W05, W06]
-
-Transparent fills, images and gradients require their own composite checks. Passing a token pair does not establish the contrast of an opacity-modified Tailwind class, third-party widget or image-backed heading.
+Standard text needs 4.5:1; large text can use 3:1 under the WCAG definition. Required visual control information and graphical objects need 3:1 against adjacent colors. Transparent fills, images and gradients require their own composite checks.
 
 ---
 
@@ -531,7 +560,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ### Preserve the approved visual language
 
-The source screens establish cool-black landscapes, astronomical horizons, isolated distant highlights and subdued blue/lavender atmosphere. Use them to frame a message, not as repeated decoration beneath every control. This is observed visual direction; exact crop, overlay and brightness settings were not supplied. [A01 §6; A03]
+The source screens establish cool-black landscapes, astronomical horizons, isolated distant highlights and subdued blue atmosphere. Use them to frame a message, not as repeated decoration beneath every control. This is observed visual direction; exact crop, overlay and brightness settings were not supplied. [A01 §6; A03]
 
 | Slot               | Draft rule                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
@@ -580,7 +609,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ### Authoring format
 
-`tokens/atlaris.tokens.json` is the single editable token source. It uses the **DTCG 2025.10** format for the types present in this package. This is a stable Community Group specification, not a W3C Recommendation. The included compiler validates the Atlaris subset; it is not a complete general-purpose DTCG implementation or an import guarantee for every design tool. [W04]
+**Superseded 2026-10-30:** `src/styles/atlaris-tokens.css` is now the single editable dark token source (see “Token source” at the top of this file). The text below describes the retired external package. `tokens/atlaris.tokens.json` used the **DTCG 2025.10** format for the types present in that package. This is a stable Community Group specification, not a W3C Recommendation. The included compiler validates the Atlaris subset; it is not a complete general-purpose DTCG implementation or an import guarantee for every design tool. [W04]
 
 The source has three explicit groups: `primitive`, `semantic`, `component`. Individual token/group keys do not contain periods; periods in a reference path separate nested groups. Each token has `$type`, `$value`, `$description` and provenance metadata under `$extensions.app.atlaris.design-system`. [W04]
 
@@ -592,14 +621,16 @@ Primitive categories are color, spacing, radius, border width, control/icon size
 {
   "primitive": {
     "color": {
-      "lavender": {
+      "cantaloupe": {
         "500": {
           "$type": "color",
           "$value": {
             "colorSpace": "srgb",
-            "components": [0.5450980392156862, 0.47058823529411764, 1],
+            "components": [
+              0.9882352941176471, 0.45098039215686275, 0.30196078431372547
+            ],
             "alpha": 1,
-            "hex": "#8B78FF"
+            "hex": "#FC734D"
           },
           "$description": "Draft primary-action palette value."
         }
@@ -611,7 +642,7 @@ Primitive categories are color, spacing, radius, border width, control/icon size
 
 Colors use typed sRGB objects. Dimension values use `px` or `rem`; durations use `ms`; easing uses four-number cubic Bézier arrays; typography and shadows use composites. A 70ch reading measure stays a documented CSS layout rule rather than an invented unsupported token type. [W04]
 
-Do not hand-maintain separate CSS values. Running `python3 scripts/build.py` produces scoped CSS, a resolved JSON view, the token catalog and contrast reports. The HTML specimen is rebuilt from its template plus generated tokens. The script uses Python’s standard library; no build dependency installation or external request is required.
+Do not maintain a second copy of these values. Edit `src/styles/atlaris-tokens.css` directly and keep primitive → semantic → component aliases intact; there is no generation step.
 
 ---
 
@@ -622,7 +653,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 Semantic roles express intent so a future palette change does not require editing every component. The word “primary” is deliberately split into action, text/link, focus, selection and chart roles.
 
 ```text
-primitive.color.lavender.500
+primitive.color.cantaloupe.500
           ↓
 semantic.color.action.primary.background
           ↓
@@ -647,7 +678,7 @@ CSS names are deterministic: replace path separators with hyphens and add `--at-
 
 ### Scope and integration contract
 
-All generated tokens live on `[data-atlaris-theme="dark"]`. Theme overrides must be declared on the same token-owning element so aliases resolve in the intended context. Do not attach an arbitrary dark token scope inside a light page and assume all vendor portals inherit it.
+All dark tokens live on `[data-atlaris-theme="dark"]`. Theme overrides must be declared on the same token-owning element so aliases resolve in the intended context. Do not attach an arbitrary dark token scope inside a light page and assume all vendor portals inherit it.
 
 Do not bind one old global variable to two incompatible purposes. In particular, the current destructive button hardcodes white text and opacity-modified fills, while fields use destructive color for errors. New destructive action and error roles need coordinated component changes, not only an edit to `--destructive`. [R03, R04]
 
@@ -755,7 +786,7 @@ Use `min-height`, not a hard clipping height. Use the inherited label type role:
 | Default        | Semantic variant tokens. One clearly dominant action per local decision.                                                                        |
 | Hover          | Variant hover background; do not add movement to routine working controls.                                                                      |
 | Pressed        | Pressed background while pointer/key activation is held; focus remains visible.                                                                 |
-| Keyboard focus | 2px opaque lavender outline with 2px separation; dark separator for bright fills.                                                               |
+| Keyboard focus | 2px opaque electric-blue outline with 2px separation; dark separator for bright fills.                                                          |
 | Disabled       | Opaque disabled surface/text/border; native `disabled` where appropriate, with a visible nearby reason when needed. No hover/activation.        |
 | Loading        | Retain a useful action label plus a busy cue, maintain width, prevent duplicate action, provide a concise status message. Do not invent an ETA. |
 
@@ -813,9 +844,9 @@ Do not claim search-as-you-type or multi-selection from this select. A searchabl
 
 ### 15.4 Checkbox and switch
 
-The plan library already uses native checkbox inputs. Retain their native checked/disabled behavior. A proposed 20px visual box sits in a target area of at least 32px for fine pointers or 44px for coarse pointers. Use a visible border when unchecked and a dark checkmark on lavender when checked. An indeterminate parent represents some—not all—eligible rows selected; assign the native `indeterminate` property. Never count generating, ineligible rows as selectable. [R15; W04]
+The plan library already uses native checkbox inputs. Retain their native checked/disabled behavior. A proposed 20px visual box sits in a target area of at least 32px for fine pointers or 44px for coarse pointers. Use a visible border when unchecked and a dark checkmark on cantaloupe when checked. An indeterminate parent represents some—not all—eligible rows selected; assign the native `indeterminate` property. Never count generating, ineligible rows as selectable. [R15; W04]
 
-The existing `Switch` is Radix-based. Its draft visual track is 44 × 24px with a 20px thumb and a larger target wrapper. Off uses raised fill/light thumb; on uses lavender/dark thumb. The visible label remains unchanged as the state changes. The switch supports only on/off, not indeterminate. Use it for an immediate preference only when that behavior is actually supported; do not replace an explicit Save flow with auto-save merely because the control looks like a switch. [R05; W05]
+The existing `Switch` is Radix-based. Its draft visual track is 44 × 24px with a 20px thumb and a larger target wrapper. Off uses raised fill/light thumb; on uses cantaloupe/dark thumb. The visible label remains unchanged as the state changes. The switch supports only on/off, not indeterminate. Use it for an immediate preference only when that behavior is actually supported; do not replace an explicit Save flow with auto-save merely because the control looks like a switch. [R05; W05]
 
 Read-only is not a native switch/checkbox state. For non-editable settings show a clearly labeled value; do not fake read-only by leaving a switch clickable while discarding its changes. On a remote-save failure restore the confirmed value and explain failure. These are draft error-handling requirements, not claims that the existing Switch wrapper implements persistence.
 
@@ -902,7 +933,7 @@ A card with a primary link and an actions menu must not become one giant link co
 
 The existing Badge variants are `default`, `secondary`, `destructive`, `outline`, `product`; its default is `outline`. These are visual variants, not business status enums. Compose status-specific colors using the semantic status families without claiming a new `status` prop exists. [R09]
 
-The draft badge uses metadata typography, pill radius, 8px inline/2px block padding. A status label is not an interactive target unless it is intentionally a filter or link. Use icon/word plus color for Active, Completed, Generating, Failed, Not started and Inactive. Locked is an **access condition**, not automatically another lifecycle status. Generating is ongoing, not necessarily a warning. Avoid showing all states as equally positive lavender pills.
+The draft badge uses metadata typography, pill radius, 8px inline/2px block padding. A status label is not an interactive target unless it is intentionally a filter or link. Use icon/word plus color for Active, Completed, Generating, Failed, Not started and Inactive. Locked is an **access condition**, not automatically another lifecycle status. Generating is ongoing, not necessarily a warning. Avoid showing all states as equally positive accent-colored pills.
 
 Demo statuses and counts are specimen data. A green completed label alone must not imply a task was persisted. Render authoritative server state after reconciliation.
 
@@ -918,7 +949,7 @@ The specimen table supports local sorting and eligible-row selection; it intenti
 
 Use the actual completed/total task values and existing rounding rules. Zero is a real value; absent total is not zero completion. Unknown job progress uses indeterminate status, not an arbitrary 37% bar. Keep a visible label, units and the numeric relationship. Do not use completion events as if they were unique completed tasks. [A02; R18]
 
-**Explicit refinement from v0.2:** its lavender fill against a fully painted `#62738A` track has inadequate 3:1 contrast for distinguishing those adjacent quantities. The old `component.progress.track` token remains unchanged for compatibility. The new recipe uses `component.progress.track-background` (surface) for the remaining rail and `component.progress.track-border` (control boundary) for its outline; fill remains lavender. This is a disclosed component-recipe change, not an unannounced foundation replacement. Exact ratios and rejected legacy pair are in the contrast report. [T01]
+**Explicit refinement from v0.2:** its primary-action fill against a fully painted `#62738A` track has inadequate 3:1 contrast for distinguishing those adjacent quantities. The old `component.progress.track` token remains unchanged for compatibility. The new recipe uses `component.progress.track-background` (surface) for the remaining rail and `component.progress.track-border` (control boundary) for its outline; fill is the primary action color (cantaloupe). This is a disclosed component-recipe change, not an unannounced foundation replacement. Exact ratios and rejected legacy pair are in the contrast report. [T01]
 
 The existing Progress wrapper maps `(value || 0)` to its indicator transform. A correct indeterminate visual must therefore be deliberately added at integration; an omitted value does not currently create a new spinner/indeterminate animation by magic. Preserve the underlying primitive semantics and clamp/validate known values. [R11]
 
@@ -1446,7 +1477,7 @@ Keep the earlier distinction: 24×24 CSS px is the WCAG 2.2 AA target-size basel
 
 Contrast is evaluated on the colors actually composed in the interface, not anti-aliased edge pixels from a screenshot. Compare unrounded ratios against thresholds. Inactive controls and logotypes have contrast exceptions, but those exceptions do not justify unreadable instructions or inaccessible links. Read-only content is not automatically inactive. [S02]
 
-Keep all 77 inherited pair expectations, including the three deliberate rejections. They are regression tests for specific token pairs, not 77 accessibility findings. The lavender primary/dark-label pair and the progress rail's separate dark interior/visible boundary remain the specified recipes. Do not add opacity to a whole component or reinterpret a decorative divider as a required field border. [F02 §03; F03 §17]
+Keep the §03 contrast contract, including its deliberate rejections. Those rows are regression checks for specific token pairs, not accessibility findings. The cantaloupe primary/dark-label pair and the progress rail's separate dark interior/visible boundary remain the specified recipes. Do not add opacity to a whole component or reinterpret a decorative divider as a required field border. [F02 §03; F03 §17]
 
 ### 25.3 Focus and keyboard ownership
 
@@ -1632,17 +1663,17 @@ This package is documentation and local reference tooling, not a repository patc
 
 ### 27.2 Ownership and proposed destinations
 
-| Responsibility           | Current or supplied owner                                                                                                        | Proposed adoption action                                                                                                                       |
-| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target tokens            | Package `tokens/atlaris.tokens.json`                                                                                             | Commit one canonical authoring file, for example `design-system/tokens/atlaris.tokens.json`. This destination does not yet exist by assertion. |
-| Generated CSS / catalog  | Package compiler and `dist/`                                                                                                     | Choose a generated destination such as `src/styles/generated/atlaris-tokens.css`; never hand-edit its values.                                  |
-| Runtime theme            | `src/app/globals.css`                                                                                                            | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                                            |
-| Agent design entry point | `DESIGN.md`                                                                                                                      | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter.                 |
-| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10.                   |
-| Detailed docs            | This package's sections and registries                                                                                           | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                                 |
-| Existing font loaders    | `src/app/layout.tsx`                                                                                                             | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                                          |
-| Theme state              | `src/app/ThemeProvider.tsx`                                                                                                      | Keep class-based dark mode, default system preference and provider behavior.                                                                   |
-| Brand / metadata         | Supplied assets and root metadata                                                                                                | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                                           |
+| Responsibility           | Current or supplied owner                                                                                                        | Proposed adoption action                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Target tokens            | Package `tokens/atlaris.tokens.json` (retired 2026-10-30)                                                                        | Done: `src/styles/atlaris-tokens.css` is the authoring file (dark); light values live in `:root` in `src/app/globals.css`.     |
+| Generated CSS / catalog  | Package compiler and `dist/` (retired 2026-10-30)                                                                                | No generation step; the token file is edited directly.                                                                         |
+| Runtime theme            | `src/app/globals.css`                                                                                                            | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                            |
+| Agent design entry point | `DESIGN.md`                                                                                                                      | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter. |
+| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10.   |
+| Detailed docs            | This package's sections and registries                                                                                           | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                 |
+| Existing font loaders    | `src/app/layout.tsx`                                                                                                             | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                          |
+| Theme state              | `src/app/ThemeProvider.tsx`                                                                                                      | Keep class-based dark mode, default system preference and provider behavior.                                                   |
+| Brand / metadata         | Supplied assets and root metadata                                                                                                | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                           |
 
 The current `DESIGN.md` explicitly describes copper/plum and tells agents to edit runtime CSS first. Leaving it unchanged after adopting this target would cause conflicting instructions. Change the authority model in a deliberate migration record; do not quietly declare the new package live while old instructions still control agent work. The supplied compiler is an Atlaris-specific DTCG-type subset implementation, not a universal design-tool importer. [G03; F02 §§11–13; S17]
 
@@ -1676,18 +1707,18 @@ No shared Tabs, Checkbox, RadioGroup, ordinary Dialog, Popover, Combobox or Slid
 
 The generated selector remains `[data-atlaris-theme="dark"]`. Decide how the existing theme provider applies that scope in an isolated preview and then in the adopted app. Put the owning token scope where actual portals can inherit it, or provide a deliberate portal container; a token attribute on only the main content will not theme a menu portaled outside that subtree. Test actual light, dark and system transitions with vendor widgets. [F02 §12; F03 §19; G04]
 
-| Current runtime role            | Target token family                                                | Constraint                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `--background` / `--foreground` | `semantic.color.background.canvas` / `semantic.color.text.primary` | New dark theme only until light values are reviewed.                                                     |
-| `--panel`, `--card`             | `semantic.color.background.surface`                                | Keep matching foreground and readable nested surfaces.                                                   |
-| `--popover`                     | `semantic.color.background.raised`                                 | Verify portal ownership, layering and viewport constraints.                                              |
-| `--primary`, `--primary-dark`   | Primary-action family at applicable call sites                     | Current primary also colors text/icons; use the link/text role where needed rather than blanket mapping. |
-| `--primary-foreground`          | Primary action foreground                                          | Dark label on lavender; do not carry white labels into normal primary buttons.                           |
-| `--destructive`                 | Split action and status families                                   | White-label red button fill is not the same color as error text/border.                                  |
-| `--input` / `--border`          | Control boundary / decorative or grouping boundary                 | Choose by information role, not one global border value.                                                 |
-| `--ring`                        | Focus family                                                       | Opaque outline with separation; preserve simultaneous invalid/selected state.                            |
-| `--chart-*`                     | Chart family and existing series mapping                           | Check actual plotted adjacency, labels and backgrounds.                                                  |
-| Spacing / radii / type          | Semantic/component dimensions and recipes                          | No blind global multiplier change or assumed font match.                                                 |
+| Current runtime role            | Target token family                                                | Constraint                                                                            |
+| ------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `--background` / `--foreground` | `semantic.color.background.canvas` / `semantic.color.text.primary` | New dark theme only until light values are reviewed.                                  |
+| `--panel`, `--card`             | `semantic.color.background.surface`                                | Keep matching foreground and readable nested surfaces.                                |
+| `--popover`                     | `semantic.color.background.raised`                                 | Verify portal ownership, layering and viewport constraints.                           |
+| `--primary`, `--primary-dark`   | Primary-action family at applicable call sites                     | Maps to `semantic.color.text.accent` (cantaloupe) for text/icons; links use `--link`. |
+| `--primary-foreground`          | Primary action foreground                                          | Dark label on cantaloupe; do not carry white labels into normal primary buttons.      |
+| `--destructive`                 | Split action and status families                                   | White-label red button fill is not the same color as error text/border.               |
+| `--input` / `--border`          | Control boundary / decorative or grouping boundary                 | Choose by information role, not one global border value.                              |
+| `--ring`                        | Focus family                                                       | Opaque outline with separation; preserve simultaneous invalid/selected state.         |
+| `--chart-*`                     | Chart family and existing series mapping                           | Check actual plotted adjacency, labels and backgrounds.                               |
+| Spacing / radii / type          | Semantic/component dimensions and recipes                          | No blind global multiplier change or assumed font match.                              |
 
 Changing `--spacing` from 0.2rem to 0.25rem grows affected utility dimensions by 25%; it does not make existing `h-9` a 40px control. Preserve the explicit 4rem header contract until the new shell is tested. Change semantic bridges, component recipes and compiled-layout checks together. Tailwind's utility-generating theme namespace and ordinary CSS variables are related but not interchangeable; verify the actual generated styles. [F02 §§05–07; S18]
 
@@ -1794,8 +1825,8 @@ JCS-98 records the post-migration audit of tracked design documents and agent gu
 | `DESIGN.md`, `AGENTS.md`, `docs/README.md`                                     | Dropped compatibility-pointer language                                                                               | Current agent/docs entry points only                           |
 | Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md`       | Historical provenance of the `f8994dc` snapshot                                                                      | Keep; not current authority                                    |
 | `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior                                                                                     | Retained                                                       |
-| `src/styles/generated/atlaris-tokens.css`                                      | Generated dark token artifact                                                                                        | Retained; do not hand-edit                                     |
-| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository                                                                                              | Retained as documented provenance                              |
+| `src/styles/atlaris-tokens.css` (was `src/styles/generated/`)                  | Dark token source since 2026-10-30 (Midnight)                                                                        | Edit directly; single source                                   |
+| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository; retired as a token source 2026-10-30                                                        | Historical provenance only                                     |
 | `Atlaris-style-guide.pdf` alias in **A01**                                     | External inventory hash alias                                                                                        | Historical provenance only                                     |
 | `.cursor/rules/redesign.md`                                                    | Generic diagnostic skill, not After Hours brand guidance                                                             | Retained; Design Values there are not the Atlaris token source |
 | Verify-atlaris pricing assertion                                               | Current launch headline vs the retired smoke string                                                                  | Retained as a test instruction; no longer labeled After Hours  |
