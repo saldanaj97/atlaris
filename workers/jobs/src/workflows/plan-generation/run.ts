@@ -465,8 +465,10 @@ export async function runPlanGenerationWorkflow(
   let current: StepName = 'record-workflow';
   try {
     // The switches are read inside the step and replayed from its result, so
-    // a flag flipped while the instance runs cannot change its pipeline.
-    const { grounded, directSearch } = await step.do(
+    // a flag flipped while the instance runs cannot change its pipeline. An
+    // instance that recorded itself before DEV-192 replays `{ kind: 'recorded' }`
+    // here, so both default to off: it finishes on the ungrounded pipeline.
+    const { grounded = false, directSearch = false } = await step.do(
       PLAN_GENERATION_STEPS.recordWorkflow,
       RECORD_WORKFLOW_STEP_CONFIG,
       async () => {

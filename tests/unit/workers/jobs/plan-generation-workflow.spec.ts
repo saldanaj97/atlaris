@@ -678,6 +678,33 @@ describe('runPlanGenerationWorkflow', () => {
       providerReturning(planText(cleanModules()));
     });
 
+    it('finishes ungrounded when record-workflow replays a pre-DEV-192 result', async () => {
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
+      const { step, calls } = createStep();
+      // Workflows replay a completed step's stored result instead of running
+      // it again; before DEV-192 that result was `{ kind: 'recorded' }`.
+      const run = step.do as (...args: unknown[]) => Promise<unknown>;
+      const replayed = {
+        do: async (name: string, ...rest: unknown[]) =>
+          name === 'record-workflow'
+            ? { kind: 'recorded' }
+            : run(name, ...rest),
+      } as unknown as Pick<WorkflowStep, 'do'>;
+
+      await expect(
+        runPlanGenerationWorkflow(event(), replayed, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual(['generate', 'finalize']);
+      expect(mocks.createGroundedOutlineProvider).not.toHaveBeenCalled();
+      expect(stepLogs(logger).map((fields) => fields.step)).toEqual([
+        'generate',
+        'finalize',
+      ]);
+    });
+
     it('researches once, saves the brief and sources, then generates', async () => {
       const { deps, logger } = makeDeps({
         isGroundedEnabled: async () => true,
