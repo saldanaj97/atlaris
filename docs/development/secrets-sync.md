@@ -41,7 +41,6 @@ GitHub environment secrets are set in GitHub, not from 1Password, so they can dr
 | Names                                                                 | Why                                                                                          |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `POSTGRES_*`, `SUPABASE_*`, `NEXT_PUBLIC_SUPABASE_*`                  | Written by the Supabase ↔ Vercel integration (including preview branches)                    |
-| `FLAGS`                                                               | Written by the Vercel Flags integration                                                      |
 | `VERCEL_*`                                                            | Reserved for Vercel system variables                                                         |
 | Any Vercel variable whose existing entry is integration-owned         | Same reason; detected from `vercel env ls` (for example the Sentry integration's `SENTRY_*`) |
 | Worker: `SENTRY_AUTH_TOKEN`                                           | A Workers Builds build secret; set it in the build settings                                  |

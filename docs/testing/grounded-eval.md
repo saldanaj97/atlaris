@@ -44,7 +44,7 @@ Every plan gets its own throwaway Clerk user (`eval-…@atlaris.app`), so per-us
 
 1. With grounded generation off for the tier, collect v15:
    `pnpm exec tsx scripts/eval/grounded/run.ts collect --arm v15 --tier pro`
-2. Turn grounded on for the tier: set the app flag `grounded-generation` and the Worker's `GROUNDED_GENERATION_<TIER>`. Then collect the grounded arm. Pilot with `--topics rust-ownership` first.
+2. Turn grounded on for the tier: in the Flagship app, add a `grounded-generation` targeting rule that serves **on** for `environment = staging` and `subscriptionTier = <tier>` (the app and the Worker read the same flag). Then collect the grounded arm. Pilot with `--topics rust-ownership` first.
    `pnpm exec tsx scripts/eval/grounded/run.ts collect --arm grounded --tier pro`
 3. Classify each arm's module failures from the staging lesson Workflow instances (run from the repo root; it uses `workers/jobs`' Wrangler login):
    `pnpm exec tsx scripts/eval/grounded/run.ts classify --manifest tests/results/grounded-eval/v15-pro.json`, then the same for the grounded manifest.

@@ -159,10 +159,10 @@ export type ModuleLessonsWorkflowDeps = {
   /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
   readonly isEnabled: () => boolean;
   /**
-   * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
+   * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier` runs grounded
    * generation. Unset switches mean off.
    */
-  readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
+  readonly isGroundedEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;

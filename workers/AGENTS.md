@@ -7,7 +7,7 @@ This directory holds the Cloudflare jobs Worker, `workers/jobs/` (`@atlaris/jobs
 ## Layout and config
 
 - `workers/jobs/cloudflare.config.ts` (`cf/config`) defines the Worker for each mode. With no `--mode` it is the local-only `atlaris-jobs`, which is never deployed. `--mode staging` is `atlaris-jobs-staging` and `--mode production` is `atlaris-jobs-production`. Each mode lists its own bindings, vars, and secrets.
-- `workers/jobs/wrangler.config.ts` holds bundler aliases, the tsconfig path, and dev-server settings. The aliases replace Next- and Vercel-only modules (`@sentry/nextjs`, `flags/next`, `@flags-sdk/vercel`).
+- `workers/jobs/wrangler.config.ts` holds the bundler alias (`@sentry/nextjs` → `@sentry/cloudflare`), the tsconfig path, and dev-server settings.
 - Use the `cf` CLI, not Wrangler config files, and run `cf` and Wrangler from `workers/jobs/`.
 - Worker code imports domain logic from `@/` and `@supabase/`. Keep job logic in `src/features/**` and keep the Worker a thin entry layer (`workers/jobs/src/index.ts`, `workers/jobs/src/http/`, `workers/jobs/src/jobs/`, `workers/jobs/src/workflows/`).
 
@@ -24,6 +24,7 @@ This directory holds the Cloudflare jobs Worker, `workers/jobs/` (`@atlaris/jobs
 - Never reuse I/O across invocations. Open the database through `withInvocationDb` (handlers) or `withStepDb` (Workflow steps) in `workers/jobs/src/db.ts`; never create a module-level pool or client.
 - Keep heavy work out of module scope. Cloudflare rejects a deploy whose startup takes too long on its validator (error 10021). Load large single-path dependencies inside the handler with `await import(...)`.
 - Every job checks `isJobEnabled(env, '<JOB>')` from `workers/jobs/src/switches.ts`. Switches default to off, and `JOBS_PAUSED=true` stops every job. When you add a job, add it to `JOB_NAMES` in `workers/jobs/src/switches.ts` and to `JOB_SWITCHES` in `cloudflare.config.ts`.
+- Feature flags (`grounded-generation`, `module-lesson-generation`, `email-notification-delivery`) are Cloudflare Flagship flags read through the `FLAGS` binding. Call `registerWorkerFlags(env)` (`workers/jobs/src/flags.ts`) right after `parseWorkerEnv` in every handler and Workflow `run`; without it the shared helpers in `src/` return their defaults. Read a flag inside a Workflow step, never between steps, so a replay sees the same value. Flags are created only in the Flagship dashboard, never from code.
 - App-to-Worker commands are HMAC-signed `POST /v1/<command>` requests verified in `workers/jobs/src/http/signature.ts`. During a contract change the Worker accepts both the old and the new command shape.
 - Queue messages and Workflow steps can be retried. Claim work atomically and keep each step idempotent. For regeneration, `job_queue` is the record and the 15-minute sweep re-sends lost work.
 - Cloudflare cron weekdays start at 1 = Sunday. Use names (`MON`), not numbers.

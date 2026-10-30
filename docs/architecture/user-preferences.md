@@ -90,7 +90,7 @@ Token: HMAC payload with purpose `email_unsubscribe_all` (`src/features/notifica
 
 ## Feature flags (related)
 
-Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags. These three keys stay Vercel-backed operational kill switches — they do not move to PostHog. Future user/cohort/experiment/percentage product rollouts belong in PostHog; do not add `@flags-sdk/posthog` for these controls. Ownership rule and env/scheduler inventory: [environment.md — Flag and gate ownership](../development/environment.md#flag-and-gate-ownership). Fail-open/fail-closed table: [environment.md — Vercel Flags](../development/environment.md#vercel-flags).
+Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** feature flags. These keys are Cloudflare Flagship operational kill switches — they do not move to PostHog. Future user/cohort/experiment/percentage product rollouts belong in PostHog; do not add a PostHog flag provider for these controls. Ownership rule and env/scheduler inventory: [environment.md — Flag and gate ownership](../development/environment.md#flag-and-gate-ownership). Fail-open/fail-closed table: [environment.md — Feature flags](../development/environment.md#feature-flags-cloudflare-flagship).
 
 | Flag key                      | Default               | Role                                                                                                        |
 | ----------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
@@ -98,7 +98,7 @@ Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** f
 | `maintenance-mode`            | fallback `false`      | Proxy routes app traffic to maintenance. Local development still allows opening `/maintenance` for preview. |
 | `module-lesson-generation`    | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle                                            |
 
-Without `FLAGS` (typical local), adapters use the flag `defaultValue` / fallback — email delivery and lesson generation stay off until enabled in a Vercel environment with Flags configured.
+Without `FLAGSHIP_*` (typical local), every flag returns its code default (`false`) — email delivery and lesson generation stay off until enabled in the Flagship app for a hosted environment.
 
 ## Pitfalls
 

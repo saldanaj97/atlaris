@@ -1,14 +1,11 @@
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-
-import { GROUNDED_GENERATION_TIERS, JOB_NAMES, type JobName } from './switches';
+import { JOB_NAMES, type JobName } from './switches';
 import { z } from 'zod';
 
 export type JobSwitchVars = {
   JOBS_PAUSED?: string;
   /** Plan research calls Parallel directly (DEV-171); unset is off. */
   PARALLEL_DIRECT_RESEARCH?: string;
-} & Partial<Record<`JOB_${JobName}_ENABLED`, string>> &
-  Partial<Record<`GROUNDED_GENERATION_${Uppercase<SubscriptionTier>}`, string>>;
+} & Partial<Record<`JOB_${JobName}_ENABLED`, string>>;
 
 /**
  * Bindings and vars from `cloudflare.config.ts`, plus the deploy-time
@@ -25,6 +22,9 @@ export type WorkerEnv = Env &
     POSTHOG_PERSONAL_API_KEY?: string;
   };
 
+/** What flag evaluation needs: the Flagship binding and the environment attribute. */
+export type FlagEnv = Pick<WorkerEnv, 'FLAGS' | 'WORKER_ENV'>;
+
 const optionalString = z.string().optional();
 
 /**
@@ -38,6 +38,12 @@ const workerEnvSchema = z.object({
   WORKER_ENV: z.enum(['development', 'staging', 'production']),
   SENTRY_DSN: z.string(),
   SENTRY_RELEASE: optionalString,
+  FLAGS: z.custom<Flagship>(
+    (value) =>
+      typeof value === 'object' &&
+      value !== null &&
+      'getBooleanDetails' in value,
+  ),
   REGENERATION_QUEUE: z.custom<Queue>(
     (value) => typeof value === 'object' && value !== null && 'send' in value,
   ),
@@ -58,12 +64,6 @@ const workerEnvSchema = z.object({
   PARALLEL_DIRECT_RESEARCH: optionalString,
   ...Object.fromEntries(
     JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),
-  ),
-  ...Object.fromEntries(
-    GROUNDED_GENERATION_TIERS.map((tier) => [
-      `GROUNDED_GENERATION_${tier.toUpperCase()}`,
-      optionalString,
-    ]),
   ),
 });
 

@@ -1,13 +1,6 @@
 import type { NextConfig } from 'next';
 
-import { isHostedDeployEnv } from './src/lib/config/env/shared';
 import { withSentryConfig } from '@sentry/nextjs';
-import path from 'node:path';
-
-const vercelFlagsDefinitionsShim = path.join(
-  process.cwd(),
-  'src/lib/flags/vercel-flags-definitions-shim.ts',
-);
 
 const securityHeaders = [
   { key: 'X-Frame-Options', value: 'DENY' },
@@ -22,7 +15,6 @@ const securityHeaders = [
 
 const smokeDistDir = process.env.SMOKE_NEXT_DIST_DIR?.trim();
 const isSmokeRun = Boolean(smokeDistDir && smokeDistDir.length > 0);
-const useLocalFlagsDefinitionsShim = !isHostedDeployEnv(process.env);
 const allowedDevOrigins = ['127.0.0.1', 'localhost'];
 const publicVercelEnv =
   process.env.VERCEL_ENV ?? process.env.NEXT_PUBLIC_VERCEL_ENV;
@@ -55,39 +47,6 @@ const nextConfig: NextConfig = {
     'thread-stream',
     'sonic-boom',
   ],
-  // flags-core optional-imports a Vercel-build-only package. Turbopack still
-  // overlays "Can't resolve '@vercel/flags-definitions'" (vercel/flags#384).
-  // Hosted Vercel builds must resolve the real package for flag evaluation.
-  ...(useLocalFlagsDefinitionsShim
-    ? {
-        turbopack: {
-          resolveAlias: {
-            '@vercel/flags-definitions':
-              './src/lib/flags/vercel-flags-definitions-shim.ts',
-          },
-        },
-      }
-    : {}),
-  webpack: (config) => {
-    if (!useLocalFlagsDefinitionsShim) {
-      return config;
-    }
-
-    config.resolve ??= {};
-    const existing = config.resolve.alias;
-    if (Array.isArray(existing)) {
-      existing.push({
-        name: '@vercel/flags-definitions',
-        alias: vercelFlagsDefinitionsShim,
-      });
-    } else {
-      config.resolve.alias = {
-        ...existing,
-        '@vercel/flags-definitions': vercelFlagsDefinitionsShim,
-      };
-    }
-    return config;
-  },
   async headers() {
     return [
       {

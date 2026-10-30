@@ -63,13 +63,12 @@ export const SYNC_TARGETS: Record<string, SyncTarget> = {
   },
 };
 
-/** Written by the Supabase and Vercel Flags integrations, or reserved by Vercel. */
+/** Written by the Supabase integration, or reserved by Vercel. */
 const INTEGRATION_MANAGED = [
   /^POSTGRES_/,
   /^SUPABASE_/,
   /^NEXT_PUBLIC_SUPABASE_/,
   /^VERCEL_/,
-  /^FLAGS$/,
 ];
 /** Workers Builds build secrets, not runtime secrets. */
 const WORKER_BUILD_ONLY = new Set(['SENTRY_AUTH_TOKEN']);

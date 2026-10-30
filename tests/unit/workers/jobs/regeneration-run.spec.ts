@@ -517,7 +517,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
   };
 
   const stages = {
-    isEnabled: vi.fn(() => true),
+    isEnabled: vi.fn(async () => true),
     research: vi.fn(),
     outlineQuality: vi.fn(),
   };
@@ -563,7 +563,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
       groundedJob('pending'),
       groundedJob('processing', RUN_ID),
     );
-    stages.isEnabled.mockReturnValue(true);
+    stages.isEnabled.mockResolvedValue(true);
     stages.research.mockImplementation(async () => {
       order.push('research');
       return BRIEF;
@@ -774,7 +774,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
   });
 
   it("keeps today's flow when the switch is off for the tier", async () => {
-    stages.isEnabled.mockReturnValue(false);
+    stages.isEnabled.mockResolvedValue(false);
 
     await expect(
       runPlanRegeneration(JOB_ID, groundedContext),
@@ -794,7 +794,7 @@ describe('runPlanRegeneration grounded (JCS-162)', () => {
   });
 
   it('still denies Free when the switch is off', async () => {
-    stages.isEnabled.mockReturnValue(false);
+    stages.isEnabled.mockResolvedValue(false);
     mocks.resolveUserTier.mockResolvedValue('free');
 
     await expect(

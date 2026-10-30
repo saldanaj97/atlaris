@@ -4,13 +4,21 @@
 // deployed. Bindings, vars, and secrets are per mode, so each mode lists its own.
 // Job switches (JOBS_PAUSED, JOB_*_ENABLED) are Worker secrets in the deployed
 // modes (design note, Decision 7): declared here so a deploy keeps them, and
-// flipped with `cf workers secrets update`, never from Git.
+// flipped with `cf workers secrets update`, never from Git. Feature flags are
+// evaluated through the Flagship binding (DEV-192).
 import { bindings, defineConfig, exports, triggers } from 'cf/config';
 
 type DeployedMode = 'staging' | 'production';
 
 // nodejs_compat is on by default from compatibility date 2026-08-04.
 const COMPATIBILITY_DATE = '2026-09-26';
+
+/**
+ * Cloudflare Flagship app holding the feature flags (DEV-192; not a secret).
+ * Staging and production share it; targeting rules on the `environment`
+ * attribute tell them apart. `cf flagship apps list` prints the id.
+ */
+const FLAGSHIP_APP_ID = '0c83e899-3537-4792-b1d7-199743a8c2e8';
 
 /** atlaris-jobs Sentry project (not a secret). */
 const SENTRY_DSN =
@@ -171,6 +179,7 @@ function deployedWorker(mode: DeployedMode) {
       LOG_LEVEL: bindings.text('info'),
       ...secrets(DEPLOYED_SECRETS),
       ...secrets(JOB_SWITCHES),
+      FLAGS: bindings.flagship({ id: FLAGSHIP_APP_ID }),
       HYPERDRIVE: bindings.hyperdrive({ id: target.hyperdriveId }),
       REGENERATION_QUEUE: queue.binding,
       ...workflow.env,
@@ -194,6 +203,9 @@ function localWorker() {
       APP_URL: bindings.text('http://localhost:3000'),
       SENTRY_DSN: bindings.text(''),
       LOG_LEVEL: bindings.text('debug'),
+      // `cf dev` evaluates against the local flag store, which starts empty, so
+      // every flag returns its default; `wrangler flagship flags pull` seeds it.
+      FLAGS: bindings.flagship({ id: FLAGSHIP_APP_ID }),
       // `pnpm workers dev` sets CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE
       // to this worktree's native Supabase stack, which takes precedence over this id.
       HYPERDRIVE: bindings.hyperdrive({

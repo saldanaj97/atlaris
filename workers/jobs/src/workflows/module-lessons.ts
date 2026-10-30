@@ -1,10 +1,12 @@
 import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
-import { isGroundedGenerationEnabled, isJobEnabled } from '../switches';
+import { registerWorkerFlags } from '../flags';
+import { isJobEnabled } from '../switches';
 import {
   type ModuleLessonsWorkflowParams,
   runModuleLessonsWorkflow,
 } from './module-lessons/run';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { createLogger } from '@/lib/logging/logger';
 import {
   type WorkflowEvent,
@@ -29,10 +31,11 @@ export class ModuleLessonsWorkflowEntrypoint extends WorkflowEntrypoint<
     step: WorkflowStep,
   ) {
     parseWorkerEnv(this.env);
+    registerWorkerFlags(this.env);
     const env = this.env;
     return runModuleLessonsWorkflow(event, step, {
       isEnabled: () => isJobEnabled(env, 'MODULE_LESSONS'),
-      isGroundedEnabled: (tier) => isGroundedGenerationEnabled(env, tier),
+      isGroundedEnabled,
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       logger,
       nonRetryable: (message) => new NonRetryableError(message),

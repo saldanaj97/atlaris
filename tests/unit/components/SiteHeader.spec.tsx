@@ -12,16 +12,10 @@ const mocks = vi.hoisted(() => ({
   requestBoundaryComponent: vi.fn(),
   currentUser: vi.fn(),
   resolveSiteGate: vi.fn(),
-  cookiesHas: vi.fn(),
 }));
 
 vi.mock('@/lib/proxy/site-gate', () => ({
-  FLAG_OVERRIDES_COOKIE: 'vercel-flag-overrides',
   resolveSiteGate: mocks.resolveSiteGate,
-}));
-
-vi.mock('next/headers', () => ({
-  cookies: async () => ({ has: mocks.cookiesHas }),
 }));
 
 vi.mock('@/lib/auth/server', () => ({
@@ -71,26 +65,7 @@ describe('SiteHeader', () => {
     mocks.shouldUseClerkUi.mockReturnValue(true);
     mocks.isLocalProductTestingAuthEnabled.mockReturnValue(false);
     mocks.resolveSiteGate.mockResolvedValue(null);
-    mocks.cookiesHas.mockReturnValue(false);
   });
-
-  it.each([false, true])(
-    'bypasses the site gate cache only when the flag override cookie is present (%s)',
-    async (hasOverrides) => {
-      mocks.cookiesHas.mockReturnValue(hasOverrides);
-      mocks.requestBoundaryComponent.mockResolvedValue({
-        tier: 'pro',
-        canCreatePlan: true,
-      });
-
-      await SiteHeader({ loadAccountProfile: false });
-
-      expect(mocks.cookiesHas).toHaveBeenCalledWith('vercel-flag-overrides');
-      expect(mocks.resolveSiteGate).toHaveBeenCalledWith({
-        bypassCache: hasOverrides,
-      });
-    },
-  );
 
   it('starts the Clerk profile lookup without waiting for entitlement', async () => {
     const entitlement = createDeferredPromise<{

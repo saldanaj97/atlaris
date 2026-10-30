@@ -8,7 +8,7 @@ import {
 
 /**
  * Email delivery env. Send enablement is controlled by the
- * `email-notification-delivery` Vercel Flag; these getters only expose secrets.
+ * `email-notification-delivery` Flagship flag; these getters only expose secrets.
  * Unsubscribe verification stays independent of the send flag.
  */
 interface EmailEnv {

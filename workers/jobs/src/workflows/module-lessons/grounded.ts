@@ -107,11 +107,11 @@ export async function resolveGroundedLessonContext(
   input: {
     readonly target: ModuleLessonGenerationTarget;
     readonly modelOverride?: string | null;
-    readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
+    readonly isGroundedEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   },
 ): Promise<GroundedLessonContext | null> {
   const tier = await resolveUserTier(input.target.userId, db);
-  if (!input.isGroundedEnabled(tier)) {
+  if (!(await input.isGroundedEnabled(tier))) {
     return null;
   }
   const [groundedPicks, latest, plan, spentMicrousd] = await Promise.all([

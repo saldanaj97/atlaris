@@ -3,13 +3,11 @@ import type { GroundedRegenerationStages } from '@/features/jobs/regeneration-ru
 import type { Logger } from '@/lib/logging/logger';
 import type { WorkflowStep } from 'cloudflare:workers';
 
-import {
-  isDirectResearchEnabled,
-  isGroundedGenerationEnabled,
-} from '../switches';
+import { isDirectResearchEnabled } from '../switches';
 import { runOutlineQualitySteps } from '../workflows/plan-generation/outline';
 import { runPlanResearchSteps } from '../workflows/plan-generation/research';
 import { REGENERATION_JOB_TAG } from './regeneration-shared';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 
 type InlineStepConfig = { readonly retries?: { readonly limit: number } };
 
@@ -72,7 +70,7 @@ export function createGroundedRegenerationStages(deps: {
     };
 
   return {
-    isEnabled: (tier) => isGroundedGenerationEnabled(deps.env, tier),
+    isEnabled: isGroundedEnabled,
     research: async (stage) => {
       const outcome = await runPlanResearchSteps(createInlineStep(), {
         planId: stage.planId,
