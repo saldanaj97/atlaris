@@ -2,12 +2,15 @@ import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const groundedGeneration = vi.hoisted(() => vi.fn());
+const warn = vi.hoisted(() => vi.fn());
 
 vi.mock('@/flags', () => ({ groundedGeneration }));
+vi.mock('@/lib/logging/logger', () => ({ logger: { warn } }));
 
 describe('isGroundedEnabled', () => {
   beforeEach(() => {
     groundedGeneration.mockReset();
+    warn.mockReset();
   });
 
   it('is on only for the tiers the flag targets', async () => {
@@ -29,9 +32,14 @@ describe('isGroundedEnabled', () => {
     }
   });
 
-  it('fails closed when evaluation throws', async () => {
-    groundedGeneration.mockRejectedValue(new Error('flags unavailable'));
+  it('fails closed and logs when evaluation throws', async () => {
+    const error = new Error('flags unavailable');
+    groundedGeneration.mockRejectedValue(error);
 
     await expect(isGroundedEnabled('pro')).resolves.toBe(false);
+    expect(warn).toHaveBeenCalledWith(
+      { tier: 'pro', error },
+      expect.stringContaining('grounded-generation'),
+    );
   });
 });
