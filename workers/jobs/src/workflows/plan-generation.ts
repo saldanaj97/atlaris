@@ -2,7 +2,11 @@ import { withStepDb } from '../db';
 import { parseWorkerEnv, type WorkerEnv } from '../env';
 import { registerWorkerFlags } from '../flags';
 import { createWorkflowModuleLessonStarter } from '../jobs/regeneration-consumer';
-import { isDirectResearchEnabled, isJobEnabled } from '../switches';
+import {
+  isDirectResearchEnabled,
+  isJobsPaused,
+  isModuleLessonsEnabled,
+} from '../switches';
 import {
   type PlanGenerationWorkflowParams,
   runPlanGenerationWorkflow,
@@ -35,14 +39,14 @@ export class PlanGenerationWorkflowEntrypoint extends WorkflowEntrypoint<
     registerWorkerFlags(this.env);
     const env = this.env;
     return runPlanGenerationWorkflow(event, step, {
-      isEnabled: () => isJobEnabled(env, 'PLAN_GENERATION'),
+      isEnabled: async () => !(await isJobsPaused()),
       isGroundedEnabled,
-      isDirectResearchEnabled: () => isDirectResearchEnabled(env),
+      isDirectResearchEnabled,
       withDb: (fn) => withStepDb(env.HYPERDRIVE, fn),
       // Lessons for the first modules start through the lessons Workflow.
       startModuleLessons: createWorkflowModuleLessonStarter({
         workflow: env.MODULE_LESSONS_WORKFLOW,
-        isEnabled: () => isJobEnabled(env, 'MODULE_LESSONS'),
+        isEnabled: isModuleLessonsEnabled,
         logger,
       }),
       logger,

@@ -47,17 +47,15 @@ async function signed(body: string, secret = SECRET): Promise<Request> {
 }
 
 function makeDeps(
-  env: Record<string, string> = {},
+  paused = false,
   workflow: Partial<ModuleLessonsStartDeps['workflow']> = {},
 ) {
   const create = vi.fn(async () => ({}) as WorkflowInstance);
   const get = vi.fn(async () => ({}) as WorkflowInstance);
   const deps: ModuleLessonsStartDeps = {
-    env: {
-      JOBS_SIGNING_SECRET: SECRET,
-      JOB_MODULE_LESSONS_ENABLED: 'true',
-      ...env,
-    },
+    env: { JOBS_SIGNING_SECRET: SECRET },
+    isPaused: async () => paused,
+    isGenerationEnabled: async () => true,
     workflow: { create, get, ...workflow },
     logger: { info: vi.fn(), error: vi.fn() },
     nowMs: NOW_MS,
@@ -83,15 +81,12 @@ describe('handleModuleLessonsStart', () => {
   });
 
   function createFailsWith(instance: WorkflowInstance) {
-    return makeDeps(
-      {},
-      {
-        create: vi.fn(async () => {
-          throw new Error('instance.already_exists');
-        }),
-        get: vi.fn(async () => instance),
-      },
-    );
+    return makeDeps(false, {
+      create: vi.fn(async () => {
+        throw new Error('instance.already_exists');
+      }),
+      get: vi.fn(async () => instance),
+    });
   }
 
   async function start(deps: ModuleLessonsStartDeps) {
@@ -179,17 +174,14 @@ describe('handleModuleLessonsStart', () => {
   );
 
   it('answers 503 when create fails and no instance exists', async () => {
-    const { deps } = makeDeps(
-      {},
-      {
-        create: vi.fn(async () => {
-          throw new Error('workflows unavailable');
-        }),
-        get: vi.fn(async () => {
-          throw new Error('instance.not_found');
-        }),
-      },
-    );
+    const { deps } = makeDeps(false, {
+      create: vi.fn(async () => {
+        throw new Error('workflows unavailable');
+      }),
+      get: vi.fn(async () => {
+        throw new Error('instance.not_found');
+      }),
+    });
 
     const response = await handleModuleLessonsStart(
       await signed(JSON.stringify(command)),
@@ -231,14 +223,8 @@ describe('handleModuleLessonsStart', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [
-      'jobs_paused',
-      { JOBS_PAUSED: 'true', JOB_MODULE_LESSONS_ENABLED: 'true' },
-    ],
-    ['job_disabled', { JOB_MODULE_LESSONS_ENABLED: 'false' }],
-  ])('answers 503 %s', async (code, env) => {
-    const { deps, create } = makeDeps(env);
+  it('answers 503 jobs_paused while jobs are paused', async () => {
+    const { deps, create } = makeDeps(true);
 
     const response = await handleModuleLessonsStart(
       await signed(JSON.stringify(command)),
@@ -246,7 +232,21 @@ describe('handleModuleLessonsStart', () => {
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ code });
+    await expect(response.json()).resolves.toEqual({ code: 'jobs_paused' });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it('answers 503 job_disabled while module-lesson-generation is off', async () => {
+    const { deps, create } = makeDeps();
+    const disabled = { ...deps, isGenerationEnabled: async () => false };
+
+    const response = await handleModuleLessonsStart(
+      await signed(JSON.stringify(command)),
+      disabled,
+    );
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ code: 'job_disabled' });
     expect(create).not.toHaveBeenCalled();
   });
 

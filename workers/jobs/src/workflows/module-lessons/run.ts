@@ -156,8 +156,16 @@ type ParseCommitStepResult =
     };
 
 export type ModuleLessonsWorkflowDeps = {
-  /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
-  readonly isEnabled: () => boolean;
+  /**
+   * `isModuleLessonsEnabled()`: not paused and `module-lesson-generation` on.
+   * Read once, in the claim step; it fails closed.
+   */
+  readonly isEnabled: () => Promise<boolean>;
+  /**
+   * `isJobsPaused()`, read by the steps after the claim. It fails open, so a
+   * Flagship error mid-run does not revert a module whose lessons are billed.
+   */
+  readonly isPaused: () => Promise<boolean>;
   /**
    * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier` runs grounded
    * generation. Unset switches mean off.
@@ -222,7 +230,7 @@ function revertArgs(run: RunContext) {
 }
 
 /**
- * Step 1: load, re-check the switch, preflight, content access, then claim or
+ * Step 1: load, re-check the flags, preflight, content access, then claim or
  * adopt the app's provisional claim with this instance as the run.
  */
 async function claimStep(
@@ -238,7 +246,8 @@ async function claimStep(
   );
   const taskCount = load?.tasks.length ?? 0;
 
-  if (!run.deps.isEnabled()) {
+  const enabled = await run.deps.isEnabled();
+  if (!enabled) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, 'claim', { taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
@@ -256,7 +265,7 @@ async function claimStep(
 
   const gate = await checkModuleLessonGenerationGate(target, {
     dbClient: db,
-    resolveGenerationEnabled: async () => run.deps.isEnabled(),
+    resolveGenerationEnabled: async () => enabled,
   });
   if (gate !== 'open') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -309,9 +318,9 @@ async function claimStep(
 }
 
 /**
- * Step 2 (`generate`, or `generate-retry` after a parse failure): re-check the
- * switch, mark provider started, call, buffer. The provider-start marker is a
- * no-op on the retry, so usage quota counts the module once.
+ * Step 2 (`generate`, or `generate-retry` after a parse failure): check
+ * `jobs-paused`, mark provider started, call, buffer. The provider-start
+ * marker is a no-op on the retry, so usage quota counts the module once.
  */
 async function generateStep(
   db: DbClient,
@@ -321,8 +330,8 @@ async function generateStep(
 ): Promise<GenerateStepResult> {
   const stepName: StepName = attempt === 1 ? 'generate' : 'generate-retry';
   const taskCount = promptInput.tasks.length;
-  // Switch dropped since the claim: release it, as on a flag drop today.
-  if (!run.deps.isEnabled()) {
+  // Jobs paused since the claim: release it.
+  if (await run.deps.isPaused()) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, stepName, { attempt, taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
@@ -529,7 +538,7 @@ async function runGroundedLessons(
     grounded,
     attemptStartedAt: claim.startedAt,
     generateStepConfig: generateStepConfig(),
-    isEnabled: run.deps.isEnabled,
+    isPaused: run.deps.isPaused,
     withDb: run.deps.withDb,
     revertArgs: revertArgs(run),
     nonRetryable: run.deps.nonRetryable,

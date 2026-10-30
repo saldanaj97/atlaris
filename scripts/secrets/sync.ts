@@ -73,11 +73,21 @@ const INTEGRATION_MANAGED = [
 /** Workers Builds build secrets, not runtime secrets. */
 const WORKER_BUILD_ONLY = new Set(['SENTRY_AUTH_TOKEN']);
 /**
- * Job switches are Worker secrets declared in cloudflare.config.ts. An operator
- * flips them with `cf workers secrets update`; they are never synced from
- * 1Password (design note, Decision 7).
+ * The old Worker job switches, now Flagship flags or removed (DEV-193). Entries
+ * left in a Worker 1Password environment are skipped, never pushed back as
+ * Worker secrets, until someone deletes them.
  */
-const WORKER_SWITCH = /^(?:JOBS_PAUSED|JOB_[A-Z0-9_]+_ENABLED)$/;
+const RETIRED_WORKER_SWITCHES = new Set([
+  'JOBS_PAUSED',
+  'PARALLEL_DIRECT_RESEARCH',
+  'JOB_PLAN_CLEANUP_ENABLED',
+  'JOB_RETENTION_CLEANUP_ENABLED',
+  'JOB_EMAIL_DELIVERY_ENABLED',
+  'JOB_REGENERATION_ENABLED',
+  'JOB_MODULE_LESSONS_ENABLED',
+  'JOB_PLAN_GENERATION_ENABLED',
+  'JOB_POSTHOG_DELETION_ENABLED',
+]);
 const VARIABLE_NAME = /^[A-Z_][A-Z0-9_]*$/;
 
 export class SecretsSyncUsageError extends Error {
@@ -251,11 +261,11 @@ export function planSync(input: {
       if (WORKER_BUILD_ONLY.has(name)) {
         return { name, action: 'skip', reason: 'Workers Builds build secret' };
       }
-      if (WORKER_SWITCH.test(name)) {
+      if (RETIRED_WORKER_SWITCHES.has(name)) {
         return {
           name,
           action: 'skip',
-          reason: 'job switch; flip with `cf workers secrets update`',
+          reason: 'retired switch (DEV-193), delete from 1Password',
         };
       }
       if (input.declaredVars?.has(name)) {

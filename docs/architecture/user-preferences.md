@@ -94,7 +94,7 @@ Declared in `src/flags.ts`. Preference tables and Settings opt-ins are **not** f
 
 | Flag key                      | Default               | Role                                                                                                        |
 | ----------------------------- | --------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `email-notification-delivery` | `false` (fail-closed) | Cron / maintenance / workflow must not send when off                                                        |
+| `email-notification-delivery` | `false` (fail-closed) | Gates only the app's manual email route; the production Worker's scheduled sends ignore it (stop those with `jobs-paused`) |
 | `maintenance-mode`            | fallback `false`      | Proxy routes app traffic to maintenance. Local development still allows opening `/maintenance` for preview. |
 | `module-lesson-generation`    | `false` (fail-closed) | Module lesson batches (sync + workflow); not a preference toggle                                            |
 

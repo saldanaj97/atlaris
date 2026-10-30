@@ -8,7 +8,7 @@ export const PLAN_CLEANUP_CRON = '*/15 * * * *';
 export const PLAN_CLEANUP_JOB = 'plan-cleanup';
 
 export type PlanCleanupDeps = {
-  /** `isJobEnabled(env, 'PLAN_CLEANUP')`: false when switched off or paused. */
+  /** `!isJobsPaused()`: false while jobs are paused. */
   enabled: boolean;
   logger: Pick<Logger, 'info'>;
   /** Runs `fn` with this invocation's database client. */
@@ -31,14 +31,17 @@ export async function runPlanCleanup(
   if (!deps.enabled) {
     deps.logger.info(
       { job: PLAN_CLEANUP_JOB },
-      'Plan cleanup disabled or jobs paused; skipped',
+      'Jobs paused; plan cleanup skipped',
     );
     return 'skipped';
   }
 
   try {
     const result = await deps.withDb(() => runPlanCleanupMaintenance());
-    deps.logger.info({ job: PLAN_CLEANUP_JOB, ...result }, 'Completed plan cleanup');
+    deps.logger.info(
+      { job: PLAN_CLEANUP_JOB, ...result },
+      'Completed plan cleanup',
+    );
     return result;
   } catch (error) {
     deps.captureException(error, {

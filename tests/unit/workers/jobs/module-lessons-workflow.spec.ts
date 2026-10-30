@@ -259,7 +259,8 @@ function event(
 function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: ModuleLessonsWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
+    isPaused: async () => false,
     // Grounded generation off: today's pipeline.
     isGroundedEnabled: async () => false,
     withDb: (fn) =>
@@ -473,7 +474,7 @@ describe('runModuleLessonsWorkflow', () => {
 
   it('reverts the claim and stops when the switch is off', async () => {
     const provider = providerReturning(validBatchText());
-    const { deps } = makeDeps({ isEnabled: () => false, provider });
+    const { deps } = makeDeps({ isEnabled: async () => false, provider });
     const { step, calls } = createStep();
 
     await expect(
@@ -492,14 +493,9 @@ describe('runModuleLessonsWorkflow', () => {
     expect(calls.map((call) => call.name)).toEqual(['claim']);
   });
 
-  it('reverts the claim when the switch drops before the provider call', async () => {
-    const enabled = vi
-      .fn<() => boolean>()
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(true)
-      .mockReturnValue(false);
+  it('reverts the claim when jobs are paused before the provider call', async () => {
     const provider = providerReturning(validBatchText());
-    const { deps } = makeDeps({ isEnabled: enabled, provider });
+    const { deps } = makeDeps({ isPaused: async () => true, provider });
     const { step } = createStep();
 
     await expect(
@@ -511,6 +507,25 @@ describe('runModuleLessonsWorkflow', () => {
     expect(queries.markProviderStarted).not.toHaveBeenCalled();
     expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
     expect(moduleRow.status).toBe('not_generated');
+  });
+
+  it('reads the full flag check once, so a failed read after the claim does not revert', async () => {
+    // isModuleLessonsEnabled fails closed: a Flagship error after the claim
+    // would read as false.
+    const enabled = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false);
+    const { deps } = makeDeps({ isEnabled: enabled });
+    const { step } = createStep();
+
+    await expect(
+      runModuleLessonsWorkflow(event(), step, deps),
+    ).resolves.toEqual({ kind: 'success' });
+
+    expect(enabled).toHaveBeenCalledOnce();
+    expect(queries.revert).not.toHaveBeenCalled();
+    expect(queries.commitSuccess).toHaveBeenCalledOnce();
   });
 
   it('does not retry a provider failure and records the module failed', async () => {
@@ -650,18 +665,18 @@ describe('runModuleLessonsWorkflow', () => {
     );
   });
 
-  it('reverts without a retry call when the switch drops after a parse failure', async () => {
-    let enabled = true;
+  it('reverts without a retry call when jobs are paused after a parse failure', async () => {
+    let paused = false;
     const provider = {
       generateModuleLessonBatch: vi.fn(async () => {
-        enabled = false;
+        paused = true;
         return {
           stream: textStream('not json'),
           metadata: { provider: 'mock', model: 'mock-module-lesson-batch-v1' },
         };
       }),
     };
-    const { deps } = makeDeps({ provider, isEnabled: () => enabled });
+    const { deps } = makeDeps({ provider, isPaused: async () => paused });
     const { step, calls } = createStep();
 
     await expect(
@@ -1744,13 +1759,8 @@ describe('runModuleLessonsWorkflow', () => {
       });
     });
 
-    it('reverts the claim when the switch drops before a lesson call', async () => {
-      const enabled = vi
-        .fn<() => boolean>()
-        .mockReturnValueOnce(true)
-        .mockReturnValueOnce(true)
-        .mockReturnValue(false);
-      const { deps } = groundedDeps({ isEnabled: enabled });
+    it('reverts the claim when jobs are paused before a lesson call', async () => {
+      const { deps } = groundedDeps({ isPaused: async () => true });
       const { step } = createStep();
 
       await expect(
@@ -1760,6 +1770,25 @@ describe('runModuleLessonsWorkflow', () => {
       expect(writer.write).not.toHaveBeenCalled();
       expect(queries.revert).toHaveBeenCalled();
       expect(queries.commitSuccess).not.toHaveBeenCalled();
+    });
+
+    it('keeps billed lessons when a flag read fails after the claim', async () => {
+      // isModuleLessonsEnabled fails closed; only the claim step reads it.
+      const enabled = vi
+        .fn<() => Promise<boolean>>()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValue(false);
+      const { deps } = groundedDeps({ isEnabled: enabled });
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(enabled).toHaveBeenCalledOnce();
+      expect(writer.write).toHaveBeenCalled();
+      expect(queries.revert).not.toHaveBeenCalled();
+      expect(queries.commitSuccess).toHaveBeenCalledOnce();
     });
   });
 });

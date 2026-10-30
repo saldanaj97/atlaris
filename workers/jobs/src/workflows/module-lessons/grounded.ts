@@ -159,9 +159,10 @@ export type GroundedLessonStepsContext = {
   /** Quality rows for the module created from here on belong to this run. */
   readonly attemptStartedAt: string;
   readonly generateStepConfig: WorkflowStepConfig;
-  readonly isEnabled: () => boolean;
+  /** `isJobsPaused()`: fails open, so a Flagship error keeps the run going. */
+  readonly isPaused: () => Promise<boolean>;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
-  /** Releases the claim when the switch drops mid-run. */
+  /** Releases the claim when jobs are paused mid-run. */
   readonly revertArgs: Parameters<
     typeof revertModuleLessonGeneratingToNotGenerated
   >[1];
@@ -232,7 +233,7 @@ async function lessonStep(
   if (!task) {
     throw new RangeError(`No lesson task at index ${index}`);
   }
-  if (!ctx.isEnabled()) {
+  if (await ctx.isPaused()) {
     await revertModuleLessonGeneratingToNotGenerated(db, ctx.revertArgs);
     ctx.log(name, { lesson: position, attempt, outcome: 'disabled' });
     return { kind: 'disabled' };

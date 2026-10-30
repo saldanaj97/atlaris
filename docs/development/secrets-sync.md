@@ -44,7 +44,6 @@ GitHub environment secrets are set in GitHub, not from 1Password, so they can dr
 | `VERCEL_*`                                                            | Reserved for Vercel system variables                                                         |
 | Any Vercel variable whose existing entry is integration-owned         | Same reason; detected from `vercel env ls` (for example the Sentry integration's `SENTRY_*`) |
 | Worker: `SENTRY_AUTH_TOKEN`                                           | A Workers Builds build secret; set it in the build settings                                  |
-| Worker: `JOBS_PAUSED`, `JOB_*_ENABLED`                                | Operator-flipped switches; set with `cf workers secrets update` (design note, Decision 7)    |
 | Worker: names declared with `bindings.text` in `cloudflare.config.ts` | A secret may not reuse a var's name; change the var in Git                                   |
 
 Workers reach Supabase through Hyperdrive, not secrets. If the database password rotates, update the Hyperdrive configuration's origin password in the Cloudflare dashboard (`cf hyperdrive update` has no password flag).

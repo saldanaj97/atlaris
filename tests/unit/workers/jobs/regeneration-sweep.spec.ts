@@ -11,17 +11,14 @@ import { describe, expect, it, vi } from 'vitest';
 
 const TAGS = { job: 'regeneration', runtime: 'cloudflare-worker' };
 
-function makeDeps(
-  env: Record<string, string> = { JOB_REGENERATION_ENABLED: 'true' },
-  jobIds: string[] = ['job-a', 'job-b'],
-) {
+function makeDeps(paused = false, jobIds: string[] = ['job-a', 'job-b']) {
   const sendBatch = vi.fn(async () => ({
     metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
   }));
   const claimJobIds = vi.fn(async () => jobIds);
   const fakeDb = {} as DbClient;
   const deps = {
-    env,
+    paused,
     logger: { info: vi.fn() },
     captureException: vi.fn(),
     withDb: vi.fn(async (fn) => fn(fakeDb)) as RegenerationSweepDeps['withDb'],
@@ -32,22 +29,15 @@ function makeDeps(
 }
 
 describe('runRegenerationSweep', () => {
-  it.each([
-    ['paused', { JOBS_PAUSED: 'true', JOB_REGENERATION_ENABLED: 'true' }],
-    ['disabled', {}],
-  ] as const)(
-    'skips without touching the database while %s',
-    async (state, env) => {
-      const { deps, sendBatch } = makeDeps(env);
+  it('skips without touching the database while jobs are paused', async () => {
+    const { deps, sendBatch } = makeDeps(true);
 
-      await expect(runRegenerationSweep(deps)).resolves.toEqual({
-        kind: 'skipped',
-        switchState: state,
-      });
-      expect(deps.withDb).not.toHaveBeenCalled();
-      expect(sendBatch).not.toHaveBeenCalled();
-    },
-  );
+    await expect(runRegenerationSweep(deps)).resolves.toEqual({
+      kind: 'paused',
+    });
+    expect(deps.withDb).not.toHaveBeenCalled();
+    expect(sendBatch).not.toHaveBeenCalled();
+  });
 
   it('re-sends every selected job as a { v: 1, jobId } message', async () => {
     const { deps, sendBatch, claimJobIds, fakeDb } = makeDeps();

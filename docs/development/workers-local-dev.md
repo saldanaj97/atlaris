@@ -43,9 +43,9 @@ Never run the Worker against deployed resources: that touches real data. `pnpm w
 
 ## Local variables: `.dev.vars`
 
-Variables for the local Worker go in `workers/jobs/.dev.vars` (gitignored; see `workers/jobs/.dev.vars.example`). Restart `pnpm workers dev` after editing it. For example, `JOBS_PAUSED=true` makes the heartbeat log `Jobs paused; heartbeat skipped` instead of querying.
+Variables for the local Worker go in `workers/jobs/.dev.vars` (gitignored; see `workers/jobs/.dev.vars.example`). Restart `pnpm workers dev` after editing it. The job switches are Flagship flags, not `.dev.vars` entries: `cf dev` evaluates them against the local flag store, which starts empty (`wrangler flagship flags pull` seeds it), so locally `jobs-paused` is off and direct research is off.
 
-The local Worker (no `--mode` in `cloudflare.config.ts`) declares no secret bindings, so `.dev.vars` is where its secrets and job switches come from. The deployed Workers declare their secrets with `bindings.secret()` in `cloudflare.config.ts`, so a deploy keeps them. Values never come from Git or dashboard plain-text variables; operator secrets are written by [secrets sync](./secrets-sync.md). The job switches (`JOBS_PAUSED`, `JOB_*_ENABLED`) are Worker secrets too; flip one from `workers/jobs/`:
+The local Worker (no `--mode` in `cloudflare.config.ts`) declares no secret bindings, so `.dev.vars` is where its secrets come from. The deployed Workers declare their secrets with `bindings.secret()` in `cloudflare.config.ts`, so a deploy keeps them. Values never come from Git or dashboard plain-text variables; operator secrets are written by [secrets sync](./secrets-sync.md). Set an operator-only Worker secret (such as `JOBS_SIGNING_SECRET_PREVIOUS`) from `workers/jobs/`:
 
 ```bash
 pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <value>

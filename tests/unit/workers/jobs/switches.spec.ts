@@ -1,74 +1,149 @@
 import {
   isDirectResearchEnabled,
-  isJobEnabled,
+  isEmailDeliveryEnabled,
   isJobsPaused,
+  isModuleLessonsEnabled,
+  readJobsPaused,
+  retentionCleanupGate,
 } from '../../../../workers/jobs/src/switches';
+import { type FlagEvaluator, setFlagEvaluator } from '@/flags';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-describe('isJobsPaused', () => {
-  it.each([
-    [undefined, false],
-    ['', false],
-    ['true', true],
-    [' TRUE ', true],
-    ['1', true],
-    ['false', false],
-    ['yes', false],
-  ])('JOBS_PAUSED=%j → %s', (value, expected) => {
-    expect(isJobsPaused({ JOBS_PAUSED: value })).toBe(expected);
-  });
-});
+/** Serves `values`; a key set to `'error'` reports an evaluation error. */
+function useFlags(values: Record<string, boolean | 'error'>): void {
+  const evaluator: FlagEvaluator = {
+    getBooleanDetails: async (key, defaultValue) => {
+      const value = values[key];
+      return value === 'error'
+        ? { value: defaultValue, errorCode: 'GENERAL' }
+        : { value: value ?? defaultValue };
+    },
+  };
+  setFlagEvaluator(evaluator);
+}
 
-describe('isJobEnabled', () => {
-  it('is off unless the switch is set to true', () => {
-    expect(isJobEnabled({}, 'PLAN_CLEANUP')).toBe(false);
-    expect(
-      isJobEnabled({ JOB_PLAN_CLEANUP_ENABLED: 'false' }, 'PLAN_CLEANUP'),
-    ).toBe(false);
-    expect(
-      isJobEnabled({ JOB_PLAN_CLEANUP_ENABLED: 'true' }, 'PLAN_CLEANUP'),
-    ).toBe(true);
-  });
-
-  it('reads only the named job switch', () => {
-    expect(
-      isJobEnabled({ JOB_RETENTION_CLEANUP_ENABLED: 'true' }, 'PLAN_CLEANUP'),
-    ).toBe(false);
-  });
-
-  it('is off while jobs are paused', () => {
-    expect(
-      isJobEnabled(
-        { JOBS_PAUSED: 'true', JOB_PLAN_CLEANUP_ENABLED: 'true' },
-        'PLAN_CLEANUP',
-      ),
-    ).toBe(false);
-  });
-});
-
-describe('isDirectResearchEnabled (DEV-171)', () => {
-  beforeEach(() => {
-    vi.stubEnv('PARALLEL_API_KEY', 'parallel-key');
-  });
-
+// The flag source is process-wide, so these tests must not interleave.
+describe.sequential('Worker job switches (Flagship)', () => {
   afterEach(() => {
+    setFlagEvaluator(null);
     vi.unstubAllEnvs();
   });
 
-  it.each([
-    [undefined, false],
-    ['true', true],
-  ])('PARALLEL_DIRECT_RESEARCH=%j → %s', (value, expected) => {
-    expect(isDirectResearchEnabled({ PARALLEL_DIRECT_RESEARCH: value })).toBe(
-      expected,
-    );
+  describe('isJobsPaused', () => {
+    it.each([
+      [false, false],
+      [true, true],
+    ])('jobs-paused=%s → %s', async (value, expected) => {
+      useFlags({ 'jobs-paused': value });
+      await expect(isJobsPaused()).resolves.toBe(expected);
+    });
+
+    it('fails open: a failed read does not pause jobs', async () => {
+      useFlags({ 'jobs-paused': 'error' });
+      await expect(isJobsPaused()).resolves.toBe(false);
+    });
   });
 
-  it('stays off without PARALLEL_API_KEY, so research keeps working', () => {
-    vi.stubEnv('PARALLEL_API_KEY', '');
+  describe('readJobsPaused', () => {
+    it.each([
+      [false, 'running'],
+      [true, 'paused'],
+      ['error', 'unknown'],
+    ] as const)('jobs-paused=%s → %s', async (value, expected) => {
+      useFlags({ 'jobs-paused': value });
+      await expect(readJobsPaused()).resolves.toBe(expected);
+    });
+  });
 
-    expect(isDirectResearchEnabled({ PARALLEL_DIRECT_RESEARCH: 'true' })).toBe(
-      false,
-    );
+  describe('retentionCleanupGate', () => {
+    it('follows job-retention-cleanup', async () => {
+      useFlags({ 'job-retention-cleanup': true });
+      await expect(retentionCleanupGate('running')).resolves.toBe('run');
+      useFlags({ 'job-retention-cleanup': false });
+      await expect(retentionCleanupGate('running')).resolves.toBe('disabled');
+    });
+
+    it('skips while jobs are paused', async () => {
+      useFlags({ 'job-retention-cleanup': true });
+      await expect(retentionCleanupGate('paused')).resolves.toBe('paused');
+    });
+
+    it('fails closed when either flag read failed', async () => {
+      useFlags({ 'job-retention-cleanup': true });
+      await expect(retentionCleanupGate('unknown')).resolves.toBe(
+        'flag_unavailable',
+      );
+      useFlags({ 'job-retention-cleanup': 'error' });
+      await expect(retentionCleanupGate('running')).resolves.toBe(
+        'flag_unavailable',
+      );
+    });
+  });
+
+  describe('isEmailDeliveryEnabled', () => {
+    it('runs in production only, whatever email-notification-delivery says', async () => {
+      useFlags({ 'email-notification-delivery': false });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(true);
+      useFlags({ 'email-notification-delivery': true });
+      await expect(isEmailDeliveryEnabled('staging')).resolves.toBe(false);
+      await expect(isEmailDeliveryEnabled('development')).resolves.toBe(false);
+    });
+
+    it('is off while jobs are paused', async () => {
+      useFlags({ 'jobs-paused': true });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(false);
+    });
+
+    it('keeps sending when the jobs-paused read fails', async () => {
+      useFlags({ 'jobs-paused': 'error' });
+      await expect(isEmailDeliveryEnabled('production')).resolves.toBe(true);
+    });
+  });
+
+  describe('isModuleLessonsEnabled', () => {
+    const isEnabled = isModuleLessonsEnabled;
+    const flag = 'module-lesson-generation';
+
+    it(`follows ${flag}`, async () => {
+      useFlags({ [flag]: true });
+      await expect(isEnabled()).resolves.toBe(true);
+      useFlags({ [flag]: false });
+      await expect(isEnabled()).resolves.toBe(false);
+    });
+
+    it('is off while jobs are paused', async () => {
+      useFlags({ 'jobs-paused': true, [flag]: true });
+      await expect(isEnabled()).resolves.toBe(false);
+    });
+
+    it('fails closed on a failed read', async () => {
+      useFlags({ [flag]: 'error' });
+      await expect(isEnabled()).resolves.toBe(false);
+    });
+  });
+
+  describe('isDirectResearchEnabled (DEV-171)', () => {
+    beforeEach(() => {
+      vi.stubEnv('PARALLEL_API_KEY', 'parallel-key');
+    });
+
+    it.each([
+      [false, false],
+      [true, true],
+    ])('parallel-direct-research=%s → %s', async (value, expected) => {
+      useFlags({ 'parallel-direct-research': value });
+      await expect(isDirectResearchEnabled()).resolves.toBe(expected);
+    });
+
+    it('stays off without PARALLEL_API_KEY, so research keeps working', async () => {
+      vi.stubEnv('PARALLEL_API_KEY', '');
+      useFlags({ 'parallel-direct-research': true });
+      await expect(isDirectResearchEnabled()).resolves.toBe(false);
+    });
+
+    it('fails closed on a failed read', async () => {
+      useFlags({ 'parallel-direct-research': 'error' });
+      await expect(isDirectResearchEnabled()).resolves.toBe(false);
+    });
   });
 });

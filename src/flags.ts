@@ -1,7 +1,8 @@
 // Feature flags, evaluated in Cloudflare Flagship. The app evaluates over
 // HTTP through the OpenFeature server provider with a short response cache;
 // the jobs Worker registers its `FLAGS` binding with `setFlagEvaluator()`.
-// Flag keys match the Flagship app; every flag is boolean and fails closed.
+// Flag keys match the Flagship app; every flag is boolean and fails closed,
+// except `jobs-paused`, whose caller treats a failed read as "not paused".
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { flagshipEnv } from '@/lib/config/env/flagship';
@@ -117,7 +118,7 @@ function recordFailure(
   });
   logger.warn(
     { flagKey: key, context, code: error.code, err: error.cause ?? error },
-    `Flag evaluation failed; serving the fail-closed value for ${FLAG_FAILURE_TTL_MS / 1000} s`,
+    `Flag evaluation failed; callers apply their fallback for ${FLAG_FAILURE_TTL_MS / 1000} s`,
   );
   return error;
 }
@@ -194,13 +195,28 @@ export const maintenanceMode = (): Promise<boolean> =>
 export const launchWaitlist = (): Promise<boolean> =>
   evaluateBoolean('launch-waitlist', false);
 
-/** Allow the jobs Worker to send opted-in email notifications. */
+/**
+ * Allow the app's manual email route to start a delivery run. The jobs Worker
+ * does not read it; stopping Worker email takes `jobs-paused`.
+ */
 export const emailNotificationDelivery = (): Promise<boolean> =>
   evaluateBoolean('email-notification-delivery', false);
 
 /** Allow synchronous and workflow-backed module lesson generation. */
 export const moduleLessonGeneration = (): Promise<boolean> =>
   evaluateBoolean('module-lesson-generation', false);
+
+/** Pause every jobs Worker job (Worker only; callers fail open). */
+export const jobsPaused = (): Promise<boolean> =>
+  evaluateBoolean('jobs-paused', false);
+
+/** Plan research searches Parallel directly instead of OpenRouter `web_search` (Worker only). */
+export const parallelDirectResearch = (): Promise<boolean> =>
+  evaluateBoolean('parallel-direct-research', false);
+
+/** Allow the jobs Worker's nightly retention cleanup, which deletes rows. */
+export const jobRetentionCleanup = (): Promise<boolean> =>
+  evaluateBoolean('job-retention-cleanup', true);
 
 /**
  * Whether `tier` runs the grounded generation pipeline (research, verify,
