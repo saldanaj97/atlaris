@@ -15,7 +15,10 @@ export type FlagEnvironment = 'development' | 'staging' | 'production';
  * needs none of these: it evaluates through its `FLAGS` binding.
  */
 interface FlagshipEnv {
-  /** Flagship app ID (`cf flagship apps list`). */
+  /**
+   * Backend Flagship app ID (`cf flagship apps list`). Named "backend" in the
+   * env so a separate frontend flags app can be added later.
+   */
   readonly appId: string | undefined;
   /** Cloudflare account ID that owns the app. */
   readonly accountId: string | undefined;
@@ -39,10 +42,10 @@ function createFlagshipEnv(
 ): FlagshipEnv {
   return {
     get appId(): string | undefined {
-      return access.getServerOptional('FLAGSHIP_APP_ID');
+      return access.getServerOptional('FLAGSHIP_BACKEND_APP_ID');
     },
     get accountId(): string | undefined {
-      return access.getServerOptional('FLAGSHIP_ACCOUNT_ID');
+      return access.getServerOptional('FLAGSHIP_BACKEND_ACCOUNT_ID');
     },
     get apiToken(): string | undefined {
       return access.getServerOptional('FLAGSHIP_API_TOKEN');
