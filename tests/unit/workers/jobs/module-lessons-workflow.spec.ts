@@ -100,12 +100,14 @@ const budget = vi.hoisted(() => ({
   spent: vi.fn(async () => 0),
   insert: vi.fn(async (_cuts: unknown[]) => []),
   count: vi.fn(async () => 0),
+  recordDiscarded: vi.fn(async () => undefined),
 }));
 
 vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
   sumPlanAiSpendMicrousd: budget.spent,
   insertGenerationBudgetCuts: budget.insert,
   countGenerationBudgetCutsForModule: budget.count,
+  recordDiscardedCallUsage: budget.recordDiscarded,
 }));
 
 const groundedPicks = vi.hoisted(() => ({
@@ -257,9 +259,10 @@ function event(
 function makeDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: ModuleLessonsWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
+    isPaused: async () => false,
     // Grounded generation off: today's pipeline.
-    isGroundedEnabled: () => false,
+    isGroundedEnabled: async () => false,
     withDb: (fn) =>
       fn({
         transaction: async (run: (tx: DbClient) => Promise<unknown>) =>
@@ -471,7 +474,7 @@ describe('runModuleLessonsWorkflow', () => {
 
   it('reverts the claim and stops when the switch is off', async () => {
     const provider = providerReturning(validBatchText());
-    const { deps } = makeDeps({ isEnabled: () => false, provider });
+    const { deps } = makeDeps({ isEnabled: async () => false, provider });
     const { step, calls } = createStep();
 
     await expect(
@@ -490,14 +493,9 @@ describe('runModuleLessonsWorkflow', () => {
     expect(calls.map((call) => call.name)).toEqual(['claim']);
   });
 
-  it('reverts the claim when the switch drops before the provider call', async () => {
-    const enabled = vi
-      .fn<() => boolean>()
-      .mockReturnValueOnce(true)
-      .mockReturnValueOnce(true)
-      .mockReturnValue(false);
+  it('reverts the claim when jobs are paused before the provider call', async () => {
     const provider = providerReturning(validBatchText());
-    const { deps } = makeDeps({ isEnabled: enabled, provider });
+    const { deps } = makeDeps({ isPaused: async () => true, provider });
     const { step } = createStep();
 
     await expect(
@@ -509,6 +507,25 @@ describe('runModuleLessonsWorkflow', () => {
     expect(queries.markProviderStarted).not.toHaveBeenCalled();
     expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
     expect(moduleRow.status).toBe('not_generated');
+  });
+
+  it('reads the full flag check once, so a failed read after the claim does not revert', async () => {
+    // isModuleLessonsEnabled fails closed: a Flagship error after the claim
+    // would read as false.
+    const enabled = vi
+      .fn<() => Promise<boolean>>()
+      .mockResolvedValueOnce(true)
+      .mockResolvedValue(false);
+    const { deps } = makeDeps({ isEnabled: enabled });
+    const { step } = createStep();
+
+    await expect(
+      runModuleLessonsWorkflow(event(), step, deps),
+    ).resolves.toEqual({ kind: 'success' });
+
+    expect(enabled).toHaveBeenCalledOnce();
+    expect(queries.revert).not.toHaveBeenCalled();
+    expect(queries.commitSuccess).toHaveBeenCalledOnce();
   });
 
   it('does not retry a provider failure and records the module failed', async () => {
@@ -648,18 +665,18 @@ describe('runModuleLessonsWorkflow', () => {
     );
   });
 
-  it('reverts without a retry call when the switch drops after a parse failure', async () => {
-    let enabled = true;
+  it('reverts without a retry call when jobs are paused after a parse failure', async () => {
+    let paused = false;
     const provider = {
       generateModuleLessonBatch: vi.fn(async () => {
-        enabled = false;
+        paused = true;
         return {
           stream: textStream('not json'),
           metadata: { provider: 'mock', model: 'mock-module-lesson-batch-v1' },
         };
       }),
     };
-    const { deps } = makeDeps({ provider, isEnabled: () => enabled });
+    const { deps } = makeDeps({ provider, isPaused: async () => paused });
     const { step, calls } = createStep();
 
     await expect(
@@ -831,7 +848,7 @@ describe('runModuleLessonsWorkflow', () => {
     };
 
     function groundedDeps(overrides: Partial<ModuleLessonsWorkflowDeps> = {}) {
-      return makeDeps({ isGroundedEnabled: () => true, ...overrides });
+      return makeDeps({ isGroundedEnabled: async () => true, ...overrides });
     }
 
     beforeEach(() => {
@@ -948,6 +965,12 @@ describe('runModuleLessonsWorkflow', () => {
       );
       expect(writer.write).toHaveBeenCalledTimes(3);
       expect(calls.every((call) => call.attempts === 1)).toBe(true);
+      // The rejected first call was billed too (DEV-185).
+      const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
+      expect(committed.usage).toMatchObject({
+        inputTokens: 30,
+        providerCostMicrousd: 300,
+      });
     });
 
     it('records the module failed when a lesson still fails after its retry', async () => {
@@ -967,6 +990,31 @@ describe('runModuleLessonsWorkflow', () => {
       expect(names).not.toContain('parse-commit');
       expect(queries.commitSuccess).not.toHaveBeenCalled();
       expect(moduleRow.status).toBe('failed');
+      // Both rejected TASK_A calls and the written TASK_B (DEV-185).
+      expect(queries.commitFailure).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({
+          planId: PLAN_ID,
+          userId: USER_ID,
+          usage: expect.objectContaining({
+            inputTokens: 30,
+            providerCostMicrousd: 300,
+          }),
+        }),
+      );
+    });
+
+    it('records no usage with the failure when no call was billed', async () => {
+      writer.write.mockRejectedValue(new Error('provider down'));
+      const { deps } = groundedDeps();
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'failed' });
+
+      const [, failed] = queries.commitFailure.mock.calls[0] ?? [];
+      expect(failed).not.toHaveProperty('usage');
     });
 
     it('forbids citations and drops the brief when the plan has no research', async () => {
@@ -1636,6 +1684,33 @@ describe('runModuleLessonsWorkflow', () => {
         ).toHaveLength(2);
       });
 
+      it('records each discarded verifier call in its step attempt (DEV-185)', async () => {
+        tier.value = 'pro';
+        taskIds = [TASK_A];
+        const rejected: unknown[] = [];
+        quality.call.mockImplementation(async () => {
+          const error = new Error('no JSON object');
+          rejected.push(error);
+          throw error;
+        });
+        const { deps } = groundedDeps();
+        const { step, calls } = createStep();
+
+        await expect(
+          runModuleLessonsWorkflow(event(), step, deps),
+        ).resolves.toEqual({ kind: 'success' });
+
+        const verify = calls.find((call) => call.name === 'lesson-1-verify-0');
+        expect(verify?.attempts).toBe(2);
+        expect(budget.recordDiscarded.mock.calls).toEqual(
+          rejected.map((error) => [
+            error,
+            expect.objectContaining({ userId: USER_ID, planId: PLAN_ID }),
+            expect.anything(),
+          ]),
+        );
+      });
+
       it('ships the lesson with code checks when the verifier fails', async () => {
         tier.value = 'pro';
         taskIds = [TASK_A];
@@ -1684,13 +1759,8 @@ describe('runModuleLessonsWorkflow', () => {
       });
     });
 
-    it('reverts the claim when the switch drops before a lesson call', async () => {
-      const enabled = vi
-        .fn<() => boolean>()
-        .mockReturnValueOnce(true)
-        .mockReturnValueOnce(true)
-        .mockReturnValue(false);
-      const { deps } = groundedDeps({ isEnabled: enabled });
+    it('reverts the claim when jobs are paused before a lesson call', async () => {
+      const { deps } = groundedDeps({ isPaused: async () => true });
       const { step } = createStep();
 
       await expect(
@@ -1700,6 +1770,25 @@ describe('runModuleLessonsWorkflow', () => {
       expect(writer.write).not.toHaveBeenCalled();
       expect(queries.revert).toHaveBeenCalled();
       expect(queries.commitSuccess).not.toHaveBeenCalled();
+    });
+
+    it('keeps billed lessons when a flag read fails after the claim', async () => {
+      // isModuleLessonsEnabled fails closed; only the claim step reads it.
+      const enabled = vi
+        .fn<() => Promise<boolean>>()
+        .mockResolvedValueOnce(true)
+        .mockResolvedValue(false);
+      const { deps } = groundedDeps({ isEnabled: enabled });
+      const { step } = createStep();
+
+      await expect(
+        runModuleLessonsWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(enabled).toHaveBeenCalledOnce();
+      expect(writer.write).toHaveBeenCalled();
+      expect(queries.revert).not.toHaveBeenCalled();
+      expect(queries.commitSuccess).toHaveBeenCalledOnce();
     });
   });
 });

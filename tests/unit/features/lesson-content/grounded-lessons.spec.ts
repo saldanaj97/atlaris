@@ -332,7 +332,7 @@ describe('sumUsages', () => {
     });
   });
 
-  it('drops the provider cost when any lesson lacks it and merges gaps', () => {
+  it('counts the estimate of a lesson without a provider cost and merges gaps', () => {
     expect(
       sumUsages([
         usage(),
@@ -343,7 +343,8 @@ describe('sumUsages', () => {
         }),
       ]),
     ).toMatchObject({
-      providerCostMicrousd: null,
+      // 1_000 reported, plus the other call's 2-cent estimate (DEV-185).
+      providerCostMicrousd: 21_000,
       isPartial: true,
       missingFields: ['model'],
     });

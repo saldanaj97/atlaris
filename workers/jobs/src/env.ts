@@ -1,33 +1,27 @@
-import type { SubscriptionTier } from '@/shared/types/billing.types';
-
-import { GROUNDED_GENERATION_TIERS, JOB_NAMES, type JobName } from './switches';
 import { z } from 'zod';
-
-export type JobSwitchVars = {
-  JOBS_PAUSED?: string;
-} & Partial<Record<`JOB_${JobName}_ENABLED`, string>> &
-  Partial<Record<`GROUNDED_GENERATION_${Uppercase<SubscriptionTier>}`, string>>;
 
 /**
  * Bindings and vars from `cloudflare.config.ts`, plus the deploy-time
- * `SENTRY_RELEASE` and the dashboard-managed job switches.
+ * `SENTRY_RELEASE` and the dashboard-managed variables.
  */
-export type WorkerEnv = Env &
-  JobSwitchVars & {
-    SENTRY_RELEASE?: string;
-    /** Accepted during signing-secret rotation (design note, Decision 4). */
-    JOBS_SIGNING_SECRET_PREVIOUS?: string;
-    /** Dashboard-managed; outside production only these addresses get email. */
-    EMAIL_TEST_RECIPIENT_ALLOWLIST?: string;
-    /** Production-only; synced from 1Password `atlaris-worker-production`. */
-    POSTHOG_PERSONAL_API_KEY?: string;
-  };
+export type WorkerEnv = Env & {
+  SENTRY_RELEASE?: string;
+  /** Accepted during signing-secret rotation (design note, Decision 4). */
+  JOBS_SIGNING_SECRET_PREVIOUS?: string;
+  /** Dashboard-managed; outside production only these addresses get email. */
+  EMAIL_TEST_RECIPIENT_ALLOWLIST?: string;
+  /** Production-only; synced from 1Password `atlaris-worker-production`. */
+  POSTHOG_PERSONAL_API_KEY?: string;
+};
+
+/** What flag evaluation needs: the Flagship binding and the environment attribute. */
+export type FlagEnv = Pick<WorkerEnv, 'FLAGS' | 'WORKER_ENV'>;
 
 const optionalString = z.string().optional();
 
 /**
  * Checks only what the app's env modules do not: bindings (objects, so never
- * in `process.env`), Worker-only vars, and the switches. App variables such
+ * in `process.env`) and Worker-only vars. App variables such
  * as APP_URL and LOG_LEVEL are parsed by `src/lib/config/env/*`.
  */
 const workerEnvSchema = z.object({
@@ -36,6 +30,14 @@ const workerEnvSchema = z.object({
   WORKER_ENV: z.enum(['development', 'staging', 'production']),
   SENTRY_DSN: z.string(),
   SENTRY_RELEASE: optionalString,
+  // `typeof === 'function'` rather than `in`, so a proxy-backed binding that
+  // resolves methods on access still validates.
+  FLAGS: z.custom<Flagship>(
+    (value) =>
+      typeof value === 'object' &&
+      value !== null &&
+      typeof (value as Partial<Flagship>).getBooleanDetails === 'function',
+  ),
   REGENERATION_QUEUE: z.custom<Queue>(
     (value) => typeof value === 'object' && value !== null && 'send' in value,
   ),
@@ -52,16 +54,6 @@ const workerEnvSchema = z.object({
   ),
   EMAIL_TEST_RECIPIENT_ALLOWLIST: optionalString,
   POSTHOG_PERSONAL_API_KEY: optionalString,
-  JOBS_PAUSED: optionalString,
-  ...Object.fromEntries(
-    JOB_NAMES.map((job) => [`JOB_${job}_ENABLED`, optionalString]),
-  ),
-  ...Object.fromEntries(
-    GROUNDED_GENERATION_TIERS.map((tier) => [
-      `GROUNDED_GENERATION_${tier.toUpperCase()}`,
-      optionalString,
-    ]),
-  ),
 });
 
 export class WorkerEnvError extends Error {

@@ -5,6 +5,12 @@ import type {
 import type { DbClient } from '@/lib/db/types';
 
 import {
+  canonicalUsageToRecordParams,
+  recordUsageInTx,
+} from '../../../../supabase/usage';
+import { billedUsageOf } from '@/features/ai/usage';
+import { logger } from '@/lib/logging/logger';
+import {
   aiUsageEvents,
   generationAttempts,
   generationBudgetCuts,
@@ -58,6 +64,39 @@ export async function sumPlanAiSpendMicrousd(
       ),
   ]);
   return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
+}
+
+/**
+ * Records the usage an AI call's error carries (`billedUsageOf`) against the
+ * plan, as its own usage event: OpenRouter billed the call even though its
+ * output was discarded. Call it in the workflow step that made the call,
+ * before the step throws, since a failed step attempt keeps no result. Does
+ * nothing for an error without usage, and never throws, so the call's own
+ * error is the one that propagates. Writes are server-owned (the Worker's
+ * invocation client).
+ */
+export async function recordDiscardedCallUsage(
+  error: unknown,
+  owner: { readonly userId: string; readonly planId: string },
+  dbClient: Pick<DbClient, 'insert'>,
+): Promise<void> {
+  const usage = billedUsageOf(error);
+  if (!usage) {
+    return;
+  }
+  try {
+    const params = await canonicalUsageToRecordParams(usage, owner.userId);
+    await recordUsageInTx(dbClient, { ...params, planId: owner.planId });
+  } catch (recordError) {
+    logger.error(
+      {
+        err: recordError,
+        planId: owner.planId,
+        event: 'discarded_call_usage_not_recorded',
+      },
+      'Failed to record the usage of a discarded AI call',
+    );
+  }
 }
 
 /**

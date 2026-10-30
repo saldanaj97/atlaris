@@ -32,12 +32,13 @@ export async function canonicalUsageToRecordParams(
 ): Promise<RecordUsageParams> {
   const snapshot = await buildModelPricingSnapshot(usage);
 
-  let providerMicrousd: bigint | null = null;
-  // Partial usage means provider-reported cost provenance is incomplete, so we
-  // persist the app-estimated `costCents` only and leave provider cost null.
-  if (!usage.isPartial && usage.providerCostMicrousd != null) {
-    providerMicrousd = microusdIntegerToBigint(usage.providerCostMicrousd);
-  }
+  // A single partial call never has a provider cost (`normalizeToCanonicalUsage`).
+  // A summed row can be partial and still carry its other calls' reported cost
+  // (`sumUsages`); dropping it would record only the catalog estimate.
+  const providerMicrousd =
+    usage.providerCostMicrousd != null
+      ? microusdIntegerToBigint(usage.providerCostMicrousd)
+      : null;
 
   return {
     userId,

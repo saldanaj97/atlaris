@@ -6,6 +6,11 @@ import type {
   LessonContentBlock,
 } from '@/shared/types/lesson-content.types';
 
+import {
+  toByteStream,
+  toSseBody,
+} from '../../ai/providers/fixtures/openrouter-grounded-streams';
+import { billedUsageOf } from '@/features/ai/usage';
 import { runLessonCodeChecks } from '@/features/lesson-content/lesson-checks';
 import { toLessonQualityRecords } from '@/features/lesson-content/lesson-quality-issues';
 import {
@@ -18,8 +23,9 @@ import {
   buildLessonVerifierUserParts,
   isLessonVerifierAvailable,
   parseLessonVerifierOutput,
+  runLessonVerifier,
 } from '@/features/lesson-content/lesson-verifier';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 const research: ResearchBrief = {
   brief: 'Static types catch mistakes early [S1].',
@@ -201,6 +207,62 @@ describe('lesson verifier', () => {
     expect(() => parseLessonVerifierOutput({ ok: true }, clean())).toThrow(
       /did not match/,
     );
+  });
+
+  describe('a rejected call', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it('keeps its billed cost on the error (DEV-185)', async () => {
+      vi.stubEnv('OPENROUTER_API_KEY', 'shared-key');
+      const chunks = [
+        {
+          model: 'served/model',
+          choices: [
+            {
+              index: 0,
+              delta: { content: JSON.stringify({ ok: true }) },
+              finish_reason: 'stop',
+            },
+          ],
+          usage: {
+            prompt_tokens: 400,
+            completion_tokens: 80,
+            total_tokens: 480,
+            cost: 0.0042,
+          },
+        },
+      ];
+      const fetchMock = vi.fn<typeof fetch>(() =>
+        Promise.resolve(
+          new Response(toByteStream(toSseBody(chunks)), {
+            status: 200,
+            headers: { 'Content-Type': 'text/event-stream' },
+          }),
+        ),
+      );
+
+      const error = await runLessonVerifier(
+        {
+          tier: 'starter',
+          planId: 'plan-1',
+          pickedModelId: null,
+          promptInput,
+          taskIndex: 0,
+          content: clean(),
+          research,
+        },
+        { fetch: fetchMock },
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(Error);
+      expect(billedUsageOf(error)).toMatchObject({
+        inputTokens: 400,
+        outputTokens: 80,
+        providerCostMicrousd: 4_200,
+      });
+    });
   });
 
   it('sends the cached brief and outline, then the lesson', () => {

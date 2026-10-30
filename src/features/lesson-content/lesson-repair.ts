@@ -15,6 +15,7 @@ import {
   getGroundedModelRoute,
 } from '@/features/ai/model-operation-policy';
 import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
+import { withBilledUsage } from '@/features/ai/usage';
 import {
   buildLessonBriefPart,
   buildModuleOutlinePart,
@@ -244,12 +245,17 @@ export async function runLessonRepair(
     },
     deps,
   );
+  const content = await withBilledUsage(
+    async () => usage,
+    async () =>
+      applyLessonRepairOutput(
+        value,
+        params.content,
+        lessonRepairScope(params.issues),
+      ),
+  );
   return {
-    content: applyLessonRepairOutput(
-      value,
-      params.content,
-      lessonRepairScope(params.issues),
-    ),
+    content,
     model,
     usage,
     advisor: advisor !== null,

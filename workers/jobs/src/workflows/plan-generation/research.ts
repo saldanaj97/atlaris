@@ -10,6 +10,7 @@ import {
   researchModeForTier,
   runPlanResearch,
 } from '@/features/plans/research/run-research';
+import { recordDiscardedCallUsage } from '@/lib/db/queries/plan-ai-budget';
 import {
   getLatestPlanResearch,
   insertPlanResearch,
@@ -28,7 +29,8 @@ const RESEARCH_STEP_TIMEOUT_MARGIN_MS = 60_000;
 
 /**
  * Two retries, then the run continues without research. Gateway retries are
- * off for server-tool calls, so these are the only ones.
+ * off for the `web_search` server-tool call; on the direct path (DEV-171) the
+ * Parallel search has none and the model call keeps the gateway's own.
  */
 export function researchStepConfig() {
   const timeout = resolveTimeoutConfig();
@@ -61,6 +63,9 @@ export type ResearchLogFields = {
   readonly outcome: string;
   readonly errorKind?: string;
   readonly err?: unknown;
+  /** Which path ran (DEV-171) and its web search mode. */
+  readonly directSearch?: boolean;
+  readonly mode?: ResearchMode;
   readonly model?: string;
   readonly sourceCount?: number;
   readonly droppedSourceCount?: number;
@@ -69,10 +74,14 @@ export type ResearchLogFields = {
 
 export type ResearchStepsContext = {
   readonly planId: string;
+  /** Owner of the plan, for usage of research calls whose brief was rejected. */
+  readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
   /** Regeneration feedback that steers the search (JCS-162). */
   readonly guidance?: string | null;
+  /** `isDirectResearchEnabled()`: search Parallel directly (DEV-171). */
+  readonly directSearch: boolean;
   /** Research rows for the plan created from here on belong to this attempt. */
   readonly attemptStartedAt: string;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -84,15 +93,24 @@ export type ResearchStepsContext = {
 };
 
 async function researchStep(
+  db: DbClient,
   ctx: ResearchStepsContext,
 ): Promise<ResearchStepResult> {
+  // A rejected attempt is billed but saves no `plan_research` row, so its
+  // cost goes to `ai_usage_events`.
   const run = await runPlanResearch({
     tier: ctx.tier,
     input: ctx.input,
     guidance: ctx.guidance,
+    directSearch: ctx.directSearch,
+  }).catch(async (error: unknown) => {
+    await recordDiscardedCallUsage(error, ctx, db);
+    throw error;
   });
   ctx.log('research', {
     outcome: 'researched',
+    directSearch: ctx.directSearch,
+    mode: run.mode,
     model: run.model,
     sourceCount: run.research.sources.length,
     droppedSourceCount: run.droppedSourceCount,
@@ -173,7 +191,7 @@ export async function runPlanResearchSteps(
       RESEARCH_STEPS.research,
       researchStepConfig(),
       // withDb: the call's output ceiling reads the synced model catalog.
-      async () => ctx.withDb(() => researchStep(ctx)),
+      async () => ctx.withDb((db) => researchStep(db, ctx)),
     );
   } catch (error) {
     ctx.log(

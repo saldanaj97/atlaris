@@ -15,11 +15,23 @@ Each tier's selectable models come from that tier's OpenRouter guardrail, not fr
 | `getTierModels`        | `catalog.ts`          | Reads a tier's rows, cheapest first. Refresh-on-read: rows older than 15 minutes (or none) sync first, and the read waits for that sync. Concurrent reads share one sync but each runs its own query, because the Worker binds the database per Workflow step. After a failed sync, reads use the stored rows for 60s before retrying. |
 | `getCatalogModel`      | `catalog.ts`          | Pricing and limits for one model id from the most recently synced tier. `openrouter/free` returns the code-owned `FREE_ROUTER_MODEL`. A row still carrying the seed's epoch `synced_at` logs `model_catalog_seed_pricing` once per model and process.                                                                                  |
 
-A runtime syncs a tier only when it has that tier's own key; there is no fallback to `OPENROUTER_API_KEY`. The Next.js app has all three keys and keeps the table fresh. The jobs Worker has only `OPENROUTER_API_KEY`, so it reads what the app synced and never syncs; a runtime without a tier's key logs `model_catalog_sync_skipped_no_key` once per process.
+A runtime syncs a tier only when it has that tier's own key; there is no fallback to `OPENROUTER_API_KEY`. The Next.js app has all three keys and keeps the table fresh. The jobs Worker has only `OPENROUTER_API_KEY`, so it reads what the app synced and never syncs; a runtime without a tier's key logs `model_catalog_sync_skipped_no_key` once per process, and the app on Vercel also alerts ([Catalog alerts](#catalog-alerts)).
 
 Migration `20261023210000_seed_openrouter_tier_models.sql` seeds Starter and Pro, only when the tier has no rows, with the pre-guardrail code list at an epoch `synced_at`, so the Worker never reads an empty tier and the app's first read replaces the rows. Until a sync succeeds, those seeded prices are what cost and ceilings use.
 
 The table is deny-all under RLS; only the service-role client reads or writes it.
+
+### Catalog alerts
+
+Three catalog cases send a Sentry event besides their log, each tagged with `event` and `tier` and fingerprinted so each tier gets one Sentry issue (DEV-189):
+
+| Sentry event                        | Level   | Sent when                                                                                                                                                                                                                                                                  |
+| :---------------------------------- | :------ | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model_catalog_sync_failing`        | error   | A tier's syncs have failed continuously for longer than the 15-minute TTL, so its prices are stale. A `captureException` of the latest sync error, with `failingForMs`. Sent once per run of failures and process, not on every 60s retry; a successful sync ends the run. |
+| `model_catalog_seed_pricing`        | warning | `getCatalogModel` priced a model from a seeded row no sync has replaced. Once per model and process, fingerprinted by tier, with `modelId` as a tag.                                                                                                                       |
+| `model_catalog_sync_skipped_no_key` | error   | The Next.js app deployed on Vercel (`VERCEL` set: production or preview) has no key for a tier, so that tier never syncs. Once per tier and process. Local dev may lack tier keys and the jobs Worker never has them, so there it stays log-only.                          |
+
+The failure run is tracked per process, so an instance recycled within 15 minutes of its first failure never alerts; while the failure lasts, every longer-lived instance sends one event to the same issue. `model_catalog_sync_failed` stays a log on every failed attempt.
 
 ## What stays in code
 
@@ -51,7 +63,7 @@ Starter lessons are code-owned: Settings offers no lesson picker, the preference
 
 `computeCostCents()` and `getOutputTokenCeiling()` in `src/features/ai/cost.ts` read the synced pricing and max output tokens. A model no guardrail lists is an unknown model. Every jobs Worker step that makes a model call runs inside `withDb`, so it reads the table. When the table cannot be read, `computeCostCents` throws `ModelCatalogUnavailableError` (apart from `UnknownModelError`); usage records log `model_catalog_unavailable_cost_skipped` and store a 0 estimate, so provider-reported cost is the only cost on that row. `getOutputTokenCeiling` logs `model_catalog_unavailable` and falls back to `DEFAULT_OUTPUT_TOKEN_CEILING`. Ceilings use `getMemoizedCatalogModel`, which remembers a found model per process for 15 minutes or until a sync; unknown models and lookups that raced a sync are not remembered.
 
-Usage cost is computed when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so a guardrail price change never reprices past usage.
+Usage cost is computed when a usage event is recorded and stored on the row (`ai_usage_events.cost_cents` and `model_pricing_snapshot`), so a guardrail price change never reprices past usage. OpenRouter's reported `usage.cost` (`provider_cost_microusd`) is the billed amount and includes web search, advisor and cache charges that the catalog estimate leaves out. A row that sums several calls (`sumUsages`) adds each call's reported cost, or its estimate when it has none, so one call without a reported cost does not turn the whole row into an estimate (DEV-185). On a BYOK call (`is_byok`), `usage.cost` is only OpenRouter's fee, often 0, so the recorded cost adds `cost_details.upstream_inference_cost`, what the key's provider bills; a BYOK call without it records the estimate.
 
 ## Model selection
 

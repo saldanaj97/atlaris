@@ -79,7 +79,8 @@ function makeDeps(overrides: Partial<EmailDeliveryRunsDeps> = {}) {
     fn({} as DbClient),
   );
   const deps: EmailDeliveryRunsDeps = {
-    switches: { JOB_EMAIL_DELIVERY_ENABLED: 'true' },
+    isPaused: async () => false,
+    isDeliveryEnabled: async () => true,
     withDb: withDb as EmailDeliveryRunsDeps['withDb'],
     workflow,
     logger: { info: vi.fn(), error: vi.fn() },
@@ -116,10 +117,8 @@ describe('handleEmailDeliveryRunsCommand', () => {
     expect(workflow.create).not.toHaveBeenCalled();
   });
 
-  it('returns 503 when jobs are paused or the email job is off', async () => {
-    const paused = makeDeps({
-      switches: { JOBS_PAUSED: 'true', JOB_EMAIL_DELIVERY_ENABLED: 'true' },
-    });
+  it('returns 503 when jobs are paused or email delivery is off', async () => {
+    const paused = makeDeps({ isPaused: async () => true });
     const pausedResponse = await handleEmailDeliveryRunsCommand(
       post(START),
       paused.deps,
@@ -129,7 +128,7 @@ describe('handleEmailDeliveryRunsCommand', () => {
       code: 'jobs_paused',
     });
 
-    const disabled = makeDeps({ switches: {} });
+    const disabled = makeDeps({ isDeliveryEnabled: async () => false });
     const disabledResponse = await handleEmailDeliveryRunsCommand(
       post(START),
       disabled.deps,

@@ -35,7 +35,7 @@ The `atlaris-jobs` Worker owns the schedule: Cron `0 3 * * *` calls `private.cle
 
 | Item | Value |
 | --- | --- |
-| Switch | `JOB_RETENTION_CLEANUP_ENABLED=true` (Worker secret, off when absent); `JOBS_PAUSED=true` pauses it |
+| Switch          | Flagship flag `job-retention-cleanup` (default on; a failed read skips the run); `jobs-paused` pauses it                                             |
 | Evidence | Workers Logs "Completed retention cleanup" at 03:00 UTC (staging and production) |
 | Old owner | The pg_cron job `retention-cleanup` is no longer scheduled. Never run both owners |
 | Failures | Reported to Sentry (`atlaris-jobs`) with tags `job=retention-cleanup`, `runtime=cloudflare-worker`; the invocation is marked failed. No cron monitor |
@@ -94,7 +94,7 @@ Failure shape follows the canonical API error contract (`docs/api/error-contract
 
 ## Incident Response
 
-1. **Tables growing faster than expected:** verify the Worker cron ran (Workers Logs, `JOB_RETENTION_CLEANUP_ENABLED`, `JOBS_PAUSED`), and manually trigger the internal endpoint if needed.
+1. **Tables growing faster than expected:** verify the Worker cron ran (Workers Logs, the `job-retention-cleanup` and `jobs-paused` flags), and manually trigger the internal endpoint if needed.
 2. **401 unauthorized:** rotate/redeploy `MAINTENANCE_WORKER_TOKEN`; confirm Bearer or `x-maintenance-worker-token` on **manual** triggers (cron does not use HTTP auth).
-3. **Emergency pause (scheduled cleanup):** set `JOB_RETENTION_CLEANUP_ENABLED=false` (or `JOBS_PAUSED=true`) on the Worker; you run this yourself from `workers/jobs`: `pnpm exec cf workers secrets update JOB_RETENTION_CLEANUP_ENABLED --worker atlaris-jobs-<staging|production> --text false` (the switches are Worker secrets, never set from Git). Setting `RETENTION_CLEANUP_ENABLED=false` only pauses the manual HTTP route.
+3. **Emergency pause (scheduled cleanup):** turn the `job-retention-cleanup` flag off (or `jobs-paused` on); flip it in the Flagship dashboard (app `atlaris-plan-generation`), never from Git. Staging and production share the flag, so target one with a rule on the `environment` attribute. Setting `RETENTION_CLEANUP_ENABLED=false` only pauses the manual HTTP route.
 4. **Emergency pause (manual route only):** set `RETENTION_CLEANUP_ENABLED=false` while investigating.

@@ -222,9 +222,10 @@ describe('hasGroundedRegenerationQuota', () => {
 });
 
 describe('GROUNDED_PRESET_BY_OPERATION', () => {
-  it('adds three valid preset slugs', () => {
+  it('adds four valid preset slugs', () => {
     expect(Object.values(GROUNDED_PRESET_SLUGS)).toEqual([
       'atlaris-grounded-research',
+      'atlaris-grounded-research-direct',
       'atlaris-grounded-verifier',
       'atlaris-grounded-repair',
     ]);

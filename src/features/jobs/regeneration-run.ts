@@ -91,6 +91,7 @@ export type RegenerationRunInput = {
 /** What a grounded regeneration's research and outline-quality stages see. */
 export type GroundedRegenerationStageInput = {
   readonly planId: string;
+  readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
   /** Reasons and note as a prompt block (JCS-162), or `null`. */
@@ -105,8 +106,8 @@ export type GroundedRegenerationStageInput = {
  * (JCS-158) and outline checks, verifier and repair (JCS-159).
  */
 export type GroundedRegenerationStages = {
-  /** The Worker's `groundedGeneration` switch for `tier`. */
-  readonly isEnabled: (tier: SubscriptionTier) => boolean;
+  /** The `grounded-generation` flag for `tier` (fail closed). */
+  readonly isEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   /** Runs and saves research; `null` when it was skipped after its retries. */
   readonly research: (
     stage: GroundedRegenerationStageInput,
@@ -312,7 +313,7 @@ async function prepareRegeneration(
   const { plan, generationInput, payload } = loaded;
   const tier =
     admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
-  const grounded = context.grounded?.isEnabled(tier) === true;
+  const grounded = (await context.grounded?.isEnabled(tier)) === true;
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
     grounded,
@@ -578,6 +579,7 @@ export async function processRegenerationRun(
   const guidance = grounded ? buildRegenerationGuidance(feedback) : null;
   const stage = (): GroundedRegenerationStageInput => ({
     planId: input.planId,
+    userId: input.userId,
     tier,
     input: generationInput,
     guidance,

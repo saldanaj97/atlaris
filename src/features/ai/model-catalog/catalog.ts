@@ -13,10 +13,12 @@ import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
+  alertedSyncFailingTiers,
   catalogSyncGeneration,
   inFlightSyncs,
   memoizedCatalogModels,
   retryAfterByTier,
+  syncFailingSinceByTier,
   warnedNoKeyTiers,
   warnedSeedPricingModels,
 } from '@/features/ai/model-catalog/catalog-state';
@@ -30,9 +32,10 @@ import {
   selectCatalogModel,
   selectTierModels,
 } from '@/features/ai/model-catalog/store';
-import { openRouterEnv } from '@/lib/config/env';
+import { isHostedDeployEnv, openRouterEnv } from '@/lib/config/env';
 import { logger } from '@/lib/logging/logger';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
+import * as Sentry from '@sentry/nextjs';
 
 export const MODEL_CATALOG_TTL_MS = 15 * 60_000;
 
@@ -82,6 +85,38 @@ function toAvailableModel(row: OpenRouterTierModelRow): AvailableModel {
 }
 
 /**
+ * The Next app deployed on Vercel (production or preview), which should have
+ * every tier key. Local dev may lack them, and the jobs Worker never has them.
+ */
+function isHostedAppRuntime(): boolean {
+  return isHostedDeployEnv(process.env);
+}
+
+/**
+ * Alerts once per run of failed syncs, when the run outlasts
+ * {@link MODEL_CATALOG_TTL_MS} (the tier's prices are stale by then), rather
+ * than on every retry. A successful sync ends the run.
+ */
+function alertIfSyncKeepsFailing(tier: SubscriptionTier, error: unknown) {
+  const now = Date.now();
+  const failingSince = syncFailingSinceByTier.get(tier) ?? now;
+  syncFailingSinceByTier.set(tier, failingSince);
+  if (
+    now - failingSince <= MODEL_CATALOG_TTL_MS ||
+    alertedSyncFailingTiers.has(tier)
+  ) {
+    return;
+  }
+  alertedSyncFailingTiers.add(tier);
+  Sentry.captureException(error, {
+    level: 'error',
+    fingerprint: ['model_catalog_sync_failing', tier],
+    tags: { event: 'model_catalog_sync_failing', tier },
+    extra: { failingForMs: now - failingSince },
+  });
+}
+
+/**
  * Fetches `tier`'s guardrail list and replaces its rows. Any failure (no key,
  * HTTP, unparseable or empty list, DB) keeps the last good rows.
  */
@@ -97,6 +132,18 @@ export async function syncTierModelCatalog(
         { tier, event: 'model_catalog_sync_skipped_no_key' },
         'No OpenRouter guardrail key for this tier; serving the stored models without syncing',
       );
+      // Expected locally and in the jobs Worker; the hosted app should have
+      // all three.
+      if (isHostedAppRuntime()) {
+        Sentry.captureMessage(
+          'The app has no OpenRouter guardrail key for this tier, so its model catalog never syncs',
+          {
+            level: 'error',
+            fingerprint: ['model_catalog_sync_skipped_no_key', tier],
+            tags: { event: 'model_catalog_sync_skipped_no_key', tier },
+          },
+        );
+      }
     }
     return { status: 'skipped', reason: 'no_tier_key' };
   }
@@ -107,6 +154,8 @@ export async function syncTierModelCatalog(
       fetchImpl,
     });
     await replaceTierModels(tier, models, new Date());
+    syncFailingSinceByTier.delete(tier);
+    alertedSyncFailingTiers.delete(tier);
     logger.info(
       { tier, modelCount: models.length, event: 'model_catalog_synced' },
       'Synced tier model catalog from OpenRouter guardrail',
@@ -117,6 +166,7 @@ export async function syncTierModelCatalog(
       { tier, err: error, event: 'model_catalog_sync_failed' },
       'Tier model catalog sync failed; keeping the last synced models',
     );
+    alertIfSyncKeepsFailing(tier, error);
     return { status: 'failed', error };
   }
 }
@@ -150,12 +200,36 @@ async function refreshTier(tier: SubscriptionTier): Promise<boolean> {
   return result.status === 'synced';
 }
 
+function oldestSyncedAt(rows: readonly OpenRouterTierModelRow[]): number {
+  return Math.min(...rows.map((row) => row.syncedAt.getTime()));
+}
+
 function isStale(rows: readonly OpenRouterTierModelRow[]): boolean {
   if (rows.length === 0) {
     return true;
   }
-  const oldest = Math.min(...rows.map((row) => row.syncedAt.getTime()));
-  return Date.now() - oldest > MODEL_CATALOG_TTL_MS;
+  return Date.now() - oldestSyncedAt(rows) > MODEL_CATALOG_TTL_MS;
+}
+
+/**
+ * Ends this process's run of failed syncs when the rows show another instance
+ * synced the tier after the run began, so a later transient failure here
+ * starts a new run instead of alerting on the old one.
+ */
+function endFailureRunIfSyncedElsewhere(
+  tier: SubscriptionTier,
+  rows: readonly OpenRouterTierModelRow[],
+) {
+  const failingSince = syncFailingSinceByTier.get(tier);
+  if (
+    failingSince === undefined ||
+    rows.length === 0 ||
+    oldestSyncedAt(rows) < failingSince
+  ) {
+    return;
+  }
+  syncFailingSinceByTier.delete(tier);
+  alertedSyncFailingTiers.delete(tier);
 }
 
 /**
@@ -168,6 +242,7 @@ export async function getTierModels(
   tier: SubscriptionTier,
 ): Promise<AvailableModel[]> {
   let rows = await selectTierModels(tier);
+  endFailureRunIfSyncedElsewhere(tier, rows);
   // Awaited: a serverless runtime may stop un-awaited work after the response.
   if (isStale(rows) && (await refreshTier(tier))) {
     rows = await selectTierModels(tier);
@@ -196,6 +271,14 @@ export async function getCatalogModel(
     logger.warn(
       { modelId, event: 'model_catalog_seed_pricing' },
       'Pricing a model from seeded catalog rows that no sync has replaced',
+    );
+    Sentry.captureMessage(
+      'Pricing a model from seeded catalog rows that no sync has replaced',
+      {
+        level: 'warning',
+        fingerprint: ['model_catalog_seed_pricing', row.tier],
+        tags: { event: 'model_catalog_seed_pricing', tier: row.tier, modelId },
+      },
     );
   }
   return toAvailableModel(row);

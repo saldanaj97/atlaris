@@ -139,14 +139,20 @@ type GenerateStepResult =
     };
 
 export type PlanGenerationWorkflowDeps = {
-  /** `isJobEnabled(env, 'PLAN_GENERATION')`: the Worker switch. */
-  readonly isEnabled: () => boolean;
+  /** `!isJobsPaused()`: false while Flagship `jobs-paused` is on. */
+  readonly isEnabled: () => Promise<boolean>;
   /**
-   * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
-   * generation (research, JCS-158; grounded outline, JCS-159). Unset
-   * switches mean off.
+   * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier`
+   * runs grounded generation (research, JCS-158; grounded outline, JCS-159).
+   * Read once inside the first step, so a flag change cannot alter a running
+   * instance.
    */
-  readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
+  readonly isGroundedEnabled: (tier: SubscriptionTier) => Promise<boolean>;
+  /**
+   * `isDirectResearchEnabled()` (the `parallel-direct-research` flag): research
+   * searches Parallel directly (DEV-171). Read inside the first step.
+   */
+  readonly isDirectResearchEnabled: () => Promise<boolean>;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   /** Starts module lessons after success (the Worker's lessons Workflow starter). */
@@ -329,8 +335,8 @@ async function generateStep(
   run: RunContext,
   generationProvider?: AiPlanGenerationProvider,
 ): Promise<GenerateStepResult> {
-  // Switch dropped since the command was accepted: no provider call (Decision 7).
-  if (!run.deps.isEnabled()) {
+  // Jobs paused since the command was accepted: no provider call (Decision 7).
+  if (!(await run.deps.isEnabled())) {
     logStep(run, 'generate', { outcome: 'disabled' });
     return { kind: 'disabled' };
   }
@@ -461,22 +467,37 @@ export async function runPlanGenerationWorkflow(
 
   let current: StepName = 'record-workflow';
   try {
-    await step.do(
+    // The switches are read inside the step and replayed from its result, so
+    // a flag flipped while the instance runs cannot change its pipeline. An
+    // instance that recorded itself before DEV-192 replays `{ kind: 'recorded' }`
+    // here, so both default to off: it finishes on the ungrounded pipeline.
+    const { grounded = false, directSearch = false } = await step.do(
       PLAN_GENERATION_STEPS.recordWorkflow,
       RECORD_WORKFLOW_STEP_CONFIG,
-      async () => deps.withDb((db) => recordWorkflowStep(db, run)),
+      async () => {
+        await deps.withDb((db) => recordWorkflowStep(db, run));
+        // Grounded research (JCS-158) feeds the grounded outline (JCS-159). A
+        // dropped switch skips both, so no search runs (Decision 7).
+        const isGrounded =
+          (await deps.isEnabled()) &&
+          (await deps.isGroundedEnabled(input.tier));
+        return {
+          grounded: isGrounded,
+          // Only grounded research searches, so only it reads the flag.
+          directSearch: isGrounded && (await deps.isDirectResearchEnabled()),
+        };
+      },
     );
 
-    // Grounded research (JCS-158) feeds the grounded outline (JCS-159). A
-    // dropped switch skips both, so no search runs (Decision 7).
-    const grounded = deps.isEnabled() && deps.isGroundedEnabled(input.tier);
     let research: ResearchBrief | null = null;
     if (grounded) {
       current = 'research-save';
       const outcome = await runPlanResearchSteps(step, {
         planId: input.planId,
+        userId: input.userId,
         tier: input.tier,
         input: input.input,
+        directSearch,
         attemptStartedAt: input.reservation.startedAt,
         withDb: deps.withDb,
         log: (name, fields, level) => logStep(run, name, fields, level),
@@ -510,6 +531,7 @@ export async function runPlanGenerationWorkflow(
         step,
         {
           planId: input.planId,
+          userId: input.userId,
           tier: input.tier,
           purpose: generationPurpose,
           modelOverride: input.groundedWriterModelId ?? null,

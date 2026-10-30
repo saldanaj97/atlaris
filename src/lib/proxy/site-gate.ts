@@ -4,17 +4,11 @@ import { launchWaitlist, maintenanceMode } from '@/flags';
 import { appEnv } from '@/lib/config/env';
 import * as Sentry from '@sentry/nextjs';
 
-/** How long one process reuses a gate read cleanly from Vercel Flags. */
+/** How long one process reuses a gate read cleanly from Flagship. */
 export const SITE_GATE_CACHE_TTL_MS = 60_000;
 
 /** Shorter reuse for a gate built from an env fail-safe: bounds flag reads and Sentry events during an outage. */
 export const SITE_GATE_FALLBACK_CACHE_TTL_MS = 10_000;
-
-/**
- * Flags SDK override cookie (production QA). `flags/next` resolves overrides per
- * request, so a shared cached gate would ignore or leak them; callers bypass the cache.
- */
-export const FLAG_OVERRIDES_COOKIE = 'vercel-flag-overrides';
 
 let cachedSiteGate: { gate: SiteGate | null; expiresAt: number } | null = null;
 let pendingSiteGate: Promise<SiteGate | null> | null = null;
@@ -80,16 +74,11 @@ async function evaluateSiteGate(): Promise<{
 }
 
 /**
- * Active site gate from Vercel Flags, cached per process: SITE_GATE_CACHE_TTL_MS for a
- * clean read, SITE_GATE_FALLBACK_CACHE_TTL_MS for an env fail-safe. `bypassCache`
- * neither reads nor writes the cache (flag-override requests).
+ * Active site gate from Flagship, cached per process: SITE_GATE_CACHE_TTL_MS
+ * for a clean read, SITE_GATE_FALLBACK_CACHE_TTL_MS for an env fail-safe. The
+ * proxy evaluates the gate flags once per interval, never per request.
  */
-export async function resolveSiteGate(options: {
-  bypassCache: boolean;
-}): Promise<SiteGate | null> {
-  if (options.bypassCache) {
-    return (await evaluateSiteGate()).gate;
-  }
+export async function resolveSiteGate(): Promise<SiteGate | null> {
   if (cachedSiteGate !== null && Date.now() < cachedSiteGate.expiresAt) {
     return cachedSiteGate.gate;
   }

@@ -54,13 +54,10 @@ function makeBatch(message = makeMessage()) {
   return { batch, message };
 }
 
-function makeDeps(
-  overrides: Partial<RegenerationConsumerDeps> = {},
-  env: Record<string, string> = { JOB_REGENERATION_ENABLED: 'true' },
-) {
+function makeDeps(overrides: Partial<RegenerationConsumerDeps> = {}) {
   const db = makeDbClient();
   const deps = {
-    env,
+    isPaused: async () => false,
     logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
     captureException: vi.fn(),
     withDb: vi.fn(async (fn) => fn(db)) as RegenerationConsumerDeps['withDb'],
@@ -78,11 +75,8 @@ function makeDeps(
 }
 
 describe('handleRegenerationBatch', () => {
-  it.each([
-    ['paused', { JOBS_PAUSED: 'true', JOB_REGENERATION_ENABLED: 'true' }],
-    ['disabled', {}],
-  ])('holds the batch for 900 s while %s', async (_label, env) => {
-    const deps = makeDeps({}, env);
+  it('holds the batch for 900 s while jobs are paused', async () => {
+    const deps = makeDeps({ isPaused: async () => true });
     const { batch, message } = makeBatch();
 
     await handleRegenerationBatch(batch, deps);
@@ -118,7 +112,7 @@ describe('handleRegenerationBatch', () => {
 
   it('passes the grounded regeneration stages to the run', async () => {
     const grounded = {
-      isEnabled: vi.fn(() => true),
+      isEnabled: vi.fn(async () => true),
       research: vi.fn(),
       outlineQuality: vi.fn(),
     };
@@ -290,7 +284,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     };
     const start = createWorkflowModuleLessonStarter({
       workflow,
-      isEnabled: () => true,
+      isEnabled: async () => true,
       logger,
     });
     const params = startParams();
@@ -327,7 +321,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     };
     const start = createWorkflowModuleLessonStarter({
       workflow,
-      isEnabled: () => true,
+      isEnabled: async () => true,
       logger,
     });
 
@@ -344,7 +338,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     const workflow = { create: vi.fn(), get: vi.fn() };
     const start = createWorkflowModuleLessonStarter({
       workflow,
-      isEnabled: () => false,
+      isEnabled: async () => false,
       logger,
     });
 
@@ -364,7 +358,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     };
     const start = createWorkflowModuleLessonStarter({
       workflow,
-      isEnabled: () => true,
+      isEnabled: async () => true,
       logger,
     });
     const params = startParams();
@@ -399,7 +393,7 @@ describe('createWorkflowModuleLessonStarter', () => {
     };
     const start = createWorkflowModuleLessonStarter({
       workflow,
-      isEnabled: () => true,
+      isEnabled: async () => true,
       logger,
     });
     return { workflow, start };

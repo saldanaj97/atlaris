@@ -41,6 +41,7 @@ import {
 import {
   countGenerationBudgetCutsForModule,
   insertGenerationBudgetCuts,
+  recordDiscardedCallUsage,
 } from '@/lib/db/queries/plan-ai-budget';
 
 /** Step names are final once deployed, like `MODULE_LESSONS_STEPS`. */
@@ -129,7 +130,7 @@ async function verifyLesson(
   try {
     // withDb: usage pricing and output ceilings read the synced model catalog.
     return await step.do(name, verifyStepConfig(), async () =>
-      ctx.withDb(async () => {
+      ctx.withDb(async (db) => {
         const run = await runLessonVerifier({
           tier: ctx.grounded.tier,
           planId: ctx.target.planId,
@@ -139,6 +140,9 @@ async function verifyLesson(
           content,
           research: ctx.grounded.research,
           timeoutMs: qualityCallTimeoutMs(),
+        }).catch(async (error: unknown) => {
+          await recordDiscardedCallUsage(error, ctx.target, db);
+          throw error;
         });
         ctx.log(name, {
           lesson: position,
@@ -179,7 +183,7 @@ async function repairLesson(
   const name = lessonRepairStepName(position, pass);
   try {
     return await step.do(name, repairStepConfig(), async () =>
-      ctx.withDb(async () => {
+      ctx.withDb(async (db) => {
         const run = await runLessonRepair({
           tier: ctx.grounded.tier,
           planId: ctx.target.planId,
@@ -192,6 +196,9 @@ async function repairLesson(
           issues,
           research: ctx.grounded.research,
           timeoutMs: qualityCallTimeoutMs(),
+        }).catch(async (error: unknown) => {
+          await recordDiscardedCallUsage(error, ctx.target, db);
+          throw error;
         });
         ctx.log(name, {
           lesson: position,

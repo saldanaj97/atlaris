@@ -156,13 +156,21 @@ type ParseCommitStepResult =
     };
 
 export type ModuleLessonsWorkflowDeps = {
-  /** `isJobEnabled(env, 'MODULE_LESSONS')`: the Worker form of the lesson flag. */
-  readonly isEnabled: () => boolean;
   /**
-   * `isGroundedGenerationEnabled(env, tier)`: whether `tier` runs grounded
+   * `isModuleLessonsEnabled()`: not paused and `module-lesson-generation` on.
+   * Read once, in the claim step; it fails closed.
+   */
+  readonly isEnabled: () => Promise<boolean>;
+  /**
+   * `isJobsPaused()`, read by the steps after the claim. It fails open, so a
+   * Flagship error mid-run does not revert a module whose lessons are billed.
+   */
+  readonly isPaused: () => Promise<boolean>;
+  /**
+   * `isGroundedEnabled(tier)` (the `grounded-generation` flag): whether `tier` runs grounded
    * generation. Unset switches mean off.
    */
-  readonly isGroundedEnabled: (tier: SubscriptionTier) => boolean;
+  readonly isGroundedEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   /** Runs `fn` with a database client that lives for this step only. */
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
   readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;
@@ -222,7 +230,7 @@ function revertArgs(run: RunContext) {
 }
 
 /**
- * Step 1: load, re-check the switch, preflight, content access, then claim or
+ * Step 1: load, re-check the flags, preflight, content access, then claim or
  * adopt the app's provisional claim with this instance as the run.
  */
 async function claimStep(
@@ -238,7 +246,8 @@ async function claimStep(
   );
   const taskCount = load?.tasks.length ?? 0;
 
-  if (!run.deps.isEnabled()) {
+  const enabled = await run.deps.isEnabled();
+  if (!enabled) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, 'claim', { taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
@@ -256,7 +265,7 @@ async function claimStep(
 
   const gate = await checkModuleLessonGenerationGate(target, {
     dbClient: db,
-    resolveGenerationEnabled: async () => run.deps.isEnabled(),
+    resolveGenerationEnabled: async () => enabled,
   });
   if (gate !== 'open') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -309,9 +318,9 @@ async function claimStep(
 }
 
 /**
- * Step 2 (`generate`, or `generate-retry` after a parse failure): re-check the
- * switch, mark provider started, call, buffer. The provider-start marker is a
- * no-op on the retry, so usage quota counts the module once.
+ * Step 2 (`generate`, or `generate-retry` after a parse failure): check
+ * `jobs-paused`, mark provider started, call, buffer. The provider-start
+ * marker is a no-op on the retry, so usage quota counts the module once.
  */
 async function generateStep(
   db: DbClient,
@@ -321,8 +330,8 @@ async function generateStep(
 ): Promise<GenerateStepResult> {
   const stepName: StepName = attempt === 1 ? 'generate' : 'generate-retry';
   const taskCount = promptInput.tasks.length;
-  // Switch dropped since the claim: release it, as on a flag drop today.
-  if (!run.deps.isEnabled()) {
+  // Jobs paused since the claim: release it.
+  if (await run.deps.isPaused()) {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
     logStep(run, stepName, { attempt, taskCount, outcome: 'disabled' });
     return { kind: 'disabled' };
@@ -474,6 +483,7 @@ async function failStep(
   db: DbClient,
   run: RunContext,
   failedStep: CurrentStep,
+  spent: readonly CanonicalAIUsage[],
 ): Promise<{ readonly outcome: string }> {
   if (failedStep === 'claim') {
     await revertModuleLessonGeneratingToNotGenerated(db, revertArgs(run));
@@ -497,12 +507,14 @@ async function failStep(
     return { outcome: 'not_owned' };
   }
 
+  const [firstSpent, ...restSpent] = spent;
   await recordModuleLessonGenerationFailure({
     target: run.target,
     dbClient: db,
     now: run.now,
     providerStarted: Boolean(metadata.providerStartedAt),
     workflowRunId: run.instanceId,
+    ...(firstSpent && { usage: sumUsages([firstSpent, ...restSpent]) }),
   });
   logStep(run, 'fail', { taskCount, outcome: 'failure_recorded' });
   return { outcome: 'failure_recorded' };
@@ -518,6 +530,7 @@ async function runGroundedLessons(
   claim: Extract<ClaimStepResult, { kind: 'claimed' }>,
   grounded: GroundedLessonContext,
   setCurrent: (step: CurrentStep) => void,
+  onSpend: (usages: readonly CanonicalAIUsage[]) => void,
 ): Promise<ModuleLessonsWorkflowOutcome> {
   const written = await runGroundedLessonSteps(step, {
     target: run.target,
@@ -525,11 +538,12 @@ async function runGroundedLessons(
     grounded,
     attemptStartedAt: claim.startedAt,
     generateStepConfig: generateStepConfig(),
-    isEnabled: run.deps.isEnabled,
+    isPaused: run.deps.isPaused,
     withDb: run.deps.withDb,
     revertArgs: revertArgs(run),
     nonRetryable: run.deps.nonRetryable,
     now: run.now,
+    onSpend,
     log: (stepName, fields, level = 'info') =>
       run.deps.logger[level](
         {
@@ -596,6 +610,9 @@ export async function runModuleLessonsWorkflow(
   };
 
   let current: CurrentStep = 'claim';
+  // Grounded calls billed so far: recorded on failure, since only a
+  // successful commit records the module's usage.
+  const spent: CanonicalAIUsage[] = [];
   try {
     const claim = await step.do(
       MODULE_LESSONS_STEPS.claim,
@@ -607,9 +624,16 @@ export async function runModuleLessonsWorkflow(
     }
     if (claim.grounded) {
       current = GROUNDED_LESSONS_STAGE;
-      return await runGroundedLessons(step, run, claim, claim.grounded, (s) => {
-        current = s;
-      });
+      return await runGroundedLessons(
+        step,
+        run,
+        claim,
+        claim.grounded,
+        (s) => {
+          current = s;
+        },
+        (usages) => spent.push(...usages),
+      );
     }
 
     current = 'generate';
@@ -677,7 +701,7 @@ export async function runModuleLessonsWorkflow(
     );
     const failedStep = current;
     await step.do(MODULE_LESSONS_STEPS.fail, FAIL_STEP_CONFIG, async () =>
-      deps.withDb((db) => failStep(db, run, failedStep)),
+      deps.withDb((db) => failStep(db, run, failedStep, spent)),
     );
     return { kind: 'failed' };
   }

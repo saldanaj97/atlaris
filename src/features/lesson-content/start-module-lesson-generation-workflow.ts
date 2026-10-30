@@ -45,7 +45,7 @@ const START_FAILED_MESSAGE = 'Module lesson generation could not be started.';
 
 /**
  * Claims the module, then starts its generation on the jobs Worker. The
- * `module-lesson-generation` Vercel Flag must be enabled before a run is
+ * `module-lesson-generation` Flagship flag must be enabled before a run is
  * created (fail-closed).
  */
 export async function startModuleLessonGeneration(
