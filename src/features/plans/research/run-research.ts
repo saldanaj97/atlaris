@@ -127,13 +127,22 @@ function buildResearchSearch(
 /**
  * Web text inside the results frame: fence-like dashes neutralized, as for
  * learner input, and `[Sn]` markers removed, so only our keys and fences
- * remain. Parallel's `max_chars_total` already bounds the length.
+ * remain. Repeated until nothing changes, because removing a marker can join
+ * text into new dashes or a new marker (`--[S1]-`, `[S[S2]1]`). Each pass
+ * only shortens the text, so the loop ends. Parallel's `max_chars_total`
+ * already bounds the length.
  */
 function frameSafe(text: string): string {
-  return sanitizeUserInput(text, text.length).replace(
-    /\[S\d+(?:\s*[,;]\s*S\d+)*\]/g,
-    '',
-  );
+  let previous: string;
+  let current = text;
+  do {
+    previous = current;
+    current = sanitizeUserInput(
+      current.replace(/\[S\d+(?:\s*[,;]\s*S\d+)*\]/g, ''),
+      current.length,
+    );
+  } while (current !== previous);
+  return current;
 }
 
 /**
