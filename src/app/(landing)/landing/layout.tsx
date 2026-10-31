@@ -4,9 +4,9 @@ import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 
 const LANDING_CANONICAL_URL = '/landing';
 const LANDING_CANONICAL_TITLE =
-  'Atlaris — Make space for the work that changes you';
+  'Atlaris — Name a goal. Get a plan for the hours you have.';
 const LANDING_DESCRIPTION =
-  'Name a goal. Atlaris charts the plan and remembers where you left off.';
+  'Set your level and weekly hours. Atlaris writes the plan in modules and tasks, each with a time estimate.';
 
 export const metadata: Metadata = {
   title: LANDING_CANONICAL_TITLE,

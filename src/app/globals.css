@@ -4,9 +4,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
+:root,
+[data-atlaris-theme='light'] {
   color-scheme: light;
-  /* Midnight light theme. Dark values live in src/styles/atlaris-tokens.css. */
+  /* Midnight light theme. Dark values live in src/styles/atlaris-tokens.css.
+   * The attribute selector lets a subtree inside a dark scope render light,
+   * such as the landing hero's product cards. */
   --background: #f8fafc;
   --foreground: #02070a;
   --card: #ffffff;

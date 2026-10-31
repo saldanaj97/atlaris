@@ -367,6 +367,8 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 **Work Sans** remains the UI/body/ordinary-heading candidate. **Sora** remains the marketing-display candidate. These names are verified in `src/app/layout.tsx`; they are not identified from the generated PNGs. The normalized fallback stacks are draft decisions. The logo wordmark is separate. [R01, R02]
 
+**Landing hero exception (2026-10-30):** the Midnight Beam hero on `/landing` adds **Instrument Serif** (display headline) and **IBM Plex Mono** (supporting copy and labels), loaded with `next/font` from `src/app/fonts.ts` and imported only by `HeroSection.tsx`, so no other route loads them. The application UI, other marketing pages and the code role keep the families above.
+
 Use `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for the draft code role. The old CSS declares JetBrains Mono, but its loading is not established by the audited root. Do not add another font dependency without a deliberate decision. [A01 §5]
 
 **Typeface matching is not yet validated.** The browser used for this package did not have Work Sans or Sora installed and could not retrieve the comparison files. The packaged specimen therefore records system-fallback rendering. Its opt-in “Load comparison fonts” action can load the named families from Google Fonts in an online browser. No external request occurs until that action is selected; no font binaries are included.

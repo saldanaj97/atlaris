@@ -36,39 +36,961 @@
     transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
 }
 
+/* Beam hero, modeled on one light behind fluted glass. The light has a
+ * white core just below the copy (--beam-core). A short, wide blue beam rises
+ * from it, a warm fan spreads down behind the cards, and blue horizon light
+ * rolls out to the sides in uneven swells, so the glow reads like one wave of
+ * light rather than a symmetric shape. Every light layer uses screen blending,
+ * so where two lights overlap they turn paler instead of mixing to gray.
+ * Colors come from the dark token scope the section sets.
+ *
+ * --beam-copy is roughly where the copy block ends. Every layer is placed
+ * from it, so the light stays deep blue behind the small copy and turns
+ * bright from the card caption down, at every breakpoint. */
 .hero {
-  min-height: 35rem;
-  background: var(--background);
+  --beam-copy: 23rem;
+  --beam-core: calc(var(--beam-copy) + 3rem);
 }
 
-.heroOverline,
-.heroLead,
-.heroEmphasis,
-.heroCopy,
-.heroActions {
-  animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+@media (min-width: 640px) {
+  .hero {
+    --beam-copy: 27rem;
+  }
 }
 
-.heroOverline {
-  animation-delay: 40ms;
+@media (min-width: 1024px) {
+  .hero {
+    --beam-copy: 31rem;
+  }
 }
 
-.heroLead {
-  animation-delay: 80ms;
+.layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
 }
 
-.heroEmphasis {
-  animation-name: heroEmphasis;
-  animation-delay: 180ms;
-  transform-origin: 50% 100%;
+/* Blue horizon: a tall lobe from the left edge and a lower, broader one from
+ * the right, two swells of different size between them and the core, a flat
+ * glow carrying the blue in to the core, a warm glow under it, and a salmon
+ * band along the bottom. The mask clears an off-center V below the core, so
+ * the warm fan stays orange in the middle and turns pale where it meets the
+ * blue. */
+.bloom {
+  background:
+    radial-gradient(
+      45% 7rem at 50% calc(var(--beam-core) + 8rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-500) 60%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-500) 35%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-500) 12%,
+          transparent
+        )
+        75%,
+      transparent 100%
+    ),
+    radial-gradient(
+      55% 6.6rem at 48% calc(var(--beam-core) + 2rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 65%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 50.1%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 36.7%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 25%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 15%,
+          transparent
+        )
+        60%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 7.1%,
+          transparent
+        )
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 1.6%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      20% 10.8rem at 27% calc(var(--beam-core) + 2.5rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 55%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 42.4%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 31.1%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 21.1%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 12.7%,
+          transparent
+        )
+        60%,
+      color-mix(in srgb, var(--at-primitive-color-electric-400) 6%, transparent)
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-400) 1.4%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      30% 14.4rem at 74% calc(var(--beam-core) + 4.5rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 60%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 46.3%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 33.9%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 23.1%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 13.8%,
+          transparent
+        )
+        60%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 6.5%,
+          transparent
+        )
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 1.5%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      26% 12.6rem at 88% calc(var(--beam-core) + 1.5rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 65%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 50.1%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 36.7%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 25%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 15%,
+          transparent
+        )
+        60%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 7.1%,
+          transparent
+        )
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 1.6%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      62% 34.2rem at 0% calc(var(--beam-core) + 7rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 100%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 77.1%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 56.5%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 38.4%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 23.1%,
+          transparent
+        )
+        60%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 10.9%,
+          transparent
+        )
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 2.5%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      72% 28.8rem at 100% calc(var(--beam-core) + 11rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 100%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 77.1%,
+          transparent
+        )
+        15%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 56.5%,
+          transparent
+        )
+        30%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 38.4%,
+          transparent
+        )
+        45%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 23.1%,
+          transparent
+        )
+        60%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 10.9%,
+          transparent
+        )
+        75%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-electric-500) 2.5%,
+          transparent
+        )
+        90%,
+      transparent 100%
+    ),
+    radial-gradient(
+      120% 14rem at 50% calc(var(--beam-core) + 20rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-500) 100%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-500) 50%,
+          transparent
+        )
+        50%,
+      transparent 100%
+    );
+  mask-image: conic-gradient(
+    from 180deg at 49% calc(var(--beam-core) - 3rem),
+    transparent 0deg,
+    rgb(0 0 0 / 10%) 22deg,
+    rgb(0 0 0 / 35%) 38deg,
+    rgb(0 0 0 / 65%) 52deg,
+    rgb(0 0 0 / 90%) 64deg,
+    #000 74deg,
+    #000 278deg,
+    rgb(0 0 0 / 90%) 290deg,
+    rgb(0 0 0 / 65%) 304deg,
+    rgb(0 0 0 / 35%) 318deg,
+    rgb(0 0 0 / 10%) 334deg,
+    transparent 360deg
+  );
+  background-blend-mode: screen;
+  mix-blend-mode: screen;
 }
 
-.heroCopy {
-  animation-delay: 330ms;
+/* The beam: a short, wide column of blue light rising from the core and
+ * fading out behind the headline. It is one vertical color ramp, deep blue
+ * behind the small copy and bright at the core, cut by two soft wedges with
+ * offset centers and different widths, so its edges are uneven and it leans
+ * slightly instead of reading as a ruled line. */
+.beam {
+  background: linear-gradient(
+    to bottom,
+    transparent calc(var(--beam-core) - 25rem),
+    color-mix(in srgb, var(--at-primitive-color-electric-500) 18%, transparent)
+      calc(var(--beam-core) - 20rem),
+    color-mix(in srgb, var(--at-primitive-color-electric-500) 50%, transparent)
+      calc(var(--beam-core) - 11rem),
+    color-mix(in srgb, var(--at-primitive-color-electric-500) 52%, transparent)
+      calc(var(--beam-core) - 4.5rem),
+    color-mix(in srgb, var(--at-primitive-color-electric-400) 80%, transparent)
+      calc(var(--beam-core) - 2rem),
+    var(--at-primitive-color-electric-200) calc(var(--beam-core) - 0.5rem),
+    var(--at-primitive-color-cantaloupe-300) calc(var(--beam-core) + 1.5rem),
+    color-mix(
+        in srgb,
+        var(--at-primitive-color-cantaloupe-400) 70%,
+        transparent
+      )
+      calc(var(--beam-core) + 4rem),
+    color-mix(
+        in srgb,
+        var(--at-primitive-color-cantaloupe-500) 35%,
+        transparent
+      )
+      calc(var(--beam-core) + 8rem),
+    transparent calc(var(--beam-core) + 11rem)
+  );
+  mask-image:
+    radial-gradient(
+      16% 24rem at 49% calc(var(--beam-core) + 0rem),
+      #000 0%,
+      rgb(0 0 0 / 75%) 30%,
+      rgb(0 0 0 / 35%) 60%,
+      rgb(0 0 0 / 10%) 82%,
+      transparent 100%
+    ),
+    radial-gradient(
+      9.6% 16.799999999999997rem at 53% calc(var(--beam-core) - 1rem),
+      rgb(0 0 0 / 80%) 0%,
+      rgb(0 0 0 / 35%) 50%,
+      transparent 100%
+    ),
+    radial-gradient(
+      36% 10rem at 46.5% calc(var(--beam-core) + 0.5rem),
+      rgb(0 0 0 / 85%) 0%,
+      rgb(0 0 0 / 40%) 45%,
+      rgb(0 0 0 / 12%) 75%,
+      transparent 100%
+    );
+  mix-blend-mode: screen;
 }
 
-.heroActions {
-  animation-delay: 470ms;
+/* Warm fan: peach under the core deepening quickly to salmon, spreading down
+ * from the core in a soft V that leans a little to the right. */
+.warm {
+  background: linear-gradient(
+    to bottom,
+    transparent calc(var(--beam-core) - 1rem),
+    var(--at-primitive-color-cantaloupe-300) calc(var(--beam-core) + 1rem),
+    var(--at-primitive-color-cantaloupe-400) calc(var(--beam-core) + 2.5rem),
+    var(--at-primitive-color-cantaloupe-500) calc(var(--beam-core) + 5rem),
+    var(--at-primitive-color-cantaloupe-500) 100%
+  );
+  mask-image: conic-gradient(
+    from 180deg at 50.5% calc(var(--beam-core) - 3rem),
+    #000 0deg,
+    #000 40deg,
+    rgb(0 0 0 / 75%) 54deg,
+    rgb(0 0 0 / 40%) 66deg,
+    rgb(0 0 0 / 12%) 78deg,
+    transparent 90deg,
+    transparent 278deg,
+    rgb(0 0 0 / 12%) 288deg,
+    rgb(0 0 0 / 40%) 298deg,
+    rgb(0 0 0 / 75%) 308deg,
+    #000 322deg,
+    #000 360deg
+  );
+  mix-blend-mode: screen;
+}
+
+/* White-hot center of the light, in a peach halo that warms the horizon
+ * around it. */
+.core {
+  background:
+    radial-gradient(
+      6% 3.25rem at 50% var(--beam-core),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-neutral-0) 85%,
+          var(--at-primitive-color-cantaloupe-300)
+        )
+        0%,
+      40%,
+      transparent 100%
+    ),
+    radial-gradient(
+      28% 4rem at 50.5% calc(var(--beam-core) + 1.5rem),
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-400) 55%,
+          transparent
+        )
+        0%,
+      color-mix(
+          in srgb,
+          var(--at-primitive-color-cantaloupe-400) 25%,
+          transparent
+        )
+        50%,
+      transparent 100%
+    );
+  mix-blend-mode: screen;
+}
+
+/* Fluted glass over the light: regular vertical flutes about 11px wide at a
+ * 1280px viewport, each shaded like a soft lens: a flat shadow, a slow rise
+ * to a highlight right of center, and a quicker fall. Overlay blending makes
+ * the shading proportional to the light underneath (about +/-13%, measured
+ * from the reference), so the flutes show in the beam and vanish on the
+ * black canvas. */
+.flutes {
+  --flute: clamp(0.5rem, 0.85vw, 0.875rem);
+  background: repeating-linear-gradient(
+    90deg,
+    rgb(0 0 0 / 14%) 0,
+    rgb(0 0 0 / 14%) calc(var(--flute) * 0.1),
+    rgb(0 0 0 / 0%) calc(var(--flute) * 0.35),
+    rgb(255 255 255 / 14%) calc(var(--flute) * 0.6),
+    rgb(255 255 255 / 14%) calc(var(--flute) * 0.7),
+    rgb(255 255 255 / 0%) calc(var(--flute) * 0.85),
+    rgb(0 0 0 / 14%) var(--flute)
+  );
+  /* Softer across the band where the light turns bright, which holds the fine
+   * print and the card caption: full-strength shading there drops them under
+   * 4.5:1. */
+  mask-image: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(var(--beam-copy) - 6rem),
+    rgb(0 0 0 / 40%) calc(var(--beam-copy) - 3.5rem),
+    rgb(0 0 0 / 40%) calc(var(--beam-copy) + 4.5rem),
+    #000 calc(var(--beam-copy) + 8rem)
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Stars on the dark canvas, drawn first so the light covers them: they show
+ * in the dark sky, fade as the waves brighten, and stay clear of the copy.
+ * The layer itself holds faint fixed stars; its two pseudo-elements hold
+ * brighter ones that twinkle on different cycles, so no two groups pulse
+ * together. The layer ends above the caption and cards: their frosted blur
+ * would otherwise be recomputed on every twinkle frame. HeroStars pauses
+ * the twinkle while the stars are off screen (useOffscreenPause). */
+.stars {
+  bottom: auto;
+  height: calc(var(--beam-core) - 2rem);
+  /* Clear zone around the copy: nearly full width on phones, where the copy
+   * is too, and a narrower ellipse once the copy has margins. */
+  --stars-hole: 64%;
+  --stars-clear: 80%;
+  background-image:
+    radial-gradient(
+      circle at 32.7% 12.1%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 19%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 53.5% 27.3%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 28%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 4.7% 32.1%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 20%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 42.6% 59.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 22%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 62.5% 68.3%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 26%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 96.7% 4.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 24%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 15.1% 9.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 34%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 18.7% 42.5%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 25%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 54.7% 5.9%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 22%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 67.7% 31.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 30%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 45.4% 22.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 32%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 24.9% 42%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 36%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 72.5% 21.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 20%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 42% 54.9%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 28%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 4.8% 48.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 29%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 86.8% 23.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 30%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 57.8% 33.7%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 37%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 47.5% 48.3%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 32%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 64.4% 71.5%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 24%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 38.8% 48.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 27%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 17.5% 9.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 33%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 13.7% 19%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 35%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    );
+  mask-image:
+    linear-gradient(
+      to bottom,
+      #000 calc(var(--beam-core) - 12rem),
+      transparent 100%
+    ),
+    radial-gradient(
+      var(--stars-hole) calc(var(--beam-copy) * 0.62) at 50%
+        calc(var(--beam-copy) * 0.52),
+      transparent var(--stars-clear),
+      #000 100%
+    );
+  mask-composite: intersect;
+}
+
+@media (min-width: 640px) {
+  .stars {
+    --stars-hole: min(22rem, 46%);
+    --stars-clear: 72%;
+  }
+}
+
+.stars::before,
+.stars::after {
+  position: absolute;
+  inset: 0;
+  content: '';
+  animation: twinkle var(--twinkle, 4s) ease-in-out var(--twinkle-delay, 0s)
+    infinite alternate;
+}
+
+.stars::before {
+  --twinkle: 3.6s;
+  background-image:
+    radial-gradient(
+      circle at 8.9% 33.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 82%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 81.3% 62.4%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 67%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 36.2% 63.8%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 18.3% 17.9%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 70%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 58.7% 20%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 68%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 37.2% 41.4%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 76%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 51.5% 45%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 57%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 89.2% 56.5%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 79%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 39.5% 29.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 7.1% 6.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 34.3% 5.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 10.9% 27.1%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 81%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 61.2% 12%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 65%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 36.7% 10.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 85%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 46.7% 35.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 58%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 34.6% 20.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    );
+}
+
+.stars::after {
+  --twinkle: 5.3s;
+  --twinkle-delay: -2.1s;
+  background-image:
+    radial-gradient(
+      circle at 3.3% 68.5%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 54%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 54.2% 3.4%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 79%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 85.6% 50.6%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 61%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 17.4% 55.9%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 73%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 33.3% 17.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 80%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 84.6% 58.3%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 72%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 23.2% 38%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 51%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 3.7% 21.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 71%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 94.7% 33%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 80%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 94.6% 27.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 57%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 20.3% 15.9%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 77%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 83.4% 35.3%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 9.3% 48.1%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 73%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 74.5% 35.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
+        1px,
+      transparent 1.6px
+    ),
+    radial-gradient(
+      circle at 33.6% 58%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 62%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    ),
+    radial-gradient(
+      circle at 40.3% 68.2%,
+      color-mix(in srgb, var(--at-primitive-color-neutral-0) 55%, transparent) 0
+        0.7px,
+      transparent 1.3px
+    );
+}
+
+.stars[data-paused='true']::before,
+.stars[data-paused='true']::after {
+  animation-play-state: paused;
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0.15;
+  }
+}
+
+.headline {
+  font-family: var(--font-instrument-serif), Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.5rem, 6.4vw, 4.75rem);
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.headline em {
+  font-style: italic;
+}
+
+.mono {
+  font-family: var(--font-ibm-plex-mono), var(--font-mono);
+}
+
+.sub {
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.fine {
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+/* Supporting copy on the deep-blue part of the cone. Neutral-50 keeps 4.5:1
+ * there; the semantic secondary and muted colors do not. */
+.onBeam {
+  color: var(--at-primitive-color-neutral-50);
+}
+
+.heroRise {
+  animation: heroRise 0.9s cubic-bezier(0.22, 1, 0.36, 1) 60ms both;
 }
 
 @keyframes heroRise {
@@ -78,109 +1000,70 @@
   }
 }
 
-@keyframes heroEmphasis {
-  from {
-    clip-path: inset(0 0 100% 0);
-    opacity: 0;
-    transform: translate3d(0, 1rem, 0) scale(0.985);
+/* Crop the cards at the section edge. */
+.cardStage {
+  max-height: 20rem;
+  overflow: hidden;
+}
+
+.cards {
+  perspective: 1400px;
+}
+
+.cell {
+  min-width: 0;
+  transform-origin: 50% 100%;
+}
+
+/* Frosted chip for the caption and card labels. Their dark text sits where
+ * the light passes through mid-blue, which neither light nor dark text can
+ * hold at 4.5:1; the chip carries the contrast instead of the background. */
+.chip {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid color-mix(in srgb, var(--card) 70%, transparent);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--card) 85%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+/* Glass card: a thin translucent frame that takes on the color of the light
+ * behind it, holding a frosted light-theme panel with the content. The panel
+ * stays nearly opaque so the small text keeps its contrast; the frame is
+ * where the light shows through. */
+.card {
+  padding: 0.4375rem;
+  border: 1px solid color-mix(in srgb, var(--card) 45%, transparent);
+  border-radius: 1.125rem;
+  background: color-mix(in srgb, var(--card) 16%, transparent);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, var(--card) 55%, transparent),
+    0 30px 60px -30px rgb(0 0 0 / 45%);
+  backdrop-filter: blur(18px) saturate(1.4);
+}
+
+.panel {
+  min-height: 15rem;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem;
+  border: 1px solid color-mix(in srgb, var(--card) 70%, transparent);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--card) 86%, transparent);
+  color: var(--card-foreground);
+}
+
+@media (min-width: 1024px) {
+  .cards > .cell:first-child {
+    transform: rotateY(16deg) rotateX(3deg) translateY(0.625rem);
   }
-  to {
-    clip-path: inset(0);
-    opacity: 1;
-    transform: none;
+
+  .cards > .cellCenter {
+    z-index: 1;
+    transform: translateY(-0.375rem);
   }
-}
 
-.heroRoute {
-  position: absolute;
-  inset: 0 0 0 43%;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.heroRoutePath {
-  stroke-dashoffset: 0;
-  animation: routeDraw 1.4s cubic-bezier(0.22, 1, 0.36, 1) 180ms both;
-}
-
-.heroRouteNode {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: routeNodeIn 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
-}
-
-.heroRouteNode:nth-of-type(2) {
-  animation-delay: 90ms;
-}
-
-.heroRouteNode:nth-of-type(3) {
-  animation-delay: 180ms;
-}
-
-.heroRouteNode:nth-of-type(4) {
-  animation-delay: 270ms;
-}
-
-.heroRouteLabels {
-  position: absolute;
-  inset: 0;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.heroRouteLabel {
-  position: absolute;
-  top: var(--route-top);
-  left: var(--route-left);
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transform: translate(-50%, -50%);
-  color: var(--foreground);
-  font-family: var(--font-family-base);
-  font-size: 0.6875rem;
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  text-shadow: 0 1px 8px var(--background);
-}
-
-.heroRouteLabel::before {
-  width: 0.4rem;
-  height: 0.4rem;
-  border: 1px solid var(--background);
-  border-radius: 999px;
-  background: #9bc4ff;
-  box-shadow: 0 0 0.55rem rgb(155 196 255 / 70%);
-  content: '';
-}
-
-.heroRouteLabel:last-child {
-  color: #d8b66a;
-}
-
-.heroRouteLabel:last-child::before {
-  width: 0.65rem;
-  height: 0.65rem;
-  background: #d8b66a;
-  box-shadow: 0 0 0.75rem rgb(216 182 106 / 80%);
-}
-
-@keyframes routeDraw {
-  from {
-    stroke-dashoffset: 1;
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-@keyframes routeNodeIn {
-  from {
-    opacity: 0;
-    transform: scale(0);
+  .cards > .cell:last-child {
+    transform: rotateY(-16deg) rotateX(3deg) translateY(0.625rem);
   }
 }
 
@@ -191,6 +1074,10 @@
 .ambientOrb {
   animation: ambientFloat var(--orb-duration, 18s) ease-in-out
     var(--orb-delay, 0s) infinite alternate;
+}
+
+.ambientOrb[data-paused='true'] {
+  animation-play-state: paused;
 }
 
 .ambientOrbPrimary {
@@ -229,41 +1116,11 @@
   }
 }
 
-@media (max-width: 767px) {
-  .heroRoute {
-    position: relative;
-    inset: auto;
-    min-height: 18rem;
-  }
-
-  .heroRouteLabel {
-    font-size: 0.625rem;
-  }
-}
-
-@media (max-width: 359px) {
-  .hero {
-    min-height: 0;
-  }
-
-  .heroRoute {
-    min-height: 15rem;
-  }
-
-  .heroRouteLabel {
-    letter-spacing: 0.1em;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .heroOverline,
-  .heroLead,
-  .heroEmphasis,
-  .heroCopy,
-  .heroActions,
-  .heroRoutePath,
-  .heroRouteNode,
-  .ambientOrb {
+  .heroRise,
+  .ambientOrb,
+  .stars::before,
+  .stars::after {
     animation: none;
   }
 
