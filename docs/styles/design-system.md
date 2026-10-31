@@ -515,9 +515,9 @@ These roles replace visual drift, not component APIs. The existing CSS derives r
 
 ### Boundary and focus contract
 
-Use 1px borders for ordinary boundaries, 2px for intentional emphasis and the focus ring. Subtle dividers use `#253244`; required control boundaries use `#62738A`; hover/strong boundaries use `#8C9CB2`. A field must not lose its invalid border when hovered or focused.
+Use 1px borders for ordinary boundaries, 2px for intentional emphasis and the focus ring. Subtle dividers use `#233142`; required control boundaries use `#5E6F86`; hover/strong boundaries use `#8A9AAE`. A field must not lose its invalid border when hovered or focused.
 
-The default focus treatment is **2px solid `#B3A2FF`, offset by 2px**, with a dark separating layer for bright controls. Focus remains visible during hover and pressed states. The specimen tests actual keyboard focus, not just its forced-focus preview. This is a system treatment, not a claim that every composed page satisfies WCAG focus requirements. [W08]
+The default focus treatment is **2px solid `#2EAEEA` (Electric Blue 400), offset by 2px**, with a dark separating layer for bright controls. Focus remains visible during hover and pressed states. The specimen tests actual keyboard focus, not just its forced-focus preview. This is a system treatment, not a claim that every composed page satisfies WCAG focus requirements. [W08]
 
 ### Elevation and layers
 
@@ -530,7 +530,7 @@ The default focus treatment is **2px solid `#B3A2FF`, offset by 2px**, with a da
 
 The layer order is base 0, sticky 10, menu 20, scrim 40, dialog 50, toast 60, skip link 100. Validate these against existing portals and local stacking contexts; a larger z-index cannot escape a parent stacking context. Browser top-layer elements have separate behavior.
 
-Purple/blue atmospheric glow belongs to optional imagery treatment, not elevation. Do not add a glow to every focused panel or use a shadow instead of a necessary control border.
+Blue/cantaloupe atmospheric glow belongs to optional imagery treatment, not elevation. Do not add a glow to every focused panel or use a shadow instead of a necessary control border.
 
 ---
 
@@ -756,17 +756,17 @@ The repository exports nine variant names. Keep all nine call-site contracts. Th
 
 | Existing `variant` | Draft visual role      | Default / hover / pressed background | Foreground                 | Use                                                                                           |
 | ------------------ | ---------------------- | ------------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------- |
-| `default`          | Primary                | `#8B78FF` / `#A08FFF` / `#7C68EB`    | `#070B10`                  | Main action in a decision area.                                                               |
-| `cta`              | Prominent primary      | Same primary state colors            | `#070B10`                  | Existing marketing call sites; prominence comes from placement/size, not mandatory lift/glow. |
-| `secondary`        | Neutral                | `#111A25` / `#1B2838` / `#1B2838`    | `#F8FAFC`                  | Supporting actions.                                                                           |
-| `outline`          | Bounded secondary      | `#0B1118` / `#111A25` / `#1B2838`    | `#F8FAFC`                  | Supporting action needing a visible boundary.                                                 |
-| `ghost`            | Quiet                  | Canvas-context base / raised / hover | `#F8FAFC`                  | Toolbars and low-emphasis actions.                                                            |
-| `link`             | Text action/link style | No required fill                     | `#AE9CFF`; hover `#B3A2FF` | Underlined inline navigation or a genuine text action with correct element semantics.         |
-| `destructive`      | Destructive commit     | `#C7344F` / `#CE3954` / `#BA2C46`    | `#F8FAFC`                  | Final irreversible action, not routine navigation.                                            |
-| `soft-primary`     | Restrained accent      | `#1C1933` / `#111A25` / `#1B2838`    | `#AE9CFF`                  | Supporting accent; link-colored boundary.                                                     |
-| `success`          | Positive action        | `#65D7AF` / `#87E4C5` / `#49BC95`    | `#070B10`                  | Existing positive-action contexts; not an automatic replacement for every completed state.    |
+| `default`          | Primary                | `#FC734D` / `#FD8B69` / `#E8603A`    | `#02070A`                  | Main action in a decision area.                                                               |
+| `cta`              | Prominent primary      | Same primary state colors            | `#02070A`                  | Existing marketing call sites; prominence comes from placement/size, not mandatory lift/glow. |
+| `secondary`        | Neutral                | `#121C26` / `#182433` / `#182433`    | `#F4F7FA`                  | Supporting actions.                                                                           |
+| `outline`          | Bounded secondary      | `#0A1219` / `#121C26` / `#182433`    | `#F4F7FA`                  | Supporting action needing a visible boundary.                                                 |
+| `ghost`            | Quiet                  | Canvas-context base / raised / hover | `#F4F7FA`                  | Toolbars and low-emphasis actions.                                                            |
+| `link`             | Text action/link style | No required fill                     | `#5FBDF0`; hover `#8FD1F5` | Underlined inline navigation or a genuine text action with correct element semantics.         |
+| `destructive`      | Destructive commit     | `#C7344F` / `#CE3954` / `#BA2C46`    | `#F4F7FA`                  | Final irreversible action, not routine navigation.                                            |
+| `soft-primary`     | Restrained accent      | `#2A140D` / `#121C26` / `#182433`    | `#FEA083`                  | Supporting accent; accent-colored boundary.                                                   |
+| `success`          | Positive action        | `#65D7AF` / `#87E4C5` / `#49BC95`    | `#02070A`                  | Existing positive-action contexts; not an automatic replacement for every completed state.    |
 
-**Inverse context:** v0.2’s light action (`#F8FAFC` / `#E2E8F0` / `#B8C5D6`, dark label) remains a documented marketing/utility context. `inverse` is not an existing Button variant. Do not ship that prop by assumption; adopt through a reviewed alias/API change only when a real call site needs it. [A01]
+**Inverse context:** The light action (`#F4F7FA` / `#E1E7EE` / `#B5C2D1`, dark label) remains a documented marketing/utility context. `inverse` is not an existing Button variant. Do not ship that prop by assumption; adopt through a reviewed alias/API change only when a real call site needs it. [A01]
 
 A ghost control may inherit a quiet host surface instead of painting a conspicuous canvas rectangle, provided its text/focus pairs are tested on that host. The provided forced-state matrix uses the canvas context. This is a composition rule, not a silent replacement of the inherited background token.
 
@@ -886,7 +886,7 @@ _Source: Components v0.3. Chapter text retained from its source stage; reference
 
 The route source contains `/`, `/landing`, `/dashboard`, `/plans`, `/plans/new`, `/analytics`, `/analytics/usage`, `/analytics/achievements`, `/settings`, `/pricing`, `/about`, plus auth and a plan-detail helper. Route existence is not a mandate to put everything in the sidebar. No Projects, Resources, Notes, Community, global search or notifications feature is inferred from a mockup. [R14]
 
-The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with New plan as an action. Retain auth, entitlement and account controls in the real shell. Achievements is not built; its old route redirects to usage analytics, and no badge dashboard is inferred from the mockup. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
+The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with “Create a plan” as the one create action, in the sidebar. Retain auth, entitlement and account controls in the real shell. Achievements is not built; its old route redirects to usage analytics, and no badge dashboard is inferred from the mockup. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
 
 Navigation uses links and an appropriately named `<nav>`. Mark the current destination with `aria-current="page"`, a persistent marker and the selected-surface token. Use 44px minimum item height, 8px radius and 8px icon/text gap. A current item can still show hover and keyboard focus. Do not give ordinary site navigation `role="menu"`; it is not a desktop command menu. [A01; W08]
 
@@ -1185,7 +1185,7 @@ The existing library is query-driven, with search/status/sort/page, status count
 | Status filter | Accept existing statuses; preserve search/sort             | Links or a labeled select, not ARIA tabs.                             |
 | Sort          | Preserve supported keys/directions; reset page             | Labeled control or sortable column heading.                           |
 | Selection     | Count eligible items on the current page                   | Checkbox with full hit area; indeterminate select-all when partial.   |
-| Creation      | Follow `canCreatePlan` / entitlement result                | Existing New plan or Upgrade action, not an always-enabled CTA.       |
+| Creation      | Follow `canCreatePlan` / entitlement result                | Sidebar Create a plan or Upgrade action, not an always-enabled CTA.   |
 | Bulk actions  | Show only with selection; retain deletion restrictions     | Count, Clear and Delete selected.                                     |
 | Pagination    | Preserve search/status/sort; previous/next only when valid | Result/page text plus links, reflowing outside a table scroll region. |
 
@@ -1573,7 +1573,7 @@ Write interface labels in sentence case except proper names, initialisms and cod
 
 | Context                              | Current source/example wording | Proposed canonical label    | Change status                                                  |
 | ------------------------------------ | ------------------------------ | --------------------------- | -------------------------------------------------------------- |
-| Library creation                     | New Plan                       | Create plan                 | Copy proposal; route and eligibility unchanged.                |
+| Library creation                     | Create a plan                  | Create a plan               | Shipped 2026-10-31; route and eligibility unchanged.           |
 | Goal submission                      | Chart this course              | Create plan                 | Literal action label; metaphor may remain in the introduction. |
 | Preference save                      | Save Preferences               | Save preferences            | Capitalization change only; keep explicit save.                |
 | Read retry                           | Try Again                      | Try again                   | Same safe read/retry operation.                                |
@@ -1796,11 +1796,11 @@ JCS-96 records how the supplied launch screenshots map to actual Atlaris product
 
 | Reference signal                      | Status                           | Repository adoption                                                                                                                                                                                                                                                                                                                                                                                 |
 | ------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Marketing hero and calls to action    | Keep / adapt                     | Keep the current landing, pricing and About copy. Landing `Begin tonight` goes to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA goes to `/auth/sign-in`; an authenticated visitor gets `/dashboard`.                                                                            |
+| Marketing hero and calls to action    | Keep / adapt                     | Landing, pricing and About calls to action read `Create a plan` and go to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA is also `Create a plan` to `/plans/new`; an authenticated visitor gets `/dashboard`.                                                                    |
 | Public information architecture       | Keep                             | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About.                                                                                                                                                                                                                                      |
 | Authenticated navigation              | Adapt                            | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics` with Usage and Achievements), and Settings (`/settings`). The mobile menu remains the responsive composition.                                                                                                                                                                                                              |
 | Sidebar-only mockup destinations      | Omit                             | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons.                                                                                                                                                                                                                                   |
-| Plan creation and entitlement actions | Keep / adapt                     | Authenticated `New Plan` uses `/plans/new` when `canCreatePlan` is true; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture.                                                                                                                                                                            |
+| Plan creation and entitlement actions | Keep / adapt                     | The sidebar's `Create a plan` (the only create action in the app chrome) uses `/plans/new` when `canCreatePlan` is true and is hidden on `/plans/new`; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture.                                                                                              |
 | Pricing cards and checkout            | Adapt                            | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
 | Dashboard and usage analytics         | Keep / adapt                     | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics.                                                                                                                                                                                                        |
 | Achievements                          | Defer                            | `/analytics/achievements` redirects to `/analytics/usage` until achievement tracking exists; the mockup does not authorize a working achievement system.                                                                                                                                                                                                                                            |
