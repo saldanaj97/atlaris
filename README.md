@@ -10,7 +10,7 @@ AI-assisted learning plan generator built with Next.js 16.2, React 19, TypeScrip
 - Runs AI generation in the background while the plan page polls its status
 - Tracks generation attempts, failure classifications, and retryability
 - Enforces tenant isolation with PostgreSQL Row Level Security (RLS)
-- Google Calendar sync is planned (not yet implemented — shown as "Coming Soon" in Settings → Integrations)
+- Google Calendar sync is planned (not yet implemented)
 - Applies usage limits, rate limiting, and subscription gating server-side
 
 ## Core stack
