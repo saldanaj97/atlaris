@@ -9,7 +9,7 @@ const IT_DOES = [
   'Draft the route from your goal, your level, and your weekly hours.',
   'Break the work into modules and tasks sized for the time you named.',
   'Attach resources to the work they support.',
-  'Write a lesson for a module when you ask for one.',
+  'Write lessons for each module as you work through the plan.',
   'Remember what you finished and where you stopped.',
 ] as const;
 
@@ -40,10 +40,7 @@ export function MethodSection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              What the AI does.
-              <span className='block font-medium text-muted-foreground italic'>
-                And what it leaves to you.
-              </span>
+              What the AI does, and what it leaves to you.
             </h2>
           </div>
           <p

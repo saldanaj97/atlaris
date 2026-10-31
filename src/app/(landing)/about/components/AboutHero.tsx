@@ -5,6 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
+import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
@@ -43,9 +44,7 @@ export function AboutHero() {
             <span className={`block ${styles.heroLead}`}>
               {copy.headlineLead}
             </span>
-            <span
-              className={`mt-1 block font-medium text-primary italic ${styles.heroEmphasis}`}
-            >
+            <span className={`mt-1 block ${styles.heroEmphasis}`}>
               {copy.headlineEmphasis}
             </span>
           </h1>
@@ -60,7 +59,7 @@ export function AboutHero() {
               className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
             >
               <Link href={ROUTES.PLANS.NEW}>
-                Begin tonight
+                {CREATE_PLAN_LABEL}
                 <ArrowRight
                   className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
                   aria-hidden='true'

@@ -94,7 +94,6 @@ export function HeroSection() {
           <p
             className={cn(
               'mx-auto mt-6 max-w-[52ch]',
-              styles.mono,
               styles.sub,
               styles.onBeam,
             )}
@@ -294,7 +293,7 @@ function HeroPlanCards() {
                 ))}
               </ul>
               <div
-                className='mt-auto h-1.5 overflow-hidden rounded-full border border-input bg-card'
+                className='mt-auto h-1.5 overflow-hidden rounded-full bg-muted'
                 aria-hidden='true'
               >
                 <span
@@ -338,14 +337,11 @@ function HeroPlanCards() {
                       </span>
                     </div>
                     <div
-                      className='h-1.5 overflow-hidden rounded-full border border-input bg-card'
+                      className='h-1.5 overflow-hidden rounded-full bg-muted'
                       aria-hidden='true'
                     >
                       <span
-                        className={cn(
-                          'block h-full w-(--hero-progress) rounded-full',
-                          done >= planned ? 'bg-chart-1' : 'bg-action-primary',
-                        )}
+                        className='block h-full w-(--hero-progress) rounded-full bg-action-primary'
                         style={
                           {
                             '--hero-progress': `${Math.round((done / planned) * 100)}%`,

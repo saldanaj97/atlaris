@@ -3,12 +3,16 @@
 import {
   formatPricingMoney,
   planHasAnnual,
+  resolvePlanFee,
   resolvePlanPeriod,
   type BillingPeriod,
   type PricingPlan,
 } from './pricing-card-model';
-import { planListsFeature } from './pricing-comparison';
 import { usePricingCardParallax } from './usePricingCardParallax';
+import {
+  PRICING_COMPARISON_ROWS,
+  PRICING_TIER_BY_CLERK_SLUG,
+} from '@/app/(landing)/pricing/pricing-plan-features';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { Check } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
@@ -27,23 +31,6 @@ type PricingCardsProps = {
   ) => ReactNode;
 };
 
-function getComparisonRows(plans: readonly PricingPlan[]) {
-  const seen = new Set<string>();
-  const rows: Array<{ key: string; label: string }> = [];
-
-  for (const plan of plans) {
-    for (const feature of plan.features) {
-      const label = feature.trim();
-      const key = label.toLocaleLowerCase();
-      if (!label || seen.has(key)) continue;
-      seen.add(key);
-      rows.push({ key, label });
-    }
-  }
-
-  return rows;
-}
-
 /* oxlint-disable jsx-a11y/no-noninteractive-tabindex -- the named overflow region is intentionally tabbable so keyboard users can scroll the comparison table. */
 export function PricingCards({
   loading = false,
@@ -54,7 +41,10 @@ export function PricingCards({
 }: PricingCardsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const annualAvailable = plans.some(planHasAnnual);
-  const comparisonRows = plans.length > 1 ? getComparisonRows(plans) : [];
+  const comparisonPlans = plans.flatMap((plan) => {
+    const tier = PRICING_TIER_BY_CLERK_SLUG[plan.slug];
+    return tier ? [{ plan, tier }] : [];
+  });
   usePricingCardParallax(rootRef);
 
   return (
@@ -96,15 +86,7 @@ export function PricingCards({
             : null}
           {plans.map((plan) => {
             const planPeriod = resolvePlanPeriod(plan, period);
-            const useAnnual = planPeriod === 'annual';
-            const fee = useAnnual
-              ? (plan.annualMonthlyFee ?? plan.annualFee)
-              : plan.fee;
-            const feePeriod = fee?.amount
-              ? useAnnual && !plan.annualMonthlyFee
-                ? 'Year'
-                : 'Month'
-              : null;
+            const { fee, feePeriod } = resolvePlanFee(plan, period);
             const titleId = `pricing-plan-${plan.slug}`;
 
             return (
@@ -160,61 +142,61 @@ export function PricingCards({
         </div>
       </div>
 
-      {comparisonRows.length > 0 ? (
+      {comparisonPlans.length > 1 ? (
         <section
           aria-labelledby='pricing-comparison-heading'
           className={styles.comparison}
           data-pricing-comparison
         >
-          <header className={styles.comparisonHeader}>
-            <p className={styles.comparisonOverline}>Compare plans</p>
-            <h2
-              className={styles.comparisonTitle}
-              id='pricing-comparison-heading'
-            >
-              See what each plan lists.
-            </h2>
-            <p className={styles.comparisonDescription}>
-              Feature details come from the current plan catalog.
-            </p>
-          </header>
+          <h2
+            className={styles.comparisonTitle}
+            id='pricing-comparison-heading'
+          >
+            Compare plans
+          </h2>
           <section
-            aria-label='Plan feature comparison'
+            aria-label='Plan comparison'
             className={styles.comparisonScroll}
             tabIndex={0}
           >
             <table className={styles.comparisonTable}>
-              <caption className='sr-only'>Plan feature comparison</caption>
+              <caption className='sr-only'>Plan comparison</caption>
               <thead>
                 <tr>
-                  <th scope='col'>Feature</th>
-                  {plans.map((plan) => (
-                    <th key={`${plan.id}-${plan.slug}`} scope='col'>
-                      {plan.name}
-                    </th>
-                  ))}
+                  <th scope='col'>
+                    <span className='sr-only'>Feature</span>
+                  </th>
+                  {comparisonPlans.map(({ plan }) => {
+                    const { fee, feePeriod } = resolvePlanFee(plan, period);
+                    return (
+                      <th key={`${plan.id}-${plan.slug}`} scope='col'>
+                        <span className={styles.comparisonPlanName}>
+                          {plan.name}
+                        </span>
+                        <span className={styles.comparisonPlanPrice}>
+                          {formatPricingMoney(fee)}
+                          {feePeriod ? ` per ${feePeriod.toLowerCase()}` : null}
+                        </span>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
-                {comparisonRows.map((feature) => (
-                  <tr key={feature.key}>
-                    <th scope='row'>{feature.label}</th>
-                    {plans.map((plan) => {
-                      const listed = planListsFeature(plan, feature.key);
+                {PRICING_COMPARISON_ROWS.map((row) => (
+                  <tr key={row.key}>
+                    <th scope='row'>{row.label}</th>
+                    {comparisonPlans.map(({ plan, tier }) => {
+                      const value = row.values[tier];
                       return (
-                        <td key={`${plan.id}-${feature.key}`}>
-                          {listed ? (
+                        <td key={`${plan.id}-${row.key}`}>
+                          {value === true ? (
                             <span className={styles.comparisonIncluded}>
                               <Check aria-hidden='true' />
-                              <span className='sr-only'>Feature listed</span>
+                              <span className='sr-only'>Included</span>
                             </span>
                           ) : (
-                            <span className={styles.comparisonMissing}>
-                              <span aria-hidden='true'>—</span>
-                              <span className='sr-only'>
-                                Feature not listed
-                              </span>
-                            </span>
+                            value
                           )}
                         </td>
                       );

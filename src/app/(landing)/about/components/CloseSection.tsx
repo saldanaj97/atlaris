@@ -8,6 +8,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
 import { SectionOverline } from '@/components/ui/section-overline';
+import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
@@ -32,10 +33,7 @@ export function CloseSection() {
             id='about-close-heading'
             className={`mt-4 type-display-section text-balance text-foreground ${styles.revealItem}`}
           >
-            You already know the goal.
-            <span className='block font-medium text-muted-foreground italic'>
-              Set your star tonight.
-            </span>
+            You already know the goal. Set your star tonight.
           </h2>
           <p
             className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
@@ -53,7 +51,7 @@ export function CloseSection() {
               className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
             >
               <Link href={ROUTES.PLANS.NEW}>
-                Begin tonight
+                {CREATE_PLAN_LABEL}
                 <ArrowRight
                   className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
                   aria-hidden='true'

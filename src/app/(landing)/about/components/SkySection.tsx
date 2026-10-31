@@ -56,10 +56,7 @@ export function SkySection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              Why a night sky,
-              <span className='block font-medium text-muted-foreground italic'>
-                not a scoreboard.
-              </span>
+              Why a night sky, not a scoreboard.
             </h2>
             <p
               className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}

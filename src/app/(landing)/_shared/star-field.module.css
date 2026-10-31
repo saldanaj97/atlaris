@@ -1,5 +1,18 @@
 /* Twinkling star field — shared marketing backdrop. */
 
+/* Show stars only outside the 80rem content column, so they never sit next
+ * to words. Narrower viewports have no gutter and show none. */
+.field {
+  --star-column: 41rem;
+  mask-image: linear-gradient(
+    to right,
+    #000 calc(50% - var(--star-column)),
+    transparent calc(50% - var(--star-column)),
+    transparent calc(50% + var(--star-column)),
+    #000 calc(50% + var(--star-column))
+  );
+}
+
 .star {
   position: absolute;
   top: var(--star-top);

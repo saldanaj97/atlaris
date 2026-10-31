@@ -29,9 +29,7 @@ vi.mock('@/app/(landing)/_shared/star-field.module.css', () => ({
 
 vi.mock('@/app/(landing)/pricing/components/Pricing.module.css', () => ({
   default: {
-    heroOverline: 'heroOverline',
     heroSubline: 'heroSubline',
-    heroWord: 'heroWord',
     shell: 'shell',
   },
 }));
@@ -84,17 +82,16 @@ describe('PricingPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: /one sky\. three ways to cross it\./i,
+        name: 'Free for one plan. Pay when you need more',
       }),
     ).toBeVisible();
-    expect(screen.getByText(/chart your course/i)).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(
       screen.getByRole('heading', {
-        name: 'A brighter future is a skill away.',
+        name: 'Your first plan is free',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
       'href',
       ROUTES.PLANS.NEW,
     );

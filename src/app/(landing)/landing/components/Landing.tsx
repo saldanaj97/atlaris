@@ -1,8 +1,6 @@
 import { CtaSection } from './CtaSection';
-import { DriftSection } from './DriftSection';
+import { FeaturesSection } from './FeaturesSection';
 import { HeroSection } from './HeroSection';
-import { InstrumentsSection } from './InstrumentsSection';
-import { RouteSection } from './RouteSection';
 import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
 import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
 
@@ -17,11 +15,10 @@ export function Landing() {
         primaryClassName={`${styles.ambientOrb} ${styles.ambientOrbPrimary}`}
         mutedClassName={`${styles.ambientOrb} ${styles.ambientOrbMuted}`}
       />
-      <div className='relative z-10'>
+      {/* The page background, captured outside the dark-scoped hero for its bottom fade. */}
+      <div className='relative z-10 [--landing-page-bg:var(--background)]'>
         <HeroSection />
-        <DriftSection />
-        <RouteSection />
-        <InstrumentsSection />
+        <FeaturesSection />
         <CtaSection />
       </div>
     </LandingPageShell>

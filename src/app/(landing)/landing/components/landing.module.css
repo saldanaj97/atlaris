@@ -71,6 +71,23 @@
   pointer-events: none;
 }
 
+/* Fade the bottom of the hero into the page below. The hero is dark-scoped,
+ * so it fades to --landing-page-bg, which Landing sets from the page theme. */
+.hero::after {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  z-index: 1;
+  height: 9rem;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--landing-page-bg, var(--background))
+  );
+  pointer-events: none;
+}
+
 /* Blue horizon: a tall lobe from the left edge and a lower, broader one from
  * the right, two swells of different size between them and the core, a flat
  * glow carrying the blue in to the core, a warm glow under it, and a salmon
@@ -974,7 +991,7 @@
 }
 
 .sub {
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.6;
 }
 
@@ -1004,6 +1021,8 @@
 .cardStage {
   max-height: 20rem;
   overflow: hidden;
+  /* The cards dissolve into the hero's bottom fade instead of a hard cut. */
+  mask-image: linear-gradient(to bottom, #000 62%, transparent);
 }
 
 .cards {

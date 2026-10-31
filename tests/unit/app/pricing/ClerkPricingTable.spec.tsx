@@ -303,7 +303,9 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByText('Priority queue access')).toBeVisible();
+    expect(
+      await screen.findByText('Choose from a curated model list'),
+    ).toBeVisible();
     const checkout = await screen.findByTestId('checkout-plan_starter');
     expect(checkout).toHaveAttribute('data-period', 'month');
     expect(
@@ -798,7 +800,7 @@ describe('ClerkPricingTable', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
-  it('compares only the current non-export features from each live plan', async () => {
+  it('compares plans from tier limits, not from Clerk feature strings', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
@@ -806,61 +808,62 @@ describe('ClerkPricingTable', () => {
           name: 'Free',
           features: [
             { name: '10 active learning plans' },
-            { name: 'Shared scheduling horizon' },
             { name: '50 exports per month' },
           ],
         },
-        {
-          ...STARTER_PLAN,
-          features: [
-            { name: 'Shared scheduling horizon' },
-            { name: 'Priority queue access' },
-            { name: '50 exports per month' },
-          ],
-        },
+        { ...STARTER_PLAN, features: [{ name: 'Priority queue access' }] },
       ],
     });
 
     await renderPricingTable();
 
     const comparison = await screen.findByRole('region', {
-      name: 'Plan feature comparison',
+      name: 'Plan comparison',
     });
     expect(comparison).toHaveAttribute('tabindex', '0');
+    const activePlans = within(comparison).getByRole('row', {
+      name: /active plans/i,
+    });
     expect(
-      within(comparison).getByRole('columnheader', { name: 'Free' }),
-    ).toBeVisible();
+      within(activePlans)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['1', '10']);
     expect(
-      within(comparison).getByRole('columnheader', { name: 'Starter' }),
-    ).toBeVisible();
-    expect(
-      within(comparison).getByRole('row', {
-        name: /shared scheduling horizon.*feature listed.*feature listed/i,
-      }),
-    ).toBeVisible();
-    expect(
-      within(comparison).getByRole('row', {
-        name: /priority queue access.*feature not listed.*feature listed/i,
-      }),
-    ).toBeVisible();
-    expect(within(comparison).queryByText(/exports?/i)).not.toBeInTheDocument();
+      within(comparison).queryByText(/exports?|priority queue/i),
+    ).not.toBeInTheDocument();
   });
 
-  it('treats fallback Pro priority-queue copy as covering the Starter comparison row', async () => {
+  it('labels each comparison column with its plan name and price for the selected period', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
     });
+    const user = userEvent.setup();
 
     await renderPricingTable();
 
     const comparison = await screen.findByRole('region', {
-      name: 'Plan feature comparison',
+      name: 'Plan comparison',
     });
-    expect(
-      within(comparison).getByRole('row', {
-        name: /priority queue access.*feature not listed.*feature listed.*feature listed/i,
-      }),
-    ).toBeVisible();
+    const headerText = () =>
+      within(comparison)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent);
+    expect(headerText()).toEqual([
+      'Feature',
+      'Free$0',
+      'Starter$10 per month',
+      'Pro$20 per month',
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Yearly' }));
+
+    expect(headerText()).toEqual([
+      'Feature',
+      'Free$0',
+      'Starter$8 per month',
+      'Pro$16 per month',
+    ]);
   });
 
   it('shows placeholder cards while Clerk plans are loading', async () => {

@@ -23,10 +23,7 @@ export function ContactSection() {
           className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
           style={{ '--i': 1 } as CSSProperties}
         >
-          If the map is wrong,
-          <span className='block font-medium text-muted-foreground italic'>
-            say so.
-          </span>
+          If the map is wrong, say so.
         </h2>
         <p
           className={`mx-auto mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}

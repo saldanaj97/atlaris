@@ -39,10 +39,7 @@ export function BuilderSection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              Built for the hours you have.
-              <span className='block font-medium text-muted-foreground italic'>
-                Mostly after hours.
-              </span>
+              Built for the hours you have, mostly after hours.
             </h2>
             <p
               className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}

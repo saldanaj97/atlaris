@@ -33,3 +33,50 @@ describe('LocalPricingPreview', () => {
     }
   });
 });
+
+describe('LocalPricingPreview comparison', () => {
+  it('compares plans with priced column headers and a value in every cell', async () => {
+    const { LocalPricingPreview } =
+      await import('@/app/(landing)/pricing/components/LocalPricingPreview');
+    render(<LocalPricingPreview />);
+
+    expect(
+      screen.getByRole('heading', { name: 'Compare plans' }),
+    ).toBeVisible();
+    expect(screen.queryByText(/current plan catalog/i)).toBeNull();
+
+    const table = screen.getByRole('table', { name: 'Plan comparison' });
+    const headers = within(table).getAllByRole('columnheader');
+    expect(headers.map((header) => header.textContent)).toEqual([
+      'Feature',
+      'Free$0',
+      'Starter$25 per month',
+      'Pro$100 per month',
+    ]);
+
+    const rows = within(table).getAllByRole('row').slice(1);
+    expect(rows).toHaveLength(5);
+    const activePlans = within(rows[0]).getAllByRole('cell');
+    expect(activePlans.map((cell) => cell.textContent)).toEqual([
+      '1',
+      '10',
+      'Unlimited',
+    ]);
+    for (const row of rows) {
+      for (const cell of within(row).getAllByRole('cell')) {
+        expect(cell.textContent?.trim()).not.toBe('');
+      }
+    }
+    expect(within(rows[4]).getAllByText('Included')).toHaveLength(3);
+  });
+
+  it('keeps the scrollable comparison region reachable by keyboard', async () => {
+    const { LocalPricingPreview } =
+      await import('@/app/(landing)/pricing/components/LocalPricingPreview');
+    render(<LocalPricingPreview />);
+
+    expect(
+      screen.getByRole('region', { name: 'Plan comparison' }),
+    ).toHaveAttribute('tabindex', '0');
+  });
+});

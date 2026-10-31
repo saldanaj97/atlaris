@@ -42,14 +42,18 @@ const STARS = [
 ] as const;
 
 /**
- * Twinkling star field for marketing surfaces.
- * Stars render in `currentColor`, so set a text color on a parent
- * (e.g. `text-foreground` on parchment, `text-background` on inverted panels).
+ * Twinkling star field for marketing surfaces, dark theme only (on a light
+ * page the stars read as dust). Stars render in `currentColor`, and a mask
+ * keeps them in the side gutters so none sit over text.
  */
 export function StarField({ className }: { className?: string }) {
   return (
     <div
-      className={cn('pointer-events-none absolute inset-0', className)}
+      className={cn(
+        'pointer-events-none absolute inset-0 hidden dark:block',
+        styles.field,
+        className,
+      )}
       aria-hidden='true'
     >
       {STARS.map((star) => (

@@ -1,21 +1,25 @@
-import type { CSSProperties, ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
 import { PageHero } from '@/components/ui/page-hero';
-import { SectionOverline } from '@/components/ui/section-overline';
+import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
-import { ArrowRight } from 'lucide-react';
+import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import Link from 'next/link';
 
 import styles from './Pricing.module.css';
 
+const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
+
 const copy = {
-  overline: 'Chart your course',
-  headline: 'One sky. Three ways to cross it.',
-  subheadline: 'Start free tonight. Upgrade when the route runs longer.',
+  headline: 'Free for one plan. Pay when you need more',
+  subheadline:
+    'Start with one free plan. Upgrade for more plans, longer plans and more regenerations.',
+  ctaHeadline: 'Your first plan is free',
+  ctaDescription: `Pick a topic and Atlaris writes the plan. Free includes one plan of up to ${FREE_WEEKS} weeks.`,
 } as const;
 
 /**
@@ -41,21 +45,13 @@ export function PricingShell({ children }: { children: ReactNode }) {
         >
           <div className={styles.ctaContent}>
             <div>
-              <SectionOverline className={styles.ctaOverline}>
-                Your next chapter
-              </SectionOverline>
               <h2 id='pricing-cta-heading' className={styles.ctaTitle}>
-                A brighter future is a skill away.
+                {copy.ctaHeadline}
               </h2>
-              <p className={styles.ctaDescription}>
-                Set a goal and let Atlaris chart the route with you.
-              </p>
+              <p className={styles.ctaDescription}>{copy.ctaDescription}</p>
             </div>
             <Button asChild className={marketingPrimaryCtaClassName}>
-              <Link href={ROUTES.PLANS.NEW}>
-                Begin tonight
-                <ArrowRight aria-hidden='true' className='size-4' />
-              </Link>
+              <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
             </Button>
           </div>
         </CtaBanner>
@@ -66,8 +62,6 @@ export function PricingShell({ children }: { children: ReactNode }) {
 }
 
 function Hero() {
-  const words = copy.headline.split(' ');
-
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */
     <PageHero
@@ -75,27 +69,14 @@ function Hero() {
       aria-labelledby='pricing-hero-heading'
       overlay='background'
       desktop={{ objectPosition: '78% 42%' }}
+      backdropClassName={styles.heroBackdrop}
     >
       <div className={styles.heroContent}>
-        <SectionOverline className={styles.heroOverline}>
-          {copy.overline}
-        </SectionOverline>
         <h1
           id='pricing-hero-heading'
-          aria-label={copy.headline}
-          className='mt-5 type-display text-balance text-foreground'
+          className='type-display text-balance text-foreground'
         >
-          {words.map((word, index) => (
-            <span key={`${word}-${index}`}>
-              <span
-                className={styles.heroWord}
-                style={{ '--word-index': index } as CSSProperties}
-              >
-                {word}
-              </span>
-              {index < words.length - 1 ? ' ' : null}
-            </span>
-          ))}
+          {copy.headline}
         </h1>
         <p className={styles.heroSubline}>{copy.subheadline}</p>
       </div>
