@@ -16,22 +16,48 @@ const metadataDescription =
   'Name a goal. Atlaris charts the plan and remembers where you left off.';
 
 const clerkAppearance = {
+  layout: {
+    // The mark is white; the light theme inverts it so it shows on light cards.
+    logoImageUrl: '/brand/mark-on-dark.svg',
+  },
   variables: {
     borderRadius: 'var(--radius)',
     colorBackground: 'var(--panel)',
+    colorBorder: 'var(--border)',
+    colorForeground: 'var(--foreground)',
+    colorInput: 'var(--card)',
+    colorInputForeground: 'var(--foreground)',
+    colorMuted: 'var(--secondary)',
+    colorMutedForeground: 'var(--muted-foreground)',
+    colorNeutral: 'var(--foreground)',
     colorPrimary: 'var(--action-primary)',
-    colorText: 'var(--foreground)',
-    colorTextSecondary: 'var(--muted-foreground)',
+    colorPrimaryForeground: 'var(--action-primary-foreground)',
+    colorRing: 'var(--ring)',
     fontFamily: 'var(--font-family-base)',
   },
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
-    footerActionLink: 'text-link hover:text-link-hover',
-    formButtonPrimary:
-      'bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover',
+    footer: { background: 'var(--secondary)' },
+    footerActionLink: {
+      color: 'var(--link)',
+      '&:hover': { color: 'var(--link-hover)' },
+    },
+    formButtonPrimary: {
+      backgroundColor: 'var(--action-primary)',
+      backgroundImage: 'none',
+      boxShadow: 'none',
+      color: 'var(--action-primary-foreground)',
+      '&:hover': { backgroundColor: 'var(--action-primary-hover)' },
+    },
     headerSubtitle: 'text-muted-foreground',
     headerTitle: 'text-foreground',
+    logoBox: { height: '2.5rem' },
+    logoImage: {
+      height: '2.5rem',
+      width: 'auto',
+      'html:not(.dark) &': { filter: 'invert(1)' },
+    },
     socialButtonsBlockButton: 'border-input text-foreground hover:bg-muted/70',
   },
 };
@@ -133,7 +159,7 @@ export default async function RootLayout({
       >
         <a
           href='#main-content'
-          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 type-label text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+          className='fixed top-0 left-4 z-[100] -translate-y-[calc(100%+1rem)] rounded-md bg-action-primary px-3 py-2 type-label text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
         >
           Skip to main content
         </a>

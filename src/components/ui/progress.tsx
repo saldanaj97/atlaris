@@ -19,7 +19,7 @@ function Progress({
       value={normalizedValue}
       max={normalizedMax}
       className={cn(
-        'relative h-2 w-full overflow-hidden rounded-full border border-input bg-panel',
+        'relative h-2 w-full overflow-hidden rounded-full bg-muted',
         className,
       )}
       {...props}

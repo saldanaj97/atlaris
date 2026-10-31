@@ -25,6 +25,15 @@ describe('Progress', () => {
     },
   );
 
+  it('renders a filled neutral track without a border', () => {
+    render(<Progress value={30} aria-label='Plan progress' />);
+
+    const track = screen.getByRole('progressbar', { name: 'Plan progress' });
+
+    expect(track).toHaveClass('bg-muted');
+    expect(track).not.toHaveClass('border');
+  });
+
   it('defaults an invalid max to 100 before normalizing the value', () => {
     render(<Progress value={50} max={0} aria-label='Plan progress' />);
 

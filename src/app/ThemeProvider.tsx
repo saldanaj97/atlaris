@@ -16,7 +16,7 @@ interface ThemeProviderProps {
  *
  * Configuration:
  * - attribute=["class", "data-atlaris-theme"]: Keeps Tailwind's .dark
- *   selector and scopes generated tokens to the same root element
+ *   selector and scopes the Midnight tokens to the same root element
  * - defaultTheme="system": Respects user's OS preference by default
  * - enableSystem: Allows automatic theme detection
  * - disableTransitionOnChange: Prevents flash during theme switch

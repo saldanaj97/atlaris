@@ -25,6 +25,7 @@
   --action-primary-foreground: #02070a;
   --action-soft: color-mix(in srgb, var(--primary) 10%, var(--background));
   --link: #03699e;
+  --navigation-item-marker: var(--primary);
   --link-hover: #02527c;
   --secondary: #eef2f7;
   --secondary-foreground: #02070a;
@@ -143,6 +144,7 @@
   );
   --action-soft: var(--at-semantic-color-background-selected);
   --link: var(--at-semantic-color-text-link);
+  --navigation-item-marker: var(--at-component-navigation-item-marker);
   --link-hover: var(--at-semantic-color-text-link-hover);
   --secondary: var(--at-semantic-color-background-raised);
   --secondary-foreground: var(--at-semantic-color-text-primary);
@@ -221,6 +223,7 @@
   --color-action-primary-foreground: var(--action-primary-foreground);
   --color-action-soft: var(--action-soft);
   --color-link: var(--link);
+  --color-navigation-item-marker: var(--navigation-item-marker);
   --color-link-hover: var(--link-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);

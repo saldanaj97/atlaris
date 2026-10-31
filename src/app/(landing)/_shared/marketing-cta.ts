@@ -3,7 +3,7 @@
  * Pill shape + display font (Sora via `--font-serif` → `--font-family-display`).
  */
 export const marketingPrimaryCtaClassName =
-  'group h-auto rounded-full border border-transparent bg-primary px-8 py-4 font-serif font-medium text-primary-foreground shadow-lg shadow-primary/25 transition-[box-shadow,transform,background-color] motion-reduce:transition-none hover:bg-primary/90 hover:shadow-xl hover:shadow-primary/30 outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring';
+  'group h-auto rounded-full border border-transparent bg-action-primary px-8 py-4 font-serif font-medium text-action-primary-foreground transition-colors motion-reduce:transition-none hover:bg-action-primary-hover active:bg-action-primary-pressed outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:border-ring';
 
 /** Outline secondary pill (pricing / alternate CTAs). */
 export const marketingSecondaryCtaClassName =
