@@ -13,6 +13,10 @@
     infinite;
 }
 
+.star[data-paused='true'] {
+  animation-play-state: paused;
+}
+
 @keyframes twinkle {
   0%,
   100% {

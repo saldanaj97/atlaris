@@ -1,8 +1,12 @@
+'use client';
+
 import type { ReactNode } from 'react';
 
 import { StarField } from '@/app/(landing)/_shared/StarField';
+import { useOffscreenPause } from '@/app/(landing)/_shared/useOffscreenPause';
 import { APP_SHELL_HEADER_TUCK } from '@/components/layout/app-shell-width';
 import { cn } from '@/lib/utils';
+import { useRef } from 'react';
 
 const orbPresets = {
   landing: {
@@ -19,7 +23,10 @@ const orbPresets = {
   },
 } as const;
 
-/** Marketing-page atmosphere: fixed-header tuck, two orbs, and the shared star field. */
+/**
+ * Marketing-page atmosphere: fixed-header tuck, two orbs, and the shared star
+ * field. Each orb and star pauses its animation while it is off screen.
+ */
 export function CelestialBackdrop({
   variant,
   primaryClassName,
@@ -30,14 +37,20 @@ export function CelestialBackdrop({
   mutedClassName?: string;
 }): ReactNode {
   const orbs = orbPresets[variant];
+  const ref = useRef<HTMLDivElement>(null);
+  useOffscreenPause(ref);
 
   return (
     <div
+      ref={ref}
       className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${APP_SHELL_HEADER_TUCK}`}
       aria-hidden='true'
     >
-      <div className={cn(orbs.primary, primaryClassName)} />
-      <div className={cn(orbs.muted, mutedClassName)} />
+      <div
+        className={cn(orbs.primary, primaryClassName)}
+        data-offscreen-pause=''
+      />
+      <div className={cn(orbs.muted, mutedClassName)} data-offscreen-pause='' />
       <StarField />
     </div>
   );

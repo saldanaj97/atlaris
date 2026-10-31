@@ -56,6 +56,7 @@ export function StarField({ className }: { className?: string }) {
         <span
           key={`${star.top}-${star.left}`}
           className={styles.star}
+          data-offscreen-pause=''
           style={
             {
               '--star-top': star.top,
