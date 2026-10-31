@@ -8,18 +8,9 @@ import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/mark
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
-import {
-  type NavItem,
-  resolveCreatePlanCta,
-  ROUTES,
-} from '@/features/navigation';
+import { type NavItem, CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface MobileHeaderProps {
@@ -54,17 +45,8 @@ export default function MobileHeader({
   userName,
   userImageUrl,
 }: MobileHeaderProps) {
-  const primaryCtaHref = isAuthenticated
-    ? ROUTES.DASHBOARD
-    : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const createPlanCta = resolveCreatePlanCta({
-    isAuthenticated,
-    canCreatePlan,
-    createLabel: 'New plan',
-  });
-  const appCtaAriaLabel =
-    createPlanCta?.label === 'Upgrade' ? 'Upgrade' : 'Create new plan';
+  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
+  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
 
   const menu = (
     <MobileNavigation
@@ -126,28 +108,6 @@ export default function MobileHeader({
           </>
         ) : (
           <>
-            {createPlanCta ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    asChild
-                    variant='ghost'
-                    size='icon-sm'
-                    className='shrink-0 text-muted-foreground hover:text-foreground'
-                  >
-                    <Link
-                      href={createPlanCta.href}
-                      aria-label={appCtaAriaLabel}
-                    >
-                      <Plus className='size-4' />
-                    </Link>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side='bottom'>
-                  {createPlanCta.label}
-                </TooltipContent>
-              </Tooltip>
-            ) : null}
             <div className='shrink-0'>
               <ThemeToggle size='icon-sm' withTooltip />
             </div>

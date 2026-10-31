@@ -81,7 +81,7 @@ describe('SiteHeaderChrome desktop sidebar', () => {
     expect(within(sidebar).getByTestId('user-button')).toBeInTheDocument();
     expect(within(sidebar).getByText('Ada Lovelace')).toBeInTheDocument();
     expect(
-      within(sidebar).getByRole('link', { name: 'Create plan' }),
+      within(sidebar).getByRole('link', { name: 'Create a plan' }),
     ).toHaveAttribute('href', '/plans/new');
 
     const accountMenusWhenExpanded =
@@ -104,7 +104,7 @@ describe('SiteHeaderChrome desktop sidebar', () => {
       ).toBeInTheDocument();
     }
     expect(
-      within(rail).getByRole('link', { name: 'Create plan' }),
+      within(rail).getByRole('link', { name: 'Create a plan' }),
     ).toBeInTheDocument();
     expect(
       within(rail).getByRole('button', {

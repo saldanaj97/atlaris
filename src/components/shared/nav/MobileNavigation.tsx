@@ -23,9 +23,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
+import { CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Menu, Plus } from 'lucide-react';
+import { ArrowRight, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
@@ -82,20 +82,20 @@ function MobileAppSheetBody({
 }
 
 function MobileSheetPrimaryAction({
-  createPlanCta,
   isAuthenticated,
   isMarketing,
   onNavigate,
   primaryCtaHref,
   primaryCtaLabel,
 }: {
-  createPlanCta: ReturnType<typeof resolveCreatePlanCta>;
   isAuthenticated: boolean;
   isMarketing: boolean;
   onNavigate: () => void;
   primaryCtaHref: string;
   primaryCtaLabel: string;
 }) {
+  // App routes get their create-plan action from the sidebar inside the
+  // sheet, so the sheet only adds the marketing call to action.
   if (isMarketing) {
     return (
       <>
@@ -133,20 +133,7 @@ function MobileSheetPrimaryAction({
     );
   }
 
-  if (!createPlanCta) return null;
-
-  return (
-    <Button
-      asChild
-      variant='default'
-      className='mb-2 h-auto w-full rounded-xl py-3 shadow-md hover:shadow-lg'
-    >
-      <Link href={createPlanCta.href} onClick={onNavigate}>
-        {createPlanCta.label === 'Upgrade' ? null : <Plus className='size-4' />}
-        {createPlanCta.label}
-      </Link>
-    </Button>
-  );
+  return null;
 }
 
 function MobileSheetNavItems({
@@ -208,7 +195,6 @@ function MobileSheetNavItems({
 }
 
 function MobileLinkSheetBody({
-  createPlanCta,
   isAuthenticated,
   isMarketing,
   navItems,
@@ -217,7 +203,6 @@ function MobileLinkSheetBody({
   primaryCtaHref,
   primaryCtaLabel,
 }: {
-  createPlanCta: ReturnType<typeof resolveCreatePlanCta>;
   isAuthenticated: boolean;
   isMarketing: boolean;
   navItems: NavItem[];
@@ -238,7 +223,6 @@ function MobileLinkSheetBody({
         aria-label='Mobile navigation'
       >
         <MobileSheetPrimaryAction
-          createPlanCta={createPlanCta}
           isAuthenticated={isAuthenticated}
           isMarketing={isMarketing}
           onNavigate={onNavigate}
@@ -274,15 +258,8 @@ export default function MobileNavigation({
   const navigationDismissedRef = useRef(false);
   const closedForBreakpointRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const primaryCtaHref = isAuthenticated
-    ? ROUTES.DASHBOARD
-    : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
-  const createPlanCta = resolveCreatePlanCta({
-    isAuthenticated,
-    canCreatePlan,
-    createLabel: 'Create New Plan',
-  });
+  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
+  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
   const handleNavigation = () => {
     navigationDismissedRef.current = true;
     setOpen(false);
@@ -375,7 +352,6 @@ export default function MobileNavigation({
           />
         ) : (
           <MobileLinkSheetBody
-            createPlanCta={createPlanCta}
             isAuthenticated={isAuthenticated}
             isMarketing={isMarketing}
             navItems={navItems}

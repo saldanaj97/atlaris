@@ -91,7 +91,7 @@ export default function AuthControls({
             className='hidden type-meta font-medium text-muted-foreground hover:text-foreground sm:inline-flex'
             asChild
           >
-            <Link href='/auth/sign-in'>Sign In</Link>
+            <Link href='/auth/sign-in'>Sign in</Link>
           </Button>
           <Button
             variant='default'
@@ -99,7 +99,7 @@ export default function AuthControls({
             className='type-meta font-medium'
             asChild
           >
-            <Link href='/auth/sign-up'>Sign Up</Link>
+            <Link href='/auth/sign-up'>Sign up</Link>
           </Button>
         </>
       )}

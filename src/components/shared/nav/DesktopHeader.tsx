@@ -9,9 +9,9 @@ import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { resolveCreatePlanCta, ROUTES } from '@/features/navigation';
+import { CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
-import { ArrowRight, Plus } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 interface DesktopHeaderProps {
@@ -21,7 +21,6 @@ interface DesktopHeaderProps {
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
-  canCreatePlan?: boolean;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
   userName?: string;
@@ -109,7 +108,6 @@ function DesktopMarketingActions({
 }
 
 function DesktopAppActions({
-  canCreatePlan,
   isAuthenticated,
   showClerkUserButton,
   showHeaderAccountChrome,
@@ -117,7 +115,6 @@ function DesktopAppActions({
   userImageUrl,
   userName,
 }: {
-  canCreatePlan?: boolean;
   isAuthenticated: boolean;
   showClerkUserButton: boolean;
   showHeaderAccountChrome: boolean;
@@ -125,28 +122,8 @@ function DesktopAppActions({
   userImageUrl?: string | null;
   userName?: string;
 }) {
-  const createPlanCta = resolveCreatePlanCta({
-    isAuthenticated,
-    canCreatePlan,
-    createLabel: 'New Plan',
-  });
-
   return (
     <>
-      {createPlanCta ? (
-        <Button
-          variant='ghost'
-          size='sm'
-          className='gap-1.5 text-muted-foreground hover:text-foreground'
-          asChild
-        >
-          <Link href={createPlanCta.href} aria-label={createPlanCta.label}>
-            <Plus className='size-3.5' aria-hidden='true' />
-            <span className='hidden lg:inline'>{createPlanCta.label}</span>
-          </Link>
-        </Button>
-      ) : null}
-
       {showHeaderAccountChrome ? (
         <>
           <ThemeToggle withTooltip />
@@ -175,7 +152,6 @@ export default function DesktopHeader({
   pathname,
   navItems,
   tier,
-  canCreatePlan,
   isAuthenticated,
   showClerkUserButton,
   userName,
@@ -184,10 +160,8 @@ export default function DesktopHeader({
   const showAppShellChrome = isAppShell && !isMarketing;
   const showHeaderAccountChrome = !showAppShellChrome;
   const showMarketingChrome = isMarketing && !showAppShellChrome;
-  const primaryCtaHref = isAuthenticated
-    ? ROUTES.DASHBOARD
-    : ROUTES.AUTH.SIGN_IN;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : 'Begin tonight';
+  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
+  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
 
   return (
     <div
@@ -220,7 +194,6 @@ export default function DesktopHeader({
           />
         ) : (
           <DesktopAppActions
-            canCreatePlan={canCreatePlan}
             isAuthenticated={isAuthenticated}
             showClerkUserButton={showClerkUserButton}
             showHeaderAccountChrome={showHeaderAccountChrome}

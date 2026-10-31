@@ -105,10 +105,10 @@ describe('AppSidebar', () => {
     );
   });
 
-  it('follows the canCreatePlan contract for the Create plan action', () => {
+  it('follows the canCreatePlan contract for the Create a plan action', () => {
     const { rerender } = renderSidebar({ canCreatePlan: true });
 
-    expect(screen.getByRole('link', { name: 'Create plan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
       'href',
       '/plans/new',
     );
@@ -127,7 +127,7 @@ describe('AppSidebar', () => {
 
     renderWith(false);
     expect(
-      screen.queryByRole('link', { name: 'Create plan' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
       'href',
@@ -136,7 +136,7 @@ describe('AppSidebar', () => {
 
     renderWith(undefined);
     expect(
-      screen.queryByRole('link', { name: 'Create plan' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Upgrade' }),
@@ -258,7 +258,7 @@ describe('AppSidebar', () => {
       // Hidden while the expand control replaces it, so it must not be a tab stop.
       expect(home).toHaveAttribute('tabindex', '-1');
       expect(
-        within(sidebar).getByRole('link', { name: 'Create plan' }),
+        within(sidebar).getByRole('link', { name: 'Create a plan' }),
       ).toHaveAttribute('href', '/plans/new');
       expect(
         within(sidebar).queryByRole('link', { name: 'Upgrade to Pro' }),
@@ -310,7 +310,7 @@ describe('AppSidebar', () => {
         '/pricing',
       );
       expect(
-        screen.queryByRole('link', { name: 'Create plan' }),
+        screen.queryByRole('link', { name: 'Create a plan' }),
       ).not.toBeInTheDocument();
     });
 

@@ -2,6 +2,7 @@ import DesktopHeader from '@/components/shared/nav/DesktopHeader';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import {
   authenticatedNavItems,
+  CREATE_PLAN_LABEL,
   unauthenticatedNavItems,
 } from '@/features/navigation';
 import { cleanup, render, screen } from '@testing-library/react';
@@ -27,7 +28,6 @@ function renderDesktopHeader(
           pathname='/dashboard'
           navItems={authenticatedNavItems}
           tier='starter'
-          canCreatePlan
           isAuthenticated
           showClerkUserButton
           {...props}
@@ -51,35 +51,17 @@ describe('DesktopHeader layout', () => {
       '/analytics',
     );
     expect(screen.getByRole('link', { name: 'Settings' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
   });
 
-  it('routes authenticated create action to pricing after lifetime access is used', () => {
-    renderDesktopHeader({ tier: 'free', canCreatePlan: false });
+  it('leaves the create-plan action to the sidebar', () => {
+    renderDesktopHeader();
 
-    expect(screen.getByRole('link', { name: 'Upgrade' })).toHaveAttribute(
-      'href',
-      '/pricing',
-    );
     expect(
-      screen.queryByRole('link', { name: 'New Plan' }),
+      screen.queryByRole('link', { name: CREATE_PLAN_LABEL }),
     ).not.toBeInTheDocument();
-  });
-
-  it('routes signed-out nonmarketing create action to the plan form', () => {
-    renderDesktopHeader({
-      isMarketing: false,
-      pathname: '/auth/sign-in',
-      navItems: unauthenticatedNavItems,
-      canCreatePlan: undefined,
-      isAuthenticated: false,
-      showClerkUserButton: false,
-    });
-
-    expect(screen.getByRole('link', { name: 'New Plan' })).toHaveAttribute(
-      'href',
-      '/plans/new',
-    );
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
+    ).not.toBeInTheDocument();
   });
 
   it('leaves app-shell navigation and branding to the sidebar', () => {
@@ -94,7 +76,6 @@ describe('DesktopHeader layout', () => {
     expect(
       screen.queryByRole('link', { name: 'Settings' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New Plan' })).toBeInTheDocument();
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', {
@@ -140,7 +121,7 @@ describe('DesktopHeader layout', () => {
       screen.queryByRole('link', { name: 'Activity Feed' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: 'New Plan' }),
+      screen.queryByRole('link', { name: CREATE_PLAN_LABEL }),
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('user-button')).not.toBeInTheDocument();
   });
@@ -158,9 +139,8 @@ describe('DesktopHeader layout', () => {
       'href',
       '/auth/sign-in',
     );
-    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
-      'href',
-      '/auth/sign-in',
-    );
+    expect(
+      screen.getByRole('link', { name: CREATE_PLAN_LABEL }),
+    ).toHaveAttribute('href', '/plans/new');
   });
 });
