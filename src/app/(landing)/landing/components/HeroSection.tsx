@@ -40,7 +40,6 @@ const EXAMPLE_PLAN = {
     { name: 'Build: a typed useQuery hook', minutes: 90, done: false },
     { name: 'Review: Module 3 notes', minutes: 60, done: false },
   ],
-  weeklyHours: [3, 4, 4.5, 2, 4, 5, 3.5, 4],
 } as const;
 
 type ModuleState = (typeof EXAMPLE_PLAN.modules)[number]['state'];
@@ -52,6 +51,17 @@ const plannedMinutes = EXAMPLE_PLAN.thisWeek.reduce(
   (sum, task) => sum + task.minutes,
   0,
 );
+// Week 1 covered the finished modules; week 2 is the "This week" card.
+const weekProgress = [
+  EXAMPLE_PLAN.modules
+    .filter((module) => module.state === 'done')
+    .reduce((sum, module) => sum + module.hours * 60, 0),
+  doneMinutes,
+].map((done, index) => ({
+  week: index + 1,
+  done,
+  planned: EXAMPLE_PLAN.hoursPerWeek * 60,
+}));
 
 export function HeroSection() {
   return (
@@ -301,110 +311,55 @@ function HeroPlanCards() {
         </div>
 
         <div className={cn('hidden lg:block', styles.cell)}>
-          <CardLabel>Eight-week pulse</CardLabel>
+          <CardLabel>Two-week progress</CardLabel>
           <div className={styles.card}>
             <div className={cn('flex', styles.panel)}>
               <p className='type-meta text-muted-foreground'>
-                Hours logged per week ·{' '}
-                {EXAMPLE_PLAN.weeklyHours.reduce(
-                  (sum, hours) => sum + hours,
-                  0,
-                )}{' '}
-                hrs total
+                Estimated time done
               </p>
-              <PulseChart />
+              <p className='type-title tabular-nums'>
+                {formatMinutes(
+                  weekProgress.reduce((sum, entry) => sum + entry.done, 0),
+                )}{' '}
+                <span className='type-meta text-muted-foreground'>
+                  of{' '}
+                  {formatMinutes(
+                    EXAMPLE_PLAN.weeks * EXAMPLE_PLAN.hoursPerWeek * 60,
+                  )}
+                </span>
+              </p>
+              <ul className='m-0 mt-3 flex list-none flex-col gap-3 p-0'>
+                {weekProgress.map(({ week, done, planned }) => (
+                  <li key={week} className='flex flex-col gap-2'>
+                    <div className='flex items-baseline justify-between gap-2'>
+                      <span className='type-body'>Week {week}</span>
+                      <span className='type-meta text-muted-foreground tabular-nums'>
+                        {formatMinutes(done)} of {formatMinutes(planned)}
+                      </span>
+                    </div>
+                    <div
+                      className='h-1.5 overflow-hidden rounded-full border border-input bg-card'
+                      aria-hidden='true'
+                    >
+                      <span
+                        className={cn(
+                          'block h-full w-(--hero-progress) rounded-full',
+                          done >= planned ? 'bg-chart-1' : 'bg-action-primary',
+                        )}
+                        style={
+                          {
+                            '--hero-progress': `${Math.round((done / planned) * 100)}%`,
+                          } as CSSProperties
+                        }
+                      />
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
       </div>
     </figure>
-  );
-}
-
-const CHART = {
-  width: 240,
-  height: 112,
-  left: 24,
-  right: 232,
-  top: 10,
-  bottom: 90,
-  maxHours: 6,
-};
-
-function PulseChart() {
-  const values = EXAMPLE_PLAN.weeklyHours;
-  const step = (CHART.right - CHART.left) / (values.length - 1);
-  const x = (index: number) => CHART.left + index * step;
-  const y = (hours: number) =>
-    CHART.bottom - (hours / CHART.maxHours) * (CHART.bottom - CHART.top);
-  const line = values
-    .map(
-      (hours, index) =>
-        `${index === 0 ? 'M' : 'L'}${x(index).toFixed(2)},${y(hours).toFixed(2)}`,
-    )
-    .join(' ');
-  const area = `${line} L${CHART.right},${CHART.bottom} L${CHART.left},${CHART.bottom} Z`;
-  const last = values.length - 1;
-
-  return (
-    <>
-      <p className='sr-only'>
-        Hours logged per week over eight weeks: {values.join(', ')}
-      </p>
-      <svg
-        viewBox={`0 0 ${CHART.width} ${CHART.height}`}
-        className='mt-auto block h-auto w-full'
-        aria-hidden='true'
-      >
-        {[6, 4, 2, 0].map((hours) => (
-          <g key={hours}>
-            <line
-              x1={CHART.left}
-              x2={CHART.right}
-              y1={y(hours)}
-              y2={y(hours)}
-              className='stroke-border'
-              strokeWidth='1'
-            />
-            <text
-              x='2'
-              y={y(hours) + 3}
-              className='fill-muted-foreground'
-              fontSize='8'
-            >
-              {hours === 0 ? '0' : `${hours}h`}
-            </text>
-          </g>
-        ))}
-        <path d={area} className='fill-chart-1' fillOpacity='0.18' />
-        <path
-          d={line}
-          className='stroke-chart-1'
-          fill='none'
-          strokeWidth='1.75'
-          strokeLinejoin='round'
-          strokeLinecap='round'
-        />
-        <circle
-          cx={x(last)}
-          cy={y(values[last])}
-          r='3.5'
-          className='fill-action-primary stroke-card'
-          strokeWidth='2'
-        />
-        {values.map((_, index) => (
-          <text
-            key={index}
-            x={x(index)}
-            y='106'
-            textAnchor='middle'
-            className='fill-muted-foreground'
-            fontSize='8'
-          >
-            W{index + 1}
-          </text>
-        ))}
-      </svg>
-    </>
   );
 }
