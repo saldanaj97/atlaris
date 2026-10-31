@@ -9,21 +9,21 @@ export function PendingPlanDetails({ plan }: { plan: ClientPlanDetail }) {
   return (
     <section className='border-t pt-4' aria-labelledby='plan-details-heading'>
       <h3 id='plan-details-heading' className='mb-3 type-label font-semibold'>
-        Plan Details
+        Plan details
       </h3>
       <dl className='grid grid-cols-1 gap-3 type-body sm:grid-cols-2'>
         <div>
-          <dt className='text-muted-foreground'>Skill Level</dt>
+          <dt className='text-muted-foreground'>Skill level</dt>
           <dd className='mt-0.5 text-foreground'>
             {formatSkillLevel(plan.skillLevel)}
           </dd>
         </div>
         <div>
-          <dt className='text-muted-foreground'>Weekly Hours</dt>
+          <dt className='text-muted-foreground'>Weekly hours</dt>
           <dd className='mt-0.5 text-foreground'>{plan.weeklyHours}</dd>
         </div>
         <div>
-          <dt className='text-muted-foreground'>Learning Style</dt>
+          <dt className='text-muted-foreground'>Learning style</dt>
           <dd className='mt-0.5 text-foreground'>{plan.learningStyle}</dd>
         </div>
         <div>

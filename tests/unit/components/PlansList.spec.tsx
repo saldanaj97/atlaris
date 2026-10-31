@@ -162,7 +162,7 @@ describe('PlansList', () => {
     expect(
       screen.getByText(/Create a plan and pick up when the night is quiet/i),
     ).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New plan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
       'href',
       '/plans/new',
     );
@@ -192,7 +192,7 @@ describe('PlansList', () => {
       '/pricing',
     );
     expect(
-      screen.queryByRole('link', { name: 'New plan' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
   });
 

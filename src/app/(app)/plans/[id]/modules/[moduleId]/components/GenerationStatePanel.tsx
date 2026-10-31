@@ -11,9 +11,9 @@ import { Loader2 } from 'lucide-react';
  * module that still has none and has no run going got there through a failed
  * start or a run that rolled back; it reads as failed, with a retry.
  */
-type PanelState = 'failed' | 'running';
+export type PanelState = 'failed' | 'running';
 
-function getPanelState(
+export function getPanelState(
   status: Exclude<ModuleLessonGenerationSummary['status'], 'ready'>,
   isPending: boolean,
 ): PanelState {
@@ -89,9 +89,11 @@ function GenerationAction({
   }
 
   return (
-    <Button onClick={onRetry} disabled={isPending} className='w-full sm:w-auto'>
-      {isPending ? 'Generating…' : 'Retry lesson generation'}
-    </Button>
+    <div>
+      <Button variant='outline' onClick={onRetry} disabled={isPending}>
+        {isPending ? 'Generating…' : 'Retry lesson generation'}
+      </Button>
+    </div>
   );
 }
 

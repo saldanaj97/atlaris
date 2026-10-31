@@ -148,7 +148,7 @@ export function SettingsSectionNavigation(): ReactElement {
                   aria-hidden='true'
                   className={cn(
                     'absolute top-2 bottom-2 left-0 w-0.5',
-                    isActive ? 'bg-primary' : 'bg-transparent',
+                    isActive ? 'bg-navigation-item-marker' : 'bg-transparent',
                   )}
                 />
                 <span className='min-w-0'>

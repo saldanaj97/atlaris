@@ -213,7 +213,7 @@ export function NotificationPreferencesForm({
           disabled={!hasChanges || isSaving}
           onClick={() => void handleSave()}
         >
-          {isSaving ? 'Saving...' : 'Save Preferences'}
+          {isSaving ? 'Saving...' : 'Save preferences'}
         </Button>
       </div>
     </div>

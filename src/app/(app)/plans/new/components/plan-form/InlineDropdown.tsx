@@ -29,9 +29,9 @@ const VARIANT_STYLES: Record<
   }
 > = {
   primary: {
-    pill: 'border-input bg-action-primary/10 text-link hover:bg-action-primary/20 data-[state=open]:bg-action-primary/20',
+    pill: 'border-input bg-action-primary/10 text-foreground hover:bg-action-primary/20 data-[state=open]:bg-action-primary/20',
     dropdown: 'border-input bg-popover',
-    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-action-primary/10 data-[state=checked]:text-link',
+    item: 'text-popover-foreground data-[highlighted]:bg-muted/70 data-[highlighted]:text-popover-foreground data-[state=checked]:bg-action-primary/10 data-[state=checked]:text-foreground',
   },
 };
 
@@ -83,7 +83,9 @@ export function InlineDropdown<TValue extends string>({
           )}
         >
           {icon}
-          <SelectPrimitive.Value placeholder={placeholder} />
+          <span className='min-w-0 flex-1 truncate text-left'>
+            <SelectPrimitive.Value placeholder={placeholder} />
+          </span>
           <SelectPrimitive.Icon asChild>
             <ChevronDown className='size-[14px] shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180' />
           </SelectPrimitive.Icon>

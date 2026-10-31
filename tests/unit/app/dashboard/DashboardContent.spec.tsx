@@ -186,7 +186,7 @@ describe('DashboardContent', () => {
       screen.getByText('Progress will appear here once you have a plan.'),
     ).toBeVisible();
     expect(
-      screen.queryByRole('link', { name: 'Begin tonight' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
     expect(

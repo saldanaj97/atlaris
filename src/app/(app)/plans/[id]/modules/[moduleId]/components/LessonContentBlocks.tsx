@@ -1,3 +1,4 @@
+import type { PanelState } from './GenerationStatePanel';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { LessonContentBlock } from '@/shared/types/lesson-content.types';
 
@@ -114,24 +115,54 @@ function GeneratedContentPanel({
   );
 }
 
-function MissingLessonContentPanel() {
+const MISSING_CONTENT_COPY: Record<
+  PanelState | 'idle',
+  { title: string; body: string }
+> = {
+  failed: {
+    title: 'Lesson content could not be generated',
+    body: 'Use Retry lesson generation above to try again.',
+  },
+  running: {
+    title: 'Lesson content is being generated',
+    body: 'It will appear here when generation finishes.',
+  },
+  idle: {
+    title: 'Lesson content not generated yet',
+    body: 'Detailed learning material for this lesson is not available yet.',
+  },
+};
+
+function MissingLessonContentPanel({
+  generationState,
+}: {
+  generationState: PanelState | undefined;
+}) {
+  const copy = MISSING_CONTENT_COPY[generationState ?? 'idle'];
+
   return (
     <div className='min-w-0 rounded-xl border border-dashed border-primary/25 bg-primary/5 p-4 text-center sm:p-6'>
       <h4 className='mb-2 type-reading font-semibold text-foreground'>
-        Lesson content not generated yet
+        {copy.title}
       </h4>
       <p className='mx-auto max-w-xl type-body break-words text-muted-foreground'>
-        Use the module-level generate action to create and cache detailed
-        learning material for every lesson in this module.
+        {copy.body}
       </p>
     </div>
   );
 }
 
-export function LessonBodyPanel({ lesson }: { lesson: ModuleDetailTask }) {
+export function LessonBodyPanel({
+  lesson,
+  generationState,
+}: {
+  lesson: ModuleDetailTask;
+  /** Module-level lesson generation state; keeps the empty copy in step with the status panel. */
+  generationState?: PanelState;
+}) {
   if (lesson.lessonContent) {
     return <GeneratedContentPanel lessonContent={lesson.lessonContent} />;
   }
 
-  return <MissingLessonContentPanel />;
+  return <MissingLessonContentPanel generationState={generationState} />;
 }

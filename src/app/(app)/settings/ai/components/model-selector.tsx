@@ -235,12 +235,12 @@ const ModelDropdown = ({
         disabled={saveDisabled}
         className='w-full'
       >
-        {isSaving ? 'Saving…' : 'Save Preferences'}
+        {isSaving ? 'Saving…' : 'Save preferences'}
       </Button>
 
       {showUpgradeCta && userTier !== 'pro' && (
         <div className='rounded-lg border-2 border-border bg-muted p-4'>
-          <h4 className='mb-2 font-semibold'>Unlock Premium Models</h4>
+          <h4 className='mb-2 font-semibold'>Unlock premium models</h4>
           <p className='mb-3 type-body text-muted-foreground'>
             Upgrade to Pro to access advanced models like Claude Sonnet 5.5,
             GPT-6.1 Sol, and Claude Opus 5.5.

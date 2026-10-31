@@ -6,7 +6,6 @@ import type { Metadata } from 'next';
 
 import {
   PlansContent,
-  PlansHeaderCreateAction,
   PlansLibraryChrome,
 } from '@/app/(app)/plans/components/PlansContent';
 import {
@@ -16,7 +15,6 @@ import {
 import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
 import { resolvePlansLibraryFilterStatus } from '@/app/(app)/plans/plans-library-filter';
 import { loadPlansPageData } from '@/app/(app)/plans/plans-page-data';
-import { Skeleton } from '@/components/ui/skeleton';
 import { PLAN_LIST_SORTS } from '@/features/plans/read-projection/types';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
 import { Suspense } from 'react';
@@ -78,11 +76,7 @@ export default async function PlansPage({ searchParams }: PlansPageProps) {
             <PlansLibraryChrome dataPromise={plansPageData} query={query} />
           </Suspense>
         }
-      >
-        <Suspense fallback={<Skeleton className='h-10 w-28' />}>
-          <PlansHeaderCreateAction dataPromise={plansPageData} />
-        </Suspense>
-      </PlansHero>
+      />
 
       <Suspense fallback={<PlansContentSkeleton />}>
         <PlansContent dataPromise={plansPageData} query={query} />

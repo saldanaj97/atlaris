@@ -763,8 +763,16 @@ describe('ModuleLessonsClient generation', () => {
         'Generation failed. Retry to create fresh lesson content for this module.',
       ),
     ).toBeInTheDocument();
+    const retry = screen.getByRole('button', {
+      name: 'Retry lesson generation',
+    });
+    expect(retry).toBeInTheDocument();
+    expect(retry).not.toHaveClass('w-full');
     expect(
-      screen.getByRole('button', { name: 'Retry lesson generation' }),
+      screen.queryByText('Lesson content not generated yet'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Lesson content could not be generated'),
     ).toBeInTheDocument();
   });
 

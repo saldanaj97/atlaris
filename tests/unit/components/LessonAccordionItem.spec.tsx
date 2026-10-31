@@ -1,3 +1,4 @@
+import type { PanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
@@ -29,7 +30,11 @@ const baseLesson: ModuleDetailTask = {
   ],
 };
 
-function renderLesson(lesson: ModuleDetailTask, isLocked = false) {
+function renderLesson(
+  lesson: ModuleDetailTask,
+  isLocked = false,
+  generationState?: PanelState,
+) {
   return render(
     <Accordion type='single' defaultValue={lesson.id}>
       <LessonAccordionItem
@@ -37,6 +42,7 @@ function renderLesson(lesson: ModuleDetailTask, isLocked = false) {
         status={lesson.status}
         onStatusChange={vi.fn()}
         isLocked={isLocked}
+        generationState={generationState}
       />
     </Accordion>,
   );
@@ -92,10 +98,29 @@ describe('LessonAccordionItem', () => {
     ).toBeInTheDocument();
   });
 
+  it('says generation failed, not "not generated yet", when the module failed', () => {
+    renderLesson(baseLesson, false, 'failed');
+
+    expect(
+      screen.getByText('Lesson content could not be generated'),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Lesson content not generated yet'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('says content is on the way while the module is generating', () => {
+    renderLesson(baseLesson, false, 'running');
+
+    expect(
+      screen.getByText('Lesson content is being generated'),
+    ).toBeInTheDocument();
+  });
+
   it('does not render lesson body controls for locked lessons', () => {
     renderLesson(baseLesson, true);
 
-    expect(screen.getByText('Lesson Locked')).toBeInTheDocument();
+    expect(screen.getByText('Lesson locked')).toBeInTheDocument();
     expect(screen.queryByText('State guide')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Mark task as complete' }),

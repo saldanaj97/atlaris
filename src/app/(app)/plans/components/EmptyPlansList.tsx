@@ -52,7 +52,7 @@ export function EmptyPlansList({
               >
                 <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
                   {canCreatePlan ? <Plus /> : null}
-                  {canCreatePlan ? 'New plan' : 'Upgrade'}
+                  {canCreatePlan ? 'Create a plan' : 'Upgrade'}
                 </Link>
               </Button>
             )}

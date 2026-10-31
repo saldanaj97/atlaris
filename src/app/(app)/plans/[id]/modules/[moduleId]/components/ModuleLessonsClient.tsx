@@ -6,7 +6,10 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
-import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
+import {
+  GenerationStatePanel,
+  getPanelState,
+} from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { getLessonMarkerClassName } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/lessonAccordionStyles';
 import { ModuleCompletePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleCompletePanel';
@@ -213,6 +216,10 @@ export function ModuleLessonsClient({
       status: lessonGeneration.status,
     });
 
+  const generationState =
+    lessonGeneration.status === 'ready'
+      ? undefined
+      : getPanelState(lessonGeneration.status, isPending);
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter(
     (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
@@ -306,7 +313,9 @@ export function ModuleLessonsClient({
             <span className='shrink-0 type-meta text-muted-foreground tabular-nums'>
               {totalLessons > 0
                 ? `${completedLessons}/${totalLessons} completed`
-                : 'No lessons yet'}
+                : generationState === 'failed'
+                  ? 'No lessons'
+                  : 'No lessons yet'}
             </span>
           </div>
 
@@ -324,7 +333,9 @@ export function ModuleLessonsClient({
               className='p-8 text-center'
             >
               <p className='text-muted-foreground'>
-                No lessons are available for this module yet.
+                {generationState === 'failed'
+                  ? 'No lessons were created for this module.'
+                  : 'No lessons are available for this module yet.'}
               </p>
             </Surface>
           ) : (
@@ -347,6 +358,7 @@ export function ModuleLessonsClient({
                     status={statuses[lesson.id] ?? lesson.status}
                     onStatusChange={onStatusChange}
                     isLocked={locked}
+                    generationState={generationState}
                   />
                 );
               })}

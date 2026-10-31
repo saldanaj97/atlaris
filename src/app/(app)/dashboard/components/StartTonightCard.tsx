@@ -30,7 +30,7 @@ export function StartTonightCard({
         {canCreatePlan !== undefined ? (
           <Button asChild size='sm'>
             <Link href={canCreatePlan ? ROUTES.PLANS.NEW : ROUTES.PRICING}>
-              {canCreatePlan ? 'Begin tonight' : 'Upgrade'}
+              {canCreatePlan ? 'Create a plan' : 'Upgrade'}
             </Link>
           </Button>
         ) : null}

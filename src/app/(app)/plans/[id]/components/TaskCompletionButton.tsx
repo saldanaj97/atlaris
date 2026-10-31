@@ -23,7 +23,7 @@ export function TaskCompletionButton({
   variant,
 }: TaskCompletionButtonProps) {
   const isCompleted = status === 'completed';
-  const buttonLabel = isCompleted ? 'Completed' : 'Mark Complete';
+  const buttonLabel = isCompleted ? 'Completed' : 'Mark complete';
 
   const handleClick = () => {
     const nextStatus: ProgressStatus = isCompleted

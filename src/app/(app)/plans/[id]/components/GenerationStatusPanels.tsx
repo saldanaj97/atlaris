@@ -50,7 +50,7 @@ export function FailurePanel({
       title={
         isInterruptedWithoutError
           ? 'Generation interrupted'
-          : 'Generation Failed'
+          : 'Generation failed'
       }
       body={viewState.failedPlanMessage}
       badge={isInterruptedWithoutError ? undefined : 'Failed'}
@@ -88,7 +88,7 @@ export function ConnectionIssuePanel({
   return (
     <GenerationAlertPanel
       variant='warning'
-      title='Connection Issue'
+      title='Connection issue'
       body={displayError}
       badge='Check again'
       footer={
@@ -110,7 +110,7 @@ export function ProcessingPanel({
 }) {
   return (
     <WaitingStatusPanel
-      title='Generating Your Learning Plan'
+      title='Generating your learning plan'
       body='Our AI is crafting personalized modules and tasks tailored to your goals.'
       badge='Generating'
       meta={attempts > 1 ? `Attempt ${attempts} of ${attemptCap}` : undefined}
@@ -146,7 +146,7 @@ export function UnsupportedStatusPanel({
   return (
     <GenerationAlertPanel
       variant='warning'
-      title='Unknown Generation Status'
+      title='Unknown generation status'
       body='This plan reported an unsupported status. Refresh to check for the latest state.'
       badge='Unknown'
       footer={

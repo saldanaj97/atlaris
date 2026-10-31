@@ -80,7 +80,9 @@ describe('BillingCards', () => {
       dbClient: {},
     });
     expect(screen.getByText("You're currently on the Pro plan.")).toBeVisible();
-    expect(screen.getByText('Pro Plan')).toBeVisible();
+    expect(screen.getByText('Pro plan')).toBeVisible();
+    expect(screen.getByText('Active')).toBeVisible();
+    expect(screen.queryByText('active')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
       'href',
       ROUTES.PRICING,

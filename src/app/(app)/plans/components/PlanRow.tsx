@@ -157,7 +157,7 @@ function PlanProgress({
         value={progressPercent}
         max={100}
         aria-label={`${progressPercent}% complete`}
-        className='h-2 bg-panel-muted'
+        className='h-2'
       />
     </div>
   );

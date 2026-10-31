@@ -66,7 +66,6 @@ export function UsageAnalyticsContent({
           id='usage-completion-heading'
           title='Current completion'
           description='Progress across plans you can access, based on the tasks and modules you have completed.'
-          aside='Accessible plans'
         />
         <div className='grid gap-4 md:grid-cols-3'>
           {completionCards.map((card) => (
@@ -156,11 +155,7 @@ function AnalyticsHero() {
     <PageHero
       dissolve
       contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col px-0 pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'
-      title={
-        <>
-          Learning <span className='text-primary'>analytics</span>
-        </>
-      }
+      title={'Learning analytics'}
       titleClassName='type-title-hero text-balance text-foreground'
       description='Current completion progress, weekly progress changes, and estimated completed learning time from your plans.'
       descriptionClassName='mt-3 max-w-xl type-body text-muted-foreground sm:type-reading'
@@ -177,7 +172,7 @@ function SectionHeading({
   id: string;
   title: string;
   description: string;
-  aside: ReactNode;
+  aside?: ReactNode;
 }) {
   return (
     <div className='flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
@@ -258,7 +253,7 @@ const TREND_ICON_CLASSNAME: Record<UsageAnalyticsMetricTrend['icon'], string> =
   {
     up: 'size-5 text-success',
     down: 'size-5 text-destructive',
-    flat: 'size-5 text-primary',
+    flat: 'size-5 text-muted-foreground',
   };
 
 const TREND_ICON = {

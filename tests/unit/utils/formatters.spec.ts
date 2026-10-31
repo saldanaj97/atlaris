@@ -1,4 +1,5 @@
 import {
+  buildPlanOverviewDescription,
   formatLearningStyle,
   formatMinutes,
   formatSkillLevel,
@@ -115,5 +116,38 @@ describe('formatLearningStyle', () => {
 
   it('should format mixed', () => {
     expect(formatLearningStyle('mixed')).toBe('Mixed');
+  });
+});
+
+describe('buildPlanOverviewDescription', () => {
+  it('prefixes a plain topic with the learning phrase', () => {
+    expect(buildPlanOverviewDescription('Spanish')).toBe(
+      'A structured path for learning Spanish, paced around your available time.',
+    );
+  });
+
+  it.each([
+    ['Learning Recap Workflow 09', 'learning Recap Workflow 09'],
+    ['Learn TypeScript', 'learning TypeScript'],
+    ['  learning   Rust ', 'learning Rust'],
+  ])('does not repeat the learn verb for "%s"', (topic, phrase) => {
+    const description = buildPlanOverviewDescription(topic);
+
+    expect(description).toBe(
+      `A structured path for ${phrase}, paced around your available time.`,
+    );
+    expect(description).not.toMatch(/learning learning/i);
+  });
+
+  it('keeps topics that merely start with the letters "learn"', () => {
+    expect(buildPlanOverviewDescription('Learnable systems')).toContain(
+      'learning Learnable systems',
+    );
+  });
+
+  it('falls back to a bare phrase when the topic is only the verb', () => {
+    expect(buildPlanOverviewDescription('Learning')).toBe(
+      'A structured path for learning, paced around your available time.',
+    );
   });
 });

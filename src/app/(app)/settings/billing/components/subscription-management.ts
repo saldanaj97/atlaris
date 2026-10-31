@@ -17,3 +17,21 @@ export function hasManageableSubscription(snapshot: {
     MANAGEABLE_STATUSES.has(snapshot.subscriptionStatus)
   );
 }
+
+const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
+  active: 'Active',
+  trialing: 'Trial',
+  past_due: 'Past due',
+  canceled: 'Canceled',
+};
+
+/** Human label for a stored subscription status; unknown values read as-is, sentence-cased. */
+export function formatSubscriptionStatus(status: string | null): string {
+  if (!status) return '—';
+
+  const label = SUBSCRIPTION_STATUS_LABELS[status];
+  if (label) return label;
+
+  const words = status.replaceAll('_', ' ').trim().toLowerCase();
+  return `${words.charAt(0).toUpperCase()}${words.slice(1)}`;
+}

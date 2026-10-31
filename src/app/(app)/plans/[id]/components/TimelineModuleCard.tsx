@@ -121,7 +121,7 @@ export function TimelineModuleCard({
             <div className='mt-4 flex justify-end'>
               <Button asChild variant='soft-primary' size='sm'>
                 <Link href={`/plans/${planId}/modules/${module.id}`}>
-                  View Full Module
+                  View full module
                   <ArrowRight size={16} />
                 </Link>
               </Button>

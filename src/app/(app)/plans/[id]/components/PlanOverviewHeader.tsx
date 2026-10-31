@@ -7,7 +7,10 @@ import { RegeneratePlanDialog } from '@/app/(app)/plans/[id]/components/Regenera
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
 import { planDetailPath } from '@/features/navigation/routes';
-import { formatMinutes } from '@/features/plans/formatters';
+import {
+  buildPlanOverviewDescription,
+  formatMinutes,
+} from '@/features/plans/formatters';
 import { ArrowRight, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -37,8 +40,7 @@ export function PlanOverviewHeader({
           {plan.topic}
         </h1>
         <p className='mt-3 max-w-xl type-body wrap-break-word text-muted-foreground sm:type-reading'>
-          A structured path for learning {plan.topic}, paced around your
-          available time.
+          {buildPlanOverviewDescription(plan.topic)}
         </p>
 
         <div className='mt-5 flex flex-wrap items-center gap-3'>
@@ -80,7 +82,7 @@ export function PlanOverviewHeader({
 
       <div
         aria-hidden='true'
-        className='absolute right-0 bottom-0 left-0 h-1 bg-border/50'
+        className='absolute right-0 bottom-0 left-0 h-1 bg-muted'
       >
         <div
           className='h-full w-(--plan-progress-width) bg-action-primary transition-[width] duration-500 motion-reduce:transition-none'
