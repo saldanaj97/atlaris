@@ -6,10 +6,12 @@ import { Surface } from '@/components/ui/surface';
 import { Loader2 } from 'lucide-react';
 
 /**
- * What the panel can truthfully say: a run failed, nothing has been written
- * yet (no run is going), or a run is in progress.
+ * What the panel can truthfully say: a run is in progress, or it failed.
+ * The module page starts generation on its own when lessons are missing, so a
+ * module that still has none and has no run going got there through a failed
+ * start or a run that rolled back; it reads as failed, with a retry.
  */
-type PanelState = 'failed' | 'not_started' | 'running';
+type PanelState = 'failed' | 'running';
 
 function getPanelState(
   status: Exclude<ModuleLessonGenerationSummary['status'], 'ready'>,
@@ -21,7 +23,7 @@ function getPanelState(
     case 'generating':
       return 'running';
     case 'not_generated':
-      return isPending ? 'running' : 'not_started';
+      return isPending ? 'running' : 'failed';
     default: {
       const _exhaustive: never = status;
       return _exhaustive;
@@ -36,17 +38,6 @@ function GenerationDescription({
   state: PanelState;
   generationTakingLong: boolean;
 }) {
-  if (state === 'not_started') {
-    return (
-      <div className='min-w-0'>
-        <h3 className='type-card text-foreground'>Lessons for this module</h3>
-        <p className='mt-2 type-body text-muted-foreground'>
-          Not written yet. Atlaris writes them when you ask.
-        </p>
-      </div>
-    );
-  }
-
   const isFailed = state === 'failed';
 
   return (
@@ -99,11 +90,7 @@ function GenerationAction({
 
   return (
     <Button onClick={onRetry} disabled={isPending} className='w-full sm:w-auto'>
-      {isPending
-        ? 'Generating…'
-        : state === 'failed'
-          ? 'Retry lesson generation'
-          : 'Write lessons'}
+      {isPending ? 'Generating…' : 'Retry lesson generation'}
     </Button>
   );
 }

@@ -76,11 +76,14 @@ export async function getLearningActivityEventsForUser(
 
 /**
  * Newest task status changes for a user, with the task title and plan topic.
+ * Pass `planId` to keep only one plan's events, so the limit applies after
+ * that filter rather than before it.
  */
 export async function getRecentLearningActivityForUser(
   userId: string,
   dbClient: TasksDbClient,
   limit: number,
+  options: { planId?: string } = {},
 ): Promise<RecentLearningActivityRow[]> {
   return dbClient
     .select({
@@ -98,7 +101,14 @@ export async function getRecentLearningActivityForUser(
       learningPlans,
       eq(learningActivityEvents.planId, learningPlans.id),
     )
-    .where(eq(learningActivityEvents.userId, userId))
+    .where(
+      and(
+        eq(learningActivityEvents.userId, userId),
+        options.planId
+          ? eq(learningActivityEvents.planId, options.planId)
+          : undefined,
+      ),
+    )
     .orderBy(desc(learningActivityEvents.occurredAt))
     .limit(limit);
 }

@@ -216,10 +216,14 @@ export async function getDashboardPlanData(params: {
         planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
       }),
       listLightweightPlansForApi(params),
+      // A Free user with a selected plan can only see that plan's activity, so
+      // filter in SQL; otherwise newer events on locked plans could fill the
+      // limit and leave the feed empty.
       getRecentLearningActivityForUser(
         params.userId,
         params.dbClient,
         DASHBOARD_ACTIVITY_EVENT_LIMIT,
+        { planId: selectedFreePlanId ?? undefined },
       ),
     ]);
   // Locked plans keep their topic but not their content, so task titles stay out.

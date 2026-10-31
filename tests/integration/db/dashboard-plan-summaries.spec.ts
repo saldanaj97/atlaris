@@ -226,6 +226,57 @@ describe('dashboard plan summaries', () => {
     ]);
   });
 
+  it('keeps selected Free plan activity when newer locked events exceed the limit', async () => {
+    const userId = await createUser('activity-locked-flood', 'free');
+    const selectedPlan = await createTestPlan({ userId, topic: 'Selected' });
+    const selectedModule = await createTestModule({ planId: selectedPlan.id });
+    const selectedTask = await createTestTask({
+      moduleId: selectedModule.id,
+      title: 'Older visible task',
+    });
+    const lockedPlan = await createTestPlan({ userId, topic: 'Locked' });
+    const lockedModule = await createTestModule({ planId: lockedPlan.id });
+    const lockedTasks = await Promise.all(
+      Array.from({ length: 21 }, (_, index) =>
+        createTestTask({
+          moduleId: lockedModule.id,
+          order: index + 1,
+          title: `Locked task ${index + 1}`,
+        }),
+      ),
+    );
+
+    await setTaskProgressBatch(
+      userId,
+      [{ taskId: selectedTask.id, status: 'completed' }],
+      db,
+    );
+    await setTaskProgressBatch(
+      userId,
+      lockedTasks.map((task) => ({ taskId: task.id, status: 'completed' })),
+      db,
+    );
+
+    const selectedAt = new Date('2026-08-22T00:00:00.000Z');
+    await db
+      .update(users)
+      .set({
+        initialPlanGeneratedAt: selectedAt,
+        freeAccessPlanId: selectedPlan.id,
+        freeAccessPlanSelectedAt: selectedAt,
+      })
+      .where(eq(users.id, userId));
+
+    const { recentActivity } = await getDashboardPlanData({
+      userId,
+      dbClient: db,
+    });
+
+    expect(recentActivity.map((row) => row.taskTitle)).toEqual([
+      'Older visible task',
+    ]);
+  });
+
   it('aggregates overall progress across every plan, not the recent-20 window', async () => {
     const userId = await createUser('progress-uncapped');
     const now = Date.now();
