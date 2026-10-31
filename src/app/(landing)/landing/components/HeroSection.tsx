@@ -4,6 +4,7 @@ import { HeroStars } from './HeroStars';
 import { ibmPlexMono, instrumentSerif } from '@/app/fonts';
 import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
+import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { ArrowRight } from 'lucide-react';
@@ -51,18 +52,6 @@ const plannedMinutes = EXAMPLE_PLAN.thisWeek.reduce(
   (sum, task) => sum + task.minutes,
   0,
 );
-
-function formatMinutes(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  if (rest === 0) return `${hours} hr${hours === 1 ? '' : 's'}`;
-  return `${hours} hr ${rest}`;
-}
-
-function formatHours(hours: number): string {
-  return `${hours} hr${hours === 1 ? '' : 's'}`;
-}
 
 export function HeroSection() {
   return (
@@ -186,7 +175,7 @@ function HeroPlanCards() {
         )}
       >
         Example plan · {EXAMPLE_PLAN.title} · {EXAMPLE_PLAN.weeks} weeks ·{' '}
-        {formatHours(EXAMPLE_PLAN.hoursPerWeek)} a week
+        {formatMinutes(EXAMPLE_PLAN.hoursPerWeek * 60)} a week
       </figcaption>
       {/* oxlint-disable-next-line shadcn/require-static-classes -- CSS module classes are complete but opaque to the rule */}
       <div
@@ -238,7 +227,7 @@ function HeroPlanCards() {
                       </span>
                     ) : (
                       <span className='type-meta text-muted-foreground tabular-nums'>
-                        {formatHours(module.hours)}
+                        {formatMinutes(module.hours * 60)}
                         {module.state === 'done' ? ' · done' : ''}
                       </span>
                     )}

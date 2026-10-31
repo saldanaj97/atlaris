@@ -126,6 +126,10 @@
     var(--orb-delay, 0s) infinite alternate;
 }
 
+.ambientOrb[data-paused='true'] {
+  animation-play-state: paused;
+}
+
 .ambientOrbPrimary {
   --orb-duration: 17s;
   --orb-x: -1.5rem;
