@@ -10,6 +10,7 @@ import {
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
+// react-doctor-disable-next-line react-doctor/no-flush-sync -- flushSync inside the startViewTransition callback is required so the crossfade captures the new theme.
 import { flushSync } from 'react-dom';
 
 interface ThemeToggleProps {
