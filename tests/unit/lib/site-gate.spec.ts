@@ -29,8 +29,6 @@ vi.mock('@sentry/nextjs', () => ({
   captureException: mocks.captureException,
 }));
 
-const cached = { bypassCache: false };
-
 const gateFlags = [
   {
     gate: 'maintenance',
@@ -63,20 +61,20 @@ describe('resolveSiteGate', () => {
   });
 
   it('returns null when neither flag is on', async () => {
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
+    await expect(resolveSiteGate()).resolves.toBe(null);
   });
 
   it('returns waitlist when only the launch waitlist flag is on', async () => {
     mocks.launchWaitlist.mockResolvedValue(true);
 
-    await expect(resolveSiteGate(cached)).resolves.toBe('waitlist');
+    await expect(resolveSiteGate()).resolves.toBe('waitlist');
   });
 
   it('lets maintenance win when both flags are on', async () => {
     mocks.maintenanceMode.mockResolvedValue(true);
     mocks.launchWaitlist.mockResolvedValue(true);
 
-    await expect(resolveSiteGate(cached)).resolves.toBe('maintenance');
+    await expect(resolveSiteGate()).resolves.toBe('maintenance');
   });
 
   it.each(gateFlags)(
@@ -84,7 +82,7 @@ describe('resolveSiteGate', () => {
     async ({ envKey }) => {
       mocks.appEnv[envKey] = true;
 
-      await expect(resolveSiteGate(cached)).resolves.toBe(null);
+      await expect(resolveSiteGate()).resolves.toBe(null);
       expect(mocks.captureException).not.toHaveBeenCalled();
     },
   );
@@ -96,7 +94,7 @@ describe('resolveSiteGate', () => {
       flag.mockRejectedValue(flagErr);
       mocks.appEnv[envKey] = true;
 
-      await expect(resolveSiteGate(cached)).resolves.toBe(gate);
+      await expect(resolveSiteGate()).resolves.toBe(gate);
 
       expect(mocks.scope.setTag).toHaveBeenCalledWith('feature', feature);
       expect(mocks.scope.setTag).toHaveBeenCalledWith('outcome', 'fail_closed');
@@ -110,7 +108,7 @@ describe('resolveSiteGate', () => {
       const flagErr = new Error('flags unavailable');
       flag.mockRejectedValue(flagErr);
 
-      await expect(resolveSiteGate(cached)).resolves.toBe(null);
+      await expect(resolveSiteGate()).resolves.toBe(null);
 
       expect(mocks.scope.setTag).toHaveBeenCalledWith('feature', feature);
       expect(mocks.scope.setTag).toHaveBeenCalledWith('outcome', 'fail_open');
@@ -119,10 +117,10 @@ describe('resolveSiteGate', () => {
   );
 
   it('serves a clean result from the cache within the TTL', async () => {
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
+    await expect(resolveSiteGate()).resolves.toBe(null);
     mocks.launchWaitlist.mockResolvedValue(true);
 
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
+    await expect(resolveSiteGate()).resolves.toBe(null);
 
     expect(mocks.maintenanceMode).toHaveBeenCalledOnce();
     expect(mocks.launchWaitlist).toHaveBeenCalledOnce();
@@ -130,13 +128,13 @@ describe('resolveSiteGate', () => {
 
   it('re-reads the flags once the cached result expires', async () => {
     vi.useFakeTimers();
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
+    await expect(resolveSiteGate()).resolves.toBe(null);
     mocks.launchWaitlist.mockResolvedValue(true);
 
     vi.advanceTimersByTime(SITE_GATE_CACHE_TTL_MS - 1);
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
+    await expect(resolveSiteGate()).resolves.toBe(null);
     vi.advanceTimersByTime(1);
-    await expect(resolveSiteGate(cached)).resolves.toBe('waitlist');
+    await expect(resolveSiteGate()).resolves.toBe('waitlist');
 
     expect(mocks.launchWaitlist).toHaveBeenCalledTimes(2);
   });
@@ -147,14 +145,14 @@ describe('resolveSiteGate', () => {
       vi.useFakeTimers();
       flag.mockRejectedValueOnce(new Error('flags unavailable'));
       mocks.appEnv[envKey] = true;
-      await expect(resolveSiteGate(cached)).resolves.toBe(gate);
+      await expect(resolveSiteGate()).resolves.toBe(gate);
 
       vi.advanceTimersByTime(SITE_GATE_FALLBACK_CACHE_TTL_MS - 1);
-      await expect(resolveSiteGate(cached)).resolves.toBe(gate);
+      await expect(resolveSiteGate()).resolves.toBe(gate);
       expect(mocks.captureException).toHaveBeenCalledOnce();
 
       vi.advanceTimersByTime(1);
-      await expect(resolveSiteGate(cached)).resolves.toBe(null);
+      await expect(resolveSiteGate()).resolves.toBe(null);
       expect(mocks.maintenanceMode).toHaveBeenCalledTimes(2);
       expect(mocks.launchWaitlist).toHaveBeenCalledTimes(2);
     },
@@ -164,10 +162,10 @@ describe('resolveSiteGate', () => {
     vi.useFakeTimers();
     mocks.maintenanceMode.mockResolvedValue(true);
     mocks.launchWaitlist.mockRejectedValue(new Error('flags unavailable'));
-    await expect(resolveSiteGate(cached)).resolves.toBe('maintenance');
+    await expect(resolveSiteGate()).resolves.toBe('maintenance');
 
     vi.advanceTimersByTime(SITE_GATE_FALLBACK_CACHE_TTL_MS);
-    await expect(resolveSiteGate(cached)).resolves.toBe('maintenance');
+    await expect(resolveSiteGate()).resolves.toBe('maintenance');
 
     expect(mocks.launchWaitlist).toHaveBeenCalledOnce();
   });
@@ -176,8 +174,8 @@ describe('resolveSiteGate', () => {
     const waitlist = createDeferredPromise<boolean>();
     mocks.launchWaitlist.mockReturnValueOnce(waitlist.promise);
 
-    const first = resolveSiteGate(cached);
-    const second = resolveSiteGate(cached);
+    const first = resolveSiteGate();
+    const second = resolveSiteGate();
     waitlist.resolve(true);
 
     await expect(Promise.all([first, second])).resolves.toEqual([
@@ -186,17 +184,5 @@ describe('resolveSiteGate', () => {
     ]);
     expect(mocks.maintenanceMode).toHaveBeenCalledOnce();
     expect(mocks.launchWaitlist).toHaveBeenCalledOnce();
-  });
-
-  it('neither reads nor writes the cache when bypassCache is set', async () => {
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
-    mocks.launchWaitlist.mockResolvedValue(true);
-
-    await expect(resolveSiteGate({ bypassCache: true })).resolves.toBe(
-      'waitlist',
-    );
-    await expect(resolveSiteGate(cached)).resolves.toBe(null);
-
-    expect(mocks.launchWaitlist).toHaveBeenCalledTimes(2);
   });
 });

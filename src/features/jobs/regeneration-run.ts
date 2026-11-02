@@ -106,8 +106,8 @@ export type GroundedRegenerationStageInput = {
  * (JCS-158) and outline checks, verifier and repair (JCS-159).
  */
 export type GroundedRegenerationStages = {
-  /** The Worker's `groundedGeneration` switch for `tier`. */
-  readonly isEnabled: (tier: SubscriptionTier) => boolean;
+  /** The `grounded-generation` flag for `tier` (fail closed). */
+  readonly isEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   /** Runs and saves research; `null` when it was skipped after its retries. */
   readonly research: (
     stage: GroundedRegenerationStageInput,
@@ -313,7 +313,7 @@ async function prepareRegeneration(
   const { plan, generationInput, payload } = loaded;
   const tier =
     admittedTier ?? (await resolveUserTier(plan.userId, serviceRoleDb));
-  const grounded = context.grounded?.isEnabled(tier) === true;
+  const grounded = (await context.grounded?.isEnabled(tier)) === true;
   const policyDenial = resolveRegenerationPolicyDenial({
     tier,
     grounded,

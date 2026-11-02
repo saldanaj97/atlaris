@@ -7,7 +7,7 @@ import { retryPostHogPersonDeletions } from '@/features/auth/posthog-person-dele
 export const POSTHOG_DELETION_JOB = 'posthog-deletion';
 
 export type PostHogDeletionDeps = {
-  /** `isJobEnabled(env, 'POSTHOG_DELETION')`: false when switched off or paused. */
+  /** Production only (`WORKER_ENV`) and not paused: staging never calls PostHog. */
   enabled: boolean;
   /** Production-only Worker secret; staging has none. */
   apiKey: string | undefined;
@@ -29,7 +29,7 @@ export async function runPostHogDeletion(
   if (!deps.enabled) {
     deps.logger.info(
       { job: POSTHOG_DELETION_JOB },
-      'PostHog deletion retry disabled or jobs paused; skipped',
+      'PostHog deletion retry skipped outside production or while jobs are paused',
     );
     return 'skipped';
   }

@@ -10,7 +10,6 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/proxy/site-gate', () => ({
-  FLAG_OVERRIDES_COOKIE: 'vercel-flag-overrides',
   resolveSiteGate: mocks.resolveSiteGate,
 }));
 

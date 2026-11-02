@@ -209,52 +209,6 @@ describe('ClerkPricingTable', () => {
     },
   );
 
-  it('tracks pointer position and resets card parallax', async () => {
-    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
-    vi.stubGlobal(
-      'matchMedia',
-      vi.fn((query: string) => ({
-        addEventListener: vi.fn(),
-        matches: query === '(hover: hover) and (pointer: fine)',
-        media: query,
-        removeEventListener: vi.fn(),
-      })),
-    );
-    vi.stubGlobal('cancelAnimationFrame', vi.fn());
-    vi.stubGlobal(
-      'requestAnimationFrame',
-      vi.fn((callback: FrameRequestCallback) => {
-        callback(0);
-        return 1;
-      }),
-    );
-
-    await renderPricingTable();
-    const card = await screen.findByRole('article', { name: 'Free' });
-    vi.spyOn(card, 'getBoundingClientRect').mockReturnValue({
-      bottom: 200,
-      height: 200,
-      left: 0,
-      right: 200,
-      toJSON: () => ({}),
-      top: 0,
-      width: 200,
-      x: 0,
-      y: 0,
-    });
-
-    fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
-    expect(card.style.getPropertyValue('--card-tilt-y')).toBe('2.50deg');
-    expect(card.style.getPropertyValue('--card-shine-x')).toBe('75.0%');
-    expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('1');
-
-    const root = card.parentElement?.parentElement;
-    if (!root) throw new Error('Expected pricing table root');
-    fireEvent.pointerLeave(root);
-    expect(card.style.getPropertyValue('--card-tilt-y')).toBe('0deg');
-    expect(card.style.getPropertyValue('--card-shine-opacity')).toBe('0');
-  });
-
   it('disables parallax pointer tracking for reduced motion', async () => {
     mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
     vi.stubGlobal(

@@ -43,7 +43,7 @@ The queue defaults on in development, test, and Vercel Preview. It remains off i
 | Completed, failed, missing, or invalid job                                            | No work                                                       | ack                                                                                                           |
 | Retryable failure with retries left (reservation blocked, provider retryable failure) | `failJob(retryable)` reschedules the row                      | `retry({ delaySeconds })` until `scheduled_for`, capped at 24 h                                               |
 | Unexpected error (database or provider outage)                                        | Reported to Sentry                                            | `retry({ delaySeconds: 60 })`; on the last delivery the run fails the job only if it still owns it, then acks |
-| `JOBS_PAUSED=true` or `JOB_REGENERATION_ENABLED` not `true`                           | No work                                                       | `retryAll({ delaySeconds: 900 })`; exhausted messages drop and the sweep re-sends after resume                |
+| Flagship `jobs-paused` on                                                             | No work                                                       | `retryAll({ delaySeconds: 900 })`; exhausted messages drop and the sweep re-sends after resume                |
 
 Quota follows the existing boundary (`reserveRegenerationQuotaAtProviderStart`): failures before the provider starts do not consume a regeneration; once the provider has started, the regeneration stays consumed. A consumer that dies after the provider call repeats that call on redelivery but not the quota slot.
 
@@ -63,7 +63,7 @@ The plan page shows **Regenerate plan** only when the flag is on for the viewer'
 
 ### Module lessons
 
-Regeneration finalization starts lesson generation for the first two modules. On the Worker, the injected starter (`createWorkflowModuleLessonStarter`) runs the app's flag check (`JOB_MODULE_LESSONS_ENABLED`), preflight, and provisional claim, then creates the module lessons Workflow instance directly. With the lessons switch off it starts nothing and the modules stay `not_generated`.
+Regeneration finalization starts lesson generation for the first two modules. On the Worker, the injected starter (`createWorkflowModuleLessonStarter`) runs the flag check (`module-lesson-generation`, and not `jobs-paused`), preflight, and provisional claim, then creates the module lessons Workflow instance directly. With the flag off or jobs paused it starts nothing and the modules stay `not_generated`.
 
 ### Signed commands
 
@@ -77,31 +77,30 @@ Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature
 | App (Vercel)                   | `JOBS_WORKER_URL`              | Worker origin (`https://workers-staging.atlaris.app`, `https://workers.atlaris.app`) |
 | App (Vercel) and Worker secret | `JOBS_SIGNING_SECRET`          | Shared HMAC key per environment                                                      |
 | Worker secret (optional)       | `JOBS_SIGNING_SECRET_PREVIOUS` | Old key during rotation                                                              |
-| Worker secret (switch)         | `JOB_REGENERATION_ENABLED`     | Consumer, sweep, and enqueue command on/off (absent = off)                           |
-| Worker secret (switch)         | `JOBS_PAUSED`                  | Pauses every job                                                                     |
+| Flagship flag                  | `jobs-paused`                  | Pauses the consumer, sweep, and enqueue command, and every other job                 |
 | Worker secret                  | `OPENROUTER_API_KEY`           | Provider calls from the consumer                                                     |
 | Worker secret                  | `OPENROUTER_PLAN_PRESET`       | OpenRouter preset holding the plan system prompt (required)                          |
 
-Flip a Worker switch yourself from `workers/jobs`: `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <true|false>`. Switches are declared as secrets in `workers/jobs/cloudflare.config.ts`, so a deploy keeps them; never set them from Git or as plain-text dashboard variables. Set `JOBS_SIGNING_SECRET_PREVIOUS` the same way during rotation; it is not declared in the config, and a deploy keeps existing secrets.
+Flip `jobs-paused` yourself in the Flagship dashboard (app `atlaris-plan-generation`; target one environment with a rule on `environment`). Set `JOBS_SIGNING_SECRET_PREVIOUS` during rotation from `workers/jobs` with `pnpm exec cf workers secrets update JOBS_SIGNING_SECRET_PREVIOUS --worker atlaris-jobs-<staging|production> --text <value>`; it is not declared in the config, and a deploy keeps existing secrets.
 
 ### Enabling and rollback
 
-Enable per environment: set the Worker secrets and the app's `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, set `JOB_REGENERATION_ENABLED=true` on the Worker, and set `REGENERATION_QUEUE_ENABLED=true` on the app. Watch the first regenerations: `job_queue.payload.workflow.provider = 'cloudflare-queue'`, consumer logs, and Workers Logs CPU per invocation.
+Enable per environment: set the Worker secrets and the app's `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, keep the `jobs-paused` flag off, and set `REGENERATION_QUEUE_ENABLED=true` on the app. Watch the first regenerations: `job_queue.payload.workflow.provider = 'cloudflare-queue'`, consumer logs, and Workers Logs CPU per invocation.
 
-Rollback: there is no alternate runtime to switch back to. To stop regeneration, set `REGENERATION_QUEUE_ENABLED=false` on the app (the route answers `503` and inserts no rows) and/or set `JOB_REGENERATION_ENABLED` off or `JOBS_PAUSED=true` on the Worker (the enqueue command answers `503`, the consumer stops working, and the sweep stops re-sending). Rows left `pending` are picked up by the sweep after the Worker switch is restored; CAS claims prevent double processing.
+Rollback: there is no alternate runtime to switch back to. To stop regeneration, set `REGENERATION_QUEUE_ENABLED=false` on the app (the route answers `503` and inserts no rows) and/or turn the `jobs-paused` flag on (the enqueue command answers `503`, the consumer stops working, and the sweep stops re-sending; it also pauses every other Worker job). Rows left `pending` are picked up by the sweep after `jobs-paused` is turned off; CAS claims prevent double processing.
 
 ## Operational Checks
 
 - Monitor job backlog in `job_queue` for growing `pending` rows; the Worker sweep should drain them within roughly one `*/15` tick plus the 10-minute settle window.
 - Watch Workers Logs and Sentry (`atlaris-jobs`) for consumer outcomes (`jobId`, `runId`, `deliveryAttempt`, `outcome`, `wallMs`) and repeated `retry` outcomes.
-- Alert on `503` from the enqueue command (`jobs_paused` or `job_disabled`) while the app switch is on.
+- Alert on `503` from the enqueue command (`jobs_paused`) while the app switch is on.
 
 ## Incident Response
 
-1. **Queue backed up:** confirm `JOB_REGENERATION_ENABLED=true` and `JOBS_PAUSED` is not set on the Worker, that the `*/15` cron is running, and that `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET` match between the app and the Worker.
+1. **Queue backed up:** confirm the `jobs-paused` flag is off, that the `*/15` cron is running, and that `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET` match between the app and the Worker.
 2. **401 from the Worker:** the signing secrets differ; rotate with `JOBS_SIGNING_SECRET_PREVIOUS` on the Worker (see [Signed commands](#signed-commands)).
 3. **Repeated failed jobs:** inspect Workers Logs and `job_queue.last_error`, then replay by re-enqueueing or manual retry.
-4. **Emergency load shedding:** set `REGENERATION_QUEUE_ENABLED=false` on the app to stop new requests, or `JOBS_PAUSED=true` on the Worker to pause the consumer and sweep, while investigating.
+4. **Emergency load shedding:** set `REGENERATION_QUEUE_ENABLED=false` on the app to stop new requests, or turn the `jobs-paused` flag on to pause the consumer and sweep (and every other Worker job), while investigating.
 
 ## Related docs
 

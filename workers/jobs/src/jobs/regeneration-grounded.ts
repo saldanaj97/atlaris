@@ -1,15 +1,11 @@
-import type { JobSwitchVars } from '../env';
 import type { GroundedRegenerationStages } from '@/features/jobs/regeneration-run';
 import type { Logger } from '@/lib/logging/logger';
 import type { WorkflowStep } from 'cloudflare:workers';
 
-import {
-  isDirectResearchEnabled,
-  isGroundedGenerationEnabled,
-} from '../switches';
 import { runOutlineQualitySteps } from '../workflows/plan-generation/outline';
 import { runPlanResearchSteps } from '../workflows/plan-generation/research';
 import { REGENERATION_JOB_TAG } from './regeneration-shared';
+import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 
 type InlineStepConfig = { readonly retries?: { readonly limit: number } };
 
@@ -55,7 +51,8 @@ export function createInlineStep(): Pick<WorkflowStep, 'do'> {
  * generation Workflow's research and outline-quality steps, run inline.
  */
 export function createGroundedRegenerationStages(deps: {
-  readonly env: JobSwitchVars;
+  /** `isDirectResearchEnabled()`: the `parallel-direct-research` flag (DEV-171). */
+  readonly isDirectResearchEnabled: () => Promise<boolean>;
   readonly logger: Pick<Logger, 'info' | 'warn'>;
 }): GroundedRegenerationStages {
   const log =
@@ -72,7 +69,7 @@ export function createGroundedRegenerationStages(deps: {
     };
 
   return {
-    isEnabled: (tier) => isGroundedGenerationEnabled(deps.env, tier),
+    isEnabled: isGroundedEnabled,
     research: async (stage) => {
       const outcome = await runPlanResearchSteps(createInlineStep(), {
         planId: stage.planId,
@@ -80,7 +77,7 @@ export function createGroundedRegenerationStages(deps: {
         tier: stage.tier,
         input: stage.input,
         guidance: stage.guidance,
-        directSearch: isDirectResearchEnabled(deps.env),
+        directSearch: await deps.isDirectResearchEnabled(),
         attemptStartedAt: stage.attemptStartedAt,
         withDb: (fn) => fn(stage.db),
         log: log(stage.planId),

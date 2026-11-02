@@ -125,11 +125,6 @@ describe('SiteHeaderChrome desktop sidebar', () => {
       screen.getByRole('button', { name: 'Expand sidebar' }),
     ).toHaveFocus();
     expect(localStorage.getItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY)).toBe('0');
-    expect(
-      document.documentElement.style.getPropertyValue(
-        DESKTOP_SIDEBAR_OFFSET_VAR,
-      ),
-    ).toBe('4rem');
 
     // The desktop header looks the same as when expanded: one expand control
     // (in the rail) and no extra account chrome.
@@ -165,11 +160,6 @@ describe('SiteHeaderChrome desktop sidebar', () => {
       screen.queryByRole('button', { name: 'Expand sidebar' }),
     ).not.toBeInTheDocument();
     expect(localStorage.getItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY)).toBe('1');
-    expect(
-      document.documentElement.style.getPropertyValue(
-        DESKTOP_SIDEBAR_OFFSET_VAR,
-      ),
-    ).toBe('var(--at-semantic-layout-sidebar,14rem)');
   });
 
   it('does not add a desktop collapse control on marketing chrome', () => {

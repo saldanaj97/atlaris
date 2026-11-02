@@ -1,9 +1,7 @@
-import type { JobSwitchVars } from '../env';
 import type { PlanGenerationWorkflowParams } from '../workflows/plan-generation/run';
 import type { SigningSecrets } from './signature';
 import type { Logger } from '@/lib/logging/logger';
 
-import { isJobEnabled, isJobsPaused } from '../switches';
 import { PLAN_GENERATION_JOB } from '../workflows/plan-generation/run';
 import { unauthorizedResponse, verifySignedRequest } from './signature';
 import {
@@ -12,7 +10,9 @@ import {
 } from '@/lib/jobs-worker/contract';
 
 export type PlanGenerationStartDeps = {
-  readonly env: SigningSecrets & JobSwitchVars;
+  readonly env: SigningSecrets;
+  /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
+  readonly isPaused: () => Promise<boolean>;
   readonly workflow: Pick<
     Workflow<PlanGenerationWorkflowParams>,
     'create' | 'get'
@@ -66,11 +66,8 @@ export async function handlePlanGenerationStart(
     return Response.json({ error: 'invalid_body' }, { status: 400 });
   }
 
-  if (isJobsPaused(deps.env)) {
+  if (await deps.isPaused()) {
     return Response.json({ code: 'jobs_paused' }, { status: 503 });
-  }
-  if (!isJobEnabled(deps.env, 'PLAN_GENERATION')) {
-    return Response.json({ code: 'job_disabled' }, { status: 503 });
   }
 
   const instanceId = planGenerationInstanceId(command.reservation.attemptId);

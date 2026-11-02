@@ -1,12 +1,9 @@
 # Copy to workers/jobs/.dev.vars for `pnpm workers dev` (gitignored).
 # Names only; never commit values. Secrets are declared with bindings.secret()
 # in cloudflare.config.ts; deployed Workers get them from the dashboard (B1).
-# In the deployed modes (staging/production) the job switches below are Worker
-# secrets too; locally they come from this file.
+# Job switches (`jobs-paused`, `job-retention-cleanup`,
+# `parallel-direct-research`) are Flagship flags; `cf dev` serves their code
+# defaults until `wrangler flagship flags pull` seeds the local store.
 
-# Direct plan research (DEV-171): the switch and the Parallel Search key.
-# PARALLEL_DIRECT_RESEARCH=false
+# Parallel Search key for direct plan research (DEV-171).
 # PARALLEL_API_KEY=
-
-# Job switches:
-# JOBS_PAUSED=false

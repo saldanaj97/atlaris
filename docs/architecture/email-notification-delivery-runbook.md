@@ -40,14 +40,14 @@ Signed one-click unsubscribe (RFC 8058) at `GET|POST /api/v1/notifications/email
 
 ### Send nuances
 
-- Kill switches differ by trigger. Scheduled runs read only the Worker secrets `JOB_EMAIL_DELIVERY_ENABLED` and `JOBS_PAUSED`. The Vercel Flag `email-notification-delivery` (fail-closed) gates only the manual maintenance route. See [Vercel Flags](../development/environment.md#vercel-flags).
+- Kill switches differ by trigger. The Worker sends only when `WORKER_ENV` is `production` and the Flagship flag `jobs-paused` is off; that covers scheduled firings, the Worker's manual command, and every page step. The Flagship flag `email-notification-delivery` (fail-closed) gates only the app's manual maintenance route. DEV-193 replaced the `JOB_EMAIL_DELIVERY_ENABLED` switch (on in production, off on staging) with the production check. See [Feature flags](../development/environment.md#feature-flags-cloudflare-flagship).
 - Live sends require `RESEND_API_KEY`, `RESEND_FROM`, a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` (unpadded base64url encoding of at least 32 random bytes), and production HTTPS `APP_URL` for deeplinks/unsubscribe URLs.
 - In a daily pass, a `streak_reminder` can suppress `daily_reminder` for the same user (`suppressed_by_streak_reminder` in `delivery-service.ts`).
 
 ### “Why didn’t this user get email?” checklist
 
 1. Category enabled and `unsubscribeAllOptionalEmails` false (effective prefs).
-2. For scheduled runs, Worker secret `JOB_EMAIL_DELIVERY_ENABLED=true` and `JOBS_PAUSED` not `true` (the Vercel Flag `email-notification-delivery` matters only for a manual trigger); `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
+2. For scheduled runs, the production Worker with the `jobs-paused` flag off (the `email-notification-delivery` flag matters only for a manual trigger); `RESEND_API_KEY`, `RESEND_FROM`, and a valid `EMAIL_UNSUBSCRIBE_TOKEN_SECRET` are configured; `APP_URL` is production HTTPS.
 3. Recipient has a non-empty, current Clerk-projected email and qualifies for the requested category. The Clerk watermark orders lifecycle projections; it does not exclude an otherwise valid existing recipient:
    - Daily reminder: no activity today in the user's local time zone and an incomplete plan.
    - Streak reminder: no activity today and activity on each of the prior three local days.
@@ -75,15 +75,15 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 | Item | Worker behavior |
 | --- | --- |
 | Trigger | Workflow `atlaris-email-delivery-<env>` (class `EmailDeliveryWorkflow`) with `schedules` `0 14 * * *` (daily) and `30 14 * * MON` (weekly; Cloudflare numbers weekdays from 1 = Sunday, so never `* * 1`) |
-| Gate | `JOB_EMAIL_DELIVERY_ENABLED=true` and `JOBS_PAUSED` not `true` (Worker secrets) are the only gate for scheduled runs; the Vercel Flag does not reach the Worker. A scheduled firing with the switch off exits before reserving work |
+| Gate              | Production Worker and `jobs-paused` off, read inside the `claim-run` and page steps; `email-notification-delivery` is not read on the scheduled path. A paused or non-production firing exits before reserving work                                                          |
 | Run key | The first step (`claim-run`) derives `runKind` and `schedulerDateUtc` from `event.schedule`, reserves `(run_kind, scheduler_date_utc)`, and claims it. A duplicate firing exits without sending |
 | Pages | One step per page (`page-<n>`), 20 recipients each, to stay under the Free plan's 50 external subrequests per step. At most 1,024 steps per instance, so about 20,000 recipients per run |
 | Retries | Each step retries 3 times. The delay is the domain's `retryAfter` (60 seconds for provider back-off, the 15-minute lease for an unknown send outcome). The last attempt fails the run (`retry_exhausted`); permanent failures fail it at once. Nothing resends automatically |
-| Pause | Each page checks the switch before any Resend call. Off → the run becomes `paused` (`delivery_switch_disabled`); resume it with the `resume` command |
+| Pause | Each page checks `jobs-paused` (and the production check) before any Resend call. Paused → the run becomes `paused` (`delivery_switch_disabled`); resume it with the `resume` command |
 | `workflow_run_id` | `cf:<Cloudflare instance ID>` |
 | Monitoring | No Sentry cron monitors (org at capacity). Failed and `needs_review` runs are reported with `captureException`, tags `job: email-delivery`, `runtime: cloudflare-worker`. Inspect instances in the Workflows dashboard by the ID after `cf:` |
 
-**Staging safe recipients.** When `WORKER_ENV` is not `production`, only addresses in the staging Worker secret `EMAIL_TEST_RECIPIENT_ALLOWLIST` (comma-separated, case-insensitive) may receive email. Set it with `pnpm exec cf workers secrets update EMAIL_TEST_RECIPIENT_ALLOWLIST --worker atlaris-jobs-staging --text "<addresses>"` from `workers/jobs`, never in `workers/jobs/cloudflare.config.ts`: a plain-text variable outside the config does not survive a `cf deploy`, and a secret cannot reuse the name of an existing plain-text variable (API error 10053), so convert a leftover plain-text variable in place rather than deleting it first ([design note, Decision 7](./cloudflare-jobs-runtime.md#decision-7-cutover-and-pause)). Staging's allowlist has been a Worker secret since 2026-10-14. Other recipients are counted as `skipped` without a ledger row, so they are never marked sent. If the secret is missing or empty, the page sends nothing, logs `test_recipient_allowlist_missing`, and pauses the run (`test_recipient_allowlist_missing`); set the secret and `resume`. Production ignores it.
+**Staging safe recipients.** Staging Worker email is off by design: `isEmailDeliveryEnabled` in `workers/jobs/src/switches.ts` returns false outside production, and turning it on needs a code change there. The allowlist stays as defense in depth for that case. When `WORKER_ENV` is not `production`, only addresses in the staging Worker secret `EMAIL_TEST_RECIPIENT_ALLOWLIST` (comma-separated, case-insensitive) may receive email. Set it with `pnpm exec cf workers secrets update EMAIL_TEST_RECIPIENT_ALLOWLIST --worker atlaris-jobs-staging --text "<addresses>"` from `workers/jobs`, never in `workers/jobs/cloudflare.config.ts`: a plain-text variable outside the config does not survive a `cf deploy`, and a secret cannot reuse the name of an existing plain-text variable (API error 10053), so convert a leftover plain-text variable in place rather than deleting it first ([design note, Decision 7](./cloudflare-jobs-runtime.md#decision-7-cutover-and-pause)). Staging's allowlist has been a Worker secret since 2026-10-14. Other recipients are counted as `skipped` without a ledger row, so they are never marked sent. If the secret is missing or empty, the page sends nothing, logs `test_recipient_allowlist_missing`, and pauses the run (`test_recipient_allowlist_missing`); set the secret and `resume`. Production ignores it.
 
 **Manual command.** `POST /v1/email-delivery/runs` on the Worker hostname, signed per Decision 4, with body `{ "v": 1, "runKind": "daily", "schedulerDateUtc": "2026-07-10", "action": "start" | "resume" | "replay_reviewed" }`. The app's manual route forwards to it with the same validation and state rules. The instance ID is `email-<runId>-<run updated_at in ms>`, so a repeated command for the same queued run is a duplicate and each resume gets a new instance.
 
@@ -94,11 +94,11 @@ The jobs Worker (`workers/jobs`) is the only email scheduler. It uses the run ta
 | `200 { accepted, duplicate: true, runId, … }` | The run already exists (an existing run also returns `status` and `instanceId`, its persisted `workflow_run_id`, null if unclaimed) in a state that needs no new instance, the unclaimed run's instance already exists and is still live (`running`, `queued`, `waiting`, or `paused`), or `replay_reviewed` still has unresolved `manual_review` rows |
 | `400 { error: "invalid_body" }` | Body, date, Monday rule, or future `start` date invalid |
 | `409 { code: "invalid_run_state" }` | Action does not fit the run's state |
-| `503 { code: "jobs_paused" \| "job_disabled" \| "workflow_start_failed" }` | Switch off, or the instance could not be created (the run is marked `failed`; `resume` it) |
+| `503 { code: "jobs_paused" \| "job_disabled" \| "workflow_start_failed" }` | `jobs-paused` is on, the Worker is not production (staging email is off by design), or the instance could not be created (the run is marked `failed`; `resume` it) |
 
-The app's manual route (`/api/internal/maintenance/notifications/email`) checks the `email-notification-delivery` Vercel Flag, then sends this command with `dispatchEmailDeliveryToWorker` (`JOBS_WORKER_URL`, `JOBS_SIGNING_SECRET`). It is for manual operations only; the Worker's schedules run the daily and weekly sends.
+The app's manual route (`/api/internal/maintenance/notifications/email`) checks the `email-notification-delivery` Flagship flag, then sends this command with `dispatchEmailDeliveryToWorker` (`JOBS_WORKER_URL`, `JOBS_SIGNING_SECRET`). It is for manual operations only; the Worker's schedules run the daily and weekly sends.
 
-**Switches.** Staging: set `EMAIL_TEST_RECIPIENT_ALLOWLIST`, then `JOB_EMAIL_DELIVERY_ENABLED=true`. Production: `JOB_EMAIL_DELIVERY_ENABLED=true` on the Worker. To stop delivery, switch it off or set `JOBS_PAUSED=true`. Each switch is a Worker secret you flip yourself with `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-<staging|production> --text <true|false>` from `workers/jobs`; never from Git. The run key and ledger prevent double-sending across restarts.
+**Switches.** Scheduled delivery runs on the production Worker only. Staging email is off by design and never sends from the Worker; turning it on needs a code change in `workers/jobs/src/switches.ts`, plus `EMAIL_TEST_RECIPIENT_ALLOWLIST`. To stop delivery, turn the `jobs-paused` flag on, which pauses every Worker job; you flip it in the Flagship dashboard (app `atlaris-plan-generation`), never from Git. The run key and ledger prevent double-sending across restarts.
 
 ## Inspect a run
 
@@ -153,7 +153,7 @@ For a weekly run, use a Monday UTC date and `"runKind":"weekly"`. A `start` requ
 
 ## Recover paused or failed work
 
-1. Correct the Worker switch, Resend, configuration, or infrastructure cause (and the Vercel Flag too, if the manual route reports `disabled`).
+1. Correct the Worker switch, Resend, configuration, or infrastructure cause (and the Flagship flag too, if the manual route reports `disabled`).
 2. Send the same `runKind` and `schedulerDateUtc` with `"action":"resume"`.
 3. Confirm the response has a new Workflow instance ID and that the persisted cursor and reference timestamp remain unchanged.
 
@@ -173,7 +173,7 @@ This action resets the run cursor but retains the logical date and domain delive
 
 ## Stop delivery or roll back
 
-- Switch off `JOB_EMAIL_DELIVERY_ENABLED` (or set `JOBS_PAUSED=true`) on the Worker (a Worker secret; flip it as in **Switches** above) to stop scheduled runs before they reserve work and to pause a running instance before its next page. The `email-notification-delivery` Vercel Flag gates only the manual route.
+- Turn `jobs-paused` on, as in **Switches** above, to stop scheduled runs before they reserve work and to pause a running instance before its next page. The `email-notification-delivery` flag gates only the manual route.
 - Do not re-enable the deleted GitHub scheduler as a parallel fallback. Resolve the durable run and resume it through the manual route after correction.
 
 ## Deployment checks

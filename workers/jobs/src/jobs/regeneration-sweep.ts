@@ -1,4 +1,3 @@
-import type { JobSwitchVars } from '../env';
 import type {
   CaptureException,
   RegenerationQueue,
@@ -7,7 +6,6 @@ import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 
 import {
-  readRegenerationSwitch,
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
 } from './regeneration-shared';
@@ -17,7 +15,8 @@ import { claimRegenerationSweepJobIds } from '@/features/jobs/regeneration-sweep
 export const REGENERATION_SWEEP_CRON = '*/15 * * * *';
 
 export type RegenerationSweepDeps = {
-  readonly env: JobSwitchVars;
+  /** `isJobsPaused()`, read once for the cron tick. */
+  readonly paused: boolean;
   readonly logger: Pick<Logger, 'info'>;
   readonly captureException: CaptureException;
   readonly withDb: <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
@@ -26,24 +25,23 @@ export type RegenerationSweepDeps = {
 };
 
 export type RegenerationSweepResult =
-  | { readonly kind: 'skipped'; readonly switchState: 'paused' | 'disabled' }
+  | { readonly kind: 'paused' }
   | { readonly kind: 'swept'; readonly resent: number };
 
 /**
  * Re-sends lost regeneration work: `job_queue` is the durable record, and a
  * failed app enqueue call or an exhausted message only delays a job until
- * this tick (Decision 8). Skips while the job is paused or disabled.
+ * this tick (Decision 8). Skips while jobs are paused.
  */
 export async function runRegenerationSweep(
   deps: RegenerationSweepDeps,
 ): Promise<RegenerationSweepResult> {
-  const switchState = readRegenerationSwitch(deps.env);
-  if (switchState !== 'enabled') {
+  if (deps.paused) {
     deps.logger.info(
-      { job: REGENERATION_JOB_TAG, switchState },
-      'Regeneration sweep skipped while the job is off',
+      { job: REGENERATION_JOB_TAG },
+      'Regeneration sweep skipped while jobs are paused',
     );
-    return { kind: 'skipped', switchState };
+    return { kind: 'paused' };
   }
 
   const claimJobIds = deps.claimJobIds ?? claimRegenerationSweepJobIds;

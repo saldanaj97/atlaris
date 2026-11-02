@@ -206,7 +206,7 @@ function makeDeps(overrides: Partial<EmailDeliveryWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const captureException = vi.fn();
   const deps: EmailDeliveryWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
     recipientGuard: resolveEmailRecipientGuard({ WORKER_ENV: 'production' }),
     withDb: (fn) => fn({} as DbClient),
     createSender: () => sender,
@@ -341,7 +341,7 @@ describe('runEmailDeliveryWorkflow', () => {
   });
 
   it('exits without reserving when the switch is off or the cron is unknown', async () => {
-    const disabled = makeDeps({ isEnabled: () => false });
+    const disabled = makeDeps({ isEnabled: async () => false });
     await expect(
       runEmailDeliveryWorkflow(
         scheduledEvent(),
@@ -489,7 +489,7 @@ describe('runEmailDeliveryWorkflow', () => {
     await expect(
       runEmailDeliveryWorkflow(event, createStep().step, {
         ...deps,
-        isEnabled: () => false,
+        isEnabled: async () => false,
       }),
     ).resolves.toEqual({ kind: 'paused' });
 

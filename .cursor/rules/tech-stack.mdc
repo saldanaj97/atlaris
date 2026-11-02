@@ -38,7 +38,7 @@ Use this as concise project context. Do not treat hosted service versions as kno
 - Sentry observability: SDK package `@sentry/nextjs` `10.70.0`; `next.config.ts` wraps the app with Sentry config.
 - OpenRouter AI: SDK package `@openrouter/sdk` `0.13.67`.
 - Background jobs: Cloudflare jobs Worker (`workers/jobs`) with Cloudflare Queues and Workflows.
-- Vercel Flags: `flags` `4.3.0`; Vercel adapter `@flags-sdk/vercel` `1.4.6`.
+- Feature flags: Cloudflare Flagship through OpenFeature — `@cloudflare/flagship` `0.6.0` (`FlagshipServerProvider` in the app, the `FLAGS` Workers binding in `workers/jobs`) and `@openfeature/server-sdk` `1.23.0`. Flags are declared in `src/flags.ts` and created only in the Flagship dashboard; see `docs/development/environment.md`, "Feature flags (Cloudflare Flagship)" and its "Adding a flag" note. The former `flags` / `@flags-sdk/vercel` packages and the vendored `flags-sdk` skill are gone (DEV-192).
 - Vercel telemetry packages: `@vercel/analytics` `2.0.1`, `@vercel/speed-insights` `2.0.0`.
 
 ## Version Sources

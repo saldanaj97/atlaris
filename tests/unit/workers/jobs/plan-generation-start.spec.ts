@@ -77,17 +77,14 @@ async function signed(body: string, secret = SECRET): Promise<Request> {
 }
 
 function makeDeps(
-  env: Record<string, string> = {},
+  paused = false,
   workflow: Partial<PlanGenerationStartDeps['workflow']> = {},
 ) {
   const create = vi.fn(async () => ({}) as WorkflowInstance);
   const get = vi.fn(async () => ({}) as WorkflowInstance);
   const deps: PlanGenerationStartDeps = {
-    env: {
-      JOBS_SIGNING_SECRET: SECRET,
-      JOB_PLAN_GENERATION_ENABLED: 'true',
-      ...env,
-    },
+    env: { JOBS_SIGNING_SECRET: SECRET },
+    isPaused: async () => paused,
     workflow: { create, get, ...workflow },
     logger: { info: vi.fn(), error: vi.fn() },
     nowMs: NOW_MS,
@@ -116,14 +113,11 @@ describe('handlePlanGenerationStart', () => {
   });
 
   it('answers 200 duplicate when the instance already exists', async () => {
-    const { deps } = makeDeps(
-      {},
-      {
-        create: vi.fn(async () => {
-          throw new Error('instance.already_exists');
-        }),
-      },
-    );
+    const { deps } = makeDeps(false, {
+      create: vi.fn(async () => {
+        throw new Error('instance.already_exists');
+      }),
+    });
 
     const response = await handlePlanGenerationStart(
       await signed(JSON.stringify(command)),
@@ -139,17 +133,14 @@ describe('handlePlanGenerationStart', () => {
   });
 
   it('answers 503 when create fails and no instance exists', async () => {
-    const { deps } = makeDeps(
-      {},
-      {
-        create: vi.fn(async () => {
-          throw new Error('workflows unavailable');
-        }),
-        get: vi.fn(async () => {
-          throw new Error('instance.not_found');
-        }),
-      },
-    );
+    const { deps } = makeDeps(false, {
+      create: vi.fn(async () => {
+        throw new Error('workflows unavailable');
+      }),
+      get: vi.fn(async () => {
+        throw new Error('instance.not_found');
+      }),
+    });
 
     const response = await handlePlanGenerationStart(
       await signed(JSON.stringify(command)),
@@ -202,14 +193,8 @@ describe('handlePlanGenerationStart', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it.each([
-    [
-      'jobs_paused',
-      { JOBS_PAUSED: 'true', JOB_PLAN_GENERATION_ENABLED: 'true' },
-    ],
-    ['job_disabled', { JOB_PLAN_GENERATION_ENABLED: 'false' }],
-  ])('answers 503 %s', async (code, env) => {
-    const { deps, create } = makeDeps(env);
+  it('answers 503 jobs_paused while jobs are paused', async () => {
+    const { deps, create } = makeDeps(true);
 
     const response = await handlePlanGenerationStart(
       await signed(JSON.stringify(command)),
@@ -217,7 +202,7 @@ describe('handlePlanGenerationStart', () => {
     );
 
     expect(response.status).toBe(503);
-    await expect(response.json()).resolves.toEqual({ code });
+    await expect(response.json()).resolves.toEqual({ code: 'jobs_paused' });
     expect(create).not.toHaveBeenCalled();
   });
 });

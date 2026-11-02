@@ -48,7 +48,7 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
     },
     /**
      * Bearer token for authenticated maintenance HTTP routes.
-     * Availability is independent of the email-notification-delivery Vercel Flag.
+     * Availability is independent of the email-notification-delivery Flagship flag.
      * In production, missing token makes the authenticated worker boundary unavailable.
      */
     get workerToken(): string | undefined {

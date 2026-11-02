@@ -64,9 +64,6 @@ describe('middleware policy', () => {
       null,
     );
     expect(
-      resolveSiteGateRedirectPath('maintenance', '/.well-known/vercel/flags'),
-    ).toBe(null);
-    expect(
       resolveSiteGateRedirectPath('maintenance', '/api/health/worker'),
     ).toBe(null);
     expect(
@@ -238,7 +235,6 @@ describe('middleware policy', () => {
     '/api/internal/maintenance/retention/cleanup',
     '/api/internal/jobs/regeneration/process/',
     '/landing',
-    '/.well-known/vercel/flags',
   ])('isSiteGateExempt is true for %s', (pathname) => {
     expect(isSiteGateExempt(pathname)).toBe(true);
   });
@@ -255,7 +251,6 @@ describe('middleware policy', () => {
     '/api/internal/maintenance/billing/reconcile-clerk',
     '/api/internal/jobs/regeneration/process',
     '/landing',
-    '/.well-known/vercel/flags',
   ])('never redirects exempt path %s in any gate state', (pathname) => {
     for (const gate of [null, 'maintenance', 'waitlist'] as const) {
       expect(resolveSiteGateRedirectPath(gate, pathname)).toBe(null);

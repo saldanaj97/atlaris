@@ -283,10 +283,10 @@ function event(
 function makeDeps(overrides: Partial<PlanGenerationWorkflowDeps> = {}) {
   const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
   const deps: PlanGenerationWorkflowDeps = {
-    isEnabled: () => true,
+    isEnabled: async () => true,
     // Grounded generation off: today's pipeline.
-    isGroundedEnabled: () => false,
-    isDirectResearchEnabled: () => false,
+    isGroundedEnabled: async () => false,
+    isDirectResearchEnabled: async () => false,
     withDb: (fn) => fn(makeDb()),
     startModuleLessons: vi.fn(),
     logger,
@@ -474,7 +474,7 @@ describe('runPlanGenerationWorkflow', () => {
   });
 
   it('settles the attempt as retryable without a provider call when the switch is off', async () => {
-    const { deps } = makeDeps({ isEnabled: () => false });
+    const { deps } = makeDeps({ isEnabled: async () => false });
     const { step, calls } = createStep();
 
     await expect(
@@ -678,8 +678,37 @@ describe('runPlanGenerationWorkflow', () => {
       providerReturning(planText(cleanModules()));
     });
 
+    it('finishes ungrounded when record-workflow replays a pre-DEV-192 result', async () => {
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
+      const { step, calls } = createStep();
+      // Workflows replay a completed step's stored result instead of running
+      // it again; before DEV-192 that result was `{ kind: 'recorded' }`.
+      const run = step.do as (...args: unknown[]) => Promise<unknown>;
+      const replayed = {
+        do: async (name: string, ...rest: unknown[]) =>
+          name === 'record-workflow'
+            ? { kind: 'recorded' }
+            : run(name, ...rest),
+      } as unknown as Pick<WorkflowStep, 'do'>;
+
+      await expect(
+        runPlanGenerationWorkflow(event(), replayed, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(calls.map((call) => call.name)).toEqual(['generate', 'finalize']);
+      expect(mocks.createGroundedOutlineProvider).not.toHaveBeenCalled();
+      expect(stepLogs(logger).map((fields) => fields.step)).toEqual([
+        'generate',
+        'finalize',
+      ]);
+    });
+
     it('researches once, saves the brief and sources, then generates', async () => {
-      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
       const { step, calls } = createStep();
 
       await expect(
@@ -741,8 +770,8 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('researches directly when the Worker switch is on (DEV-171)', async () => {
       const { deps, logger } = makeDeps({
-        isGroundedEnabled: () => true,
-        isDirectResearchEnabled: () => true,
+        isGroundedEnabled: async () => true,
+        isDirectResearchEnabled: async () => true,
       });
       const { step } = createStep();
 
@@ -760,8 +789,21 @@ describe('runPlanGenerationWorkflow', () => {
       ).toMatchObject({ outcome: 'researched', directSearch: true });
     });
 
+    it('does not read parallel-direct-research when grounded generation is off', async () => {
+      const isDirectResearchEnabled = vi.fn(async () => true);
+      const { deps } = makeDeps({ isDirectResearchEnabled });
+      const { step } = createStep();
+
+      await expect(
+        runPlanGenerationWorkflow(event(), step, deps),
+      ).resolves.toEqual({ kind: 'success' });
+
+      expect(isDirectResearchEnabled).not.toHaveBeenCalled();
+      expect(mocks.runPlanResearch).not.toHaveBeenCalled();
+    });
+
     it('writes the grounded outline with the writer pick, never the legacy override', async () => {
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await expect(
@@ -786,7 +828,7 @@ describe('runPlanGenerationWorkflow', () => {
     });
 
     it('falls back to the tier writers for a run started before JCS-169', async () => {
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await expect(
@@ -812,7 +854,7 @@ describe('runPlanGenerationWorkflow', () => {
         rejected.push(error);
         throw error;
       });
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await expect(
@@ -831,7 +873,9 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('retries research twice, then saves failed_skipped and still generates', async () => {
       mocks.runPlanResearch.mockRejectedValue(new Error('provider down'));
-      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
       const { step, calls } = createStep();
 
       await expect(
@@ -884,7 +928,7 @@ describe('runPlanGenerationWorkflow', () => {
         research: { createdAt: new Date(reservation.startedAt.getTime() + 1) },
         sources: [],
       });
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await runPlanGenerationWorkflow(event(), step, deps);
@@ -898,8 +942,8 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('skips research without a search when the switch is off', async () => {
       const { deps } = makeDeps({
-        isEnabled: () => false,
-        isGroundedEnabled: () => true,
+        isEnabled: async () => false,
+        isGroundedEnabled: async () => true,
       });
       const { step, calls } = createStep();
 
@@ -1004,7 +1048,7 @@ describe('runPlanGenerationWorkflow', () => {
     });
 
     it('runs code checks only on free, repairs once and logs resolved issues', async () => {
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await expect(
@@ -1057,7 +1101,7 @@ describe('runPlanGenerationWorkflow', () => {
       mocks.runOutlineVerifier
         .mockResolvedValueOnce({ issues: [VERIFIER_ISSUE], model: 'v/model' })
         .mockResolvedValueOnce({ issues: [], model: 'v/model' });
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await expect(
@@ -1105,7 +1149,7 @@ describe('runPlanGenerationWorkflow', () => {
         model: 'repair/model',
         usage: callUsage,
       });
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
@@ -1147,7 +1191,7 @@ describe('runPlanGenerationWorkflow', () => {
       });
       const catalog = catalogReadsRequireDb();
       const { deps } = makeDeps({
-        isGroundedEnabled: () => true,
+        isGroundedEnabled: async () => true,
         withDb: (fn) => catalog.scoped(() => fn(makeDb())),
       });
       const { step } = createStep();
@@ -1166,7 +1210,7 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('replays verifier and repair steps cached before JCS-170 without usage', async () => {
       providerReturning(planText(cleanModules()));
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step: live } = createStep();
       // Before JCS-170 these steps returned the bare issues and modules.
       const cached: Record<string, unknown> = {
@@ -1202,7 +1246,7 @@ describe('runPlanGenerationWorkflow', () => {
         modules: [thinModule(), thinModule('TypeScript functions')],
         model: 'repair/model',
       });
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
@@ -1221,7 +1265,9 @@ describe('runPlanGenerationWorkflow', () => {
         modules: [thinModule(), thinModule()],
         model: 'repair/model',
       });
-      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
       const { step } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
@@ -1243,7 +1289,7 @@ describe('runPlanGenerationWorkflow', () => {
     it('records a discarded repair call before skipping it (DEV-185)', async () => {
       const rejected = new Error('repair output failed to parse');
       mocks.runOutlineRepair.mockRejectedValue(rejected);
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);
@@ -1257,7 +1303,9 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('finalizes the first outline and logs every issue open when the repair fails', async () => {
       mocks.runOutlineRepair.mockRejectedValue(new Error('provider down'));
-      const { deps, logger } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps, logger } = makeDeps({
+        isGroundedEnabled: async () => true,
+      });
       const { step, calls } = createStep();
 
       await expect(
@@ -1280,7 +1328,7 @@ describe('runPlanGenerationWorkflow', () => {
     it('retries a failing verifier once, then continues on code checks alone', async () => {
       providerReturning(planText(cleanModules()));
       mocks.runOutlineVerifier.mockRejectedValue(new Error('bad output'));
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await expect(
@@ -1309,7 +1357,7 @@ describe('runPlanGenerationWorkflow', () => {
 
     it('skips repair and logging when the outline passes every check', async () => {
       providerReturning(planText(cleanModules()));
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('starter'), step, deps);
@@ -1336,7 +1384,7 @@ describe('runPlanGenerationWorkflow', () => {
           createdAt: new Date(reservation.startedAt.getTime() + 1),
         },
       ]);
-      const { deps } = makeDeps({ isGroundedEnabled: () => true });
+      const { deps } = makeDeps({ isGroundedEnabled: async () => true });
       const { step, calls } = createStep();
 
       await runPlanGenerationWorkflow(groundedEvent('free'), step, deps);

@@ -3,6 +3,7 @@ import type { DbClient } from '@/lib/db/types';
 
 import { withInvocationDb } from './db';
 import { parseWorkerEnv, type WorkerEnv } from './env';
+import { registerWorkerFlags } from './flags';
 import {
   EMAIL_DELIVERY_RUNS_PATH,
   handleEmailDeliveryRunsCommand,
@@ -11,7 +12,7 @@ import { handleModuleLessonsStart } from './http/module-lessons-start';
 import { handlePlanGenerationStart } from './http/plan-generation-start';
 import { handleFetch } from './http/router';
 import { unauthorizedResponse, verifySignedRequest } from './http/signature';
-import { HEARTBEAT_CRON, runHeartbeat } from './jobs/heartbeat';
+import { runHeartbeat } from './jobs/heartbeat';
 import { runPlanCleanup } from './jobs/plan-cleanup';
 import { runPostHogDeletion } from './jobs/posthog-deletion';
 import {
@@ -21,11 +22,16 @@ import {
 import { handleRegenerationEnqueue } from './jobs/regeneration-enqueue';
 import { createGroundedRegenerationStages } from './jobs/regeneration-grounded';
 import { runRegenerationSweep } from './jobs/regeneration-sweep';
+import { runRetentionCleanup } from './jobs/retention-cleanup';
+import { runScheduledJobs } from './scheduled';
 import {
-  RETENTION_CLEANUP_CRON,
-  runRetentionCleanup,
-} from './jobs/retention-cleanup';
-import { isJobEnabled, isJobsPaused } from './switches';
+  isDirectResearchEnabled,
+  isEmailDeliveryEnabled,
+  isJobsPaused,
+  isModuleLessonsEnabled,
+  readJobsPaused,
+  retentionCleanupGate,
+} from './switches';
 import { EmailDeliveryWorkflowEntrypoint } from './workflows/email-delivery';
 import { ModuleLessonsWorkflowEntrypoint } from './workflows/module-lessons';
 import { PlanGenerationWorkflowEntrypoint } from './workflows/plan-generation';
@@ -33,6 +39,7 @@ import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
 } from '@/features/jobs/regeneration-run';
+import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { JOBS_COMMAND_PATHS } from '@/lib/jobs-worker/contract';
 import { createLogger } from '@/lib/logging/logger';
 import { beforeSendSentryEvent } from '@/lib/observability/sentry-filters';
@@ -41,15 +48,6 @@ import * as Sentry from '@sentry/cloudflare';
 const logger = createLogger({ runtime: 'cloudflare-worker' });
 
 type WithDb = <T>(fn: (db: DbClient) => Promise<T>) => Promise<T>;
-
-/** Runs every job, then rethrows the first failure so the invocation fails. */
-async function runIndependently(jobs: Array<() => Promise<unknown>>) {
-  const results = await Promise.allSettled(jobs.map((job) => job()));
-  const failed = results.find((result) => result.status === 'rejected');
-  if (failed) {
-    throw failed.reason;
-  }
-}
 
 const sentryOptions = (env: WorkerEnv) => ({
   // Empty until B1 supplies the atlaris-jobs DSN; Sentry stays disabled.
@@ -80,6 +78,7 @@ export const PlanGenerationWorkflow = Sentry.instrumentWorkflowWithSentry(
 export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
   async fetch(request, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
     const { pathname } = new URL(request.url);
 
     if (
@@ -88,6 +87,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
     ) {
       return handleRegenerationEnqueue(request, {
         env: workerEnv,
+        isPaused: isJobsPaused,
         queue: workerEnv.REGENERATION_QUEUE,
         logger,
         captureException: Sentry.captureException,
@@ -100,6 +100,8 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
     ) {
       return handleModuleLessonsStart(request, {
         env: workerEnv,
+        isPaused: isJobsPaused,
+        isGenerationEnabled: resolveModuleLessonGenerationEnabled,
         workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
         logger,
       });
@@ -111,6 +113,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
     ) {
       return handlePlanGenerationStart(request, {
         env: workerEnv,
+        isPaused: isJobsPaused,
         workflow: workerEnv.PLAN_GENERATION_WORKFLOW,
         logger,
       });
@@ -128,7 +131,8 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         body: verification.body,
       });
       return handleEmailDeliveryRunsCommand(verified, {
-        switches: workerEnv,
+        isPaused: isJobsPaused,
+        isDeliveryEnabled: () => isEmailDeliveryEnabled(workerEnv.WORKER_ENV),
         withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
         workflow: workerEnv.EMAIL_DELIVERY_WORKFLOW,
         logger,
@@ -140,68 +144,65 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
 
   async scheduled(controller, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
     const withDb: WithDb = (fn) =>
       withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn);
 
-    switch (controller.cron) {
-      // Every */15 job runs independently; one failure does not skip the others.
-      case HEARTBEAT_CRON:
-        await runIndependently([
-          () =>
-            runHeartbeat({
-              paused: isJobsPaused(workerEnv),
-              logger,
-              withDb,
-              withMonitor: Sentry.withMonitor,
-            }),
-          () =>
-            runPlanCleanup({
-              enabled: isJobEnabled(workerEnv, 'PLAN_CLEANUP'),
-              logger,
-              withDb,
-              captureException: Sentry.captureException,
-            }),
-          () =>
-            runRegenerationSweep({
-              env: workerEnv,
-              logger,
-              captureException: Sentry.captureException,
-              withDb,
-              queue: workerEnv.REGENERATION_QUEUE,
-            }),
-        ]);
-        return;
-      case RETENTION_CLEANUP_CRON:
-        await runIndependently([
-          () =>
-            runRetentionCleanup({
-              enabled: isJobEnabled(workerEnv, 'RETENTION_CLEANUP'),
-              logger,
-              withDb,
-              captureException: Sentry.captureException,
-            }),
-          () =>
-            runPostHogDeletion({
-              enabled: isJobEnabled(workerEnv, 'POSTHOG_DELETION'),
-              apiKey: workerEnv.POSTHOG_PERSONAL_API_KEY,
-              logger,
-              withDb,
-              captureException: Sentry.captureException,
-            }),
-        ]);
-        return;
-      default:
-        logger.warn({ cron: controller.cron }, 'No job for this cron');
-    }
+    await runScheduledJobs(controller.cron, {
+      workerEnv: workerEnv.WORKER_ENV,
+      readJobsPaused,
+      retentionCleanupGate,
+      logger,
+      jobs: {
+        heartbeat: (paused) =>
+          runHeartbeat({
+            paused,
+            logger,
+            withDb,
+            withMonitor: Sentry.withMonitor,
+          }),
+        planCleanup: (enabled) =>
+          runPlanCleanup({
+            enabled,
+            logger,
+            withDb,
+            captureException: Sentry.captureException,
+          }),
+        regenerationSweep: (paused) =>
+          runRegenerationSweep({
+            paused,
+            logger,
+            captureException: Sentry.captureException,
+            withDb,
+            queue: workerEnv.REGENERATION_QUEUE,
+          }),
+        retentionCleanup: (gate) =>
+          runRetentionCleanup({
+            gate,
+            logger,
+            withDb,
+            captureException: Sentry.captureException,
+          }),
+        postHogDeletion: (enabled) =>
+          runPostHogDeletion({
+            enabled,
+            apiKey: workerEnv.POSTHOG_PERSONAL_API_KEY,
+            logger,
+            withDb,
+            captureException: Sentry.captureException,
+          }),
+      },
+    });
   },
 
   async queue(batch, env, ctx) {
     const workerEnv = parseWorkerEnv(env);
+    registerWorkerFlags(workerEnv);
 
     await handleRegenerationBatch(
       batch as MessageBatch<RegenerationQueueMessage>,
       {
-        env: workerEnv,
+        isPaused: isJobsPaused,
         logger,
         captureException: Sentry.captureException,
         withDb: (fn) => withInvocationDb(workerEnv.HYPERDRIVE, ctx, fn),
@@ -209,10 +210,13 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
         terminalize: terminalizeAbandonedRegenerationRun,
         startModuleLessons: createWorkflowModuleLessonStarter({
           workflow: workerEnv.MODULE_LESSONS_WORKFLOW,
-          isEnabled: () => isJobEnabled(workerEnv, 'MODULE_LESSONS'),
+          isEnabled: isModuleLessonsEnabled,
           logger,
         }),
-        grounded: createGroundedRegenerationStages({ env: workerEnv, logger }),
+        grounded: createGroundedRegenerationStages({
+          isDirectResearchEnabled,
+          logger,
+        }),
       },
     );
   },

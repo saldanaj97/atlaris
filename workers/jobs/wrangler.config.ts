@@ -7,12 +7,10 @@ import { defineWranglerConfig } from 'wrangler/experimental-config';
 const inspectorPort = Number(process.env.ATLARIS_JOBS_DEV_INSPECTOR_PORT);
 
 export default defineWranglerConfig({
-  // Worker replacements for Next/Vercel-only modules on job paths
+  // Worker replacement for the Next-only Sentry SDK on job paths
   // (design note, "Runtime compatibility audit").
   alias: {
     '@sentry/nextjs': '@sentry/cloudflare',
-    'flags/next': './src/runtime/flags-next.ts',
-    '@flags-sdk/vercel': './src/runtime/flags-sdk-vercel.ts',
   },
   tsconfig: './tsconfig.json',
   // Only `pnpm workers types` writes .cloudflare/types/index.d.ts (committed; CI

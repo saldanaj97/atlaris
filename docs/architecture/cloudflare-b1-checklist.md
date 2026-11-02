@@ -245,7 +245,7 @@ On the Worker, open **Settings** → **Variables and Secrets** → **Add**. Choo
 
 Select **Deploy**.
 
-Do not add any `JOB_*_ENABLED` or `JOBS_PAUSED` secrets now. Each later phase sets its own switch at cutover with `pnpm exec cf workers secrets update <NAME> --worker atlaris-jobs-staging --text true` from `workers/jobs`; absent means off.
+Do not add any job switch secrets. Since DEV-193 the switches are Flagship flags (`jobs-paused`, `job-retention-cleanup`, `parallel-direct-research`; see [Decision 7](./cloudflare-jobs-runtime.md#decision-7-cutover-and-pause)), and the old `JOB_*_ENABLED` and `JOBS_PAUSED` secrets are ignored.
 
 **Verify:** all four names are listed with hidden values.
 

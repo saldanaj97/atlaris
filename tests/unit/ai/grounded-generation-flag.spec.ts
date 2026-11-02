@@ -10,16 +10,19 @@ describe('isGroundedEnabled', () => {
     groundedGeneration.mockReset();
   });
 
-  it('is on only for listed tiers', async () => {
-    groundedGeneration.mockResolvedValue(['starter', 'pro']);
+  it('is on only for the tiers the flag targets', async () => {
+    groundedGeneration.mockImplementation(
+      async (tier: string) => tier !== 'free',
+    );
 
     await expect(isGroundedEnabled('free')).resolves.toBe(false);
     await expect(isGroundedEnabled('starter')).resolves.toBe(true);
     await expect(isGroundedEnabled('pro')).resolves.toBe(true);
+    expect(groundedGeneration).toHaveBeenLastCalledWith('pro');
   });
 
   it('is off for every tier at the default', async () => {
-    groundedGeneration.mockResolvedValue([]);
+    groundedGeneration.mockResolvedValue(false);
 
     for (const tier of ['free', 'starter', 'pro'] as const) {
       await expect(isGroundedEnabled(tier)).resolves.toBe(false);
@@ -31,13 +34,4 @@ describe('isGroundedEnabled', () => {
 
     await expect(isGroundedEnabled('pro')).resolves.toBe(false);
   });
-
-  it.each([[true], ['pro'], [['pro', 'enterprise']], [null]])(
-    'fails closed on a malformed value %j',
-    async (value) => {
-      groundedGeneration.mockResolvedValue(value);
-
-      await expect(isGroundedEnabled('pro')).resolves.toBe(false);
-    },
-  );
 });

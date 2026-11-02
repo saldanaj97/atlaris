@@ -15,7 +15,7 @@ import {
   createContentSecurityPolicy,
   createCspNonce,
 } from '@/lib/proxy/security-headers';
-import { FLAG_OVERRIDES_COOKIE, resolveSiteGate } from '@/lib/proxy/site-gate';
+import { resolveSiteGate } from '@/lib/proxy/site-gate';
 import { clerkMiddleware } from '@clerk/nextjs/server';
 import { NextRequest, NextResponse, type NextFetchEvent } from 'next/server';
 
@@ -88,9 +88,7 @@ async function handleProxyRequest(
 
   // Maintenance mode / launch waitlist. Exempt paths never redirect, so skip the flag reads.
   if (!isSiteGateExempt(pathname)) {
-    const flagGate = await resolveSiteGate({
-      bypassCache: request.cookies.has(FLAG_OVERRIDES_COOKIE),
-    });
+    const flagGate = await resolveSiteGate();
     // Only the waitlist depends on the viewer, so other gates skip the session read.
     const siteGate =
       flagGate === 'waitlist'

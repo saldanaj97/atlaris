@@ -5,7 +5,6 @@ import {
   runPlanCleanup,
   type PlanCleanupDeps,
 } from '../../../../workers/jobs/src/jobs/plan-cleanup';
-import { isJobEnabled } from '../../../../workers/jobs/src/switches';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const cleanup = vi.hoisted(() => ({ run: vi.fn() }));
@@ -58,17 +57,6 @@ describe('runPlanCleanup', () => {
     expect(withDb).not.toHaveBeenCalled();
     expect(cleanup.run).not.toHaveBeenCalled();
     expect(logger.info).toHaveBeenCalledTimes(1);
-  });
-
-  it('skips when jobs are paused even if the switch is on', async () => {
-    const enabled = isJobEnabled(
-      { JOBS_PAUSED: 'true', JOB_PLAN_CLEANUP_ENABLED: 'true' },
-      'PLAN_CLEANUP',
-    );
-    const { deps, withDb } = makeDeps(enabled);
-
-    await expect(runPlanCleanup(deps)).resolves.toBe('skipped');
-    expect(withDb).not.toHaveBeenCalled();
   });
 
   it('reports with job tags and rethrows on failure', async () => {

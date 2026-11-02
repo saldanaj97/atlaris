@@ -1,4 +1,3 @@
-import type { JobSwitchVars } from '../env';
 import type { ModuleLessonsWorkflowParams } from '../workflows/module-lessons/run';
 import type {
   CaptureException,
@@ -19,7 +18,6 @@ import {
 } from '../workflow-instance';
 import { moduleLessonsInstanceId } from '../workflows/module-lessons/instance-id';
 import {
-  readRegenerationSwitch,
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
 } from './regeneration-shared';
@@ -34,7 +32,7 @@ export const REGENERATION_QUEUE_CONSUMER_SETTINGS = {
   max_concurrency: 2,
 } as const;
 
-/** Paused or disabled: hold messages for 15 minutes (Decision 7). */
+/** Paused: hold messages for 15 minutes (Decision 7). */
 export const REGENERATION_PAUSED_RETRY_DELAY_SECONDS = 900;
 /** Backoff after an unexpected error; the redelivery resumes the same run. */
 export const REGENERATION_ERROR_RETRY_DELAY_SECONDS = 60;
@@ -42,7 +40,8 @@ export const REGENERATION_ERROR_RETRY_DELAY_SECONDS = 60;
 const MAX_QUEUE_DELAY_SECONDS = 86_400;
 
 export type RegenerationConsumerDeps = {
-  readonly env: JobSwitchVars;
+  /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
+  readonly isPaused: () => Promise<boolean>;
   readonly logger: Pick<Logger, 'info' | 'warn' | 'error'>;
   readonly captureException: CaptureException;
   /** Runs `fn` with this invocation's database client in scope. */
@@ -68,8 +67,8 @@ export function createWorkflowModuleLessonStarter(deps: {
     Workflow<ModuleLessonsWorkflowParams>,
     'create' | 'get'
   >;
-  /** `isJobEnabled(env, 'MODULE_LESSONS')`. */
-  readonly isEnabled: () => boolean;
+  /** `isModuleLessonsEnabled()`: not paused and `module-lesson-generation` on. */
+  readonly isEnabled: () => Promise<boolean>;
   readonly logger: Pick<Logger, 'info' | 'error'>;
 }): RegenerationRunContext['startModuleLessons'] {
   return (params) =>
@@ -245,15 +244,10 @@ export async function handleRegenerationBatch(
   batch: MessageBatch<RegenerationQueueMessage>,
   deps: RegenerationConsumerDeps,
 ): Promise<void> {
-  const switchState = readRegenerationSwitch(deps.env);
-  if (switchState !== 'enabled') {
+  if (await deps.isPaused()) {
     deps.logger.info(
-      {
-        job: REGENERATION_JOB_TAG,
-        switchState,
-        messages: batch.messages.length,
-      },
-      'Regeneration consumer is off; holding messages',
+      { job: REGENERATION_JOB_TAG, messages: batch.messages.length },
+      'Jobs paused; holding regeneration messages',
     );
     batch.retryAll({ delaySeconds: REGENERATION_PAUSED_RETRY_DELAY_SECONDS });
     return;

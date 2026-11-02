@@ -10,7 +10,7 @@ Atlaris rate limiting is five layers, not a single wrapper. Edge, IP, user, dura
 | Application IP limiter             | `src/lib/api/ip-rate-limit.ts`                     | Unauthenticated or machine routes keyed by client IP                 | Per process (in-memory LRU)                         |
 | Authenticated user limiter         | `src/lib/api/user-rate-limit.ts`                   | Authenticated API routes and Server Actions keyed by user ID         | Per process (in-memory LRU)                         |
 | Durable DB plan-generation limiter | `src/lib/api/rate-limit.ts`                        | Generation, retry, and regeneration attempts (`generation_attempts`) | Database-shared, fail-closed preflight (not atomic) |
-| Product quotas / kill switches     | Billing quota boundaries and Vercel Flags          | Plan count, duration, metered generation, operational disable        | Shared product/ops policy                           |
+| Product quotas / kill switches     | Billing quota boundaries and Flagship flags        | Plan count, duration, metered generation, operational disable        | Shared product/ops policy                           |
 
 ## Vercel Firewall allocation
 
@@ -104,7 +104,7 @@ These are not request-frequency limiters. They cap product usage or disable a fe
 
 - Plan-count and duration gates on plan creation
 - Metered billing quotas (regeneration). Lesson generation uses the authenticated request-rate limiter only; it is not a product quota.
-- Vercel Flags kill switches (`moduleLessonGeneration`, `emailNotificationDelivery`)
+- Flagship kill switches (`moduleLessonGeneration`, `emailNotificationDelivery`)
 
 ### Per-process limits and Redis
 

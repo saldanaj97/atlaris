@@ -1,4 +1,3 @@
-import type { JobSwitchVars } from '../env';
 import type { SigningSecrets } from '../http/signature';
 import type {
   CaptureException,
@@ -9,14 +8,15 @@ import type { Logger } from '@/lib/logging/logger';
 
 import { unauthorizedResponse, verifySignedRequest } from '../http/signature';
 import {
-  readRegenerationSwitch,
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
 } from './regeneration-shared';
 import { regenerationEnqueueCommandSchema } from '@/lib/jobs-worker/contract';
 
 export type RegenerationEnqueueDeps = {
-  readonly env: SigningSecrets & JobSwitchVars;
+  readonly env: SigningSecrets;
+  /** `isJobsPaused()`: Flagship `jobs-paused`; a failed read is "not paused". */
+  readonly isPaused: () => Promise<boolean>;
   readonly queue: Pick<RegenerationQueue, 'send'>;
   readonly logger: Pick<Logger, 'info' | 'warn'>;
   readonly captureException: CaptureException;
@@ -46,16 +46,12 @@ export async function handleRegenerationEnqueue(
     return unauthorizedResponse();
   }
 
-  const switchState = readRegenerationSwitch(deps.env);
-  if (switchState !== 'enabled') {
+  if (await deps.isPaused()) {
     deps.logger.info(
-      { job: REGENERATION_JOB_TAG, switchState },
-      'Regeneration enqueue refused while the job is off',
+      { job: REGENERATION_JOB_TAG },
+      'Regeneration enqueue refused while jobs are paused',
     );
-    return Response.json(
-      { code: switchState === 'paused' ? 'jobs_paused' : 'job_disabled' },
-      { status: 503 },
-    );
+    return Response.json({ code: 'jobs_paused' }, { status: 503 });
   }
 
   const message = parseBody(verification.body);

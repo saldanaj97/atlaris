@@ -127,8 +127,7 @@ describe('readDeclaredVarNames', () => {
       }
       for (const name of [
         'JOBS_SIGNING_SECRET',
-        'JOBS_PAUSED',
-        'JOB_PLAN_GENERATION_ENABLED',
+        'PARALLEL_API_KEY',
         'HYPERDRIVE',
       ]) {
         expect(declared.has(name)).toBe(false);
@@ -185,27 +184,43 @@ describe('planSync', () => {
     ]);
   });
 
-  it('never writes build secrets, job switches, or declared vars to a Worker', () => {
+  it('skips the nine retired job switches instead of pushing them back', () => {
+    const retired = [
+      'JOBS_PAUSED',
+      'PARALLEL_DIRECT_RESEARCH',
+      'JOB_PLAN_CLEANUP_ENABLED',
+      'JOB_RETENTION_CLEANUP_ENABLED',
+      'JOB_EMAIL_DELIVERY_ENABLED',
+      'JOB_REGENERATION_ENABLED',
+      'JOB_MODULE_LESSONS_ENABLED',
+      'JOB_PLAN_GENERATION_ENABLED',
+      'JOB_POSTHOG_DELETION_ENABLED',
+    ];
     const plan = planSync({
       provider: 'cloudflare',
-      names: [
-        'SENTRY_AUTH_TOKEN',
-        'JOBS_PAUSED',
-        'JOB_MODULE_LESSONS_ENABLED',
-        'RESEND_FROM',
-      ],
+      names: [...retired, 'PARALLEL_API_KEY'],
+      existing: new Set(['JOBS_PAUSED']),
+    });
+    for (const name of retired) {
+      expect(plan.find((entry) => entry.name === name)).toEqual({
+        name,
+        action: 'skip',
+        reason: 'retired switch (DEV-193), delete from 1Password',
+      });
+    }
+    expect(
+      plan.find((entry) => entry.name === 'PARALLEL_API_KEY')?.action,
+    ).toBe('add');
+  });
+
+  it('never writes build secrets or declared vars to a Worker', () => {
+    const plan = planSync({
+      provider: 'cloudflare',
+      names: ['SENTRY_AUTH_TOKEN', 'RESEND_FROM'],
       existing: new Set(),
       declaredVars: new Set(['RESEND_FROM']),
     });
-    expect(plan.map((entry) => entry.action)).toEqual([
-      'skip',
-      'skip',
-      'skip',
-      'skip',
-    ]);
-    expect(plan.find((entry) => entry.name === 'JOBS_PAUSED')?.reason).toMatch(
-      /cf workers secrets update/,
-    );
+    expect(plan.map((entry) => entry.action)).toEqual(['skip', 'skip']);
     expect(plan.find((entry) => entry.name === 'RESEND_FROM')?.reason).toBe(
       'declared in cloudflare.config.ts',
     );
@@ -219,9 +234,8 @@ describe('planSync', () => {
         'SUPABASE_SECRET_KEY',
         'NEXT_PUBLIC_SUPABASE_URL',
         'VERCEL_BYPASS_PROTECTION_TOKEN',
-        'FLAGS',
         'CUSTOM_OWNED',
-        'FLAGS_SECRET',
+        'FLAGSHIP_API_TOKEN',
       ],
       existing: new Set(),
       integrationOwned: new Set(['CUSTOM_OWNED']),
@@ -230,7 +244,7 @@ describe('planSync', () => {
       plan
         .filter((entry) => entry.action !== 'skip')
         .map((entry) => entry.name),
-    ).toEqual(['FLAGS_SECRET']);
+    ).toEqual(['FLAGSHIP_API_TOKEN']);
   });
 
   it('formats names and reasons but never values', () => {

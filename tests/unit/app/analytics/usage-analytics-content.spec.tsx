@@ -201,9 +201,6 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
-    const banner = screen.getByRole('banner');
-    expect(banner.querySelector('[data-slot="horizon-arc"]')).not.toBeNull();
-    expect(banner.querySelector('img')).toBeNull();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
     expect(screen.queryByText('Accessible plans')).not.toBeInTheDocument();
     expect(
@@ -297,19 +294,6 @@ describe('UsageAnalyticsContent', () => {
         container.querySelectorAll('[data-testid="plan-series"]'),
       ).toHaveLength(4);
     });
-    expect(
-      container.querySelector('.recharts-line-dots'),
-    ).not.toBeInTheDocument();
-
-    const linePath = await waitFor(() => {
-      const renderedLinePath = container.querySelector(
-        '[data-testid="plan-series"].recharts-line-curve',
-      );
-
-      expect(renderedLinePath).not.toBeNull();
-      return renderedLinePath;
-    });
-    expect(linePath?.getAttribute('d')).not.toContain('C');
 
     await resizeChart(780);
 

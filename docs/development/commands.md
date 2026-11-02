@@ -50,7 +50,7 @@ pnpm dev                 # start the app through Portless after fixture setup
 Starting the app does not reset, seed, or mutate billing fixtures. Use the DB
 commands explicitly when local product-testing state needs to change.
 
-Use `pnpm deploy:preview` to test feature flags against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
+Use `pnpm deploy:preview` to test feature flags (evaluated with `environment: staging`) against Vercel's hosted Preview environment. It requires the Vercel CLI to be installed and the checkout to be linked to the intended project.
 
 ### Post-push Production rehearsal
 
