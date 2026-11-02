@@ -649,6 +649,14 @@
   }
 }
 
+/* Theme switches crossfade the whole page (ThemeToggle, SystemThemeCrossfade).
+   Under reduced motion the view transition never starts. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-duration-overlay);
+  animation-timing-function: var(--motion-easing-standard);
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

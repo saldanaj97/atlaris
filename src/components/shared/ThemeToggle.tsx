@@ -1,5 +1,6 @@
 'use client';
 
+import { transitionTheme } from '@/components/shared/theme-transition';
 import { Button } from '@/components/ui/button';
 import {
   Tooltip,
@@ -9,6 +10,7 @@ import {
 import { Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useSyncExternalStore } from 'react';
+import { flushSync } from 'react-dom';
 
 interface ThemeToggleProps {
   /** Button size variant */
@@ -50,7 +52,10 @@ export function ThemeToggle({
   const toggleTheme = () => {
     // Use resolvedTheme to handle 'system' theme correctly
     const currentTheme = resolvedTheme ?? theme;
-    setTheme(currentTheme === 'dark' ? 'light' : 'dark');
+    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    // flushSync commits the change (next-themes writes the root in an effect)
+    // before the view transition captures the new page.
+    transitionTheme(() => flushSync(() => setTheme(nextTheme)));
   };
 
   // Render placeholder during SSR to prevent layout shift
