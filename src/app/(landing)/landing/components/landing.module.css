@@ -40,9 +40,12 @@
  * white core just below the copy (--beam-core). A short, wide blue beam rises
  * from it, a warm fan spreads down behind the cards, and blue horizon light
  * rolls out to the sides in uneven swells, so the glow reads like one wave of
- * light rather than a symmetric shape. Every light layer uses screen blending,
- * so where two lights overlap they turn paler instead of mixing to gray.
- * Colors come from the dark token scope the section sets.
+ * light rather than a symmetric shape. The hero follows the page theme. In
+ * dark, every light layer uses screen blending, so where two lights overlap
+ * they turn paler instead of mixing to gray. In light, the same layers paint
+ * normally at lower strength on the pale canvas, the core turns peach instead
+ * of white, and the stars become fixed blue dots. The --hero-* tokens below
+ * hold every value that differs between the two.
  *
  * --beam-copy is roughly where the copy block ends. Every layer is placed
  * from it, so the light stays deep blue behind the small copy and turns
@@ -50,6 +53,59 @@
 .hero {
   --beam-copy: 23rem;
   --beam-core: calc(var(--beam-copy) + 3rem);
+  --hero-blend: normal;
+  --hero-bloom-opacity: 0.6;
+  --hero-beam-opacity: 0.65;
+  --hero-warm-opacity: 0.6;
+  --hero-core: var(--at-primitive-color-cantaloupe-400);
+  --hero-flute-shade: rgb(2 7 10 / 6%);
+  --hero-flute-glint: rgb(255 255 255 / 45%);
+  --hero-flute-blend: normal;
+  /* Light: the flutes fade in from the top so they stay off the copy. */
+  --hero-flute-mask: linear-gradient(
+    to bottom,
+    transparent 6rem,
+    rgb(0 0 0 / 55%) calc(var(--beam-copy) - 6rem),
+    #000 calc(var(--beam-copy) + 4rem)
+  );
+  --hero-dot: var(--at-primitive-color-electric-500);
+  --hero-dot-opacity: 0.35;
+  /* Supporting copy: 7.5:1 on the pale canvas, where --muted-foreground is
+   * about 4.1:1 against the beam. */
+  --hero-sub: #2b3a4d;
+  --hero-card-shadow: rgb(2 7 10 / 14%);
+}
+
+:global(.dark) .hero {
+  --hero-blend: screen;
+  --hero-bloom-opacity: 1;
+  --hero-beam-opacity: 1;
+  --hero-warm-opacity: 1;
+  --hero-core: color-mix(
+    in srgb,
+    var(--at-primitive-color-neutral-0) 85%,
+    var(--at-primitive-color-cantaloupe-300)
+  );
+  --hero-flute-shade: rgb(0 0 0 / 14%);
+  --hero-flute-glint: rgb(255 255 255 / 14%);
+  --hero-flute-blend: overlay;
+  /* Softer across the band where the light turns bright, which holds the fine
+   * print and the card caption: full-strength shading there drops them under
+   * 4.5:1. */
+  --hero-flute-mask: linear-gradient(
+    to bottom,
+    #000 0,
+    #000 calc(var(--beam-copy) - 6rem),
+    rgb(0 0 0 / 40%) calc(var(--beam-copy) - 3.5rem),
+    rgb(0 0 0 / 40%) calc(var(--beam-copy) + 4.5rem),
+    #000 calc(var(--beam-copy) + 8rem)
+  );
+  --hero-dot: var(--at-primitive-color-neutral-0);
+  --hero-dot-opacity: 1;
+  /* Neutral-50 keeps 4.5:1 on the deep-blue part of the cone; the semantic
+   * secondary and muted colors do not. */
+  --hero-sub: var(--at-primitive-color-neutral-50);
+  --hero-card-shadow: rgb(0 0 0 / 45%);
 }
 
 @media (min-width: 640px) {
@@ -71,8 +127,7 @@
   pointer-events: none;
 }
 
-/* Fade the bottom of the hero into the page below. The hero is dark-scoped,
- * so it fades to --landing-page-bg, which Landing sets from the page theme. */
+/* Fade the bottom of the hero into the page below. */
 .hero::after {
   content: '';
   position: absolute;
@@ -80,11 +135,7 @@
   bottom: 0;
   z-index: 1;
   height: 9rem;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--landing-page-bg, var(--background))
-  );
+  background: linear-gradient(to bottom, transparent, var(--background));
   pointer-events: none;
 }
 
@@ -421,8 +472,9 @@
     rgb(0 0 0 / 10%) 334deg,
     transparent 360deg
   );
-  background-blend-mode: screen;
-  mix-blend-mode: screen;
+  background-blend-mode: var(--hero-blend);
+  mix-blend-mode: var(--hero-blend);
+  opacity: var(--hero-bloom-opacity);
 }
 
 /* The beam: a short, wide column of blue light rising from the core and
@@ -480,7 +532,8 @@
       rgb(0 0 0 / 12%) 75%,
       transparent 100%
     );
-  mix-blend-mode: screen;
+  mix-blend-mode: var(--hero-blend);
+  opacity: var(--hero-beam-opacity);
 }
 
 /* Warm fan: peach under the core deepening quickly to salmon, spreading down
@@ -509,21 +562,17 @@
     #000 322deg,
     #000 360deg
   );
-  mix-blend-mode: screen;
+  mix-blend-mode: var(--hero-blend);
+  opacity: var(--hero-warm-opacity);
 }
 
-/* White-hot center of the light, in a peach halo that warms the horizon
- * around it. */
+/* Center of the light (white-hot in dark, peach in light), in a peach halo
+ * that warms the horizon around it. */
 .core {
   background:
     radial-gradient(
       6% 3.25rem at 50% var(--beam-core),
-      color-mix(
-          in srgb,
-          var(--at-primitive-color-neutral-0) 85%,
-          var(--at-primitive-color-cantaloupe-300)
-        )
-        0%,
+      var(--hero-core) 0%,
       40%,
       transparent 100%
     ),
@@ -543,7 +592,7 @@
         50%,
       transparent 100%
     );
-  mix-blend-mode: screen;
+  mix-blend-mode: var(--hero-blend);
 }
 
 /* Fluted glass over the light: regular vertical flutes about 11px wide at a
@@ -551,35 +600,26 @@
  * to a highlight right of center, and a quicker fall. Overlay blending makes
  * the shading proportional to the light underneath (about +/-13%, measured
  * from the reference), so the flutes show in the beam and vanish on the
- * black canvas. */
+ * black canvas. Light uses fainter fixed shading instead (--hero-flute-*). */
 .flutes {
   --flute: clamp(0.5rem, 0.85vw, 0.875rem);
   background: repeating-linear-gradient(
     90deg,
-    rgb(0 0 0 / 14%) 0,
-    rgb(0 0 0 / 14%) calc(var(--flute) * 0.1),
-    rgb(0 0 0 / 0%) calc(var(--flute) * 0.35),
-    rgb(255 255 255 / 14%) calc(var(--flute) * 0.6),
-    rgb(255 255 255 / 14%) calc(var(--flute) * 0.7),
-    rgb(255 255 255 / 0%) calc(var(--flute) * 0.85),
-    rgb(0 0 0 / 14%) var(--flute)
+    var(--hero-flute-shade) 0,
+    var(--hero-flute-shade) calc(var(--flute) * 0.1),
+    transparent calc(var(--flute) * 0.35),
+    var(--hero-flute-glint) calc(var(--flute) * 0.6),
+    var(--hero-flute-glint) calc(var(--flute) * 0.7),
+    transparent calc(var(--flute) * 0.85),
+    var(--hero-flute-shade) var(--flute)
   );
-  /* Softer across the band where the light turns bright, which holds the fine
-   * print and the card caption: full-strength shading there drops them under
-   * 4.5:1. */
-  mask-image: linear-gradient(
-    to bottom,
-    #000 0,
-    #000 calc(var(--beam-copy) - 6rem),
-    rgb(0 0 0 / 40%) calc(var(--beam-copy) - 3.5rem),
-    rgb(0 0 0 / 40%) calc(var(--beam-copy) + 4.5rem),
-    #000 calc(var(--beam-copy) + 8rem)
-  );
-  mix-blend-mode: overlay;
+  mask-image: var(--hero-flute-mask);
+  mix-blend-mode: var(--hero-flute-blend);
 }
 
-/* Stars on the dark canvas, drawn first so the light covers them: they show
- * in the dark sky, fade as the waves brighten, and stay clear of the copy.
+/* Stars, drawn first so the light covers them: they show in the dark sky,
+ * fade as the waves brighten, and stay clear of the copy. In light they are
+ * faint fixed blue dots (--hero-dot) and do not twinkle.
  * The layer itself holds faint fixed stars; its two pseudo-elements hold
  * brighter ones that twinkle on different cycles, so no two groups pulse
  * together. The layer ends above the caption and cards: their frosted blur
@@ -588,6 +628,7 @@
 .stars {
   bottom: auto;
   height: calc(var(--beam-core) - 2rem);
+  opacity: var(--hero-dot-opacity);
   /* Clear zone around the copy: nearly full width on phones, where the copy
    * is too, and a narrower ellipse once the copy has margins. */
   --stars-hole: 64%;
@@ -595,134 +636,112 @@
   background-image:
     radial-gradient(
       circle at 32.7% 12.1%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 19%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 19%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 53.5% 27.3%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 28%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 28%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 4.7% 32.1%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 20%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 20%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 42.6% 59.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 22%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 22%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 62.5% 68.3%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 26%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 26%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 96.7% 4.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 24%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 24%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 15.1% 9.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 34%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 34%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 18.7% 42.5%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 25%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 25%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 54.7% 5.9%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 22%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 22%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 67.7% 31.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 30%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 30%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 45.4% 22.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 32%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 32%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 24.9% 42%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 36%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 36%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 72.5% 21.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 20%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 20%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 42% 54.9%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 28%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 28%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 4.8% 48.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 29%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 29%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 86.8% 23.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 30%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 30%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 57.8% 33.7%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 37%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 37%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 47.5% 48.3%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 32%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 32%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 64.4% 71.5%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 24%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 24%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 38.8% 48.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 27%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 27%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 17.5% 9.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 33%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 33%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 13.7% 19%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 35%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 35%, transparent) 0 0.7px,
       transparent 1.3px
     );
   mask-image:
@@ -756,103 +775,92 @@
     infinite alternate;
 }
 
+:global(:root:not(.dark)) .stars::before,
+:global(:root:not(.dark)) .stars::after {
+  animation: none;
+}
+
 .stars::before {
   --twinkle: 3.6s;
   background-image:
     radial-gradient(
       circle at 8.9% 33.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 82%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 82%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 81.3% 62.4%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 67%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 67%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 36.2% 63.8%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 60%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 18.3% 17.9%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 70%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 70%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 58.7% 20%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 68%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 68%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 37.2% 41.4%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 76%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 76%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 51.5% 45%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 57%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 57%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 89.2% 56.5%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 79%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 79%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 39.5% 29.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 74%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 7.1% 6.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 60%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 34.3% 5.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 60%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 10.9% 27.1%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 81%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 81%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 61.2% 12%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 65%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 65%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 36.7% 10.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 85%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 85%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 46.7% 35.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 58%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 58%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 34.6% 20.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 60%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 60%, transparent) 0 0.7px,
       transparent 1.3px
     );
 }
@@ -863,98 +871,82 @@
   background-image:
     radial-gradient(
       circle at 3.3% 68.5%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 54%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 54%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 54.2% 3.4%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 79%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 79%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 85.6% 50.6%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 61%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 61%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 17.4% 55.9%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 73%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 73%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 33.3% 17.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 80%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 80%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 84.6% 58.3%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 72%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 72%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 23.2% 38%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 51%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 51%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 3.7% 21.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 71%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 71%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 94.7% 33%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 80%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 80%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 94.6% 27.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 57%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 57%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 20.3% 15.9%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 77%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 77%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 83.4% 35.3%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 74%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 9.3% 48.1%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 73%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 73%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 74.5% 35.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 74%, transparent) 0
-        1px,
+      color-mix(in srgb, var(--hero-dot) 74%, transparent) 0 1px,
       transparent 1.6px
     ),
     radial-gradient(
       circle at 33.6% 58%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 62%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 62%, transparent) 0 0.7px,
       transparent 1.3px
     ),
     radial-gradient(
       circle at 40.3% 68.2%,
-      color-mix(in srgb, var(--at-primitive-color-neutral-0) 55%, transparent) 0
-        0.7px,
+      color-mix(in srgb, var(--hero-dot) 55%, transparent) 0 0.7px,
       transparent 1.3px
     );
 }
@@ -1000,10 +992,9 @@
   line-height: 1.5;
 }
 
-/* Supporting copy on the deep-blue part of the cone. Neutral-50 keeps 4.5:1
- * there; the semantic secondary and muted colors do not. */
+/* Supporting copy on the beam, in the theme's --hero-sub (see .hero). */
 .onBeam {
-  color: var(--at-primitive-color-neutral-50);
+  color: var(--hero-sub);
 }
 
 .heroRise {
@@ -1034,9 +1025,10 @@
   transform-origin: 50% 100%;
 }
 
-/* Frosted chip for the caption and card labels. Their dark text sits where
- * the light passes through mid-blue, which neither light nor dark text can
- * hold at 4.5:1; the chip carries the contrast instead of the background. */
+/* Frosted chip for the fine print, the caption and the card labels. Their
+ * text sits where the light passes through mid-blue, which neither light nor
+ * dark text can hold at 4.5:1; the chip carries the contrast instead of the
+ * background. */
 .chip {
   padding: 0.25rem 0.75rem;
   border: 1px solid color-mix(in srgb, var(--card) 70%, transparent);
@@ -1046,9 +1038,10 @@
 }
 
 /* Glass card: a thin translucent frame that takes on the color of the light
- * behind it, holding a frosted light-theme panel with the content. The panel
- * stays nearly opaque so the small text keeps its contrast; the frame is
- * where the light shows through. */
+ * behind it, holding a frosted panel in the page theme with the content. The
+ * panel stays nearly opaque (94%) so the muted text keeps 4.5:1 even where
+ * the beam behind a dark panel is brightest; the frame is where the light
+ * shows through. */
 .card {
   padding: 0.4375rem;
   border: 1px solid color-mix(in srgb, var(--card) 45%, transparent);
@@ -1056,7 +1049,7 @@
   background: color-mix(in srgb, var(--card) 16%, transparent);
   box-shadow:
     inset 0 1px 0 color-mix(in srgb, var(--card) 55%, transparent),
-    0 30px 60px -30px rgb(0 0 0 / 45%);
+    0 30px 60px -30px var(--hero-card-shadow);
   backdrop-filter: blur(18px) saturate(1.4);
 }
 
@@ -1067,7 +1060,7 @@
   padding: 1rem;
   border: 1px solid color-mix(in srgb, var(--card) 70%, transparent);
   border-radius: 0.75rem;
-  background: color-mix(in srgb, var(--card) 86%, transparent);
+  background: color-mix(in srgb, var(--card) 94%, transparent);
   color: var(--card-foreground);
 }
 

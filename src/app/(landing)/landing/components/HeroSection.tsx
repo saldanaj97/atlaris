@@ -66,9 +66,8 @@ const weekProgress = [
 export function HeroSection() {
   return (
     <section
-      data-atlaris-theme='dark'
       className={cn(
-        'dark relative isolate overflow-hidden bg-background text-foreground',
+        'relative isolate overflow-hidden bg-background text-foreground',
         styles.hero,
         instrumentSerif.variable,
         ibmPlexMono.variable,
@@ -124,7 +123,14 @@ export function HeroSection() {
               <Link href={ROUTES.PRICING}>{copy.secondaryCta}</Link>
             </Button>
           </div>
-          <p className={cn('mt-4', styles.mono, styles.fine)}>
+          <p
+            className={cn(
+              'mx-auto mt-4 w-fit',
+              styles.mono,
+              styles.fine,
+              styles.chip,
+            )}
+          >
             {copy.freePlan}
           </p>
         </div>
@@ -165,10 +171,8 @@ function CardLabel({ children }: { children: string }) {
 
 function HeroPlanCards() {
   return (
-    // Light scope: the cards and their labels show the product as it looks in the light theme.
     // oxlint-disable-next-line shadcn/require-static-classes -- CSS module classes are complete but opaque to the rule
     <figure
-      data-atlaris-theme='light'
       className={cn(
         'relative mt-12 mb-0 text-foreground md:mt-14',
         styles.cardStage,

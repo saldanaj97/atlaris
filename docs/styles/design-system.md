@@ -247,6 +247,8 @@ The roles are fixed. Cantaloupe is the action and brand-emphasis color, used for
 
 The app is dark-first, not dark-only. Dark values live in `src/styles/atlaris-tokens.css` on `[data-atlaris-theme="dark"]`; the light theme lives in `:root` in `src/app/globals.css`. Light, dark and system preferences all stay supported.
 
+**Decision (2026-11-02): the landing hero follows the theme.** The `/landing` hero, its example cards and the header above it render in the page theme; nothing on the page forces a dark or light scope. In light, the beam layers paint normally at 60–65% strength instead of screen-blending, the core is cantaloupe-400 instead of white, the stars are fixed electric-500 dots at 35% opacity, and the supporting copy uses `#2B3A4D` (7.5:1; muted text is about 4.1:1 there). Every value that differs between the themes is a `--hero-*` token on `.hero` in `landing.module.css`. The light theme also defines the cantaloupe-300/400/500 and electric-200/400/500 primitives the beam draws with. The fine print, caption and card labels sit on frosted chips, and the card panels are 94% opaque so their muted text holds 4.5:1 over the brightest part of the beam. This replaces the earlier always-dark hero with light cards.
+
 ### Dark primitives
 
 | Primitive      | Hex     | Primitive        | Hex     |

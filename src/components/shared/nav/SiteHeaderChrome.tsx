@@ -70,9 +70,6 @@ export default function SiteHeaderChrome({
     pathname === ROUTES.TERMS ||
     pathname === ROUTES.PRIVACY;
   const isAppShell = isAuthenticated && isSupportedAppPath(pathname);
-  // The landing hero is always dark, so the header over it is dark too; a
-  // light header bar would sit on top of it in the light theme.
-  const isDarkHero = pathname === ROUTES.LANDING;
   const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
   const { open: desktopSidebarOpen, setOpen: setDesktopSidebarOpen } =
     useDesktopSidebarOpen(isAppShell);
@@ -95,10 +92,7 @@ export default function SiteHeaderChrome({
   }, [desktopSidebarOpen]);
 
   return (
-    <div
-      className={cn('contents', isDarkHero && 'dark')}
-      data-atlaris-theme={isDarkHero ? 'dark' : undefined}
-    >
+    <>
       <div aria-hidden='true' className='absolute inset-0 z-0 bg-background' />
 
       {isAppShell ? (
@@ -156,6 +150,6 @@ export default function SiteHeaderChrome({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
