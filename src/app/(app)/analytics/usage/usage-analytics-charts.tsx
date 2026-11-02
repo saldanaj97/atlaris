@@ -15,9 +15,6 @@ import { PLAN_CHART_COLORS } from '@/shared/constants/chart-colors';
 import {
   lazy,
   Suspense,
-  useEffect,
-  useRef,
-  useState,
   useSyncExternalStore,
   type ComponentProps,
   type CSSProperties,
@@ -25,9 +22,6 @@ import {
   type ReactNode,
 } from 'react';
 
-const MIN_VISIBLE_PLAN_COUNT = 1;
-const LEGEND_ITEM_WIDTH = 180;
-const LEGEND_COLUMN_GAP = 16;
 const LINE_ENTER_ANIMATION_MS = 650;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
@@ -457,13 +451,8 @@ export function WeeklyLineChart({
   describedBy?: string;
 }) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [{ hasMeasuredChart, renderedPlanCount }, setChartLayout] = useState({
-    hasMeasuredChart: false,
-    renderedPlanCount: 0,
-  });
-  const pulsePlans = selectMostActivePlans(plans);
-  const renderedPlans = pulsePlans.slice(0, renderedPlanCount);
+  // Always the full top-five set; the legend wraps on narrow screens.
+  const renderedPlans = selectMostActivePlans(plans);
   const hiddenPlanCount = plans.length - renderedPlans.length;
   const dataMaxValue = Math.max(
     1,
@@ -504,63 +493,6 @@ export function WeeklyLineChart({
     return row;
   });
 
-  useEffect(() => {
-    const element = containerRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    let updateFrame: number | null = null;
-
-    const updateVisiblePlanCount = () => {
-      const chartWidth = element.clientWidth;
-
-      if (chartWidth <= 0) {
-        return;
-      }
-
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
-      updateFrame = window.requestAnimationFrame(() => {
-        updateFrame = null;
-
-        const nextPlanCount = planCapacityForWidth(
-          chartWidth,
-          pulsePlans.length,
-        );
-
-        setChartLayout((currentLayout) =>
-          currentLayout.hasMeasuredChart &&
-          currentLayout.renderedPlanCount === nextPlanCount
-            ? currentLayout
-            : {
-                hasMeasuredChart: true,
-                renderedPlanCount: nextPlanCount,
-              },
-        );
-      });
-    };
-
-    updateVisiblePlanCount();
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateVisiblePlanCount);
-    resizeObserver?.observe(element);
-
-    return () => {
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
-      resizeObserver?.disconnect();
-    };
-  }, [pulsePlans.length]);
-
   return (
     <div data-testid='eight-week-pulse'>
       <div className='flex gap-2'>
@@ -569,11 +501,7 @@ export function WeeklyLineChart({
             Progress changes
           </p>
         </div>
-        <div
-          ref={containerRef}
-          data-testid='weekly-line-chart'
-          className='min-w-0 flex-1'
-        >
+        <div data-testid='weekly-line-chart' className='min-w-0 flex-1'>
           <WithRecharts
             fallback={
               <output
@@ -676,9 +604,9 @@ export function WeeklyLineChart({
               <span className='min-w-0 truncate'>{plan.topic}</span>
             </div>
           ))
-        ) : hasMeasuredChart ? (
+        ) : (
           <p className='type-meta text-muted-foreground'>No plans yet</p>
-        ) : null}
+        )}
         {hiddenPlanCount > 0 ? (
           <p className='flex shrink-0 items-center type-meta font-medium text-muted-foreground'>
             +{hiddenPlanCount} more {hiddenPlanCount === 1 ? 'plan' : 'plans'}{' '}
@@ -720,27 +648,6 @@ function AnimatedPointLabel({
     >
       {value}
     </text>
-  );
-}
-
-function planCapacityForWidth(width: number, planCount: number): number {
-  if (planCount === 0) {
-    return 0;
-  }
-
-  if (width <= 0) {
-    return MIN_VISIBLE_PLAN_COUNT;
-  }
-
-  return Math.min(
-    planCount,
-    PLAN_CHART_COLORS.length,
-    Math.max(
-      MIN_VISIBLE_PLAN_COUNT,
-      Math.floor(
-        (width + LEGEND_COLUMN_GAP) / (LEGEND_ITEM_WIDTH + LEGEND_COLUMN_GAP),
-      ),
-    ),
   );
 }
 

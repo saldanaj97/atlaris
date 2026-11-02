@@ -266,7 +266,7 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
-  it('adds plan labels and chart lines, most active first, as the chart has room', async () => {
+  it('plots every top plan at narrow and wide widths', async () => {
     const { container } = render(<UsageAnalyticsContent model={model} />);
 
     await resizeChart(380);
@@ -277,17 +277,19 @@ describe('UsageAnalyticsContent', () => {
     });
     await resizeChart(380);
 
-    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Applied TypeScript Architecture'),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Database Performance')).not.toBeInTheDocument();
-    expect(screen.getByText('+2 more plans not shown')).toBeInTheDocument();
+    for (const topic of [
+      'Calendar Sync Hardening',
+      'Dashboard Activity Polish',
+      'Applied TypeScript Architecture',
+      'Database Performance',
+    ]) {
+      expect(screen.getByText(topic)).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/more plans? not shown/)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
-      ).toHaveLength(2);
+      ).toHaveLength(4);
     });
     expect(
       container.querySelector('.recharts-line-dots'),
@@ -330,27 +332,25 @@ describe('UsageAnalyticsContent', () => {
       <UsageAnalyticsContent model={sixPlanModel} />,
     );
 
-    await resizeChart(1400);
+    for (const width of [1400, 1280, 375]) {
+      await resizeChart(width);
 
-    expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
-    expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
-    expect(screen.getByText('+1 more plan not shown')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(
-        container.querySelectorAll('[data-testid="plan-series"]'),
-      ).toHaveLength(5);
-    });
+      expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
+      expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
+      expect(screen.getByText('+1 more plan not shown')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('[data-testid="plan-series"]'),
+        ).toHaveLength(5);
+      });
+    }
   });
 });
 
 /** Simulates a chart container resize and triggers registered ResizeObserver callbacks. */
 async function resizeChart(width: number) {
   await waitFor(() => {
-    expect(
-      observedResizeEntries.some(
-        ({ element }) => element.dataset.testid === 'weekly-line-chart',
-      ),
-    ).toBe(true);
+    expect(observedResizeEntries.length).toBeGreaterThan(0);
   });
 
   for (const { element } of observedResizeEntries) {
