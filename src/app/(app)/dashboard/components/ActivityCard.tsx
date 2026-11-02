@@ -47,9 +47,14 @@ export function ActivityCard({
     >
       <Icon className='size-4 text-muted-foreground' aria-hidden='true' />
 
+      {/* The plan name is what tells similar task titles apart, so on phones
+          the title wraps to two lines and the meta line wraps rather than
+          truncating either. */}
       <div className='min-w-0'>
-        <p className='truncate type-label text-foreground'>{activity.title}</p>
-        <p className='mt-0.5 truncate type-meta text-muted-foreground'>
+        <p className='line-clamp-2 type-label break-words text-foreground'>
+          {activity.title}
+        </p>
+        <p className='mt-0.5 type-meta break-words text-muted-foreground'>
           {getActivityMeta(activity)}
         </p>
       </div>

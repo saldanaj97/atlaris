@@ -37,8 +37,10 @@ const CAPABILITIES = [
 /** The landing page's one feature section: what Atlaris builds, beside a plan preview. */
 export function FeaturesSection() {
   return (
+    // box-content: the 7xl cap applies inside the gutter, so the content lines
+    // up with the CTA card below, which is 7xl wide inside the same gutter.
     <section
-      className='mx-auto max-w-7xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto box-content max-w-7xl px-6 py-16 md:px-8 md:py-24'
       aria-labelledby='landing-features-heading'
     >
       <RevealAnimation>

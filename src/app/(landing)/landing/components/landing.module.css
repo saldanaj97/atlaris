@@ -76,6 +76,12 @@
   --hero-card-shadow: rgb(2 7 10 / 14%);
 }
 
+/* In dark the control border (--input) is about 2:1 on the blue band behind
+ * the hero buttons; a lighter edge keeps the outline pill at 3:1 or more. */
+:global(.dark) .outlineCta {
+  border-color: color-mix(in oklab, var(--foreground) 50%, transparent);
+}
+
 :global(.dark) .hero {
   --hero-blend: screen;
   --hero-bloom-opacity: 1;

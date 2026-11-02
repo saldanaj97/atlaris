@@ -165,6 +165,12 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     // A locked lesson stays legible: its title and "Locked" badge keep text
     // contrast in both themes instead of fading the whole row.
     const lockedLesson = page.locator('[data-progress-state="locked"]').first();
+    // The matching row in the lesson-progress sidebar, whose title and time
+    // stay readable too.
+    const lockedSidebarRow = page
+      .getByRole('navigation', { name: 'Lesson navigation' })
+      .locator('li', { hasText: ', locked' })
+      .first();
     if ((await lockedLesson.count()) > 0) {
       for (const colorScheme of ['light', 'dark'] as const) {
         await page.emulateMedia({ colorScheme });
@@ -176,6 +182,8 @@ test('authenticated launch blockers stay green', async ({ page }) => {
           // Radix wraps the trigger in its own h3; the title is the one inside.
           lockedLesson.getByRole('button').locator('h3'),
           lockedLesson.getByText('Locked', { exact: true }),
+          lockedSidebarRow.getByText(/^\d+\. /),
+          lockedSidebarRow.getByText(/^\d+(\.\d+)? (min|hrs?)$/),
         ]) {
           expect(
             await label.evaluate(renderedTextContrast),

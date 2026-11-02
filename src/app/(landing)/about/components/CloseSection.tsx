@@ -21,7 +21,7 @@ export function CloseSection() {
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
     <CtaBanner
       aria-labelledby='about-close-heading'
-      className={cn(styles.closeBanner, 'border-0')}
+      className={styles.closeBanner}
     >
       <RevealAnimation>
         <div className={styles.closeContent}>

@@ -446,6 +446,22 @@
   }
 }
 
+/* A chevron placed after a `scroll-cue-x` scroller, over its faded trailing
+ * edge. It shows only while that edge hides content, so the fade reads as
+ * "more this way" in both themes rather than as dimmed text. */
+@utility scroll-cue-end-marker {
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+
+  [data-scroll-cue~='end'] ~ & {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
 /* Marketing backdrop edges: fades in below the opaque header (the backdrop is
  * tucked 4rem up under it) and out before its bottom, so neither the glow nor
  * the lower orb ends in a hard horizontal line. */

@@ -119,7 +119,11 @@ export function HeroSection() {
               asChild
               variant='outline'
               size='lg'
-              className={cn('rounded-full bg-transparent', styles.ctaMotion)}
+              className={cn(
+                'rounded-full bg-transparent',
+                styles.outlineCta,
+                styles.ctaMotion,
+              )}
             >
               <Link href={ROUTES.PRICING}>{copy.secondaryCta}</Link>
             </Button>

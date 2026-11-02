@@ -31,13 +31,17 @@ test('the pricing comparison shows a scroll cue on a phone', async ({
   const comparison = page.getByRole('region', { name: 'Plan comparison' });
   await comparison.scrollIntoViewIfNeeded();
   await expect(comparison).toHaveAttribute('data-scroll-cue', 'end');
-  const cue = await comparison.evaluate((element) => ({
-    overflows: element.scrollWidth > element.clientWidth,
-    mask: getComputedStyle(element).maskImage,
-  }));
-
-  expect(cue.overflows).toBe(true);
-  expect(cue.mask).toContain('calc(100% - 40px)');
+  expect(
+    await comparison.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBe(true);
+  // The fade width eases in over 150ms, so wait for it to settle.
+  await expect
+    .poll(() =>
+      comparison.evaluate((element) => getComputedStyle(element).maskImage),
+    )
+    .toContain('calc(100% - 40px)');
 
   // Scrolled to the end, the leading edge fades instead.
   await comparison.evaluate((element) => {

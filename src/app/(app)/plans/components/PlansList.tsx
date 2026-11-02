@@ -116,7 +116,10 @@ function PlansStatusRail({
   const scrollCueRef = useScrollCue<HTMLDivElement>();
 
   return (
-    <nav aria-label='Plan status filters' className='min-w-0 overflow-hidden'>
+    <nav
+      aria-label='Plan status filters'
+      className='relative min-w-0 overflow-hidden'
+    >
       <div ref={scrollCueRef} className='overflow-x-auto scroll-cue-x'>
         <ul className='flex min-w-max items-end gap-1'>
           {FILTER_OPTIONS.map((option) => {
@@ -159,6 +162,10 @@ function PlansStatusRail({
           })}
         </ul>
       </div>
+      <ChevronRight
+        aria-hidden='true'
+        className='pointer-events-none absolute top-1/2 right-0 size-5 -translate-y-1/2 text-foreground scroll-cue-end-marker'
+      />
     </nav>
   );
 }
@@ -366,7 +373,7 @@ function PlansGrid({
               }
               onDeselectAll();
             }}
-            className='control-checkbox size-5 shrink-0 rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
+            className='control-checkbox size-[20px] shrink-0 rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
           />
           Select all on page
         </label>

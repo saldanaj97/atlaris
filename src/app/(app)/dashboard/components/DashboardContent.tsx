@@ -160,6 +160,17 @@ export function DashboardContentSkeleton() {
             <Skeleton className='mt-8 h-9 w-20' />
             <Skeleton className='mt-2 h-4 w-28 bg-muted' />
             <Skeleton className='mt-4 h-1.5 w-full rounded-full bg-muted' />
+            <div className='mt-3 divide-y divide-border/60'>
+              {['modules', 'tasks', 'plans'].map((row) => (
+                <div
+                  key={`dashboard-progress-skeleton-${row}`}
+                  className='flex justify-between gap-3 py-2'
+                >
+                  <Skeleton className='h-5 w-16 bg-muted' />
+                  <Skeleton className='h-5 w-12' />
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
 
@@ -172,8 +183,8 @@ export function DashboardContentSkeleton() {
           >
             <Skeleton className='h-7 w-48' />
             <Skeleton className='mt-2 h-5 w-56 bg-muted' />
-            <Skeleton className='mt-6 h-16 w-full bg-secondary' />
-            <Skeleton className='mt-5 h-1.5 w-full rounded-full bg-secondary' />
+            <Skeleton className='mt-4 h-1.5 w-full rounded-full bg-secondary' />
+            <Skeleton className='mt-5 h-16 w-full bg-secondary' />
           </Card>
           <Card
             as='aside'

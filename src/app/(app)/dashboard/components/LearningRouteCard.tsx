@@ -45,9 +45,17 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
         {plan.plan.topic} · {plan.completedModules} of {modules.length} modules
       </p>
 
+      {/* The route bar sits under the summary it measures; the nodes follow,
+          so a short route doesn't leave an empty rail far below them. */}
+      <Progress
+        value={routePercent}
+        max={100}
+        aria-label={`${plan.plan.topic} module route`}
+        className='mt-4 h-1.5'
+      />
       <ol
         className={cn(
-          'mt-6 grid gap-3 sm:gap-2',
+          'mt-5 grid gap-3 sm:gap-2',
           ROUTE_COLUMNS[visibleModules.length],
         )}
       >
@@ -82,13 +90,6 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
           );
         })}
       </ol>
-
-      <Progress
-        value={routePercent}
-        max={100}
-        aria-label={`${plan.plan.topic} module route`}
-        className='mt-5 h-1.5'
-      />
     </Card>
   );
 }

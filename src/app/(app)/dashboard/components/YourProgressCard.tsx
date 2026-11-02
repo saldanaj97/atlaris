@@ -40,9 +40,7 @@ export function YourProgressCard({
           Progress will appear here once you have a plan.
         </p>
       ) : (
-        // Pinned to the card's foot, level with the resume card's actions, so
-        // the extra height sits under the intro instead of under the numbers.
-        <div className='mt-auto pt-6'>
+        <div className='mt-6'>
           <p className='type-title text-foreground tabular-nums'>
             {progress.percent}%
           </p>
@@ -57,13 +55,18 @@ export function YourProgressCard({
             className='mt-3 h-1.5'
           />
 
-          <dl className='mt-4 grid grid-cols-3 gap-3'>
+          {/* One row per total, so the card's height (set by the resume card
+              beside it) is filled by the totals rather than left empty. */}
+          <dl className='mt-3 divide-y divide-border/60'>
             {stats.map((stat) => (
-              <div key={stat.label}>
-                <dt className='type-meta text-muted-foreground'>
+              <div
+                key={stat.label}
+                className='flex items-baseline justify-between gap-3 py-2'
+              >
+                <dt className='type-body text-muted-foreground'>
                   {stat.label}
                 </dt>
-                <dd className='mt-0.5 type-card text-foreground tabular-nums'>
+                <dd className='type-label text-foreground tabular-nums'>
                   {stat.value}
                 </dd>
               </div>

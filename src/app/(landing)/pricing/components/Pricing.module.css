@@ -17,9 +17,11 @@
 .heroContent {
   position: relative;
   z-index: 1;
-  width: min(100%, 81rem);
+  /* The plan cards' column (77.5rem, with a px-6 gutter each side), so the
+     headline starts on the cards' left edge. */
+  width: min(calc(100% - var(--spacing) * 12), 77.5rem);
   margin-inline: auto;
-  padding: 2.5rem 1.5rem 2.75rem;
+  padding-block: 2.5rem 2.75rem;
 }
 
 .heroSubline {
@@ -70,7 +72,7 @@
 
 @media (min-width: 640px) {
   .heroContent {
-    padding: 3.5rem 2rem 3.75rem;
+    padding-block: 3.5rem 3.75rem;
   }
 
   .heroSubline {
