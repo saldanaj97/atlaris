@@ -5,6 +5,7 @@ import type { PlanGenerationRateLimitResult } from '@/lib/api/rate-limit';
 import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
+import { isRegenerationPaused } from './paused-flag';
 import { isGroundedEnabled } from '@/features/ai/grounded-generation-flag';
 import { countProviderStartedRegenerations } from '@/features/billing/regeneration-quota-boundary';
 import { resolveUserTier } from '@/features/billing/tier';
@@ -21,7 +22,6 @@ import {
 import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';
-import { regenerationQueueEnv } from '@/lib/config/env';
 import { selectOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
 import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { logger } from '@/lib/logging/logger';
@@ -32,7 +32,8 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 export interface RegenerationOrchestrationDeps {
   dbClient: DbClient;
   queue: {
-    enabled: () => boolean;
+    /** `regeneration-paused` flag (fails open). */
+    isPaused: () => Promise<boolean>;
     enqueueWithResult: typeof enqueueJobWithResult;
     completeJob: typeof completeJob;
     failJob: typeof failJob;
@@ -121,7 +122,7 @@ export function createDefaultRegenerationOrchestrationDeps(
   return {
     dbClient,
     queue: {
-      enabled: () => regenerationQueueEnv.enabled,
+      isPaused: isRegenerationPaused,
       enqueueWithResult: enqueueJobWithResult,
       completeJob,
       failJob,
