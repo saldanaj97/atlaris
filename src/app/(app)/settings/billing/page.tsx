@@ -17,7 +17,11 @@ export default async function SettingsBillingPage(): Promise<ReactElement> {
 
   return (
     <SettingsLedgerPanel>
-      <LedgerSectionBlock id={SETTINGS_SECTIONS.billing} label='Plan & billing'>
+      <LedgerSectionBlock
+        id={SETTINGS_SECTIONS.billing}
+        label='Plan & billing'
+        showTitle={false}
+      >
         <CheckoutSubscriptionSyncHost />
         <Suspense fallback={<BillingPlanSkeleton />}>
           <BillingPlanRows locale={locale} />
