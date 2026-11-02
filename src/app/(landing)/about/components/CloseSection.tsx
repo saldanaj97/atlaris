@@ -20,7 +20,6 @@ export function CloseSection() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
     <CtaBanner
-      artwork='mountain'
       aria-labelledby='about-close-heading'
       className={cn(styles.closeBanner, 'border-0')}
     >

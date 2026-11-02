@@ -6,8 +6,6 @@ import { PageHero } from '@/components/ui/page-hero';
 export function PlansHero({ chrome }: { chrome?: ReactNode }) {
   return (
     <PageHero
-      artwork='mountain-overlook'
-      dissolve
       className='mb-6'
       contentClassName='relative flex min-h-[14rem] flex-col px-0 pt-6 pb-4 sm:min-h-[16rem] sm:pt-8 sm:pb-5'
       title='Your plans'

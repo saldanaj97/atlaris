@@ -6,18 +6,6 @@
   overflow: hidden;
 }
 
-.heroBackdrop {
-  left: 35%;
-  /* Fade the artwork out at the bottom so it does not end on a hard edge. */
-  -webkit-mask-image: linear-gradient(
-    to bottom,
-    #000 0%,
-    #000 55%,
-    transparent 100%
-  );
-  mask-image: linear-gradient(to bottom, #000 0%, #000 55%, transparent 100%);
-}
-
 .heroContent {
   position: relative;
   z-index: 1;
@@ -56,7 +44,6 @@
   transform: none;
 }
 
-.revealFromLeft,
 .revealFromRight {
   opacity: 1;
   transform: none;
@@ -67,18 +54,12 @@
   transform: translate3d(0, 1.25rem, 0);
 }
 
-.reveal[data-reveal-state='observing'] .revealFromLeft {
-  opacity: 0;
-  transform: translate3d(-1.5rem, 0, 0);
-}
-
 .reveal[data-reveal-state='observing'] .revealFromRight {
   opacity: 0;
   transform: translate3d(1.5rem, 0, 0);
 }
 
-.reveal[data-reveal-state='visible']
-  :is(.revealItem, .revealFromLeft, .revealFromRight) {
+.reveal[data-reveal-state='visible'] :is(.revealItem, .revealFromRight) {
   transition:
     opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
     transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
@@ -184,12 +165,6 @@
   }
 }
 
-@media (max-width: 767px) {
-  .heroBackdrop {
-    left: 0;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .heroOverline,
   .heroLead,
@@ -205,7 +180,7 @@
     transition: none;
   }
 
-  .reveal[data-reveal-state] :is(.revealFromLeft, .revealFromRight) {
+  .reveal[data-reveal-state] .revealFromRight {
     opacity: 1;
     transform: none;
     transition: none;

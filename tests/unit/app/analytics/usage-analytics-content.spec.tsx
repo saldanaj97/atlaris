@@ -195,11 +195,9 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
-    expect(
-      screen
-        .getByRole('banner')
-        .querySelector('[data-slot="dissolved-backdrop"]'),
-    ).not.toBeNull();
+    const banner = screen.getByRole('banner');
+    expect(banner.querySelector('[data-slot="horizon-arc"]')).not.toBeNull();
+    expect(banner.querySelector('img')).toBeNull();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
     expect(screen.queryByText('Accessible plans')).not.toBeInTheDocument();
     expect(

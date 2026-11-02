@@ -53,8 +53,6 @@ export function ModuleHeader({
       <PageHero
         as='div'
         className='min-w-0 rounded-lg border border-panel-border bg-panel shadow-sm'
-        desktop={{ className: 'opacity-80 sm:block' }}
-        mobile={{ className: 'opacity-75 sm:hidden' }}
       >
         <div className='relative p-5 sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>

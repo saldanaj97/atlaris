@@ -1,50 +1,14 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { HorizonArc } from '@/components/ui/horizon-arc';
 import { cn } from '@/lib/utils';
 
-export type CtaBannerArtwork = 'horizon' | 'mountain';
-
 export interface CtaBannerProps extends ComponentPropsWithoutRef<'section'> {
-  artwork: CtaBannerArtwork;
   children: ReactNode;
 }
 
-const artworkSources: Record<
-  CtaBannerArtwork,
-  Parameters<typeof ResponsiveBackdrop>[0]
-> = {
-  horizon: {
-    desktop: {
-      src: '/artwork/cta-horizon-desktop.jpg',
-      objectPosition: '58% 50%',
-    },
-    mobile: {
-      src: '/artwork/cta-horizon-mobile.jpg',
-      objectPosition: '58% 50%',
-    },
-    overlay: 'background',
-  },
-  mountain: {
-    desktop: {
-      src: '/artwork/mountain-summit-blue-hour.webp',
-      objectPosition: '58% 50%',
-    },
-    mobile: {
-      src: '/artwork/mountain-summit-blue-hour.webp',
-      objectPosition: '58% 50%',
-    },
-    overlay: 'background',
-  },
-};
-
-/** Bordered CTA surface with the two shipped artwork treatments. */
-export function CtaBanner({
-  artwork,
-  children,
-  className,
-  ...props
-}: CtaBannerProps) {
+/** Bordered CTA surface with the horizon decoration. */
+export function CtaBanner({ children, className, ...props }: CtaBannerProps) {
   return (
     <section
       data-slot='cta-banner'
@@ -54,7 +18,7 @@ export function CtaBanner({
       )}
       {...props}
     >
-      <ResponsiveBackdrop {...artworkSources[artwork]} />
+      <HorizonArc />
       {children}
     </section>
   );

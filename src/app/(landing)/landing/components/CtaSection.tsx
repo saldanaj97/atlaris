@@ -27,7 +27,6 @@ export function CtaSection() {
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='landing-cta-heading'
-          artwork='horizon'
           className={cn('mx-auto max-w-7xl', styles.revealScale)}
         >
           <div className='relative z-10 px-6 py-14 text-center sm:px-10 sm:py-16 md:py-20'>

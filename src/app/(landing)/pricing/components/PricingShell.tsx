@@ -40,7 +40,6 @@ export function PricingShell({ children }: { children: ReactNode }) {
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='pricing-cta-heading'
-          artwork='horizon'
           className={styles.ctaBanner}
         >
           <div className={styles.ctaContent}>
@@ -64,13 +63,7 @@ export function PricingShell({ children }: { children: ReactNode }) {
 function Hero() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */
-    <PageHero
-      className={styles.hero}
-      aria-labelledby='pricing-hero-heading'
-      overlay='background'
-      desktop={{ objectPosition: '78% 42%' }}
-      backdropClassName={styles.heroBackdrop}
-    >
+    <PageHero className={styles.hero} aria-labelledby='pricing-hero-heading'>
       <div className={styles.heroContent}>
         <h1
           id='pricing-hero-heading'

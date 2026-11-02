@@ -149,11 +149,10 @@ export function UsageAnalyticsContent({
   );
 }
 
-/** Decorative page introduction with responsive artwork that stays out of the reading path. */
+/** Page introduction; its horizon decoration stays out of the reading path. */
 function AnalyticsHero() {
   return (
     <PageHero
-      dissolve
       contentClassName='relative flex min-h-[12rem] max-w-2xl flex-col px-0 pt-6 pb-4 sm:min-h-[14rem] sm:pt-8 sm:pb-5'
       title={'Learning analytics'}
       titleClassName='type-title-hero text-balance text-foreground'

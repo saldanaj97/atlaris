@@ -24,14 +24,7 @@ const copy = {
 export function AboutHero() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
-    <PageHero
-      className={styles.hero}
-      aria-labelledby='about-hero-heading'
-      overlay='background'
-      desktop={{ objectPosition: '78% 42%' }}
-      mobile={{ className: 'opacity-70' }}
-      backdropClassName={styles.heroBackdrop}
-    >
+    <PageHero className={styles.hero} aria-labelledby='about-hero-heading'>
       <div className={styles.heroContent}>
         <div className={styles.heroCopyBlock}>
           <SectionOverline className={styles.heroOverline}>
