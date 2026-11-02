@@ -23,14 +23,41 @@ const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
-  await expectHeading(page, 'Make Atlaris yours.', 1);
-  await expectHeading(page, 'Plan & billing', 2);
+  await expectHeading(page, 'Settings', 1);
+  await expectHeading(page, 'Billing', 2);
   await expect(
     page.getByRole('heading', { name: 'Usage', exact: true }),
   ).toHaveCount(0);
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('Next billing date')).toBeVisible();
   await expect(page.getByText(/^active$/i)).toBeVisible();
+}
+
+/** WCAG contrast of an element's text color on its own background. */
+function textContrast(element: Element): number {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('2D canvas unavailable');
+  const toRgb = (color: string) => {
+    context.clearRect(0, 0, 1, 1);
+    context.fillStyle = color;
+    context.fillRect(0, 0, 1, 1);
+    return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+  };
+  const luminance = (color: string) => {
+    const [r, g, b] = toRgb(color).map((value) => {
+      const channel = value / 255;
+      return channel <= 0.03928
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const style = getComputedStyle(element);
+  const [lighter, darker] = [
+    luminance(style.color),
+    luminance(style.backgroundColor),
+  ].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
 test('authenticated launch blockers stay green', async ({ page }) => {
@@ -94,6 +121,18 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     const moduleUrlBeforeNext = page.url();
     await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible();
 
+    // The focused current module keeps readable text on its selected surface.
+    await page.getByRole('button', { name: /^Module \d+$/ }).click();
+    await page.keyboard.press('ArrowDown');
+    const currentModuleItem = page.locator(
+      '[role="menuitem"][aria-current="page"]',
+    );
+    await expect(currentModuleItem).toBeFocused();
+    expect(
+      await currentModuleItem.evaluate(textContrast),
+    ).toBeGreaterThanOrEqual(4.5);
+    await page.keyboard.press('Escape');
+
     const nextModuleLink = page.getByRole('link', {
       name: 'Next module',
       exact: true,
@@ -125,7 +164,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
-    await expectHeading(page, /one sky\. three ways to cross it\./i);
+    await expectHeading(page, /free for one plan\. pay when you need more/i);
 
     await page.goto('/settings/billing');
     await expect(page).toHaveURL(SETTINGS_URL);
