@@ -4,7 +4,7 @@ test.describe.configure({ mode: 'serial' });
 
 const SETTINGS_ROUTES = [
   { path: '/settings/profile', heading: 'Profile' },
-  { path: '/settings/billing', heading: 'Plan & billing' },
+  { path: '/settings/billing', heading: 'Billing' },
   { path: '/settings/usage', heading: 'Usage' },
   { path: '/settings/ai', heading: 'AI model' },
   { path: '/settings/notifications', heading: 'Notifications' },
@@ -18,8 +18,25 @@ test('settings root redirects to the profile section', async ({ page }) => {
   await expectHeading(page, 'Settings', 1);
   await expectHeading(page, 'Profile', 2, ASYNC_SECTION_TIMEOUT_MS);
   await expect(
-    page.getByRole('heading', { name: 'Plan & billing', exact: true }),
+    page.getByRole('heading', { name: 'Billing', exact: true }),
   ).toHaveCount(0);
+});
+
+test('billing names its section once', async ({ page }) => {
+  await page.goto('/settings/billing');
+  await expectHeading(page, 'Billing', 2, ASYNC_SECTION_TIMEOUT_MS);
+
+  // The layout's "Billing" heading names the page; the section is a labelled
+  // region, not a second heading one level down.
+  await expect(
+    page.getByRole('main').getByRole('heading', { level: 2 }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole('heading', { name: 'Plan & billing' }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole('region', { name: 'Plan & billing' }),
+  ).toBeVisible();
 });
 
 test('each settings route exposes only its section heading', async ({

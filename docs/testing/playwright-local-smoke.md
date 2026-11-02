@@ -21,7 +21,7 @@ pnpm test smoke -- --project smoke-auth
 pnpm test smoke -- --project smoke-clerk
 ```
 
-For day-to-day iteration on a machine with limited RAM, prefer a single `--project` (see [Memory and local resources](#memory-and-local-resources)). `smoke-anon` is the lightest path (API `request` checks only, anon server).
+For day-to-day iteration on a machine with limited RAM, prefer a single `--project` (see [Memory and local resources](#memory-and-local-resources)). `smoke-anon` is the lightest path (redirect `request` checks plus one landing page check, anon server).
 
 Low-level smoke debugging stays available without extra package scripts:
 
@@ -91,7 +91,7 @@ Do not start smoke servers manually for normal runs. Let Playwright own them.
 
 ## Memory and local resources
 
-Smoke is intentionally small (three specs, one browser worker, `video: 'off'`), but the **infrastructure around Playwright** dominates RAM on a laptop:
+Smoke is intentionally small (a few specs, one browser worker, `video: 'off'`), but the **infrastructure around Playwright** dominates RAM on a laptop:
 
 | Component | Typical impact | Notes |
 | --- | --- | --- |
@@ -108,7 +108,7 @@ Historically, a full `pnpm test smoke` started **two** Turbopack dev servers at 
 **Recommended iteration commands (lowest RAM first):**
 
 ```bash
-pnpm test smoke -- --project smoke-anon    # anon server only; no browser page work
+pnpm test smoke -- --project smoke-anon    # anon server only; one light landing page check
 pnpm test smoke -- --project smoke-auth    # auth server only; heaviest browser journey
 pnpm test smoke -- --project smoke-clerk   # anon server only; needs Clerk env when not skipped
 pnpm test smoke                            # full lane; two sequential Playwright invocations

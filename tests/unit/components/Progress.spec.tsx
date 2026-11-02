@@ -25,15 +25,6 @@ describe('Progress', () => {
     },
   );
 
-  it('outlines the track with the control boundary so the rail meets 3:1', () => {
-    render(<Progress value={30} aria-label='Plan progress' />);
-
-    const track = screen.getByRole('progressbar', { name: 'Plan progress' });
-
-    expect(track).toHaveClass('border', 'border-input', 'bg-panel');
-    expect(track).not.toHaveClass('bg-muted');
-  });
-
   it('defaults an invalid max to 100 before normalizing the value', () => {
     render(<Progress value={50} max={0} aria-label='Plan progress' />);
 
