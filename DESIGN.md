@@ -43,7 +43,7 @@ Current CSS describes what runs; it does not override the intended design specif
 
 ## Brand direction
 
-The intended direction is the **Midnight** palette (adopted 2026-10-30): restrained midnight-black surfaces, clear light text, cantaloupe for actions and brand emphasis, electric blue for links, focus and data lines, and occasional astronomical imagery. Blue is never a button fill and never sits beside a cantaloupe fill. Values and contrast pairs are in chapter 03. Prioritize readable learning content and the next real action. Keep working surfaces opaque; use atmosphere where it supports the task. Follow the canonical chapters for values and state recipes rather than copying old theme values or sampling mockups.
+The intended direction is the **Midnight** palette (adopted 2026-10-30): restrained midnight-black surfaces, clear light text, cantaloupe for actions and brand emphasis, electric blue for links, focus and data lines, and drawn atmosphere (the landing beam, a CSS horizon arc) instead of photography. Blue is never a button fill and never sits beside a cantaloupe fill. Values and contrast pairs are in chapter 03. Prioritize readable learning content and the next real action. Keep working surfaces opaque; use atmosphere where it supports the task. Follow the canonical chapters for values and state recipes rather than copying old theme values or sampling mockups.
 
 ## Before changing UI
 

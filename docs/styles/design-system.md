@@ -560,14 +560,16 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ## 09 — Imagery
 
+**Decision (2026-11-02): no photography.** The generated landscape and planet photos are removed from the product, along with `public/artwork/`. Page heroes and CTA banners draw a thin horizon arc in CSS (`src/components/ui/horizon-arc.tsx`, from `--link`); the landing hero keeps its CSS beam; illustrations are product-native, such as the About route constellation or real UI previews. Do not add generated or stock imagery. A new image asset needs explicit sign-off. The slot rules below now apply to those drawn treatments.
+
 ### Preserve the approved visual language
 
 The source screens establish cool-black landscapes, astronomical horizons, isolated distant highlights and subdued blue atmosphere. Use them to frame a message, not as repeated decoration beneath every control. This is observed visual direction; exact crop, overlay and brightness settings were not supplied. [A01 §6; A03]
 
 | Slot               | Draft rule                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Marketing hero     | One atmospheric image with a quiet text-safe region; responsive crop chosen intentionally.                         |
-| Application header | Optional compact image, not a mandatory full-height hero.                                                          |
+| Marketing hero     | One drawn atmosphere (beam or horizon arc) kept clear of the text column.                                          |
+| Application header | Optional horizon arc, not a mandatory full-height hero.                                                            |
 | Lesson reader      | No decorative image behind prose, code, form fields or progress labels.                                            |
 | Plan card          | Use imagery only when it aids recognition; keep status/actions outside the image.                                  |
 | Maintenance        | Atmosphere may be prominent, but status, affected capabilities and a truthful recovery instruction remain primary. |
@@ -1120,7 +1122,7 @@ The existing shell still uses a header-aware top offset of `calc(4rem + env(safe
 
 Compose PageHeader with a title, short factual description, and at most one visually dominant action per decision region. Breadcrumbs precede the title when hierarchy matters; filters belong with the data they control. Async quotas/counts may stream separately without blocking the title or inventing a zero. Preserve space for loading content only where it prevents movement; never reserve a fixed page-header height that clips enlarged text.
 
-A decorative planetary horizon is optional and not a dependency of the layout. Do not recreate it by cropping a screenshot that contains interface text. Until independent production illustrations exist, the specimen uses plain opaque surfaces and layout labels. Brand assets remain the supplied mark/lockup; the canonical full vector lockup and exact screenshot-font identification are still unresolved. [A01–A03]
+A decorative horizon is optional and not a dependency of the layout; `PageHero` draws it with `HorizonArc` in CSS. Do not recreate it from a screenshot or a photo. Brand assets remain the supplied mark/lockup; the canonical full vector lockup and exact screenshot-font identification are still unresolved. [A01–A03]
 
 ### 20.4 Page recipe map
 
@@ -1152,7 +1154,7 @@ The specimen demonstrates an outline and sample prose, not actual persisted per-
 
 ### 20.6 Settings and analytics composition
 
-Settings uses shared chrome with the existing routed sections: Profile, Plan & billing, Usage, AI model, Notifications. The earlier single-ledger proposal is superseded by the current route contract. Preserve section IDs, the profile catch-all, checkout synchronization host and independent Suspense boundaries. Local navigation links to those existing section routes; it does not reimplement account management. One section waiting for data must not turn every other section into a skeleton.
+Settings uses shared chrome with the existing routed sections: Profile, Billing, Usage, AI model, Notifications; each route marks its own nav item. The earlier single-ledger proposal is superseded by the current route contract. Preserve section IDs, the profile catch-all, checkout synchronization host and independent Suspense boundaries. Local navigation links to those existing section routes; it does not reimplement account management. One section waiting for data must not turn every other section into a skeleton.
 
 Analytics retains the Eight-week pulse and Tasks, Modules, Completed time, Progress changes, Completed events, Active days, Streak. Layout can regroup the first three as current completion and the remaining four as activity/streak context, provided the time scope is explicit. A task-completion percent is not an average of plan percentages; completed time is estimated, not a timer. A week still in progress should be visibly identified. The companion v0.3 specification remains the detailed metric contract. [A03 §17.5]
 
@@ -1806,7 +1808,7 @@ JCS-96 records how the supplied launch screenshots map to actual Atlaris product
 | Achievements                          | Defer                            | `/analytics/achievements` redirects to `/analytics/usage` until achievement tracking exists; the mockup does not authorize a working achievement system.                                                                                                                                                                                                                                            |
 | About and builder copy                | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch.                                                                                                                                           |
 | Social proof and aggregate statistics | Omit                             | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source.                                                                                                                                                                                                                               |
-| Account and settings                  | Keep / adapt                     | Use the existing settings ledger (Profile, Plan & billing, Usage, AI model and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts.                                                                                                                                                                                             |
+| Account and settings                  | Keep / adapt                     | Use the existing settings ledger (Profile, Billing, Usage, AI model and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts.                                                                                                                                                                                                    |
 | Brand imagery and metadata            | Defer                            | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset.                                                                                                                                                                                                                                |
 
 Ownership remains explicit: JCS-96 owns this launch copy and information-architecture map; JCS-87 owns the authenticated sidebar composition; JCS-94 owns controls and action recipes; JCS-95 owns feedback and overlay compositions; JCS-6 owns brand assets and metadata. Clerk billing architecture owns plan and entitlement semantics, and the usage analytics metric contract owns analytics meanings. A future destination or claim change updates its owning issue and this record together.
