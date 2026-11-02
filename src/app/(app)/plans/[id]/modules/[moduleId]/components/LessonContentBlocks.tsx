@@ -1,4 +1,4 @@
-import type { PanelState } from './GenerationStatePanel';
+import type { PanelState } from './generationPanelState';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { LessonContentBlock } from '@/shared/types/lesson-content.types';
 

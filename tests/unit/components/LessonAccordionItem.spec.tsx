@@ -1,4 +1,4 @@
-import type { PanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
+import type { PanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';

@@ -1,6 +1,6 @@
 'use client';
 
-import type { PanelState } from './GenerationStatePanel';
+import type { PanelState } from './generationPanelState';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 

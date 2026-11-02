@@ -7,9 +7,10 @@ import type {
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 import {
-  GenerationStatePanel,
-  getPanelState,
-} from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
+  getEmptyLessonsCopy,
+  getModuleGenerationState,
+} from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
+import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { getLessonMarkerClassName } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/lessonAccordionStyles';
 import { ModuleCompletePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleCompletePanel';
@@ -216,10 +217,11 @@ export function ModuleLessonsClient({
       status: lessonGeneration.status,
     });
 
-  const generationState =
-    lessonGeneration.status === 'ready'
-      ? undefined
-      : getPanelState(lessonGeneration.status, isPending);
+  const generationState = getModuleGenerationState(
+    lessonGeneration.status,
+    isPending,
+  );
+  const emptyLessonsCopy = getEmptyLessonsCopy(generationState);
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter(
     (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
@@ -313,9 +315,7 @@ export function ModuleLessonsClient({
             <span className='shrink-0 type-meta text-muted-foreground tabular-nums'>
               {totalLessons > 0
                 ? `${completedLessons}/${totalLessons} completed`
-                : generationState === 'failed'
-                  ? 'No lessons'
-                  : 'No lessons yet'}
+                : emptyLessonsCopy.count}
             </span>
           </div>
 
@@ -333,9 +333,7 @@ export function ModuleLessonsClient({
               className='p-8 text-center'
             >
               <p className='text-muted-foreground'>
-                {generationState === 'failed'
-                  ? 'No lessons were created for this module.'
-                  : 'No lessons are available for this module yet.'}
+                {emptyLessonsCopy.message}
               </p>
             </Surface>
           ) : (

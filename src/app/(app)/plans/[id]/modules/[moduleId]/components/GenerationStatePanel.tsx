@@ -1,35 +1,11 @@
+import type { PanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projection/types';
 
+import { getPanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Loader2 } from 'lucide-react';
-
-/**
- * What the panel can truthfully say: a run is in progress, or it failed.
- * The module page starts generation on its own when lessons are missing, so a
- * module that still has none and has no run going got there through a failed
- * start or a run that rolled back; it reads as failed, with a retry.
- */
-export type PanelState = 'failed' | 'running';
-
-export function getPanelState(
-  status: Exclude<ModuleLessonGenerationSummary['status'], 'ready'>,
-  isPending: boolean,
-): PanelState {
-  switch (status) {
-    case 'failed':
-      return 'failed';
-    case 'generating':
-      return 'running';
-    case 'not_generated':
-      return isPending ? 'running' : 'failed';
-    default: {
-      const _exhaustive: never = status;
-      return _exhaustive;
-    }
-  }
-}
 
 function GenerationDescription({
   state,
