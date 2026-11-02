@@ -54,7 +54,7 @@ const PLAN_NAME_BY_SLUG: Record<string, string> = {
 };
 
 const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
-  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free tonight',
+  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free',
   [CLERK_BILLING_PLAN_SLUGS.starter]: 'Begin with Starter',
   [CLERK_BILLING_PLAN_SLUGS.pro]: 'Begin with Pro',
 };

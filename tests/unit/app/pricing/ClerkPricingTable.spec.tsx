@@ -195,7 +195,7 @@ describe('ClerkPricingTable', () => {
       expect(
         await screen.findByRole('link', { name: 'Begin with Starter' }),
       ).toHaveAttribute('href', '/auth/sign-in');
-      for (const name of ['Start free tonight', 'Begin with Pro']) {
+      for (const name of ['Start free', 'Begin with Pro']) {
         expect(screen.getByRole('link', { name })).toHaveAttribute(
           'href',
           '/auth/sign-in',
