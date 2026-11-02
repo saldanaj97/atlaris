@@ -54,7 +54,7 @@
     "pino": "^10.4.0",
     "postgres": "^3.4.9",
     "posthog-js": "^1.438.22",
-    "posthog-node": "^5.56.2",
+    "posthog-node": "^5.57.2",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "recharts": "2.15.4",
@@ -89,7 +89,7 @@
     "oxfmt": "^0.74.0",
     "oxlint": "1.89.0",
     "oxlint-tsgolint": "7.0.2005",
-    "supabase": "^2.121.0",
+    "supabase": "^2.122.0",
     "tailwindcss": "^4.3.3",
     "tsrs": "0.18.0-ts7.1.0-dev.20260929",
     "tsx": "^4.23.15",
@@ -97,7 +97,7 @@
     "typescript": "7.0.2",
     "vite": "^7.3.7",
     "vitest": "^4.1.12",
-    "wrangler": "^4.151.2"
+    "wrangler": "^4.152.0"
   },
   "lint-staged": {
     "**/*.{ts,tsx,js,jsx,cjs,mjs,cts,mts}": [
