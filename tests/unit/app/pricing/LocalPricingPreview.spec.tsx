@@ -56,10 +56,10 @@ describe('LocalPricingPreview comparison', () => {
 
     const rows = within(table).getAllByRole('row').slice(1);
     expect(rows).toHaveLength(5);
-    const activePlans = within(rows[0]).getAllByRole('cell');
-    expect(activePlans.map((cell) => cell.textContent)).toEqual([
+    const plansIncluded = within(rows[0]).getAllByRole('cell');
+    expect(plansIncluded.map((cell) => cell.textContent)).toEqual([
       '1',
-      '10',
+      '10 at a time',
       'Unlimited',
     ]);
     for (const row of rows) {

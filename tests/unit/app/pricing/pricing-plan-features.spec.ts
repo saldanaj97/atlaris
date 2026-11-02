@@ -18,9 +18,9 @@ describe('PRICING_FEATURES_BY_CLERK_SLUG', () => {
 });
 
 describe('PRICING_PLAN_FEATURES', () => {
-  it('singularizes a limit of one instead of "1 active learning plans"', () => {
-    expect(PRICING_PLAN_FEATURES.free).toContain('1 active plan');
-    expect(PRICING_PLAN_FEATURES.free.join(' ')).not.toMatch(/1 active plans/);
+  it('describes Free as one plan in total, not one active plan', () => {
+    expect(PRICING_PLAN_FEATURES.free).toContain('1 plan included');
+    expect(PRICING_PLAN_FEATURES.free.join(' ')).not.toMatch(/active plan/);
   });
 
   it('does not advertise a zero as a feature on Free', () => {
@@ -30,7 +30,7 @@ describe('PRICING_PLAN_FEATURES', () => {
 
   it('lists each tier with limits taken from the tier configuration', () => {
     expect(PRICING_PLAN_FEATURES.free).toEqual([
-      '1 active plan',
+      '1 plan included',
       'Plans up to 2 weeks',
       'Free models, chosen for you',
       'Lessons for every module',
@@ -72,7 +72,7 @@ describe('PRICING_COMPARISON_ROWS', () => {
         row.values.pro,
       ]),
     ).toEqual([
-      ['Active plans', '1', '10', 'Unlimited'],
+      ['Plans included', '1', '10 at a time', 'Unlimited'],
       ['Longest plan', '2 weeks', '2 months', '6 months'],
       ['Regenerations per month', '0', '5', '25'],
       ['Models', 'Free models', 'Curated list', 'Full catalog'],

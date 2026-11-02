@@ -13,11 +13,11 @@ import Link from 'next/link';
 import styles from './landing.module.css';
 
 const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
-const FREE_ACTIVE_PLANS = TIER_LIMITS.free.maxActivePlans;
+const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
 
 const copy = {
-  headline: `Start with ${FREE_ACTIVE_PLANS === 1 ? 'one free plan' : `${FREE_ACTIVE_PLANS} free plans`}`,
-  subheadline: `Free plan: ${FREE_ACTIVE_PLANS === 1 ? 'one active plan' : `${FREE_ACTIVE_PLANS} active plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}.`,
+  headline: `Start with ${FREE_PLANS === 1 ? 'one free plan' : `${FREE_PLANS} free plans`}`,
+  subheadline: `Free plan: ${FREE_PLANS === 1 ? 'one plan' : `${FREE_PLANS} plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}.`,
 } as const;
 
 export function CtaSection() {

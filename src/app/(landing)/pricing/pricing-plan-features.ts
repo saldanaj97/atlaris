@@ -41,9 +41,12 @@ function formatPlanLength(weeks: number): string {
     : pluralize(Math.round(weeks / WEEKS_PER_MONTH), 'month');
 }
 
-function formatActivePlans(tier: SubscriptionTier): string {
+// Free allows one plan in total (`canCreatePlanOnCurrentTier`), so only paid
+// tiers describe the limit as plans held at a time.
+function formatPlansIncluded(tier: SubscriptionTier): string {
   const limit = TIER_LIMITS[tier].maxActivePlans;
-  return isUnlimitedNumber(limit) ? 'Unlimited' : String(limit);
+  if (isUnlimitedNumber(limit)) return 'Unlimited';
+  return tier === 'free' ? String(limit) : `${limit} at a time`;
 }
 
 function buildTierFeatures(tier: SubscriptionTier): readonly string[] {
@@ -51,7 +54,9 @@ function buildTierFeatures(tier: SubscriptionTier): readonly string[] {
   return [
     isUnlimitedNumber(maxActivePlans)
       ? 'Unlimited active plans'
-      : pluralize(maxActivePlans, 'active plan'),
+      : tier === 'free'
+        ? `${pluralize(maxActivePlans, 'plan')} included`
+        : pluralize(maxActivePlans, 'active plan'),
     `Plans up to ${formatPlanLength(longestPlanWeeks(tier))}`,
     // A tier with no regenerations omits the line rather than advertising a zero.
     ...(monthlyRegenerations > 0
@@ -111,9 +116,9 @@ function valuesByTier(
 /** Rows for the plan comparison table, derived from the same limits as checkout enforcement. */
 export const PRICING_COMPARISON_ROWS: readonly PricingComparisonRow[] = [
   {
-    key: 'active-plans',
-    label: 'Active plans',
-    values: valuesByTier(formatActivePlans),
+    key: 'plans-included',
+    label: 'Plans included',
+    values: valuesByTier(formatPlansIncluded),
   },
   {
     key: 'longest-plan',

@@ -775,14 +775,14 @@ describe('ClerkPricingTable', () => {
       name: 'Plan comparison',
     });
     expect(comparison).toHaveAttribute('tabindex', '0');
-    const activePlans = within(comparison).getByRole('row', {
-      name: /active plans/i,
+    const plansIncluded = within(comparison).getByRole('row', {
+      name: /plans included/i,
     });
     expect(
-      within(activePlans)
+      within(plansIncluded)
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
-    ).toEqual(['1', '10']);
+    ).toEqual(['1', '10 at a time']);
     expect(
       within(comparison).queryByText(/exports?|priority queue/i),
     ).not.toBeInTheDocument();
