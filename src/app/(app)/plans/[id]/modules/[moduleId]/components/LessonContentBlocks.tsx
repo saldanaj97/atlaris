@@ -61,8 +61,8 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
       );
     case 'takeaways':
       return (
-        <section className='my-5 rounded-[8px] border border-link/40 bg-action-soft p-3'>
-          <h4 className='mb-2 type-label text-link'>Key takeaways</h4>
+        <section className='my-5 rounded-[8px] border border-primary/40 bg-action-soft p-3'>
+          <h4 className='mb-2 type-label text-primary'>Key takeaways</h4>
           <ul className='list-disc space-y-2 pl-5 type-body break-words text-foreground'>
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (

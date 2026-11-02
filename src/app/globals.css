@@ -23,7 +23,7 @@
   --action-primary-hover: #fd8b69;
   --action-primary-pressed: #e8603a;
   --action-primary-foreground: #02070a;
-  --action-soft: color-mix(in srgb, var(--primary) 10%, var(--background));
+  --action-soft: color-mix(in srgb, var(--primary) 7%, var(--background));
   --link: #03699e;
   --navigation-item-marker: var(--primary);
   --link-hover: #02527c;

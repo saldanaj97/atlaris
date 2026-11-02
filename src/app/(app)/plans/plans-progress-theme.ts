@@ -74,7 +74,7 @@ const LESSON_PROGRESS_THEME: Record<
   },
   active: {
     marker:
-      'border-primary/50 bg-primary/20 text-primary ring-2 ring-primary/10 dark:bg-primary/20 dark:text-primary',
+      'border-primary/50 bg-action-soft text-primary ring-2 ring-primary/10',
     card: 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border dark:hover:border-primary/30',
     title: 'text-foreground',
     mutedText: 'text-muted-foreground',

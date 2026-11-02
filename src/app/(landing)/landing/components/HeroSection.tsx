@@ -13,14 +13,14 @@ import Link from 'next/link';
 import styles from './landing.module.css';
 
 const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
-const FREE_ACTIVE_PLANS = TIER_LIMITS.free.maxActivePlans;
+const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
 
 const copy = {
   subheadline:
     'Set your level and weekly hours. Atlaris writes the plan in modules and tasks, each with a time estimate.',
   primaryCta: 'Create a plan',
   secondaryCta: 'See pricing',
-  freePlan: `Free plan: ${FREE_ACTIVE_PLANS === 1 ? 'one active plan' : `${FREE_ACTIVE_PLANS} active plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}`,
+  freePlan: `Free plan: ${FREE_PLANS === 1 ? 'one plan' : `${FREE_PLANS} plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}`,
 } as const;
 
 /** Example plan shown in the hero. Illustrative data, labelled as such. */
@@ -137,7 +137,7 @@ export function HeroSection() {
 }
 
 const moduleDotClass: Record<ModuleState, string> = {
-  done: 'border-chart-1 bg-chart-1',
+  done: 'border-success bg-success',
   next: 'border-action-primary bg-action-primary',
   todo: 'border-muted-foreground bg-card',
 };
@@ -271,7 +271,7 @@ function HeroPlanCards() {
                       className={cn(
                         'size-3.5 rounded-[4px] border',
                         task.done
-                          ? 'border-chart-1 bg-chart-1'
+                          ? 'border-success bg-success'
                           : 'border-muted-foreground',
                       )}
                     />
