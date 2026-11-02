@@ -39,13 +39,11 @@ function ModuleSwitcherMenuItem({
   }
 
   return (
-    <DropdownMenuItem asChild>
+    <DropdownMenuItem asChild variant={isCurrent ? 'current' : 'default'}>
       <Link
         href={`/plans/${planId}/modules/${item.id}`}
-        className={cn(
-          'flex items-center gap-2',
-          isCurrent && 'bg-action-soft text-primary',
-        )}
+        aria-current={isCurrent ? 'page' : undefined}
+        className='flex items-center gap-2'
         aria-label={item.isComplete ? `${item.title}, completed` : undefined}
       >
         <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-action-soft type-meta font-medium text-primary'>

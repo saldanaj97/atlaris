@@ -65,7 +65,9 @@ function DropdownMenuItem({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean;
-  variant?: 'default' | 'destructive';
+  /** `current` marks the page the item links to, and keeps that selected
+   * surface while focused. */
+  variant?: 'default' | 'destructive' | 'current';
 }) {
   return (
     <DropdownMenuPrimitive.Item
@@ -73,7 +75,7 @@ function DropdownMenuItem({
       data-inset={inset}
       data-variant={variant}
       className={cn(
-        "relative flex min-h-[40px] cursor-default items-center gap-[8px] rounded-[8px] px-[8px] py-[8px] type-body outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:ring-2 data-[highlighted]:ring-inset data-[highlighted]:ring-ring data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] data-inset:pl-[32px] data-[variant=destructive]:text-danger data-[variant=destructive]:focus:bg-danger-subtle data-[variant=destructive]:focus:text-danger data-[variant=destructive]:data-[highlighted]:bg-danger-subtle data-[variant=destructive]:data-[highlighted]:text-danger [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-danger!",
+        "relative flex min-h-[40px] cursor-default items-center gap-[8px] rounded-[8px] px-[8px] py-[8px] type-body outline-hidden select-none focus:bg-accent focus:text-accent-foreground data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[highlighted]:ring-2 data-[highlighted]:ring-inset data-[highlighted]:ring-ring data-disabled:pointer-events-none data-disabled:border-disabled-border data-disabled:bg-disabled data-disabled:text-disabled-foreground data-disabled:opacity-100 [@media(pointer:coarse)]:min-h-[44px] data-inset:pl-[32px] data-[variant=destructive]:text-danger data-[variant=destructive]:focus:bg-danger-subtle data-[variant=destructive]:focus:text-danger data-[variant=destructive]:data-[highlighted]:bg-danger-subtle data-[variant=destructive]:data-[highlighted]:text-danger data-[variant=current]:bg-action-soft data-[variant=current]:text-primary data-[variant=current]:focus:bg-action-soft data-[variant=current]:focus:text-primary data-[variant=current]:data-[highlighted]:bg-action-soft data-[variant=current]:data-[highlighted]:text-primary [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-[16px] [&_svg:not([class*='text-'])]:text-muted-foreground data-[variant=destructive]:*:[svg]:text-danger!",
         className,
       )}
       {...props}
