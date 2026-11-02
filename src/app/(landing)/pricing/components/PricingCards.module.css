@@ -425,17 +425,24 @@
   line-height: 1.15;
 }
 
-.comparisonScroll {
-  overflow-x: auto;
+/* The frame owns the border and focus ring so the scroll cue's edge fade
+ * (on .comparisonScroll) never fades them. */
+.comparisonFrame {
+  overflow: hidden;
   border: 1px solid color-mix(in oklab, var(--border) 65%, transparent);
   border-radius: var(--radius-lg);
-  scrollbar-color: color-mix(in oklab, var(--link) 50%, var(--border))
-    transparent;
 }
 
-.comparisonScroll:focus-visible {
+.comparisonFrame:has(.comparisonScroll:focus-visible) {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+.comparisonScroll {
+  overflow-x: auto;
+  outline: none;
+  scrollbar-color: color-mix(in oklab, var(--link) 50%, var(--border))
+    transparent;
 }
 
 .comparisonTable {
@@ -545,8 +552,11 @@
     border-radius: var(--radius-4xl);
   }
 
+  /* Without the desktop min-height the price would sit right on the
+     description, so keep a fixed gap above it. */
   .cardTitleContainer {
     min-height: auto;
+    margin-bottom: 1.25rem;
   }
 
   .comparison {

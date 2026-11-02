@@ -15,9 +15,12 @@ const orbPresets = {
     muted:
       'absolute top-[48%] -left-28 size-112 rounded-full bg-panel-muted/50 blur-3xl md:size-144',
   },
+  // The dusk orb starts below the fixed header (the backdrop is tucked 4rem up
+  // under it), so its glow fades in under the header instead of meeting the
+  // header's bottom in a hard edge.
   dusk: {
     primary:
-      'absolute -top-28 right-[8%] size-120 rounded-full bg-primary/15 blur-3xl md:size-152',
+      'absolute top-28 right-[8%] size-120 rounded-full bg-primary/15 blur-3xl md:size-152',
     muted:
       'absolute bottom-[-10%] -left-24 size-112 rounded-full bg-panel-muted/60 blur-3xl md:size-136',
   },

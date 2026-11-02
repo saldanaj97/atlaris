@@ -58,7 +58,20 @@ const clerkAppearance = {
       width: 'auto',
       'html:not(.dark) &': { filter: 'invert(1)' },
     },
-    socialButtonsBlockButton: 'border-input text-foreground hover:bg-muted/70',
+    // Clerk draws these boundaries as 11%-alpha shadows (about 1.2:1); use the
+    // 3:1 control boundary instead, but leave focus and error rings to Clerk.
+    formFieldInput: {
+      '&:not(:focus):not([aria-invalid="true"])': {
+        boxShadow: '0 0 0 1px var(--input)',
+      },
+    },
+    socialButtonsBlockButton: {
+      color: 'var(--foreground)',
+      '&:not(:focus-visible)': { boxShadow: '0 0 0 1px var(--input)' },
+      '&:hover': {
+        backgroundColor: 'color-mix(in oklab, var(--muted) 70%, transparent)',
+      },
+    },
   },
 };
 

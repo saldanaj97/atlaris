@@ -4,6 +4,7 @@ import {
   buildUsageAnalyticsModel,
   PULSE_PLAN_LIMIT,
   selectMostActivePlans,
+  yAxisTicksForMax,
   type UsageAnalyticsActivityEvent,
   type UsageAnalyticsModel,
   type UsageAnalyticsPlanRow,
@@ -546,5 +547,18 @@ describe('selectMostActivePlans', () => {
     const plans = [pulsePlan('a', [0]), pulsePlan('b', [1])];
 
     expect(selectMostActivePlans(plans)).toEqual([plans[1], plans[0]]);
+  });
+});
+
+describe('yAxisTicksForMax', () => {
+  it('steps evenly instead of appending an off-step maximum', () => {
+    expect(yAxisTicksForMax(7)).toEqual([0, 2, 4, 6, 8]);
+    expect(yAxisTicksForMax(9)).toEqual([0, 3, 6, 9]);
+    expect(yAxisTicksForMax(13)).toEqual([0, 4, 8, 12, 16]);
+  });
+
+  it('uses whole steps for small maxima', () => {
+    expect(yAxisTicksForMax(2)).toEqual([0, 1, 2]);
+    expect(yAxisTicksForMax(0)).toEqual([0, 1]);
   });
 });

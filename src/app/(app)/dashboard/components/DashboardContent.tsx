@@ -138,7 +138,7 @@ export function DashboardContentSkeleton() {
 
         <div className={DASHBOARD_GRID}>
           <section aria-label='Resume learning loading'>
-            <Card as='article' className='h-full p-5 sm:p-6'>
+            <Card as='article' className='h-full gap-0 p-5 sm:p-6'>
               <Skeleton className='h-6 w-40' />
               <Skeleton className='mt-4 h-6 w-16 rounded-full bg-secondary' />
               <Skeleton className='mt-4 h-7 w-full max-w-md' />
@@ -151,7 +151,11 @@ export function DashboardContentSkeleton() {
             </Card>
           </section>
 
-          <Card as='aside' aria-label='Progress loading' className='p-5 sm:p-6'>
+          <Card
+            as='aside'
+            aria-label='Progress loading'
+            className='gap-0 p-5 sm:p-6'
+          >
             <Skeleton className='h-6 w-32' />
             <Skeleton className='mt-8 h-9 w-20' />
             <Skeleton className='mt-2 h-4 w-28 bg-muted' />
@@ -164,7 +168,7 @@ export function DashboardContentSkeleton() {
           <Card
             as='section'
             aria-label='Learning route loading'
-            className='h-full p-5 sm:p-6'
+            className='h-full gap-0 p-5 sm:p-6'
           >
             <Skeleton className='h-7 w-48' />
             <Skeleton className='mt-2 h-5 w-56 bg-muted' />
@@ -174,7 +178,7 @@ export function DashboardContentSkeleton() {
           <Card
             as='aside'
             aria-label='Weekly pace loading'
-            className='h-full p-5 sm:p-6'
+            className='h-full gap-0 p-5 sm:p-6'
           >
             <Skeleton className='h-7 w-24' />
             <Skeleton className='mt-2 h-5 w-36 bg-muted' />

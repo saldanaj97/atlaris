@@ -5,13 +5,19 @@ import type {
   UsageAnalyticsWeekRow,
 } from './usage-analytics-model';
 
-import { selectMostActivePlans } from './usage-analytics-model';
+import {
+  selectMostActivePlans,
+  yAxisTicksForMax,
+} from './usage-analytics-model';
 import {
   ChartContainer,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { PLAN_CHART_COLORS } from '@/shared/constants/chart-colors';
+import {
+  PLAN_CHART_COLORS,
+  PLAN_CHART_DASHES,
+} from '@/shared/constants/chart-colors';
 import {
   lazy,
   Suspense,
@@ -472,11 +478,12 @@ export function WeeklyLineChart({
       plan.weeklyTrends.map((week) => week.progressChangeCount),
     ),
   );
-  const maxValue = dataMaxValue + 1;
-  const yAxisTicks = yAxisTicksForMax(maxValue);
+  const yAxisTicks = yAxisTicksForMax(dataMaxValue + 1);
+  const maxValue = yAxisTicks.at(-1) ?? 1;
   const series = renderedPlans.map((plan, index) => ({
     plan,
     color: PLAN_CHART_COLORS[index % PLAN_CHART_COLORS.length],
+    dash: PLAN_CHART_DASHES[index % PLAN_CHART_DASHES.length],
     weeklyTrendCounts: new Map(
       plan.weeklyTrends.map((week) => [
         week.weekStartDate,
@@ -572,7 +579,7 @@ export function WeeklyLineChart({
                       cursor={false}
                       content={<ChartTooltipContent indicator='line' />}
                     />
-                    {series.map(({ plan }) => (
+                    {series.map(({ plan, dash }) => (
                       <Line
                         key={plan.id}
                         data-testid='plan-series'
@@ -581,6 +588,7 @@ export function WeeklyLineChart({
                         type='linear'
                         stroke={`var(--color-${plan.id})`}
                         strokeWidth={4}
+                        strokeDasharray={dash}
                         dot={false}
                         activeDot={false}
                         isAnimationActive={!prefersReducedMotion}
@@ -606,13 +614,17 @@ export function WeeklyLineChart({
       </div>
       <div className='mt-6 flex min-h-8 flex-wrap gap-x-4 gap-y-2 py-2'>
         {series.length > 0 ? (
-          series.map(({ plan, color }) => (
+          series.map(({ plan, color, dash }) => (
             <div
               key={plan.id}
               className='flex w-45 shrink-0 items-center gap-2 type-meta text-muted-foreground'
             >
               <span
-                className='size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
+                className={
+                  dash
+                    ? 'w-4 shrink-0 border-t-2 border-dashed border-(--plan-chart-color)'
+                    : 'size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
+                }
                 style={{ '--plan-chart-color': color } as CSSProperties}
               />
               <span className='min-w-0 truncate'>{plan.topic}</span>
@@ -642,7 +654,13 @@ function AnimatedPointLabel({
   const labelX = typeof x === 'number' ? x : Number(x);
   const labelY = typeof y === 'number' ? y : Number(y);
 
-  if (value == null || !Number.isFinite(labelX) || !Number.isFinite(labelY)) {
+  // Zero points sit on the baseline, where their labels would pile up.
+  if (
+    value == null ||
+    Number(value) === 0 ||
+    !Number.isFinite(labelX) ||
+    !Number.isFinite(labelY)
+  ) {
     return null;
   }
 
@@ -663,17 +681,4 @@ function AnimatedPointLabel({
       {value}
     </text>
   );
-}
-
-function yAxisTicksForMax(maxValue: number): number[] {
-  const step = Math.max(1, Math.ceil(maxValue / 4));
-  const ticks = [];
-
-  for (let tick = 0; tick < maxValue; tick += step) {
-    ticks.push(tick);
-  }
-
-  ticks.push(maxValue);
-
-  return ticks;
 }

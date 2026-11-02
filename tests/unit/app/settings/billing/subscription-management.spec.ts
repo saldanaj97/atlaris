@@ -11,8 +11,8 @@ describe('formatSubscriptionStatus', () => {
     expect(formatSubscriptionStatus(status)).toBe(label);
   });
 
-  it('shows a dash when there is no status', () => {
-    expect(formatSubscriptionStatus(null)).toBe('—');
+  it('says there is no subscription when there is no status', () => {
+    expect(formatSubscriptionStatus(null)).toBe('No subscription');
   });
 
   it('sentence-cases an unmapped status instead of showing the raw value', () => {

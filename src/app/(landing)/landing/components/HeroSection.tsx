@@ -187,7 +187,9 @@ function HeroPlanCards() {
           styles.chip,
         )}
       >
-        Example plan · {EXAMPLE_PLAN.title} · {EXAMPLE_PLAN.weeks} weeks ·{' '}
+        {/* Non-breaking spaces before each "·" keep it off the end of a line. */}
+        Example plan{'\u00a0'}· {EXAMPLE_PLAN.title}
+        {'\u00a0'}· {EXAMPLE_PLAN.weeks} weeks{'\u00a0'}·{' '}
         {formatMinutes(EXAMPLE_PLAN.hoursPerWeek * 60)} a week
       </figcaption>
       {/* oxlint-disable-next-line shadcn/require-static-classes -- CSS module classes are complete but opaque to the rule */}

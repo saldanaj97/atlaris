@@ -114,7 +114,7 @@ function PlansStatusRail({
 }) {
   return (
     <nav aria-label='Plan status filters' className='min-w-0 overflow-hidden'>
-      <div className='overflow-x-auto'>
+      <div className='scroll-cue-x overflow-x-auto'>
         <ul className='flex min-w-max items-end gap-1'>
           {FILTER_OPTIONS.map((option) => {
             const isCurrent = option.value === query.status;
@@ -539,8 +539,9 @@ export function PlansList({ page, query }: PlansListProps) {
           <div className='flex items-center gap-2'>
             <Button
               asChild={page.page > 1}
-              variant='ghost'
+              variant='outline'
               size='sm'
+              className='text-foreground'
               disabled={page.page <= 1}
             >
               {page.page > 1 ? (
@@ -564,8 +565,9 @@ export function PlansList({ page, query }: PlansListProps) {
             </Button>
             <Button
               asChild={page.page < page.totalPages}
-              variant='ghost'
+              variant='outline'
               size='sm'
+              className='text-foreground'
               disabled={page.page >= page.totalPages}
             >
               {page.page < page.totalPages ? (

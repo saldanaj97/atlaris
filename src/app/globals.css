@@ -64,7 +64,7 @@
   --chart-2: #c2491f;
   --chart-3: #087f5b;
   --chart-4: #8a5a00;
-  --chart-5: #b42318;
+  --chart-5: #7c3aed;
   --sidebar: #ffffff;
   --sidebar-foreground: #02070a;
   --sidebar-primary: #fc734d;
@@ -403,6 +403,52 @@
     line-height: 1.5;
     letter-spacing: 0;
     color: var(--muted-foreground);
+  }
+}
+
+/* Horizontal scroll cue: the edges of a scroll container fade only on the
+ * side that has more content. Scroll-driven, so it needs no script; browsers
+ * without scroll timelines (and containers that do not overflow) show none. */
+@property --scroll-cue-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-cue-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@keyframes scroll-cue-x {
+  from {
+    --scroll-cue-start: 0px;
+    --scroll-cue-end: 2.5rem;
+  }
+  8% {
+    --scroll-cue-start: 2.5rem;
+  }
+  92% {
+    --scroll-cue-end: 2.5rem;
+  }
+  to {
+    --scroll-cue-start: 2.5rem;
+    --scroll-cue-end: 0px;
+  }
+}
+
+@utility scroll-cue-x {
+  @supports (animation-timeline: scroll()) {
+    mask-image: linear-gradient(
+      to right,
+      transparent,
+      #000 var(--scroll-cue-start),
+      #000 calc(100% - var(--scroll-cue-end)),
+      transparent
+    );
+    animation: scroll-cue-x linear both;
+    animation-timeline: scroll(self inline);
   }
 }
 

@@ -109,6 +109,22 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
 export const PULSE_PLAN_LIMIT = 5;
 
 /**
+ * Evenly spaced y-axis ticks from 0 that reach at least `maxValue`, about
+ * four steps. The last tick is the axis top, so the domain ends on a step.
+ */
+export function yAxisTicksForMax(maxValue: number): number[] {
+  const top = Math.max(1, Math.ceil(maxValue));
+  const step = Math.ceil(top / 4);
+  const ticks = [];
+
+  for (let tick = 0; tick < top + step; tick += step) {
+    ticks.push(tick);
+  }
+
+  return ticks;
+}
+
+/**
  * Picks the plans with the most progress changes in the pulse window, most
  * active first. Ties keep the incoming order.
  */

@@ -8,7 +8,11 @@ import {
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
 import { RenewalConsent } from './RenewalDisclosure';
-import { PRICING_FEATURES_BY_CLERK_SLUG } from '@/app/(landing)/pricing/pricing-plan-features';
+import {
+  PRICING_FEATURES_BY_CLERK_SLUG,
+  PRICING_PLAN_DESCRIPTIONS,
+  PRICING_TIER_BY_CLERK_SLUG,
+} from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { ROUTES } from '@/features/navigation/routes';
@@ -21,14 +25,10 @@ import {
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 
-type ClerkFeature = { name?: string | null };
-
 type ClerkPlanSnapshot = {
   id: string;
   slug: string;
   name?: string | null;
-  description?: string | null;
-  features: ClerkFeature[];
   fee?: PricingMoney | null;
   annualFee?: PricingMoney | null;
   annualMonthlyFee?: PricingMoney | null;
@@ -126,20 +126,15 @@ function currentPaidPlanSlug(
   );
 }
 
-function isExportFeatureName(name: string): boolean {
-  return /\bexports?\b/i.test(name);
+// Card copy comes from our tier limits, not from the Clerk plan description
+// and features, so it always matches the comparison table and checkout.
+function publicPlanFeatures(plan: ClerkPlanSnapshot): readonly string[] {
+  return PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? [];
 }
 
-function publicPlanFeatures(plan: ClerkPlanSnapshot): readonly string[] {
-  const clerkFeatures = plan.features.flatMap((feature) => {
-    const name = feature.name?.trim();
-    if (!name || isExportFeatureName(name)) return [];
-    return [name];
-  });
-
-  return clerkFeatures.length > 0
-    ? clerkFeatures
-    : (PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? []);
+function publicPlanDescription(plan: ClerkPlanSnapshot): string {
+  const tier = PRICING_TIER_BY_CLERK_SLUG[plan.slug];
+  return tier ? PRICING_PLAN_DESCRIPTIONS[tier] : '';
 }
 
 function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
@@ -147,7 +142,7 @@ function normalizePlan(plan: ClerkPlanSnapshot): PricingPlan {
     id: plan.id,
     slug: plan.slug,
     name: plan.name?.trim() || PLAN_NAME_BY_SLUG[plan.slug] || plan.slug,
-    description: plan.description?.trim() || '',
+    description: publicPlanDescription(plan),
     features: publicPlanFeatures(plan),
     fee: plan.fee ?? null,
     annualFee: plan.annualFee ?? null,

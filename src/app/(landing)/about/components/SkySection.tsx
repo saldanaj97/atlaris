@@ -39,7 +39,7 @@ const METAPHORS = [
 export function SkySection() {
   return (
     <section
-      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-6 py-12 md:px-8 md:py-16'
       aria-labelledby='about-sky-heading'
     >
       <RevealAnimation>

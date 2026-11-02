@@ -37,7 +37,7 @@ describe('PRICING_PLAN_FEATURES', () => {
     ]);
     expect(PRICING_PLAN_FEATURES.starter).toEqual([
       '10 active plans',
-      'Plans up to 2 months',
+      'Plans up to 8 weeks',
       '5 regenerations per month',
       'Choose from a curated model list',
       'Lessons for every module',
@@ -46,7 +46,7 @@ describe('PRICING_PLAN_FEATURES', () => {
 
   it('describes Pro without overstating the plan length', () => {
     expect(PRICING_PLAN_FEATURES.pro).toContain('Unlimited active plans');
-    expect(PRICING_PLAN_FEATURES.pro).toContain('Plans up to 6 months');
+    expect(PRICING_PLAN_FEATURES.pro).toContain('Plans up to 24 weeks');
     expect(PRICING_PLAN_FEATURES.pro).toContain('25 regenerations per month');
     expect(PRICING_PLAN_FEATURES.pro.join(' ')).not.toMatch(
       /unlimited (scheduling|plan length)/i,
@@ -73,7 +73,7 @@ describe('PRICING_COMPARISON_ROWS', () => {
       ]),
     ).toEqual([
       ['Plans included', '1', '10 at a time', 'Unlimited'],
-      ['Longest plan', '2 weeks', '2 months', '6 months'],
+      ['Longest plan', '2 weeks', '8 weeks', '24 weeks'],
       ['Regenerations per month', '0', '5', '25'],
       ['Models', 'Free models', 'Curated list', 'Full catalog'],
       ['Lessons', true, true, true],

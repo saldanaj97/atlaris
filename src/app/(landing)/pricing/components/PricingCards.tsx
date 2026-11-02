@@ -14,6 +14,7 @@ import {
   PRICING_TIER_BY_CLERK_SLUG,
 } from '@/app/(landing)/pricing/pricing-plan-features';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
 
@@ -154,58 +155,62 @@ export function PricingCards({
           >
             Compare plans
           </h2>
-          <section
-            aria-label='Plan comparison'
-            className={styles.comparisonScroll}
-            tabIndex={0}
-          >
-            <table className={styles.comparisonTable}>
-              <caption className='sr-only'>Plan comparison</caption>
-              <thead>
-                <tr>
-                  <th scope='col'>
-                    <span className='sr-only'>Feature</span>
-                  </th>
-                  {comparisonPlans.map(({ plan }) => {
-                    const { fee, feePeriod } = resolvePlanFee(plan, period);
-                    return (
-                      <th key={`${plan.id}-${plan.slug}`} scope='col'>
-                        <span className={styles.comparisonPlanName}>
-                          {plan.name}
-                        </span>
-                        <span className={styles.comparisonPlanPrice}>
-                          {formatPricingMoney(fee)}
-                          {feePeriod ? ` per ${feePeriod.toLowerCase()}` : null}
-                        </span>
-                      </th>
-                    );
-                  })}
-                </tr>
-              </thead>
-              <tbody>
-                {PRICING_COMPARISON_ROWS.map((row) => (
-                  <tr key={row.key}>
-                    <th scope='row'>{row.label}</th>
-                    {comparisonPlans.map(({ plan, tier }) => {
-                      const value = row.values[tier];
+          <div className={styles.comparisonFrame}>
+            <section
+              aria-label='Plan comparison'
+              className={cn(styles.comparisonScroll, 'scroll-cue-x')}
+              tabIndex={0}
+            >
+              <table className={styles.comparisonTable}>
+                <caption className='sr-only'>Plan comparison</caption>
+                <thead>
+                  <tr>
+                    <th scope='col'>
+                      <span className='sr-only'>Feature</span>
+                    </th>
+                    {comparisonPlans.map(({ plan }) => {
+                      const { fee, feePeriod } = resolvePlanFee(plan, period);
                       return (
-                        <td key={`${plan.id}-${row.key}`}>
-                          {value === true ? (
-                            <span className={styles.comparisonIncluded}>
-                              <Check aria-hidden='true' />
-                              <span className='sr-only'>Included</span>
-                            </span>
-                          ) : (
-                            value
-                          )}
-                        </td>
+                        <th key={`${plan.id}-${plan.slug}`} scope='col'>
+                          <span className={styles.comparisonPlanName}>
+                            {plan.name}
+                          </span>
+                          <span className={styles.comparisonPlanPrice}>
+                            {formatPricingMoney(fee)}
+                            {feePeriod
+                              ? ` per ${feePeriod.toLowerCase()}`
+                              : null}
+                          </span>
+                        </th>
                       );
                     })}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+                </thead>
+                <tbody>
+                  {PRICING_COMPARISON_ROWS.map((row) => (
+                    <tr key={row.key}>
+                      <th scope='row'>{row.label}</th>
+                      {comparisonPlans.map(({ plan, tier }) => {
+                        const value = row.values[tier];
+                        return (
+                          <td key={`${plan.id}-${row.key}`}>
+                            {value === true ? (
+                              <span className={styles.comparisonIncluded}>
+                                <Check aria-hidden='true' />
+                                <span className='sr-only'>Included</span>
+                              </span>
+                            ) : (
+                              value
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
         </section>
       ) : null}
     </div>

@@ -11,9 +11,29 @@
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
-  /* Keep the arc in the right-hand side, away from the text column. */
-  -webkit-mask-image: linear-gradient(to right, transparent 30%, #000 72%);
-  mask-image: linear-gradient(to right, transparent 30%, #000 72%);
+  /* Keep the arc in the right-hand side, away from the text column, and fade
+     it out before the top and bottom of the hero so the clipped glow never
+     ends in a hard horizontal edge (or runs under controls at the bottom). */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 30%, #000 72%),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 2rem,
+      #000 45%,
+      transparent 80%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 30%, #000 72%),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 2rem,
+      #000 45%,
+      transparent 80%
+    );
+  mask-composite: intersect;
 }
 
 :global(.dark) .root {

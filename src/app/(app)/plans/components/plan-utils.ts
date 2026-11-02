@@ -1,3 +1,5 @@
+import type { PlanListItem } from '@/features/plans/read-projection/types';
+
 import { formatRelativePast, toValidDate } from '@/lib/date/relative-time';
 
 type DateInput = Date | string | null | undefined;
@@ -38,4 +40,24 @@ export function getPlanLastActivityRelative(
     style: 'compact',
     invalidLabel: 'Recently',
   });
+}
+
+/** Call to action on a plan card; a plan nobody has started yet reads "Start learning". */
+export function planActionLabel(status: PlanListItem['status']): string {
+  switch (status) {
+    case 'completed':
+    case 'failed':
+      return 'View plan';
+    case 'generating':
+      return 'View progress';
+    case 'not_started':
+      return 'Start learning';
+    case 'active':
+    case 'paused':
+      return 'Continue learning';
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
 }

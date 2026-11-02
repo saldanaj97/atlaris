@@ -56,7 +56,7 @@ describe('AboutPage', () => {
     expect(
       screen.getByRole('heading', {
         level: 1,
-        name: /made after hours/i,
+        name: /made after\shours/i,
       }),
     ).toBeVisible();
 

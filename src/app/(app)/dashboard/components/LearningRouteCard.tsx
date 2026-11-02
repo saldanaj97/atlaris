@@ -28,7 +28,7 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
     <Card
       as='section'
       aria-labelledby={TITLE_ID}
-      className='h-full p-5 animate-dashboard-unfold [animation-delay:120ms] motion-reduce:animate-none sm:p-6'
+      className='h-full gap-0 p-5 animate-dashboard-unfold [animation-delay:120ms] motion-reduce:animate-none sm:p-6'
     >
       <h2 id={TITLE_ID} className='type-card text-foreground'>
         Your learning route

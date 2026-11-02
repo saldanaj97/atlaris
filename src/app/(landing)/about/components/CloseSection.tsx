@@ -32,7 +32,9 @@ export function CloseSection() {
             id='about-close-heading'
             className={`mt-4 type-display-section text-balance text-foreground ${styles.revealItem}`}
           >
-            You already know the goal. Set your star tonight.
+            You already know the goal.{' '}
+            {/* Keeps the second sentence together instead of stranding "Set". */}
+            <span className='inline-block'>Set your star tonight.</span>
           </h2>
           <p
             className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}

@@ -28,16 +28,20 @@ function AccordionTrigger({
   className,
   children,
   hideChevron = false,
+  legibleWhenDisabled = false,
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
   hideChevron?: boolean;
+  /** Keep full opacity while disabled, for rows that stay readable (locked lessons). */
+  legibleWhenDisabled?: boolean;
 }) {
   return (
     <AccordionPrimitive.Header className='flex'>
       <AccordionPrimitive.Trigger
         data-slot='accordion-trigger'
         className={cn(
-          'flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left type-label transition-[color,box-shadow] motion-reduce:transition-none outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&[data-state=open]>svg]:rotate-270',
+          'flex flex-1 items-start justify-between gap-4 rounded-md py-4 text-left type-label transition-[color,box-shadow] motion-reduce:transition-none outline-none hover:underline focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none [&[data-state=open]>svg]:rotate-270',
+          legibleWhenDisabled ? 'disabled:opacity-100' : 'disabled:opacity-50',
           className,
         )}
         {...props}

@@ -25,9 +25,9 @@ const SUBSCRIPTION_STATUS_LABELS: Record<string, string> = {
   canceled: 'Canceled',
 };
 
-/** Human label for a stored subscription status; unknown values read as-is, sentence-cased. */
+/** Human label for a stored subscription status; unknown values read as-is, sentence-cased. Free accounts store no status. */
 export function formatSubscriptionStatus(status: string | null): string {
-  if (!status) return '—';
+  if (!status) return 'No subscription';
 
   const label = SUBSCRIPTION_STATUS_LABELS[status];
   if (label) return label;

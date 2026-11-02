@@ -7,8 +7,6 @@ import {
   TIER_LIMITS,
 } from '@/shared/constants/tier-limits';
 
-const WEEKS_PER_MONTH = 4;
-
 const MODELS_BY_TIER: Record<
   SubscriptionTier,
   { card: string; comparison: string }
@@ -35,10 +33,9 @@ function longestPlanWeeks(tier: SubscriptionTier): number {
   return TIER_LIMITS[tier].maxWeeks ?? MAX_SELECTABLE_PLAN_WEEKS;
 }
 
+// Plan length is chosen in weeks, so pricing states it in weeks too.
 function formatPlanLength(weeks: number): string {
-  return weeks < WEEKS_PER_MONTH
-    ? pluralize(weeks, 'week')
-    : pluralize(Math.round(weeks / WEEKS_PER_MONTH), 'month');
+  return pluralize(weeks, 'week');
 }
 
 // Free allows one plan in total (`canCreatePlanOnCurrentTier`), so only paid
@@ -68,9 +65,9 @@ function buildTierFeatures(tier: SubscriptionTier): readonly string[] {
 }
 
 /**
- * Pricing feature bullets derived from live tier limits.
- * Used when Clerk Billing plans return an empty `features` array
- * (Dashboard Features not configured). Prefer Clerk features when present.
+ * Pricing card bullets derived from live tier limits. The cards always use
+ * these; Clerk Billing plan features are ignored so the cards cannot drift
+ * from the comparison table.
  */
 export const PRICING_PLAN_FEATURES: Record<
   SubscriptionTier,
@@ -79,6 +76,13 @@ export const PRICING_PLAN_FEATURES: Record<
   free: buildTierFeatures('free'),
   starter: buildTierFeatures('starter'),
   pro: buildTierFeatures('pro'),
+};
+
+/** One-line card descriptions; like the bullets, these never come from Clerk. */
+export const PRICING_PLAN_DESCRIPTIONS: Record<SubscriptionTier, string> = {
+  free: 'For finding your rhythm.',
+  starter: 'For building a steady practice.',
+  pro: 'For deeper, longer-running work.',
 };
 
 export const PRICING_FEATURES_BY_CLERK_SLUG: Record<string, readonly string[]> =

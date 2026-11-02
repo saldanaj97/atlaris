@@ -8,7 +8,7 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
       <Card
         as='aside'
         aria-labelledby={TITLE_ID}
-        className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
+        className='h-full gap-0 p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
       >
         <h2 id={TITLE_ID} className='type-card text-foreground'>
           This week
@@ -28,7 +28,7 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
     <Card
       as='aside'
       aria-labelledby={TITLE_ID}
-      className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
+      className='h-full gap-0 p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
     >
       <h2 id={TITLE_ID} className='type-card text-foreground'>
         This week

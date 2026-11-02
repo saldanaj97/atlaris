@@ -15,7 +15,8 @@ import styles from './Pricing.module.css';
 const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
 
 const copy = {
-  headline: 'Free for one plan. Pay when you need more',
+  headlineLead: 'Free for one plan.',
+  headlineTail: 'Pay when you need more',
   subheadline:
     'Start with one free plan. Upgrade for more plans, longer plans and more regenerations.',
   ctaHeadline: 'Your first plan is free',
@@ -69,7 +70,9 @@ function Hero() {
           id='pricing-hero-heading'
           className='type-display text-balance text-foreground'
         >
-          {copy.headline}
+          {copy.headlineLead}{' '}
+          {/* Keeps the second sentence together instead of stranding "Pay". */}
+          <span className='inline-block'>{copy.headlineTail}</span>
         </h1>
         <p className={styles.heroSubline}>{copy.subheadline}</p>
       </div>

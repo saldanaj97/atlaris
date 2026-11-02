@@ -108,6 +108,9 @@ export function LessonAccordionItem({
       {/* oxlint-enable shadcn/require-static-classes */}
       <AccordionTrigger
         hideChevron={false}
+        // Locked rows stay legible; the lock icon, badge and dashed border say
+        // they are locked.
+        legibleWhenDisabled
         className={cn(
           'min-w-0 items-start px-4 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180 sm:px-6',
           isLocked && 'cursor-not-allowed',

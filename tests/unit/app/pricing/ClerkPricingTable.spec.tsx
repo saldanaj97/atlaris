@@ -170,8 +170,8 @@ describe('ClerkPricingTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
@@ -230,11 +230,12 @@ describe('ClerkPricingTable', () => {
     expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  it('omits stale Clerk export features while keeping other provider copy', async () => {
+  it('renders card copy from tier limits instead of Clerk plan copy', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
           ...STARTER_PLAN,
+          description: 'Up to 10 active learning plans with curated models',
           features: [
             { name: '10 active learning plans' },
             { name: '50 exports per month' },
@@ -246,8 +247,13 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.getByText('Plans up to 8 weeks')).toBeVisible();
+    expect(screen.getByText('For building a steady practice.')).toBeVisible();
+    expect(screen.queryByText(/curated models$/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/10 active learning plans|priority queue/i),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/exports per month/i)).not.toBeInTheDocument();
   });
 
@@ -734,8 +740,8 @@ describe('ClerkPricingTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();

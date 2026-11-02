@@ -22,6 +22,47 @@ const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
+/**
+ * WCAG contrast of an element's text against what is painted behind it:
+ * every ancestor's background is layered in order and every ancestor's
+ * opacity is applied, so faded or translucent rows count as they render.
+ */
+function renderedTextContrast(element: Element): number {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('2D canvas unavailable');
+  const pixel = () =>
+    Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+  const luminance = ([r, g, b]: number[]) => {
+    const [lr, lg, lb] = [r, g, b].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+  };
+  const chain: Element[] = [];
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    chain.unshift(node);
+  }
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, 1, 1);
+  let opacity = 1;
+  for (const node of chain) {
+    const style = getComputedStyle(node);
+    opacity *= Number.parseFloat(style.opacity);
+    context.fillStyle = style.backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+  }
+  const background = luminance(pixel());
+  context.globalAlpha = opacity;
+  context.fillStyle = getComputedStyle(element).color;
+  context.fillRect(0, 0, 1, 1);
+  const text = luminance(pixel());
+  const [lighter, darker] = [background, text].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
+}
+
 async function expectBillingPage(page: Page): Promise<void> {
   await expectHeading(page, 'Settings', 1);
   await expectHeading(page, 'Billing', 2);
@@ -120,6 +161,30 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     });
     const moduleUrlBeforeNext = page.url();
     await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible();
+
+    // A locked lesson stays legible: its title and "Locked" badge keep text
+    // contrast in both themes instead of fading the whole row.
+    const lockedLesson = page.locator('[data-progress-state="locked"]').first();
+    if ((await lockedLesson.count()) > 0) {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme });
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-atlaris-theme',
+          colorScheme,
+        );
+        for (const label of [
+          // Radix wraps the trigger in its own h3; the title is the one inside.
+          lockedLesson.getByRole('button').locator('h3'),
+          lockedLesson.getByText('Locked', { exact: true }),
+        ]) {
+          expect(
+            await label.evaluate(renderedTextContrast),
+            `locked lesson text in ${colorScheme}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+      await page.emulateMedia({ colorScheme: null });
+    }
 
     // The focused current module keeps readable text on its selected surface.
     await page.getByRole('button', { name: /^Module \d+$/ }).click();

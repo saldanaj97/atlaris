@@ -3,7 +3,10 @@
 import type { PlanListItem } from '@/features/plans/read-projection/types';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
-import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
+import {
+  getPlanLastActivityRelative,
+  planActionLabel,
+} from '@/app/(app)/plans/components/plan-utils';
 import {
   getPlanStatusBadgeClassName,
   getPlanStatusDotClassName,
@@ -40,24 +43,6 @@ interface PlanRowProps {
   selectable?: boolean;
   onSelectionChange?: (planId: string, selected: boolean) => void;
   successFocusRef?: RefObject<HTMLElement | null>;
-}
-
-function planActionLabel(status: PlanListItem['status']): string {
-  switch (status) {
-    case 'completed':
-    case 'failed':
-      return 'View plan';
-    case 'generating':
-      return 'View progress';
-    case 'active':
-    case 'paused':
-    case 'not_started':
-      return 'Continue learning';
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
-  }
 }
 
 type PlanCardRevealState = 'pending' | 'visible' | undefined;

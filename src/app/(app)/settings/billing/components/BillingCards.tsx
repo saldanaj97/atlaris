@@ -48,9 +48,9 @@ function UsageMeterRow({ label, ariaLabel, used, limit }: UsageMeterRowProps) {
 function formatNextBilling(
   subscriptionPeriodEnd: Date | string | null | undefined,
   locale?: string,
-): string {
+): string | null {
   if (!subscriptionPeriodEnd) {
-    return '—';
+    return null;
   }
 
   return new Date(subscriptionPeriodEnd).toLocaleDateString(locale ?? 'en-US', {
@@ -114,9 +114,12 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
             {formatSubscriptionStatus(snapshot.subscriptionStatus)}
           </span>
         </LedgerRow>
-        <LedgerRow label='Next billing date'>
-          <span className='text-foreground'>{nextBilling}</span>
-        </LedgerRow>
+        {/* Accounts without a billing period have nothing scheduled to bill. */}
+        {nextBilling ? (
+          <LedgerRow label='Next billing date'>
+            <span className='text-foreground'>{nextBilling}</span>
+          </LedgerRow>
+        ) : null}
       </div>
       {showRenewalNotice ? (
         <p className='type-body text-muted-foreground'>{AUTO_RENEWAL_NOTICE}</p>
