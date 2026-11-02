@@ -599,6 +599,8 @@ No timing is recoverable from a still screenshot. The following timing/behavior 
 | Deliberate reveal | 300ms    | Enter `(0, 0, .2, 1)`                       | Optional contextual reveal; not a page-loading gate.    |
 | Immediate         | 0ms      | None                                        | Reduced-motion equivalent and urgent state information. |
 
+Theme switches, from the toggle or an OS change while following the system theme, crossfade the whole page with a root view transition at the Overlay duration; browsers without View Transitions and reduced motion switch instantly.
+
 Animate only what communicates a change. Do not animate a percentage unless it corresponds to real progress, and do not invent estimated completion time from a spinner. Avoid repeating atmospheric motion in working views. Hover does not require movement or a lifted card.
 
 The specimen contains an 800ms linear spinner as a local demonstration, not an additional recovery estimate or motion brand principle. Under `prefers-reduced-motion: reduce`, spatial transitions and that spinner stop while their text labels remain. This preference handling is a project baseline; it does not replace testing keyboard, focus or real asynchronous behavior. [A01 §6; W01]
@@ -1085,7 +1087,7 @@ Theme tokens must reach portaled content. Applying the dark theme attribute only
 
 ### 19.5 Menu and tooltip
 
-DropdownMenu preserves its existing default/destructive item variants, `onSelect` behavior, disabled items, focus movement and collision-aware positioning. The draft menu is 192px minimum / 320px maximum, constrained by available viewport width, with 8px padding and 40px minimum item height (44px coarse). The library’s actual plan menu is deletion-focused; this package does not add Rename, Duplicate, Export or Archive commands. [R15, R19]
+DropdownMenu preserves its existing default/destructive item variants and adds `current` for an item that links to the page being shown (selected surface and primary text, kept while focused; pair it with `aria-current="page"`), `onSelect` behavior, disabled items, focus movement and collision-aware positioning. The draft menu is 192px minimum / 320px maximum, constrained by available viewport width, with 8px padding and 40px minimum item height (44px coarse). The library’s actual plan menu is deletion-focused; this package does not add Rename, Duplicate, Export or Archive commands. [R15, R19]
 
 Use menu-button semantics and a programmatic expanded state; opening focuses an item, arrows navigate, Escape returns focus and typed characters support the primitive’s typeahead where available. Preserve library behavior rather than hand-rolling it in production. A menu-to-dialog transition must restore focus to the lasting trigger or relevant surviving row, not to the now-unmounted menu item. [W06, W11]
 

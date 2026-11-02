@@ -1,11 +1,11 @@
 import { RevealAnimation } from './RevealAnimation';
+import { RoadmapPreview } from './RoadmapPreview';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { BarChart3, BookOpen, Clock, Sparkles } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
@@ -78,22 +78,28 @@ export function FeaturesSection() {
 
           <figure
             className={cn(
-              'relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-border/60 bg-card/80 p-2 shadow-xl shadow-black/10 sm:p-3',
+              'relative flex aspect-[4/5] w-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/80 p-2 shadow-xl shadow-black/10 sm:aspect-[4/3] sm:p-3',
               styles.previewFrame,
               styles.revealFromRight,
             )}
           >
-            <Image
-              src='/previews/landing-roadmap-preview.svg'
-              alt=''
-              fill
-              sizes='(max-width: 767px) 100vw, 60vw'
-              className='rounded-2xl object-contain'
-              unoptimized
-            />
+            <p className='px-2 pt-1 pb-2 type-eyebrow text-muted-foreground'>
+              Example plan · illustrative data
+            </p>
+            {/* A themed copy of the plan page, laid out wider and scaled to 60%
+                so the route fits; the caption describes it. */}
+            <div
+              aria-hidden='true'
+              inert
+              className='min-h-0 flex-1 overflow-hidden rounded-2xl bg-background mask-b-from-80% select-none'
+            >
+              <div className='w-[calc(100%/0.6)] origin-top-left scale-60 p-5 sm:p-6'>
+                <RoadmapPreview />
+              </div>
+            </div>
             <figcaption className='sr-only'>
               Illustrative plan example showing ordered modules, the current
-              week's tasks and plan progress.
+              module's tasks and plan progress.
             </figcaption>
           </figure>
         </div>
