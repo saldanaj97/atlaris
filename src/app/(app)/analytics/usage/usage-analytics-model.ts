@@ -105,6 +105,30 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: DEFAULT_ANALYTICS_TIMEZONE,
 });
 
+/** Most plans the eight-week pulse plots; one per chart color. */
+export const PULSE_PLAN_LIMIT = 5;
+
+/**
+ * Picks the plans with the most progress changes in the pulse window, most
+ * active first. Ties keep the incoming order.
+ */
+export function selectMostActivePlans(
+  plans: UsageAnalyticsPlanRow[],
+  limit: number = PULSE_PLAN_LIMIT,
+): UsageAnalyticsPlanRow[] {
+  const ranked = plans
+    .map((plan, index) => ({
+      plan,
+      index,
+      activity: plan.weeklyTrends.reduce(
+        (sum, week) => sum + week.progressChangeCount,
+        0,
+      ),
+    }))
+    .sort((a, b) => b.activity - a.activity || a.index - b.index);
+  return ranked.slice(0, limit).map(({ plan }) => plan);
+}
+
 /** Returns floored completion percent, capped at 100 when fully complete. */
 function completionPercent(completed: number, total: number): number {
   if (total <= 0) return 0;

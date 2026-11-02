@@ -5,6 +5,7 @@ import type {
   UsageAnalyticsWeekRow,
 } from './usage-analytics-model';
 
+import { selectMostActivePlans } from './usage-analytics-model';
 import {
   ChartContainer,
   ChartTooltipContent,
@@ -461,8 +462,9 @@ export function WeeklyLineChart({
     hasMeasuredChart: false,
     renderedPlanCount: 0,
   });
-  const renderedPlans = plans.slice(0, renderedPlanCount);
-  const hiddenPlanCount = Math.max(0, plans.length - renderedPlans.length);
+  const pulsePlans = selectMostActivePlans(plans);
+  const renderedPlans = pulsePlans.slice(0, renderedPlanCount);
+  const hiddenPlanCount = plans.length - renderedPlans.length;
   const dataMaxValue = Math.max(
     1,
     ...renderedPlans.flatMap((plan) =>
@@ -525,7 +527,10 @@ export function WeeklyLineChart({
       updateFrame = window.requestAnimationFrame(() => {
         updateFrame = null;
 
-        const nextPlanCount = planCapacityForWidth(chartWidth, plans.length);
+        const nextPlanCount = planCapacityForWidth(
+          chartWidth,
+          pulsePlans.length,
+        );
 
         setChartLayout((currentLayout) =>
           currentLayout.hasMeasuredChart &&
@@ -554,7 +559,7 @@ export function WeeklyLineChart({
 
       resizeObserver?.disconnect();
     };
-  }, [plans.length]);
+  }, [pulsePlans.length]);
 
   return (
     <div data-testid='eight-week-pulse'>
@@ -657,7 +662,7 @@ export function WeeklyLineChart({
           </WithRecharts>
         </div>
       </div>
-      <div className='mt-6 flex min-h-8 flex-nowrap gap-4 overflow-x-auto py-2'>
+      <div className='mt-6 flex min-h-8 flex-wrap gap-x-4 gap-y-2 py-2'>
         {series.length > 0 ? (
           series.map(({ plan, color }) => (
             <div
@@ -675,12 +680,10 @@ export function WeeklyLineChart({
           <p className='type-meta text-muted-foreground'>No plans yet</p>
         ) : null}
         {hiddenPlanCount > 0 ? (
-          <div
-            aria-label={`${hiddenPlanCount} more ${hiddenPlanCount === 1 ? 'plan' : 'plans'} not shown at this width`}
-            className='flex w-45 shrink-0 items-center type-meta font-medium text-muted-foreground'
-          >
-            +{hiddenPlanCount} more
-          </div>
+          <p className='flex shrink-0 items-center type-meta font-medium text-muted-foreground'>
+            +{hiddenPlanCount} more {hiddenPlanCount === 1 ? 'plan' : 'plans'}{' '}
+            not shown
+          </p>
         ) : null}
       </div>
     </div>

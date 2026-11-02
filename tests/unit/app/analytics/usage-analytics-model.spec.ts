@@ -2,8 +2,11 @@ import type { LightweightPlanSummary } from '@/shared/types/db.types';
 
 import {
   buildUsageAnalyticsModel,
+  PULSE_PLAN_LIMIT,
+  selectMostActivePlans,
   type UsageAnalyticsActivityEvent,
   type UsageAnalyticsModel,
+  type UsageAnalyticsPlanRow,
 } from '@/app/(app)/analytics/usage/usage-analytics-model';
 import { describe, expect, it } from 'vitest';
 
@@ -484,5 +487,64 @@ describe('buildUsageAnalyticsModel', () => {
       { id: 'plan-4', topic: 'Rust', completedMinutes: 20, percent: 7 },
       { id: 'other', topic: 'Other', completedMinutes: 10, percent: 4 },
     ]);
+  });
+});
+
+/** Builds a pulse plan row whose weeks carry the given progress-change counts. */
+function pulsePlan(id: string, weeklyCounts: number[]): UsageAnalyticsPlanRow {
+  return {
+    id,
+    topic: `Plan ${id}`,
+    weeklyTrends: weeklyCounts.map((progressChangeCount, index) => ({
+      weekStartDate: `2026-09-${String(index * 7 + 1).padStart(2, '0')}`,
+      label: `Week ${index + 1}`,
+      activeDays: progressChangeCount > 0 ? 1 : 0,
+      progressChangeCount,
+      completedEvents: 0,
+      estimatedCompletionAddedMinutes: 0,
+      isCurrentWeek: false,
+    })),
+  };
+}
+
+describe('selectMostActivePlans', () => {
+  it('keeps the five plans with the most progress changes, most active first', () => {
+    const plans = [
+      pulsePlan('a', [1, 0]),
+      pulsePlan('b', [4, 4]),
+      pulsePlan('c', [0, 0]),
+      pulsePlan('d', [2, 3]),
+      pulsePlan('e', [6, 0]),
+      pulsePlan('f', [0, 3]),
+      pulsePlan('g', [0, 2]),
+    ];
+
+    expect(PULSE_PLAN_LIMIT).toBe(5);
+    expect(selectMostActivePlans(plans).map((plan) => plan.id)).toEqual([
+      'b',
+      'e',
+      'd',
+      'f',
+      'g',
+    ]);
+  });
+
+  it('breaks ties by the incoming order', () => {
+    const plans = [
+      pulsePlan('first', [2]),
+      pulsePlan('second', [2]),
+      pulsePlan('third', [3]),
+    ];
+
+    expect(selectMostActivePlans(plans, 2).map((plan) => plan.id)).toEqual([
+      'third',
+      'first',
+    ]);
+  });
+
+  it('keeps every plan when there are five or fewer', () => {
+    const plans = [pulsePlan('a', [0]), pulsePlan('b', [1])];
+
+    expect(selectMostActivePlans(plans)).toEqual([plans[1], plans[0]]);
   });
 });

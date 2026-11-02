@@ -266,7 +266,7 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
-  it('adds plan labels and chart lines as the chart has room for them', async () => {
+  it('adds plan labels and chart lines, most active first, as the chart has room', async () => {
     const { container } = render(<UsageAnalyticsContent model={model} />);
 
     await resizeChart(380);
@@ -277,19 +277,13 @@ describe('UsageAnalyticsContent', () => {
     });
     await resizeChart(380);
 
+    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
+    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
     expect(
-      screen.getByText('Applied TypeScript Architecture'),
-    ).toBeInTheDocument();
-    expect(screen.getByText('Database Performance')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Dashboard Activity Polish'),
+      screen.queryByText('Applied TypeScript Architecture'),
     ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Calendar Sync Hardening'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText('2 more plans not shown at this width'),
-    ).toHaveTextContent('+2 more');
+    expect(screen.queryByText('Database Performance')).not.toBeInTheDocument();
+    expect(screen.getByText('+2 more plans not shown')).toBeInTheDocument();
     await waitFor(() => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
@@ -311,9 +305,11 @@ describe('UsageAnalyticsContent', () => {
 
     await resizeChart(780);
 
-    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
-    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(screen.queryByText('+2 more')).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Applied TypeScript Architecture'),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Database Performance')).toBeInTheDocument();
+    expect(screen.queryByText(/more plans? not shown/)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
@@ -321,7 +317,7 @@ describe('UsageAnalyticsContent', () => {
     });
   });
 
-  it('caps visible plan series at the five available chart colors', async () => {
+  it('plots only the five most active plans and counts the rest', async () => {
     const sixPlanModel: UsageAnalyticsModel = {
       ...model,
       plans: [
@@ -338,9 +334,7 @@ describe('UsageAnalyticsContent', () => {
 
     expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
     expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText('1 more plan not shown at this width'),
-    ).toHaveTextContent('+1 more');
+    expect(screen.getByText('+1 more plan not shown')).toBeInTheDocument();
     await waitFor(() => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
