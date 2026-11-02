@@ -92,17 +92,23 @@ describe('SettingsSectionNavigation', () => {
     expect(contentHeading()).toHaveTextContent('Account');
   });
 
-  it('treats the billing checkout route as the profile tab', () => {
+  it('marks Billing current on the billing route, not Profile', () => {
     mocks.usePathnameMock.mockReturnValue('/settings/billing');
 
     renderSettingsNav();
 
-    expect(screen.queryByRole('link', { name: /Plan & billing/ })).toBeNull();
-    expect(screen.getByRole('link', { name: /Profile/ })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /Billing/ })).toHaveAttribute(
+      'href',
+      '/settings/billing',
+    );
+    expect(screen.getByRole('link', { name: /Billing/ })).toHaveAttribute(
       'aria-current',
       'page',
     );
-    expect(contentHeading()).toHaveTextContent('Account');
+    expect(screen.getByRole('link', { name: /Profile/ })).not.toHaveAttribute(
+      'aria-current',
+    );
+    expect(contentHeading()).toHaveTextContent('Billing');
   });
 
   it('updates the content heading from the active settings route', () => {
