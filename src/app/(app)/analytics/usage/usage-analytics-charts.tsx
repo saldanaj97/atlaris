@@ -6,8 +6,10 @@ import type {
 } from './usage-analytics-model';
 
 import {
+  pointLabelPlacements,
   selectMostActivePlans,
   yAxisTicksForMax,
+  type PointLabelPlacement,
 } from './usage-analytics-model';
 import {
   ChartContainer,
@@ -511,6 +513,13 @@ export function WeeklyLineChart({
 
     return row;
   });
+  // Per week, then per series: where each value label goes.
+  const weekLabelPlacements = chartData.map((row) =>
+    pointLabelPlacements(
+      series.map(({ plan }) => Number(row[plan.id])),
+      maxValue,
+    ),
+  );
 
   return (
     <div data-testid='eight-week-pulse'>
@@ -579,7 +588,7 @@ export function WeeklyLineChart({
                       cursor={false}
                       content={<ChartTooltipContent indicator='line' />}
                     />
-                    {series.map(({ plan, dash }) => (
+                    {series.map(({ plan, dash }, seriesIndex) => (
                       <Line
                         key={plan.id}
                         data-testid='plan-series'
@@ -599,7 +608,12 @@ export function WeeklyLineChart({
                           <LabelList
                             dataKey={plan.id}
                             content={
-                              <AnimatedPointLabel pointCount={weeks.length} />
+                              <AnimatedPointLabel
+                                placements={weekLabelPlacements.map(
+                                  (week) => week[seriesIndex],
+                                )}
+                                pointCount={weeks.length}
+                              />
                             }
                           />
                         ) : null}
@@ -646,18 +660,22 @@ export function WeeklyLineChart({
 
 function AnimatedPointLabel({
   index = 0,
+  placements,
   pointCount,
   value,
   x,
   y,
-}: PointLabelProps & { pointCount: number }) {
+}: PointLabelProps & {
+  placements: readonly PointLabelPlacement[];
+  pointCount: number;
+}) {
   const labelX = typeof x === 'number' ? x : Number(x);
   const labelY = typeof y === 'number' ? y : Number(y);
+  const placement = placements[index] ?? null;
 
-  // Zero points sit on the baseline, where their labels would pile up.
   if (
     value == null ||
-    Number(value) === 0 ||
+    placement == null ||
     !Number.isFinite(labelX) ||
     !Number.isFinite(labelY)
   ) {
@@ -672,10 +690,14 @@ function AnimatedPointLabel({
   return (
     <text
       x={labelX}
-      y={labelY - 10}
+      y={placement === 'above' ? labelY - 10 : labelY + 20}
       textAnchor='middle'
-      className='animate-usage-analytics-point-label-in fill-foreground'
+      // The panel-colored halo keeps the number readable where a line crosses it.
+      className='animate-usage-analytics-point-label-in fill-foreground stroke-panel'
       fontSize={12}
+      paintOrder='stroke'
+      strokeLinejoin='round'
+      strokeWidth={4}
       style={{ '--point-label-delay': `${delay}ms` } as CSSProperties}
     >
       {value}

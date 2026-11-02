@@ -13,7 +13,9 @@ export function CtaBanner({ children, className, ...props }: CtaBannerProps) {
     <section
       data-slot='cta-banner'
       className={cn(
-        'relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm',
+        // The divider border: the panel border is about 1.1:1 on the dark canvas,
+        // so the card would have no visible edge.
+        'relative isolate overflow-hidden rounded-[12px] border border-border bg-panel shadow-sm',
         className,
       )}
       {...props}

@@ -7,6 +7,14 @@ import { cn } from '@/lib/utils';
 
 const TITLE_ID = 'dashboard-learning-route-heading';
 const ROUTE_WINDOW = 4;
+// One column per visible module, so a short route spreads across the rail
+// instead of bunching at its left end.
+const ROUTE_COLUMNS: Record<number, string> = {
+  1: 'grid-cols-1',
+  2: 'grid-cols-2',
+  3: 'grid-cols-3',
+  4: 'grid-cols-2 sm:grid-cols-4',
+};
 
 export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
   const modules = getOrderedPlanModules(plan);
@@ -37,7 +45,12 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
         {plan.plan.topic} · {plan.completedModules} of {modules.length} modules
       </p>
 
-      <ol className='mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-2'>
+      <ol
+        className={cn(
+          'mt-6 grid gap-3 sm:gap-2',
+          ROUTE_COLUMNS[visibleModules.length],
+        )}
+      >
         {visibleModules.map((module) => {
           const moduleIndex = modules.findIndex(
             (item) => item.id === module.id,

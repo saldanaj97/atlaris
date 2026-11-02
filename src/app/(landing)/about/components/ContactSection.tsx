@@ -9,7 +9,7 @@ import styles from './about.module.css';
 export function ContactSection() {
   return (
     <section
-      className='mx-auto max-w-3xl px-6 py-12 text-center md:px-8 md:py-16'
+      className='mx-auto max-w-3xl px-6 pt-16 pb-12 text-center md:px-8 md:pt-20 md:pb-16'
       aria-labelledby='about-contact-heading'
     >
       <RevealAnimation>

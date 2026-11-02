@@ -32,8 +32,9 @@
 }
 
 .ctaBanner {
-  /* Match the plan section's content box (81rem less its 1.5rem gutters). */
-  width: min(calc(100% - 3rem), 78rem);
+  /* Match the plan cards and comparison: 77.5rem, inside the section's px-6
+     gutters (6 spacing steps a side). */
+  width: min(calc(100% - var(--spacing) * 12), 77.5rem);
   margin: 0 auto 3rem;
 }
 

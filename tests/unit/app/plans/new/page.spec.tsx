@@ -66,7 +66,7 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   async function fillTopic(topic: string): Promise<void> {
-    await user.type(screen.getByLabelText(/what do you want to learn/i), topic);
+    await user.type(screen.getByLabelText(/^topic$/i), topic);
   }
 
   async function chooseOption(currentLabel: string, nextLabel: string) {
@@ -130,7 +130,7 @@ describe('AiPlanGenerationPanel', () => {
 
         render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
-        const topicInput = screen.getByLabelText(/what do you want to learn/i);
+        const topicInput = screen.getByLabelText(/^topic$/i);
         await user.type(topicInput, 'Keyboard topic');
         await user.keyboard(shortcut);
 
@@ -159,7 +159,7 @@ describe('AiPlanGenerationPanel', () => {
       ).toBeInTheDocument();
 
       const topicInput = screen.getByRole('textbox', {
-        name: 'What do you want to learn?',
+        name: 'Topic',
       });
       expect(topicInput).toHaveAttribute('aria-required', 'true');
       expect(topicInput).toHaveAttribute(

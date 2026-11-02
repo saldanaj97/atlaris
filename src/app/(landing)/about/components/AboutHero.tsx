@@ -16,7 +16,7 @@ import styles from './about.module.css';
 const copy = {
   overline: 'About Atlaris',
   // The non-breaking space keeps "hours." from wrapping alone.
-  headlineLead: 'Made after\u00a0hours.',
+  headlineLead: 'Made after hours.',
   headlineEmphasis: 'For the hours you actually have.',
   subline:
     'Atlaris is a learning atlas. Here is why the night sky, and what the AI does and does not do.',

@@ -69,7 +69,7 @@ export function SkySection() {
             </p>
           </div>
           <figure
-            className={`overflow-hidden rounded-lg border border-panel-border bg-panel p-4 shadow-sm sm:p-6 ${styles.revealFromRight}`}
+            className={`overflow-hidden rounded-lg border border-border bg-panel p-4 shadow-sm sm:p-6 ${styles.revealFromRight}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             <RouteConstellation />
@@ -86,7 +86,7 @@ export function SkySection() {
           {METAPHORS.map((item, index) => (
             <div
               key={item.term}
-              className={`rounded-lg border border-panel-border bg-panel p-5 ${styles.revealItem}`}
+              className={`rounded-lg border border-border bg-panel p-5 ${styles.revealItem}`}
               style={{ '--i': index } as CSSProperties}
             >
               <dt className='type-reading font-serif font-semibold text-foreground'>

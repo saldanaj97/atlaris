@@ -3,13 +3,18 @@ import { describe, expect, it } from 'vitest';
 
 describe('planActionLabel', () => {
   it.each([
-    ['not_started', 'Start learning'],
-    ['active', 'Continue learning'],
-    ['paused', 'Continue learning'],
-    ['generating', 'View progress'],
-    ['completed', 'View plan'],
-    ['failed', 'View plan'],
-  ] as const)('labels a %s plan "%s"', (status, label) => {
-    expect(planActionLabel(status)).toBe(label);
-  });
+    ['not_started', 0, 'Start learning'],
+    ['active', 0, 'Start learning'],
+    ['active', 3, 'Continue learning'],
+    ['paused', 0, 'Start learning'],
+    ['paused', 2, 'Continue learning'],
+    ['generating', 0, 'View progress'],
+    ['completed', 8, 'View plan'],
+    ['failed', 0, 'View plan'],
+  ] as const)(
+    'labels a %s plan with %i tasks done "%s"',
+    (status, completedTasks, label) => {
+      expect(planActionLabel(status, completedTasks)).toBe(label);
+    },
+  );
 });

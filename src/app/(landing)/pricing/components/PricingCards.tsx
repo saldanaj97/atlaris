@@ -14,6 +14,7 @@ import {
   PRICING_TIER_BY_CLERK_SLUG,
 } from '@/app/(landing)/pricing/pricing-plan-features';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+import { useScrollCue } from '@/hooks/useScrollCue';
 import { cn } from '@/lib/utils';
 import { Check } from 'lucide-react';
 import { useRef, type ReactNode } from 'react';
@@ -41,6 +42,7 @@ export function PricingCards({
   renderAction,
 }: PricingCardsProps) {
   const rootRef = useRef<HTMLDivElement>(null);
+  const scrollCueRef = useScrollCue<HTMLElement>();
   const annualAvailable = plans.some(planHasAnnual);
   const comparisonPlans = plans.flatMap((plan) => {
     const tier = PRICING_TIER_BY_CLERK_SLUG[plan.slug];
@@ -159,6 +161,7 @@ export function PricingCards({
             <section
               aria-label='Plan comparison'
               className={cn(styles.comparisonScroll, 'scroll-cue-x')}
+              ref={scrollCueRef}
               tabIndex={0}
             >
               <table className={styles.comparisonTable}>

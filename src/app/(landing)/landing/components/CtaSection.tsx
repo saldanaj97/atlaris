@@ -22,7 +22,7 @@ const copy = {
 
 export function CtaSection() {
   return (
-    <section className='px-4 pb-16 sm:px-6 md:px-8 md:pb-20'>
+    <section className='px-6 pb-16 md:px-8 md:pb-20'>
       <RevealAnimation>
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner

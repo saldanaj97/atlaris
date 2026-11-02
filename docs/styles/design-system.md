@@ -300,19 +300,19 @@ Secondary controls use raised neutral surfaces and primary text. Outline control
 
 ### Light theme
 
-| Role                      | Hex                         | Notes                                                   |
-| ------------------------- | --------------------------- | ------------------------------------------------------- |
-| Canvas / card             | #F8FAFC / #FFFFFF           | Unchanged cool light surfaces.                          |
-| Primary text              | #02070A                     | Midnight black.                                         |
-| Muted text                | #526174                     | Unchanged.                                              |
-| Accent text (`--primary`) | #B8441F                     | Dark cantaloupe for text and icons on light surfaces.   |
-| Accent pressed            | #963515                     | `--primary-dark`.                                       |
-| Primary action            | #FC734D / #FD8B69 / #E8603A | Same fills as dark; label #02070A.                      |
-| Link / hover              | #03699E / #02527C           | Electric blue darkened for text on white.               |
-| Focus ring                | #0278B4                     | Also chart series 1.                                    |
-| Chart series 2            | #C2491F                     | Dark cantaloupe.                                        |
-| Chart series 3 / 4        | #087F5B / #8A5A00           | Green / amber.                                          |
-| Chart series 5            | #7C3AED                     | Violet, kept apart from the warm series 2 (2026-11-02). |
+| Role                      | Hex                         | Notes                                                 |
+| ------------------------- | --------------------------- | ----------------------------------------------------- |
+| Canvas / card             | #F8FAFC / #FFFFFF           | Unchanged cool light surfaces.                        |
+| Primary text              | #02070A                     | Midnight black.                                       |
+| Muted text                | #526174                     | Unchanged.                                            |
+| Accent text (`--primary`) | #B8441F                     | Dark cantaloupe for text and icons on light surfaces. |
+| Accent pressed            | #963515                     | `--primary-dark`.                                     |
+| Primary action            | #FC734D / #FD8B69 / #E8603A | Same fills as dark; label #02070A.                    |
+| Link / hover              | #03699E / #02527C           | Electric blue darkened for text on white.             |
+| Focus ring                | #0278B4                     | Also chart series 1.                                  |
+| Chart series 2            | #C2491F                     | Dark cantaloupe.                                      |
+| Chart series 3 / 4        | #087F5B / #8A5A00           | Green / amber.                                        |
+| Chart series 5            | #475569                     | Slate, the one neutral series; dashed (2026-11-02).   |
 
 Borders, inputs, status and destructive light values are unchanged from the earlier light extension.
 
@@ -325,41 +325,41 @@ Borders, inputs, status and destructive light values are unchanged from the earl
 | Danger / error | #FF8C94             | #30191F           |
 | Information    | #5FBDF0             | #04243A           |
 
-The five categorical chart colors are `#2EAEEA` (electric), `#FD8B69` (cantaloupe), `#65D7AF`, `#F0C765`, `#FF8C94`. Series 2 and 5 are both warm, so pair every series with a label; the eight-week pulse draws series 5 dashed in both themes, with a dashed legend swatch (2026-11-02). Every status needs text or another non-color indicator.
+The five categorical chart colors are `#2EAEEA` (electric), `#FD8B69` (cantaloupe), `#65D7AF`, `#F0C765` and `#B5C2D1` (slate). Series 5 is slate in both themes, the one neutral, so no violet or pink returns; the eight-week pulse draws it dashed, with a dashed legend swatch, and pairs every series with a label (2026-11-02). Point labels carry a panel-colored halo, and a value just under another series' labelled value labels below its point. Every status needs text or another non-color indicator.
 
 ### Contrast contract
 
 Opaque sRGB pairs, WCAG 2 formula, unrounded values compared with the threshold. These are color-pair checks, not a WCAG conformance declaration. Re-run them whenever a value in `src/styles/atlaris-tokens.css` or the light `:root` changes.
 
-| Pair                               | Ratio                                | Decision                                        |
-| ---------------------------------- | ------------------------------------ | ----------------------------------------------- |
-| Primary text / surface             | 17.54:1                              | Use.                                            |
-| Secondary text / surface           | 10.42:1                              | Use.                                            |
-| Muted text / surface               | 6.57:1                               | Use at full opacity.                            |
-| Muted text / neutral hover         | 5.46:1                               | Use.                                            |
-| Control boundary / surface         | 3.68:1                               | Use for required control boundaries.            |
-| Control boundary / raised          | 3.36:1                               | Use.                                            |
-| Subtle divider / surface           | 1.43:1                               | Decoration only; reject as a field boundary.    |
-| Dark label / primary               | 7.42:1                               | Use.                                            |
-| Dark label / primary hover         | 8.75:1                               | Use.                                            |
-| Dark label / primary pressed       | 5.94:1                               | Use.                                            |
-| White label / primary              | 2.73:1                               | Reject.                                         |
-| Accent text / canvas               | 10.19:1                              | Use.                                            |
-| Accent text / selected surface     | 8.78:1                               | Use for soft-primary labels.                    |
-| Primary text / selected surface    | 16.22:1                              | Use for the current navigation item.            |
-| Link / surface                     | 9.00:1                               | Use.                                            |
-| Info text / info background        | 7.60:1                               | Use.                                            |
-| Focus ring / canvas                | 8.06:1                               | Use.                                            |
-| Focus ring / primary fill          | 1.09:1                               | Reject adjacency; keep the dark focus offset.   |
-| Light: primary text / canvas       | 19.18:1                              | Use.                                            |
-| Light: accent text / canvas        | 5.12:1                               | Use.                                            |
-| Light: accent text / action-soft   | 4.68:1                               | Use; action-soft is a 7% accent tint on canvas. |
-| Light: white label / accent        | 5.41:1                               | Use for `--primary-foreground` on `bg-primary`. |
-| Light: link / canvas               | 5.66:1                               | Use.                                            |
-| Light: focus ring / canvas         | 4.58:1                               | Use.                                            |
-| Light: dark label / primary action | 7.42:1                               | Use.                                            |
-| Light: chart series 1–5 / card     | 4.83 / 4.92 / 5.00 / 5.93 / 5.70:1   | Use; graphical objects need 3:1.                |
-| Dark: chart series 1–5 / canvas    | 8.06 / 8.75 / 11.46 / 12.59 / 9.09:1 | Use.                                            |
+| Pair                               | Ratio                                 | Decision                                        |
+| ---------------------------------- | ------------------------------------- | ----------------------------------------------- |
+| Primary text / surface             | 17.54:1                               | Use.                                            |
+| Secondary text / surface           | 10.42:1                               | Use.                                            |
+| Muted text / surface               | 6.57:1                                | Use at full opacity.                            |
+| Muted text / neutral hover         | 5.46:1                                | Use.                                            |
+| Control boundary / surface         | 3.68:1                                | Use for required control boundaries.            |
+| Control boundary / raised          | 3.36:1                                | Use.                                            |
+| Subtle divider / surface           | 1.43:1                                | Decoration only; reject as a field boundary.    |
+| Dark label / primary               | 7.42:1                                | Use.                                            |
+| Dark label / primary hover         | 8.75:1                                | Use.                                            |
+| Dark label / primary pressed       | 5.94:1                                | Use.                                            |
+| White label / primary              | 2.73:1                                | Reject.                                         |
+| Accent text / canvas               | 10.19:1                               | Use.                                            |
+| Accent text / selected surface     | 8.78:1                                | Use for soft-primary labels.                    |
+| Primary text / selected surface    | 16.22:1                               | Use for the current navigation item.            |
+| Link / surface                     | 9.00:1                                | Use.                                            |
+| Info text / info background        | 7.60:1                                | Use.                                            |
+| Focus ring / canvas                | 8.06:1                                | Use.                                            |
+| Focus ring / primary fill          | 1.09:1                                | Reject adjacency; keep the dark focus offset.   |
+| Light: primary text / canvas       | 19.18:1                               | Use.                                            |
+| Light: accent text / canvas        | 5.12:1                                | Use.                                            |
+| Light: accent text / action-soft   | 4.68:1                                | Use; action-soft is a 7% accent tint on canvas. |
+| Light: white label / accent        | 5.41:1                                | Use for `--primary-foreground` on `bg-primary`. |
+| Light: link / canvas               | 5.66:1                                | Use.                                            |
+| Light: focus ring / canvas         | 4.58:1                                | Use.                                            |
+| Light: dark label / primary action | 7.42:1                                | Use.                                            |
+| Light: chart series 1–5 / card     | 4.83 / 4.92 / 5.00 / 5.93 / 7.58:1    | Use; graphical objects need 3:1.                |
+| Dark: chart series 1–5 / canvas    | 8.06 / 8.75 / 11.46 / 12.59 / 11.18:1 | Use.                                            |
 
 Standard text needs 4.5:1; large text can use 3:1 under the WCAG definition. Required visual control information and graphical objects need 3:1 against adjacent colors. Transparent fills, images and gradients require their own composite checks.
 

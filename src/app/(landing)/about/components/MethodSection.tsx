@@ -59,13 +59,13 @@ export function MethodSection() {
       <RevealAnimation>
         <div className='mt-10 grid gap-4 md:grid-cols-2'>
           <div
-            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 0 } as CSSProperties}
           >
             <MethodList title='It does' items={IT_DOES} />
           </div>
           <div
-            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             <MethodList title='It does not' items={IT_DOES_NOT} />

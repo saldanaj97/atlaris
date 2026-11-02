@@ -12,26 +12,27 @@
   overflow: hidden;
   pointer-events: none;
   /* Keep the arc in the right-hand side, away from the text column, and fade
-     it out before the top and bottom of the hero so the clipped glow never
-     ends in a hard horizontal edge (or runs under controls at the bottom). */
+     it out before every edge of the container (top, bottom and right) so the
+     clipped glow and the arc's lower rim never end in a hard edge, or run
+     under controls at the bottom. */
   -webkit-mask-image:
-    linear-gradient(to right, transparent 30%, #000 72%),
+    linear-gradient(to right, transparent 30%, #000 72%, #000 92%, transparent),
     linear-gradient(
       to bottom,
       transparent,
       #000 2rem,
-      #000 45%,
-      transparent 80%
+      #000 40%,
+      transparent 70%
     );
   -webkit-mask-composite: source-in;
   mask-image:
-    linear-gradient(to right, transparent 30%, #000 72%),
+    linear-gradient(to right, transparent 30%, #000 72%, #000 92%, transparent),
     linear-gradient(
       to bottom,
       transparent,
       #000 2rem,
-      #000 45%,
-      transparent 80%
+      #000 40%,
+      transparent 70%
     );
   mask-composite: intersect;
 }

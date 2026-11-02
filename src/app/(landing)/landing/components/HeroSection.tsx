@@ -82,13 +82,14 @@ export function HeroSection() {
       <div className={cn(styles.layer, styles.core)} aria-hidden='true' />
       <div className={cn(styles.layer, styles.flutes)} aria-hidden='true' />
 
-      <div className='relative z-10 mx-auto max-w-7xl px-4 pt-14 sm:px-6 sm:pt-16 md:px-8 md:pt-20'>
+      <div className='relative z-10 mx-auto max-w-7xl px-6 pt-14 sm:pt-16 md:px-8 md:pt-20'>
         <div className={cn('text-center', styles.heroRise)}>
           <h1
             id='landing-hero-heading'
             className={cn('mx-auto max-w-[15ch] text-balance', styles.headline)}
           >
-            Name a goal. Get a plan for the <em>hours</em> you have.
+            {/* "Get" stays with "a plan" rather than ending the first line. */}
+            Name a goal. Get{'\u00a0'}a plan for the <em>hours</em> you have.
           </h1>
           <p
             className={cn(
@@ -187,10 +188,14 @@ function HeroPlanCards() {
           styles.chip,
         )}
       >
-        {/* Non-breaking spaces before each "·" keep it off the end of a line. */}
+        {/* Non-breaking spaces before each "·" keep it off the end of a line,
+            and keep each number with its unit. */}
         Example plan{'\u00a0'}· {EXAMPLE_PLAN.title}
-        {'\u00a0'}· {EXAMPLE_PLAN.weeks} weeks{'\u00a0'}·{' '}
-        {formatMinutes(EXAMPLE_PLAN.hoursPerWeek * 60)} a week
+        {'\u00a0'}· {EXAMPLE_PLAN.weeks}
+        {'\u00a0'}weeks{'\u00a0'}·{' '}
+        <span className='whitespace-nowrap'>
+          {formatMinutes(EXAMPLE_PLAN.hoursPerWeek * 60)} a week
+        </span>
       </figcaption>
       {/* oxlint-disable-next-line shadcn/require-static-classes -- CSS module classes are complete but opaque to the rule */}
       <div

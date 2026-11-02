@@ -40,8 +40,10 @@ export function YourProgressCard({
           Progress will appear here once you have a plan.
         </p>
       ) : (
-        <>
-          <p className='mt-6 type-title text-foreground tabular-nums'>
+        // Pinned to the card's foot, level with the resume card's actions, so
+        // the extra height sits under the intro instead of under the numbers.
+        <div className='mt-auto pt-6'>
+          <p className='type-title text-foreground tabular-nums'>
             {progress.percent}%
           </p>
           <p className='mt-1 type-meta text-muted-foreground'>
@@ -67,7 +69,7 @@ export function YourProgressCard({
               </div>
             ))}
           </dl>
-        </>
+        </div>
       )}
     </Card>
   );

@@ -42,8 +42,16 @@ export function getPlanLastActivityRelative(
   });
 }
 
-/** Call to action on a plan card; a plan nobody has started yet reads "Start learning". */
-export function planActionLabel(status: PlanListItem['status']): string {
+/** Call to resume a plan: nothing done yet reads "Start learning". */
+export function resumeActionLabel(completedTasks: number): string {
+  return completedTasks > 0 ? 'Continue learning' : 'Start learning';
+}
+
+/** Call to action on a plan card, from its status and how much is done. */
+export function planActionLabel(
+  status: PlanListItem['status'],
+  completedTasks: number,
+): string {
   switch (status) {
     case 'completed':
     case 'failed':
@@ -54,7 +62,7 @@ export function planActionLabel(status: PlanListItem['status']): string {
       return 'Start learning';
     case 'active':
     case 'paused':
-      return 'Continue learning';
+      return resumeActionLabel(completedTasks);
     default: {
       const exhaustive: never = status;
       return exhaustive;

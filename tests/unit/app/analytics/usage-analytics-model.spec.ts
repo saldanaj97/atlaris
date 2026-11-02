@@ -4,6 +4,7 @@ import {
   buildUsageAnalyticsModel,
   PULSE_PLAN_LIMIT,
   selectMostActivePlans,
+  pointLabelPlacements,
   yAxisTicksForMax,
   type UsageAnalyticsActivityEvent,
   type UsageAnalyticsModel,
@@ -560,5 +561,19 @@ describe('yAxisTicksForMax', () => {
   it('uses whole steps for small maxima', () => {
     expect(yAxisTicksForMax(2)).toEqual([0, 1, 2]);
     expect(yAxisTicksForMax(0)).toEqual([0, 1]);
+  });
+});
+
+describe('pointLabelPlacements', () => {
+  it('labels a value just under a labelled one below its point', () => {
+    expect(pointLabelPlacements([3, 4], 8)).toEqual(['below', 'above']);
+  });
+
+  it('labels a repeated value once', () => {
+    expect(pointLabelPlacements([1, 1, 0], 8)).toEqual(['above', null, null]);
+  });
+
+  it('keeps well-separated values above their points', () => {
+    expect(pointLabelPlacements([2, 6], 8)).toEqual(['above', 'above']);
   });
 });

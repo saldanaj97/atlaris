@@ -94,7 +94,8 @@ describe('DashboardContent', () => {
       screen.getByRole('heading', { level: 1, name: 'Welcome back, Juan.' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('link', { name: 'Continue learning' }),
+      // Nothing is done yet, so the resume action starts the plan.
+      screen.getByRole('link', { name: 'Start learning' }),
     ).toHaveAttribute('href', `/plans/${plan.id}`);
     expect(screen.getByRole('link', { name: 'View module' })).toHaveAttribute(
       'href',

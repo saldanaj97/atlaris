@@ -64,7 +64,7 @@
   --chart-2: #c2491f;
   --chart-3: #087f5b;
   --chart-4: #8a5a00;
-  --chart-5: #7c3aed;
+  --chart-5: #475569;
   --sidebar: #ffffff;
   --sidebar-foreground: #02070a;
   --sidebar-primary: #fc734d;
@@ -406,9 +406,9 @@
   }
 }
 
-/* Horizontal scroll cue: the edges of a scroll container fade only on the
- * side that has more content. Scroll-driven, so it needs no script; browsers
- * without scroll timelines (and containers that do not overflow) show none. */
+/* Horizontal scroll cue: fades whichever edge has hidden content. useScrollCue
+ * sets `data-scroll-cue` from the scroll position and size, so it works in every
+ * browser; containers that do not overflow show no fade. */
 @property --scroll-cue-start {
   syntax: '<length>';
   inherits: false;
@@ -421,34 +421,83 @@
   initial-value: 0px;
 }
 
-@keyframes scroll-cue-x {
-  from {
-    --scroll-cue-start: 0px;
-    --scroll-cue-end: 2.5rem;
-  }
-  8% {
+@utility scroll-cue-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--scroll-cue-start),
+    #000 calc(100% - var(--scroll-cue-end)),
+    transparent
+  );
+  transition:
+    --scroll-cue-start 150ms ease-out,
+    --scroll-cue-end 150ms ease-out;
+
+  &[data-scroll-cue~='start'] {
     --scroll-cue-start: 2.5rem;
   }
-  92% {
+
+  &[data-scroll-cue~='end'] {
     --scroll-cue-end: 2.5rem;
   }
-  to {
-    --scroll-cue-start: 2.5rem;
-    --scroll-cue-end: 0px;
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 }
 
-@utility scroll-cue-x {
-  @supports (animation-timeline: scroll()) {
-    mask-image: linear-gradient(
-      to right,
-      transparent,
-      #000 var(--scroll-cue-start),
-      #000 calc(100% - var(--scroll-cue-end)),
-      transparent
-    );
-    animation: scroll-cue-x linear both;
-    animation-timeline: scroll(self inline);
+/* Marketing backdrop edges: fades in below the opaque header (the backdrop is
+ * tucked 4rem up under it) and out before its bottom, so neither the glow nor
+ * the lower orb ends in a hard horizontal line. */
+@utility backdrop-edge-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 4rem,
+    #000 14rem,
+    #000 calc(100% - 14rem),
+    transparent
+  );
+}
+
+/* Plan-selection checkbox drawn from tokens: the native dark-theme box is a
+ * flat gray fill that reads as disabled. Unchecked shows the 3:1 control
+ * boundary; checked and mixed fill with the action color. */
+@utility control-checkbox {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  border: 1.5px solid var(--input);
+  background-color: transparent;
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    width: 0.7em;
+    height: 0.7em;
+    background-color: var(--action-primary-foreground);
+    clip-path: polygon(14% 44%, 0 59%, 40% 100%, 100% 23%, 85% 9%, 39% 69%);
+    transform: scale(0);
+  }
+
+  &:checked,
+  &:indeterminate {
+    border-color: var(--action-primary);
+    background-color: var(--action-primary);
+  }
+
+  &:checked::before {
+    transform: scale(1);
+  }
+
+  &:indeterminate::before {
+    clip-path: inset(40% 5%);
+    transform: scale(1);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    border-color: var(--disabled-border);
+    background-color: var(--disabled);
   }
 }
 

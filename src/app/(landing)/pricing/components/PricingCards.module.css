@@ -313,7 +313,9 @@
   font-family: var(--font-family-base);
   font-size: 0.8125rem;
   line-height: 1.5;
-  color: var(--foreground);
+  /* Muted so it reads below the plan benefits; muted text holds 4.5:1 on the
+     card, which this legal disclosure needs. */
+  color: var(--muted-foreground);
 }
 
 .renewalConsent .renewalDisclosure {
@@ -371,7 +373,8 @@
   width: 100%;
   min-height: 3.25rem;
   border-radius: 999px;
-  border: 1px solid color-mix(in oklab, var(--border) 85%, transparent);
+  /* The control boundary: a button outline needs 3:1 against the card. */
+  border: 1px solid var(--input);
   background: transparent;
   color: var(--foreground);
   font-family: var(--font-family-display);
@@ -387,7 +390,7 @@
 
 .checkoutButton:not(:disabled):hover {
   background: color-mix(in oklab, var(--panel-muted) 55%, transparent);
-  border-color: color-mix(in oklab, var(--action-primary) 55%, var(--border));
+  border-color: color-mix(in oklab, var(--action-primary) 55%, var(--input));
   letter-spacing: 0.04em;
 }
 

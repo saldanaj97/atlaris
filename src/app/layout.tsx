@@ -65,6 +65,9 @@ const clerkAppearance = {
         boxShadow: '0 0 0 1px var(--input)',
       },
     },
+    // The "or" rule between social and email sign-in is decoration, but at
+    // Clerk's default (about 1.02:1) it disappears; draw it in the border color.
+    dividerLine: { backgroundColor: 'var(--border)' },
     socialButtonsBlockButton: {
       color: 'var(--foreground)',
       '&:not(:focus-visible)': { boxShadow: '0 0 0 1px var(--input)' },

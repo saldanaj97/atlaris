@@ -124,6 +124,37 @@ export function yAxisTicksForMax(maxValue: number): number[] {
   return ticks;
 }
 
+export type PointLabelPlacement = 'above' | 'below' | null;
+
+/**
+ * Where each series' value label goes at one week, so labels don't sit on a
+ * neighbouring line. The highest value labels above its point; a value close
+ * under a labelled one labels below; zeros and repeats of a labelled value get
+ * none (the tooltip still reads them). `nearGap` is in axis units.
+ */
+export function pointLabelPlacements(
+  values: readonly number[],
+  maxValue: number,
+): PointLabelPlacement[] {
+  const nearGap = Math.max(maxValue, 1) * 0.13;
+  const placements: PointLabelPlacement[] = values.map(() => null);
+  const labelled: number[] = [];
+  const order = values
+    .map((value, index) => ({ value, index }))
+    .filter(({ value }) => value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  for (const { value, index } of order) {
+    if (labelled.includes(value)) continue;
+    placements[index] = labelled.some((above) => above - value < nearGap)
+      ? 'below'
+      : 'above';
+    labelled.push(value);
+  }
+
+  return placements;
+}
+
 /**
  * Picks the plans with the most progress changes in the pulse window, most
  * active first. Ties keep the incoming order.

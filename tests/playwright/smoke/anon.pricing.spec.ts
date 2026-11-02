@@ -30,6 +30,7 @@ test('the pricing comparison shows a scroll cue on a phone', async ({
 
   const comparison = page.getByRole('region', { name: 'Plan comparison' });
   await comparison.scrollIntoViewIfNeeded();
+  await expect(comparison).toHaveAttribute('data-scroll-cue', 'end');
   const cue = await comparison.evaluate((element) => ({
     overflows: element.scrollWidth > element.clientWidth,
     mask: getComputedStyle(element).maskImage,
@@ -37,4 +38,10 @@ test('the pricing comparison shows a scroll cue on a phone', async ({
 
   expect(cue.overflows).toBe(true);
   expect(cue.mask).toContain('calc(100% - 40px)');
+
+  // Scrolled to the end, the leading edge fades instead.
+  await comparison.evaluate((element) => {
+    element.scrollLeft = element.scrollWidth;
+  });
+  await expect(comparison).toHaveAttribute('data-scroll-cue', 'start');
 });

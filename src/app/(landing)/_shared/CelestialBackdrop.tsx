@@ -15,9 +15,6 @@ const orbPresets = {
     muted:
       'absolute top-[48%] -left-28 size-112 rounded-full bg-panel-muted/50 blur-3xl md:size-144',
   },
-  // The dusk orb starts below the fixed header (the backdrop is tucked 4rem up
-  // under it), so its glow fades in under the header instead of meeting the
-  // header's bottom in a hard edge.
   dusk: {
     primary:
       'absolute top-28 right-[8%] size-120 rounded-full bg-primary/15 blur-3xl md:size-152',
@@ -48,7 +45,7 @@ export function CelestialBackdrop({
   return (
     <div
       ref={ref}
-      className={`pointer-events-none absolute inset-0 overflow-hidden text-foreground ${APP_SHELL_HEADER_TUCK}`}
+      className={`pointer-events-none absolute inset-0 overflow-hidden backdrop-edge-fade text-foreground ${APP_SHELL_HEADER_TUCK}`}
       aria-hidden='true'
     >
       <div

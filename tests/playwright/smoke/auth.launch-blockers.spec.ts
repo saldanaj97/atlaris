@@ -119,7 +119,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   });
 
   await test.step('manual plan creation and module navigation succeed', async () => {
-    await page.getByLabel('What do you want to learn?').fill(planInput.topic);
+    await page.getByLabel('Topic', { exact: true }).fill(planInput.topic);
     await selectInlineDropdown(page, 'Skill level', planInput.skillLevel);
     await selectInlineDropdown(page, 'Weekly hours', planInput.weeklyHours);
     await selectInlineDropdown(page, 'Learning style', planInput.learningStyle);

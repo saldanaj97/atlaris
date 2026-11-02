@@ -278,7 +278,7 @@ export function PlanRow({
               onChange={(event) =>
                 onSelectionChange?.(plan.id, event.currentTarget.checked)
               }
-              className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+              className='control-checkbox size-[20px] shrink-0 rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel'
             />
             Select
           </label>
@@ -296,7 +296,7 @@ export function PlanRow({
                 {plan.status === 'generating' ? (
                   <Sparkles aria-hidden='true' />
                 ) : null}
-                {planActionLabel(plan.status)}
+                {planActionLabel(plan.status, plan.completedTasks)}
                 <span className='sr-only'> {plan.topic}</span>
                 <ArrowRight
                   aria-hidden='true'

@@ -11,8 +11,8 @@ export const PLAN_CHART_COLORS = [
 ] as const;
 
 /**
- * Line dash per series, paired by index with `PLAN_CHART_COLORS`. Series 2 and
- * 5 are both warm, so series 5 is dashed and never relies on hue alone.
+ * Line dash per series, paired by index with `PLAN_CHART_COLORS`. Series 5 is
+ * slate, the one neutral, so it is also dashed and never relies on hue alone.
  */
 export const PLAN_CHART_DASHES = [
   undefined,
