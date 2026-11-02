@@ -576,4 +576,14 @@ describe('pointLabelPlacements', () => {
   it('keeps well-separated values above their points', () => {
     expect(pointLabelPlacements([2, 6], 8)).toEqual(['above', 'above']);
   });
+
+  it('compares each value with the nearest labelled value above it', () => {
+    expect(pointLabelPlacements([8, 7, 7, 6, 1], 8)).toEqual([
+      'above',
+      'below',
+      null,
+      'below',
+      'above',
+    ]);
+  });
 });

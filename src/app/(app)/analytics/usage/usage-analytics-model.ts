@@ -138,18 +138,21 @@ export function pointLabelPlacements(
 ): PointLabelPlacement[] {
   const nearGap = Math.max(maxValue, 1) * 0.13;
   const placements: PointLabelPlacement[] = values.map(() => null);
-  const labelled: number[] = [];
   const order = values
     .map((value, index) => ({ value, index }))
     .filter(({ value }) => value > 0)
     .sort((a, b) => b.value - a.value);
 
+  // Values arrive highest first, so the last labelled value is both the only
+  // one this value can repeat and the closest one above it.
+  let lastLabelled: number | null = null;
   for (const { value, index } of order) {
-    if (labelled.includes(value)) continue;
-    placements[index] = labelled.some((above) => above - value < nearGap)
-      ? 'below'
-      : 'above';
-    labelled.push(value);
+    if (value === lastLabelled) continue;
+    placements[index] =
+      lastLabelled !== null && lastLabelled - value < nearGap
+        ? 'below'
+        : 'above';
+    lastLabelled = value;
   }
 
   return placements;
