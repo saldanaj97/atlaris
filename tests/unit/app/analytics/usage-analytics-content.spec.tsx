@@ -20,11 +20,15 @@ let observedResizeEntries: {
 }[] = [];
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
+let viewportWidth = 1280;
+let prefersReducedMotion = false;
 
 beforeEach(() => {
   observedResizeEntries = [];
   animationFrameCallbacks = new Map();
   nextAnimationFrameId = 1;
+  viewportWidth = 1280;
+  prefersReducedMotion = false;
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     const id = nextAnimationFrameId;
     nextAnimationFrameId += 1;
@@ -36,11 +40,13 @@ beforeEach(() => {
   });
   vi.stubGlobal(
     'matchMedia',
-    vi.fn().mockReturnValue({
-      matches: false,
+    vi.fn((query: string) => ({
+      matches: query.includes('min-width: 40rem')
+        ? viewportWidth >= 640
+        : query.includes('prefers-reduced-motion') && prefersReducedMotion,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    }),
+    })),
   );
 
   /** Records observed elements and callbacks for test-controlled resize events. */
@@ -316,6 +322,31 @@ describe('UsageAnalyticsContent', () => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
       ).toHaveLength(4);
+    });
+  });
+
+  it('drops point labels on phones and keeps them from the sm breakpoint up', async () => {
+    prefersReducedMotion = true;
+    const pointLabels = (container: HTMLElement) =>
+      container.querySelectorAll('text.animate-usage-analytics-point-label-in');
+
+    viewportWidth = 375;
+    const phone = render(<UsageAnalyticsContent model={model} />);
+    await resizeChart(375);
+    await waitFor(() => {
+      expect(
+        phone.container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(4);
+    });
+    expect(pointLabels(phone.container)).toHaveLength(0);
+    phone.unmount();
+
+    observedResizeEntries = [];
+    viewportWidth = 1280;
+    const desktop = render(<UsageAnalyticsContent model={model} />);
+    await resizeChart(1280);
+    await waitFor(() => {
+      expect(pointLabels(desktop.container).length).toBeGreaterThan(0);
     });
   });
 

@@ -15,6 +15,7 @@ import { PLAN_CHART_COLORS } from '@/shared/constants/chart-colors';
 import {
   lazy,
   Suspense,
+  useCallback,
   useSyncExternalStore,
   type ComponentProps,
   type CSSProperties,
@@ -26,6 +27,8 @@ const LINE_ENTER_ANIMATION_MS = 650;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+/** Tailwind's `sm` breakpoint (40rem); below it the pulse drops point labels. */
+const POINT_LABEL_QUERY = '(min-width: 40rem)';
 
 type RechartsModule = typeof import('recharts');
 type RechartsRendererProps = {
@@ -41,18 +44,25 @@ type PointLabelProps = {
   y?: string | number;
 };
 
-function subscribeReducedMotion(onChange: () => void): () => void {
-  const query = window.matchMedia(REDUCED_MOTION_QUERY);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
+function useMediaQuery(query: string, serverValue: boolean): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const media = window.matchMedia(query);
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    },
+    [query],
+  );
+
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => serverValue,
+  );
 }
 
 function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
-    () => false,
-  );
+  return useMediaQuery(REDUCED_MOTION_QUERY, false);
 }
 
 const RechartsRenderer = lazy(async () => {
@@ -451,6 +461,8 @@ export function WeeklyLineChart({
   describedBy?: string;
 }) {
   const prefersReducedMotion = usePrefersReducedMotion();
+  // Phones skip the per-point numbers; the tooltip still reads every value.
+  const showsPointLabels = useMediaQuery(POINT_LABEL_QUERY, true);
   // Always the full top-five set; the legend wraps on narrow screens.
   const renderedPlans = selectMostActivePlans(plans);
   const hiddenPlanCount = plans.length - renderedPlans.length;
@@ -575,12 +587,14 @@ export function WeeklyLineChart({
                         animationDuration={LINE_ENTER_ANIMATION_MS}
                         animationEasing='ease-out'
                       >
-                        <LabelList
-                          dataKey={plan.id}
-                          content={
-                            <AnimatedPointLabel pointCount={weeks.length} />
-                          }
-                        />
+                        {showsPointLabels ? (
+                          <LabelList
+                            dataKey={plan.id}
+                            content={
+                              <AnimatedPointLabel pointCount={weeks.length} />
+                            }
+                          />
+                        ) : null}
                       </Line>
                     ))}
                   </LineChart>
