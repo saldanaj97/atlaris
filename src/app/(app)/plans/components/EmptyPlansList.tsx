@@ -26,7 +26,7 @@ export function EmptyPlansList({
   const showClearFilters = hasFilters && !isFirstRun;
   const title = isFirstRun ? 'No learning plans yet' : 'No plans found';
   const description = isFirstRun
-    ? 'Name a goal. Atlaris charts the modules, tasks, and resources.'
+    ? 'Name a goal. Atlaris charts the modules and tasks.'
     : hasFilters
       ? 'No plans match your search or filters. Try adjusting your criteria.'
       : 'Create a plan and pick up when the night is quiet.';
