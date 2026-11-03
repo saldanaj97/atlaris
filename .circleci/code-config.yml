@@ -99,7 +99,7 @@ commands:
             - pnpm-store-v1-{{ arch }}-
       - run:
           name: Install dependencies
-          command: pnpm install --frozen-lockfile --prefer-offline --store-dir ~/.pnpm-store
+          command: RELEASE_AGE_PR_BASE="<< pipeline.event.github.pull_request.base.ref >>" sh scripts/ci/pnpm-release-age.sh install --frozen-lockfile --prefer-offline --store-dir ~/.pnpm-store
 
   install-node-and-deps:
     steps:
@@ -172,7 +172,7 @@ jobs:
             - pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
       - run:
           name: Fetch lockfile packages into store
-          command: pnpm fetch --frozen-lockfile --store-dir ~/.pnpm-store
+          command: sh scripts/ci/pnpm-release-age.sh fetch --frozen-lockfile --store-dir ~/.pnpm-store
       - save_cache:
           key: pnpm-store-v1-{{ arch }}-{{ checksum "pnpm-lock.yaml" }}
           paths:
@@ -255,7 +255,7 @@ jobs:
                     ;;
                 esac
                 case "${f}" in
-                  .circleci/*)
+                  .circleci/*|vercel.json)
                     build=true
                     ;;
                 esac

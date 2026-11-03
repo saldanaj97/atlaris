@@ -1,0 +1,4 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "sh scripts/ci/pnpm-release-age.sh install --frozen-lockfile"
+}

@@ -76,12 +76,11 @@ The pipeline intentionally favors safety on production DB changes: expand migrat
 
 Vercel's native Git integration is separate from CircleCI: `develop` and `hotfix/*` pushes create a Preview deployment (staging and hotfix PR status), feature branches are not deployed, and every `main` push creates a Production deployment. CircleCI `build` is the PR gate for Next.js compilation; Vercel's `Vercel` status covers deployment validation on `main`. JCS-52 will add the native Deployment Checks needed to gate Production release decisions.
 
-### 4) `.github/dependabot.yml` and `.github/workflows/dependabot-auto-merge.yml`
+### 4) Dependency upgrades are manual
 
-- The configuration is read from the default branch, so it must be present on `main` before Dependabot or its weekly cadence is expected to run.
-- Native version updates use the npm root, target `develop`, run weekly, and apply a seven-day cooldown. Patch and minor updates are grouped separately; major updates are not opened automatically.
-- Native Dependabot security-update PRs are intentionally disabled. GitHub sends those PRs to default `main` regardless of `target-branch`; security remediation instead uses the custom workflow below so every automated dependency PR follows the `develop` integration path.
-- Patch auto-merge only queues a squash merge for an exact Dependabot patch update to `develop` whose file list is `pnpm-lock.yaml` alone or exactly `package.json` plus `pnpm-lock.yaml`, with no policy changes. GitHub cannot complete the queued merge until all required checks are green; the workflow does not approve or bypass CI. Minor, major, security-remediation, and policy PRs require human review.
+- There is no Dependabot config or auto-merge workflow. No automatic version-bump PRs are opened; upgrades are deliberate PRs (see [supply-chain-policy.md](../security/supply-chain-policy.md)). Auto bumps and auto-merge take new releases without review, which is how npm supply-chain attacks spread.
+- GitHub Dependabot alerts (notify only) and Dependabot security updates (which open PRs against the default branch, `main`) are repository settings, not files in this repo. Enabling or disabling them is the repo owner's call.
+- The nightly security remediation workflow below is unaffected and does not depend on Dependabot.
 
 ### 5) `.github/workflows/dependency-security-remediation.yml`
 
@@ -149,6 +148,8 @@ Vercel's native Git integration is separate from CircleCI: `develop` and `hotfix
 ### Urgent production hotfix
 
 For a true emergency that cannot wait for the normal `develop` promotion, open the existing manual hotfix PR against `main` and keep the usual review, CI, and staged Production release gates. Immediately merge that fix back to `develop` after the main merge. Do not turn this exceptional two-branch path into a routine dependency sync mechanism.
+
+When the hotfix bumps a dependency released within the last 7 days, branch `hotfix/<name>` from `main` and install through `scripts/ci/pnpm-release-age.sh`, which skips the 7-day `minimumReleaseAge` on `main` and `hotfix/*` only. The merge-back PR then adds any lockfile entry younger than 7 days to `minimumReleaseAgeExclude` as an exact `name@version`, because `develop` stays strict. Steps and rationale: [Urgent production hotfix](../security/supply-chain-policy.md#urgent-production-hotfix).
 
 ---
 

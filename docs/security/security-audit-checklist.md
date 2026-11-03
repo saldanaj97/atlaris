@@ -222,7 +222,7 @@
 - [ ] Watch for malicious install scripts (postinstall) and CI execution risks.
 - [ ] `pnpm audit` runs in CI and blocks on high/critical vulnerabilities.
 - [ ] `minimumReleaseAge` and `trustPolicy` supply-chain policy configured in `pnpm-workspace.yaml` and documented in [supply-chain-policy.md](./supply-chain-policy.md).
-- [x] Dependabot version updates and the daily/manual `pnpm audit --fix=update` remediation workflow are configured, with platform labels and code-owner rules enabled. Scheduled runs begin after these files are promoted to the default `main` branch; native Dependabot security-update PRs remain intentionally disabled because security PRs must target `develop`. See [supply-chain-policy.md](./supply-chain-policy.md).
+- [x] Dependency upgrades are manual (no Dependabot config or auto-merge workflow), and the daily/manual `pnpm audit --fix=update` remediation workflow is configured, with platform labels and code-owner rules enabled. Scheduled runs begin after these files are promoted to the default `main` branch. Dependabot alerts and security updates are repository settings, not files in this repo. See [supply-chain-policy.md](./supply-chain-policy.md).
 - [ ] Review new dependencies before adding (check maintainer, download count, last update).
 
 ### 21) Infrastructure, deployment & config hardening
