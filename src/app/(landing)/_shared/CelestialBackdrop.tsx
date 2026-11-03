@@ -9,12 +9,6 @@ import { cn } from '@/lib/utils';
 import { useRef } from 'react';
 
 const orbPresets = {
-  landing: {
-    primary:
-      'absolute -top-24 right-[8%] size-136 rounded-full bg-primary/15 blur-3xl md:size-168',
-    muted:
-      'absolute top-[48%] -left-28 size-112 rounded-full bg-panel-muted/50 blur-3xl md:size-144',
-  },
   dusk: {
     primary:
       'absolute top-28 right-[8%] size-120 rounded-full bg-primary/15 blur-3xl md:size-152',

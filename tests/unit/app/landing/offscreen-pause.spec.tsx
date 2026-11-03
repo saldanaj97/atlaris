@@ -35,7 +35,7 @@ function stubObserver() {
 describe('CelestialBackdrop off-screen pause', () => {
   it('pauses each orb and star only while it is off screen', () => {
     const { observe, report } = stubObserver();
-    const { container } = render(<CelestialBackdrop variant='landing' />);
+    const { container } = render(<CelestialBackdrop variant='dusk' />);
 
     const animated = container.querySelectorAll('[data-offscreen-pause]');
     expect(animated.length).toBeGreaterThan(2);
@@ -59,7 +59,7 @@ describe('CelestialBackdrop off-screen pause', () => {
 
   it('leaves animations running when IntersectionObserver is unavailable', () => {
     vi.stubGlobal('IntersectionObserver', undefined);
-    const { container } = render(<CelestialBackdrop variant='landing' />);
+    const { container } = render(<CelestialBackdrop variant='dusk' />);
 
     expect(container.querySelector('[data-paused]')).toBeNull();
   });

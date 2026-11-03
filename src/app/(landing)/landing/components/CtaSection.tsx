@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
 
+import { FREE_PLAN_COUNT, FREE_PLAN_LENGTH } from './free-plan-copy';
 import { RevealAnimation } from './RevealAnimation';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
@@ -12,12 +13,13 @@ import Link from 'next/link';
 
 import styles from './landing.module.css';
 
-const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
 const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
+const SUPPORT_EMAIL = 'support@atlaris.app';
 
 const copy = {
   headline: `Start with ${FREE_PLANS === 1 ? 'one free plan' : `${FREE_PLANS} free plans`}`,
-  subheadline: `Free plan: ${FREE_PLANS === 1 ? 'one plan' : `${FREE_PLANS} plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}.`,
+  subheadline: `Free plan: ${FREE_PLAN_COUNT}, up to ${FREE_PLAN_LENGTH}.`,
+  support: 'A question, a bug, or a plan that missed the point:',
 } as const;
 
 export function CtaSection() {
@@ -27,7 +29,7 @@ export function CtaSection() {
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='landing-cta-heading'
-          className={cn('mx-auto max-w-7xl', styles.revealScale)}
+          className={cn('mx-auto max-w-7xl', styles.revealItem)}
         >
           <div className='relative z-10 px-6 py-14 text-center sm:px-10 sm:py-16 md:py-20'>
             <h2
@@ -53,6 +55,19 @@ export function CtaSection() {
                 <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
               </Button>
             </div>
+
+            <p
+              className={`relative mx-auto mt-8 max-w-lg type-meta text-muted-foreground ${styles.revealItem}`}
+              style={{ '--i': 4 } as CSSProperties}
+            >
+              {copy.support}{' '}
+              <a
+                href={`mailto:${SUPPORT_EMAIL}`}
+                className='whitespace-nowrap text-link underline underline-offset-4 transition-colors hover:text-link-hover'
+              >
+                {SUPPORT_EMAIL}
+              </a>
+            </p>
           </div>
         </CtaBanner>
         {/* oxlint-enable shadcn/require-static-classes */}

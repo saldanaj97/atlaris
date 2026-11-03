@@ -157,14 +157,14 @@ describe('MobileNavigation', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders About in the marketing sheet', async () => {
+  it('leaves the retired About page out of the marketing sheet', async () => {
     const user = userEvent.setup();
 
     render(
       <TooltipProvider>
         <MobileNavigation
           isMarketing
-          pathname='/about'
+          pathname='/landing'
           navItems={unauthenticatedNavItems}
         />
       </TooltipProvider>,
@@ -172,14 +172,13 @@ describe('MobileNavigation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
       'href',
-      '/about',
+      '/pricing',
     );
-    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(
+      screen.queryByRole('link', { name: 'About' }),
+    ).not.toBeInTheDocument();
   });
 
   it('uses the create-plan CTA on marketing sheets when signed out', async () => {

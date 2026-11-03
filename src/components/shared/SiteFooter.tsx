@@ -5,7 +5,6 @@ import Link from 'next/link';
 const marketingLinks = [
   { label: 'Home', href: ROUTES.LANDING },
   { label: 'Pricing', href: ROUTES.PRICING },
-  { label: 'About', href: ROUTES.ABOUT },
 ] as const;
 const legalLinks = [
   { label: 'Terms', href: ROUTES.TERMS },

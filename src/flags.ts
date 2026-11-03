@@ -202,6 +202,10 @@ export const launchWaitlist = (): Promise<boolean> =>
 export const emailNotificationDelivery = (): Promise<boolean> =>
   evaluateBoolean('email-notification-delivery', false);
 
+/** Serve the retired /about page. Off by default, so the route answers 404. */
+export const aboutPage = (): Promise<boolean> =>
+  evaluateBoolean('about-page', false);
+
 /** Allow synchronous and workflow-backed module lesson generation. */
 export const moduleLessonGeneration = (): Promise<boolean> =>
   evaluateBoolean('module-lesson-generation', false);

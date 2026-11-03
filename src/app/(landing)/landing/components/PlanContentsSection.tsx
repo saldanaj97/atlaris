@@ -13,8 +13,8 @@ import styles from './landing.module.css';
 /** What a plan from Atlaris contains. Each line states a shipped behavior. */
 const CAPABILITIES = [
   {
-    title: 'Sized to your hours',
-    copy: 'Set a goal, your level, weekly hours and how you like to learn: reading, video, hands-on practice or a mix. The plan splits into modules and tasks, each with a time estimate.',
+    title: 'Modules and tasks sized to your hours',
+    copy: 'Each task carries a time estimate, so each week of the plan fits the hours you set.',
     icon: Clock,
   },
   {
@@ -28,30 +28,37 @@ const CAPABILITIES = [
     icon: Sparkles,
   },
   {
-    title: 'See how far each plan has come',
+    title: 'Progress you can see',
     copy: 'Mark tasks done. Every plan shows its percent complete.',
     icon: BarChart3,
   },
 ] as const;
 
-/** The landing page's one feature section: what Atlaris builds, beside a plan preview. */
-export function FeaturesSection() {
+/** What the plan leaves to you; adapted from the retired About page's method section. */
+const LEAVES_TO_YOU = [
+  'It doesn’t grade you.',
+  'It doesn’t punish a missed week. The plan waits, and nothing expires.',
+  'It’s a map, not the walk. If a step is wrong for you, skip it.',
+] as const;
+
+/** What a plan contains, beside a themed copy of the plan page. */
+export function PlanContentsSection() {
   return (
     // box-content: the 7xl cap applies inside the gutter, so the content lines
     // up with the CTA card below, which is 7xl wide inside the same gutter.
     <section
-      className='mx-auto box-content max-w-7xl px-6 py-16 md:px-8 md:py-24'
-      aria-labelledby='landing-features-heading'
+      className='mx-auto box-content max-w-7xl px-6 pb-16 md:px-8 md:pb-24'
+      aria-labelledby='landing-plan-heading'
     >
       <RevealAnimation>
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <div className='grid items-center gap-12 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-14 lg:gap-20'>
-          <div className={styles.revealFromLeft}>
+          <div className={styles.revealItem}>
             <h2
-              id='landing-features-heading'
+              id='landing-plan-heading'
               className='max-w-[18ch] type-display-section text-balance text-foreground'
             >
-              How Atlaris builds your plan
+              What&apos;s inside a plan
             </h2>
             <ul className='mt-8 space-y-6'>
               {CAPABILITIES.map(({ title, copy, icon: Icon }) => (
@@ -76,13 +83,21 @@ export function FeaturesSection() {
             >
               <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
             </Button>
+            <h3 className='mt-10 type-label font-semibold text-foreground'>
+              And what it won&apos;t do
+            </h3>
+            <ul className='mt-3 max-w-md space-y-2 type-body text-muted-foreground'>
+              {LEAVES_TO_YOU.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
           </div>
 
           <figure
             className={cn(
               'relative flex aspect-[4/5] w-full flex-col overflow-hidden rounded-3xl border border-border/60 bg-card/80 p-2 shadow-xl shadow-black/10 sm:aspect-[4/3] sm:p-3',
               styles.previewFrame,
-              styles.revealFromRight,
+              styles.revealItem,
             )}
           >
             <p className='px-2 pt-1 pb-2 type-eyebrow text-muted-foreground'>

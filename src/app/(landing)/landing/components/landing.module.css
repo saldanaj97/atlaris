@@ -1,36 +1,16 @@
 /* Landing motion and route overlays. Content remains visible without JS or motion. */
 
-.revealItem,
-.revealFromLeft,
-.revealFromRight,
-.revealScale {
+.revealItem {
   opacity: 1;
   transform: none;
 }
 
-.reveal[data-reveal-state='observing']
-  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
-  opacity: 0;
-}
-
 .reveal[data-reveal-state='observing'] .revealItem {
+  opacity: 0;
   transform: translate3d(0, 1.25rem, 0);
 }
 
-.reveal[data-reveal-state='observing'] .revealFromLeft {
-  transform: translate3d(-1.5rem, 0, 0);
-}
-
-.reveal[data-reveal-state='observing'] .revealFromRight {
-  transform: translate3d(1.5rem, 0, 0);
-}
-
-.reveal[data-reveal-state='observing'] .revealScale {
-  transform: translate3d(0, 0.75rem, 0) scale(0.965);
-}
-
-.reveal[data-reveal-state='visible']
-  :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+.reveal[data-reveal-state='visible'] .revealItem {
   transition:
     opacity 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms),
     transform 0.78s cubic-bezier(0.22, 1, 0.36, 1) calc(var(--i, 0) * 90ms);
@@ -1089,34 +1069,66 @@
   box-shadow: 0 18px 60px rgb(0 0 0 / 12%);
 }
 
-.ambientOrb {
-  animation: ambientFloat var(--orb-duration, 18s) ease-in-out
-    var(--orb-delay, 0s) infinite alternate;
+/* How-it-works route: a ring marker per step, joined to the next step's
+ * marker by a dashed electric-blue line (the route line from the plan
+ * timeline). Vertical on phones, horizontal once the steps sit in a row.
+ * --route-offset lines the marker up with the step number's first line. */
+.routeSteps {
+  --route-marker: 0.875rem;
+  --route-offset: 0.125rem;
+  --route-gap: 2.5rem;
+  --route-line: color-mix(in oklab, var(--link) 60%, transparent);
+  display: grid;
+  gap: var(--route-gap);
 }
 
-.ambientOrb[data-paused='true'] {
-  animation-play-state: paused;
+.routeStep {
+  position: relative;
 }
 
-.ambientOrbPrimary {
-  --orb-duration: 17s;
-  --orb-x: -1.5rem;
-  --orb-y: 1.25rem;
-  --orb-scale: 1.05;
+.routeMarker {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  width: var(--route-marker);
+  height: var(--route-marker);
+  margin-top: var(--route-offset);
+  border: 1px solid var(--link);
+  border-radius: 9999px;
+  background: var(--background);
 }
 
-.ambientOrbMuted {
-  --orb-duration: 21s;
-  --orb-delay: -5s;
-  --orb-x: 1.75rem;
-  --orb-y: -1rem;
-  --orb-scale: 1.08;
+.routeStep:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  top: calc(var(--route-offset) + var(--route-marker));
+  bottom: calc(-1 * (var(--route-gap) + var(--route-offset)));
+  left: calc(var(--route-marker) / 2 - 0.5px);
+  width: 1px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--route-line) 0 3px,
+    transparent 3px 8px
+  );
 }
 
-@keyframes ambientFloat {
-  to {
-    transform: translate3d(var(--orb-x), var(--orb-y), 0)
-      scale(var(--orb-scale));
+@media (min-width: 768px) {
+  .routeSteps {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .routeStep:not(:last-child)::before {
+    top: calc(var(--route-offset) + var(--route-marker) / 2 - 0.5px);
+    bottom: auto;
+    left: var(--route-marker);
+    right: calc(-1 * var(--route-gap));
+    width: auto;
+    height: 1px;
+    background: repeating-linear-gradient(
+      to right,
+      var(--route-line) 0 3px,
+      transparent 3px 8px
+    );
   }
 }
 
@@ -1136,14 +1148,12 @@
 
 @media (prefers-reduced-motion: reduce) {
   .heroRise,
-  .ambientOrb,
   .stars::before,
   .stars::after {
     animation: none;
   }
 
-  .reveal[data-reveal-state]
-    :is(.revealItem, .revealFromLeft, .revealFromRight, .revealScale) {
+  .reveal[data-reveal-state] .revealItem {
     opacity: 1;
     transform: none;
     transition: none;
