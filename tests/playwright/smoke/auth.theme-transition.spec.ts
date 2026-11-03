@@ -73,6 +73,37 @@ test('an OS theme change crossfades while the theme follows the system', async (
   );
 });
 
+test('an OS theme change still crossfades when next-themes applies it late', async ({
+  page,
+}) => {
+  // next-themes listens with the legacy addListener; delaying those callbacks
+  // past the next frame stands in for a busy main thread.
+  await page.addInitScript(() => {
+    const original = MediaQueryList.prototype.addListener;
+    MediaQueryList.prototype.addListener = function (listener) {
+      if (!listener) return original.call(this, listener);
+      return original.call(this, function (this: MediaQueryList, event) {
+        setTimeout(() => listener.call(this, event), 200);
+      });
+    };
+  });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-atlaris-theme',
+    'light',
+  );
+
+  await page.emulateMedia({ colorScheme: 'dark' });
+
+  await expect
+    .poll(() => transitions(page))
+    .toEqual(['start:light', 'update:dark']);
+  await expect(page.locator('html')).toHaveAttribute(
+    'data-atlaris-theme',
+    'dark',
+  );
+});
+
 test('reduced motion switches the theme without a transition', async ({
   page,
 }) => {
