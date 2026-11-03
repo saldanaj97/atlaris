@@ -4,7 +4,7 @@ import {
   createPlanInput,
   expect,
   expectHeading,
-  renderedTextContrast,
+  renderedContrast,
   selectInlineDropdown,
   test,
   waitForGeneratedModules,
@@ -32,33 +32,6 @@ async function expectBillingPage(page: Page): Promise<void> {
   await expect(page.getByText('Status')).toBeVisible();
   await expect(page.getByText('Next billing date')).toBeVisible();
   await expect(page.getByText(/^active$/i)).toBeVisible();
-}
-
-/** WCAG contrast of an element's text color on its own background. */
-function textContrast(element: Element): number {
-  const context = document.createElement('canvas').getContext('2d');
-  if (!context) throw new Error('2D canvas unavailable');
-  const toRgb = (color: string) => {
-    context.clearRect(0, 0, 1, 1);
-    context.fillStyle = color;
-    context.fillRect(0, 0, 1, 1);
-    return Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
-  };
-  const luminance = (color: string) => {
-    const [r, g, b] = toRgb(color).map((value) => {
-      const channel = value / 255;
-      return channel <= 0.03928
-        ? channel / 12.92
-        : ((channel + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  };
-  const style = getComputedStyle(element);
-  const [lighter, darker] = [
-    luminance(style.color),
-    luminance(style.backgroundColor),
-  ].sort((a, b) => b - a);
-  return (lighter + 0.05) / (darker + 0.05);
 }
 
 test('authenticated launch blockers stay green', async ({ page }) => {
@@ -146,7 +119,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
           lockedSidebarRow.getByText(/^\d+(\.\d+)? (min|hrs?)$/),
         ]) {
           expect(
-            await label.evaluate(renderedTextContrast),
+            await label.evaluate(renderedContrast),
             `locked lesson text in ${colorScheme}`,
           ).toBeGreaterThanOrEqual(4.5);
         }
@@ -162,7 +135,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     );
     await expect(currentModuleItem).toBeFocused();
     expect(
-      await currentModuleItem.evaluate(textContrast),
+      await currentModuleItem.evaluate(renderedContrast),
     ).toBeGreaterThanOrEqual(4.5);
     await page.keyboard.press('Escape');
 

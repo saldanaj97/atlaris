@@ -1,4 +1,4 @@
-import { expect, renderedTextContrast, test } from './fixtures';
+import { expect, renderedContrast, test } from './fixtures';
 
 // The analytics week-over-week arrow for a falling metric is red in both
 // themes and holds 4.5:1 on a panel. Seeded smoke accounts have no activity
@@ -20,9 +20,9 @@ for (const colorScheme of ['light', 'dark'] as const) {
       document.body.append(panel);
       return arrow;
     });
-    expect(await probe.evaluate(renderedTextContrast)).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(
+      await probe.evaluate(renderedContrast, 'color' as const),
+    ).toBeGreaterThanOrEqual(4.5);
     // Red, not orange or the salmon rose: green stays far below red, which
     // cantaloupe (#FC734D) and rose-400 (#FF8C94) both fail.
     const color = await probe.evaluate(

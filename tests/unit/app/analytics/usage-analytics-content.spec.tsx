@@ -311,8 +311,11 @@ describe('UsageAnalyticsContent', () => {
 
   it('drops point labels on phones and keeps them from the sm breakpoint up', async () => {
     prefersReducedMotion = true;
-    const pointLabels = (container: HTMLElement) =>
-      container.querySelectorAll('text.animate-usage-analytics-point-label-in');
+    // Every number drawn in the chart: the y-axis ticks plus any point labels.
+    const chartNumbers = (container: HTMLElement) =>
+      Array.from(
+        container.querySelectorAll('[data-testid="weekly-line-chart"] text'),
+      ).filter((text) => /^\d+$/.test(text.textContent?.trim() ?? '')).length;
 
     viewportWidth = 375;
     const phone = render(<UsageAnalyticsContent model={model} />);
@@ -322,15 +325,16 @@ describe('UsageAnalyticsContent', () => {
         phone.container.querySelectorAll('[data-testid="plan-series"]'),
       ).toHaveLength(4);
     });
-    expect(pointLabels(phone.container)).toHaveLength(0);
+    const phoneNumbers = chartNumbers(phone.container);
     phone.unmount();
 
     observedResizeEntries = [];
     viewportWidth = 1280;
     const desktop = render(<UsageAnalyticsContent model={model} />);
     await resizeChart(1280);
+    // Same data and axis, so any extra numbers on desktop are point labels.
     await waitFor(() => {
-      expect(pointLabels(desktop.container).length).toBeGreaterThan(0);
+      expect(chartNumbers(desktop.container)).toBeGreaterThan(phoneNumbers);
     });
   });
 

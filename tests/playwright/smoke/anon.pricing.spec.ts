@@ -1,4 +1,4 @@
-import { expect, renderedTextContrast, test } from './fixtures';
+import { expect, renderedContrast, test } from './fixtures';
 
 // Pricing cards state plan length in weeks, the same as the comparison table,
 // whatever copy the billing provider holds.
@@ -67,9 +67,7 @@ for (const colorScheme of ['light', 'dark'] as const) {
       'Tick the box above to continue.',
     );
     await expect(hint).toBeVisible();
-    expect(await hint.evaluate(renderedTextContrast)).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(await hint.evaluate(renderedContrast)).toBeGreaterThanOrEqual(4.5);
 
     await starter.getByRole('checkbox').check();
     await expect(begin).toBeEnabled();

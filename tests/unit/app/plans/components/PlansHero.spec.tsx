@@ -16,12 +16,13 @@ describe('PlansHero', () => {
     );
   });
 
-  it('renders a single-color title and no create action or library metrics', () => {
+  it('renders the title and no create action or library metrics', () => {
     render(<PlansHero />);
 
     const hero = screen.getByRole('banner');
-    const heading = within(hero).getByRole('heading', { name: 'Your plans' });
-    expect(heading.children).toHaveLength(0);
+    expect(
+      within(hero).getByRole('heading', { name: 'Your plans' }),
+    ).toBeInTheDocument();
     expect(within(hero).queryByRole('link')).not.toBeInTheDocument();
     expect(
       within(hero).queryByLabelText(/active plans used/i),

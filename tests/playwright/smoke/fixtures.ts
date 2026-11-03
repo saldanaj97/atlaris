@@ -145,14 +145,31 @@ export async function waitForGeneratedModules(
   }
 }
 
+/** What `renderedContrast` measures against the background: text or outline. */
+export type ContrastForeground = 'color' | 'borderTopColor';
+
 /**
- * WCAG contrast of an element's text against what is painted behind it:
- * every ancestor's background is layered in order and every ancestor's
- * opacity is applied, so faded or translucent rows count as they render.
+ * WCAG 2.x contrast of an element's text (or top border) against what is
+ * painted behind it: every ancestor's background, then the element's own, is
+ * layered in order and every opacity is applied, so faded or translucent rows
+ * count as they render. An element with no top border measures 1.
+ *
+ * Runs in the page (`locator.evaluate(renderedContrast)`), so it must stay
+ * self-contained.
  */
-export function renderedTextContrast(element: Element): number {
+export function renderedContrast(
+  element: Element,
+  foreground: ContrastForeground = 'color',
+): number {
   const context = document.createElement('canvas').getContext('2d');
   if (!context) throw new Error('2D canvas unavailable');
+  const style = getComputedStyle(element);
+  if (
+    foreground === 'borderTopColor' &&
+    Number.parseFloat(style.borderTopWidth) <= 0
+  ) {
+    return 1;
+  }
   const pixel = () =>
     Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
   const luminance = ([r, g, b]: number[]) => {
@@ -172,16 +189,16 @@ export function renderedTextContrast(element: Element): number {
   context.fillRect(0, 0, 1, 1);
   let opacity = 1;
   for (const node of chain) {
-    const style = getComputedStyle(node);
-    opacity *= Number.parseFloat(style.opacity);
-    context.fillStyle = style.backgroundColor;
+    const nodeStyle = getComputedStyle(node);
+    opacity *= Number.parseFloat(nodeStyle.opacity);
+    context.fillStyle = nodeStyle.backgroundColor;
     context.fillRect(0, 0, 1, 1);
   }
   const background = luminance(pixel());
   context.globalAlpha = opacity;
-  context.fillStyle = getComputedStyle(element).color;
+  context.fillStyle = style[foreground];
   context.fillRect(0, 0, 1, 1);
-  const text = luminance(pixel());
-  const [lighter, darker] = [background, text].sort((a, b) => b - a);
+  const painted = luminance(pixel());
+  const [lighter, darker] = [background, painted].sort((a, b) => b - a);
   return (lighter + 0.05) / (darker + 0.05);
 }
