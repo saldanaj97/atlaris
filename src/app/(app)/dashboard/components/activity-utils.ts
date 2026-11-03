@@ -1,8 +1,9 @@
-import type { ActivityItem } from '../types';
+import type { ActivityItem, ActivityKind } from '../types';
+import type { RecentLearningActivityRow } from '@/lib/db/queries/types/tasks.types';
 import type {
-  LearningPlan,
   Module,
   PlanSummary,
+  ProgressStatus,
 } from '@/shared/types/db.types';
 
 import { formatRelativePast } from '@/lib/date/relative-time';
@@ -12,6 +13,12 @@ type DatedActivity = {
   activityDate: Date;
 };
 
+const TASK_ACTIVITY_KIND: Record<ProgressStatus, ActivityKind> = {
+  completed: 'task-completed',
+  in_progress: 'task-started',
+  not_started: 'task-reset',
+};
+
 /**
  * Formats a Date object into a human-readable "time ago" string.
  */
@@ -19,71 +26,58 @@ function formatTimeAgo(date: Date, now: Date = new Date()): string {
   return formatRelativePast(date, { referenceDate: now, style: 'verbose' });
 }
 
-function getPlanProgressTimestamp(plan: LearningPlan, fallback: Date): Date {
-  return plan.updatedAt ? new Date(plan.updatedAt) : fallback;
-}
-
 /**
- * Generates activity items from plan summaries.
- * Creates generated, progress, and completion events.
+ * Builds the dashboard feed from recorded task status changes plus recently
+ * created plans. Nothing is inferred from plan timestamps.
  */
-export function generateActivities(summaries: PlanSummary[]): ActivityItem[] {
+export function generateActivities(
+  summaries: PlanSummary[],
+  events: RecentLearningActivityRow[],
+): ActivityItem[] {
   const datedActivities: DatedActivity[] = [];
   const now = new Date();
 
   summaries.forEach((summary) => {
     const plan = summary.plan;
-    const createdAt = plan.createdAt ? new Date(plan.createdAt) : now;
-    const progressAt = getPlanProgressTimestamp(plan, createdAt);
-    // Add plan creation as a milestone if recently created
-    if (plan.createdAt && plan.generationStatus === 'ready') {
-      const daysSinceCreation = Math.floor(
-        (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
-      );
-      if (daysSinceCreation < 7) {
-        datedActivities.push({
-          activityDate: createdAt,
-          activity: {
-            id: `plan-${plan.id}`,
-            kind: 'generated',
-            planId: plan.id,
-            title: plan.topic,
-            timestamp: formatTimeAgo(createdAt, now),
-            occurredAt: createdAt.toISOString(),
-          },
-        });
-      }
+    if (!plan.createdAt || plan.generationStatus !== 'ready') {
+      return;
     }
-
-    // Add progress updates for plans with completion
-    if (summary.completion > 0 && summary.completion < 1) {
+    const createdAt = new Date(plan.createdAt);
+    const daysSinceCreation = Math.floor(
+      (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60 * 24),
+    );
+    if (daysSinceCreation < 7) {
       datedActivities.push({
-        activityDate: progressAt,
+        activityDate: createdAt,
         activity: {
-          id: `progress-${plan.id}`,
-          kind: 'progress',
+          id: `plan-${plan.id}`,
+          kind: 'plan-created',
           planId: plan.id,
           title: plan.topic,
-          timestamp: formatTimeAgo(progressAt, now),
-          occurredAt: progressAt.toISOString(),
+          timestamp: formatTimeAgo(createdAt, now),
+          occurredAt: createdAt.toISOString(),
         },
       });
     }
+  });
 
-    // Add completion milestone
-    if (summary.completion >= 1 - 1e-6) {
-      datedActivities.push({
-        activityDate: progressAt,
-        activity: {
-          id: `complete-${plan.id}`,
-          kind: 'completed',
-          planId: plan.id,
-          title: plan.topic,
-          timestamp: formatTimeAgo(progressAt, now),
-          occurredAt: progressAt.toISOString(),
-        },
-      });
-    }
+  events.forEach((event) => {
+    const occurredAt = new Date(event.occurredAt);
+    const kind = TASK_ACTIVITY_KIND[event.status];
+    datedActivities.push({
+      activityDate: occurredAt,
+      activity: {
+        id: `event-${event.id}`,
+        kind,
+        planId: event.planId,
+        title: event.taskTitle,
+        planTopic: event.planTopic,
+        minutes:
+          kind === 'task-completed' ? event.taskEstimatedMinutes : undefined,
+        timestamp: formatTimeAgo(occurredAt, now),
+        occurredAt: occurredAt.toISOString(),
+      },
+    });
   });
 
   return datedActivities

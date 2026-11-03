@@ -6,7 +6,7 @@ export function EmptyActivityState() {
     <div className='px-5 py-10 text-center sm:px-6 sm:py-12'>
       <p className='type-label text-foreground'>No activity yet</p>
       <p className='mx-auto mt-1.5 max-w-sm type-body text-muted-foreground'>
-        Plan generation and progress updates will appear here.
+        Tasks you start or finish will show up here.
       </p>
     </div>
   );

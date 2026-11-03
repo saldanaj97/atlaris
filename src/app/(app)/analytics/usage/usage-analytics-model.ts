@@ -105,6 +105,85 @@ const DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: DEFAULT_ANALYTICS_TIMEZONE,
 });
 
+/** Most plans the eight-week pulse plots; one per chart color. */
+export const PULSE_PLAN_LIMIT = 5;
+
+/**
+ * Evenly spaced y-axis ticks from 0 that reach at least `maxValue`, about
+ * four steps. The last tick is the axis top, so the domain ends on a step.
+ */
+export function yAxisTicksForMax(maxValue: number): number[] {
+  const top = Math.max(1, Math.ceil(maxValue));
+  const step = Math.ceil(top / 4);
+  const ticks = [];
+
+  for (let tick = 0; tick < top + step; tick += step) {
+    ticks.push(tick);
+  }
+
+  return ticks;
+}
+
+export type PointLabelPlacement = 'above' | 'below' | null;
+
+/**
+ * Where each series' value label goes at one week, so labels don't sit on a
+ * neighbouring line or label. The highest value labels above its point; a
+ * value close under a labelled one labels below. A label needs `nearGap` of
+ * room, so after a label placed below, the next value labels below only once
+ * it clears that label and above only once it clears it twice; closer than
+ * that it gets none. Zeros and repeats of a labelled value get none too (the
+ * tooltip still reads them). `nearGap` is in axis units.
+ */
+export function pointLabelPlacements(
+  values: readonly number[],
+  maxValue: number,
+): PointLabelPlacement[] {
+  const nearGap = Math.max(maxValue, 1) * 0.13;
+  const placements: PointLabelPlacement[] = values.map(() => null);
+  const order = values
+    .map((value, index) => ({ value, index }))
+    .filter(({ value }) => value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  // Values arrive highest first, so the last label is the only one this value
+  // can repeat or run into: every earlier label sits higher.
+  let lastValue: number | null = null;
+  let lastBelow = false;
+  for (const { value, index } of order) {
+    if (value === lastValue) continue;
+    const gap = lastValue === null ? Infinity : lastValue - value;
+    const room: number = lastBelow ? gap - nearGap : gap;
+    if (room < 0) continue;
+    lastBelow = room < nearGap;
+    placements[index] = lastBelow ? 'below' : 'above';
+    lastValue = value;
+  }
+
+  return placements;
+}
+
+/**
+ * Picks the plans with the most progress changes in the pulse window, most
+ * active first. Ties keep the incoming order.
+ */
+export function selectMostActivePlans(
+  plans: UsageAnalyticsPlanRow[],
+  limit: number = PULSE_PLAN_LIMIT,
+): UsageAnalyticsPlanRow[] {
+  const ranked = plans
+    .map((plan, index) => ({
+      plan,
+      index,
+      activity: plan.weeklyTrends.reduce(
+        (sum, week) => sum + week.progressChangeCount,
+        0,
+      ),
+    }))
+    .sort((a, b) => b.activity - a.activity || a.index - b.index);
+  return ranked.slice(0, limit).map(({ plan }) => plan);
+}
+
 /** Returns floored completion percent, capped at 100 when fully complete. */
 function completionPercent(completed: number, total: number): number {
   if (total <= 0) return 0;

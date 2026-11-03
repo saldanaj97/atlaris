@@ -6,6 +6,10 @@ import type {
 } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
+import {
+  getEmptyLessonsCopy,
+  getModuleGenerationState,
+} from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import { GenerationStatePanel } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel';
 import { LessonAccordionItem } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem';
 import { getLessonMarkerClassName } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/lessonAccordionStyles';
@@ -131,8 +135,10 @@ function LessonProgressPanel({
                     isCurrent
                       ? 'border-primary/20 bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground',
+                    // Locked rows keep full-opacity muted text (4.5:1); the
+                    // lock marker says they are locked.
                     isLocked
-                      ? 'cursor-not-allowed opacity-80'
+                      ? 'cursor-not-allowed'
                       : 'hover:border-border hover:bg-panel hover:text-foreground',
                   );
                   const markerClassName = cn(
@@ -213,6 +219,11 @@ export function ModuleLessonsClient({
       status: lessonGeneration.status,
     });
 
+  const generationState = getModuleGenerationState(
+    lessonGeneration.status,
+    isPending,
+  );
+  const emptyLessonsCopy = getEmptyLessonsCopy(generationState);
   const totalLessons = lessons.length;
   const completedLessons = lessons.filter(
     (lesson) => (statuses[lesson.id] ?? lesson.status) === 'completed',
@@ -306,7 +317,7 @@ export function ModuleLessonsClient({
             <span className='shrink-0 type-meta text-muted-foreground tabular-nums'>
               {totalLessons > 0
                 ? `${completedLessons}/${totalLessons} completed`
-                : 'No lessons yet'}
+                : emptyLessonsCopy.count}
             </span>
           </div>
 
@@ -324,7 +335,7 @@ export function ModuleLessonsClient({
               className='p-8 text-center'
             >
               <p className='text-muted-foreground'>
-                No lessons are available for this module yet.
+                {emptyLessonsCopy.message}
               </p>
             </Surface>
           ) : (
@@ -347,6 +358,7 @@ export function ModuleLessonsClient({
                     status={statuses[lesson.id] ?? lesson.status}
                     onStatusChange={onStatusChange}
                     isLocked={locked}
+                    generationState={generationState}
                   />
                 );
               })}

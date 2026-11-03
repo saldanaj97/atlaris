@@ -1,37 +1,29 @@
 import { PlansHero } from '@/app/(app)/plans/components/PlansHero';
 import { render, screen, within } from '@testing-library/react';
-import Link from 'next/link';
 import { describe, expect, it } from 'vitest';
 
 describe('PlansHero', () => {
   it('places live library chrome in the same hero surface', () => {
     render(
-      <PlansHero chrome={<nav aria-label='Plan status filters'>Filters</nav>}>
-        <Link href='/plans/new'>New Plan</Link>
-      </PlansHero>,
+      <PlansHero
+        chrome={<nav aria-label='Plan status filters'>Filters</nav>}
+      />,
     );
 
     const hero = screen.getByRole('banner');
     expect(hero).toContainElement(
       screen.getByRole('navigation', { name: 'Plan status filters' }),
     );
-    expect(hero).toContainElement(
-      screen.getByRole('link', { name: 'New Plan' }),
-    );
   });
 
-  it('keeps the action row to the entitlement CTA without library metrics', () => {
-    render(
-      <PlansHero>
-        <Link href='/plans/new'>New Plan</Link>
-      </PlansHero>,
-    );
+  it('renders the title and no create action or library metrics', () => {
+    render(<PlansHero />);
 
     const hero = screen.getByRole('banner');
     expect(
-      within(hero).getByRole('link', { name: 'New Plan' }),
-    ).toHaveAttribute('href', '/plans/new');
-    expect(within(hero).getAllByRole('link')).toHaveLength(1);
+      within(hero).getByRole('heading', { name: 'Your plans' }),
+    ).toBeInTheDocument();
+    expect(within(hero).queryByRole('link')).not.toBeInTheDocument();
     expect(
       within(hero).queryByLabelText(/active plans used/i),
     ).not.toBeInTheDocument();

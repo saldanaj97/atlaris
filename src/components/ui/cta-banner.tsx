@@ -1,60 +1,33 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 
-import { ResponsiveBackdrop } from '@/components/ui/responsive-backdrop';
+import { HorizonArc } from '@/components/ui/horizon-arc';
 import { cn } from '@/lib/utils';
 
-export type CtaBannerArtwork = 'horizon' | 'mountain';
-
 export interface CtaBannerProps extends ComponentPropsWithoutRef<'section'> {
-  artwork: CtaBannerArtwork;
   children: ReactNode;
+  /** Draw the horizon arc; off where the card is too short for it to read as an arc. */
+  horizon?: boolean;
 }
 
-const artworkSources: Record<
-  CtaBannerArtwork,
-  Parameters<typeof ResponsiveBackdrop>[0]
-> = {
-  horizon: {
-    desktop: {
-      src: '/artwork/cta-horizon-desktop.jpg',
-      objectPosition: '58% 50%',
-    },
-    mobile: {
-      src: '/artwork/cta-horizon-mobile.jpg',
-      objectPosition: '58% 50%',
-    },
-    overlay: 'background',
-  },
-  mountain: {
-    desktop: {
-      src: '/artwork/mountain-summit-blue-hour.webp',
-      objectPosition: '58% 50%',
-    },
-    mobile: {
-      src: '/artwork/mountain-summit-blue-hour.webp',
-      objectPosition: '58% 50%',
-    },
-    overlay: 'background',
-  },
-};
-
-/** Bordered CTA surface with the two shipped artwork treatments. */
+/** Bordered CTA surface with the horizon decoration. */
 export function CtaBanner({
-  artwork,
   children,
   className,
+  horizon = true,
   ...props
 }: CtaBannerProps) {
   return (
     <section
       data-slot='cta-banner'
       className={cn(
-        'relative isolate overflow-hidden rounded-[12px] border border-panel-border bg-panel shadow-sm',
+        // The divider border: the panel border is about 1.1:1 on the dark canvas,
+        // so the card would have no visible edge.
+        'relative isolate overflow-hidden rounded-[12px] border border-border bg-panel shadow-sm',
         className,
       )}
       {...props}
     >
-      <ResponsiveBackdrop {...artworkSources[artwork]} />
+      {horizon ? <HorizonArc /> : null}
       {children}
     </section>
   );

@@ -39,16 +39,14 @@ function ModuleSwitcherMenuItem({
   }
 
   return (
-    <DropdownMenuItem asChild>
+    <DropdownMenuItem asChild variant={isCurrent ? 'current' : 'default'}>
       <Link
         href={`/plans/${planId}/modules/${item.id}`}
-        className={cn(
-          'flex items-center gap-2',
-          isCurrent && 'bg-primary/20 text-primary',
-        )}
+        aria-current={isCurrent ? 'page' : undefined}
+        className='flex items-center gap-2'
         aria-label={item.isComplete ? `${item.title}, completed` : undefined}
       >
-        <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-primary/20 type-meta font-medium text-primary'>
+        <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-action-soft type-meta font-medium text-primary'>
           {item.order}
         </span>
         <span className='truncate'>{item.title}</span>
@@ -109,7 +107,7 @@ export function ModuleBreadcrumbNav({
                 'inline-flex min-h-11 min-w-0 max-w-full items-center gap-1.5 rounded-md px-2.5 py-1.5 font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none',
                 isComplete
                   ? 'bg-success/15 text-success hover:bg-success/25 dark:bg-success/25 dark:text-success-foreground dark:hover:bg-success/30'
-                  : 'bg-primary/10 text-primary hover:bg-primary/20 dark:bg-primary/20 dark:text-primary dark:hover:bg-primary/30',
+                  : 'bg-action-soft text-primary hover:bg-secondary',
               )}
             >
               {isComplete ? (

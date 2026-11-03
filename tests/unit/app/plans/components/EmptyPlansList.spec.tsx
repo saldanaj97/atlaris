@@ -51,6 +51,6 @@ describe('EmptyPlansList', () => {
     expect(
       screen.queryByRole('link', { name: 'Clear filters' }),
     ).not.toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'New plan' })).toBeVisible();
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toBeVisible();
   });
 });

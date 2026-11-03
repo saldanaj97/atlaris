@@ -4,6 +4,7 @@ import {
   createPlanInput,
   expect,
   expectHeading,
+  renderedContrast,
   selectInlineDropdown,
   test,
   waitForGeneratedModules,
@@ -23,8 +24,8 @@ const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
 async function expectBillingPage(page: Page): Promise<void> {
-  await expectHeading(page, 'Make Atlaris yours.', 1);
-  await expectHeading(page, 'Plan & billing', 2);
+  await expectHeading(page, 'Settings', 1);
+  await expectHeading(page, 'Billing', 2);
   await expect(
     page.getByRole('heading', { name: 'Usage', exact: true }),
   ).toHaveCount(0);
@@ -51,7 +52,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   });
 
   await test.step('manual plan creation and module navigation succeed', async () => {
-    await page.getByLabel('What do you want to learn?').fill(planInput.topic);
+    await page.getByLabel('Topic', { exact: true }).fill(planInput.topic);
     await selectInlineDropdown(page, 'Skill level', planInput.skillLevel);
     await selectInlineDropdown(page, 'Weekly hours', planInput.weeklyHours);
     await selectInlineDropdown(page, 'Learning style', planInput.learningStyle);
@@ -94,6 +95,50 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     const moduleUrlBeforeNext = page.url();
     await expect(page.getByRole('heading', { name: 'Lessons' })).toBeVisible();
 
+    // A locked lesson stays legible: its title and "Locked" badge keep text
+    // contrast in both themes instead of fading the whole row.
+    const lockedLesson = page.locator('[data-progress-state="locked"]').first();
+    // The matching row in the lesson-progress sidebar, whose title and time
+    // stay readable too.
+    const lockedSidebarRow = page
+      .getByRole('navigation', { name: 'Lesson navigation' })
+      .locator('li', { hasText: ', locked' })
+      .first();
+    if ((await lockedLesson.count()) > 0) {
+      for (const colorScheme of ['light', 'dark'] as const) {
+        await page.emulateMedia({ colorScheme });
+        await expect(page.locator('html')).toHaveAttribute(
+          'data-atlaris-theme',
+          colorScheme,
+        );
+        for (const label of [
+          // Radix wraps the trigger in its own h3; the title is the one inside.
+          lockedLesson.getByRole('button').locator('h3'),
+          lockedLesson.getByText('Locked', { exact: true }),
+          lockedSidebarRow.getByText(/^\d+\. /),
+          lockedSidebarRow.getByText(/^\d+(\.\d+)? (min|hrs?)$/),
+        ]) {
+          expect(
+            await label.evaluate(renderedContrast),
+            `locked lesson text in ${colorScheme}`,
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+      await page.emulateMedia({ colorScheme: null });
+    }
+
+    // The focused current module keeps readable text on its selected surface.
+    await page.getByRole('button', { name: /^Module \d+$/ }).click();
+    await page.keyboard.press('ArrowDown');
+    const currentModuleItem = page.locator(
+      '[role="menuitem"][aria-current="page"]',
+    );
+    await expect(currentModuleItem).toBeFocused();
+    expect(
+      await currentModuleItem.evaluate(renderedContrast),
+    ).toBeGreaterThanOrEqual(4.5);
+    await page.keyboard.press('Escape');
+
     const nextModuleLink = page.getByRole('link', {
       name: 'Next module',
       exact: true,
@@ -125,7 +170,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
-    await expectHeading(page, /one sky\. three ways to cross it\./i);
+    await expectHeading(page, /free for one plan\. pay when you need more/i);
 
     await page.goto('/settings/billing');
     await expect(page).toHaveURL(SETTINGS_URL);

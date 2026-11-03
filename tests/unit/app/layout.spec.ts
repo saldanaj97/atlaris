@@ -8,6 +8,8 @@ const mocks = vi.hoisted(() => ({
 }));
 
 vi.mock('next/font/google', () => ({
+  IBM_Plex_Mono: () => ({ className: '', variable: '' }),
+  Instrument_Serif: () => ({ className: '', variable: '' }),
   Sora: () => ({ className: '', variable: '' }),
   Work_Sans: () => ({ className: '', variable: '' }),
 }));

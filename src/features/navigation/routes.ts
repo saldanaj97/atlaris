@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   AUTH: {
     SIGN_IN: '/auth/sign-in',
+    SIGN_UP: '/auth/sign-up',
   },
   PLANS: {
     ROOT: '/plans',
@@ -17,7 +18,6 @@ export const ROUTES = {
   ANALYTICS: {
     ROOT: '/analytics',
     USAGE: '/analytics/usage',
-    ACHIEVEMENTS: '/analytics/achievements',
   },
   SETTINGS: {
     ROOT: '/settings',
@@ -25,7 +25,6 @@ export const ROUTES = {
     BILLING: '/settings/billing',
     USAGE: '/settings/usage',
     AI: '/settings/ai',
-    INTEGRATIONS: '/settings/integrations',
     NOTIFICATIONS: '/settings/notifications',
   },
   PRICING: '/pricing',

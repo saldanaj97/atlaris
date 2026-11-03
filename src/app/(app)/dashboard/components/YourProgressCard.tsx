@@ -26,7 +26,7 @@ export function YourProgressCard({
     <Card
       as='aside'
       aria-labelledby={TITLE_ID}
-      className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
+      className='h-full gap-0 p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
     >
       <h2 id={TITLE_ID} className='type-card text-foreground'>
         Your progress
@@ -40,8 +40,8 @@ export function YourProgressCard({
           Progress will appear here once you have a plan.
         </p>
       ) : (
-        <>
-          <p className='mt-6 type-title text-foreground tabular-nums'>
+        <div className='mt-6'>
+          <p className='type-title text-foreground tabular-nums'>
             {progress.percent}%
           </p>
           <p className='mt-1 type-meta text-muted-foreground'>
@@ -55,19 +55,24 @@ export function YourProgressCard({
             className='mt-3 h-1.5'
           />
 
-          <dl className='mt-4 grid grid-cols-3 gap-3'>
+          {/* One row per total, so the card's height (set by the resume card
+              beside it) is filled by the totals rather than left empty. */}
+          <dl className='mt-3 divide-y divide-border/60'>
             {stats.map((stat) => (
-              <div key={stat.label}>
-                <dt className='type-meta text-muted-foreground'>
+              <div
+                key={stat.label}
+                className='flex items-baseline justify-between gap-3 py-2'
+              >
+                <dt className='type-body text-muted-foreground'>
                   {stat.label}
                 </dt>
-                <dd className='mt-0.5 type-card text-foreground tabular-nums'>
+                <dd className='type-label text-foreground tabular-nums'>
                   {stat.value}
                 </dd>
               </div>
             ))}
           </dl>
-        </>
+        </div>
       )}
     </Card>
   );

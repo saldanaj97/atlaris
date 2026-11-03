@@ -104,7 +104,7 @@ export default defineConfig({
   projects: [
     {
       name: 'smoke-anon',
-      testMatch: /anon\.redirects\.spec\.ts/,
+      testMatch: /anon\..*\.spec\.ts/,
       use: {
         baseURL: SMOKE_ANON_BASE_URL,
       },

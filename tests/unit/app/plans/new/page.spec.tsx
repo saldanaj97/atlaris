@@ -66,7 +66,7 @@ describe('AiPlanGenerationPanel', () => {
   });
 
   async function fillTopic(topic: string): Promise<void> {
-    await user.type(screen.getByLabelText(/what do you want to learn/i), topic);
+    await user.type(screen.getByLabelText(/^topic$/i), topic);
   }
 
   async function chooseOption(currentLabel: string, nextLabel: string) {
@@ -84,7 +84,7 @@ describe('AiPlanGenerationPanel', () => {
   }
 
   async function chooseDefaultPreferences(): Promise<void> {
-    await chooseOption('Experience', 'Beginner');
+    await chooseOption('Choose a level', 'Beginner');
     await chooseOption('Weekly time', '3-5 hours');
     await chooseOption('Learning style', 'Mixed');
     await chooseOption('Finish by', '1 month');
@@ -130,7 +130,7 @@ describe('AiPlanGenerationPanel', () => {
 
         render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
-        const topicInput = screen.getByLabelText(/what do you want to learn/i);
+        const topicInput = screen.getByLabelText(/^topic$/i);
         await user.type(topicInput, 'Keyboard topic');
         await user.keyboard(shortcut);
 
@@ -159,7 +159,7 @@ describe('AiPlanGenerationPanel', () => {
       ).toBeInTheDocument();
 
       const topicInput = screen.getByRole('textbox', {
-        name: 'What do you want to learn?',
+        name: 'Topic',
       });
       expect(topicInput).toHaveAttribute('aria-required', 'true');
       expect(topicInput).toHaveAttribute(
@@ -178,7 +178,7 @@ describe('AiPlanGenerationPanel', () => {
       expect(deadline).toHaveTextContent('Finish by');
       expect(
         screen.getByRole('combobox', { name: /^skill level$/i }),
-      ).toHaveTextContent('Experience');
+      ).toHaveTextContent('Choose a level');
       expect(
         screen.getByRole('combobox', { name: /^weekly hours$/i }),
       ).toHaveTextContent('Weekly time');
@@ -242,7 +242,7 @@ describe('AiPlanGenerationPanel', () => {
       render(<AiPlanGenerationPanel subscriptionTier='pro' />);
 
       await fillTopic('  Learn Rust  ');
-      await chooseOption('Experience', 'Advanced');
+      await chooseOption('Choose a level', 'Advanced');
       await chooseOption('Weekly time', '11-15 hours');
       await chooseOption('Learning style', 'Reading');
       await chooseOption('Finish by', '3 months');

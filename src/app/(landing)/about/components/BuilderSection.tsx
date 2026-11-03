@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react';
 
 import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from '@/components/ui/section-overline';
-import Image from 'next/image';
 
 import styles from './about.module.css';
 
@@ -10,24 +9,13 @@ export function BuilderSection() {
   return (
     <section
       id='about-builder'
-      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-6 py-12 md:px-8 md:py-16'
       aria-labelledby='about-builder-heading'
     >
       <RevealAnimation>
-        <div className='grid items-center gap-10 md:grid-cols-2 md:gap-14'>
-          <figure
-            className={`overflow-hidden rounded-lg border border-panel-border bg-panel shadow-sm ${styles.revealFromLeft}`}
-            style={{ '--i': 0 } as CSSProperties}
-          >
-            <Image
-              src='/artwork/builder-workspace.webp'
-              alt='Illustration of a laptop and desk at night'
-              width={800}
-              height={450}
-              sizes='(min-width: 768px) 50vw, 100vw'
-              className='block aspect-video h-auto w-full object-cover'
-            />
-          </figure>
+        {/* Heading left, copy right, like the method section, so the section
+            uses the full column instead of leaving its right half empty. */}
+        <div className='grid gap-6 md:grid-cols-2 md:items-end md:gap-14'>
           <div>
             {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}
             <SectionOverline className={styles.revealItem}>
@@ -39,13 +27,12 @@ export function BuilderSection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              Built for the hours you have.
-              <span className='block font-medium text-muted-foreground italic'>
-                Mostly after hours.
-              </span>
+              Built for the hours you have, mostly after hours.
             </h2>
+          </div>
+          <div>
             <p
-              className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
+              className={`max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
               style={{ '--i': 2 } as CSSProperties}
             >
               Atlaris stays small on purpose. The product centers structured

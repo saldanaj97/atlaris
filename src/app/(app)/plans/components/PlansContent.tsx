@@ -8,10 +8,7 @@ import {
   PlansLibraryToolbar,
   PlansList,
 } from '@/app/(app)/plans/components/PlansList';
-import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
-import { Plus } from 'lucide-react';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
 
 /**
@@ -29,35 +26,6 @@ export async function PlansLibraryChrome({
   if (!shouldShowPlansLibraryChrome(result.plansPage, query)) return null;
 
   return <PlansLibraryToolbar page={result.plansPage} query={query} />;
-}
-
-/**
- * Entitlement CTA streamed into the plans hero.
- */
-export async function PlansHeaderCreateAction({
-  dataPromise,
-}: {
-  dataPromise: Promise<PlansPageData | null>;
-}) {
-  const result = await dataPromise;
-  if (!result) return null;
-
-  if (result.plansPage.canCreatePlan === false) {
-    return (
-      <Button asChild variant='cta'>
-        <Link href={ROUTES.PRICING}>Upgrade</Link>
-      </Button>
-    );
-  }
-
-  return (
-    <Button asChild variant='cta'>
-      <Link href={ROUTES.PLANS.NEW}>
-        <Plus />
-        New Plan
-      </Link>
-    </Button>
-  );
 }
 
 /**

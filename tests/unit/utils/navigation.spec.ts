@@ -92,20 +92,17 @@ describe('Navigation', () => {
       expect(pricingItem?.href).toBe('/pricing');
     });
 
-    it('should contain About nav item', () => {
-      const aboutItem = unauthenticatedNavItems.find(
-        (item) => item.label === 'About',
-      );
-      expect(aboutItem).toBeDefined();
-      expect(aboutItem?.href).toBe('/about');
+    it('should not list the retired About page', () => {
+      expect(
+        unauthenticatedNavItems.find((item) => item.href === '/about'),
+      ).toBeUndefined();
     });
 
     it('should have correct number of nav items', () => {
-      expect(unauthenticatedNavItems.length).toBe(3);
-      expect(unauthenticatedNavItems[2]).toEqual({
-        label: 'About',
-        href: '/about',
-      });
+      expect(unauthenticatedNavItems).toEqual([
+        { label: 'Home', href: '/landing' },
+        { label: 'Pricing', href: '/pricing' },
+      ]);
     });
 
     it('should not have Dashboard, Analytics, or Settings nav items', () => {
@@ -171,7 +168,6 @@ describe('Navigation', () => {
       const unauthLabels = unauthenticatedNavItems.map((item) => item.label);
       expect(unauthLabels).toContain('Home');
       expect(unauthLabels).toContain('Pricing');
-      expect(unauthLabels).toContain('About');
     });
 
     it('should have authenticated-only navigation items', () => {

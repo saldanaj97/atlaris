@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('next/font/google', () => ({
+  IBM_Plex_Mono: () => ({ className: '', variable: '' }),
+  Instrument_Serif: () => ({ className: '', variable: '' }),
   Sora: () => ({ className: '', variable: '' }),
   Work_Sans: () => ({ className: '', variable: '' }),
 }));

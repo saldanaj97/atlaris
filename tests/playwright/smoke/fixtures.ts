@@ -15,7 +15,6 @@ export const ANON_PROTECTED_ROUTES = [
   '/settings',
   '/analytics',
   '/analytics/usage',
-  '/analytics/achievements',
 ] as const;
 
 interface PlanInput {
@@ -144,4 +143,62 @@ export async function waitForGeneratedModules(
       { cause: error },
     );
   }
+}
+
+/** What `renderedContrast` measures against the background: text or outline. */
+export type ContrastForeground = 'color' | 'borderTopColor';
+
+/**
+ * WCAG 2.x contrast of an element's text (or top border) against what is
+ * painted behind it: every ancestor's background, then the element's own, is
+ * layered in order and every opacity is applied, so faded or translucent rows
+ * count as they render. An element with no top border measures 1.
+ *
+ * Runs in the page (`locator.evaluate(renderedContrast)`), so it must stay
+ * self-contained.
+ */
+export function renderedContrast(
+  element: Element,
+  foreground: ContrastForeground = 'color',
+): number {
+  const context = document.createElement('canvas').getContext('2d');
+  if (!context) throw new Error('2D canvas unavailable');
+  const style = getComputedStyle(element);
+  if (
+    foreground === 'borderTopColor' &&
+    Number.parseFloat(style.borderTopWidth) <= 0
+  ) {
+    return 1;
+  }
+  const pixel = () =>
+    Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
+  const luminance = ([r, g, b]: number[]) => {
+    const [lr, lg, lb] = [r, g, b].map((value) => {
+      const channel = value / 255;
+      return channel <= 0.04045
+        ? channel / 12.92
+        : ((channel + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
+  };
+  const chain: Element[] = [];
+  for (let node: Element | null = element; node; node = node.parentElement) {
+    chain.unshift(node);
+  }
+  context.fillStyle = '#fff';
+  context.fillRect(0, 0, 1, 1);
+  let opacity = 1;
+  for (const node of chain) {
+    const nodeStyle = getComputedStyle(node);
+    opacity *= Number.parseFloat(nodeStyle.opacity);
+    context.fillStyle = nodeStyle.backgroundColor;
+    context.fillRect(0, 0, 1, 1);
+  }
+  const background = luminance(pixel());
+  context.globalAlpha = opacity;
+  context.fillStyle = style[foreground];
+  context.fillRect(0, 0, 1, 1);
+  const painted = luminance(pixel());
+  const [lighter, darker] = [background, painted].sort((a, b) => b - a);
+  return (lighter + 0.05) / (darker + 0.05);
 }

@@ -8,7 +8,7 @@ Earlier section text is preserved with its originating reference IDs. Use the so
 
 ## Repository adoption status
 
-This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopts the shared cool-black/lavender foundations through `src/app/globals.css`, generated dark tokens and the existing shared page primitives. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
+This file is the **canonical detailed design-system specification** for Atlaris. [DESIGN.md](../../DESIGN.md) is the concise agent/developer entry point. Intended design follows this specification; current application code and tests remain authoritative for product behavior. JCS-86 adopted the shared foundations through `src/app/globals.css`, the dark token file and the existing shared page primitives. On 2026-10-30 the palette moved from cool-black/lavender to **Midnight** (§03); lavender references in inherited chapter text below describe the earlier palette and are superseded by §03. A matching cool light theme is a repository-owned extension approved for this slice; light, dark and system preferences remain supported.
 
 JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 recorded the launch copy and information-architecture map. JCS-98 removed the superseded After Hours agent rule and the `docs/styles/style-guide.md` compatibility pointer so those files cannot appear current. JCS-97 (integrated visual acceptance) was closed on 2026-10-14 without a separate acceptance pass. All source contracts, proposals, specimen-only results and open decisions below retain their stated status unless explicitly covered by the repository adoption notes here. In particular, full vector lockup production, named-font comparison and integrated accessibility remain unresolved where stated. Analytics keeps the [existing metric contract](../architecture/usage-analytics-metric-contract.md).
 
@@ -16,35 +16,11 @@ JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 
 
 Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
-### External token generation
+### Token source
 
-Keep the reference package outside this repository for the redesign. Its `tokens/atlaris.tokens.json` remains the editable token source; `scripts/token-compiler.py` supplies validation and CSS generation using Python 3.10+ and the standard library. No package copy, dependency installation, repository generator or application build dependency on a local Downloads path is needed.
+`src/styles/atlaris-tokens.css` is the single editable source for dark tokens (primitive, semantic and component layers on `[data-atlaris-theme="dark"]`). The light theme is authored once in `:root` in `src/app/globals.css`, and the semantic bridge in the same file maps both onto the application's existing CSS variables. Edit values in those two places only.
 
-The supplied rc1 package does **not** contain the `scripts/build.py` mentioned in the original handbook. Running `token-compiler.py` directly also does not emit files: call its existing functions instead. Set `ATLARIS_DESIGN_PACKAGE` to the external package directory, then run:
-
-```bash
-python3 - "$ATLARIS_DESIGN_PACKAGE" <<'PY'
-from pathlib import Path
-import runpy
-import sys
-import tempfile
-
-package = Path(sys.argv[1]).expanduser().resolve()
-compiler = runpy.run_path(str(package / "scripts/token-compiler.py"))
-compiler["validate"]()
-checks = compiler["contrast_checks"]()
-if not checks or not all(check["as_expected"] for check in checks):
-    raise SystemExit("Unexpected token contrast result")
-css = compiler["generate_css"]()
-output = Path(tempfile.mkdtemp(prefix="atlaris-design-tokens-")) / "atlaris-tokens.css"
-output.write_text(css, encoding="utf-8")
-print(output)
-PY
-```
-
-This writes only a temporary CSS artifact after validation succeeds. It reads the external source without changing the reference package. Intentional rejected contrast pairs must remain rejected (`as_expected` checks that distinction); this is not an application accessibility certification.
-
-The verified generated artifact is adopted at `src/styles/generated/atlaris-tokens.css`; its values remain generated and must not be edited by hand. Regenerate from the external JSON when dark values change and review the semantic bridge in `src/app/globals.css`. The original package is dark-only: the approved light extension is authored once in the existing `:root` runtime tokens, not copied into a competing dark palette or into the external reference package. The machine-specific package location and generation evidence must stay out of application configuration and must not be committed.
+Until 2026-10-30 the dark file was generated from `tokens/atlaris.tokens.json` in an external reference package with `scripts/token-compiler.py`. That package was not available on the machine doing the Midnight change, so the repository took ownership of the values and the generation step was retired. Keep the primitive → semantic → component alias structure when editing, and re-run the pair checks in §03 for any color change.
 
 ### JCS-86 foundation boundaries
 
@@ -53,7 +29,7 @@ The verified generated artifact is adopted at `src/styles/generated/atlaris-toke
 - The legacy Tailwind `--spacing: 0.2rem` remains for unmigrated consumers. Foundation recipes use explicit dimensions from the quarter-rem reference scale; changing the global multiplier would enlarge every numeric spacing utility by 25%. Control geometry belongs to JCS-94 and route-specific spacing to each page issue.
 - JCS-94 owns complete control and action recipes. JCS-95 owns feedback and overlay compositions (dialogs, sheets, confirmations, toasts and state surfaces). Changes required now to preserve readable action labels, status text, control boundaries and focus are compatibility work for the new token roles.
 - JCS-87 owns sidebar composition. Page layouts, marketing imagery/copy, reader compositions, analytics presentation and JCS-6 brand assets remain their own issues. Shared token adoption does not claim those designs are complete.
-- Local application checks and browser evidence are recorded with JCS-86. Package contrast checks cover source pairs, not all rendered pages or an application-wide accessibility certification.
+- Local application checks and browser evidence are recorded with JCS-86. The §03 contrast contract covers token pairs, not all rendered pages or an application-wide accessibility certification.
 
 ## Contents
 
@@ -96,11 +72,11 @@ _Source: Final-stage draft synthesis. New final-stage requirements and synthesis
 
 ### 00.1 Purpose and release status
 
-Atlaris helps a learner turn a goal into a learning plan and return to the next useful piece of work. This system codifies the supplied cool-black/lavender direction without expanding the product merely to reproduce generated artwork. The four page families remain marketing, application, learning reader and standalone utility. [F01–F04]
+Atlaris helps a learner turn a goal into a learning plan and return to the next useful piece of work. This system codifies the Midnight direction (cool-black, cantaloupe action, electric-blue lines) without expanding the product merely to reproduce generated artwork. The four page families remain marketing, application, learning reader and standalone utility. [F01–F04]
 
 **Version 1.0-rc1 is the complete 00–27 documentation release candidate.** “Complete” refers to chapter coverage and the assembled reference package. It does not mean that every draft decision is approved, the product is migrated, the assets are production-ready, or the application conforms to an accessibility standard. No repository, deployment, account or original brand file was changed by this work.
 
-The target is a restrained, content-led interface: cool-black surfaces, clear light text, lavender emphasis, explicit interaction boundaries and occasional atmospheric imagery. Working views prioritize readable learning content over promotional decoration. The typography remains Work Sans for UI and Sora for display as comparison candidates; no exact font identification or canonical full vector wordmark is claimed. [F01 pp. 3–6; F02 §§02–04]
+The target is a restrained, content-led interface: cool-black surfaces, clear light text, cantaloupe emphasis, explicit interaction boundaries and occasional atmospheric imagery. Working views prioritize readable learning content over promotional decoration. The typography remains Work Sans for UI and Sora for display as comparison candidates; no exact font identification or canonical full vector wordmark is claimed. [F01 pp. 3–6; F02 §§02–04]
 
 ### 00.2 The complete chapter map
 
@@ -120,7 +96,7 @@ The companion Markdown is the detailed reference. The PDF is a visual summary; i
 | Question                                             | Source of truth                                                                           | What does not establish it                                              |
 | ---------------------------------------------------- | ----------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
 | What is the approved visual direction?               | Supplied final artwork, with provenance from the inventory.                               | Older generated variants or the repository's earlier copper/plum brand. |
-| What numeric design values does this candidate use?  | `tokens/atlaris.tokens.json`, interpreted through documented recipes.                     | Pixels sampled from screenshots or manually edited generated CSS.       |
+| What numeric design values does this candidate use?  | `src/styles/atlaris-tokens.css` (dark) and `:root` in `src/app/globals.css` (light).      | Pixels sampled from screenshots or manually edited generated CSS.       |
 | What functionality and data are currently available? | Pinned repository contracts and current authoritative server responses at implementation. | Demo content, prototype actions or decorative sidebar labels.           |
 | What is actually running?                            | The compiled application and its current configuration.                                   | A proposed target token or static source review.                        |
 | What is required for accessibility?                  | Applicable WCAG success criteria, with the selected project policies in §25.              | A contrast swatch, APG example, or automated pass count alone.          |
@@ -171,7 +147,7 @@ These principles are a synthesis of the supplied inventory, foundations, compone
 
 ### 01.2 Give each decision one clear primary action
 
-**Rule:** use lavender emphasis intentionally. Supporting actions remain neutral or quiet, while destructive emphasis belongs to the irreversible commit. Multiple regions can each contain a primary action; the policy is not an arbitrary one-button limit for an entire page. [F02 §13; F03 §14; F04 §20.3]
+**Rule:** use cantaloupe emphasis intentionally. Supporting actions remain neutral or quiet, while destructive emphasis belongs to the irreversible commit. Multiple regions can each contain a primary action; the policy is not an arbitrary one-button limit for an entire page. [F02 §13; F03 §14; F04 §20.3]
 
 **Apply:** “Create plan” can lead the generation form; Cancel remains secondary. A completed badge is not another bright action button.
 
@@ -241,7 +217,7 @@ Use the supplied standalone SVG mark as the canonical mark geometry. For a compl
 | Small favicon            | `brand/favicon-16.svg`                  | Retain simplified details; do not shrink the full mark as a substitute.                      |
 | 32px favicon             | `brand/favicon-32.svg`                  | Keep the supplied small-format export.                                                       |
 | Complete lockups         | `logo-on-dark.png`, `logo-on-light.png` | Different visible bounds and weight; do not swap at equal canvas width as equivalent assets. |
-| Social graphic           | `brand/og-default.png`                  | 1200 × 630 export from the existing source; metadata uses this path.                        |
+| Social graphic           | `brand/og-default.png`                  | 1200 × 630 export from the existing source; metadata uses this path.                         |
 
 ### Draft usage rules
 
@@ -263,70 +239,131 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ## 03 — Color
 
-### Dark-first, not dark-only
+### Midnight palette
 
-This draft specifies the approved **cool-black / lavender** direction. It does not remove the application’s existing light/system preference, and it does not invent a light application theme from a light-logo asset. New dark tokens are scoped to `[data-atlaris-theme="dark"]`; there is no global `:root` or production `.dark` override. [A01 §§4, 11]
+Atlaris uses the **Midnight** palette, adopted 2026-10-30 for the pre-launch refinements. It replaces the earlier cool-black/lavender direction. Three source colors carry it: **Midnight Black `#02070A`**, **Electric Blue `#0297DE`** and **Cantaloupe Orange `#FC734D`**. Neutrals are mixed from midnight toward `#F4F7FA`, so every surface keeps the same blue-black cast and no grey is neutral.
 
-The two mark colors are exact asset values. Their reuse as surface/text colors, all remaining UI values, and the interaction-state assignments are proposed normalization decisions. The old plum/copper values remain the verified repository baseline, not the target theme. [A01 §4; R01]
+The roles are fixed. Cantaloupe is the action and brand-emphasis color, used for the primary button, the current navigation item, selected tabs, progress fills and one highlighted moment per screen. Electric blue is never a button fill: it is a line, a link or a ring (inline links, focus, the first chart series, information status). Keep blue and cantaloupe controls (buttons, tabs, toggles, chips) from sitting side by side. The rule covers controls only: decorative arcs, glow and chart lines may be blue next to cantaloupe (2026-11-02).
 
-### Main semantic roles
+The app is dark-first, not dark-only. Dark values live in `src/styles/atlaris-tokens.css` on `[data-atlaris-theme="dark"]`; the light theme lives in `:root` in `src/app/globals.css`. Light, dark and system preferences all stay supported.
 
-| Role             | Hex     | Use                                               |
-| ---------------- | ------- | ------------------------------------------------- |
-| Canvas           | #070B10 | Opaque working background.                        |
-| Surface          | #0B1118 | Cards, panels and fields.                         |
-| Raised           | #111A25 | Menus and elevated regions.                       |
-| Neutral hover    | #1B2838 | Opaque neutral hover/pressed fill.                |
-| Selected surface | #1C1933 | Current navigation and restrained accent regions. |
-| Primary text     | #F8FAFC | Headings, labels and primary content.             |
-| Secondary text   | #B8C5D6 | Supporting prose.                                 |
-| Muted text       | #8C9CB2 | Metadata and placeholders; no additional opacity. |
-| Link             | #AE9CFF | Underlined inline links.                          |
-| Focus ring       | #B3A2FF | Opaque outline separated from the control.        |
-| Subtle divider   | #253244 | Nonessential grouping and separators.             |
-| Control boundary | #62738A | Field and outline-control identification.         |
-| Strong boundary  | #8C9CB2 | Higher-emphasis/hover boundary.                   |
+**Decision (2026-11-02): the landing hero follows the theme.** The `/landing` hero, its example cards and the header above it render in the page theme; nothing on the page forces a dark or light scope. In light, the beam layers paint normally at 60–65% strength instead of screen-blending, the core is cantaloupe-400 instead of white, the stars are fixed electric-500 dots at 35% opacity, and the supporting copy uses `#2B3A4D` (7.5:1; muted text is about 4.1:1 there). Every value that differs between the themes is a `--hero-*` token on `.hero` in `landing.module.css`. The light theme also defines the cantaloupe-300/400/500 and electric-200/400/500 primitives the beam draws with. The fine print, caption and card labels sit on frosted chips, and the card panels are 94% opaque so their muted text holds 4.5:1 over the brightest part of the beam. This replaces the earlier always-dark hero with light cards.
+
+### Dark primitives
+
+| Primitive      | Hex     | Primitive        | Hex     |
+| -------------- | ------- | ---------------- | ------- |
+| `neutral-1000` | #02070A | `cantaloupe-950` | #2A140D |
+| `neutral-950`  | #0A1219 | `cantaloupe-600` | #E8603A |
+| `neutral-900`  | #121C26 | `cantaloupe-500` | #FC734D |
+| `neutral-850`  | #182433 | `cantaloupe-400` | #FD8B69 |
+| `neutral-800`  | #233142 | `cantaloupe-300` | #FEA083 |
+| `neutral-600`  | #5E6F86 | `electric-950`   | #04243A |
+| `neutral-400`  | #8A9AAE | `electric-500`   | #0297DE |
+| `neutral-200`  | #B5C2D1 | `electric-400`   | #2EAEEA |
+| `neutral-50`   | #E1E7EE | `electric-300`   | #5FBDF0 |
+| `neutral-0`    | #F4F7FA | `electric-200`   | #8FD1F5 |
+
+Green, amber and rose (status and destructive) are unchanged from the previous palette.
+
+A falling metric (`--trend-down`, the analytics week-over-week arrow) is red in both themes: the danger red `#B42318` in light, `#FF4F5E` in dark (5.9:1 on the surface). Dark rose-400 reads as cantaloupe at icon size, so the trend arrow does not use it (2026-11-02).
+
+### Main semantic roles (dark)
+
+| Role             | Hex     | Use                                                   |
+| ---------------- | ------- | ----------------------------------------------------- |
+| Canvas           | #02070A | Opaque working background.                            |
+| Surface          | #0A1219 | Cards, panels and fields.                             |
+| Raised           | #121C26 | Menus and elevated regions.                           |
+| Neutral hover    | #182433 | Opaque neutral hover/pressed fill.                    |
+| Selected surface | #2A140D | Current navigation, selected rows, soft-primary fill. |
+| Primary text     | #F4F7FA | Headings, labels and primary content.                 |
+| Secondary text   | #B5C2D1 | Supporting prose.                                     |
+| Muted text       | #8A9AAE | Metadata and placeholders; no additional opacity.     |
+| Accent text      | #FEA083 | Brand emphasis and `--primary` text/icons.            |
+| Link             | #5FBDF0 | Underlined inline links; hover #8FD1F5.               |
+| Focus ring       | #2EAEEA | Opaque outline separated from the control.            |
+| Subtle divider   | #233142 | Nonessential grouping and separators.                 |
+| Control boundary | #5E6F86 | Field and outline-control identification.             |
+| Strong boundary  | #8A9AAE | Higher-emphasis/hover boundary.                       |
+| Selection        | #5FBDF0 | Text selection, with canvas-colored text.             |
 
 ### Action colors
 
 | Action           | Default | Hover   | Pressed | Label   |
 | ---------------- | ------- | ------- | ------- | ------- |
-| Primary          | #8B78FF | #A08FFF | #7C68EB | #070B10 |
-| Destructive fill | #C7344F | #CE3954 | #BA2C46 | #F8FAFC |
-| Inverse          | #F8FAFC | #E2E8F0 | #B8C5D6 | #070B10 |
+| Primary          | #FC734D | #FD8B69 | #E8603A | #02070A |
+| Destructive fill | #C7344F | #CE3954 | #BA2C46 | #F4F7FA |
+| Inverse          | #F4F7FA | #E1E7EE | #B5C2D1 | #02070A |
 
-Use lavender for the main application action. White/inverse is a defined marketing or utility treatment, not a competing second primary action. Inline links have their own role. Errors use a separate foreground/border token rather than borrowing the destructive button’s fill.
+Use cantaloupe for the main application action, with a dark label in both themes. White labels on cantaloupe fail (2.73:1). White/inverse is a marketing or utility treatment, not a competing second primary action. Inline links have their own blue role. Errors use a separate foreground/border token rather than borrowing the destructive button's fill.
 
-Secondary controls use raised neutral surfaces and primary text. Outline controls use the control boundary. Ghost controls rely on their label/icon and interaction state, not a barely visible outline. Disabled controls use opaque `#111A25` / `#8C9CB2`; the specimen does not multiply their opacity.
+Secondary controls use raised neutral surfaces and primary text. Outline controls use the control boundary. Ghost controls rely on their label/icon and interaction state, not a barely visible outline. Disabled controls use opaque `#121C26` / `#8A9AAE`.
 
-### Status and chart roles
+### Light theme
+
+| Role                      | Hex                         | Notes                                                 |
+| ------------------------- | --------------------------- | ----------------------------------------------------- |
+| Canvas / card             | #F8FAFC / #FFFFFF           | Unchanged cool light surfaces.                        |
+| Primary text              | #02070A                     | Midnight black.                                       |
+| Muted text                | #526174                     | Unchanged.                                            |
+| Accent text (`--primary`) | #B8441F                     | Dark cantaloupe for text and icons on light surfaces. |
+| Accent pressed            | #963515                     | `--primary-dark`.                                     |
+| Primary action            | #FC734D / #FD8B69 / #E8603A | Same fills as dark; label #02070A.                    |
+| Link / hover              | #03699E / #02527C           | Electric blue darkened for text on white.             |
+| Focus ring                | #0278B4                     | Also chart series 1.                                  |
+| Chart series 2            | #C2491F                     | Dark cantaloupe.                                      |
+| Chart series 3 / 4        | #087F5B / #8A5A00           | Green / amber.                                        |
+| Chart series 5            | #475569                     | Slate, the one neutral series; dashed (2026-11-02).   |
+
+Borders, inputs, status and destructive light values are unchanged from the earlier light extension.
+
+### Status and chart roles (dark)
 
 | Status         | Foreground / border | Subtle background |
 | -------------- | ------------------- | ----------------- |
 | Success        | #65D7AF             | #102B26           |
 | Warning        | #F0C765             | #2E2514           |
 | Danger / error | #FF8C94             | #30191F           |
-| Information    | #78B9FF             | #13283E           |
+| Information    | #5FBDF0             | #04243A           |
 
-Every status needs text or another non-color indicator. The five categorical chart colors are `#A08FFF`, `#78B9FF`, `#65D7AF`, `#F0C765`, `#FF8C94`. Pair them with labels and, where needed, distinct dashes/markers. These are visual roles, not permission to add metrics. Preserve the existing eight-week pulse and its seven summary metrics. [A01 §8]
+The five categorical chart colors are `#2EAEEA` (electric), `#FD8B69` (cantaloupe), `#65D7AF`, `#F0C765` and `#B5C2D1` (slate). Series 5 is slate in both themes, the one neutral, so no violet or pink returns; the eight-week pulse draws it dashed, with a dashed legend swatch, and pairs every series with a label (2026-11-02). Point labels carry a panel-colored halo, and a value just under another series' labelled value labels below its point. Every status needs text or another non-color indicator.
 
 ### Contrast contract
 
-The bundle contains **65 opaque sRGB contrast checks: 63 intended passing pairs and 2 deliberately rejected combinations**. Computations compare unrounded values with their threshold; the table display is rounded. These are color-pair tests, not a WCAG conformance declaration. [W01, W05, W06]
+Opaque sRGB pairs, WCAG 2 formula, unrounded values compared with the threshold. These are color-pair checks, not a WCAG conformance declaration. Re-run them whenever a value in `src/styles/atlaris-tokens.css` or the light `:root` changes.
 
-| Pair                         | Ratio   | Decision                                            |
-| ---------------------------- | ------- | --------------------------------------------------- |
-| Primary text / surface       | 18.12:1 | Use.                                                |
-| Muted text / surface         | 6.78:1  | Use at full opacity.                                |
-| Dark label / primary         | 5.85:1  | Use.                                                |
-| Dark label / primary pressed | 4.73:1  | Use at full opacity; do not darken further.         |
-| White label / primary        | 3.22:1  | Reject for ordinary-size button text.               |
-| Control border / surface     | 3.92:1  | Use for necessary control boundaries.               |
-| Subtle divider / surface     | 1.46:1  | Decoration only; reject as the sole field boundary. |
+| Pair                               | Ratio                                 | Decision                                        |
+| ---------------------------------- | ------------------------------------- | ----------------------------------------------- |
+| Primary text / surface             | 17.54:1                               | Use.                                            |
+| Secondary text / surface           | 10.42:1                               | Use.                                            |
+| Muted text / surface               | 6.57:1                                | Use at full opacity.                            |
+| Muted text / neutral hover         | 5.46:1                                | Use.                                            |
+| Control boundary / surface         | 3.68:1                                | Use for required control boundaries.            |
+| Control boundary / raised          | 3.36:1                                | Use.                                            |
+| Subtle divider / surface           | 1.43:1                                | Decoration only; reject as a field boundary.    |
+| Dark label / primary               | 7.42:1                                | Use.                                            |
+| Dark label / primary hover         | 8.75:1                                | Use.                                            |
+| Dark label / primary pressed       | 5.94:1                                | Use.                                            |
+| White label / primary              | 2.73:1                                | Reject.                                         |
+| Accent text / canvas               | 10.19:1                               | Use.                                            |
+| Accent text / selected surface     | 8.78:1                                | Use for soft-primary labels.                    |
+| Primary text / selected surface    | 16.22:1                               | Use for the current navigation item.            |
+| Link / surface                     | 9.00:1                                | Use.                                            |
+| Info text / info background        | 7.60:1                                | Use.                                            |
+| Focus ring / canvas                | 8.06:1                                | Use.                                            |
+| Focus ring / primary fill          | 1.09:1                                | Reject adjacency; keep the dark focus offset.   |
+| Light: primary text / canvas       | 19.18:1                               | Use.                                            |
+| Light: accent text / canvas        | 5.12:1                                | Use.                                            |
+| Light: accent text / action-soft   | 4.68:1                                | Use; action-soft is a 7% accent tint on canvas. |
+| Light: white label / accent        | 5.41:1                                | Use for `--primary-foreground` on `bg-primary`. |
+| Light: link / canvas               | 5.66:1                                | Use.                                            |
+| Light: focus ring / canvas         | 4.58:1                                | Use.                                            |
+| Light: dark label / primary action | 7.42:1                                | Use.                                            |
+| Light: chart series 1–5 / card     | 4.83 / 4.92 / 5.00 / 5.93 / 7.58:1    | Use; graphical objects need 3:1.                |
+| Dark: chart series 1–5 / canvas    | 8.06 / 8.75 / 11.46 / 12.59 / 11.18:1 | Use.                                            |
 
-Standard text needs 4.5:1; large text can use 3:1 under the WCAG definition. Do not classify a 20px semibold label as “large” automatically. Required visual control information and graphical objects need 3:1 against adjacent colors. Decorative boundaries are a different case. Inactive controls are contrast-exempt, but this system voluntarily keeps their labels legible. [W05, W06]
-
-Transparent fills, images and gradients require their own composite checks. Passing a token pair does not establish the contrast of an opacity-modified Tailwind class, third-party widget or image-backed heading.
+Standard text needs 4.5:1; large text can use 3:1 under the WCAG definition. Required visual control information and graphical objects need 3:1 against adjacent colors. Transparent fills, images and gradients require their own composite checks.
 
 ---
 
@@ -338,6 +375,8 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 **Work Sans** remains the UI/body/ordinary-heading candidate. **Sora** remains the marketing-display candidate. These names are verified in `src/app/layout.tsx`; they are not identified from the generated PNGs. The normalized fallback stacks are draft decisions. The logo wordmark is separate. [R01, R02]
 
+**Landing hero exception (2026-10-30):** the Midnight Beam hero on `/landing` adds **Instrument Serif** (display headline) and **IBM Plex Mono** (supporting copy and labels), loaded with `next/font` from `src/app/fonts.ts` and imported only by the landing components, so no other route loads them. Below the hero, IBM Plex Mono carries the step numbers and example lines; section headings stay on Sora (`type-display-section`), so Instrument Serif appears only in the hero (2026-11-02). The application UI, other marketing pages and the code role keep the families above.
+
 Use `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for the draft code role. The old CSS declares JetBrains Mono, but its loading is not established by the audited root. Do not add another font dependency without a deliberate decision. [A01 §5]
 
 **Typeface matching is not yet validated.** The browser used for this package did not have Work Sans or Sora installed and could not retrieve the comparison files. The packaged specimen therefore records system-fallback rendering. Its opt-in “Load comparison fonts” action can load the named families from Google Fonts in an online browser. No external request occurs until that action is selected; no font binaries are included.
@@ -346,23 +385,23 @@ Use `ui-monospace, SFMono-Regular, Menlo, Consolas, monospace` for the draft cod
 
 All nominal pixel sizes assume a 16px root. The authoring file uses rem sizes and unitless line heights. Do not force the user’s default root size to 16px.
 
-| Role            | Family      | Size / nominal line | Weight | Tracking | Use                       |
-| --------------- | ----------- | ------------------- | ------ | -------- | ------------------------- |
-| display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.        |
-| display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts. |
+| Role            | Family      | Size / nominal line | Weight | Tracking | Use                        |
+| --------------- | ----------- | ------------------- | ------ | -------- | -------------------------- |
+| display         | Sora        | 64 / 69.12px        | 600    | −1.28px  | Marketing desktop.         |
+| display-compact | Sora        | 40 / 46px           | 600    | −0.64px  | Marketing narrow layouts.  |
 | display-section | Sora        | 30–36 / ×1.08       | 600    | −0.035em | Marketing section heading. |
-| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.    |
-| title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.        |
-| title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title. |
-| section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.     |
-| card            | Work Sans   | 20 / 28px           | 600    | 0        | Card/subsection.          |
-| reading         | Work Sans   | 16 / 26px           | 400    | 0        | Lesson prose.             |
-| body            | Work Sans   | 14 / 22px           | 400    | 0        | Compact application copy. |
-| label           | Work Sans   | 14 / 20px           | 500    | 0        | Controls.                 |
-| input           | Work Sans   | 16 / 24px           | 400    | 0        | Editable field values.    |
-| meta            | Work Sans   | 12 / 18px           | 400    | 0        | Nonessential metadata.    |
-| eyebrow         | Work Sans   | 12 / 16px           | 600    | +1.6px   | Short uppercase labels.   |
-| code            | System mono | 14 / 22px           | 400    | 0        | Code examples.            |
+| title-hero      | Work Sans   | 32–40 / ×1.2        | 600    | −0.02em  | Application page hero.     |
+| title           | Work Sans   | 32 / 40px           | 600    | −0.64px  | Application title.         |
+| title-compact   | Work Sans   | 28 / 36px           | 600    | −0.64px  | Narrow application title.  |
+| section         | Work Sans   | 24 / 32px           | 600    | −0.24px  | Main content section.      |
+| card            | Work Sans   | 20 / 28px           | 600    | 0        | Card/subsection.           |
+| reading         | Work Sans   | 16 / 26px           | 400    | 0        | Lesson prose.              |
+| body            | Work Sans   | 14 / 22px           | 400    | 0        | Compact application copy.  |
+| label           | Work Sans   | 14 / 20px           | 500    | 0        | Controls.                  |
+| input           | Work Sans   | 16 / 24px           | 400    | 0        | Editable field values.     |
+| meta            | Work Sans   | 12 / 18px           | 400    | 0        | Nonessential metadata.     |
+| eyebrow         | Work Sans   | 12 / 16px           | 600    | +1.6px   | Short uppercase labels.    |
+| code            | System mono | 14 / 22px           | 400    | 0        | Code examples.             |
 
 Keep headings semantic: an h2 does not become an h1 to obtain a larger visual size. Use the `semantic.type.*` role independently from the HTML element. Keep one primary page heading and a logical outline. Essential instructions use body/reading roles, not metadata or tracked uppercase.
 
@@ -484,9 +523,9 @@ These roles replace visual drift, not component APIs. The existing CSS derives r
 
 ### Boundary and focus contract
 
-Use 1px borders for ordinary boundaries, 2px for intentional emphasis and the focus ring. Subtle dividers use `#253244`; required control boundaries use `#62738A`; hover/strong boundaries use `#8C9CB2`. A field must not lose its invalid border when hovered or focused.
+Use 1px borders for ordinary boundaries, 2px for intentional emphasis and the focus ring. Subtle dividers use `#233142`; required control boundaries use `#5E6F86`; hover/strong boundaries use `#8A9AAE`. A field must not lose its invalid border when hovered or focused.
 
-The default focus treatment is **2px solid `#B3A2FF`, offset by 2px**, with a dark separating layer for bright controls. Focus remains visible during hover and pressed states. The specimen tests actual keyboard focus, not just its forced-focus preview. This is a system treatment, not a claim that every composed page satisfies WCAG focus requirements. [W08]
+The default focus treatment is **2px solid `#2EAEEA` (Electric Blue 400), offset by 2px**, with a dark separating layer for bright controls. Focus remains visible during hover and pressed states. The specimen tests actual keyboard focus, not just its forced-focus preview. This is a system treatment, not a claim that every composed page satisfies WCAG focus requirements. [W08]
 
 ### Elevation and layers
 
@@ -499,7 +538,7 @@ The default focus treatment is **2px solid `#B3A2FF`, offset by 2px**, with a da
 
 The layer order is base 0, sticky 10, menu 20, scrim 40, dialog 50, toast 60, skip link 100. Validate these against existing portals and local stacking contexts; a larger z-index cannot escape a parent stacking context. Browser top-layer elements have separate behavior.
 
-Purple/blue atmospheric glow belongs to optional imagery treatment, not elevation. Do not add a glow to every focused panel or use a shadow instead of a necessary control border.
+Blue/cantaloupe atmospheric glow belongs to optional imagery treatment, not elevation. Do not add a glow to every focused panel or use a shadow instead of a necessary control border.
 
 ---
 
@@ -529,14 +568,16 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ## 09 — Imagery
 
+**Decision (2026-11-02): no photography.** The generated landscape and planet photos are removed from the product, along with `public/artwork/`. Page heroes and CTA banners draw a thin horizon arc in CSS (`src/components/ui/horizon-arc.tsx`, from `--link`); the landing's closing banner turns it off (`horizon={false}`), because on a card that wide and short the clipped arc reads as a streak; the landing hero keeps its CSS beam; illustrations are product-native, such as the About route constellation or real UI previews. Do not add generated or stock imagery. A new image asset needs explicit sign-off. The slot rules below now apply to those drawn treatments.
+
 ### Preserve the approved visual language
 
-The source screens establish cool-black landscapes, astronomical horizons, isolated distant highlights and subdued blue/lavender atmosphere. Use them to frame a message, not as repeated decoration beneath every control. This is observed visual direction; exact crop, overlay and brightness settings were not supplied. [A01 §6; A03]
+The source screens establish cool-black landscapes, astronomical horizons, isolated distant highlights and subdued blue atmosphere. Use them to frame a message, not as repeated decoration beneath every control. This is observed visual direction; exact crop, overlay and brightness settings were not supplied. [A01 §6; A03]
 
 | Slot               | Draft rule                                                                                                         |
 | ------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Marketing hero     | One atmospheric image with a quiet text-safe region; responsive crop chosen intentionally.                         |
-| Application header | Optional compact image, not a mandatory full-height hero.                                                          |
+| Marketing hero     | One drawn atmosphere (beam or horizon arc) kept clear of the text column.                                          |
+| Application header | Optional horizon arc, not a mandatory full-height hero.                                                            |
 | Lesson reader      | No decorative image behind prose, code, form fields or progress labels.                                            |
 | Plan card          | Use imagery only when it aids recognition; keep status/actions outside the image.                                  |
 | Maintenance        | Atmosphere may be prominent, but status, affected capabilities and a truthful recovery instruction remain primary. |
@@ -566,6 +607,8 @@ No timing is recoverable from a still screenshot. The following timing/behavior 
 | Deliberate reveal | 300ms    | Enter `(0, 0, .2, 1)`                       | Optional contextual reveal; not a page-loading gate.    |
 | Immediate         | 0ms      | None                                        | Reduced-motion equivalent and urgent state information. |
 
+Theme switches, from the toggle or an OS change while following the system theme, crossfade the whole page with a root view transition at the Overlay duration; browsers without View Transitions and reduced motion switch instantly.
+
 Animate only what communicates a change. Do not animate a percentage unless it corresponds to real progress, and do not invent estimated completion time from a spinner. Avoid repeating atmospheric motion in working views. Hover does not require movement or a lifted card.
 
 The specimen contains an 800ms linear spinner as a local demonstration, not an additional recovery estimate or motion brand principle. Under `prefers-reduced-motion: reduce`, spatial transitions and that spinner stop while their text labels remain. This preference handling is a project baseline; it does not replace testing keyboard, focus or real asynchronous behavior. [A01 §6; W01]
@@ -580,7 +623,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ### Authoring format
 
-`tokens/atlaris.tokens.json` is the single editable token source. It uses the **DTCG 2025.10** format for the types present in this package. This is a stable Community Group specification, not a W3C Recommendation. The included compiler validates the Atlaris subset; it is not a complete general-purpose DTCG implementation or an import guarantee for every design tool. [W04]
+**Superseded 2026-10-30:** `src/styles/atlaris-tokens.css` is now the single editable dark token source (see “Token source” at the top of this file). The text below describes the retired external package. `tokens/atlaris.tokens.json` used the **DTCG 2025.10** format for the types present in that package. This is a stable Community Group specification, not a W3C Recommendation. The included compiler validates the Atlaris subset; it is not a complete general-purpose DTCG implementation or an import guarantee for every design tool. [W04]
 
 The source has three explicit groups: `primitive`, `semantic`, `component`. Individual token/group keys do not contain periods; periods in a reference path separate nested groups. Each token has `$type`, `$value`, `$description` and provenance metadata under `$extensions.app.atlaris.design-system`. [W04]
 
@@ -592,14 +635,16 @@ Primitive categories are color, spacing, radius, border width, control/icon size
 {
   "primitive": {
     "color": {
-      "lavender": {
+      "cantaloupe": {
         "500": {
           "$type": "color",
           "$value": {
             "colorSpace": "srgb",
-            "components": [0.5450980392156862, 0.47058823529411764, 1],
+            "components": [
+              0.9882352941176471, 0.45098039215686275, 0.30196078431372547
+            ],
             "alpha": 1,
-            "hex": "#8B78FF"
+            "hex": "#FC734D"
           },
           "$description": "Draft primary-action palette value."
         }
@@ -611,7 +656,7 @@ Primitive categories are color, spacing, radius, border width, control/icon size
 
 Colors use typed sRGB objects. Dimension values use `px` or `rem`; durations use `ms`; easing uses four-number cubic Bézier arrays; typography and shadows use composites. A 70ch reading measure stays a documented CSS layout rule rather than an invented unsupported token type. [W04]
 
-Do not hand-maintain separate CSS values. Running `python3 scripts/build.py` produces scoped CSS, a resolved JSON view, the token catalog and contrast reports. The HTML specimen is rebuilt from its template plus generated tokens. The script uses Python’s standard library; no build dependency installation or external request is required.
+Do not maintain a second copy of these values. Edit `src/styles/atlaris-tokens.css` directly and keep primitive → semantic → component aliases intact; there is no generation step.
 
 ---
 
@@ -622,7 +667,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 Semantic roles express intent so a future palette change does not require editing every component. The word “primary” is deliberately split into action, text/link, focus, selection and chart roles.
 
 ```text
-primitive.color.lavender.500
+primitive.color.cantaloupe.500
           ↓
 semantic.color.action.primary.background
           ↓
@@ -647,7 +692,7 @@ CSS names are deterministic: replace path separators with hyphens and add `--at-
 
 ### Scope and integration contract
 
-All generated tokens live on `[data-atlaris-theme="dark"]`. Theme overrides must be declared on the same token-owning element so aliases resolve in the intended context. Do not attach an arbitrary dark token scope inside a light page and assume all vendor portals inherit it.
+All dark tokens live on `[data-atlaris-theme="dark"]`. Theme overrides must be declared on the same token-owning element so aliases resolve in the intended context. Do not attach an arbitrary dark token scope inside a light page and assume all vendor portals inherit it.
 
 Do not bind one old global variable to two incompatible purposes. In particular, the current destructive button hardcodes white text and opacity-modified fills, while fields use destructive color for errors. New destructive action and error roles need coordinated component changes, not only an edit to `--destructive`. [R03, R04]
 
@@ -723,17 +768,17 @@ The repository exports nine variant names. Keep all nine call-site contracts. Th
 
 | Existing `variant` | Draft visual role      | Default / hover / pressed background | Foreground                 | Use                                                                                           |
 | ------------------ | ---------------------- | ------------------------------------ | -------------------------- | --------------------------------------------------------------------------------------------- |
-| `default`          | Primary                | `#8B78FF` / `#A08FFF` / `#7C68EB`    | `#070B10`                  | Main action in a decision area.                                                               |
-| `cta`              | Prominent primary      | Same primary state colors            | `#070B10`                  | Existing marketing call sites; prominence comes from placement/size, not mandatory lift/glow. |
-| `secondary`        | Neutral                | `#111A25` / `#1B2838` / `#1B2838`    | `#F8FAFC`                  | Supporting actions.                                                                           |
-| `outline`          | Bounded secondary      | `#0B1118` / `#111A25` / `#1B2838`    | `#F8FAFC`                  | Supporting action needing a visible boundary.                                                 |
-| `ghost`            | Quiet                  | Canvas-context base / raised / hover | `#F8FAFC`                  | Toolbars and low-emphasis actions.                                                            |
-| `link`             | Text action/link style | No required fill                     | `#AE9CFF`; hover `#B3A2FF` | Underlined inline navigation or a genuine text action with correct element semantics.         |
-| `destructive`      | Destructive commit     | `#C7344F` / `#CE3954` / `#BA2C46`    | `#F8FAFC`                  | Final irreversible action, not routine navigation.                                            |
-| `soft-primary`     | Restrained accent      | `#1C1933` / `#111A25` / `#1B2838`    | `#AE9CFF`                  | Supporting accent; link-colored boundary.                                                     |
-| `success`          | Positive action        | `#65D7AF` / `#87E4C5` / `#49BC95`    | `#070B10`                  | Existing positive-action contexts; not an automatic replacement for every completed state.    |
+| `default`          | Primary                | `#FC734D` / `#FD8B69` / `#E8603A`    | `#02070A`                  | Main action in a decision area.                                                               |
+| `cta`              | Prominent primary      | Same primary state colors            | `#02070A`                  | Existing marketing call sites; prominence comes from placement/size, not mandatory lift/glow. |
+| `secondary`        | Neutral                | `#121C26` / `#182433` / `#182433`    | `#F4F7FA`                  | Supporting actions.                                                                           |
+| `outline`          | Bounded secondary      | `#0A1219` / `#121C26` / `#182433`    | `#F4F7FA`                  | Supporting action needing a visible boundary.                                                 |
+| `ghost`            | Quiet                  | Canvas-context base / raised / hover | `#F4F7FA`                  | Toolbars and low-emphasis actions.                                                            |
+| `link`             | Text action/link style | No required fill                     | `#5FBDF0`; hover `#8FD1F5` | Underlined inline navigation or a genuine text action with correct element semantics.         |
+| `destructive`      | Destructive commit     | `#C7344F` / `#CE3954` / `#BA2C46`    | `#F4F7FA`                  | Final irreversible action, not routine navigation.                                            |
+| `soft-primary`     | Restrained accent      | `#2A140D` / `#121C26` / `#182433`    | `#FEA083`                  | Supporting accent; accent-colored boundary.                                                   |
+| `success`          | Positive action        | `#65D7AF` / `#87E4C5` / `#49BC95`    | `#02070A`                  | Existing positive-action contexts; not an automatic replacement for every completed state.    |
 
-**Inverse context:** v0.2’s light action (`#F8FAFC` / `#E2E8F0` / `#B8C5D6`, dark label) remains a documented marketing/utility context. `inverse` is not an existing Button variant. Do not ship that prop by assumption; adopt through a reviewed alias/API change only when a real call site needs it. [A01]
+**Inverse context:** The light action (`#F4F7FA` / `#E1E7EE` / `#B5C2D1`, dark label) remains a documented marketing/utility context. `inverse` is not an existing Button variant. Do not ship that prop by assumption; adopt through a reviewed alias/API change only when a real call site needs it. [A01]
 
 A ghost control may inherit a quiet host surface instead of painting a conspicuous canvas rectangle, provided its text/focus pairs are tested on that host. The provided forced-state matrix uses the canvas context. This is a composition rule, not a silent replacement of the inherited background token.
 
@@ -755,7 +800,7 @@ Use `min-height`, not a hard clipping height. Use the inherited label type role:
 | Default        | Semantic variant tokens. One clearly dominant action per local decision.                                                                        |
 | Hover          | Variant hover background; do not add movement to routine working controls.                                                                      |
 | Pressed        | Pressed background while pointer/key activation is held; focus remains visible.                                                                 |
-| Keyboard focus | 2px opaque lavender outline with 2px separation; dark separator for bright fills.                                                               |
+| Keyboard focus | 2px opaque electric-blue outline with 2px separation; dark separator for bright fills.                                                          |
 | Disabled       | Opaque disabled surface/text/border; native `disabled` where appropriate, with a visible nearby reason when needed. No hover/activation.        |
 | Loading        | Retain a useful action label plus a busy cue, maintain width, prevent duplicate action, provide a concise status message. Do not invent an ETA. |
 
@@ -813,9 +858,9 @@ Do not claim search-as-you-type or multi-selection from this select. A searchabl
 
 ### 15.4 Checkbox and switch
 
-The plan library already uses native checkbox inputs. Retain their native checked/disabled behavior. A proposed 20px visual box sits in a target area of at least 32px for fine pointers or 44px for coarse pointers. Use a visible border when unchecked and a dark checkmark on lavender when checked. An indeterminate parent represents some—not all—eligible rows selected; assign the native `indeterminate` property. Never count generating, ineligible rows as selectable. [R15; W04]
+The plan library already uses native checkbox inputs. Retain their native checked/disabled behavior. A proposed 20px visual box sits in a target area of at least 32px for fine pointers or 44px for coarse pointers. Use a visible border when unchecked and a dark checkmark on cantaloupe when checked. An indeterminate parent represents some—not all—eligible rows selected; assign the native `indeterminate` property. Never count generating, ineligible rows as selectable. [R15; W04]
 
-The existing `Switch` is Radix-based. Its draft visual track is 44 × 24px with a 20px thumb and a larger target wrapper. Off uses raised fill/light thumb; on uses lavender/dark thumb. The visible label remains unchanged as the state changes. The switch supports only on/off, not indeterminate. Use it for an immediate preference only when that behavior is actually supported; do not replace an explicit Save flow with auto-save merely because the control looks like a switch. [R05; W05]
+The existing `Switch` is Radix-based. Its draft visual track is 44 × 24px with a 20px thumb and a larger target wrapper. Off uses raised fill/light thumb; on uses cantaloupe/dark thumb. The visible label remains unchanged as the state changes. The switch supports only on/off, not indeterminate. Use it for an immediate preference only when that behavior is actually supported; do not replace an explicit Save flow with auto-save merely because the control looks like a switch. [R05; W05]
 
 Read-only is not a native switch/checkbox state. For non-editable settings show a clearly labeled value; do not fake read-only by leaving a switch clickable while discarding its changes. On a remote-save failure restore the confirmed value and explain failure. These are draft error-handling requirements, not claims that the existing Switch wrapper implements persistence.
 
@@ -853,7 +898,7 @@ _Source: Components v0.3. Chapter text retained from its source stage; reference
 
 The route source contains `/`, `/landing`, `/dashboard`, `/plans`, `/plans/new`, `/analytics`, `/analytics/usage`, `/analytics/achievements`, `/settings`, `/pricing`, `/about`, plus auth and a plan-detail helper. Route existence is not a mandate to put everything in the sidebar. No Projects, Resources, Notes, Community, global search or notifications feature is inferred from a mockup. [R14]
 
-The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with New plan as an action. Retain auth, entitlement and account controls in the real shell. Achievements remains a separate existing route with its previously documented Coming Soon status, not an invented badge dashboard. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
+The proposed primary application navigation is Dashboard, Your plans, Analytics and Settings, with “Create a plan” as the one create action, in the sidebar. Retain auth, entitlement and account controls in the real shell. Achievements is not built; its old route redirects to usage analytics, and no badge dashboard is inferred from the mockup. The existing shell’s SiteHeader-to-sidebar migration belongs to the integration and page-pattern phase. [A02]
 
 Navigation uses links and an appropriately named `<nav>`. Mark the current destination with `aria-current="page"`, a persistent marker and the selected-surface token. Use 44px minimum item height, 8px radius and 8px icon/text gap. A current item can still show hover and keyboard focus. Do not give ordinary site navigation `role="menu"`; it is not a desktop command menu. [A01; W08]
 
@@ -902,7 +947,7 @@ A card with a primary link and an actions menu must not become one giant link co
 
 The existing Badge variants are `default`, `secondary`, `destructive`, `outline`, `product`; its default is `outline`. These are visual variants, not business status enums. Compose status-specific colors using the semantic status families without claiming a new `status` prop exists. [R09]
 
-The draft badge uses metadata typography, pill radius, 8px inline/2px block padding. A status label is not an interactive target unless it is intentionally a filter or link. Use icon/word plus color for Active, Completed, Generating, Failed, Not started and Inactive. Locked is an **access condition**, not automatically another lifecycle status. Generating is ongoing, not necessarily a warning. Avoid showing all states as equally positive lavender pills.
+The draft badge uses metadata typography, pill radius, 8px inline/2px block padding. A status label is not an interactive target unless it is intentionally a filter or link. Use icon/word plus color for Active, Completed, Generating, Failed, Not started and Inactive. Locked is an **access condition**, not automatically another lifecycle status. Generating is ongoing, not necessarily a warning. Avoid showing all states as equally positive accent-colored pills.
 
 Demo statuses and counts are specimen data. A green completed label alone must not imply a task was persisted. Render authoritative server state after reconciliation.
 
@@ -918,7 +963,7 @@ The specimen table supports local sorting and eligible-row selection; it intenti
 
 Use the actual completed/total task values and existing rounding rules. Zero is a real value; absent total is not zero completion. Unknown job progress uses indeterminate status, not an arbitrary 37% bar. Keep a visible label, units and the numeric relationship. Do not use completion events as if they were unique completed tasks. [A02; R18]
 
-**Explicit refinement from v0.2:** its lavender fill against a fully painted `#62738A` track has inadequate 3:1 contrast for distinguishing those adjacent quantities. The old `component.progress.track` token remains unchanged for compatibility. The new recipe uses `component.progress.track-background` (surface) for the remaining rail and `component.progress.track-border` (control boundary) for its outline; fill remains lavender. This is a disclosed component-recipe change, not an unannounced foundation replacement. Exact ratios and rejected legacy pair are in the contrast report. [T01]
+**Explicit refinement from v0.2:** its primary-action fill against a fully painted `#62738A` track has inadequate 3:1 contrast for distinguishing those adjacent quantities. The old `component.progress.track` token remains unchanged for compatibility. The new recipe uses `component.progress.track-background` (surface) for the remaining rail and `component.progress.track-border` (control boundary) for its outline; fill is the primary action color (cantaloupe). This is a disclosed component-recipe change, not an unannounced foundation replacement. Exact ratios and rejected legacy pair are in the contrast report. [T01]
 
 The existing Progress wrapper maps `(value || 0)` to its indicator transform. A correct indeterminate visual must therefore be deliberately added at integration; an omitted value does not currently create a new spinner/indeterminate animation by magic. Preserve the underlying primitive semantics and clamp/validate known values. [R11]
 
@@ -1050,7 +1095,7 @@ Theme tokens must reach portaled content. Applying the dark theme attribute only
 
 ### 19.5 Menu and tooltip
 
-DropdownMenu preserves its existing default/destructive item variants, `onSelect` behavior, disabled items, focus movement and collision-aware positioning. The draft menu is 192px minimum / 320px maximum, constrained by available viewport width, with 8px padding and 40px minimum item height (44px coarse). The library’s actual plan menu is deletion-focused; this package does not add Rename, Duplicate, Export or Archive commands. [R15, R19]
+DropdownMenu preserves its existing default/destructive item variants and adds `current` for an item that links to the page being shown (selected surface and primary text, kept while focused; pair it with `aria-current="page"`), `onSelect` behavior, disabled items, focus movement and collision-aware positioning. The draft menu is 192px minimum / 320px maximum, constrained by available viewport width, with 8px padding and 40px minimum item height (44px coarse). The library’s actual plan menu is deletion-focused; this package does not add Rename, Duplicate, Export or Archive commands. [R15, R19]
 
 Use menu-button semantics and a programmatic expanded state; opening focuses an item, arrows navigate, Escape returns focus and typed characters support the primitive’s typeahead where available. Preserve library behavior rather than hand-rolling it in production. A menu-to-dialog transition must restore focus to the lasting trigger or relevant surviving row, not to the now-unmounted menu item. [W06, W11]
 
@@ -1087,23 +1132,23 @@ The existing shell still uses a header-aware top offset of `calc(4rem + env(safe
 
 Compose PageHeader with a title, short factual description, and at most one visually dominant action per decision region. Breadcrumbs precede the title when hierarchy matters; filters belong with the data they control. Async quotas/counts may stream separately without blocking the title or inventing a zero. Preserve space for loading content only where it prevents movement; never reserve a fixed page-header height that clips enlarged text.
 
-A decorative planetary horizon is optional and not a dependency of the layout. Do not recreate it by cropping a screenshot that contains interface text. Until independent production illustrations exist, the specimen uses plain opaque surfaces and layout labels. Brand assets remain the supplied mark/lockup; the canonical full vector lockup and exact screenshot-font identification are still unresolved. [A01–A03]
+A decorative horizon is optional and not a dependency of the layout; `PageHero` draws it with `HorizonArc` in CSS. Do not recreate it from a screenshot or a photo. Brand assets remain the supplied mark/lockup; the canonical full vector lockup and exact screenshot-font identification are still unresolved. [A01–A03]
 
 ### 20.4 Page recipe map
 
-| Approved screen / real destination             | First useful content                            | Supporting regions                                             | Preserve / exclude                                                                   |
-| ---------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| Landing `/` or existing `/landing`             | Product purpose and one next action             | Explanations, real examples, footer                            | Preserve approved visual direction, not every promotional claim.                     |
-| Pricing `/pricing`                             | Current purchasable plans                       | Entitlements and questions                                     | Read live billing configuration at implementation; no price or quota is frozen here. |
-| About `/about`                                 | Purpose and product story                       | Illustrations and contextual sections                          | No inferred team, customer or performance claims.                                    |
-| Dashboard `/dashboard`                         | Existing actionable learning summary            | Existing progress/context                                      | Recompose current data; no new tracking metric to fill a grid.                       |
-| Your plans `/plans`                            | Search/filter controls and library items        | Sorting, selection, pagination and usage                       | Preserve query and access contracts; no template browser.                            |
-| Generation `/plans/new`                        | Goal plus four preferences                      | Conditional date and valid submission status                   | One form, not the mockup's four-step wizard.                                         |
-| Learning plan `/plans/[id]`                    | Current plan position and available next action | Ordered modules, tasks and existing resource context           | Do not unlock prerequisite-restricted learning by changing the layout.               |
-| Module/lesson `/plans/[id]/modules/[moduleId]` | Actual task/lesson content                      | Parent context, progress and existing adjacent-module controls | No separate invented lesson URL, runner or playground.                               |
-| Usage `/analytics/usage`                       | Eight-week pulse and current metric summary     | Seven existing metric families                                 | No elapsed-time tracking, monthly selector, recent feed or new plan KPI.             |
-| Settings `/settings` and profile catch-all     | Account sections on one page                    | Section-level loading and saves                                | Preserve Clerk/vendor ownership and anchor targets.                                  |
-| Maintenance `/maintenance`                     | Service state and safe next action              | Short explanatory copy                                         | Do not offer a home link that immediately redirects back to maintenance.             |
+| Approved screen / real destination             | First useful content                            | Supporting regions                                             | Preserve / exclude                                                                          |
+| ---------------------------------------------- | ----------------------------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Landing `/` or existing `/landing`             | Product purpose and one next action             | Problem, how it works, plan contents, tier limits, closing CTA | Preserve approved visual direction, not every promotional claim; prices stay on `/pricing`. |
+| Pricing `/pricing`                             | Current purchasable plans                       | Entitlements and questions                                     | Read live billing configuration at implementation; no price or quota is frozen here.        |
+| About `/about`                                 | Retired (2026-11-02)                            | None; answers 404 unless the `about-page` flag is on           | Code kept; no navigation, footer or in-page link points to it.                              |
+| Dashboard `/dashboard`                         | Existing actionable learning summary            | Existing progress/context                                      | Recompose current data; no new tracking metric to fill a grid.                              |
+| Your plans `/plans`                            | Search/filter controls and library items        | Sorting, selection, pagination and usage                       | Preserve query and access contracts; no template browser.                                   |
+| Generation `/plans/new`                        | Goal plus four preferences                      | Conditional date and valid submission status                   | One form, not the mockup's four-step wizard.                                                |
+| Learning plan `/plans/[id]`                    | Current plan position and available next action | Ordered modules, tasks and existing resource context           | Do not unlock prerequisite-restricted learning by changing the layout.                      |
+| Module/lesson `/plans/[id]/modules/[moduleId]` | Actual task/lesson content                      | Parent context, progress and existing adjacent-module controls | No separate invented lesson URL, runner or playground.                                      |
+| Usage `/analytics/usage`                       | Eight-week pulse and current metric summary     | Seven existing metric families                                 | No elapsed-time tracking, monthly selector, recent feed or new plan KPI.                    |
+| Settings `/settings` and profile catch-all     | Account sections on one page                    | Section-level loading and saves                                | Preserve Clerk/vendor ownership and anchor targets.                                         |
+| Maintenance `/maintenance`                     | Service state and safe next action              | Short explanatory copy                                         | Do not offer a home link that immediately redirects back to maintenance.                    |
 
 The read module route validates parameters and renders data inside Suspense. Its content distinguishes unauthenticated, not found, forbidden, entitlement-required, free-plan-selection-required and internal-error outcomes. Authentication retains a return path to the requested module. Treat these as separate conditions; do not expose protected titles or content in an error template. [R11–R12]
 
@@ -1119,7 +1164,7 @@ The specimen demonstrates an outline and sample prose, not actual persisted per-
 
 ### 20.6 Settings and analytics composition
 
-Settings uses shared chrome with the existing routed sections: Profile, Plan & billing, Usage, AI model, Integrations, Notifications. The earlier single-ledger proposal is superseded by the current route contract. Preserve section IDs, the profile catch-all, checkout synchronization host and independent Suspense boundaries. Local navigation links to those existing section routes; it does not reimplement account management. One section waiting for data must not turn every other section into a skeleton.
+Settings uses shared chrome with the existing routed sections: Profile, Billing, Usage, AI model, Notifications; each route marks its own nav item. The earlier single-ledger proposal is superseded by the current route contract. Preserve section IDs, the profile catch-all, checkout synchronization host and independent Suspense boundaries. Local navigation links to those existing section routes; it does not reimplement account management. One section waiting for data must not turn every other section into a skeleton.
 
 Analytics retains the Eight-week pulse and Tasks, Modules, Completed time, Progress changes, Completed events, Active days, Streak. Layout can regroup the first three as current completion and the remaining four as activity/streak context, provided the time scope is explicit. A task-completion percent is not an average of plan percentages; completed time is estimated, not a timer. A week still in progress should be visibly identified. The companion v0.3 specification remains the detailed metric contract. [A03 §17.5]
 
@@ -1152,7 +1197,7 @@ The existing library is query-driven, with search/status/sort/page, status count
 | Status filter | Accept existing statuses; preserve search/sort             | Links or a labeled select, not ARIA tabs.                             |
 | Sort          | Preserve supported keys/directions; reset page             | Labeled control or sortable column heading.                           |
 | Selection     | Count eligible items on the current page                   | Checkbox with full hit area; indeterminate select-all when partial.   |
-| Creation      | Follow `canCreatePlan` / entitlement result                | Existing New plan or Upgrade action, not an always-enabled CTA.       |
+| Creation      | Follow `canCreatePlan` / entitlement result                | Sidebar Create a plan or Upgrade action, not an always-enabled CTA.   |
 | Bulk actions  | Show only with selection; retain deletion restrictions     | Count, Clear and Delete selected.                                     |
 | Pagination    | Preserve search/status/sort; previous/next only when valid | Result/page text plus links, reflowing outside a table scroll region. |
 
@@ -1446,7 +1491,7 @@ Keep the earlier distinction: 24×24 CSS px is the WCAG 2.2 AA target-size basel
 
 Contrast is evaluated on the colors actually composed in the interface, not anti-aliased edge pixels from a screenshot. Compare unrounded ratios against thresholds. Inactive controls and logotypes have contrast exceptions, but those exceptions do not justify unreadable instructions or inaccessible links. Read-only content is not automatically inactive. [S02]
 
-Keep all 77 inherited pair expectations, including the three deliberate rejections. They are regression tests for specific token pairs, not 77 accessibility findings. The lavender primary/dark-label pair and the progress rail's separate dark interior/visible boundary remain the specified recipes. Do not add opacity to a whole component or reinterpret a decorative divider as a required field border. [F02 §03; F03 §17]
+Keep the §03 contrast contract, including its deliberate rejections. Those rows are regression checks for specific token pairs, not accessibility findings. The cantaloupe primary/dark-label pair and the progress rail's separate dark interior/visible boundary remain the specified recipes. Do not add opacity to a whole component or reinterpret a decorative divider as a required field border. [F02 §03; F03 §17]
 
 ### 25.3 Focus and keyboard ownership
 
@@ -1540,7 +1585,7 @@ Write interface labels in sentence case except proper names, initialisms and cod
 
 | Context                              | Current source/example wording | Proposed canonical label    | Change status                                                  |
 | ------------------------------------ | ------------------------------ | --------------------------- | -------------------------------------------------------------- |
-| Library creation                     | New Plan                       | Create plan                 | Copy proposal; route and eligibility unchanged.                |
+| Library creation                     | Create a plan                  | Create a plan               | Shipped 2026-10-31; route and eligibility unchanged.           |
 | Goal submission                      | Chart this course              | Create plan                 | Literal action label; metaphor may remain in the introduction. |
 | Preference save                      | Save Preferences               | Save preferences            | Capitalization change only; keep explicit save.                |
 | Read retry                           | Try Again                      | Try again                   | Same safe read/retry operation.                                |
@@ -1632,17 +1677,17 @@ This package is documentation and local reference tooling, not a repository patc
 
 ### 27.2 Ownership and proposed destinations
 
-| Responsibility           | Current or supplied owner                                                                         | Proposed adoption action                                                                                                                       |
-| ------------------------ | ------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| Target tokens            | Package `tokens/atlaris.tokens.json`                                                              | Commit one canonical authoring file, for example `design-system/tokens/atlaris.tokens.json`. This destination does not yet exist by assertion. |
-| Generated CSS / catalog  | Package compiler and `dist/`                                                                      | Choose a generated destination such as `src/styles/generated/atlaris-tokens.css`; never hand-edit its values.                                  |
-| Runtime theme            | `src/app/globals.css`                                                                             | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                                            |
-| Agent design entry point | `DESIGN.md`                                                                                       | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter.                 |
-| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10. |
-| Detailed docs            | This package's sections and registries                                                            | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                                 |
-| Existing font loaders    | `src/app/layout.tsx`                                                                              | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                                          |
-| Theme state              | `src/app/ThemeProvider.tsx`                                                                       | Keep class-based dark mode, default system preference and provider behavior.                                                                   |
-| Brand / metadata         | Supplied assets and root metadata                                                                 | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                                           |
+| Responsibility           | Current or supplied owner                                                                                                        | Proposed adoption action                                                                                                       |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Target tokens            | Package `tokens/atlaris.tokens.json` (retired 2026-10-30)                                                                        | Done: `src/styles/atlaris-tokens.css` is the authoring file (dark); light values live in `:root` in `src/app/globals.css`.     |
+| Generated CSS / catalog  | Package compiler and `dist/` (retired 2026-10-30)                                                                                | No generation step; the token file is edited directly.                                                                         |
+| Runtime theme            | `src/app/globals.css`                                                                                                            | Import output and add an explicit, reviewed semantic bridge. Retain existing light/system behavior.                            |
+| Agent design entry point | `DESIGN.md`                                                                                                                      | Update its old direction and source-precedence statement in the same adoption change; preserve its tooling-valid front matter. |
+| Older brand guidance     | Pre-adoption paths: `docs/styles/after-hours-direction.md`, `docs/styles/style-guide.md`, `.cursor/rules/design-after-hours.mdc` | JCS-98 removed these so they cannot appear current. Historical mentions in this handbook remain provenance only. See §27.10.   |
+| Detailed docs            | This package's sections and registries                                                                                           | Adopt a single documented location, for example `docs/design-system/`; do not keep competing editable mirrors.                 |
+| Existing font loaders    | `src/app/layout.tsx`                                                                                                             | Compare Work Sans/Sora in the actual app; bind token family roles without guessing the wordmark face.                          |
+| Theme state              | `src/app/ThemeProvider.tsx`                                                                                                      | Keep class-based dark mode, default system preference and provider behavior.                                                   |
+| Brand / metadata         | Supplied assets and root metadata                                                                                                | Resolve one vector lockup; reconcile actual OG dimensions/format/path with metadata.                                           |
 
 The current `DESIGN.md` explicitly describes copper/plum and tells agents to edit runtime CSS first. Leaving it unchanged after adopting this target would cause conflicting instructions. Change the authority model in a deliberate migration record; do not quietly declare the new package live while old instructions still control agent work. The supplied compiler is an Atlaris-specific DTCG-type subset implementation, not a universal design-tool importer. [G03; F02 §§11–13; S17]
 
@@ -1676,18 +1721,18 @@ No shared Tabs, Checkbox, RadioGroup, ordinary Dialog, Popover, Combobox or Slid
 
 The generated selector remains `[data-atlaris-theme="dark"]`. Decide how the existing theme provider applies that scope in an isolated preview and then in the adopted app. Put the owning token scope where actual portals can inherit it, or provide a deliberate portal container; a token attribute on only the main content will not theme a menu portaled outside that subtree. Test actual light, dark and system transitions with vendor widgets. [F02 §12; F03 §19; G04]
 
-| Current runtime role            | Target token family                                                | Constraint                                                                                               |
-| ------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------- |
-| `--background` / `--foreground` | `semantic.color.background.canvas` / `semantic.color.text.primary` | New dark theme only until light values are reviewed.                                                     |
-| `--panel`, `--card`             | `semantic.color.background.surface`                                | Keep matching foreground and readable nested surfaces.                                                   |
-| `--popover`                     | `semantic.color.background.raised`                                 | Verify portal ownership, layering and viewport constraints.                                              |
-| `--primary`, `--primary-dark`   | Primary-action family at applicable call sites                     | Current primary also colors text/icons; use the link/text role where needed rather than blanket mapping. |
-| `--primary-foreground`          | Primary action foreground                                          | Dark label on lavender; do not carry white labels into normal primary buttons.                           |
-| `--destructive`                 | Split action and status families                                   | White-label red button fill is not the same color as error text/border.                                  |
-| `--input` / `--border`          | Control boundary / decorative or grouping boundary                 | Choose by information role, not one global border value.                                                 |
-| `--ring`                        | Focus family                                                       | Opaque outline with separation; preserve simultaneous invalid/selected state.                            |
-| `--chart-*`                     | Chart family and existing series mapping                           | Check actual plotted adjacency, labels and backgrounds.                                                  |
-| Spacing / radii / type          | Semantic/component dimensions and recipes                          | No blind global multiplier change or assumed font match.                                                 |
+| Current runtime role            | Target token family                                                | Constraint                                                                            |
+| ------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| `--background` / `--foreground` | `semantic.color.background.canvas` / `semantic.color.text.primary` | New dark theme only until light values are reviewed.                                  |
+| `--panel`, `--card`             | `semantic.color.background.surface`                                | Keep matching foreground and readable nested surfaces.                                |
+| `--popover`                     | `semantic.color.background.raised`                                 | Verify portal ownership, layering and viewport constraints.                           |
+| `--primary`, `--primary-dark`   | Primary-action family at applicable call sites                     | Maps to `semantic.color.text.accent` (cantaloupe) for text/icons; links use `--link`. |
+| `--primary-foreground`          | Primary action foreground                                          | Dark label on cantaloupe; do not carry white labels into normal primary buttons.      |
+| `--destructive`                 | Split action and status families                                   | White-label red button fill is not the same color as error text/border.               |
+| `--input` / `--border`          | Control boundary / decorative or grouping boundary                 | Choose by information role, not one global border value.                              |
+| `--ring`                        | Focus family                                                       | Opaque outline with separation; preserve simultaneous invalid/selected state.         |
+| `--chart-*`                     | Chart family and existing series mapping                           | Check actual plotted adjacency, labels and backgrounds.                               |
+| Spacing / radii / type          | Semantic/component dimensions and recipes                          | No blind global multiplier change or assumed font match.                              |
 
 Changing `--spacing` from 0.2rem to 0.25rem grows affected utility dimensions by 25%; it does not make existing `h-9` a 40px control. Preserve the explicit 4rem header contract until the new shell is tested. Change semantic bridges, component recipes and compiled-layout checks together. Tailwind's utility-generating theme namespace and ordinary CSS variables are related but not interchangeable; verify the actual generated styles. [F02 §§05–07; S18]
 
@@ -1761,20 +1806,20 @@ The design-system writing phase is complete. Use this candidate to make the rema
 
 JCS-96 records how the supplied launch screenshots map to actual Atlaris product behavior. Static artwork is visual evidence only; a label, metric, avatar, icon or price is adopted only when current route, data, auth and billing contracts support it. This issue owns launch copy and information-architecture decisions. It does not add product features, data sources or billing terms.
 
-| Reference signal | Status | Repository adoption |
-| ---------------- | ------ | ------------------- |
-| Marketing hero and calls to action | Keep / adapt | Keep the current landing, pricing and About copy. Landing `Begin tonight` goes to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA goes to `/auth/sign-in`; an authenticated visitor gets `/dashboard`. |
-| Public information architecture | Keep | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About. |
-| Authenticated navigation | Adapt | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics` with Usage and Achievements), and Settings (`/settings`). The mobile menu remains the responsive composition. |
-| Sidebar-only mockup destinations | Omit | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons. |
-| Plan creation and entitlement actions | Keep / adapt | Authenticated `New Plan` uses `/plans/new` when `canCreatePlan` is true; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture. |
-| Pricing cards and checkout | Adapt | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
-| Dashboard and usage analytics | Keep / adapt | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics. |
-| Achievements | Defer | `/analytics/achievements` is an explicit “Coming soon” surface; the mockup does not authorize a working achievement system. |
-| About and builder copy | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch. |
-| Social proof and aggregate statistics | Omit | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source. |
-| Account and settings | Keep / adapt | Use the existing settings ledger (Profile, Plan & billing, Usage, AI model, Integrations and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts. |
-| Brand imagery and metadata | Defer | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset. |
+| Reference signal                      | Status                           | Repository adoption                                                                                                                                                                                                                                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Marketing hero and calls to action    | Keep / adapt                     | Landing, pricing and About calls to action read `Create a plan` and go to `/plans/new`; an anonymous request is returned to `/auth/sign-in?redirect_url=%2Fplans%2Fnew`. `See pricing` goes to `/pricing`. The marketing-header visitor CTA is also `Create a plan` to `/plans/new`; an authenticated visitor gets `/dashboard`.                                                                    |
+| Public information architecture       | Keep                             | `/` redirects signed-in users to `/dashboard` and everyone else to `/landing`. Public navigation and the marketing footer expose only Home, Pricing and About.                                                                                                                                                                                                                                      |
+| Authenticated navigation              | Adapt                            | Keep Dashboard (`/dashboard`), Plans (`/plans`), Analytics (`/analytics`, which opens Usage), and Settings (`/settings`). The mobile menu remains the responsive composition.                                                                                                                                                                                                                       |
+| Sidebar-only mockup destinations      | Omit                             | Do not add Projects, Resources, Notes, Community, a global search, a notifications inbox or other destinations inferred only from decorative mockup labels/icons.                                                                                                                                                                                                                                   |
+| Plan creation and entitlement actions | Keep / adapt                     | The sidebar's `Create a plan` (the only create action in the app chrome) uses `/plans/new` when `canCreatePlan` is true and is hidden on `/plans/new`; after the free allowance it becomes `Upgrade` to `/pricing`. Free, Starter and Pro limits come from `TIER_LIMITS` and the billing architecture.                                                                                              |
+| Pricing cards and checkout            | Adapt                            | `/pricing` uses live Clerk plan names, descriptions, fees and non-export features when Clerk UI is enabled; local preview prices are explicitly representative and checkout is disabled. Use the actual Free/Starter/Pro caps. Do not publish screenshot-only prices, annual savings, exports, founding benefits, discounts, refunds or support promises without an authoritative owner and source. |
+| Dashboard and usage analytics         | Keep / adapt                     | Preserve personalized plan summaries, activity and the existing eight-week usage contract. Do not replace them with global learner counts, synthetic activity or invented dashboard metrics.                                                                                                                                                                                                        |
+| Achievements                          | Defer                            | `/analytics/achievements` redirects to `/analytics/usage` until achievement tracking exists; the mockup does not authorize a working achievement system.                                                                                                                                                                                                                                            |
+| About and builder copy                | Defer pending owner confirmation | The current About page has builder copy and the existing support address. Default to deferring publication of the attribution and response promise; retain the text in the branch only as an unapproved candidate until the owner confirms it for launch.                                                                                                                                           |
+| Social proof and aggregate statistics | Omit                             | Do not add the mockup-only `4.9`, `500+`, `10,000+`, `50+`, `1,500+`, `120+`, testimonial, rating, founder-avatar or learner-avatar claims without a verified source.                                                                                                                                                                                                                               |
+| Account and settings                  | Keep / adapt                     | Use the existing settings ledger (Profile, Billing, Usage, AI model and Notifications) and Clerk account controls/fallback. Mockup-only account actions are not new routes or product contracts.                                                                                                                                                                                                    |
+| Brand imagery and metadata            | Defer                            | Keep independent imagery, the canonical full vector lockup and Open Graph decisions with JCS-6 and the asset owner; never crop a screenshot into a production asset.                                                                                                                                                                                                                                |
 
 Ownership remains explicit: JCS-96 owns this launch copy and information-architecture map; JCS-87 owns the authenticated sidebar composition; JCS-94 owns controls and action recipes; JCS-95 owns feedback and overlay compositions; JCS-6 owns brand assets and metadata. Clerk billing architecture owns plan and entitlement semantics, and the usage analytics metric contract owns analytics meanings. A future destination or claim change updates its owning issue and this record together.
 
@@ -1786,19 +1831,19 @@ The unresolved owner decision is whether the current About attribution — “Ju
 
 JCS-98 records the post-migration audit of tracked design documents and agent guidance. Implementation children of JCS-65 are Done on Linear. This cleanup does not claim JCS-97 visual acceptance, does not delete runtime theme behavior, and does not rewrite inherited handbook chapters.
 
-| Path | Disposition | Status |
-| ---- | ----------- | ------ |
-| `docs/styles/after-hours-direction.md` | Already absent from `develop` before this change | Deleted earlier; do not restore |
-| `docs/styles/style-guide.md` | Removed compatibility pointer | Deleted; authority is `DESIGN.md` → this file |
-| `.cursor/rules/design-after-hours.mdc` | Removed stale After Hours agent rule (pointed at the missing direction file and treated `style-guide.md` as recipes) | Replaced by `.cursor/rules/design-system.mdc` |
-| `DESIGN.md`, `AGENTS.md`, `docs/README.md` | Dropped compatibility-pointer language | Current agent/docs entry points only |
-| Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md` | Historical provenance of the `f8994dc` snapshot | Keep; not current authority |
-| `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior | Retained |
-| `src/styles/generated/atlaris-tokens.css` | Generated dark token artifact | Retained; do not hand-edit |
-| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository | Retained as documented provenance |
-| `Atlaris-style-guide.pdf` alias in **A01** | External inventory hash alias | Historical provenance only |
-| `.cursor/rules/redesign.md` | Generic diagnostic skill, not After Hours brand guidance | Retained; Design Values there are not the Atlaris token source |
-| Verify-atlaris pricing assertion | Current launch headline vs the retired smoke string | Retained as a test instruction; no longer labeled After Hours |
+| Path                                                                           | Disposition                                                                                                          | Status                                                         |
+| ------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `docs/styles/after-hours-direction.md`                                         | Already absent from `develop` before this change                                                                     | Deleted earlier; do not restore                                |
+| `docs/styles/style-guide.md`                                                   | Removed compatibility pointer                                                                                        | Deleted; authority is `DESIGN.md` → this file                  |
+| `.cursor/rules/design-after-hours.mdc`                                         | Removed stale After Hours agent rule (pointed at the missing direction file and treated `style-guide.md` as recipes) | Replaced by `.cursor/rules/design-system.mdc`                  |
+| `DESIGN.md`, `AGENTS.md`, `docs/README.md`                                     | Dropped compatibility-pointer language                                                                               | Current agent/docs entry points only                           |
+| Inherited §§00.3 and 27 paragraphs that describe copper/plum `DESIGN.md`       | Historical provenance of the `f8994dc` snapshot                                                                      | Keep; not current authority                                    |
+| `src/app/ThemeProvider.tsx`, light/dark/system tokens in `src/app/globals.css` | Supported runtime theme behavior                                                                                     | Retained                                                       |
+| `src/styles/atlaris-tokens.css` (was `src/styles/generated/`)                  | Dark token source since 2026-10-30 (Midnight)                                                                        | Edit directly; single source                                   |
+| External reference package (`tokens/atlaris.tokens.json`, compiler, specimens) | Outside this repository; retired as a token source 2026-10-30                                                        | Historical provenance only                                     |
+| `Atlaris-style-guide.pdf` alias in **A01**                                     | External inventory hash alias                                                                                        | Historical provenance only                                     |
+| `.cursor/rules/redesign.md`                                                    | Generic diagnostic skill, not After Hours brand guidance                                                             | Retained; Design Values there are not the Atlaris token source |
+| Verify-atlaris pricing assertion                                               | Current launch headline vs the retired smoke string                                                                  | Retained as a test instruction; no longer labeled After Hours  |
 
 Non-runtime “After Hours” comments on `StarField` and `PLAN_CHART_COLORS` were rewritten so they describe current semantic usage instead of the retired peach/plum brand.
 

@@ -1,6 +1,7 @@
 import type { GenerationStatus, PlanSummary } from '@/shared/types/db.types';
 
 import { getResumeModule } from '@/app/(app)/dashboard/components/activity-utils';
+import { resumeActionLabel } from '@/app/(app)/plans/components/plan-utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -102,7 +103,7 @@ export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
         <div className='mt-auto flex flex-wrap gap-2.5 pt-5'>
           <Button asChild size='sm'>
             <Link href={planHref}>
-              Continue learning
+              {resumeActionLabel(plan.completedTasks)}
               <ArrowRight className='size-4' />
             </Link>
           </Button>

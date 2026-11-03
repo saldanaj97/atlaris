@@ -55,7 +55,7 @@ const NAV_ROW_IDLE =
 const NAV_ROW_SELECTED = 'bg-action-soft text-foreground';
 /** Left bar on the active top-level destination; matches the collapsed rail. */
 const NAV_ROW_MARKER =
-  'relative before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-link';
+  'relative before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-navigation-item-marker';
 
 function tierLabel(tier: SubscriptionTier): string {
   return `${tier[0]!.toUpperCase()}${tier.slice(1)} plan`;
@@ -83,10 +83,7 @@ export default function AppSidebar({
   const idPrefix = useId();
   const tierTitleId = `${idPrefix}-tier-title`;
   const showUpgrade = Boolean(tier && tier !== 'pro');
-  const createPlanCta = resolveCreatePlanCta({
-    canCreatePlan,
-    createLabel: 'Create plan',
-  });
+  const createPlanCta = resolveCreatePlanCta({ canCreatePlan, pathname });
   // The desktop sidebar animates its width; keep the expanded layout from
   // reflowing while the aside is narrower than its final width.
   const expandedMinWidth = onDesktopCollapse
@@ -182,7 +179,7 @@ export default function AppSidebar({
                     >
                       <NavIcon
                         href={item.href}
-                        className={cn(isActive && 'text-link')}
+                        className={cn(isActive && 'text-primary')}
                       />
                       <span className='min-w-0 wrap-anywhere'>
                         {item.label}

@@ -11,7 +11,7 @@ interface ErrorProps {
 
 /**
  * Catch-all error boundary for app routes without their own `error.tsx`
- * (settings, analytics, achievements, ...). Keeps the app shell in place.
+ * (settings, analytics, ...). Keeps the app shell in place.
  */
 export default function AppError({ error, retry }: ErrorProps) {
   useEffect(() => {

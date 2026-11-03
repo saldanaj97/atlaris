@@ -162,8 +162,9 @@ export function UnifiedPlanInput({
 
         <CardContent className='space-y-6 px-5 py-5 sm:px-6'>
           <div>
+            {/* The page heading already asks the question; the field names it. */}
             <Label htmlFor={topicInputId} className='type-label'>
-              What do you want to learn?
+              Topic
             </Label>
             <p
               id={topicHelpId}

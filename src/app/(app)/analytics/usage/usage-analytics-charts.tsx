@@ -6,17 +6,24 @@ import type {
 } from './usage-analytics-model';
 
 import {
+  pointLabelPlacements,
+  selectMostActivePlans,
+  yAxisTicksForMax,
+  type PointLabelPlacement,
+} from './usage-analytics-model';
+import {
   ChartContainer,
   ChartTooltipContent,
   type ChartConfig,
 } from '@/components/ui/chart';
-import { PLAN_CHART_COLORS } from '@/shared/constants/chart-colors';
+import {
+  PLAN_CHART_COLORS,
+  PLAN_CHART_DASHES,
+} from '@/shared/constants/chart-colors';
 import {
   lazy,
   Suspense,
-  useEffect,
-  useRef,
-  useState,
+  useCallback,
   useSyncExternalStore,
   type ComponentProps,
   type CSSProperties,
@@ -24,13 +31,12 @@ import {
   type ReactNode,
 } from 'react';
 
-const MIN_VISIBLE_PLAN_COUNT = 1;
-const LEGEND_ITEM_WIDTH = 180;
-const LEGEND_COLUMN_GAP = 16;
 const LINE_ENTER_ANIMATION_MS = 650;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
+/** Tailwind's `sm` breakpoint (40rem); below it the pulse drops point labels. */
+const POINT_LABEL_QUERY = '(min-width: 40rem)';
 
 type RechartsModule = typeof import('recharts');
 type RechartsRendererProps = {
@@ -46,18 +52,25 @@ type PointLabelProps = {
   y?: string | number;
 };
 
-function subscribeReducedMotion(onChange: () => void): () => void {
-  const query = window.matchMedia(REDUCED_MOTION_QUERY);
-  query.addEventListener('change', onChange);
-  return () => query.removeEventListener('change', onChange);
+function useMediaQuery(query: string, serverValue: boolean): boolean {
+  const subscribe = useCallback(
+    (onChange: () => void) => {
+      const media = window.matchMedia(query);
+      media.addEventListener('change', onChange);
+      return () => media.removeEventListener('change', onChange);
+    },
+    [query],
+  );
+
+  return useSyncExternalStore(
+    subscribe,
+    () => window.matchMedia(query).matches,
+    () => serverValue,
+  );
 }
 
 function usePrefersReducedMotion(): boolean {
-  return useSyncExternalStore(
-    subscribeReducedMotion,
-    () => window.matchMedia(REDUCED_MOTION_QUERY).matches,
-    () => false,
-  );
+  return useMediaQuery(REDUCED_MOTION_QUERY, false);
 }
 
 const RechartsRenderer = lazy(async () => {
@@ -456,24 +469,23 @@ export function WeeklyLineChart({
   describedBy?: string;
 }) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [{ hasMeasuredChart, renderedPlanCount }, setChartLayout] = useState({
-    hasMeasuredChart: false,
-    renderedPlanCount: 0,
-  });
-  const renderedPlans = plans.slice(0, renderedPlanCount);
-  const hiddenPlanCount = Math.max(0, plans.length - renderedPlans.length);
+  // Phones skip the per-point numbers; the tooltip still reads every value.
+  const showsPointLabels = useMediaQuery(POINT_LABEL_QUERY, true);
+  // Always the full top-five set; the legend wraps on narrow screens.
+  const renderedPlans = selectMostActivePlans(plans);
+  const hiddenPlanCount = plans.length - renderedPlans.length;
   const dataMaxValue = Math.max(
     1,
     ...renderedPlans.flatMap((plan) =>
       plan.weeklyTrends.map((week) => week.progressChangeCount),
     ),
   );
-  const maxValue = dataMaxValue + 1;
-  const yAxisTicks = yAxisTicksForMax(maxValue);
+  const yAxisTicks = yAxisTicksForMax(dataMaxValue + 1);
+  const maxValue = yAxisTicks.at(-1) ?? 1;
   const series = renderedPlans.map((plan, index) => ({
     plan,
     color: PLAN_CHART_COLORS[index % PLAN_CHART_COLORS.length],
+    dash: PLAN_CHART_DASHES[index % PLAN_CHART_DASHES.length],
     weeklyTrendCounts: new Map(
       plan.weeklyTrends.map((week) => [
         week.weekStartDate,
@@ -501,60 +513,13 @@ export function WeeklyLineChart({
 
     return row;
   });
-
-  useEffect(() => {
-    const element = containerRef.current;
-
-    if (!element) {
-      return;
-    }
-
-    let updateFrame: number | null = null;
-
-    const updateVisiblePlanCount = () => {
-      const chartWidth = element.clientWidth;
-
-      if (chartWidth <= 0) {
-        return;
-      }
-
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
-      updateFrame = window.requestAnimationFrame(() => {
-        updateFrame = null;
-
-        const nextPlanCount = planCapacityForWidth(chartWidth, plans.length);
-
-        setChartLayout((currentLayout) =>
-          currentLayout.hasMeasuredChart &&
-          currentLayout.renderedPlanCount === nextPlanCount
-            ? currentLayout
-            : {
-                hasMeasuredChart: true,
-                renderedPlanCount: nextPlanCount,
-              },
-        );
-      });
-    };
-
-    updateVisiblePlanCount();
-
-    const resizeObserver =
-      typeof ResizeObserver === 'undefined'
-        ? null
-        : new ResizeObserver(updateVisiblePlanCount);
-    resizeObserver?.observe(element);
-
-    return () => {
-      if (updateFrame !== null) {
-        window.cancelAnimationFrame(updateFrame);
-      }
-
-      resizeObserver?.disconnect();
-    };
-  }, [plans.length]);
+  // Per week, then per series: where each value label goes.
+  const weekLabelPlacements = chartData.map((row) =>
+    pointLabelPlacements(
+      series.map(({ plan }) => Number(row[plan.id])),
+      maxValue,
+    ),
+  );
 
   return (
     <div data-testid='eight-week-pulse'>
@@ -564,11 +529,7 @@ export function WeeklyLineChart({
             Progress changes
           </p>
         </div>
-        <div
-          ref={containerRef}
-          data-testid='weekly-line-chart'
-          className='min-w-0 flex-1'
-        >
+        <div data-testid='weekly-line-chart' className='min-w-0 flex-1'>
           <WithRecharts
             fallback={
               <output
@@ -612,6 +573,7 @@ export function WeeklyLineChart({
                         value: 'Week',
                         position: 'insideBottom',
                         offset: -16,
+                        className: 'fill-muted-foreground',
                       }}
                     />
                     <YAxis
@@ -627,7 +589,7 @@ export function WeeklyLineChart({
                       cursor={false}
                       content={<ChartTooltipContent indicator='line' />}
                     />
-                    {series.map(({ plan }) => (
+                    {series.map(({ plan, dash }, seriesIndex) => (
                       <Line
                         key={plan.id}
                         data-testid='plan-series'
@@ -636,18 +598,26 @@ export function WeeklyLineChart({
                         type='linear'
                         stroke={`var(--color-${plan.id})`}
                         strokeWidth={4}
+                        strokeDasharray={dash}
                         dot={false}
                         activeDot={false}
                         isAnimationActive={!prefersReducedMotion}
                         animationDuration={LINE_ENTER_ANIMATION_MS}
                         animationEasing='ease-out'
                       >
-                        <LabelList
-                          dataKey={plan.id}
-                          content={
-                            <AnimatedPointLabel pointCount={weeks.length} />
-                          }
-                        />
+                        {showsPointLabels ? (
+                          <LabelList
+                            dataKey={plan.id}
+                            content={
+                              <AnimatedPointLabel
+                                placements={weekLabelPlacements.map(
+                                  (week) => week[seriesIndex],
+                                )}
+                                pointCount={weeks.length}
+                              />
+                            }
+                          />
+                        ) : null}
                       </Line>
                     ))}
                   </LineChart>
@@ -657,30 +627,32 @@ export function WeeklyLineChart({
           </WithRecharts>
         </div>
       </div>
-      <div className='mt-6 flex min-h-8 flex-nowrap gap-4 overflow-x-auto py-2'>
+      <div className='mt-6 flex min-h-8 flex-wrap gap-x-4 gap-y-2 py-2'>
         {series.length > 0 ? (
-          series.map(({ plan, color }) => (
+          series.map(({ plan, color, dash }) => (
             <div
               key={plan.id}
               className='flex w-45 shrink-0 items-center gap-2 type-meta text-muted-foreground'
             >
               <span
-                className='size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
+                className={
+                  dash
+                    ? 'w-4 shrink-0 border-t-2 border-dashed border-(--plan-chart-color)'
+                    : 'size-2.5 shrink-0 rounded-full bg-(--plan-chart-color)'
+                }
                 style={{ '--plan-chart-color': color } as CSSProperties}
               />
               <span className='min-w-0 truncate'>{plan.topic}</span>
             </div>
           ))
-        ) : hasMeasuredChart ? (
+        ) : (
           <p className='type-meta text-muted-foreground'>No plans yet</p>
-        ) : null}
+        )}
         {hiddenPlanCount > 0 ? (
-          <div
-            aria-label={`${hiddenPlanCount} more ${hiddenPlanCount === 1 ? 'plan' : 'plans'} not shown at this width`}
-            className='flex w-45 shrink-0 items-center type-meta font-medium text-muted-foreground'
-          >
-            +{hiddenPlanCount} more
-          </div>
+          <p className='flex shrink-0 items-center type-meta font-medium text-muted-foreground'>
+            +{hiddenPlanCount} more {hiddenPlanCount === 1 ? 'plan' : 'plans'}{' '}
+            not shown
+          </p>
         ) : null}
       </div>
     </div>
@@ -689,15 +661,25 @@ export function WeeklyLineChart({
 
 function AnimatedPointLabel({
   index = 0,
+  placements,
   pointCount,
   value,
   x,
   y,
-}: PointLabelProps & { pointCount: number }) {
+}: PointLabelProps & {
+  placements: readonly PointLabelPlacement[];
+  pointCount: number;
+}) {
   const labelX = typeof x === 'number' ? x : Number(x);
   const labelY = typeof y === 'number' ? y : Number(y);
+  const placement = placements[index] ?? null;
 
-  if (value == null || !Number.isFinite(labelX) || !Number.isFinite(labelY)) {
+  if (
+    value == null ||
+    placement == null ||
+    !Number.isFinite(labelX) ||
+    !Number.isFinite(labelY)
+  ) {
     return null;
   }
 
@@ -709,47 +691,17 @@ function AnimatedPointLabel({
   return (
     <text
       x={labelX}
-      y={labelY - 10}
+      y={placement === 'above' ? labelY - 10 : labelY + 20}
       textAnchor='middle'
-      className='animate-usage-analytics-point-label-in fill-foreground'
+      // The panel-colored halo keeps the number readable where a line crosses it.
+      className='animate-usage-analytics-point-label-in fill-foreground stroke-panel'
       fontSize={12}
+      paintOrder='stroke'
+      strokeLinejoin='round'
+      strokeWidth={4}
       style={{ '--point-label-delay': `${delay}ms` } as CSSProperties}
     >
       {value}
     </text>
   );
-}
-
-function planCapacityForWidth(width: number, planCount: number): number {
-  if (planCount === 0) {
-    return 0;
-  }
-
-  if (width <= 0) {
-    return MIN_VISIBLE_PLAN_COUNT;
-  }
-
-  return Math.min(
-    planCount,
-    PLAN_CHART_COLORS.length,
-    Math.max(
-      MIN_VISIBLE_PLAN_COUNT,
-      Math.floor(
-        (width + LEGEND_COLUMN_GAP) / (LEGEND_ITEM_WIDTH + LEGEND_COLUMN_GAP),
-      ),
-    ),
-  );
-}
-
-function yAxisTicksForMax(maxValue: number): number[] {
-  const step = Math.max(1, Math.ceil(maxValue / 4));
-  const ticks = [];
-
-  for (let tick = 0; tick < maxValue; tick += step) {
-    ticks.push(tick);
-  }
-
-  ticks.push(maxValue);
-
-  return ticks;
 }

@@ -1,5 +1,6 @@
 import {
   getLearningActivityEventsForUser,
+  getRecentLearningActivityForUser,
   setTaskProgressBatch,
 } from '@/lib/db/queries/tasks';
 import {
@@ -193,6 +194,92 @@ describe('Task Queries', () => {
       taskId: ownerTask.id,
       status: 'completed',
     });
+    expect(crossTenantRows).toHaveLength(0);
+  });
+
+  it('returns recent owner activity joined with task title and plan topic, newest first', async () => {
+    const ownerAuthUserId = buildTestAuthUserId('db-tasks-recent-owner');
+    const ownerUserId = await ensureUser({
+      authUserId: ownerAuthUserId,
+      email: buildTestEmail(ownerAuthUserId),
+    });
+    const otherAuthUserId = buildTestAuthUserId('db-tasks-recent-other');
+    const otherUserId = await ensureUser({
+      authUserId: otherAuthUserId,
+      email: buildTestEmail(otherAuthUserId),
+    });
+    const plan = await createTestPlan({
+      userId: ownerUserId,
+      topic: 'recent activity plan',
+    });
+    const planModule = await createTestModule({ planId: plan.id });
+    const firstTask = await createTestTask({
+      moduleId: planModule.id,
+      title: 'First task',
+      estimatedMinutes: 45,
+    });
+    const secondTask = await createTestTask({
+      moduleId: planModule.id,
+      order: 2,
+      title: 'Second task',
+    });
+    const otherPlan = await createTestPlan({
+      userId: otherUserId,
+      topic: 'other recent plan',
+    });
+    const otherModule = await createTestModule({ planId: otherPlan.id });
+    const otherTask = await createTestTask({ moduleId: otherModule.id });
+
+    await setTaskProgressBatch(
+      ownerUserId,
+      [{ taskId: firstTask.id, status: 'completed' }],
+      db,
+    );
+    await setTaskProgressBatch(
+      ownerUserId,
+      [{ taskId: secondTask.id, status: 'in_progress' }],
+      db,
+    );
+    await setTaskProgressBatch(
+      otherUserId,
+      [{ taskId: otherTask.id, status: 'completed' }],
+      db,
+    );
+
+    const ownerDb = await createRlsDbForUser(ownerAuthUserId);
+    const rows = await getRecentLearningActivityForUser(
+      ownerUserId,
+      ownerDb,
+      5,
+    );
+    const limited = await getRecentLearningActivityForUser(
+      ownerUserId,
+      ownerDb,
+      1,
+    );
+    const crossTenantRows = await getRecentLearningActivityForUser(
+      otherUserId,
+      ownerDb,
+      5,
+    );
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        planId: plan.id,
+        planTopic: 'recent activity plan',
+        taskTitle: 'Second task',
+        status: 'in_progress',
+      }),
+      expect.objectContaining({
+        planId: plan.id,
+        planTopic: 'recent activity plan',
+        taskTitle: 'First task',
+        status: 'completed',
+        taskEstimatedMinutes: 45,
+      }),
+    ]);
+    expect(limited).toHaveLength(1);
+    expect(limited[0]?.taskTitle).toBe('Second task');
     expect(crossTenantRows).toHaveLength(0);
   });
 

@@ -2,8 +2,13 @@ import type { LightweightPlanSummary } from '@/shared/types/db.types';
 
 import {
   buildUsageAnalyticsModel,
+  PULSE_PLAN_LIMIT,
+  selectMostActivePlans,
+  pointLabelPlacements,
+  yAxisTicksForMax,
   type UsageAnalyticsActivityEvent,
   type UsageAnalyticsModel,
+  type UsageAnalyticsPlanRow,
 } from '@/app/(app)/analytics/usage/usage-analytics-model';
 import { describe, expect, it } from 'vitest';
 
@@ -483,6 +488,124 @@ describe('buildUsageAnalyticsModel', () => {
       { id: 'plan-3', topic: 'Go', completedMinutes: 40, percent: 15 },
       { id: 'plan-4', topic: 'Rust', completedMinutes: 20, percent: 7 },
       { id: 'other', topic: 'Other', completedMinutes: 10, percent: 4 },
+    ]);
+  });
+});
+
+/** Builds a pulse plan row whose weeks carry the given progress-change counts. */
+function pulsePlan(id: string, weeklyCounts: number[]): UsageAnalyticsPlanRow {
+  return {
+    id,
+    topic: `Plan ${id}`,
+    weeklyTrends: weeklyCounts.map((progressChangeCount, index) => ({
+      weekStartDate: `2026-09-${String(index * 7 + 1).padStart(2, '0')}`,
+      label: `Week ${index + 1}`,
+      activeDays: progressChangeCount > 0 ? 1 : 0,
+      progressChangeCount,
+      completedEvents: 0,
+      estimatedCompletionAddedMinutes: 0,
+      isCurrentWeek: false,
+    })),
+  };
+}
+
+describe('selectMostActivePlans', () => {
+  it('keeps the five plans with the most progress changes, most active first', () => {
+    const plans = [
+      pulsePlan('a', [1, 0]),
+      pulsePlan('b', [4, 4]),
+      pulsePlan('c', [0, 0]),
+      pulsePlan('d', [2, 3]),
+      pulsePlan('e', [6, 0]),
+      pulsePlan('f', [0, 3]),
+      pulsePlan('g', [0, 2]),
+    ];
+
+    expect(PULSE_PLAN_LIMIT).toBe(5);
+    expect(selectMostActivePlans(plans).map((plan) => plan.id)).toEqual([
+      'b',
+      'e',
+      'd',
+      'f',
+      'g',
+    ]);
+  });
+
+  it('breaks ties by the incoming order', () => {
+    const plans = [
+      pulsePlan('first', [2]),
+      pulsePlan('second', [2]),
+      pulsePlan('third', [3]),
+    ];
+
+    expect(selectMostActivePlans(plans, 2).map((plan) => plan.id)).toEqual([
+      'third',
+      'first',
+    ]);
+  });
+
+  it('keeps every plan when there are five or fewer', () => {
+    const plans = [pulsePlan('a', [0]), pulsePlan('b', [1])];
+
+    expect(selectMostActivePlans(plans)).toEqual([plans[1], plans[0]]);
+  });
+});
+
+describe('yAxisTicksForMax', () => {
+  it('steps evenly instead of appending an off-step maximum', () => {
+    expect(yAxisTicksForMax(7)).toEqual([0, 2, 4, 6, 8]);
+    expect(yAxisTicksForMax(9)).toEqual([0, 3, 6, 9]);
+    expect(yAxisTicksForMax(13)).toEqual([0, 4, 8, 12, 16]);
+  });
+
+  it('uses whole steps for small maxima', () => {
+    expect(yAxisTicksForMax(2)).toEqual([0, 1, 2]);
+    expect(yAxisTicksForMax(0)).toEqual([0, 1]);
+  });
+});
+
+describe('pointLabelPlacements', () => {
+  it('labels a value just under a labelled one below its point', () => {
+    expect(pointLabelPlacements([3, 4], 8)).toEqual(['below', 'above']);
+  });
+
+  it('labels a repeated value once', () => {
+    expect(pointLabelPlacements([1, 1, 0], 8)).toEqual(['above', null, null]);
+  });
+
+  it('keeps well-separated values above their points', () => {
+    expect(pointLabelPlacements([2, 6], 8)).toEqual(['above', 'above']);
+  });
+
+  it('compares each value with the nearest labelled value above it', () => {
+    expect(pointLabelPlacements([8, 7, 7, 6, 1], 8)).toEqual([
+      'above',
+      'below',
+      null,
+      null,
+      'above',
+    ]);
+  });
+
+  it('never stacks a label into the one placed below the value above it', () => {
+    // Axis top 24 puts the near gap at 3.12: 22 sits close under 24, so it
+    // labels below. 21 is close under 22, where that label already sits.
+    expect(pointLabelPlacements([24, 22, 21], 24)).toEqual([
+      'above',
+      'below',
+      null,
+    ]);
+    // 18 clears 22's point but not its label, so it labels below as well.
+    expect(pointLabelPlacements([24, 22, 18], 24)).toEqual([
+      'above',
+      'below',
+      'below',
+    ]);
+    // 15 clears both, so it labels above again.
+    expect(pointLabelPlacements([24, 22, 15], 24)).toEqual([
+      'above',
+      'below',
+      'above',
     ]);
   });
 });

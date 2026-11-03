@@ -2,7 +2,6 @@ import type { CSSProperties } from 'react';
 
 import { RevealAnimation } from './RevealAnimation';
 import { SectionOverline } from '@/components/ui/section-overline';
-import Image from 'next/image';
 
 import styles from './about.module.css';
 
@@ -14,7 +13,7 @@ const METAPHORS = [
   {
     term: 'Route',
     definition:
-      'The week-by-week plan Atlaris drafts from it. Modules, tasks, and the resources attached to each.',
+      'The plan Atlaris drafts from it: modules and tasks, each task with a time estimate.',
   },
   {
     term: 'Drift',
@@ -40,7 +39,7 @@ const METAPHORS = [
 export function SkySection() {
   return (
     <section
-      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-6 py-12 md:px-8 md:py-16'
       aria-labelledby='about-sky-heading'
     >
       <RevealAnimation>
@@ -56,10 +55,7 @@ export function SkySection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              Why a night sky,
-              <span className='block font-medium text-muted-foreground italic'>
-                not a scoreboard.
-              </span>
+              Why a night sky, not a scoreboard.
             </h2>
             <p
               className={`mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}
@@ -73,17 +69,14 @@ export function SkySection() {
             </p>
           </div>
           <figure
-            className={`overflow-hidden rounded-lg border border-panel-border bg-panel shadow-sm ${styles.revealFromRight}`}
+            className={`overflow-hidden rounded-lg border border-border bg-panel p-4 shadow-sm sm:p-6 ${styles.revealFromRight}`}
             style={{ '--i': 1 } as CSSProperties}
           >
-            <Image
-              src='/artwork/mountain-explorer.webp'
-              alt='Person standing under a constellation-filled night sky'
-              width={800}
-              height={450}
-              sizes='(min-width: 768px) 55vw, 100vw'
-              className='block aspect-video h-auto w-full object-cover'
-            />
+            <RouteConstellation />
+            <figcaption className='sr-only'>
+              A plan route drawn as a constellation: finished modules behind
+              you, tonight&apos;s task, and the goal at the end.
+            </figcaption>
           </figure>
         </div>
       </RevealAnimation>
@@ -93,7 +86,7 @@ export function SkySection() {
           {METAPHORS.map((item, index) => (
             <div
               key={item.term}
-              className={`rounded-lg border border-panel-border bg-panel p-5 ${styles.revealItem}`}
+              className={`rounded-lg border border-border bg-panel p-5 ${styles.revealItem}`}
               style={{ '--i': index } as CSSProperties}
             >
               <dt className='type-reading font-serif font-semibold text-foreground'>
@@ -110,5 +103,95 @@ export function SkySection() {
         </p>
       </RevealAnimation>
     </section>
+  );
+}
+
+/** Route points from finished modules up to the goal, in viewBox units. */
+const ROUTE_POINTS = [
+  { x: 36, y: 176, state: 'done', label: 'Module 1' },
+  { x: 104, y: 140, state: 'done', label: null },
+  { x: 170, y: 152, state: 'current', label: 'Tonight' },
+  { x: 236, y: 104, state: 'ahead', label: null },
+  { x: 290, y: 76, state: 'ahead', label: null },
+] as const;
+const GOAL = { x: 334, y: 40 };
+
+/** The route as a constellation: Bearings behind, tonight's point, the Star ahead. */
+function RouteConstellation() {
+  const path = [...ROUTE_POINTS, GOAL]
+    .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`)
+    .join(' ');
+
+  return (
+    <svg
+      viewBox='0 0 360 210'
+      aria-hidden='true'
+      className='block h-auto w-full'
+    >
+      <path
+        d={path}
+        fill='none'
+        className='stroke-link/60'
+        strokeWidth='1.25'
+        strokeDasharray='3 5'
+      />
+      {ROUTE_POINTS.map((point) => (
+        <g key={`${point.x}-${point.y}`}>
+          {point.state === 'current' ? (
+            <circle
+              cx={point.x}
+              cy={point.y}
+              r='9'
+              className='fill-none stroke-action-primary/50'
+              strokeWidth='1.25'
+            />
+          ) : null}
+          <circle
+            cx={point.x}
+            cy={point.y}
+            r={point.state === 'ahead' ? 3 : 4.5}
+            className={
+              point.state === 'ahead'
+                ? 'fill-panel stroke-link'
+                : 'fill-action-primary'
+            }
+            strokeWidth='1.25'
+          />
+          {point.label ? (
+            <text
+              x={point.x}
+              y={point.y + 24}
+              textAnchor='middle'
+              fontSize={11}
+              className='fill-muted-foreground'
+            >
+              {point.label}
+            </text>
+          ) : null}
+        </g>
+      ))}
+      <path
+        d={`M${GOAL.x} ${GOAL.y - 11} L${GOAL.x + 3} ${GOAL.y - 3} L${GOAL.x + 11} ${GOAL.y} L${GOAL.x + 3} ${GOAL.y + 3} L${GOAL.x} ${GOAL.y + 11} L${GOAL.x - 3} ${GOAL.y + 3} L${GOAL.x - 11} ${GOAL.y} L${GOAL.x - 3} ${GOAL.y - 3} Z`}
+        className='fill-foreground'
+      />
+      <text
+        x={GOAL.x - 18}
+        y={GOAL.y + 4}
+        textAnchor='end'
+        fontSize={11}
+        className='fill-foreground font-semibold'
+      >
+        Your goal
+      </text>
+      <text
+        x='36'
+        y='28'
+        fontSize={10}
+        letterSpacing='0.18em'
+        className='fill-muted-foreground uppercase'
+      >
+        Route · 6 weeks
+      </text>
+    </svg>
   );
 }

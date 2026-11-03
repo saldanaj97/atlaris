@@ -1,30 +1,30 @@
 import type { ActivityItem } from '../types';
 import type { CSSProperties } from 'react';
 
-import { cn } from '@/lib/utils';
-import { ArrowUpRight, Check, Sparkles } from 'lucide-react';
+import { formatMinutes } from '@/features/plans/formatters';
+import { Check, Circle, CircleDot, FilePlus } from 'lucide-react';
 import Link from 'next/link';
 
 const activityPresentation = {
-  generated: {
-    icon: Sparkles,
-    label: 'Plan generated',
-    className: 'border-primary/30 bg-primary/10 text-primary',
-  },
-  progress: {
-    icon: ArrowUpRight,
-    label: 'Progress made',
-    className: 'border-chart-2/30 bg-chart-2/10 text-chart-2',
-  },
-  completed: {
-    icon: Check,
-    label: 'Plan completed',
-    className: 'border-success/30 bg-success/10 text-success',
-  },
+  'plan-created': { icon: FilePlus, label: 'Plan created' },
+  'task-completed': { icon: Check, label: 'Completed' },
+  'task-started': { icon: CircleDot, label: 'Started' },
+  'task-reset': { icon: Circle, label: 'Marked not started' },
 } as const;
 
+function getActivityMeta(activity: ActivityItem): string {
+  const parts: string[] = [activityPresentation[activity.kind].label];
+  if (activity.planTopic) {
+    parts.push(activity.planTopic);
+  }
+  if (activity.minutes) {
+    parts.push(formatMinutes(activity.minutes));
+  }
+  return parts.join(' · ');
+}
+
 /**
- * Dashboard activity event with an explicit event label and timestamp.
+ * Dashboard activity row: what happened, to which task or plan, and when.
  */
 export function ActivityCard({
   activity,
@@ -33,8 +33,7 @@ export function ActivityCard({
   activity: ActivityItem;
   index?: number;
 }) {
-  const presentation = activityPresentation[activity.kind];
-  const Icon = presentation.icon;
+  const Icon = activityPresentation[activity.kind].icon;
 
   return (
     <Link
@@ -46,22 +45,17 @@ export function ActivityCard({
         } as CSSProperties
       }
     >
-      <span
-        className={cn(
-          'flex size-9 shrink-0 items-center justify-center rounded-[8px] border',
-          presentation.className,
-        )}
-        aria-hidden='true'
-      >
-        <Icon className='size-4' />
-      </span>
+      <Icon className='size-4 text-muted-foreground' aria-hidden='true' />
 
+      {/* The plan name is what tells similar task titles apart, so on phones
+          the title wraps to two lines and the meta line wraps rather than
+          truncating either. */}
       <div className='min-w-0'>
-        <p className='type-eyebrow text-muted-foreground'>
-          {presentation.label}
-        </p>
-        <p className='mt-0.5 truncate type-label text-foreground'>
+        <p className='line-clamp-2 type-label break-words text-foreground'>
           {activity.title}
+        </p>
+        <p className='mt-0.5 type-meta break-words text-muted-foreground'>
+          {getActivityMeta(activity)}
         </p>
       </div>
 

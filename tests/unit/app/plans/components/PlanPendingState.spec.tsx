@@ -105,7 +105,7 @@ describe('PlanPendingState', () => {
       <PlanPendingState plan={createTestPlanDetail({ status: 'failed' })} />,
     );
 
-    expect(screen.getByText('Generation Failed')).toBeInTheDocument();
+    expect(screen.getByText('Generation failed')).toBeInTheDocument();
     expect(
       screen.getByText(
         'Generation failed before it finished. You can try again.',
@@ -170,9 +170,9 @@ describe('PlanPendingState', () => {
     );
 
     expect(
-      screen.getByText('Generating Your Learning Plan'),
+      screen.getByText('Generating your learning plan'),
     ).toBeInTheDocument();
-    expect(screen.queryByText('Generation Failed')).not.toBeInTheDocument();
+    expect(screen.queryByText('Generation failed')).not.toBeInTheDocument();
   });
 
   it('keeps the interrupted fallback when a retry session is cancelled', () => {
@@ -206,7 +206,7 @@ describe('PlanPendingState', () => {
       />,
     );
 
-    expect(screen.getByText('Connection Issue')).toBeInTheDocument();
+    expect(screen.getByText('Connection issue')).toBeInTheDocument();
     expect(screen.getByText('Unable to reach the server')).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: /^refresh$/i }));
@@ -266,7 +266,7 @@ describe('PlanPendingState', () => {
       />,
     );
 
-    const planDetails = screen.getByRole('region', { name: 'Plan Details' });
+    const planDetails = screen.getByRole('region', { name: 'Plan details' });
 
     expect(planDetails).toHaveTextContent('Beginner');
     expect(planDetails).toHaveTextContent('5');

@@ -1,7 +1,10 @@
 import type { Metadata } from 'next';
 
+import { resolveAboutPageEnabled } from '@/app/(landing)/about/about-flag';
 import { About } from '@/app/(landing)/about/components/About';
 import { OG_DEFAULT_IMAGE } from '@/shared/constants/brand-assets';
+import { notFound } from 'next/navigation';
+import { connection } from 'next/server';
 
 const ABOUT_TITLE = 'About | Atlaris';
 const ABOUT_DESCRIPTION =
@@ -28,6 +31,10 @@ export const metadata: Metadata = {
   },
 };
 
-export default function AboutPage() {
+/** Retired: answers 404 unless the `about-page` flag is on. The code stays. */
+export default async function AboutPage() {
+  // Read the flag per request, not once at build time.
+  await connection();
+  if (!(await resolveAboutPageEnabled())) notFound();
   return <About />;
 }

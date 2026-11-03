@@ -137,13 +137,13 @@ export default function AppSidebarRail({
                     RAIL_ITEM,
                     SIDEBAR_FOCUS_RING,
                     isActive
-                      ? 'relative bg-action-soft text-foreground before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-link'
+                      ? 'relative bg-action-soft text-foreground before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-navigation-item-marker'
                       : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                   )}
                 >
                   <NavIcon
                     href={item.href}
-                    className={cn('size-[18px]', isActive && 'text-link')}
+                    className={cn('size-[18px]', isActive && 'text-primary')}
                   />
                 </Link>
               </TooltipTrigger>

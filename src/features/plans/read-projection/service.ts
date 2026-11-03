@@ -3,6 +3,7 @@ import type {
   PlanListPage,
   PlanListQuery,
 } from '@/features/plans/read-projection/types';
+import type { RecentLearningActivityRow } from '@/lib/db/queries/types/tasks.types';
 import type { DbClient } from '@/lib/db/types';
 import type { PaginationOptions } from '@/shared/constants/pagination';
 import type {
@@ -58,6 +59,7 @@ import {
   getPlanSummaryCount,
   getPlanSummaryRowsForUser,
 } from '@/lib/db/queries/plans';
+import { getRecentLearningActivityForUser } from '@/lib/db/queries/tasks';
 import { logger } from '@/lib/logging/logger';
 
 async function requireOwnedPlanReadable(params: {
@@ -162,6 +164,7 @@ async function listPlanSummaries(params: {
 // Keep page-specific entrypoints explicit even while both consumers share the
 // same summary projection today.
 const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
+const DASHBOARD_ACTIVITY_EVENT_LIMIT = 20 as const;
 
 export async function listDashboardPlanSummaries(params: {
   userId: string;
@@ -184,6 +187,7 @@ export async function getDashboardPlanData(params: {
   summaries: PlanSummary[];
   resumePlan: PlanSummary | undefined;
   progress: DashboardProgressTotals;
+  recentActivity: RecentLearningActivityRow[];
 }> {
   const { snapshot } = await ensureFreeAccessSelection({
     userId: params.userId,
@@ -195,23 +199,44 @@ export async function getDashboardPlanData(params: {
       ? snapshot.freeAccessPlanId
       : null;
 
-  const [summaries, candidatePage, progressSummaries] = await Promise.all([
-    listDashboardPlanSummaries(params),
-    getPlanListPageRowsForUser({
-      userId: params.userId,
-      dbClient: params.dbClient,
-      query: {
-        page: 1,
-        search: '',
-        status: 'all',
-        sort: 'recommended',
-      },
-      referenceTimestamp: new Date().toISOString(),
-      pageSize: 1,
-      planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
-    }),
-    listLightweightPlansForApi(params),
-  ]);
+  const [summaries, candidatePage, progressSummaries, activityRows] =
+    await Promise.all([
+      listDashboardPlanSummaries(params),
+      getPlanListPageRowsForUser({
+        userId: params.userId,
+        dbClient: params.dbClient,
+        query: {
+          page: 1,
+          search: '',
+          status: 'all',
+          sort: 'recommended',
+        },
+        referenceTimestamp: new Date().toISOString(),
+        pageSize: 1,
+        planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
+      }),
+      listLightweightPlansForApi(params),
+      // A Free user with a selected plan can only see that plan's activity, so
+      // filter in SQL; otherwise newer events on locked plans could fill the
+      // limit and leave the feed empty.
+      getRecentLearningActivityForUser(
+        params.userId,
+        params.dbClient,
+        DASHBOARD_ACTIVITY_EVENT_LIMIT,
+        { planId: selectedFreePlanId ?? undefined },
+      ),
+    ]);
+  // Locked plans keep their topic but not their content, so task titles stay out.
+  const recentActivity = activityRows.filter(
+    (row) =>
+      resolvePlanContentAccess({
+        tier: snapshot.subscriptionTier,
+        planId: row.planId,
+        initialPlanGeneratedAt: snapshot.initialPlanGeneratedAt,
+        freeAccessPlanId: snapshot.freeAccessPlanId,
+        freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
+      }) === 'full',
+  );
   const progress = buildDashboardProgressTotals(
     progressSummaries.map((summary) => ({
       completedModules: summary.completedModules,
@@ -228,7 +253,7 @@ export async function getDashboardPlanData(params: {
       candidate.status !== 'not_started' &&
       candidate.status !== 'generating')
   ) {
-    return { summaries, resumePlan: undefined, progress };
+    return { summaries, resumePlan: undefined, progress, recentActivity };
   }
 
   const listedCandidate = summaries.find(
@@ -252,10 +277,10 @@ export async function getDashboardPlanData(params: {
     freeAccessPlanSelectedAt: snapshot.freeAccessPlanSelectedAt,
   });
   if (access !== 'full') {
-    return { summaries, resumePlan: undefined, progress };
+    return { summaries, resumePlan: undefined, progress, recentActivity };
   }
 
-  return { summaries, resumePlan, progress };
+  return { summaries, resumePlan, progress, recentActivity };
 }
 
 export async function getPlansPageForRead(params: {

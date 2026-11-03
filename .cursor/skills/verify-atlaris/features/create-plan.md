@@ -4,7 +4,7 @@ A signed-in user names a goal, sets preferences, charts a course, then opens a g
 
 ## Sub-features
 
-- `plan-open-form` opens `/plans/new` from dashboard, plans, or **New Plan**.
+- `plan-open-form` opens `/plans/new` from the dashboard, plans, or the sidebar **Create a plan** link.
 - `plan-fill` enters topic plus Skill level, Weekly hours, Learning style, and Deadline.
 - `plan-generate` submits **Chart this course** and lands on a plan detail URL.
 - `plan-modules` shows at least one **View full module** link.
@@ -12,9 +12,9 @@ A signed-in user names a goal, sets preferences, charts a course, then opens a g
 
 ## How to get to it (user POV)
 
-- Choose **New Plan** in the product header (label `New Plan`).
-- Choose **Begin tonight** from the dashboard empty card.
-- Choose **New Plan** on `/plans`.
+- Choose **Create a plan** in the product sidebar.
+- Choose **Create a plan** from the dashboard empty card.
+- Choose **Create a plan** on the empty `/plans` list.
 - Open `/plans/new` directly.
 
 ## Driving it with verify-atlaris

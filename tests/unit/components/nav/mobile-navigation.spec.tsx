@@ -74,9 +74,6 @@ describe('MobileNavigation', () => {
     expect(
       screen.getByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).toHaveAttribute('href', '/dashboard');
-    expect(
-      screen.queryByRole('link', { name: 'Create New Plan' }),
-    ).not.toBeInTheDocument();
   });
 
   it('renders the create-plan action in the app drawer following canCreatePlan', async () => {
@@ -98,7 +95,7 @@ describe('MobileNavigation', () => {
 
     const allowed = renderDrawer(true);
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
-    expect(screen.getByRole('link', { name: 'Create plan' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
       'href',
       '/plans/new',
     );
@@ -114,14 +111,14 @@ describe('MobileNavigation', () => {
       '/pricing',
     );
     expect(
-      screen.queryByRole('link', { name: 'Create plan' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     blocked.unmount();
 
     renderDrawer(undefined);
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
     expect(
-      screen.queryByRole('link', { name: 'Create plan' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('link', { name: 'Upgrade' }),
@@ -160,14 +157,14 @@ describe('MobileNavigation', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('renders About in the marketing sheet', async () => {
+  it('leaves the retired About page out of the marketing sheet', async () => {
     const user = userEvent.setup();
 
     render(
       <TooltipProvider>
         <MobileNavigation
           isMarketing
-          pathname='/about'
+          pathname='/landing'
           navItems={unauthenticatedNavItems}
         />
       </TooltipProvider>,
@@ -175,34 +172,30 @@ describe('MobileNavigation', () => {
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
       'href',
-      '/about',
+      '/pricing',
     );
-    expect(screen.getByRole('link', { name: 'About' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
+    expect(
+      screen.queryByRole('link', { name: 'About' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('uses Begin tonight CTA on marketing sheets when signed out', async () => {
+  it('uses the create-plan CTA on marketing sheets when signed out', async () => {
     const user = userEvent.setup();
 
     renderMobileNavigation();
 
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
-    expect(screen.getByRole('link', { name: 'Begin tonight' })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
       'href',
-      '/auth/sign-in',
+      '/plans/new',
     );
     expect(screen.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
       'href',
       '/auth/sign-in',
     );
-    expect(
-      screen.queryByRole('link', { name: 'Create New Plan' }),
-    ).not.toBeInTheDocument();
   });
 
   it('keeps signed-out auth sheets on the ordinary navigation composition', async () => {
@@ -221,8 +214,8 @@ describe('MobileNavigation', () => {
     await user.click(screen.getByRole('button', { name: 'Open menu' }));
 
     expect(
-      screen.getByRole('link', { name: 'Create New Plan' }),
-    ).toHaveAttribute('href', '/plans/new');
+      screen.queryByRole('link', { name: 'Create a plan' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute(
       'href',
       '/landing',

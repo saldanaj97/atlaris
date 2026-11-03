@@ -128,7 +128,7 @@ describe('PlanTimeline', () => {
     );
 
     const laterToggle = screen.getByRole('button', {
-      name: /week 2/i,
+      name: /module 2/i,
     });
     expect(laterToggle).toBeEnabled();
   });

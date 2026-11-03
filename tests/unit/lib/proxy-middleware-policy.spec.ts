@@ -112,7 +112,6 @@ describe('middleware policy', () => {
     '/landing/',
     '/pricing',
     '/pricing/',
-    '/about',
     '/terms',
     '/privacy',
   ])('keeps marketing page %s live during maintenance', (pathname) => {
@@ -133,22 +132,19 @@ describe('middleware policy', () => {
     '/analytics',
     '/pricing/extra',
     '/landing-other',
+    '/about',
   ])('redirects app and auth path %s to /maintenance', (pathname) => {
     expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(
       '/maintenance',
     );
   });
 
-  it.each([
-    '/landing',
-    '/pricing',
-    '/about',
-    '/terms',
-    '/privacy',
-    '/waitlist',
-  ])('keeps %s live while the launch waitlist is on', (pathname) => {
-    expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
-  });
+  it.each(['/landing', '/pricing', '/terms', '/privacy', '/waitlist'])(
+    'keeps %s live while the launch waitlist is on',
+    (pathname) => {
+      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
+    },
+  );
 
   it.each([
     '/auth/sign-up',

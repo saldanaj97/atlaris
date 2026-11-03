@@ -1,34 +1,43 @@
 @import 'tailwindcss';
 @import 'tw-animate-css';
-@import '../styles/generated/atlaris-tokens.css';
+@import '../styles/atlaris-tokens.css';
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
   color-scheme: light;
-  /* JCS-86 light extension: the external package supplies dark values only. */
+  /* Midnight light theme. Dark values live in src/styles/atlaris-tokens.css. */
+  /* Brand primitives the landing hero light draws with in both themes. The
+   * dark scope defines the same values. */
+  --at-primitive-color-cantaloupe-500: #fc734d;
+  --at-primitive-color-cantaloupe-400: #fd8b69;
+  --at-primitive-color-cantaloupe-300: #fea083;
+  --at-primitive-color-electric-500: #0297de;
+  --at-primitive-color-electric-400: #2eaeea;
+  --at-primitive-color-electric-200: #8fd1f5;
   --background: #f8fafc;
-  --foreground: #070b10;
+  --foreground: #02070a;
   --card: #ffffff;
-  --card-foreground: #070b10;
+  --card-foreground: #02070a;
   --popover: #eef2f7;
-  --popover-foreground: #070b10;
-  --primary: #5b4bb7;
-  --primary-dark: #493a9a;
+  --popover-foreground: #02070a;
+  --primary: #b8441f;
+  --primary-dark: #963515;
   --primary-foreground: #f8fafc;
-  --action-primary: #8b78ff;
-  --action-primary-hover: #a08fff;
-  --action-primary-pressed: #7c68eb;
-  --action-primary-foreground: #070b10;
-  --action-soft: color-mix(in srgb, var(--primary) 10%, var(--background));
-  --link: #5b4bb7;
-  --link-hover: #493a9a;
+  --action-primary: #fc734d;
+  --action-primary-hover: #fd8b69;
+  --action-primary-pressed: #e8603a;
+  --action-primary-foreground: #02070a;
+  --action-soft: color-mix(in srgb, var(--primary) 7%, var(--background));
+  --link: #03699e;
+  --navigation-item-marker: var(--primary);
+  --link-hover: #02527c;
   --secondary: #eef2f7;
-  --secondary-foreground: #070b10;
+  --secondary-foreground: #02070a;
   --muted: #e2e8f0;
   --muted-foreground: #526174;
   --accent: #e2e8f0;
-  --accent-foreground: #070b10;
+  --accent-foreground: #02070a;
   --destructive: #b42318;
   --destructive-foreground: #f8fafc;
   --action-destructive: #c7344f;
@@ -37,6 +46,8 @@
   --action-destructive-foreground: #f8fafc;
   --danger: #b42318;
   --danger-subtle: #fef3f2;
+  /* A falling metric. Light reuses the danger red. */
+  --trend-down: var(--danger);
   --success: #066b4d;
   --success-foreground: #f8fafc;
   --warning: #8a5a00;
@@ -45,25 +56,25 @@
   --disabled-foreground: #62738a;
   --disabled-border: #b8c5d6;
   --panel: #ffffff;
-  --panel-foreground: #070b10;
+  --panel-foreground: #02070a;
   --panel-muted: #eef2f7;
   --panel-border: #b8c5d6;
   --border: #b8c5d6;
   --input: #62738a;
-  --ring: #493a9a;
-  --chart-1: #5b4bb7;
-  --chart-2: #175cd3;
+  --ring: #0278b4;
+  --chart-1: #0278b4;
+  --chart-2: #c2491f;
   --chart-3: #087f5b;
   --chart-4: #8a5a00;
-  --chart-5: #b42318;
+  --chart-5: #475569;
   --sidebar: #ffffff;
-  --sidebar-foreground: #070b10;
-  --sidebar-primary: #8b78ff;
-  --sidebar-primary-foreground: #070b10;
+  --sidebar-foreground: #02070a;
+  --sidebar-primary: #fc734d;
+  --sidebar-primary-foreground: #02070a;
   --sidebar-accent: #e2e8f0;
-  --sidebar-accent-foreground: #070b10;
+  --sidebar-accent-foreground: #02070a;
   --sidebar-border: #b8c5d6;
-  --sidebar-ring: #493a9a;
+  --sidebar-ring: #0278b4;
   --app-background-image: none;
   --app-background-size: auto;
 
@@ -119,8 +130,8 @@
   color-scheme: dark;
 }
 
-/* Generated dark primitives are owned by the external token package. This bridge
- * maps the reviewed semantic roles onto the application's existing API. */
+/* Dark primitives live in src/styles/atlaris-tokens.css. This bridge maps the
+ * reviewed semantic roles onto the application's existing API. */
 [data-atlaris-theme='dark'] {
   color-scheme: dark;
   --background: var(--at-semantic-color-background-canvas);
@@ -129,7 +140,7 @@
   --card-foreground: var(--at-semantic-color-text-primary);
   --popover: var(--at-semantic-color-background-raised);
   --popover-foreground: var(--at-semantic-color-text-primary);
-  --primary: var(--at-semantic-color-text-link);
+  --primary: var(--at-semantic-color-text-accent);
   --primary-dark: var(--at-semantic-color-action-primary-background);
   --primary-foreground: var(--at-semantic-color-action-primary-foreground);
   --action-primary: var(--at-semantic-color-action-primary-background);
@@ -140,6 +151,7 @@
   );
   --action-soft: var(--at-semantic-color-background-selected);
   --link: var(--at-semantic-color-text-link);
+  --navigation-item-marker: var(--at-component-navigation-item-marker);
   --link-hover: var(--at-semantic-color-text-link-hover);
   --secondary: var(--at-semantic-color-background-raised);
   --secondary-foreground: var(--at-semantic-color-text-primary);
@@ -159,6 +171,9 @@
   );
   --danger: var(--at-semantic-color-status-danger-foreground);
   --danger-subtle: var(--at-semantic-color-status-danger-background);
+  /* Dark danger (rose-400) reads as cantaloupe at icon size, so a falling
+     metric gets a true red: 5.9:1 on the surface, 4.9:1 on raised. */
+  --trend-down: #ff4f5e;
   --success: var(--at-semantic-color-status-success-foreground);
   --success-foreground: var(--at-semantic-color-action-success-foreground);
   --warning: var(--at-semantic-color-status-warning-foreground);
@@ -218,6 +233,7 @@
   --color-action-primary-foreground: var(--action-primary-foreground);
   --color-action-soft: var(--action-soft);
   --color-link: var(--link);
+  --color-navigation-item-marker: var(--navigation-item-marker);
   --color-link-hover: var(--link-hover);
   --color-secondary: var(--secondary);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -233,6 +249,7 @@
   --color-action-destructive-foreground: var(--action-destructive-foreground);
   --color-danger: var(--danger);
   --color-danger-subtle: var(--danger-subtle);
+  --color-trend-down: var(--trend-down);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-panel: var(--panel);
@@ -392,6 +409,117 @@
     line-height: 1.5;
     letter-spacing: 0;
     color: var(--muted-foreground);
+  }
+}
+
+/* Horizontal scroll cue: fades whichever edge has hidden content. useScrollCue
+ * sets `data-scroll-cue` from the scroll position and size, so it works in every
+ * browser; containers that do not overflow show no fade. */
+@property --scroll-cue-start {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --scroll-cue-end {
+  syntax: '<length>';
+  inherits: false;
+  initial-value: 0px;
+}
+
+@utility scroll-cue-x {
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--scroll-cue-start),
+    #000 calc(100% - var(--scroll-cue-end)),
+    transparent
+  );
+  transition:
+    --scroll-cue-start 150ms ease-out,
+    --scroll-cue-end 150ms ease-out;
+
+  &[data-scroll-cue~='start'] {
+    --scroll-cue-start: 2.5rem;
+  }
+
+  &[data-scroll-cue~='end'] {
+    --scroll-cue-end: 2.5rem;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* A chevron placed after a `scroll-cue-x` scroller, over its faded trailing
+ * edge. It shows only while that edge hides content, so the fade reads as
+ * "more this way" in both themes rather than as dimmed text. */
+@utility scroll-cue-end-marker {
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+
+  [data-scroll-cue~='end'] ~ & {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+}
+
+/* Marketing backdrop edges: fades in below the opaque header (the backdrop is
+ * tucked 4rem up under it) and out before its bottom, so neither the glow nor
+ * the lower orb ends in a hard horizontal line. */
+@utility backdrop-edge-fade {
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 4rem,
+    #000 14rem,
+    #000 calc(100% - 14rem),
+    transparent
+  );
+}
+
+/* Plan-selection checkbox drawn from tokens: the native dark-theme box is a
+ * flat gray fill that reads as disabled. Unchecked shows the 3:1 control
+ * boundary; checked and mixed fill with the action color. */
+@utility control-checkbox {
+  appearance: none;
+  display: inline-grid;
+  place-content: center;
+  border: 1.5px solid var(--input);
+  background-color: transparent;
+  cursor: pointer;
+
+  &::before {
+    content: '';
+    width: 0.7em;
+    height: 0.7em;
+    background-color: var(--action-primary-foreground);
+    clip-path: polygon(14% 44%, 0 59%, 40% 100%, 100% 23%, 85% 9%, 39% 69%);
+    transform: scale(0);
+  }
+
+  &:checked,
+  &:indeterminate {
+    border-color: var(--action-primary);
+    background-color: var(--action-primary);
+  }
+
+  &:checked::before {
+    transform: scale(1);
+  }
+
+  &:indeterminate::before {
+    clip-path: inset(40% 5%);
+    transform: scale(1);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+    border-color: var(--disabled-border);
+    background-color: var(--disabled);
   }
 }
 
@@ -641,6 +769,14 @@
   .dark .gradient-text-symmetric {
     @apply from-primary via-accent to-primary;
   }
+}
+
+/* Theme switches crossfade the whole page (ThemeToggle, SystemThemeCrossfade).
+   Under reduced motion the view transition never starts. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: var(--motion-duration-overlay);
+  animation-timing-function: var(--motion-easing-standard);
 }
 
 @media (prefers-reduced-motion: reduce) {

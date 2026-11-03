@@ -33,6 +33,26 @@ export function resolvePlanPeriod(
   return planHasAnnual(plan) ? 'annual' : 'month';
 }
 
+export type PricingPlanFee = {
+  fee: PricingMoney | null;
+  /** Billing unit shown beside the fee; null when the plan is free. */
+  feePeriod: 'Month' | 'Year' | null;
+};
+
+/** The fee a plan card shows for the selected period. */
+export function resolvePlanFee(
+  plan: PricingPlan,
+  selectedPeriod: BillingPeriod,
+): PricingPlanFee {
+  const useAnnual = resolvePlanPeriod(plan, selectedPeriod) === 'annual';
+  const fee = useAnnual ? (plan.annualMonthlyFee ?? plan.annualFee) : plan.fee;
+  if (!fee?.amount) return { fee, feePeriod: null };
+  return {
+    fee,
+    feePeriod: useAnnual && !plan.annualMonthlyFee ? 'Year' : 'Month',
+  };
+}
+
 export function formatPricingMoney(money: PricingMoney | null): string {
   if (!money) return '$0';
   const symbol = money.currencySymbol?.trim() || '$';
@@ -41,4 +61,12 @@ export function formatPricingMoney(money: PricingMoney | null): string {
     return `${symbol}${formatted.endsWith('.00') ? formatted.slice(0, -3) : formatted}`;
   }
   return `${symbol}${(money.amount / 100).toFixed(money.amount % 100 === 0 ? 0 : 2)}`;
+}
+
+/** Id of the hint that explains a paid plan's disabled subscribe button. */
+export function renewalConsentHintId(
+  plan: PricingPlan,
+  period: BillingPeriod,
+): string {
+  return `renewal-${plan.slug}-${period}-hint`;
 }

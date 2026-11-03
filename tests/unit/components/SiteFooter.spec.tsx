@@ -18,8 +18,8 @@ describe('SiteFooter', () => {
       within(navigation).getByRole('link', { name: 'Pricing' }),
     ).toHaveAttribute('href', '/pricing');
     expect(
-      within(navigation).getByRole('link', { name: 'About' }),
-    ).toHaveAttribute('href', '/about');
+      within(navigation).queryByRole('link', { name: 'About' }),
+    ).not.toBeInTheDocument();
     expect(
       within(navigation).getByRole('link', { name: 'Terms' }),
     ).toHaveAttribute('href', '/terms');

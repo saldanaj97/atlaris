@@ -170,8 +170,8 @@ describe('ClerkPricingTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
@@ -195,7 +195,7 @@ describe('ClerkPricingTable', () => {
       expect(
         await screen.findByRole('link', { name: 'Begin with Starter' }),
       ).toHaveAttribute('href', '/auth/sign-in');
-      for (const name of ['Start free tonight', 'Begin with Pro']) {
+      for (const name of ['Start free', 'Begin with Pro']) {
         expect(screen.getByRole('link', { name })).toHaveAttribute(
           'href',
           '/auth/sign-in',
@@ -230,11 +230,12 @@ describe('ClerkPricingTable', () => {
     expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
 
-  it('omits stale Clerk export features while keeping other provider copy', async () => {
+  it('renders card copy from tier limits instead of Clerk plan copy', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
           ...STARTER_PLAN,
+          description: 'Up to 10 active learning plans with curated models',
           features: [
             { name: '10 active learning plans' },
             { name: '50 exports per month' },
@@ -246,8 +247,13 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.getByText('Plans up to 8 weeks')).toBeVisible();
+    expect(screen.getByText('For building a steady practice.')).toBeVisible();
+    expect(screen.queryByText(/curated models$/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/10 active learning plans|priority queue/i),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/exports per month/i)).not.toBeInTheDocument();
   });
 
@@ -257,7 +263,9 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    expect(await screen.findByText('Priority queue access')).toBeVisible();
+    expect(
+      await screen.findByText('Choose from a curated model list'),
+    ).toBeVisible();
     const checkout = await screen.findByTestId('checkout-plan_starter');
     expect(checkout).toHaveAttribute('data-period', 'month');
     expect(
@@ -273,7 +281,7 @@ describe('ClerkPricingTable', () => {
     expect(screen.getByText('$8')).toBeVisible();
   });
 
-  it('hydrates monthly server markup before applying a validated annual checkout URL', async () => {
+  it('hydrates server markup before applying a validated annual checkout URL', async () => {
     const { ClerkPricingTable } =
       await import('@/app/(landing)/pricing/components/ClerkPricingTable');
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
@@ -298,9 +306,11 @@ describe('ClerkPricingTable', () => {
     container.innerHTML = markup;
     document.body.append(container);
 
+    // Plans load on the client, so the server cannot know yet whether a
+    // yearly price exists and renders no billing period toggle.
     expect(
-      within(container).getByRole('button', { name: 'Monthly' }),
-    ).toHaveAttribute('aria-pressed', 'true');
+      within(container).queryByRole('group', { name: 'Billing period' }),
+    ).not.toBeInTheDocument();
 
     const onRecoverableError = vi.fn();
     let root: ReturnType<typeof hydrateRoot> | undefined;
@@ -673,7 +683,7 @@ describe('ClerkPricingTable', () => {
     );
   });
 
-  it('marks yearly pricing as coming soon when no plan has an annual price', async () => {
+  it('hides the billing period toggle when no plan has an annual price', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
@@ -687,8 +697,14 @@ describe('ClerkPricingTable', () => {
     await renderPricingTable();
 
     expect(
-      await screen.findByRole('button', { name: 'Yearly · Soon' }),
-    ).toBeDisabled();
+      await screen.findByRole('article', { name: 'Starter' }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('group', { name: 'Billing period' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: /yearly/i }),
+    ).not.toBeInTheDocument();
   });
 
   it('shows a retryable error when plan loading fails and recovers without export copy', async () => {
@@ -724,8 +740,8 @@ describe('ClerkPricingTable', () => {
 
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
-    expect(await screen.findByText('10 active learning plans')).toBeVisible();
-    expect(screen.getByText('Priority queue access')).toBeVisible();
+    expect(await screen.findByText('10 active plans')).toBeVisible();
+    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
@@ -744,7 +760,7 @@ describe('ClerkPricingTable', () => {
     expect(screen.queryByRole('article')).not.toBeInTheDocument();
   });
 
-  it('compares only the current non-export features from each live plan', async () => {
+  it('compares plans from tier limits, not from Clerk feature strings', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
@@ -752,61 +768,62 @@ describe('ClerkPricingTable', () => {
           name: 'Free',
           features: [
             { name: '10 active learning plans' },
-            { name: 'Shared scheduling horizon' },
             { name: '50 exports per month' },
           ],
         },
-        {
-          ...STARTER_PLAN,
-          features: [
-            { name: 'Shared scheduling horizon' },
-            { name: 'Priority queue access' },
-            { name: '50 exports per month' },
-          ],
-        },
+        { ...STARTER_PLAN, features: [{ name: 'Priority queue access' }] },
       ],
     });
 
     await renderPricingTable();
 
     const comparison = await screen.findByRole('region', {
-      name: 'Plan feature comparison',
+      name: 'Plan comparison',
     });
     expect(comparison).toHaveAttribute('tabindex', '0');
+    const plansIncluded = within(comparison).getByRole('row', {
+      name: /plans included/i,
+    });
     expect(
-      within(comparison).getByRole('columnheader', { name: 'Free' }),
-    ).toBeVisible();
+      within(plansIncluded)
+        .getAllByRole('cell')
+        .map((cell) => cell.textContent),
+    ).toEqual(['1', '10 at a time']);
     expect(
-      within(comparison).getByRole('columnheader', { name: 'Starter' }),
-    ).toBeVisible();
-    expect(
-      within(comparison).getByRole('row', {
-        name: /shared scheduling horizon.*feature listed.*feature listed/i,
-      }),
-    ).toBeVisible();
-    expect(
-      within(comparison).getByRole('row', {
-        name: /priority queue access.*feature not listed.*feature listed/i,
-      }),
-    ).toBeVisible();
-    expect(within(comparison).queryByText(/exports?/i)).not.toBeInTheDocument();
+      within(comparison).queryByText(/exports?|priority queue/i),
+    ).not.toBeInTheDocument();
   });
 
-  it('treats fallback Pro priority-queue copy as covering the Starter comparison row', async () => {
+  it('labels each comparison column with its plan name and price for the selected period', async () => {
     mocks.getPlans.mockResolvedValue({
       data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
     });
+    const user = userEvent.setup();
 
     await renderPricingTable();
 
     const comparison = await screen.findByRole('region', {
-      name: 'Plan feature comparison',
+      name: 'Plan comparison',
     });
-    expect(
-      within(comparison).getByRole('row', {
-        name: /priority queue access.*feature not listed.*feature listed.*feature listed/i,
-      }),
-    ).toBeVisible();
+    const headerText = () =>
+      within(comparison)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent);
+    expect(headerText()).toEqual([
+      'Feature',
+      'Free$0',
+      'Starter$10 per month',
+      'Pro$20 per month',
+    ]);
+
+    await user.click(screen.getByRole('button', { name: 'Yearly' }));
+
+    expect(headerText()).toEqual([
+      'Feature',
+      'Free$0',
+      'Starter$8 per month',
+      'Pro$16 per month',
+    ]);
   });
 
   it('shows placeholder cards while Clerk plans are loading', async () => {

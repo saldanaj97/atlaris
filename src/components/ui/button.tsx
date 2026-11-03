@@ -21,7 +21,7 @@ const buttonVariants = cva(
         link: 'text-link underline-offset-4 hover:text-link-hover hover:underline',
         cta: 'group bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover active:bg-action-primary-pressed',
         'soft-primary':
-          'border-link bg-action-soft text-link hover:bg-secondary active:bg-muted',
+          'border-primary/40 bg-action-soft text-primary hover:bg-secondary active:bg-muted',
         success:
           'bg-success text-success-foreground hover:bg-success/90 active:bg-success/80 focus-visible:ring-success',
       },

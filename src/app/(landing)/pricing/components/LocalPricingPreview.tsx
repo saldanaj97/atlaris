@@ -2,7 +2,10 @@
 
 import type { BillingPeriod, PricingPlan } from './pricing-card-model';
 
-import { PRICING_PLAN_FEATURES } from '../pricing-plan-features';
+import {
+  PRICING_PLAN_DESCRIPTIONS,
+  PRICING_PLAN_FEATURES,
+} from '../pricing-plan-features';
 import { PricingCards } from './PricingCards';
 import { RenewalDisclosure } from './RenewalDisclosure';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
@@ -13,7 +16,7 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     id: 'local-free',
     slug: CLERK_BILLING_PLAN_SLUGS.free,
     name: 'Free',
-    description: 'For finding your rhythm.',
+    description: PRICING_PLAN_DESCRIPTIONS.free,
     features: PRICING_PLAN_FEATURES.free,
     fee: null,
     annualFee: null,
@@ -23,7 +26,7 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     id: 'local-starter',
     slug: CLERK_BILLING_PLAN_SLUGS.starter,
     name: 'Starter',
-    description: 'For building a steady practice.',
+    description: PRICING_PLAN_DESCRIPTIONS.starter,
     features: PRICING_PLAN_FEATURES.starter,
     fee: { amount: 2500, amountFormatted: '25.00' },
     annualFee: null,
@@ -33,7 +36,7 @@ const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
     id: 'local-pro',
     slug: CLERK_BILLING_PLAN_SLUGS.pro,
     name: 'Pro',
-    description: 'For deeper, longer-running work.',
+    description: PRICING_PLAN_DESCRIPTIONS.pro,
     features: PRICING_PLAN_FEATURES.pro,
     fee: { amount: 10000, amountFormatted: '100.00' },
     annualFee: null,

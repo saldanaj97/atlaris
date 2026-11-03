@@ -1,44 +1,20 @@
+import type { PanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import type { ModuleLessonGenerationSummary } from '@/features/plans/read-projection/types';
 
+import { getPanelState } from '@/app/(app)/plans/[id]/modules/[moduleId]/components/generationPanelState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Surface } from '@/components/ui/surface';
 import { Loader2 } from 'lucide-react';
 
-function getGenerationStatusLabel(
-  lessonGeneration: ModuleLessonGenerationSummary,
-  isFailed: boolean,
-): string {
-  if (isFailed) {
-    return 'Failed';
-  }
-
-  switch (lessonGeneration.status) {
-    case 'not_generated':
-      return 'Preparing';
-    case 'generating':
-      return 'Generating';
-    case 'ready':
-      return 'Ready';
-    case 'failed':
-      return 'Failed';
-    default: {
-      const _exhaustive: never = lessonGeneration.status;
-      return _exhaustive;
-    }
-  }
-}
-
 function GenerationDescription({
-  lessonGeneration,
+  state,
   generationTakingLong,
-  isFailed,
 }: {
-  lessonGeneration: ModuleLessonGenerationSummary;
+  state: PanelState;
   generationTakingLong: boolean;
-  isFailed: boolean;
 }) {
-  const badge = getGenerationStatusLabel(lessonGeneration, isFailed);
+  const isFailed = state === 'failed';
 
   return (
     <div className='min-w-0'>
@@ -51,11 +27,13 @@ function GenerationDescription({
       ) : (
         <p className='mt-2 type-body text-muted-foreground'>
           Generation is running for the full module. You can keep reviewing
-          lessons, resources, and progress while content is prepared.
+          lessons and progress while content is prepared.
         </p>
       )}
       <div className='mt-4 flex flex-wrap items-center gap-2'>
-        <Badge variant={isFailed ? 'destructive' : 'info'}>{badge}</Badge>
+        <Badge variant={isFailed ? 'destructive' : 'info'}>
+          {isFailed ? 'Failed' : 'Generating'}
+        </Badge>
         {generationTakingLong && !isFailed ? (
           <p className='type-label text-warning'>
             Generation taking longer than expected
@@ -67,32 +45,30 @@ function GenerationDescription({
 }
 
 function GenerationAction({
+  state,
   isPending,
-  isFailed,
   onRetry,
 }: {
+  state: PanelState;
   isPending: boolean;
-  isFailed: boolean;
   onRetry: () => void;
 }) {
-  if (isFailed) {
+  if (state === 'running') {
     return (
-      <Button
-        onClick={onRetry}
-        disabled={isPending}
-        className='w-full sm:w-auto'
-      >
-        {isPending ? 'Generating…' : 'Retry lesson generation'}
-      </Button>
+      <div className='flex items-center gap-2 type-label text-primary'>
+        <span className='animate-spin motion-reduce:animate-none'>
+          <Loader2 className='size-4' />
+        </span>
+        Generating lessons…
+      </div>
     );
   }
 
   return (
-    <div className='flex items-center gap-2 type-label text-primary'>
-      <span className='animate-spin motion-reduce:animate-none'>
-        <Loader2 className='size-4' />
-      </span>
-      Generating lessons…
+    <div>
+      <Button variant='outline' onClick={onRetry} disabled={isPending}>
+        {isPending ? 'Generating…' : 'Retry lesson generation'}
+      </Button>
     </div>
   );
 }
@@ -112,27 +88,20 @@ export function GenerationStatePanel({
     return null;
   }
 
-  const isFailed =
-    lessonGeneration.status === 'failed' ||
-    (lessonGeneration.status === 'not_generated' && !isPending);
+  const state = getPanelState(lessonGeneration.status, isPending);
 
   return (
     <Surface
-      variant={isFailed ? 'inset' : 'muted'}
+      variant={state === 'failed' ? 'inset' : 'muted'}
       padding='compact'
       className='mb-6 flex flex-col gap-4'
       aria-live='polite'
     >
       <GenerationDescription
-        lessonGeneration={lessonGeneration}
+        state={state}
         generationTakingLong={generationTakingLong}
-        isFailed={isFailed}
       />
-      <GenerationAction
-        isPending={isPending}
-        isFailed={isFailed}
-        onRetry={onRetry}
-      />
+      <GenerationAction state={state} isPending={isPending} onRetry={onRetry} />
     </Surface>
   );
 }
