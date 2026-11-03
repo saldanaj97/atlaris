@@ -118,10 +118,12 @@ test('authenticated launch blockers stay green', async ({ page }) => {
           lockedSidebarRow.getByText(/^\d+\. /),
           lockedSidebarRow.getByText(/^\d+(\.\d+)? (min|hrs?)$/),
         ]) {
-          expect(
-            await label.evaluate(renderedContrast),
-            `locked lesson text in ${colorScheme}`,
-          ).toBeGreaterThanOrEqual(4.5);
+          // Polled: the row's colors transition after the theme switches.
+          await expect
+            .poll(() => label.evaluate(renderedContrast), {
+              message: `locked lesson text in ${colorScheme}`,
+            })
+            .toBeGreaterThanOrEqual(4.5);
         }
       }
       await page.emulateMedia({ colorScheme: null });
@@ -134,9 +136,9 @@ test('authenticated launch blockers stay green', async ({ page }) => {
       '[role="menuitem"][aria-current="page"]',
     );
     await expect(currentModuleItem).toBeFocused();
-    expect(
-      await currentModuleItem.evaluate(renderedContrast),
-    ).toBeGreaterThanOrEqual(4.5);
+    await expect
+      .poll(() => currentModuleItem.evaluate(renderedContrast))
+      .toBeGreaterThanOrEqual(4.5);
     await page.keyboard.press('Escape');
 
     const nextModuleLink = page.getByRole('link', {
@@ -151,7 +153,10 @@ test('authenticated launch blockers stay green', async ({ page }) => {
       await expect(page).toHaveURL(MODULE_URL);
     }
 
-    await page.getByRole('link', { name: planInput.topic }).click();
+    await page
+      .getByRole('navigation', { name: 'Breadcrumb' })
+      .getByRole('link', { name: planInput.topic })
+      .click();
     await expect(page).toHaveURL(planUrl);
     await expect(
       page.getByRole('link', { name: /view full module/i }).first(),
@@ -164,7 +169,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('analytics redirect lands on usage', async () => {
     await page.goto('/analytics');
     await expect(page).toHaveURL(ANALYTICS_USAGE_URL);
-    await expectHeading(page, 'Usage');
+    await expectHeading(page, 'Learning analytics', 1);
   });
 
   await test.step('Clerk pricing and billing settings stay green', async () => {

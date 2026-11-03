@@ -4,6 +4,10 @@ import type { SmokeStatePayload } from './state-file';
  * Single source of truth for anon vs auth smoke launcher env.
  * Ports match Phase 2 Playwright `baseURL` expectations — change only here.
  */
+import {
+  getPostgresHostname,
+  isLocalPostgresHostname,
+} from '../../../scripts/db/local-postgres-host';
 import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-product-testing';
 
 /** Anon Playwright project / app server port */
@@ -11,6 +15,15 @@ export const SMOKE_ANON_PORT = 3100 as const;
 
 /** Auth Playwright project / app server port */
 export const SMOKE_AUTH_PORT = 3101 as const;
+
+/** Local jobs Worker that the auth app server hands plan generation to */
+export const SMOKE_WORKER_PORT = 3102 as const;
+
+/** `cf dev` takes no inspector flag; read by workers/jobs/wrangler.config.ts. */
+const SMOKE_WORKER_INSPECTOR_PORT = 3103 as const;
+
+/** Only signs commands between the local smoke app and local smoke Worker. */
+const SMOKE_JOBS_SIGNING_SECRET = 'smoke-jobs-signing-secret';
 
 const SMOKE_CONTROLLED_ENV_KEYS = [
   'ENABLE_SENTRY',
@@ -28,6 +41,8 @@ const SMOKE_CONTROLLED_ENV_KEYS = [
   'PORT',
   'SMOKE_NEXT_DIST_DIR',
   'AI_PROVIDER',
+  'JOBS_WORKER_URL',
+  'JOBS_SIGNING_SECRET',
 ] as const;
 const SMOKE_CONTROLLED_ENV_KEY_SET = new Set<string>(SMOKE_CONTROLLED_ENV_KEYS);
 
@@ -37,6 +52,10 @@ export function smokeAnonAppUrl(): string {
 
 export function smokeAuthAppUrl(): string {
   return `http://127.0.0.1:${SMOKE_AUTH_PORT}`;
+}
+
+export function smokeWorkerUrl(): string {
+  return `http://127.0.0.1:${SMOKE_WORKER_PORT}`;
 }
 
 function baseSmokeLayer(state: SmokeStatePayload): Record<string, string> {
@@ -84,6 +103,35 @@ export function buildAuthModeLayer(
     PORT: String(SMOKE_AUTH_PORT),
     APP_URL: smokeAuthAppUrl(),
     SMOKE_NEXT_DIST_DIR: '.test-dist/next-smoke-auth',
+    JOBS_WORKER_URL: smokeWorkerUrl(),
+    JOBS_SIGNING_SECRET: SMOKE_JOBS_SIGNING_SECRET,
+  };
+}
+
+/**
+ * Env layer for the local jobs Worker behind auth smoke: mock AI against the
+ * smoke database. `cf dev` exposes the process env to the Worker only with
+ * CLOUDFLARE_INCLUDE_PROCESS_ENV, and takes its database from the Hyperdrive
+ * local connection string, as in `pnpm workers dev`.
+ */
+export function buildWorkerModeLayer(
+  state: SmokeStatePayload,
+): Record<string, string> {
+  const hostname = getPostgresHostname(state.POSTGRES_URL_NON_POOLING);
+  if (hostname === null || !isLocalPostgresHostname(hostname)) {
+    throw new Error(
+      `Refusing to run the smoke Worker against a non-local database (host: ${hostname ?? 'unparseable'}).`,
+    );
+  }
+
+  return {
+    ...baseSmokeLayer(state),
+    AI_PROVIDER: 'mock',
+    JOBS_SIGNING_SECRET: SMOKE_JOBS_SIGNING_SECRET,
+    CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
+    CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:
+      state.POSTGRES_URL_NON_POOLING,
+    ATLARIS_JOBS_DEV_INSPECTOR_PORT: String(SMOKE_WORKER_INSPECTOR_PORT),
   };
 }
 
@@ -121,14 +169,16 @@ export function mergeSmokeProcessEnv(
   return merged as NodeJS.ProcessEnv;
 }
 
-type SmokeAppMode = 'anon' | 'auth';
+type SmokeAppMode = 'anon' | 'auth' | 'worker';
 
 export function parseSmokeAppMode(argv: string[]): SmokeAppMode {
   const raw = argv
     .find((a) => a.startsWith('--mode='))
     ?.slice('--mode='.length);
-  if (raw === 'anon' || raw === 'auth') {
+  if (raw === 'anon' || raw === 'auth' || raw === 'worker') {
     return raw;
   }
-  throw new Error('Missing or invalid --mode. Use --mode=anon or --mode=auth.');
+  throw new Error(
+    'Missing or invalid --mode. Use --mode=anon, --mode=auth, or --mode=worker.',
+  );
 }
