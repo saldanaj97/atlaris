@@ -104,7 +104,7 @@ It fails closed if browser roles can bypass RLS, if any public application table
 
 7. Enable module lesson generation when the hosted environment should serve it:
    - The boolean flag `module-lesson-generation` lives in the Cloudflare Flagship app `atlaris-plan-generation` (Cloudflare dashboard → Flagship, or `pnpm exec cf flagship apps flags list --app-id <id>` from `workers/jobs/`; the id is `FLAGSHIP_APP_ID` in `workers/jobs/cloudflare.config.ts`). Both hosted environments share the app and tell themselves apart by the `environment` attribute (`staging`, `production`).
-   - Confirm the flag's default variation is **off** before the first smoke: `pnpm exec cf flagship apps flags evaluate <app-id> --flag-key module-lesson-generation --context '{"environment":"production"}'`.
+   - Confirm the flag's default variation is **off**, with no rule turning it on for `production`, before the first smoke: `pnpm exec cf flagship apps flags get module-lesson-generation --app-id <app-id>` prints `default_variation` and `rules`. `pnpm exec cf flagship apps flags evaluate <app-id> --flag-key <key>` takes no evaluation context, so it shows only what a context matching no rule gets.
 
 - Leave `module-lesson-generation` off until Preview smoke confirms `POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate` returns HTTP `503` with `disabled` (fail-closed).
 - Enable only the environment being validated after that check, with a targeting rule on `environment` (`staging` for Preview), and remove the rule after controlled Preview verification. Flagship propagates within about 30 s; the app caches evaluations for another 30 s. When disabled or unevaluable, generation starts no workflow and performs no provider or quota work.
