@@ -19,7 +19,6 @@ export {
   createMaintenanceEnvForTests,
   maintenanceEnv,
 } from '@/lib/config/env/maintenance';
-export { regenerationQueueEnv } from '@/lib/config/env/queue';
 export { createSupabasePublicEnv } from '@/lib/config/env/supabase';
 export {
   assertHostedDeployForbiddenFlags,

@@ -9,13 +9,12 @@ Regeneration requests are enqueued by `POST /api/v1/plans/:planId/regenerate` an
 
 ## Required Environment
 
-| Variable                     | Purpose                                               | Production expectation                                                                         |
-| ---------------------------- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `REGENERATION_QUEUE_ENABLED` | App master switch for accepting regeneration requests | Explicitly `true` in Production; otherwise defaults `false`. When off, the route answers `503` |
-| `JOBS_WORKER_URL`            | Worker origin for the signed enqueue command          | Required (see [Settings](#settings))                                                           |
-| `JOBS_SIGNING_SECRET`        | Shared HMAC key with the Worker                       | Required (see [Settings](#settings))                                                           |
+| Variable              | Purpose                                      | Production expectation               |
+| --------------------- | -------------------------------------------- | ------------------------------------ |
+| `JOBS_WORKER_URL`     | Worker origin for the signed enqueue command | Required (see [Settings](#settings)) |
+| `JOBS_SIGNING_SECRET` | Shared HMAC key with the Worker              | Required (see [Settings](#settings)) |
 
-The queue defaults on in development, test, and Vercel Preview. It remains off in Production until `REGENERATION_QUEUE_ENABLED=true` is set.
+The app accepts regeneration requests unless the Flagship flag `regeneration-paused` is on; then the route answers `503`. A failed flag read counts as not paused (fail open) and is reported to Sentry (`feature: regeneration_paused_flag`), so a Flagship outage does not stop regeneration; per-tier quotas still apply.
 
 ## Cloudflare jobs Worker
 
@@ -27,7 +26,7 @@ The queue defaults on in development, test, and Vercel Preview. It remains off i
 4. The queue consumer (`workers/jobs/src/jobs/regeneration-consumer.ts`; `max_batch_size: 1`, `max_batch_timeout: 0`, `max_retries: 3`, `max_concurrency: 2`) runs the job inline with `runPlanRegeneration` (`src/features/jobs/regeneration-run.ts`): claim (CAS) → reserve attempt → process → finalize.
 5. Every `*/15` tick, the sweep (`workers/jobs/src/jobs/regeneration-sweep.ts`) re-sends `pending` regeneration rows that are due (`scheduled_for <= now()`) and untouched for 10 minutes (`updated_at`), at most 50 per tick, and bumps their `updated_at` so the next tick does not re-send them. `job_queue` stays the durable record; there is no dead-letter queue.
 
-`REGENERATION_QUEUE_ENABLED` gates the route on the app.
+The `regeneration-paused` flag gates the route on the app.
 
 ### Correlation
 
@@ -73,7 +72,7 @@ Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature
 
 | Where                          | Name                           | Purpose                                                                              |
 | ------------------------------ | ------------------------------ | ------------------------------------------------------------------------------------ |
-| App (Vercel)                   | `REGENERATION_QUEUE_ENABLED`   | Master switch for accepting regeneration requests (`503` when off)                   |
+| Flagship flag                  | `regeneration-paused`          | Stops the app accepting regeneration requests (`503` while on; fails open)           |
 | App (Vercel)                   | `JOBS_WORKER_URL`              | Worker origin (`https://workers-staging.atlaris.app`, `https://workers.atlaris.app`) |
 | App (Vercel) and Worker secret | `JOBS_SIGNING_SECRET`          | Shared HMAC key per environment                                                      |
 | Worker secret (optional)       | `JOBS_SIGNING_SECRET_PREVIOUS` | Old key during rotation                                                              |
@@ -81,13 +80,13 @@ Headers `x-atlaris-jobs-timestamp: <unix seconds>` and `x-atlaris-jobs-signature
 | Worker secret                  | `OPENROUTER_API_KEY`           | Provider calls from the consumer                                                     |
 | Worker secret                  | `OPENROUTER_PLAN_PRESET`       | OpenRouter preset holding the plan system prompt (required)                          |
 
-Flip `jobs-paused` yourself in the Flagship dashboard (app `atlaris-plan-generation`; target one environment with a rule on `environment`). Set `JOBS_SIGNING_SECRET_PREVIOUS` during rotation from `workers/jobs` with `pnpm exec cf workers secrets update JOBS_SIGNING_SECRET_PREVIOUS --worker atlaris-jobs-<staging|production> --text <value>`; it is not declared in the config, and a deploy keeps existing secrets.
+Flip `regeneration-paused` and `jobs-paused` yourself in the Flagship dashboard (app `atlaris-plan-generation`; target one environment with a rule on `environment`). Set `JOBS_SIGNING_SECRET_PREVIOUS` during rotation from `workers/jobs` with `pnpm exec cf workers secrets update JOBS_SIGNING_SECRET_PREVIOUS --worker atlaris-jobs-<staging|production> --text <value>`; it is not declared in the config, and a deploy keeps existing secrets.
 
 ### Enabling and rollback
 
-Enable per environment: set the Worker secrets and the app's `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, keep the `jobs-paused` flag off, and set `REGENERATION_QUEUE_ENABLED=true` on the app. Watch the first regenerations: `job_queue.payload.workflow.provider = 'cloudflare-queue'`, consumer logs, and Workers Logs CPU per invocation.
+Enable per environment: set the Worker secrets and the app's `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET`, and keep the `jobs-paused` and `regeneration-paused` flags off. Watch the first regenerations: `job_queue.payload.workflow.provider = 'cloudflare-queue'`, consumer logs, and Workers Logs CPU per invocation.
 
-Rollback: there is no alternate runtime to switch back to. To stop regeneration, set `REGENERATION_QUEUE_ENABLED=false` on the app (the route answers `503` and inserts no rows) and/or turn the `jobs-paused` flag on (the enqueue command answers `503`, the consumer stops working, and the sweep stops re-sending; it also pauses every other Worker job). Rows left `pending` are picked up by the sweep after `jobs-paused` is turned off; CAS claims prevent double processing.
+Rollback: there is no alternate runtime to switch back to. To stop regeneration, turn `regeneration-paused` on in the Flagship dashboard (the route answers `503` and inserts no rows; no redeploy needed) and/or turn the `jobs-paused` flag on (the enqueue command answers `503`, the consumer stops working, and the sweep stops re-sending; it also pauses every other Worker job). Rows left `pending` are picked up by the sweep after `jobs-paused` is turned off; CAS claims prevent double processing.
 
 ## Operational Checks
 
@@ -100,7 +99,7 @@ Rollback: there is no alternate runtime to switch back to. To stop regeneration,
 1. **Queue backed up:** confirm the `jobs-paused` flag is off, that the `*/15` cron is running, and that `JOBS_WORKER_URL` and `JOBS_SIGNING_SECRET` match between the app and the Worker.
 2. **401 from the Worker:** the signing secrets differ; rotate with `JOBS_SIGNING_SECRET_PREVIOUS` on the Worker (see [Signed commands](#signed-commands)).
 3. **Repeated failed jobs:** inspect Workers Logs and `job_queue.last_error`, then replay by re-enqueueing or manual retry.
-4. **Emergency load shedding:** set `REGENERATION_QUEUE_ENABLED=false` on the app to stop new requests, or turn the `jobs-paused` flag on to pause the consumer and sweep (and every other Worker job), while investigating.
+4. **Emergency load shedding:** turn `regeneration-paused` on in the Flagship dashboard to stop new requests, or turn the `jobs-paused` flag on to pause the consumer and sweep (and every other Worker job), while investigating.
 
 ## Related docs
 

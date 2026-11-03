@@ -28,7 +28,7 @@ export function makeRegenerationOrchestrationDeps(
   const base: RegenerationOrchestrationDeps = {
     dbClient: makeDbClient(),
     queue: {
-      enabled: vi.fn(() => true),
+      isPaused: vi.fn(async () => false),
       enqueueWithResult: vi.fn(async () => ({
         id: 'job-1',
         deduplicated: false,

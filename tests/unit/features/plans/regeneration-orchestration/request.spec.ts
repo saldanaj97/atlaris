@@ -43,9 +43,9 @@ function buildDeps(
 }
 
 describe('requestPlanRegeneration', () => {
-  it('returns queue-disabled when queue is off', async () => {
+  it('returns queue-disabled when regeneration is paused', async () => {
     const deps = buildDeps({
-      queue: { enabled: () => false },
+      queue: { isPaused: async () => true },
     });
     const result = await requestPlanRegeneration(
       {
