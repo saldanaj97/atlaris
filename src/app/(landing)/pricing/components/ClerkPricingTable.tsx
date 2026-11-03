@@ -2,16 +2,13 @@
 
 import {
   planHasAnnual,
+  renewalConsentHintId,
   type BillingPeriod,
   type PricingMoney,
   type PricingPlan,
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
-import {
-  RenewalConsent,
-  RenewalConsentHint,
-  renewalConsentHintId,
-} from './RenewalDisclosure';
+import { RenewalConsent, RenewalConsentHint } from './RenewalDisclosure';
 import {
   PRICING_FEATURES_BY_CLERK_SLUG,
   PRICING_PLAN_DESCRIPTIONS,

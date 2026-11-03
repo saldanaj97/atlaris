@@ -62,3 +62,11 @@ export function formatPricingMoney(money: PricingMoney | null): string {
   }
   return `${symbol}${(money.amount / 100).toFixed(money.amount % 100 === 0 ? 0 : 2)}`;
 }
+
+/** Id of the hint that explains a paid plan's disabled subscribe button. */
+export function renewalConsentHintId(
+  plan: PricingPlan,
+  period: BillingPeriod,
+): string {
+  return `renewal-${plan.slug}-${period}-hint`;
+}

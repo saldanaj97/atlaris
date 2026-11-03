@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react';
 
 import {
   formatPricingMoney,
+  renewalConsentHintId,
   type BillingPeriod,
   type PricingMoney,
   type PricingPlan,
@@ -58,14 +59,6 @@ export function RenewalDisclosure({
       .
     </p>
   );
-}
-
-/** Id of the hint that explains a paid plan's disabled subscribe button. */
-export function renewalConsentHintId(
-  plan: PricingPlan,
-  period: BillingPeriod,
-): string {
-  return `renewal-${plan.slug}-${period}-hint`;
 }
 
 /**
