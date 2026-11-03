@@ -6,6 +6,10 @@ import type {
 } from '@/shared/types/lesson-content.types';
 
 import { checkLessonCitations } from '@/features/lesson-content/lesson-citation-checks';
+import {
+  TABLE_SEPARATOR_CELL,
+  tableCells,
+} from '@/features/lesson-content/lesson-text';
 import { suggestedLessonBodyBudgetChars } from '@/features/lesson-content/module-lesson-prompts';
 import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
@@ -29,7 +33,6 @@ const LIST_MARKER_PATTERN = /^\s*(?:[-*•]|\d+[.)])\s+/;
 /** `Label: explanation`, the label at most a few words, optionally bold. */
 const LABEL_PATTERN =
   /^\s*(?:\*\*|__)?([^:*_\n]{1,60})(?:\*\*|__)?\s*:([\s\S]*)$/;
-const TABLE_SEPARATOR_CELL = /^\s*:?-{3,}:?\s*$/;
 
 function issue(code: string, blockRef: string, message: string): LessonIssue {
   return { code, blockRef, message, source: 'code' };
@@ -151,15 +154,6 @@ function checkTakeaways(blocks: readonly LessonContentBlock[]): LessonIssue[] {
       return [...takeawayItemIssues(item, ref), ...duplicate];
     });
   });
-}
-
-/** Cells in one Markdown table row, outer pipes removed; `\|` stays a cell. */
-function tableCells(line: string): string[] {
-  const inner = line
-    .trim()
-    .replace(/^\|/, '')
-    .replace(/(?<!\\)\|$/, '');
-  return inner.split(/(?<!\\)\|/);
 }
 
 /** Runs of two or more consecutive lines that start with `|`. */

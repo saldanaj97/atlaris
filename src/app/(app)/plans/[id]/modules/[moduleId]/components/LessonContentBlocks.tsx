@@ -3,6 +3,7 @@ import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { LessonContentBlock } from '@/shared/types/lesson-content.types';
 
 import { getStableEntries } from './lessonAccordionStyles';
+import { LessonInlineText, LessonText } from './LessonText';
 import { CheckCircle2 } from 'lucide-react';
 
 function getLessonBlockKey(block: LessonContentBlock): string {
@@ -28,24 +29,20 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
     case 'heading':
       return (
         <h3 className='mt-6 mb-3 type-section break-words text-foreground first:mt-0'>
-          {block.text}
+          <LessonInlineText text={block.text} />
         </h3>
       );
     case 'paragraph':
       return (
-        <p className='mb-4 type-reading break-words text-foreground'>
-          {block.text}
-        </p>
+        <LessonText text={block.text} variant='reading' className='mb-4' />
       );
     case 'example':
       return (
         <section className='my-5 min-w-0 rounded-[8px] border border-input bg-panel-muted px-3 py-2.5'>
           <h4 className='mb-2 type-meta font-medium break-words text-muted-foreground'>
-            {block.title}
+            <LessonInlineText text={block.title} />
           </h4>
-          <p className='type-meta font-mono break-words text-foreground'>
-            {block.text}
-          </p>
+          <LessonText text={block.text} variant='example' />
         </section>
       );
     case 'practice':
@@ -54,9 +51,7 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
           <h4 className='mb-2 type-label font-semibold break-words text-foreground'>
             Practice
           </h4>
-          <p className='type-reading break-words text-foreground'>
-            {block.text}
-          </p>
+          <LessonText text={block.text} variant='reading' />
         </section>
       );
     case 'takeaways':
@@ -66,7 +61,9 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
           <ul className='list-disc space-y-2 pl-5 type-body break-words text-foreground'>
             {getStableEntries(block.items, (item) => item).map(
               ({ key, item }) => (
-                <li key={key}>{item}</li>
+                <li key={key}>
+                  <LessonInlineText text={item} />
+                </li>
               ),
             )}
           </ul>
@@ -83,7 +80,9 @@ function LessonContentBlockRenderer({ block }: { block: LessonContentBlock }) {
               ({ key, item }) => (
                 <li key={key} className='flex min-w-0 gap-2'>
                   <CheckCircle2 className='mt-0.5 size-4 shrink-0 text-success' />
-                  <span className='min-w-0 break-words'>{item}</span>
+                  <span className='min-w-0 break-words'>
+                    <LessonInlineText text={item} />
+                  </span>
                 </li>
               ),
             )}
