@@ -33,20 +33,26 @@ function stubObserver() {
 }
 
 describe('CelestialBackdrop off-screen pause', () => {
-  it('pauses each orb and star only while it is off screen', () => {
+  it('pauses each star only while it is off screen', () => {
     const { observe, report } = stubObserver();
     const { container } = render(<CelestialBackdrop variant='dusk' />);
 
+    // The orbs are static, so only the stars are observed.
     const animated = container.querySelectorAll('[data-offscreen-pause]');
-    expect(animated.length).toBeGreaterThan(2);
+    expect(animated.length).toBeGreaterThan(0);
     expect(observe).toHaveBeenCalledTimes(animated.length);
+    expect(
+      container.firstElementChild?.querySelectorAll(
+        ':scope > [data-offscreen-pause]',
+      ),
+    ).toHaveLength(0);
 
-    const [orb] = animated;
-    report(orb, false);
-    expect(orb).toHaveAttribute('data-paused', 'true');
+    const [star] = animated;
+    report(star, false);
+    expect(star).toHaveAttribute('data-paused', 'true');
 
-    report(orb, true);
-    expect(orb).toHaveAttribute('data-paused', 'false');
+    report(star, true);
+    expect(star).toHaveAttribute('data-paused', 'false');
   });
 
   it('stops observing on unmount', () => {

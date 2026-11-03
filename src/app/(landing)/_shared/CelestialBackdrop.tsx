@@ -18,8 +18,8 @@ const orbPresets = {
 } as const;
 
 /**
- * Marketing-page atmosphere: fixed-header tuck, two orbs, and the shared star
- * field. Each orb and star pauses its animation while it is off screen. The
+ * Marketing-page atmosphere: fixed-header tuck, two static orbs, and the shared
+ * star field. Each star pauses its animation while it is off screen. The
  * accent orb shows in the dark theme only; on a light page it reads as a pink
  * blob.
  */
@@ -44,9 +44,8 @@ export function CelestialBackdrop({
     >
       <div
         className={cn(orbs.primary, 'hidden dark:block', primaryClassName)}
-        data-offscreen-pause=''
       />
-      <div className={cn(orbs.muted, mutedClassName)} data-offscreen-pause='' />
+      <div className={cn(orbs.muted, mutedClassName)} />
       <StarField />
     </div>
   );
