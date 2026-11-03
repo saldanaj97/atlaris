@@ -104,7 +104,7 @@ async function admitPlanRegeneration(
 ): Promise<RegenerationAdmission> {
   const { userId, planId, overrides } = args;
 
-  if (!d.queue.enabled()) {
+  if (await d.queue.isPaused()) {
     return { kind: 'rejected', result: { kind: 'queue-disabled' } };
   }
 
