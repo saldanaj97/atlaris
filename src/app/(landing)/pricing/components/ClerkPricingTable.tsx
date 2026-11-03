@@ -18,7 +18,7 @@ import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { ROUTES } from '@/features/navigation/routes';
 import { clientLogger } from '@/lib/logging/client';
-import { SignInButton, useAuth, useClerk } from '@clerk/nextjs';
+import { SignInButton, SignUpButton, useAuth, useClerk } from '@clerk/nextjs';
 import {
   CheckoutButton,
   SubscriptionDetailsButton,
@@ -337,16 +337,15 @@ export function ClerkPricingTable({
               {label}
             </Link>
           ) : (
-            <SignInButton
+            <SignUpButton
               forceRedirectUrl={ROUTES.PLANS.NEW}
               mode='modal'
-              signUpForceRedirectUrl={ROUTES.PLANS.NEW}
-              withSignUp
+              signInForceRedirectUrl={ROUTES.PLANS.NEW}
             >
               <button className={actionClassName} type='button'>
                 {label}
               </button>
-            </SignInButton>
+            </SignUpButton>
           );
         }
 

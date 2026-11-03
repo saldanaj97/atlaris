@@ -37,6 +37,17 @@ vi.mock('@clerk/nextjs', () => ({
       {children}
     </span>
   ),
+  SignUpButton: ({
+    children,
+    forceRedirectUrl,
+  }: {
+    children: React.ReactNode;
+    forceRedirectUrl: string;
+  }) => (
+    <span data-redirect={forceRedirectUrl} data-testid='sign-up-free'>
+      {children}
+    </span>
+  ),
   useAuth: mocks.useAuth,
   useClerk: mocks.useClerk,
 }));

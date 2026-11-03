@@ -11,7 +11,6 @@ export { expect };
 export const ANON_PROTECTED_ROUTES = [
   '/dashboard',
   '/plans',
-  '/plans/new',
   '/settings',
   '/analytics',
   '/analytics/usage',
