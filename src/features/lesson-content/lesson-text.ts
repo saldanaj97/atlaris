@@ -19,12 +19,16 @@ export type LessonInlineSegment = {
 
 export const TABLE_SEPARATOR_CELL = /^\s*:?-{3,}:?\s*$/;
 
-const FENCE_OPEN = /^\s*```[\w+-]*\s*$/;
+const FENCE_OPEN = /^\s*```[^`]*$/;
 const FENCE_CLOSE = /^\s*```\s*$/;
 /** A `|` row, or a `+---+` border from an ASCII box table. */
 const TABULAR_LINE = /^\s*(?:\||\+[-=+])/;
-/** Inline code, whose content stays literal, or `**bold**`. */
-const INLINE_PATTERN = /(`+)([^\n]+?)\1|\*\*(?=\S)([^\n]+?)(?<=\S)\*\*/g;
+/**
+ * Inline code, whose content stays literal, or `**bold**`. Bold markers can't
+ * touch a word on their outer side, so `a**b + c**d` stays code.
+ */
+const INLINE_PATTERN =
+  /(`+)([^\n]+?)\1|(?<![\w*])\*\*(?=\S)([^\n]+?)(?<=\S)\*\*(?![\w*])/g;
 
 /** Cells in one Markdown table row, outer pipes removed; `\|` stays a cell. */
 export function tableCells(line: string): string[] {

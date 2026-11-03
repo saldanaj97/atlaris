@@ -34,6 +34,17 @@ describe('parseLessonText', () => {
     ]);
   });
 
+  it.each(['```c#', '```python title="demo.py"'])(
+    'treats %s as a fence opener, so later text stays prose',
+    (opener) => {
+      const text = [opener, 'var a;', '```', 'After'].join('\n');
+      expect(parseLessonText(text)).toEqual([
+        { type: 'preformatted', text: 'var a;' },
+        { type: 'prose', text: 'After' },
+      ]);
+    },
+  );
+
   it('runs an unclosed fence to the end of the block', () => {
     expect(parseLessonText('```\nSELECT 1;')).toEqual([
       { type: 'preformatted', text: 'SELECT 1;' },
@@ -84,6 +95,9 @@ describe('parseLessonInline', () => {
   it.each([
     'SELECT COUNT(*) FROM t',
     '2 ** 3 ** 4',
+    'a**b + c**d',
+    'f(**kwargs, **opts)',
+    'f(**a, b=**c)',
     'an unmatched ` backtick',
     '**unbalanced bold',
   ])('leaves %s as plain text', (text) => {
