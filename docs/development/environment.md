@@ -87,7 +87,7 @@ Operational kill switches are Cloudflare Flagship flags, shared by the app and t
 
 #### Deployment and maintenance gates (owner × runtime)
 
-The eight flags above are the only Flagship keys. Everything in this table is env, scheduler, or database cron — not a Flagship flag and not a PostHog flag.
+The nine flags above are the only Flagship keys. Everything in this table is env, scheduler, or database cron — not a Flagship flag and not a PostHog flag.
 
 | Control                                                                  | Owner                                                | Runtime                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | ------------------------------------------------------------------------ | ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
