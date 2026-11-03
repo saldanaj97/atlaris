@@ -37,6 +37,17 @@ vi.mock('@clerk/nextjs', () => ({
       {children}
     </span>
   ),
+  SignUpButton: ({
+    children,
+    forceRedirectUrl,
+  }: {
+    children: React.ReactNode;
+    forceRedirectUrl: string;
+  }) => (
+    <span data-redirect={forceRedirectUrl} data-testid='sign-up-free'>
+      {children}
+    </span>
+  ),
   useAuth: mocks.useAuth,
   useClerk: mocks.useClerk,
 }));
@@ -334,6 +345,19 @@ describe('ClerkPricingTable', () => {
       await act(async () => root?.unmount());
       container.remove();
     }
+  });
+
+  it('opens sign-up from the free plan for a signed-out visitor', async () => {
+    mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
+
+    await renderPricingTable();
+
+    expect(await screen.findByTestId('sign-up-free')).toHaveAttribute(
+      'data-redirect',
+      '/plans/new',
+    );
+    expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
   });
 
   it("preserves a signed-out visitor's selected plan and period through sign-in", async () => {

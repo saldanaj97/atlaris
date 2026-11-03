@@ -78,6 +78,19 @@ export function isProtectedRoute(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
+/**
+ * Auth page for a signed-out visitor to a protected route. The landing and
+ * pricing calls to action open the plan form, so a visitor there is most
+ * likely new and goes to sign-up; Clerk's sign-up page links to sign-in.
+ */
+export function resolveAnonymousAuthPath(
+  pathname: string,
+): '/auth/sign-in' | '/auth/sign-up' {
+  return stripTrailingSlash(pathname) === '/plans/new'
+    ? '/auth/sign-up'
+    : '/auth/sign-in';
+}
+
 function isSiteGatePage(path: string): boolean {
   return (Object.values(SITE_GATE_PAGES) as string[]).includes(path);
 }
