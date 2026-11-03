@@ -582,6 +582,28 @@ describe('pointLabelPlacements', () => {
       'above',
       'below',
       null,
+      null,
+      'above',
+    ]);
+  });
+
+  it('never stacks a label into the one placed below the value above it', () => {
+    // Axis top 24 puts the near gap at 3.12: 22 sits close under 24, so it
+    // labels below. 21 is close under 22, where that label already sits.
+    expect(pointLabelPlacements([24, 22, 21], 24)).toEqual([
+      'above',
+      'below',
+      null,
+    ]);
+    // 18 clears 22's point but not its label, so it labels below as well.
+    expect(pointLabelPlacements([24, 22, 18], 24)).toEqual([
+      'above',
+      'below',
+      'below',
+    ]);
+    // 15 clears both, so it labels above again.
+    expect(pointLabelPlacements([24, 22, 15], 24)).toEqual([
+      'above',
       'below',
       'above',
     ]);
