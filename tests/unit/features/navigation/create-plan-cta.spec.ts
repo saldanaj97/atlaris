@@ -1,6 +1,7 @@
 import {
   CREATE_PLAN_LABEL,
   resolveCreatePlanCta,
+  resolveMarketingPrimaryCta,
 } from '@/features/navigation/create-plan-cta';
 import { ROUTES } from '@/features/navigation/routes';
 import { describe, expect, it } from 'vitest';
@@ -37,5 +38,43 @@ describe('resolveCreatePlanCta', () => {
         pathname: ROUTES.PLANS.NEW,
       }),
     ).toEqual({ href: ROUTES.PRICING, label: 'Upgrade' });
+  });
+});
+
+describe('resolveMarketingPrimaryCta', () => {
+  it('sends signed-in visitors to the dashboard', () => {
+    expect(
+      resolveMarketingPrimaryCta({
+        isAuthenticated: true,
+        pathname: '/landing',
+      }),
+    ).toEqual({ href: ROUTES.DASHBOARD, label: 'Dashboard' });
+  });
+
+  it('offers the plan form on marketing pages', () => {
+    expect(
+      resolveMarketingPrimaryCta({
+        isAuthenticated: false,
+        pathname: '/landing',
+      }),
+    ).toEqual({ href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL });
+  });
+
+  it.each(['/auth/sign-in', '/auth/sign-in/factor-one', '/auth/sign-up'])(
+    'offers sign-up on %s',
+    (pathname) => {
+      expect(
+        resolveMarketingPrimaryCta({ isAuthenticated: false, pathname }),
+      ).toEqual({ href: ROUTES.AUTH.SIGN_UP, label: 'Sign up' });
+    },
+  );
+
+  it('does not treat look-alike paths as auth pages', () => {
+    expect(
+      resolveMarketingPrimaryCta({
+        isAuthenticated: false,
+        pathname: '/auth/sign-inx',
+      }),
+    ).toEqual({ href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL });
   });
 });

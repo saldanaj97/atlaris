@@ -9,6 +9,7 @@ export const ROUTES = {
   DASHBOARD: '/dashboard',
   AUTH: {
     SIGN_IN: '/auth/sign-in',
+    SIGN_UP: '/auth/sign-up',
   },
   PLANS: {
     ROOT: '/plans',

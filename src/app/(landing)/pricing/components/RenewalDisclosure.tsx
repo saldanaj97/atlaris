@@ -60,6 +60,32 @@ export function RenewalDisclosure({
   );
 }
 
+/** Id of the hint that explains a paid plan's disabled subscribe button. */
+export function renewalConsentHintId(
+  plan: PricingPlan,
+  period: BillingPeriod,
+): string {
+  return `renewal-${plan.slug}-${period}-hint`;
+}
+
+/**
+ * Shown under a paid plan's subscribe button while the renewal box is
+ * unticked, so the disabled button says why it is disabled.
+ */
+export function RenewalConsentHint({
+  plan,
+  period,
+}: Omit<RenewalDisclosureProps, 'id'>) {
+  return (
+    <p
+      className={styles.renewalConsentHint}
+      id={renewalConsentHintId(plan, period)}
+    >
+      Tick the box above to continue.
+    </p>
+  );
+}
+
 type RenewalConsentProps = RenewalDisclosureProps & {
   agreed: boolean;
   onAgreedChange: (agreed: boolean) => void;

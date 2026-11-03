@@ -23,7 +23,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
+import { resolveMarketingPrimaryCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight, Menu } from 'lucide-react';
 import Link from 'next/link';
@@ -258,8 +258,8 @@ export default function MobileNavigation({
   const navigationDismissedRef = useRef(false);
   const closedForBreakpointRef = useRef(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
+  const { href: primaryCtaHref, label: primaryCtaLabel } =
+    resolveMarketingPrimaryCta({ isAuthenticated, pathname });
   const handleNavigation = () => {
     navigationDismissedRef.current = true;
     setOpen(false);

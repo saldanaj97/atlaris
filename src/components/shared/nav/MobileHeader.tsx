@@ -8,7 +8,11 @@ import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/mark
 import MobileNavigation from '@/components/shared/nav/MobileNavigation';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { type NavItem, CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
+import {
+  type NavItem,
+  resolveMarketingPrimaryCta,
+  ROUTES,
+} from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -45,8 +49,8 @@ export default function MobileHeader({
   userName,
   userImageUrl,
 }: MobileHeaderProps) {
-  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
+  const { href: primaryCtaHref, label: primaryCtaLabel } =
+    resolveMarketingPrimaryCta({ isAuthenticated, pathname });
 
   const menu = (
     <MobileNavigation

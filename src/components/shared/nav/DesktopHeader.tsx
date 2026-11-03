@@ -9,7 +9,7 @@ import DesktopNavigation from '@/components/shared/nav/DesktopNavigation';
 import { marketingHeaderPrimaryCtaClassName } from '@/components/shared/nav/marketing-header-classes';
 import { ThemeToggle } from '@/components/shared/ThemeToggle';
 import { Button } from '@/components/ui/button';
-import { CREATE_PLAN_LABEL, ROUTES } from '@/features/navigation';
+import { resolveMarketingPrimaryCta, ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
@@ -160,8 +160,8 @@ export default function DesktopHeader({
   const showAppShellChrome = isAppShell && !isMarketing;
   const showHeaderAccountChrome = !showAppShellChrome;
   const showMarketingChrome = isMarketing && !showAppShellChrome;
-  const primaryCtaHref = isAuthenticated ? ROUTES.DASHBOARD : ROUTES.PLANS.NEW;
-  const primaryCtaLabel = isAuthenticated ? 'Dashboard' : CREATE_PLAN_LABEL;
+  const { href: primaryCtaHref, label: primaryCtaLabel } =
+    resolveMarketingPrimaryCta({ isAuthenticated, pathname });
 
   return (
     <div

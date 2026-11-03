@@ -46,6 +46,8 @@
   --action-destructive-foreground: #f8fafc;
   --danger: #b42318;
   --danger-subtle: #fef3f2;
+  /* A falling metric. Light reuses the danger red. */
+  --trend-down: var(--danger);
   --success: #066b4d;
   --success-foreground: #f8fafc;
   --warning: #8a5a00;
@@ -169,6 +171,9 @@
   );
   --danger: var(--at-semantic-color-status-danger-foreground);
   --danger-subtle: var(--at-semantic-color-status-danger-background);
+  /* Dark danger (rose-400) reads as cantaloupe at icon size, so a falling
+     metric gets a true red: 5.9:1 on the surface, 4.9:1 on raised. */
+  --trend-down: #ff4f5e;
   --success: var(--at-semantic-color-status-success-foreground);
   --success-foreground: var(--at-semantic-color-action-success-foreground);
   --warning: var(--at-semantic-color-status-warning-foreground);
@@ -244,6 +249,7 @@
   --color-action-destructive-foreground: var(--action-destructive-foreground);
   --color-danger: var(--danger);
   --color-danger-subtle: var(--danger-subtle);
+  --color-trend-down: var(--trend-down);
   --color-success: var(--success);
   --color-success-foreground: var(--success-foreground);
   --color-panel: var(--panel);

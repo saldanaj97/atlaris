@@ -35,3 +35,33 @@ export function resolveCreatePlanCta({
 
   return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
 }
+
+/**
+ * The marketing header's one call to action. Signed-in visitors go to the
+ * dashboard; on the auth pages a visitor is already mid sign-in, so the
+ * action is Sign up rather than the plan form.
+ */
+export function resolveMarketingPrimaryCta({
+  isAuthenticated,
+  pathname,
+}: {
+  isAuthenticated: boolean;
+  pathname: string;
+}): { href: string; label: string } {
+  if (isAuthenticated) {
+    return { href: ROUTES.DASHBOARD, label: 'Dashboard' };
+  }
+
+  if (isAuthPath(pathname)) {
+    return { href: ROUTES.AUTH.SIGN_UP, label: 'Sign up' };
+  }
+
+  return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
+}
+
+/** Sign-in and sign-up pages, including Clerk's nested steps. */
+export function isAuthPath(pathname: string): boolean {
+  return [ROUTES.AUTH.SIGN_IN, ROUTES.AUTH.SIGN_UP].some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
+}

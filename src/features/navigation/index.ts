@@ -1,6 +1,8 @@
 export {
   CREATE_PLAN_LABEL,
+  isAuthPath,
   resolveCreatePlanCta,
+  resolveMarketingPrimaryCta,
   type CreatePlanCta,
 } from './create-plan-cta';
 export { authenticatedNavItems, unauthenticatedNavItems } from './items';

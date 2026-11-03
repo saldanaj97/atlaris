@@ -243,7 +243,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 Atlaris uses the **Midnight** palette, adopted 2026-10-30 for the pre-launch refinements. It replaces the earlier cool-black/lavender direction. Three source colors carry it: **Midnight Black `#02070A`**, **Electric Blue `#0297DE`** and **Cantaloupe Orange `#FC734D`**. Neutrals are mixed from midnight toward `#F4F7FA`, so every surface keeps the same blue-black cast and no grey is neutral.
 
-The roles are fixed. Cantaloupe is the action and brand-emphasis color, used for the primary button, the current navigation item, selected tabs, progress fills and one highlighted moment per screen. Electric blue is never a button fill: it is a line, a link or a ring (inline links, focus, the first chart series, information status). Keep blue and cantaloupe from sitting side by side as two solid fills.
+The roles are fixed. Cantaloupe is the action and brand-emphasis color, used for the primary button, the current navigation item, selected tabs, progress fills and one highlighted moment per screen. Electric blue is never a button fill: it is a line, a link or a ring (inline links, focus, the first chart series, information status). Keep blue and cantaloupe controls (buttons, tabs, toggles, chips) from sitting side by side. The rule covers controls only: decorative arcs, glow and chart lines may be blue next to cantaloupe (2026-11-02).
 
 The app is dark-first, not dark-only. Dark values live in `src/styles/atlaris-tokens.css` on `[data-atlaris-theme="dark"]`; the light theme lives in `:root` in `src/app/globals.css`. Light, dark and system preferences all stay supported.
 
@@ -265,6 +265,8 @@ The app is dark-first, not dark-only. Dark values live in `src/styles/atlaris-to
 | `neutral-0`    | #F4F7FA | `electric-200`   | #8FD1F5 |
 
 Green, amber and rose (status and destructive) are unchanged from the previous palette.
+
+A falling metric (`--trend-down`, the analytics week-over-week arrow) is red in both themes: the danger red `#B42318` in light, `#FF4F5E` in dark (5.9:1 on the surface). Dark rose-400 reads as cantaloupe at icon size, so the trend arrow does not use it (2026-11-02).
 
 ### Main semantic roles (dark)
 

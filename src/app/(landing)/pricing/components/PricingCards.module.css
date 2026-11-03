@@ -322,6 +322,16 @@
   margin-bottom: 0;
 }
 
+/* Muted text holds 4.5:1 on the card in both themes. */
+.renewalConsentHint {
+  margin-top: 0.5rem;
+  font-family: var(--font-family-base);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  text-align: center;
+  color: var(--muted-foreground);
+}
+
 .renewalCheckboxRow {
   display: flex;
   align-items: flex-start;

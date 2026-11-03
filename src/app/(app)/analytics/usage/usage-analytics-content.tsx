@@ -251,7 +251,7 @@ function MetricTile({
 const TREND_ICON_CLASSNAME: Record<UsageAnalyticsMetricTrend['icon'], string> =
   {
     up: 'size-5 text-success',
-    down: 'size-5 text-destructive',
+    down: 'size-5 text-trend-down',
     flat: 'size-5 text-muted-foreground',
   };
 

@@ -4,6 +4,7 @@ import {
   createPlanInput,
   expect,
   expectHeading,
+  renderedTextContrast,
   selectInlineDropdown,
   test,
   waitForGeneratedModules,
@@ -21,47 +22,6 @@ const MODULE_URL = /\/plans\/[0-9a-f-]{36}\/modules\/[0-9a-f-]{36}$/i;
 const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
-
-/**
- * WCAG contrast of an element's text against what is painted behind it:
- * every ancestor's background is layered in order and every ancestor's
- * opacity is applied, so faded or translucent rows count as they render.
- */
-function renderedTextContrast(element: Element): number {
-  const context = document.createElement('canvas').getContext('2d');
-  if (!context) throw new Error('2D canvas unavailable');
-  const pixel = () =>
-    Array.from(context.getImageData(0, 0, 1, 1).data.slice(0, 3));
-  const luminance = ([r, g, b]: number[]) => {
-    const [lr, lg, lb] = [r, g, b].map((value) => {
-      const channel = value / 255;
-      return channel <= 0.04045
-        ? channel / 12.92
-        : ((channel + 0.055) / 1.055) ** 2.4;
-    });
-    return 0.2126 * lr + 0.7152 * lg + 0.0722 * lb;
-  };
-  const chain: Element[] = [];
-  for (let node: Element | null = element; node; node = node.parentElement) {
-    chain.unshift(node);
-  }
-  context.fillStyle = '#fff';
-  context.fillRect(0, 0, 1, 1);
-  let opacity = 1;
-  for (const node of chain) {
-    const style = getComputedStyle(node);
-    opacity *= Number.parseFloat(style.opacity);
-    context.fillStyle = style.backgroundColor;
-    context.fillRect(0, 0, 1, 1);
-  }
-  const background = luminance(pixel());
-  context.globalAlpha = opacity;
-  context.fillStyle = getComputedStyle(element).color;
-  context.fillRect(0, 0, 1, 1);
-  const text = luminance(pixel());
-  const [lighter, darker] = [background, text].sort((a, b) => b - a);
-  return (lighter + 0.05) / (darker + 0.05);
-}
 
 async function expectBillingPage(page: Page): Promise<void> {
   await expectHeading(page, 'Settings', 1);

@@ -7,7 +7,11 @@ import {
   type PricingPlan,
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
-import { RenewalConsent } from './RenewalDisclosure';
+import {
+  RenewalConsent,
+  RenewalConsentHint,
+  renewalConsentHintId,
+} from './RenewalDisclosure';
 import {
   PRICING_FEATURES_BY_CLERK_SLUG,
   PRICING_PLAN_DESCRIPTIONS,
@@ -350,6 +354,9 @@ export function ClerkPricingTable({
         }
 
         const agreed = agreedActions[actionKey] === true;
+        const hintId = agreed
+          ? undefined
+          : renewalConsentHintId(plan, planPeriod);
         const redirect = buildCheckoutSignInRedirect(
           plan.id,
           plan.slug,
@@ -376,6 +383,7 @@ export function ClerkPricingTable({
                 planPeriod={planPeriod}
               >
                 <button
+                  aria-describedby={hintId}
                   className={actionClassName}
                   disabled={!agreed}
                   ref={actionRef}
@@ -392,6 +400,7 @@ export function ClerkPricingTable({
                 withSignUp
               >
                 <button
+                  aria-describedby={hintId}
                   className={actionClassName}
                   disabled={!agreed}
                   type='button'
@@ -399,6 +408,9 @@ export function ClerkPricingTable({
                   {label}
                 </button>
               </SignInButton>
+            )}
+            {agreed ? null : (
+              <RenewalConsentHint period={planPeriod} plan={plan} />
             )}
           </>
         );

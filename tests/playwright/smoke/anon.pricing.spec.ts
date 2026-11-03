@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures';
+import { expect, renderedTextContrast, test } from './fixtures';
 
 // Pricing cards state plan length in weeks, the same as the comparison table,
 // whatever copy the billing provider holds.
@@ -49,3 +49,31 @@ test('the pricing comparison shows a scroll cue on a phone', async ({
   });
   await expect(comparison).toHaveAttribute('data-scroll-cue', 'start');
 });
+
+// A paid plan's button stays disabled until the renewal box is ticked; a
+// muted hint under it says why and goes away once the box is ticked.
+for (const colorScheme of ['light', 'dark'] as const) {
+  test(`a disabled paid plan button explains itself in ${colorScheme}`, async ({
+    page,
+  }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.goto('/pricing');
+
+    const starter = page.getByRole('article', { name: 'Starter' });
+    const begin = starter.getByRole('button', { name: 'Begin with Starter' });
+    const hint = starter.getByText('Tick the box above to continue.');
+    await expect(begin).toBeDisabled();
+    await expect(begin).toHaveAccessibleDescription(
+      'Tick the box above to continue.',
+    );
+    await expect(hint).toBeVisible();
+    expect(await hint.evaluate(renderedTextContrast)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+
+    await starter.getByRole('checkbox').check();
+    await expect(begin).toBeEnabled();
+    await expect(hint).toHaveCount(0);
+    await expect(begin).not.toHaveAttribute('aria-describedby');
+  });
+}
