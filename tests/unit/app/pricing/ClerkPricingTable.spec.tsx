@@ -347,6 +347,19 @@ describe('ClerkPricingTable', () => {
     }
   });
 
+  it('opens sign-up from the free plan for a signed-out visitor', async () => {
+    mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
+    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
+
+    await renderPricingTable();
+
+    expect(await screen.findByTestId('sign-up-free')).toHaveAttribute(
+      'data-redirect',
+      '/plans/new',
+    );
+    expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
+  });
+
   it("preserves a signed-out visitor's selected plan and period through sign-in", async () => {
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
     mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
