@@ -4,6 +4,7 @@ import {
   isProviderWebhookRoute,
   isProtectedRoute,
   isSiteGateExempt,
+  resolveAnonymousAuthPath,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
   resolveViewerSiteGate,
@@ -70,6 +71,19 @@ const withCorrelationId = (
     isProduction: appEnv.isProduction,
   });
 };
+
+/** Auth page for a signed-out request, returning the visitor to it afterwards. */
+function anonymousAuthUrl(request: NextRequest): URL {
+  const url = new URL(
+    resolveAnonymousAuthPath(request.nextUrl.pathname),
+    request.url,
+  );
+  url.searchParams.set(
+    'redirect_url',
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+  return url;
+}
 
 type ProtectRequest = () => Promise<NextResponse | undefined>;
 type IsSignedIn = () => Promise<boolean>;
@@ -148,7 +162,13 @@ const clerkProxy = clerkMiddleware(
     handleProxyRequest(
       request,
       async () => {
-        await auth.protect();
+        // Clerk's default redirect is sign-in; only the sign-up case needs a URL.
+        const authUrl = anonymousAuthUrl(request);
+        await auth.protect(
+          authUrl.pathname === '/auth/sign-up'
+            ? { unauthenticatedUrl: authUrl.toString() }
+            : undefined,
+        );
         return undefined;
       },
       // clerkMiddleware already authenticated the request, so this adds no network call.
@@ -173,14 +193,7 @@ function proxy(request: NextRequest, event: NextFetchEvent) {
 
   return handleProxyRequest(
     request,
-    async () => {
-      const signInUrl = new URL('/auth/sign-in', request.url);
-      signInUrl.searchParams.set(
-        'redirect_url',
-        `${request.nextUrl.pathname}${request.nextUrl.search}`,
-      );
-      return NextResponse.redirect(signInUrl);
-    },
+    async () => NextResponse.redirect(anonymousAuthUrl(request)),
     // No Clerk keys locally, so no session to admit.
     async () => false,
   );

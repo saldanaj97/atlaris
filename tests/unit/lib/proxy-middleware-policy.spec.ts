@@ -2,6 +2,7 @@ import {
   isProviderWebhookRoute,
   isProtectedRoute,
   isSiteGateExempt,
+  resolveAnonymousAuthPath,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
   resolveViewerSiteGate,
@@ -54,6 +55,14 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
     expect(isProtectedRoute('/dashboard')).toBe(true);
     expect(isProtectedRoute('/dashboard/')).toBe(true);
+  });
+
+  it('sends signed-out visitors to sign-up for the plan form, sign-in elsewhere', () => {
+    expect(resolveAnonymousAuthPath('/plans/new')).toBe('/auth/sign-up');
+    expect(resolveAnonymousAuthPath('/plans/new/')).toBe('/auth/sign-up');
+    expect(resolveAnonymousAuthPath('/plans')).toBe('/auth/sign-in');
+    expect(resolveAnonymousAuthPath('/plans/new-ideas')).toBe('/auth/sign-in');
+    expect(resolveAnonymousAuthPath('/dashboard')).toBe('/auth/sign-in');
   });
 
   it('resolveSiteGateRedirectPath', () => {
