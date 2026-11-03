@@ -19,7 +19,7 @@ const STEPS = [
   },
   {
     title: 'Atlaris drafts the route',
-    copy: 'An AI model writes the plan as weekly modules and tasks, each with a time estimate that fits your hours, and looks up resources for the tasks.',
+    copy: 'An AI model writes the plan as weekly modules and tasks, each with a time estimate that fits your hours.',
     example: '4 modules · 12 tasks · 8 hrs planned',
   },
   {

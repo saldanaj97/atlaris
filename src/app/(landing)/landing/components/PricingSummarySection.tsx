@@ -5,6 +5,7 @@ import { FREE_PLAN_COUNT, FREE_PLAN_LENGTH } from './free-plan-copy';
 import { RevealAnimation } from './RevealAnimation';
 import { marketingSecondaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import {
+  LESSONS_CARD_LINE,
   PRICING_PLAN_DESCRIPTIONS,
   PRICING_PLAN_FEATURES,
 } from '@/app/(landing)/pricing/pricing-plan-features';
@@ -23,6 +24,8 @@ const TIERS: ReadonlyArray<{ tier: SubscriptionTier; name: string }> = [
 /**
  * What each tier includes, from the same limits as the pricing page and
  * checkout. Prices stay on /pricing, where they come from Clerk Billing.
+ * Every tier gets lessons, so that line stays on /pricing, where the compare
+ * table lists it, and is left out here, where it wouldn't tell tiers apart.
  */
 export function PricingSummarySection() {
   return (
@@ -63,9 +66,11 @@ export function PricingSummarySection() {
                   {PRICING_PLAN_DESCRIPTIONS[tier]}
                 </p>
                 <ul className='m-0 mt-4 list-none space-y-2 p-0 type-body text-foreground'>
-                  {PRICING_PLAN_FEATURES[tier].map((feature) => (
-                    <li key={feature}>{feature}</li>
-                  ))}
+                  {PRICING_PLAN_FEATURES[tier]
+                    .filter((feature) => feature !== LESSONS_CARD_LINE)
+                    .map((feature) => (
+                      <li key={feature}>{feature}</li>
+                    ))}
                 </ul>
               </li>
             ))}

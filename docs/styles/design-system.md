@@ -568,7 +568,7 @@ _Source: Foundations v0.2. Chapter text retained from its source stage; referenc
 
 ## 09 — Imagery
 
-**Decision (2026-11-02): no photography.** The generated landscape and planet photos are removed from the product, along with `public/artwork/`. Page heroes and CTA banners draw a thin horizon arc in CSS (`src/components/ui/horizon-arc.tsx`, from `--link`); the landing hero keeps its CSS beam; illustrations are product-native, such as the About route constellation or real UI previews. Do not add generated or stock imagery. A new image asset needs explicit sign-off. The slot rules below now apply to those drawn treatments.
+**Decision (2026-11-02): no photography.** The generated landscape and planet photos are removed from the product, along with `public/artwork/`. Page heroes and CTA banners draw a thin horizon arc in CSS (`src/components/ui/horizon-arc.tsx`, from `--link`); the landing's closing banner turns it off (`horizon={false}`), because on a card that wide and short the clipped arc reads as a streak; the landing hero keeps its CSS beam; illustrations are product-native, such as the About route constellation or real UI previews. Do not add generated or stock imagery. A new image asset needs explicit sign-off. The slot rules below now apply to those drawn treatments.
 
 ### Preserve the approved visual language
 

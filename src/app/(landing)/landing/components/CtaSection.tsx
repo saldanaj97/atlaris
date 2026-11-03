@@ -1,6 +1,5 @@
 import type { CSSProperties } from 'react';
 
-import { FREE_PLAN_COUNT, FREE_PLAN_LENGTH } from './free-plan-copy';
 import { RevealAnimation } from './RevealAnimation';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
@@ -18,7 +17,8 @@ const SUPPORT_EMAIL = 'support@atlaris.app';
 
 const copy = {
   headline: `Start with ${FREE_PLANS === 1 ? 'one free plan' : `${FREE_PLANS} free plans`}`,
-  subheadline: `Free plan: ${FREE_PLAN_COUNT}, up to ${FREE_PLAN_LENGTH}.`,
+  subheadline:
+    'Name the goal and the hours you have. Atlaris writes the route.',
   support: 'A question, a bug, or a plan that missed the point:',
 } as const;
 
@@ -29,6 +29,7 @@ export function CtaSection() {
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
         <CtaBanner
           aria-labelledby='landing-cta-heading'
+          horizon={false}
           className={cn('mx-auto max-w-7xl', styles.revealItem)}
         >
           <div className='relative z-10 px-6 py-14 text-center sm:px-10 sm:py-16 md:py-20'>

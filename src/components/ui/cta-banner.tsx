@@ -5,10 +5,17 @@ import { cn } from '@/lib/utils';
 
 export interface CtaBannerProps extends ComponentPropsWithoutRef<'section'> {
   children: ReactNode;
+  /** Draw the horizon arc; off where the card is too short for it to read as an arc. */
+  horizon?: boolean;
 }
 
 /** Bordered CTA surface with the horizon decoration. */
-export function CtaBanner({ children, className, ...props }: CtaBannerProps) {
+export function CtaBanner({
+  children,
+  className,
+  horizon = true,
+  ...props
+}: CtaBannerProps) {
   return (
     <section
       data-slot='cta-banner'
@@ -20,7 +27,7 @@ export function CtaBanner({ children, className, ...props }: CtaBannerProps) {
       )}
       {...props}
     >
-      <HorizonArc />
+      {horizon ? <HorizonArc /> : null}
       {children}
     </section>
   );

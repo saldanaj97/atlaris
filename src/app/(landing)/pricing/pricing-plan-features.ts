@@ -22,7 +22,7 @@ const MODELS_BY_TIER: Record<
   },
 };
 
-const LESSONS_CARD_LINE = 'Lessons for every module';
+export const LESSONS_CARD_LINE = 'Lessons for every module';
 
 function pluralize(count: number, singular: string): string {
   return `${count} ${count === 1 ? singular : `${singular}s`}`;

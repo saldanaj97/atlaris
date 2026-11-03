@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import { BarChart3, BookOpen, Clock, Sparkles } from 'lucide-react';
+import { BarChart3, Clock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
@@ -16,11 +16,6 @@ const CAPABILITIES = [
     title: 'Modules and tasks sized to your hours',
     copy: 'Each task carries a time estimate, so each week of the plan fits the hours you set.',
     icon: Clock,
-  },
-  {
-    title: 'Resources on the tasks',
-    copy: 'Videos, articles, courses and docs, found by web research on your topic. Some tasks may come back without any.',
-    icon: BookOpen,
   },
   {
     title: 'Lessons as you go',
@@ -52,7 +47,7 @@ export function PlanContentsSection() {
     >
       <RevealAnimation>
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
-        <div className='grid items-center gap-12 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-14 lg:gap-20'>
+        <div className='grid items-center gap-12 border-t border-border pt-16 md:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] md:gap-14 md:pt-24 lg:gap-20'>
           <div className={styles.revealItem}>
             <h2
               id='landing-plan-heading'
@@ -77,12 +72,6 @@ export function PlanContentsSection() {
                 </li>
               ))}
             </ul>
-            <Button
-              asChild
-              className={cn('mt-9', marketingPrimaryCtaClassName)}
-            >
-              <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
-            </Button>
             <h3 className='mt-10 type-label font-semibold text-foreground'>
               And what it won&apos;t do
             </h3>
@@ -91,6 +80,12 @@ export function PlanContentsSection() {
                 <li key={line}>{line}</li>
               ))}
             </ul>
+            <Button
+              asChild
+              className={cn('mt-9', marketingPrimaryCtaClassName)}
+            >
+              <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
+            </Button>
           </div>
 
           <figure

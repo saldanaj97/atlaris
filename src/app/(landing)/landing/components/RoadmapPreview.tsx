@@ -25,17 +25,24 @@ import {
 interface ExampleModule {
   title: string;
   description: string;
+  /** Plan week the module falls in; the plan is two weeks of two modules. */
+  week: number;
   status: ModuleStatus;
   tasks: ReadonlyArray<{ title: string; minutes: number; done: boolean }>;
 }
 
-/** Illustrative plan for the landing preview. Each module's tasks add up to its hours. */
+/**
+ * Illustrative plan for the landing preview: the hero's example (two weeks,
+ * 4 hrs a week, 2 hrs a module). Week 1 is done; week 2 has started on
+ * Generics in practice with the hero's two finished tasks.
+ */
 const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
   topic: 'TypeScript for React',
   modules: [
     {
       title: 'Types that scale',
       description: 'Model props, unions and shared types for components.',
+      week: 1,
       status: 'completed',
       tasks: [
         { title: 'Read: typing component props', minutes: 40, done: true },
@@ -46,7 +53,8 @@ const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
     {
       title: 'Props and state',
       description: 'Type state, reducers and context without casts.',
-      status: 'active',
+      week: 1,
+      status: 'completed',
       tasks: [
         {
           title: 'Read: typing useState and useReducer',
@@ -58,30 +66,24 @@ const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
           minutes: 40,
           done: true,
         },
-        { title: 'Build: a typed reducer', minutes: 50, done: false },
+        { title: 'Build: a typed reducer', minutes: 50, done: true },
       ],
     },
     {
       title: 'Generics in practice',
       description: 'Write reusable components and helpers with generics.',
-      status: 'locked',
+      week: 2,
+      status: 'active',
       tasks: [
-        { title: 'Read: constraints and defaults', minutes: 30, done: false },
-        {
-          title: 'Exercise: a generic list component',
-          minutes: 40,
-          done: false,
-        },
-        {
-          title: 'Build: a generic select component',
-          minutes: 50,
-          done: false,
-        },
+        { title: 'Read: generic constraints', minutes: 40, done: true },
+        { title: 'Exercise: type a fetch helper', minutes: 50, done: true },
+        { title: 'Build: a generic list component', minutes: 30, done: false },
       ],
     },
     {
       title: 'Typed hooks',
       description: 'Type custom hooks and their return values.',
+      week: 2,
       status: 'locked',
       tasks: [
         { title: 'Read: typing custom hooks', minutes: 40, done: false },
@@ -207,7 +209,7 @@ function ExampleModuleCard({
                   module.status === 'active' ? 'text-primary' : undefined
                 }
               >
-                Week {order}
+                Week {module.week} · Module {order}
               </span>
               {' · '}
               {formatMinutes(minutes)}
