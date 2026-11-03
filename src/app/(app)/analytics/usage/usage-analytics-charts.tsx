@@ -573,6 +573,7 @@ export function WeeklyLineChart({
                         value: 'Week',
                         position: 'insideBottom',
                         offset: -16,
+                        className: 'fill-muted-foreground',
                       }}
                     />
                     <YAxis

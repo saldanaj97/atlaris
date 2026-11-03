@@ -1077,7 +1077,9 @@
   --route-marker: 0.875rem;
   --route-offset: 0.125rem;
   --route-gap: 2.5rem;
-  --route-line: color-mix(in oklab, var(--link) 60%, transparent);
+  /* Solid line color, faded by the connector's opacity: Firefox drops the
+   * dashes when a repeating gradient's stop is a color-mix with transparent. */
+  --route-line: var(--link);
   display: grid;
   gap: var(--route-gap);
 }
@@ -1105,6 +1107,7 @@
   bottom: calc(-1 * (var(--route-gap) + var(--route-offset)));
   left: calc(var(--route-marker) / 2 - 0.5px);
   width: 1px;
+  opacity: 0.6;
   background: repeating-linear-gradient(
     to bottom,
     var(--route-line) 0 3px,
