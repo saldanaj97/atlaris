@@ -79,8 +79,9 @@ test('landing sections come in order, with limits but no prices', async ({
   ).toHaveAttribute('href', '/pricing');
 });
 
-// The example plan reads as one plan: two weeks of two modules, week 1 done
-// and week 2 started on Generics in practice, as in the hero.
+// The example plan reads as one plan: four 2-hr modules over two weeks, the
+// first two done and Generics in practice started, as in the hero. Modules
+// are labelled by order, as on the plan page, not as weeks.
 test('landing plan preview agrees with the hero example', async ({ page }) => {
   await page.goto('/landing');
 
@@ -89,10 +90,27 @@ test('landing plan preview agrees with the hero example', async ({ page }) => {
   );
   await expect(preview).toContainText('2 of 4 modules');
   await expect(preview).toContainText('8 hrs planned');
-  await expect(preview).toContainText(/Week 2 · Module 3/i);
-  await expect(preview).not.toContainText(/Week [34]/i);
-  await expect(preview).toContainText('Read: generic constraints');
-  await expect(preview).toContainText('Exercise: type a fetch helper');
+  await expect(preview).toContainText(/Module 3/i);
+  await expect(preview).not.toContainText(/Week \d/i);
+  for (const task of [
+    'Read: generic constraints',
+    'Exercise: type a fetch helper',
+    'Review: Module 3 notes',
+  ]) {
+    await expect(preview).toContainText(task);
+  }
+
+  const howSection = page.locator(
+    'section[aria-labelledby="landing-how-heading"]',
+  );
+  await expect(howSection).toContainText(
+    '4 modules · 11 tasks · 8 hrs planned',
+  );
+
+  // The hero's week 2 card shows the week's 4 hrs, not the sum of its rows.
+  const hero = page.locator('section[aria-labelledby="landing-hero-heading"]');
+  await expect(hero).toContainText('4 hrs planned · 1.5 hrs done');
+  await expect(hero).toContainText('5.5 hrs');
 });
 
 // Each section after the problem statement opens on the same rule, and the

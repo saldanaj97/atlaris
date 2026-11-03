@@ -27,7 +27,7 @@ function GenerationDescription({
       ) : (
         <p className='mt-2 type-body text-muted-foreground'>
           Generation is running for the full module. You can keep reviewing
-          lessons, resources, and progress while content is prepared.
+          lessons and progress while content is prepared.
         </p>
       )}
       <div className='mt-4 flex flex-wrap items-center gap-2'>

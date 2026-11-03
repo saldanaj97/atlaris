@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import { RevealAnimation } from './RevealAnimation';
+import { EXAMPLE_ROADMAP_SUMMARY } from './RoadmapPreview';
 import { cn } from '@/lib/utils';
 
 import styles from './landing.module.css';
@@ -20,7 +21,7 @@ const STEPS = [
   {
     title: 'Atlaris drafts the route',
     copy: 'An AI model writes the plan as weekly modules and tasks, each with a time estimate that fits your hours.',
-    example: '4 modules · 12 tasks · 8 hrs planned',
+    example: EXAMPLE_ROADMAP_SUMMARY,
   },
   {
     title: 'Work it a week at a time',

@@ -68,7 +68,7 @@ export function TimelineModuleCard({
                   module.status === 'active' ? 'text-primary' : undefined
                 }
               >
-                Week {module.order}
+                Module {module.order}
               </span>
               {' · '}
               {module.duration}

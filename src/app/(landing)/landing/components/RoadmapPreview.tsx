@@ -25,16 +25,15 @@ import {
 interface ExampleModule {
   title: string;
   description: string;
-  /** Plan week the module falls in; the plan is two weeks of two modules. */
-  week: number;
   status: ModuleStatus;
   tasks: ReadonlyArray<{ title: string; minutes: number; done: boolean }>;
 }
 
 /**
  * Illustrative plan for the landing preview: the hero's example (two weeks,
- * 4 hrs a week, 2 hrs a module). Week 1 is done; week 2 has started on
- * Generics in practice with the hero's two finished tasks.
+ * 4 hrs a week, 2 hrs a module). The first two modules are done; Generics in
+ * practice has started, and its tasks and Typed hooks' first task are the
+ * hero's "This week" rows.
  */
 const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
   topic: 'TypeScript for React',
@@ -42,7 +41,6 @@ const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
     {
       title: 'Types that scale',
       description: 'Model props, unions and shared types for components.',
-      week: 1,
       status: 'completed',
       tasks: [
         { title: 'Read: typing component props', minutes: 40, done: true },
@@ -53,7 +51,6 @@ const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
     {
       title: 'Props and state',
       description: 'Type state, reducers and context without casts.',
-      week: 1,
       status: 'completed',
       tasks: [
         {
@@ -72,23 +69,20 @@ const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
     {
       title: 'Generics in practice',
       description: 'Write reusable components and helpers with generics.',
-      week: 2,
       status: 'active',
       tasks: [
         { title: 'Read: generic constraints', minutes: 40, done: true },
         { title: 'Exercise: type a fetch helper', minutes: 50, done: true },
-        { title: 'Build: a generic list component', minutes: 30, done: false },
+        { title: 'Review: Module 3 notes', minutes: 30, done: false },
       ],
     },
     {
       title: 'Typed hooks',
       description: 'Type custom hooks and their return values.',
-      week: 2,
       status: 'locked',
       tasks: [
-        { title: 'Read: typing custom hooks', minutes: 40, done: false },
-        { title: 'Exercise: a typed useToggle', minutes: 40, done: false },
-        { title: 'Build: a typed data hook', minutes: 40, done: false },
+        { title: 'Build: a typed useQuery hook', minutes: 90, done: false },
+        { title: 'Exercise: a typed useToggle', minutes: 30, done: false },
       ],
     },
   ],
@@ -103,6 +97,9 @@ const completionPercentage = Math.round(
 const completedModules = modules.filter(
   (module) => module.status === 'completed',
 ).length;
+
+/** The example plan's size, for the how-it-works step that describes the draft. */
+export const EXAMPLE_ROADMAP_SUMMARY = `${modules.length} modules · ${tasks.length} tasks · ${formatMinutes(totalMinutes)} planned`;
 
 /**
  * Static copy of the plan page (overview header and learning path), drawn with
@@ -209,7 +206,7 @@ function ExampleModuleCard({
                   module.status === 'active' ? 'text-primary' : undefined
                 }
               >
-                Week {module.week} · Module {order}
+                Module {order}
               </span>
               {' · '}
               {formatMinutes(minutes)}

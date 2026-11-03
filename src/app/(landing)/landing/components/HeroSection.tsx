@@ -37,8 +37,8 @@ const EXAMPLE_PLAN = {
   thisWeek: [
     { name: 'Read: generic constraints', minutes: 40, done: true },
     { name: 'Exercise: type a fetch helper', minutes: 50, done: true },
+    { name: 'Review: Module 3 notes', minutes: 30, done: false },
     { name: 'Build: a typed useQuery hook', minutes: 90, done: false },
-    { name: 'Review: Module 3 notes', minutes: 60, done: false },
   ],
 } as const;
 
@@ -47,10 +47,9 @@ type ModuleState = (typeof EXAMPLE_PLAN.modules)[number]['state'];
 const doneMinutes = EXAMPLE_PLAN.thisWeek
   .filter((task) => task.done)
   .reduce((sum, task) => sum + task.minutes, 0);
-const plannedMinutes = EXAMPLE_PLAN.thisWeek.reduce(
-  (sum, task) => sum + task.minutes,
-  0,
-);
+// The card lists week 2's first tasks (Generics, then the start of Typed
+// hooks) and fades its last row, so the week's plan is its hours, not the rows.
+const plannedMinutes = EXAMPLE_PLAN.hoursPerWeek * 60;
 // Week 1 covered the finished modules; week 2 is the "This week" card.
 const weekProgress = [
   EXAMPLE_PLAN.modules

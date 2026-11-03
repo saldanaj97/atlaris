@@ -172,7 +172,7 @@ export function PlanSummaryRail({
             >
               <span className='min-w-0'>
                 <span className='block type-eyebrow text-primary'>
-                  Week {activeModule.order}
+                  Module {activeModule.order}
                 </span>
                 <span className='mt-1 block font-medium wrap-break-word text-foreground'>
                   {activeModule.title}
