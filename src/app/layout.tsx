@@ -30,25 +30,38 @@ const clerkAppearance = {
     colorMuted: 'var(--secondary)',
     colorMutedForeground: 'var(--muted-foreground)',
     colorNeutral: 'var(--foreground)',
-    colorPrimary: 'var(--action-primary)',
-    colorPrimaryForeground: 'var(--action-primary-foreground)',
+    // Clerk paints its text actions and the active nav label in colorPrimary,
+    // so it takes the text accent; filled buttons get cantaloupe below.
+    colorPrimary: 'var(--primary)',
+    colorPrimaryForeground: 'var(--primary-foreground)',
     colorRing: 'var(--ring)',
     fontFamily: 'var(--font-family-base)',
   },
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
+    // Clerk's tinted badge text ("Primary", "This device") is about 1.2–3.6:1.
+    badge: { color: 'var(--muted-foreground)' },
     footer: { background: 'var(--secondary)' },
+    // Clerk's active tab gray holds the accent label to 4.1:1 in light; the
+    // panel color behind it gives 5.4:1 and matches the page it opens.
+    navbarButton: {
+      '&[data-active="true"]': { backgroundColor: 'var(--panel)' },
+    },
     footerActionLink: {
       color: 'var(--link)',
       '&:hover': { color: 'var(--link-hover)' },
     },
-    formButtonPrimary: {
-      backgroundColor: 'var(--action-primary)',
-      backgroundImage: 'none',
-      boxShadow: 'none',
-      color: 'var(--action-primary-foreground)',
-      '&:hover': { backgroundColor: 'var(--action-primary-hover)' },
+    // Every filled primary button, not only formButtonPrimary: sign-up's
+    // "Join waitlist" is a plain solid button.
+    button: {
+      '&[data-variant="solid"][data-color="primary"]': {
+        backgroundColor: 'var(--action-primary)',
+        backgroundImage: 'none',
+        boxShadow: 'none',
+        color: 'var(--action-primary-foreground)',
+        '&:hover': { backgroundColor: 'var(--action-primary-hover)' },
+      },
     },
     headerSubtitle: 'text-muted-foreground',
     headerTitle: 'text-foreground',
