@@ -34,32 +34,33 @@ const EXAMPLE_PLAN = {
     { name: 'Generics in practice', hours: 2, state: 'next' },
     { name: 'Typed hooks', hours: 2, state: 'todo' },
   ],
-  thisWeek: [
+  // Generics in practice, the module in progress (as in RoadmapPreview).
+  currentTasks: [
     { name: 'Read: generic constraints', minutes: 40, done: true },
     { name: 'Exercise: type a fetch helper', minutes: 50, done: true },
     { name: 'Review: Module 3 notes', minutes: 30, done: false },
-    { name: 'Build: a typed useQuery hook', minutes: 90, done: false },
   ],
 } as const;
 
 type ModuleState = (typeof EXAMPLE_PLAN.modules)[number]['state'];
 
-const doneMinutes = EXAMPLE_PLAN.thisWeek
+const currentModuleIndex = EXAMPLE_PLAN.modules.findIndex(
+  (module) => module.state === 'next',
+);
+const doneMinutes = EXAMPLE_PLAN.currentTasks
   .filter((task) => task.done)
   .reduce((sum, task) => sum + task.minutes, 0);
-// The card lists week 2's first tasks (Generics, then the start of Typed
-// hooks) and fades its last row, so the week's plan is its hours, not the rows.
-const plannedMinutes = EXAMPLE_PLAN.hoursPerWeek * 60;
-// Week 1 covered the finished modules; week 2 is the "This week" card.
-const weekProgress = [
-  EXAMPLE_PLAN.modules
-    .filter((module) => module.state === 'done')
-    .reduce((sum, module) => sum + module.hours * 60, 0),
-  doneMinutes,
-].map((done, index) => ({
-  week: index + 1,
-  done,
-  planned: EXAMPLE_PLAN.hoursPerWeek * 60,
+const plannedMinutes = EXAMPLE_PLAN.modules[currentModuleIndex].hours * 60;
+// Finished modules count in full, the current one by its finished tasks.
+const moduleProgress = EXAMPLE_PLAN.modules.map((module, index) => ({
+  label: `Module ${index + 1}`,
+  done:
+    module.state === 'done'
+      ? module.hours * 60
+      : module.state === 'next'
+        ? doneMinutes
+        : 0,
+  planned: module.hours * 60,
 }));
 
 export function HeroSection() {
@@ -262,7 +263,7 @@ function HeroPlanCards() {
         </div>
 
         <div className={cn(styles.cell, styles.cellCenter)}>
-          <CardLabel>This week</CardLabel>
+          <CardLabel>Current module</CardLabel>
           <div className={styles.card}>
             <div className={cn('flex', styles.panel)}>
               <div className='flex items-center justify-between gap-2'>
@@ -271,11 +272,12 @@ function HeroPlanCards() {
                   {formatMinutes(doneMinutes)} done
                 </p>
                 <span className='rounded-full border border-border px-2 py-0.5 type-meta text-muted-foreground'>
-                  Week {EXAMPLE_PLAN.weeks} of {EXAMPLE_PLAN.weeks}
+                  Module {currentModuleIndex + 1} of{' '}
+                  {EXAMPLE_PLAN.modules.length}
                 </span>
               </div>
               <ul className='m-0 flex list-none flex-col p-0'>
-                {EXAMPLE_PLAN.thisWeek.map((task) => (
+                {EXAMPLE_PLAN.currentTasks.map((task) => (
                   <li
                     key={task.name}
                     className='grid min-h-[2.25rem] grid-cols-[1rem_minmax(0,1fr)_auto] items-center gap-3 border-t border-border type-body first:border-t-0'
@@ -324,7 +326,7 @@ function HeroPlanCards() {
         </div>
 
         <div className={cn('hidden lg:block', styles.cell)}>
-          <CardLabel>Two-week progress</CardLabel>
+          <CardLabel>Plan progress</CardLabel>
           <div className={styles.card}>
             <div className={cn('flex', styles.panel)}>
               <p className='type-meta text-muted-foreground'>
@@ -332,20 +334,23 @@ function HeroPlanCards() {
               </p>
               <p className='type-title tabular-nums'>
                 {formatMinutes(
-                  weekProgress.reduce((sum, entry) => sum + entry.done, 0),
+                  moduleProgress.reduce((sum, entry) => sum + entry.done, 0),
                 )}{' '}
                 <span className='type-meta text-muted-foreground'>
                   of{' '}
                   {formatMinutes(
-                    EXAMPLE_PLAN.weeks * EXAMPLE_PLAN.hoursPerWeek * 60,
+                    moduleProgress.reduce(
+                      (sum, entry) => sum + entry.planned,
+                      0,
+                    ),
                   )}
                 </span>
               </p>
               <ul className='m-0 mt-3 flex list-none flex-col gap-3 p-0'>
-                {weekProgress.map(({ week, done, planned }) => (
-                  <li key={week} className='flex flex-col gap-2'>
+                {moduleProgress.map(({ label, done, planned }) => (
+                  <li key={label} className='flex flex-col gap-2'>
                     <div className='flex items-baseline justify-between gap-2'>
-                      <span className='type-body'>Week {week}</span>
+                      <span className='type-body'>{label}</span>
                       <span className='type-meta text-muted-foreground tabular-nums'>
                         {formatMinutes(done)} of {formatMinutes(planned)}
                       </span>

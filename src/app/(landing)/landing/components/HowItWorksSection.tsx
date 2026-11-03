@@ -20,13 +20,13 @@ const STEPS = [
   },
   {
     title: 'Atlaris drafts the route',
-    copy: 'An AI model writes the plan as weekly modules and tasks, each with a time estimate that fits your hours.',
+    copy: 'An AI model writes the plan as modules and tasks sized to your hours, each task with a time estimate.',
     example: EXAMPLE_ROADMAP_SUMMARY,
   },
   {
-    title: 'Work it a week at a time',
+    title: 'Work it module by module',
     copy: 'Mark tasks done as you go. Lessons for the next modules are written as you reach them. Paid plans can regenerate a draft that missed the mark: too basic, too advanced, wrong focus.',
-    example: 'Week 2 of 2 · 1.5 hrs of 4 hrs done',
+    example: 'Module 3 of 4 · 1.5 hrs of 2 hrs done',
   },
 ] as const;
 

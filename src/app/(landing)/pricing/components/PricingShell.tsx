@@ -20,7 +20,7 @@ const copy = {
   subheadline:
     'Start with one free plan. Upgrade for more plans, longer plans and more regenerations.',
   ctaHeadline: 'Your first plan is free',
-  ctaDescription: `Pick a topic and Atlaris writes the plan. Free includes one plan of up to ${FREE_WEEKS} weeks.`,
+  ctaDescription: `Pick a topic and Atlaris writes the plan. Free includes one plan of up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}.`,
 } as const;
 
 /**

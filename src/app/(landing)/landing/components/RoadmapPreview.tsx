@@ -32,8 +32,7 @@ interface ExampleModule {
 /**
  * Illustrative plan for the landing preview: the hero's example (two weeks,
  * 4 hrs a week, 2 hrs a module). The first two modules are done; Generics in
- * practice has started, and its tasks and Typed hooks' first task are the
- * hero's "This week" rows.
+ * practice has started, and its tasks are the hero's "Current module" rows.
  */
 const EXAMPLE_ROADMAP: { topic: string; modules: readonly ExampleModule[] } = {
   topic: 'TypeScript for React',

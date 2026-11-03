@@ -14,7 +14,7 @@ import styles from './landing.module.css';
 const CAPABILITIES = [
   {
     title: 'Modules and tasks sized to your hours',
-    copy: 'Each task carries a time estimate, so each week of the plan fits the hours you set.',
+    copy: 'Each task carries a time estimate, so each module fits the hours you set.',
     icon: Clock,
   },
   {

@@ -106,11 +106,23 @@ test('landing plan preview agrees with the hero example', async ({ page }) => {
   await expect(howSection).toContainText(
     '4 modules · 11 tasks · 8 hrs planned',
   );
+  await expect(howSection).toContainText(
+    'Module 3 of 4 · 1.5 hrs of 2 hrs done',
+  );
 
-  // The hero's week 2 card shows the week's 4 hrs, not the sum of its rows.
+  // The hero's current-module card is Generics in practice (2 hrs), and its
+  // progress card counts the whole plan: 5.5 of 8 hrs.
   const hero = page.locator('section[aria-labelledby="landing-hero-heading"]');
-  await expect(hero).toContainText('4 hrs planned · 1.5 hrs done');
-  await expect(hero).toContainText('5.5 hrs');
+  await expect(hero).toContainText('Module 3 of 4');
+  await expect(hero).toContainText('2 hrs planned · 1.5 hrs done');
+  await expect(hero).toContainText('5.5 hrs of 8 hrs');
+
+  // Plans aren't scheduled by week, so neither section says they are.
+  for (const section of [hero, howSection]) {
+    await expect(section).not.toContainText(
+      /Week \d|this week|week at a time|weekly modules/i,
+    );
+  }
 });
 
 // Each section after the problem statement opens on the same rule, and the

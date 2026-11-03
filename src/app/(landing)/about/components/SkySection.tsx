@@ -13,7 +13,7 @@ const METAPHORS = [
   {
     term: 'Route',
     definition:
-      'The week-by-week plan Atlaris drafts from it. Modules, tasks, and the resources attached to each.',
+      'The plan Atlaris drafts from it: modules and tasks, each task with a time estimate.',
   },
   {
     term: 'Drift',
@@ -74,8 +74,8 @@ export function SkySection() {
           >
             <RouteConstellation />
             <figcaption className='sr-only'>
-              A plan route drawn as a constellation: finished weeks behind you,
-              tonight&apos;s task, and the goal at the end.
+              A plan route drawn as a constellation: finished modules behind
+              you, tonight&apos;s task, and the goal at the end.
             </figcaption>
           </figure>
         </div>
@@ -106,9 +106,9 @@ export function SkySection() {
   );
 }
 
-/** Route points from finished weeks up to the goal, in viewBox units. */
+/** Route points from finished modules up to the goal, in viewBox units. */
 const ROUTE_POINTS = [
-  { x: 36, y: 176, state: 'done', label: 'Week 1' },
+  { x: 36, y: 176, state: 'done', label: 'Module 1' },
   { x: 104, y: 140, state: 'done', label: null },
   { x: 170, y: 152, state: 'current', label: 'Tonight' },
   { x: 236, y: 104, state: 'ahead', label: null },

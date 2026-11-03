@@ -8,7 +8,6 @@ import styles from './about.module.css';
 const IT_DOES = [
   'Draft the route from your goal, your level, and your weekly hours.',
   'Break the work into modules and tasks sized for the time you named.',
-  'Attach resources to the work they support.',
   'Write lessons for each module as you work through the plan.',
   'Remember what you finished and where you stopped.',
 ] as const;
@@ -48,10 +47,9 @@ export function MethodSection() {
             style={{ '--i': 2 } as CSSProperties}
           >
             You give Atlaris a goal, your level, the hours you have each week,
-            and how you like to learn. An AI model drafts a week-by-week route
-            from that: modules, tasks, and the resources attached to each. It
-            takes about two minutes. The draft is a starting point, not a
-            verdict.
+            and how you like to learn. An AI model drafts a route from that:
+            modules and tasks, each task with a time estimate. It takes about
+            two minutes. The draft is a starting point, not a verdict.
           </p>
         </div>
       </RevealAnimation>
