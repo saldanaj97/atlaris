@@ -75,7 +75,7 @@ describe('PricingPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Free for one plan. Pay when you need more',
+        name: 'Free for one plan. Pay when you need more.',
       }),
     ).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
