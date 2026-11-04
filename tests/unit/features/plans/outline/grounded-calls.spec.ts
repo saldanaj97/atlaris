@@ -176,6 +176,7 @@ describe('grounded outline writer', () => {
     expect(prompt).not.toContain('RESEARCH BRIEF');
     expect(prompt).toContain('TITLE-SCOPE CONTRACT');
     expect(prompt).toContain('TypeScript generics');
+    expect(prompt).toContain('Never put code');
   });
 
   it('adds regeneration guidance after the contract', async () => {
