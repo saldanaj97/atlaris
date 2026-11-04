@@ -1,5 +1,6 @@
 'use client';
 
+import type { PanelState } from './generationPanelState';
 import type { ModuleDetailTask } from '@/features/plans/read-projection/types';
 import type { ProgressStatus } from '@/shared/types/db.types';
 
@@ -23,6 +24,7 @@ interface LessonAccordionItemProps {
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   isLocked?: boolean;
+  generationState?: PanelState;
 }
 
 type LessonResources = NonNullable<ModuleDetailTask['resources']>;
@@ -37,7 +39,7 @@ function LockedContentOverlay() {
               <Lock className='size-8 text-muted-foreground/50' />
             </div>
           </div>
-          <h3 className='mb-2 type-card text-foreground'>Lesson Locked</h3>
+          <h3 className='mb-2 type-card text-foreground'>Lesson locked</h3>
           <p className='mx-auto max-w-xs type-body break-words text-muted-foreground'>
             Complete the previous lessons to unlock this content.
           </p>
@@ -52,16 +54,18 @@ function LessonContent({
   onStatusChange,
   resources,
   status,
+  generationState,
 }: {
   lesson: ModuleDetailTask;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   resources: LessonResources;
   status: ProgressStatus;
+  generationState?: PanelState;
 }) {
   return (
     <>
       <LessonResourceList resources={resources} />
-      <LessonBodyPanel lesson={lesson} />
+      <LessonBodyPanel lesson={lesson} generationState={generationState} />
       <LessonSourceList sources={lesson.sources} />
 
       <div className='mt-6 flex justify-end'>
@@ -81,6 +85,7 @@ export function LessonAccordionItem({
   status,
   onStatusChange,
   isLocked = false,
+  generationState,
 }: LessonAccordionItemProps) {
   const isCompleted = status === 'completed';
   const resources = lesson.resources ?? [];
@@ -103,6 +108,9 @@ export function LessonAccordionItem({
       {/* oxlint-enable shadcn/require-static-classes */}
       <AccordionTrigger
         hideChevron={false}
+        // Locked rows stay legible; the lock icon, badge and dashed border say
+        // they are locked.
+        legibleWhenDisabled
         className={cn(
           'min-w-0 items-start px-4 py-4 hover:no-underline [&[data-state=open]>svg]:rotate-180 sm:px-6',
           isLocked && 'cursor-not-allowed',
@@ -126,6 +134,7 @@ export function LessonAccordionItem({
               status={status}
               onStatusChange={onStatusChange}
               resources={resources}
+              generationState={generationState}
             />
           )}
         </div>

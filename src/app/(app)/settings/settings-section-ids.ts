@@ -5,7 +5,6 @@ export const SETTINGS_SECTIONS = {
   billing: 'billing',
   usage: 'usage',
   ai: 'ai',
-  integrations: 'integrations',
   notifications: 'notifications',
 } as const;
 
@@ -18,7 +17,6 @@ const SETTINGS_SECTION_PATHS = {
   [SETTINGS_SECTIONS.billing]: ROUTES.SETTINGS.BILLING,
   [SETTINGS_SECTIONS.usage]: ROUTES.SETTINGS.USAGE,
   [SETTINGS_SECTIONS.ai]: ROUTES.SETTINGS.AI,
-  [SETTINGS_SECTIONS.integrations]: ROUTES.SETTINGS.INTEGRATIONS,
   [SETTINGS_SECTIONS.notifications]: ROUTES.SETTINGS.NOTIFICATIONS,
 } as const satisfies Record<SettingsSectionId, string>;
 

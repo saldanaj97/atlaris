@@ -5,6 +5,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { PageHero } from '@/components/ui/page-hero';
 import { SectionOverline } from '@/components/ui/section-overline';
+import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { ArrowRight } from 'lucide-react';
@@ -14,6 +15,7 @@ import styles from './about.module.css';
 
 const copy = {
   overline: 'About Atlaris',
+  // The non-breaking space keeps "hours." from wrapping alone.
   headlineLead: 'Made after hours.',
   headlineEmphasis: 'For the hours you actually have.',
   subline:
@@ -23,14 +25,7 @@ const copy = {
 export function AboutHero() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */
-    <PageHero
-      className={styles.hero}
-      aria-labelledby='about-hero-heading'
-      overlay='background'
-      desktop={{ objectPosition: '78% 42%' }}
-      mobile={{ className: 'opacity-70' }}
-      backdropClassName={styles.heroBackdrop}
-    >
+    <PageHero className={styles.hero} aria-labelledby='about-hero-heading'>
       <div className={styles.heroContent}>
         <div className={styles.heroCopyBlock}>
           <SectionOverline className={styles.heroOverline}>
@@ -43,9 +38,7 @@ export function AboutHero() {
             <span className={`block ${styles.heroLead}`}>
               {copy.headlineLead}
             </span>
-            <span
-              className={`mt-1 block font-medium text-primary italic ${styles.heroEmphasis}`}
-            >
+            <span className={`mt-1 block ${styles.heroEmphasis}`}>
               {copy.headlineEmphasis}
             </span>
           </h1>
@@ -60,7 +53,7 @@ export function AboutHero() {
               className={cn(marketingPrimaryCtaClassName, styles.ctaMotion)}
             >
               <Link href={ROUTES.PLANS.NEW}>
-                Begin tonight
+                {CREATE_PLAN_LABEL}
                 <ArrowRight
                   className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
                   aria-hidden='true'

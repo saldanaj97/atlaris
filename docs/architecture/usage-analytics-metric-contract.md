@@ -11,7 +11,7 @@ completion state and append-only learning activity history.
 | ------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `/analytics`              | Redirects to `/analytics/usage`                                                                                    |
 | `/analytics/usage`        | **Shipped** — completion metrics, estimated completed time, streaks, weekly trends from `learning_activity_events` |
-| `/analytics/achievements` | **Placeholder** — static “coming soon” UI; no badge persistence or unlock logic                                    |
+| `/analytics/achievements` | Redirects to `/analytics/usage`; achievement tracking is not built                                                 |
 
 Page data (`src/app/(app)/analytics/usage/page.tsx`):
 
@@ -68,16 +68,16 @@ Historical empty state: streaks and weekly summaries only reflect progress chang
 
 ## Relevant Code Surfaces
 
-| Concern                  | Path                                                                                    |
-| ------------------------ | --------------------------------------------------------------------------------------- |
-| Usage page               | `src/app/(app)/analytics/usage/page.tsx`                                                |
-| Model + charts           | `usage-analytics-model.ts`, `usage-analytics-content.tsx`, `usage-analytics-charts.tsx` |
-| Completion calculations  | `src/features/plans/read-projection/completion-metrics.ts`                              |
-| Plan summary projection  | `src/features/plans/read-projection/summary-projection.ts`                              |
-| Activity events schema   | `learningActivityEvents` in `supabase/schema/tables/tasks.ts`                           |
-| Analytics timezone       | `user_preferences.analytics_timezone` (`supabase/schema/tables/user-preferences.ts`)    |
-| Timezone helpers         | `src/shared/analytics/learning-activity-time.ts`                                        |
-| Achievements placeholder | `src/app/(app)/analytics/achievements/page.tsx`                                         |
+| Concern                 | Path                                                                                    |
+| ----------------------- | --------------------------------------------------------------------------------------- |
+| Usage page              | `src/app/(app)/analytics/usage/page.tsx`                                                |
+| Model + charts          | `usage-analytics-model.ts`, `usage-analytics-content.tsx`, `usage-analytics-charts.tsx` |
+| Completion calculations | `src/features/plans/read-projection/completion-metrics.ts`                              |
+| Plan summary projection | `src/features/plans/read-projection/summary-projection.ts`                              |
+| Activity events schema  | `learningActivityEvents` in `supabase/schema/tables/tasks.ts`                           |
+| Analytics timezone      | `user_preferences.analytics_timezone` (`supabase/schema/tables/user-preferences.ts`)    |
+| Timezone helpers        | `src/shared/analytics/learning-activity-time.ts`                                        |
+| Achievements redirect   | `src/app/(app)/analytics/achievements/page.tsx`                                         |
 
 ## Related docs
 

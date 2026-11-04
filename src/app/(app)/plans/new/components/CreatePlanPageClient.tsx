@@ -24,17 +24,13 @@ export function CreatePlanPageClient({
       <PageHero
         className='rounded-lg border border-panel-border bg-panel px-5 py-6 sm:px-8 sm:py-5'
         contentClassName='max-w-3xl'
-        title={
-          <>
-            What do you want to <span className='text-primary'>learn?</span>
-          </>
-        }
+        title='What do you want to learn?'
         titleClassName='type-title max-w-xl text-balance text-foreground'
         description='Name the goal, your level, and the time you actually have. Atlaris charts the route.'
         descriptionClassName='mt-2.5 max-w-xl type-reading text-muted-foreground'
       />
 
-      <div className='grid items-start gap-4 lg:grid-cols-[minmax(0,40rem)_minmax(16rem,18rem)]'>
+      <div className='grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,18rem)]'>
         <AiPlanGenerationPanel subscriptionTier={subscriptionTier} />
 
         <Card

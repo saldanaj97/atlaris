@@ -67,6 +67,17 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      recentActivity: [
+        {
+          id: 'evt-1',
+          planId: plan.id,
+          planTopic: 'TypeScript',
+          taskTitle: 'Read the handbook',
+          status: 'completed',
+          taskEstimatedMinutes: 45,
+          occurredAt: new Date(),
+        },
+      ],
       progress: {
         percent: 0,
         completedModules: 0,
@@ -83,13 +94,21 @@ describe('DashboardContent', () => {
       screen.getByRole('heading', { level: 1, name: 'Welcome back, Juan.' }),
     ).toBeVisible();
     expect(
-      screen.getByRole('link', { name: 'Continue learning' }),
+      // Nothing is done yet, so the resume action starts the plan.
+      screen.getByRole('link', { name: 'Start learning' }),
     ).toHaveAttribute('href', `/plans/${plan.id}`);
     expect(screen.getByRole('link', { name: 'View module' })).toHaveAttribute(
       'href',
       `/plans/${plan.id}/modules/${summary.modules[0]?.id}`,
     );
-    expect(screen.getByText('Progress tracking coming soon')).toBeVisible();
+    expect(
+      screen.queryByText('Progress tracking coming soon'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('From the hours you set for this plan'),
+    ).toBeVisible();
+    expect(screen.getByText('Read the handbook')).toBeVisible();
+    expect(screen.getByText('Completed · TypeScript · 45 min')).toBeVisible();
     expect(
       screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
     ).not.toBeInTheDocument();
@@ -117,6 +136,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [summary],
       resumePlan: summary,
+      recentActivity: [],
       progress: {
         percent: 0,
         completedModules: 0,
@@ -150,6 +170,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [],
       resumePlan: undefined,
+      recentActivity: [],
       progress: emptyProgress,
     });
 
@@ -166,7 +187,7 @@ describe('DashboardContent', () => {
       screen.getByText('Progress will appear here once you have a plan.'),
     ).toBeVisible();
     expect(
-      screen.queryByRole('link', { name: 'Begin tonight' }),
+      screen.queryByRole('link', { name: 'Create a plan' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
     expect(
@@ -197,6 +218,7 @@ describe('DashboardContent', () => {
     mocks.getDashboardPlanDataMock.mockResolvedValue({
       summaries: [resume],
       resumePlan: resume,
+      recentActivity: [],
       progress: {
         percent: 10,
         completedModules: 1,

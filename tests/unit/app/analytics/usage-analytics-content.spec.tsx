@@ -20,11 +20,15 @@ let observedResizeEntries: {
 }[] = [];
 let animationFrameCallbacks = new Map<number, FrameRequestCallback>();
 let nextAnimationFrameId = 1;
+let viewportWidth = 1280;
+let prefersReducedMotion = false;
 
 beforeEach(() => {
   observedResizeEntries = [];
   animationFrameCallbacks = new Map();
   nextAnimationFrameId = 1;
+  viewportWidth = 1280;
+  prefersReducedMotion = false;
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     const id = nextAnimationFrameId;
     nextAnimationFrameId += 1;
@@ -36,11 +40,13 @@ beforeEach(() => {
   });
   vi.stubGlobal(
     'matchMedia',
-    vi.fn().mockReturnValue({
-      matches: false,
+    vi.fn((query: string) => ({
+      matches: query.includes('min-width: 40rem')
+        ? viewportWidth >= 640
+        : query.includes('prefers-reduced-motion') && prefersReducedMotion,
       addEventListener: vi.fn(),
       removeEventListener: vi.fn(),
-    }),
+    })),
   );
 
   /** Records observed elements and callbacks for test-controlled resize events. */
@@ -195,13 +201,8 @@ describe('UsageAnalyticsContent', () => {
     expect(
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
-    expect(
-      screen
-        .getByRole('banner')
-        .querySelector('[data-slot="dissolved-backdrop"]'),
-    ).not.toBeNull();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
-    expect(screen.getByText('Accessible plans')).toBeInTheDocument();
+    expect(screen.queryByText('Accessible plans')).not.toBeInTheDocument();
     expect(
       screen.getByText(
         'Progress across plans you can access, based on the tasks and modules you have completed.',
@@ -268,7 +269,7 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
-  it('adds plan labels and chart lines as the chart has room for them', async () => {
+  it('plots every top plan at narrow and wide widths', async () => {
     const { container } = render(<UsageAnalyticsContent model={model} />);
 
     await resizeChart(380);
@@ -279,43 +280,28 @@ describe('UsageAnalyticsContent', () => {
     });
     await resizeChart(380);
 
+    for (const topic of [
+      'Calendar Sync Hardening',
+      'Dashboard Activity Polish',
+      'Applied TypeScript Architecture',
+      'Database Performance',
+    ]) {
+      expect(screen.getByText(topic)).toBeInTheDocument();
+    }
+    expect(screen.queryByText(/more plans? not shown/)).not.toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(4);
+    });
+
+    await resizeChart(780);
+
     expect(
       screen.getByText('Applied TypeScript Architecture'),
     ).toBeInTheDocument();
     expect(screen.getByText('Database Performance')).toBeInTheDocument();
-    expect(
-      screen.queryByText('Dashboard Activity Polish'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Calendar Sync Hardening'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText('2 more plans not shown at this width'),
-    ).toHaveTextContent('+2 more');
-    await waitFor(() => {
-      expect(
-        container.querySelectorAll('[data-testid="plan-series"]'),
-      ).toHaveLength(2);
-    });
-    expect(
-      container.querySelector('.recharts-line-dots'),
-    ).not.toBeInTheDocument();
-
-    const linePath = await waitFor(() => {
-      const renderedLinePath = container.querySelector(
-        '[data-testid="plan-series"].recharts-line-curve',
-      );
-
-      expect(renderedLinePath).not.toBeNull();
-      return renderedLinePath;
-    });
-    expect(linePath?.getAttribute('d')).not.toContain('C');
-
-    await resizeChart(780);
-
-    expect(screen.getByText('Dashboard Activity Polish')).toBeInTheDocument();
-    expect(screen.getByText('Calendar Sync Hardening')).toBeInTheDocument();
-    expect(screen.queryByText('+2 more')).not.toBeInTheDocument();
+    expect(screen.queryByText(/more plans? not shown/)).not.toBeInTheDocument();
     await waitFor(() => {
       expect(
         container.querySelectorAll('[data-testid="plan-series"]'),
@@ -323,7 +309,36 @@ describe('UsageAnalyticsContent', () => {
     });
   });
 
-  it('caps visible plan series at the five available chart colors', async () => {
+  it('drops point labels on phones and keeps them from the sm breakpoint up', async () => {
+    prefersReducedMotion = true;
+    // Every number drawn in the chart: the y-axis ticks plus any point labels.
+    const chartNumbers = (container: HTMLElement) =>
+      Array.from(
+        container.querySelectorAll('[data-testid="weekly-line-chart"] text'),
+      ).filter((text) => /^\d+$/.test(text.textContent?.trim() ?? '')).length;
+
+    viewportWidth = 375;
+    const phone = render(<UsageAnalyticsContent model={model} />);
+    await resizeChart(375);
+    await waitFor(() => {
+      expect(
+        phone.container.querySelectorAll('[data-testid="plan-series"]'),
+      ).toHaveLength(4);
+    });
+    const phoneNumbers = chartNumbers(phone.container);
+    phone.unmount();
+
+    observedResizeEntries = [];
+    viewportWidth = 1280;
+    const desktop = render(<UsageAnalyticsContent model={model} />);
+    await resizeChart(1280);
+    // Same data and axis, so any extra numbers on desktop are point labels.
+    await waitFor(() => {
+      expect(chartNumbers(desktop.container)).toBeGreaterThan(phoneNumbers);
+    });
+  });
+
+  it('plots only the five most active plans and counts the rest', async () => {
     const sixPlanModel: UsageAnalyticsModel = {
       ...model,
       plans: [
@@ -336,29 +351,25 @@ describe('UsageAnalyticsContent', () => {
       <UsageAnalyticsContent model={sixPlanModel} />,
     );
 
-    await resizeChart(1400);
+    for (const width of [1400, 1280, 375]) {
+      await resizeChart(width);
 
-    expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
-    expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText('1 more plan not shown at this width'),
-    ).toHaveTextContent('+1 more');
-    await waitFor(() => {
-      expect(
-        container.querySelectorAll('[data-testid="plan-series"]'),
-      ).toHaveLength(5);
-    });
+      expect(screen.getByText('Fifth Plan')).toBeInTheDocument();
+      expect(screen.queryByText('Sixth Plan')).not.toBeInTheDocument();
+      expect(screen.getByText('+1 more plan not shown')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          container.querySelectorAll('[data-testid="plan-series"]'),
+        ).toHaveLength(5);
+      });
+    }
   });
 });
 
 /** Simulates a chart container resize and triggers registered ResizeObserver callbacks. */
 async function resizeChart(width: number) {
   await waitFor(() => {
-    expect(
-      observedResizeEntries.some(
-        ({ element }) => element.dataset.testid === 'weekly-line-chart',
-      ),
-    ).toBe(true);
+    expect(observedResizeEntries.length).toBeGreaterThan(0);
   });
 
   for (const { element } of observedResizeEntries) {

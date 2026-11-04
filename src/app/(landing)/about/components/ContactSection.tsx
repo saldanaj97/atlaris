@@ -9,7 +9,7 @@ import styles from './about.module.css';
 export function ContactSection() {
   return (
     <section
-      className='mx-auto max-w-3xl px-6 py-16 text-center md:px-8 md:py-20'
+      className='mx-auto max-w-3xl px-6 pt-16 pb-12 text-center md:px-8 md:pt-20 md:pb-16'
       aria-labelledby='about-contact-heading'
     >
       <RevealAnimation>
@@ -23,10 +23,7 @@ export function ContactSection() {
           className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
           style={{ '--i': 1 } as CSSProperties}
         >
-          If the map is wrong,
-          <span className='block font-medium text-muted-foreground italic'>
-            say so.
-          </span>
+          If the map is wrong, say so.
         </h2>
         <p
           className={`mx-auto mt-6 max-w-xl type-reading text-muted-foreground ${styles.revealItem}`}

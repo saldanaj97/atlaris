@@ -74,16 +74,18 @@ const LESSON_PROGRESS_THEME: Record<
   },
   active: {
     marker:
-      'border-primary/50 bg-primary/20 text-primary ring-2 ring-primary/10 dark:bg-primary/20 dark:text-primary',
+      'border-primary/50 bg-action-soft text-primary ring-2 ring-primary/10',
     card: 'border-panel-border bg-panel shadow-sm hover:border-primary/30 hover:shadow-md dark:border-border dark:hover:border-primary/30',
     title: 'text-foreground',
     mutedText: 'text-muted-foreground',
   },
+  // Locked reads from the dashed border, lock icon and "Locked" badge, not
+  // from fading the text, so every label keeps full contrast.
   locked: {
-    marker: 'border-border bg-muted text-muted-foreground/70',
-    card: `${TIMELINE_MODULE_THEME.locked.card} opacity-90`,
-    title: 'text-foreground/70',
-    mutedText: 'text-muted-foreground/80',
+    marker: 'border-border bg-muted text-muted-foreground',
+    card: 'border-dashed border-input bg-panel-muted dark:bg-muted/30',
+    title: 'text-muted-foreground',
+    mutedText: 'text-muted-foreground',
   },
 };
 

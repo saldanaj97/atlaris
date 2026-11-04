@@ -1,27 +1,26 @@
 import { CtaSection } from './CtaSection';
-import { DriftSection } from './DriftSection';
 import { HeroSection } from './HeroSection';
-import { InstrumentsSection } from './InstrumentsSection';
-import { RouteSection } from './RouteSection';
-import { CelestialBackdrop } from '@/app/(landing)/_shared/CelestialBackdrop';
+import { HowItWorksSection } from './HowItWorksSection';
+import { PlanContentsSection } from './PlanContentsSection';
+import { PricingSummarySection } from './PricingSummarySection';
+import { ProblemSection } from './ProblemSection';
 import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
+import { ibmPlexMono } from '@/app/fonts';
 
-import styles from './landing.module.css';
-
-/** Landing page composition for the public marketing route. */
+/**
+ * Landing page composition for the public marketing route. Below the hero:
+ * the problem, how it works, what a plan contains, what it costs, and the
+ * closing banner. The sections borrow the hero's mono for labels and examples.
+ */
 export function Landing() {
   return (
     <LandingPageShell>
-      <CelestialBackdrop
-        variant='landing'
-        primaryClassName={`${styles.ambientOrb} ${styles.ambientOrbPrimary}`}
-        mutedClassName={`${styles.ambientOrb} ${styles.ambientOrbMuted}`}
-      />
-      <div className='relative z-10'>
+      <div className={`relative z-10 ${ibmPlexMono.variable}`}>
         <HeroSection />
-        <DriftSection />
-        <RouteSection />
-        <InstrumentsSection />
+        <ProblemSection />
+        <HowItWorksSection />
+        <PlanContentsSection />
+        <PricingSummarySection />
         <CtaSection />
       </div>
     </LandingPageShell>

@@ -161,42 +161,40 @@ const ModelDropdown = ({
 
             <p className='type-body'>{selectedModelData.description}</p>
 
-            <div className='grid grid-cols-4 gap-4 pt-2'>
+            <dl className='grid grid-cols-4 gap-4 pt-2'>
               <div>
-                <p className='type-meta text-muted-foreground'>
-                  Context Window
-                </p>
-                <p className='type-label'>
+                <dt className='type-meta text-muted-foreground'>
+                  Context window
+                </dt>
+                <dd className='type-label tabular-nums'>
                   {(selectedModelData.contextWindow / 1000).toFixed(0)}K tokens
-                </p>
+                </dd>
               </div>
               <div>
-                <p className='type-meta text-muted-foreground'>Max Output</p>
-                <p className='type-label'>
-                  {(
-                    (selectedModelData.maxOutputTokens ??
-                      selectedModelData.contextWindow / 2) / 1000
-                  ).toFixed(0)}
-                  K tokens
-                </p>
+                <dt className='type-meta text-muted-foreground'>Max output</dt>
+                <dd className='type-label tabular-nums'>
+                  {selectedModelData.maxOutputTokens == null
+                    ? '—'
+                    : `${(selectedModelData.maxOutputTokens / 1000).toFixed(0)}K tokens`}
+                </dd>
               </div>
               <div>
-                <p className='type-meta text-muted-foreground'>Input Cost</p>
-                <p className='type-label'>
+                <dt className='type-meta text-muted-foreground'>Input cost</dt>
+                <dd className='type-label tabular-nums'>
                   {selectedModelData.inputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.inputCostPerMillion}/M`}
-                </p>
+                </dd>
               </div>
               <div>
-                <p className='type-meta text-muted-foreground'>Output Cost</p>
-                <p className='type-label'>
+                <dt className='type-meta text-muted-foreground'>Output cost</dt>
+                <dd className='type-label tabular-nums'>
                   {selectedModelData.outputCostPerMillion === 0
                     ? 'Free'
                     : `$${selectedModelData.outputCostPerMillion}/M`}
-                </p>
+                </dd>
               </div>
-            </div>
+            </dl>
           </div>
         </Card>
       )}
@@ -237,12 +235,12 @@ const ModelDropdown = ({
         disabled={saveDisabled}
         className='w-full'
       >
-        {isSaving ? 'Saving…' : 'Save Preferences'}
+        {isSaving ? 'Saving…' : 'Save preferences'}
       </Button>
 
       {showUpgradeCta && userTier !== 'pro' && (
         <div className='rounded-lg border-2 border-border bg-muted p-4'>
-          <h4 className='mb-2 font-semibold'>Unlock Premium Models</h4>
+          <h4 className='mb-2 font-semibold'>Unlock premium models</h4>
           <p className='mb-3 type-body text-muted-foreground'>
             Upgrade to Pro to access advanced models like Claude Sonnet 5.5,
             GPT-6.1 Sol, and Claude Opus 5.5.

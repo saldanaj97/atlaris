@@ -4,13 +4,14 @@ import { defineConfig } from '@playwright/test';
 
 const SMOKE_ANON_BASE_URL = 'http://127.0.0.1:3100';
 const SMOKE_AUTH_BASE_URL = 'http://127.0.0.1:3101';
+const SMOKE_WORKER_HEALTH_URL = 'http://127.0.0.1:3102/healthz';
 const PLAYWRIGHT_REPORT_DIR =
   './tests/test-results/playwright/playwright-report';
 const PLAYWRIGHT_OUTPUT_DIR = './tests/test-results/playwright/artifacts';
 const SMOKE_SERVER_TIMEOUT_MS = 180_000;
 const SMOKE_SERVER_SHUTDOWN = { signal: 'SIGTERM' as const, timeout: 5_000 };
 
-type SmokeServerName = 'anon' | 'auth';
+type SmokeServerName = 'anon' | 'auth' | 'worker';
 type SmokeWebServer = Extract<
   NonNullable<PlaywrightTestConfig['webServer']>,
   unknown[]
@@ -31,11 +32,18 @@ const SMOKE_WEB_SERVERS: Record<SmokeServerName, SmokeWebServer> = {
     timeout: SMOKE_SERVER_TIMEOUT_MS,
     url: SMOKE_AUTH_BASE_URL,
   },
+  worker: {
+    command: 'pnpm exec tsx scripts/tests/smoke/start-app.ts --mode=worker',
+    gracefulShutdown: SMOKE_SERVER_SHUTDOWN,
+    reuseExistingServer: false,
+    timeout: SMOKE_SERVER_TIMEOUT_MS,
+    url: SMOKE_WORKER_HEALTH_URL,
+  },
 };
 
 // Each project only needs one app server. smoke-anon and smoke-clerk both run
 // against the anonymous server (:3100); smoke-auth runs against the auth
-// server (:3101).
+// server (:3101), which hands plan generation to the local jobs Worker (:3102).
 const PROJECT_SERVER_NEEDS: Record<string, SmokeServerName> = {
   'smoke-anon': 'anon',
   'smoke-clerk': 'anon',
@@ -72,7 +80,11 @@ function resolveSmokeWebServers(): SmokeWebServer[] {
 
   // No recognized project filter -> start everything (full-run default).
   if (needed.size === 0) {
-    return [SMOKE_WEB_SERVERS.anon, SMOKE_WEB_SERVERS.auth];
+    return [
+      SMOKE_WEB_SERVERS.anon,
+      SMOKE_WEB_SERVERS.auth,
+      SMOKE_WEB_SERVERS.worker,
+    ];
   }
 
   const servers: SmokeWebServer[] = [];
@@ -80,7 +92,7 @@ function resolveSmokeWebServers(): SmokeWebServer[] {
     servers.push(SMOKE_WEB_SERVERS.anon);
   }
   if (needed.has('auth')) {
-    servers.push(SMOKE_WEB_SERVERS.auth);
+    servers.push(SMOKE_WEB_SERVERS.auth, SMOKE_WEB_SERVERS.worker);
   }
   return servers;
 }
@@ -104,7 +116,7 @@ export default defineConfig({
   projects: [
     {
       name: 'smoke-anon',
-      testMatch: /anon\.redirects\.spec\.ts/,
+      testMatch: /anon\..*\.spec\.ts/,
       use: {
         baseURL: SMOKE_ANON_BASE_URL,
       },

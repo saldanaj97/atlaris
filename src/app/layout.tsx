@@ -16,23 +16,78 @@ const metadataDescription =
   'Name a goal. Atlaris charts the plan and remembers where you left off.';
 
 const clerkAppearance = {
+  layout: {
+    // The mark is white; the light theme inverts it so it shows on light cards.
+    logoImageUrl: '/brand/mark-on-dark.svg',
+  },
   variables: {
     borderRadius: 'var(--radius)',
     colorBackground: 'var(--panel)',
-    colorPrimary: 'var(--action-primary)',
-    colorText: 'var(--foreground)',
-    colorTextSecondary: 'var(--muted-foreground)',
+    colorBorder: 'var(--border)',
+    colorForeground: 'var(--foreground)',
+    colorInput: 'var(--card)',
+    colorInputForeground: 'var(--foreground)',
+    colorMuted: 'var(--secondary)',
+    colorMutedForeground: 'var(--muted-foreground)',
+    colorNeutral: 'var(--foreground)',
+    // Clerk paints its text actions and the active nav label in colorPrimary,
+    // so it takes the text accent; filled buttons get cantaloupe below.
+    colorPrimary: 'var(--primary)',
+    colorPrimaryForeground: 'var(--primary-foreground)',
+    colorRing: 'var(--ring)',
     fontFamily: 'var(--font-family-base)',
   },
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
-    footerActionLink: 'text-link hover:text-link-hover',
-    formButtonPrimary:
-      'bg-action-primary text-action-primary-foreground hover:bg-action-primary-hover',
+    // Clerk's tinted badge text ("Primary", "This device") is about 1.2–3.6:1.
+    badge: { color: 'var(--muted-foreground)' },
+    footer: { background: 'var(--secondary)' },
+    // Clerk's active tab gray holds the accent label to 4.1:1 in light; the
+    // panel color behind it gives 5.4:1 and matches the page it opens.
+    navbarButton: {
+      '&[data-active="true"]': { backgroundColor: 'var(--panel)' },
+    },
+    footerActionLink: {
+      color: 'var(--link)',
+      '&:hover': { color: 'var(--link-hover)' },
+    },
+    // Every filled primary button, not only formButtonPrimary: sign-up's
+    // "Join waitlist" is a plain solid button.
+    button: {
+      '&[data-variant="solid"][data-color="primary"]': {
+        backgroundColor: 'var(--action-primary)',
+        backgroundImage: 'none',
+        boxShadow: 'none',
+        color: 'var(--action-primary-foreground)',
+        '&:hover': { backgroundColor: 'var(--action-primary-hover)' },
+      },
+    },
     headerSubtitle: 'text-muted-foreground',
     headerTitle: 'text-foreground',
-    socialButtonsBlockButton: 'border-input text-foreground hover:bg-muted/70',
+    logoBox: { height: '2.5rem' },
+    logoImage: {
+      height: '2.5rem',
+      width: 'auto',
+      'html:not(.dark) &': { filter: 'invert(1)' },
+    },
+    // Clerk draws these boundaries as 11%-alpha shadows (about 1.2:1); use the
+    // 3:1 control boundary instead, but leave focus and error rings to Clerk.
+    formFieldInput: {
+      '&:not(:focus):not([aria-invalid="true"])': {
+        boxShadow: '0 0 0 1px var(--input)',
+      },
+    },
+    // The "or" rule between social and email sign-in is decoration, but at
+    // Clerk's default (about 1.02:1) it disappears; draw it in the border color.
+    dividerLine: { backgroundColor: 'var(--border)' },
+    socialButtonsBlockButton: {
+      color: 'var(--foreground)',
+      '&:not(:focus-visible)': { boxShadow: '0 0 0 1px var(--input)' },
+      '&:hover': {
+        backgroundColor: 'color-mix(in oklab, var(--muted) 70%, transparent)',
+      },
+    },
   },
 };
 
@@ -103,7 +158,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#f8fafc' },
-    { media: '(prefers-color-scheme: dark)', color: '#070b10' },
+    { media: '(prefers-color-scheme: dark)', color: '#02070a' },
   ],
 };
 
@@ -133,7 +188,7 @@ export default async function RootLayout({
       >
         <a
           href='#main-content'
-          className='fixed top-0 left-4 z-[100] -translate-y-full rounded-md bg-action-primary px-3 py-2 type-label text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
+          className='fixed top-0 left-4 z-[100] -translate-y-[calc(100%+1rem)] rounded-md bg-action-primary px-3 py-2 type-label text-action-primary-foreground focus-visible:translate-y-[calc(env(safe-area-inset-top,0px)+0.5rem)] focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none'
         >
           Skip to main content
         </a>

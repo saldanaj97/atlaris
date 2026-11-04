@@ -2,6 +2,7 @@ import {
   isProviderWebhookRoute,
   isProtectedRoute,
   isSiteGateExempt,
+  resolveAnonymousAuthPath,
   resolveSiteGateRedirectPath,
   resolveSiteGateRedirectSource,
   resolveViewerSiteGate,
@@ -54,6 +55,14 @@ describe('middleware policy', () => {
     expect(isProtectedRoute('/api/v1/plans')).toBe(true);
     expect(isProtectedRoute('/dashboard')).toBe(true);
     expect(isProtectedRoute('/dashboard/')).toBe(true);
+  });
+
+  it('sends signed-out visitors to sign-up for the plan form, sign-in elsewhere', () => {
+    expect(resolveAnonymousAuthPath('/plans/new')).toBe('/auth/sign-up');
+    expect(resolveAnonymousAuthPath('/plans/new/')).toBe('/auth/sign-up');
+    expect(resolveAnonymousAuthPath('/plans')).toBe('/auth/sign-in');
+    expect(resolveAnonymousAuthPath('/plans/new-ideas')).toBe('/auth/sign-in');
+    expect(resolveAnonymousAuthPath('/dashboard')).toBe('/auth/sign-in');
   });
 
   it('resolveSiteGateRedirectPath', () => {
@@ -112,7 +121,6 @@ describe('middleware policy', () => {
     '/landing/',
     '/pricing',
     '/pricing/',
-    '/about',
     '/terms',
     '/privacy',
   ])('keeps marketing page %s live during maintenance', (pathname) => {
@@ -133,22 +141,19 @@ describe('middleware policy', () => {
     '/analytics',
     '/pricing/extra',
     '/landing-other',
+    '/about',
   ])('redirects app and auth path %s to /maintenance', (pathname) => {
     expect(resolveSiteGateRedirectPath('maintenance', pathname)).toBe(
       '/maintenance',
     );
   });
 
-  it.each([
-    '/landing',
-    '/pricing',
-    '/about',
-    '/terms',
-    '/privacy',
-    '/waitlist',
-  ])('keeps %s live while the launch waitlist is on', (pathname) => {
-    expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
-  });
+  it.each(['/landing', '/pricing', '/terms', '/privacy', '/waitlist'])(
+    'keeps %s live while the launch waitlist is on',
+    (pathname) => {
+      expect(resolveSiteGateRedirectPath('waitlist', pathname)).toBe(null);
+    },
+  );
 
   it.each([
     '/auth/sign-up',

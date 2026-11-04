@@ -13,7 +13,7 @@ interface PlanPageProps {
 const PLAN_METADATA_TITLE =
   'Atlaris — Turn learning goals into a scheduled plan';
 const PLAN_METADATA_DESCRIPTION =
-  'Generate a time-blocked study plan from any goal with modules, resources, and progress tracking.';
+  'Generate a time-blocked study plan from any goal with modules, tasks, and progress tracking.';
 
 export const metadata: Metadata = {
   title: PLAN_METADATA_TITLE,

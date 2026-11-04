@@ -11,7 +11,7 @@ interface ModulePageProps {
 }
 
 const MODULE_METADATA_DESCRIPTION =
-  'View module details, tasks, and resources for this learning plan module.';
+  'View module details, lessons, and tasks for this learning plan module.';
 
 export const metadata: Metadata = {
   title: 'Module Details | Atlaris',

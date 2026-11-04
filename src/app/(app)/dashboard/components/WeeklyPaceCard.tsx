@@ -8,7 +8,7 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
       <Card
         as='aside'
         aria-labelledby={TITLE_ID}
-        className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
+        className='h-full gap-0 p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
       >
         <h2 id={TITLE_ID} className='type-card text-foreground'>
           This week
@@ -28,7 +28,7 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
     <Card
       as='aside'
       aria-labelledby={TITLE_ID}
-      className='h-full p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
+      className='h-full gap-0 p-5 animate-dashboard-unfold [--dashboard-entry-x:0.75rem] [animation-delay:80ms] motion-reduce:animate-none sm:p-6'
     >
       <h2 id={TITLE_ID} className='type-card text-foreground'>
         This week
@@ -40,15 +40,9 @@ export function WeeklyPaceCard({ weeklyHours }: { weeklyHours?: number }) {
       <p className='mt-6 type-title text-foreground tabular-nums'>
         {weeklyHours} hr{weeklyHours === 1 ? '' : 's'} planned
       </p>
-
-      <div className='mt-6 border-t border-border/50 pt-4'>
-        <p className='type-reading font-medium text-foreground'>
-          Progress tracking coming soon
-        </p>
-        <p className='mt-1 type-body text-muted-foreground'>
-          Completed learning time will appear here once it can be measured.
-        </p>
-      </div>
+      <p className='mt-2 type-body text-muted-foreground'>
+        From the hours you set for this plan
+      </p>
     </Card>
   );
 }

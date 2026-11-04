@@ -53,7 +53,7 @@ export function PreferenceControls({
             options={SKILL_LEVEL_OPTIONS}
             value={state.skillLevel}
             onChange={(value) => dispatch({ type: 'set-skill-level', value })}
-            placeholder='Experience'
+            placeholder='Choose a level'
             variant='primary'
           />
         </div>

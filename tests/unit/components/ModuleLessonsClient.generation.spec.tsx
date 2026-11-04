@@ -78,6 +78,7 @@ describe('ModuleLessonsClient generation', () => {
       expect(
         screen.getByRole('button', { name: 'Retry lesson generation' }),
       ).toBeInTheDocument();
+      expect(screen.getByText('Failed')).toBeInTheDocument();
     });
 
     await act(async () => {
@@ -325,6 +326,7 @@ describe('ModuleLessonsClient generation', () => {
     expect(
       screen.getByRole('button', { name: 'Retry lesson generation' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('Failed')).toBeInTheDocument();
     expect(fetchMock).toHaveBeenNthCalledWith(1, GENERATE_URL, {
       method: 'POST',
     });
@@ -763,6 +765,12 @@ describe('ModuleLessonsClient generation', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: 'Retry lesson generation' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('Lesson content not generated yet'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText('Lesson content could not be generated'),
     ).toBeInTheDocument();
   });
 

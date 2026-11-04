@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { ROUTES } from '@/features/navigation/routes';
+import { useScrollCue } from '@/hooks/useScrollCue';
 import {
   ChevronDown,
   ChevronLeft,
@@ -112,9 +113,14 @@ function PlansStatusRail({
   page: PlanListPage;
   query: PlanListQuery;
 }) {
+  const scrollCueRef = useScrollCue<HTMLDivElement>();
+
   return (
-    <nav aria-label='Plan status filters' className='min-w-0 overflow-hidden'>
-      <div className='overflow-x-auto'>
+    <nav
+      aria-label='Plan status filters'
+      className='relative min-w-0 overflow-hidden'
+    >
+      <div ref={scrollCueRef} className='overflow-x-auto scroll-cue-x'>
         <ul className='flex min-w-max items-end gap-1'>
           {FILTER_OPTIONS.map((option) => {
             const isCurrent = option.value === query.status;
@@ -156,6 +162,10 @@ function PlansStatusRail({
           })}
         </ul>
       </div>
+      <ChevronRight
+        aria-hidden='true'
+        className='pointer-events-none absolute top-1/2 right-0 size-5 -translate-y-1/2 text-foreground scroll-cue-end-marker'
+      />
     </nav>
   );
 }
@@ -363,7 +373,7 @@ function PlansGrid({
               }
               onDeselectAll();
             }}
-            className='size-5 shrink-0 rounded-lg border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+            className='control-checkbox size-[20px] shrink-0 rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background'
           />
           Select all on page
         </label>
@@ -539,8 +549,9 @@ export function PlansList({ page, query }: PlansListProps) {
           <div className='flex items-center gap-2'>
             <Button
               asChild={page.page > 1}
-              variant='ghost'
+              variant='outline'
               size='sm'
+              className='text-foreground'
               disabled={page.page <= 1}
             >
               {page.page > 1 ? (
@@ -564,8 +575,9 @@ export function PlansList({ page, query }: PlansListProps) {
             </Button>
             <Button
               asChild={page.page < page.totalPages}
-              variant='ghost'
+              variant='outline'
               size='sm'
+              className='text-foreground'
               disabled={page.page >= page.totalPages}
             >
               {page.page < page.totalPages ? (

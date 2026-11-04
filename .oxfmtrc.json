@@ -42,7 +42,6 @@
   "sortPackageJson": false,
   "ignorePatterns": [
     "node_modules",
-    "src/styles/generated/atlaris-tokens.css",
     ".agents",
     ".daily-recap",
     ".next",

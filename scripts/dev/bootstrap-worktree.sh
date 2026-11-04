@@ -64,4 +64,4 @@ link_from_main "screenshots"
 # this, `git fetch` fails in every worktree. This setting is repository-wide.
 git config fetch.recurseSubmodules false
 
-pnpm install --frozen-lockfile
+sh "$WORKTREE_ROOT/scripts/ci/pnpm-release-age.sh" install --frozen-lockfile

@@ -90,50 +90,51 @@ export function LessonAccordionTriggerContent({
   resourceCount: number;
 }) {
   return (
-    <>
-      <div className='min-w-0 flex-1 text-left'>
-        <div className='mb-2 flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2'>
-          <LessonMarker
-            lesson={lesson}
-            isCompleted={isCompleted}
-            isLocked={isLocked}
-          />
+    // Title, then a meta row (Locked, time) under it, so on phones the badge and
+    // time never squeeze the title or push the marker onto its own line.
+    <div className='min-w-0 flex-1 text-left'>
+      <div className='mb-2 flex min-w-0 items-start gap-3'>
+        <LessonMarker
+          lesson={lesson}
+          isCompleted={isCompleted}
+          isLocked={isLocked}
+        />
+        <div className='min-w-0 flex-1'>
           <h3
             className={cn(
-              'min-w-0 flex-1 break-words type-reading font-semibold',
+              'min-w-0 break-words type-reading font-semibold',
               getLessonTitleClassName(isLocked, isCompleted),
             )}
           >
             {lesson.title}
           </h3>
-          {isLocked ? <Badge variant='secondary'>Locked</Badge> : null}
-        </div>
-
-        {lesson.description ? (
-          <p
+          <div
             className={cn(
-              'mb-3 ml-11 min-w-0 break-words type-body',
+              'mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 type-body',
               getLessonMutedTextClassName(isLocked),
             )}
           >
-            {lesson.description}
-          </p>
-        ) : null}
-
-        <ResourceSummary isLocked={isLocked} resourceCount={resourceCount} />
+            {isLocked ? <Badge variant='secondary'>Locked</Badge> : null}
+            <span className='inline-flex items-center gap-1.5'>
+              <Clock className='size-4' aria-hidden />
+              {formatMinutes(lesson.estimatedMinutes)}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <span
-        className={cn(
-          'flex shrink-0 items-center type-body',
-          getLessonMutedTextClassName(isLocked),
-        )}
-      >
-        <span className='inline-flex items-center gap-1.5'>
-          <Clock className='size-4' />
-          {formatMinutes(lesson.estimatedMinutes)}
-        </span>
-      </span>
-    </>
+      {lesson.description ? (
+        <p
+          className={cn(
+            'mb-3 ml-11 min-w-0 break-words type-body',
+            getLessonMutedTextClassName(isLocked),
+          )}
+        >
+          {lesson.description}
+        </p>
+      ) : null}
+
+      <ResourceSummary isLocked={isLocked} resourceCount={resourceCount} />
+    </div>
   );
 }

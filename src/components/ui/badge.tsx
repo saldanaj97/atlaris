@@ -17,7 +17,7 @@ const badgeVariants = cva(
         outline:
           'text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground',
         /** In-progress or informational status, such as generation running. */
-        info: 'border-link/40 bg-action-soft text-link',
+        info: 'border-link/40 bg-link/10 text-link',
         warning: 'border-warning/40 bg-warning/10 text-warning',
         /** Product app: opaque surface. Prefer for dashboard/settings. */
         product:

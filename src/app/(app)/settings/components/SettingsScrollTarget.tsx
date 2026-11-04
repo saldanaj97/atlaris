@@ -32,6 +32,11 @@ const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     description: 'Name and account details',
   },
   {
+    id: SETTINGS_SECTIONS.billing,
+    label: 'Billing',
+    description: 'Plan and subscription',
+  },
+  {
     id: SETTINGS_SECTIONS.usage,
     label: 'Usage',
     description: 'Plan and generation limits',
@@ -40,11 +45,6 @@ const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     id: SETTINGS_SECTIONS.ai,
     label: 'AI model',
     description: 'Generation preferences',
-  },
-  {
-    id: SETTINGS_SECTIONS.integrations,
-    label: 'Integrations',
-    description: 'Connected tools',
   },
   {
     id: SETTINGS_SECTIONS.notifications,
@@ -58,21 +58,20 @@ function getSettingsContentHeading(
 ): SettingsContentHeadingCopy {
   switch (sectionId) {
     case SETTINGS_SECTIONS.profile:
-    case SETTINGS_SECTIONS.billing:
     case SETTINGS_SECTIONS.usage:
       return {
         title: 'Account',
         description: 'Manage your profile, plan, and account settings.',
       };
+    case SETTINGS_SECTIONS.billing:
+      return {
+        title: 'Billing',
+        description: 'Plan and subscription',
+      };
     case SETTINGS_SECTIONS.ai:
       return {
         title: 'AI model',
         description: 'Generation preferences',
-      };
-    case SETTINGS_SECTIONS.integrations:
-      return {
-        title: 'Integrations',
-        description: 'Connected tools',
       };
     case SETTINGS_SECTIONS.notifications:
       return {
@@ -129,11 +128,7 @@ export function SettingsContentHeading(): ReactElement {
 
 export function SettingsSectionNavigation(): ReactElement {
   const pathname = usePathname();
-  const pathnameSection = getSettingsSectionIdFromPathname(pathname);
-  const activeSection =
-    pathnameSection === SETTINGS_SECTIONS.billing
-      ? SETTINGS_SECTIONS.profile
-      : pathnameSection;
+  const activeSection = getSettingsSectionIdFromPathname(pathname);
 
   return (
     <nav aria-label='Settings sections' className='h-fit min-w-0'>
@@ -158,7 +153,7 @@ export function SettingsSectionNavigation(): ReactElement {
                   aria-hidden='true'
                   className={cn(
                     'absolute top-2 bottom-2 left-0 w-0.5',
-                    isActive ? 'bg-primary' : 'bg-transparent',
+                    isActive ? 'bg-navigation-item-marker' : 'bg-transparent',
                   )}
                 />
                 <span className='min-w-0'>

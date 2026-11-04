@@ -53,27 +53,29 @@ export function ModuleHeader({
       <PageHero
         as='div'
         className='min-w-0 rounded-lg border border-panel-border bg-panel shadow-sm'
-        desktop={{ className: 'opacity-80 sm:block' }}
-        mobile={{ className: 'opacity-75 sm:hidden' }}
       >
         <div className='relative p-5 sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>
-            <h1 className='flex min-w-0 flex-wrap items-center gap-2 type-title text-foreground'>
-              <span className='min-w-0 wrap-break-word'>{module.title}</span>
+            {/* Inline icons after a no-break space stay with the title's last
+                word instead of wrapping onto a line of their own. */}
+            <h1 className='min-w-0 type-title wrap-break-word text-foreground'>
+              {module.title}
               {!previousModulesComplete && (
                 <>
+                  {'\u00a0'}
                   <Lock
                     aria-hidden='true'
-                    className='size-5 shrink-0 text-muted-foreground'
+                    className='inline size-5 align-middle text-muted-foreground'
                   />
                   <span className='sr-only'>Module locked</span>
                 </>
               )}
               {isModuleComplete && (
                 <>
+                  {'\u00a0'}
                   <CheckCircle2
                     aria-hidden='true'
-                    className='size-5 shrink-0 text-success'
+                    className='inline size-5 align-middle text-success'
                   />
                   <span className='sr-only'>Module completed</span>
                 </>

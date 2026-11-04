@@ -80,7 +80,9 @@ describe('BillingCards', () => {
       dbClient: {},
     });
     expect(screen.getByText("You're currently on the Pro plan.")).toBeVisible();
-    expect(screen.getByText('Pro Plan')).toBeVisible();
+    expect(screen.getByText('Pro plan')).toBeVisible();
+    expect(screen.getByText('Active')).toBeVisible();
+    expect(screen.queryByText('active')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View plans' })).toHaveAttribute(
       'href',
       ROUTES.PRICING,
@@ -118,10 +120,10 @@ describe('BillingCards', () => {
     expect(screen.getByText('Next billing date')).toBeVisible();
   });
 
-  it('hides the cancel button and renewal notice for free users', async () => {
+  it('hides the cancel button, renewal notice and billing date for free users', async () => {
     mocks.getBillingAccountSnapshotMock.mockResolvedValueOnce({
       tier: 'free',
-      subscriptionStatus: 'active',
+      subscriptionStatus: null,
       subscriptionPeriodEnd: null,
       cancelAtPeriodEnd: false,
       usage: {
@@ -137,6 +139,9 @@ describe('BillingCards', () => {
       screen.queryByRole('button', { name: 'Manage or cancel subscription' }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/Renews automatically/)).not.toBeInTheDocument();
+    expect(screen.getByText('No subscription')).toBeVisible();
+    expect(screen.queryByText('Next billing date')).not.toBeInTheDocument();
+    expect(screen.queryByText('—')).not.toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'View plans' })).toBeVisible();
   });
 

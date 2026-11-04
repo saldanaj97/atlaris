@@ -2,7 +2,8 @@
 // HTTP through the OpenFeature server provider with a short response cache;
 // the jobs Worker registers its `FLAGS` binding with `setFlagEvaluator()`.
 // Flag keys match the Flagship app; every flag is boolean and fails closed,
-// except `jobs-paused`, whose caller treats a failed read as "not paused".
+// except `jobs-paused` and `regeneration-paused`, whose callers treat a failed
+// read as "not paused".
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { flagshipEnv } from '@/lib/config/env/flagship';
@@ -202,6 +203,10 @@ export const launchWaitlist = (): Promise<boolean> =>
 export const emailNotificationDelivery = (): Promise<boolean> =>
   evaluateBoolean('email-notification-delivery', false);
 
+/** Serve the retired /about page. Off by default, so the route answers 404. */
+export const aboutPage = (): Promise<boolean> =>
+  evaluateBoolean('about-page', false);
+
 /** Allow synchronous and workflow-backed module lesson generation. */
 export const moduleLessonGeneration = (): Promise<boolean> =>
   evaluateBoolean('module-lesson-generation', false);
@@ -209,6 +214,10 @@ export const moduleLessonGeneration = (): Promise<boolean> =>
 /** Pause every jobs Worker job (Worker only; callers fail open). */
 export const jobsPaused = (): Promise<boolean> =>
   evaluateBoolean('jobs-paused', false);
+
+/** Stop accepting plan regeneration requests (app only; callers fail open). */
+export const regenerationPaused = (): Promise<boolean> =>
+  evaluateBoolean('regeneration-paused', false);
 
 /** Plan research searches Parallel directly instead of OpenRouter `web_search` (Worker only). */
 export const parallelDirectResearch = (): Promise<boolean> =>

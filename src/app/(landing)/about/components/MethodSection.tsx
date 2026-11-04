@@ -8,8 +8,7 @@ import styles from './about.module.css';
 const IT_DOES = [
   'Draft the route from your goal, your level, and your weekly hours.',
   'Break the work into modules and tasks sized for the time you named.',
-  'Attach resources to the work they support.',
-  'Write a lesson for a module when you ask for one.',
+  'Write lessons for each module as you work through the plan.',
   'Remember what you finished and where you stopped.',
 ] as const;
 
@@ -24,7 +23,7 @@ const IT_DOES_NOT = [
 export function MethodSection() {
   return (
     <section
-      className='mx-auto max-w-6xl px-6 py-16 md:px-8 md:py-24'
+      className='mx-auto max-w-6xl px-6 py-12 md:px-8 md:py-16'
       aria-labelledby='about-method-heading'
     >
       <RevealAnimation>
@@ -40,10 +39,7 @@ export function MethodSection() {
               className={`mt-5 type-display-section text-balance text-foreground ${styles.revealItem}`}
               style={{ '--i': 1 } as CSSProperties}
             >
-              What the AI does.
-              <span className='block font-medium text-muted-foreground italic'>
-                And what it leaves to you.
-              </span>
+              What the AI does, and what it leaves to you.
             </h2>
           </div>
           <p
@@ -51,10 +47,9 @@ export function MethodSection() {
             style={{ '--i': 2 } as CSSProperties}
           >
             You give Atlaris a goal, your level, the hours you have each week,
-            and how you like to learn. An AI model drafts a week-by-week route
-            from that: modules, tasks, and the resources attached to each. It
-            takes about two minutes. The draft is a starting point, not a
-            verdict.
+            and how you like to learn. An AI model drafts a route from that:
+            modules and tasks, each task with a time estimate. It takes about
+            two minutes. The draft is a starting point, not a verdict.
           </p>
         </div>
       </RevealAnimation>
@@ -62,13 +57,13 @@ export function MethodSection() {
       <RevealAnimation>
         <div className='mt-10 grid gap-4 md:grid-cols-2'>
           <div
-            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 0 } as CSSProperties}
           >
             <MethodList title='It does' items={IT_DOES} />
           </div>
           <div
-            className={`rounded-lg border border-panel-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
+            className={`rounded-lg border border-border bg-panel p-6 shadow-sm md:p-7 ${styles.revealItem}`}
             style={{ '--i': 1 } as CSSProperties}
           >
             <MethodList title='It does not' items={IT_DOES_NOT} />

@@ -19,6 +19,7 @@ import {
 } from '@/components/layout/app-shell-width';
 import {
   type NavItem,
+  isAuthPath,
   ROUTES,
   unauthenticatedNavItems,
 } from '@/features/navigation';
@@ -50,6 +51,7 @@ function isSupportedAppPath(pathname: string): boolean {
  * Owns the flat full-bleed backdrop and content column.
  *
  * Marketing routes always resolve to marketing nav items, regardless of auth.
+ * The auth pages wear the same marketing chrome.
  */
 export default function SiteHeaderChrome({
   navItems,
@@ -68,7 +70,8 @@ export default function SiteHeaderChrome({
     pathname === ROUTES.ABOUT ||
     pathname === ROUTES.WAITLIST ||
     pathname === ROUTES.TERMS ||
-    pathname === ROUTES.PRIVACY;
+    pathname === ROUTES.PRIVACY ||
+    isAuthPath(pathname);
   const isAppShell = isAuthenticated && isSupportedAppPath(pathname);
   const resolvedNavItems = isMarketing ? unauthenticatedNavItems : navItems;
   const { open: desktopSidebarOpen, setOpen: setDesktopSidebarOpen } =
@@ -142,7 +145,6 @@ export default function SiteHeaderChrome({
               pathname={pathname}
               navItems={resolvedNavItems}
               tier={tier}
-              canCreatePlan={canCreatePlan}
               isAuthenticated={isAuthenticated}
               showClerkUserButton={showClerkUserButton}
               userName={userName}

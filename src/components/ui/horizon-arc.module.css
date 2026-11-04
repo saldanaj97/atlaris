@@ -1,0 +1,68 @@
+/* Decorative horizon: one thin arc of electric-blue light rising toward the
+   top-right corner. Drawn in CSS from the theme's link color, so it follows
+   light and dark mode without image assets. */
+
+.root {
+  --horizon-color: var(--link);
+  --horizon-glow: 38%;
+
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  /* Keep the arc in the right-hand side, away from the text column, and fade
+     it out before every edge of the container (top, bottom and right) so the
+     clipped glow and the arc's lower rim never end in a hard edge, or run
+     under controls at the bottom. */
+  -webkit-mask-image:
+    linear-gradient(to right, transparent 30%, #000 72%, #000 92%, transparent),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 2rem,
+      #000 40%,
+      transparent 70%
+    );
+  -webkit-mask-composite: source-in;
+  mask-image:
+    linear-gradient(to right, transparent 30%, #000 72%, #000 92%, transparent),
+    linear-gradient(
+      to bottom,
+      transparent,
+      #000 2rem,
+      #000 40%,
+      transparent 70%
+    );
+  mask-composite: intersect;
+}
+
+:global(.dark) .root {
+  --horizon-glow: 55%;
+}
+
+.root::before {
+  content: '';
+  position: absolute;
+  top: 58%;
+  left: 38%;
+  width: 135%;
+  height: 260%;
+  border-radius: 50%;
+  border-top: 1px solid
+    color-mix(in oklab, var(--horizon-color) 85%, transparent);
+  box-shadow:
+    0 -10px 48px -8px
+      color-mix(in oklab, var(--horizon-color) var(--horizon-glow), transparent),
+    inset 0 14px 36px -14px
+      color-mix(in oklab, var(--horizon-color) var(--horizon-glow), transparent);
+  transform: rotate(-11deg);
+}
+
+/* Narrow heroes stack text across the full width, so the arc would cut through
+   it; phones get the plain surface instead. */
+@media (max-width: 639px) {
+  .root {
+    display: none;
+  }
+}

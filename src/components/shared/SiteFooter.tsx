@@ -5,7 +5,6 @@ import Link from 'next/link';
 const marketingLinks = [
   { label: 'Home', href: ROUTES.LANDING },
   { label: 'Pricing', href: ROUTES.PRICING },
-  { label: 'About', href: ROUTES.ABOUT },
 ] as const;
 const legalLinks = [
   { label: 'Terms', href: ROUTES.TERMS },
@@ -52,7 +51,7 @@ export default function SiteFooter({ variant = 'marketing' }: SiteFooterProps) {
           <div>
             <BrandLogo size='sm' />
             <p className='mt-3 max-w-xs type-body text-muted-foreground'>
-              Learn. Build. Go further.
+              Plans for the hours after work
             </p>
           </div>
 

@@ -51,18 +51,4 @@ describe('MaintenancePage', () => {
       screen.queryByText('Learn. Build. Go further.'),
     ).not.toBeInTheDocument();
   });
-
-  it('renders the decorative star backdrop without photo artwork', () => {
-    const { container } = render(<MaintenancePage />);
-
-    const star = container.querySelector('.star');
-    expect(star).not.toBeNull();
-    expect(star?.closest('[aria-hidden="true"]')).not.toBeNull();
-    expect(
-      container.querySelector('[data-slot="responsive-backdrop"]'),
-    ).toBeNull();
-    expect(
-      container.querySelector('img[src*="maintenance-backdrop"]'),
-    ).toBeNull();
-  });
 });

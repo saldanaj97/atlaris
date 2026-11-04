@@ -12,7 +12,7 @@ Anonymous visitors cannot open product routes. Each protected URL redirects to C
 
 - Open `/dashboard`, `/plans`, `/plans/new`, `/settings`, `/analytics`, `/analytics/usage`, or `/analytics/achievements` while signed out.
 - Open `/auth/sign-in` or `/auth/sign-up` directly.
-- Follow **Begin tonight** from landing while signed out.
+- Follow **Create a plan** from landing while signed out.
 
 ## Driving it with verify-atlaris
 

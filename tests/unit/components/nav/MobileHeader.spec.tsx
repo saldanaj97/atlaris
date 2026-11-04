@@ -27,12 +27,12 @@ afterEach(() => {
 });
 
 describe('MobileHeader layout', () => {
-  it('routes signed-out nonmarketing topbar action to the plan form', () => {
+  it('sends signed-out marketing visitors to the plan form', () => {
     render(
       <TooltipProvider>
         <MobileHeader
-          isMarketing={false}
-          pathname='/auth/sign-in'
+          isMarketing
+          pathname='/landing'
           navItems={[]}
           isAuthenticated={false}
           showClerkUserButton={false}
@@ -40,8 +40,30 @@ describe('MobileHeader layout', () => {
       </TooltipProvider>,
     );
 
+    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
+      'href',
+      '/plans/new',
+    );
+  });
+
+  it('leaves the create-plan action out of the app topbar', () => {
+    render(
+      <TooltipProvider>
+        <MobileHeader
+          isMarketing={false}
+          pathname='/dashboard'
+          navItems={[]}
+          isAuthenticated
+          showClerkUserButton={false}
+        />
+      </TooltipProvider>,
+    );
+
     expect(
-      screen.getByRole('link', { name: 'Create new plan' }),
-    ).toHaveAttribute('href', '/plans/new');
+      screen.queryByRole('link', { name: 'Create a plan' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('link', { name: 'Upgrade' }),
+    ).not.toBeInTheDocument();
   });
 });

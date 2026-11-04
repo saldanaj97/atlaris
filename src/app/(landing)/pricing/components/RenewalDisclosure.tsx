@@ -2,6 +2,7 @@ import type { ChangeEvent } from 'react';
 
 import {
   formatPricingMoney,
+  renewalConsentHintId,
   type BillingPeriod,
   type PricingMoney,
   type PricingPlan,
@@ -56,6 +57,24 @@ export function RenewalDisclosure({
         Terms of Service
       </Link>
       .
+    </p>
+  );
+}
+
+/**
+ * Shown under a paid plan's subscribe button while the renewal box is
+ * unticked, so the disabled button says why it is disabled.
+ */
+export function RenewalConsentHint({
+  plan,
+  period,
+}: Omit<RenewalDisclosureProps, 'id'>) {
+  return (
+    <p
+      className={styles.renewalConsentHint}
+      id={renewalConsentHintId(plan, period)}
+    >
+      Tick the box above to continue.
     </p>
   );
 }

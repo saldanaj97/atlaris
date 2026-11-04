@@ -29,7 +29,6 @@ type SiteGatePage = (typeof SITE_GATE_PAGES)[SiteGate];
 const MAINTENANCE_MODE_MARKETING_PATHS = [
   '/landing',
   '/pricing',
-  '/about',
   '/terms',
   '/privacy',
 ] as const;
@@ -77,6 +76,19 @@ export function isProtectedRoute(pathname: string): boolean {
     return false;
   }
   return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
+}
+
+/**
+ * Auth page for a signed-out visitor to a protected route. The landing and
+ * pricing calls to action open the plan form, so a visitor there is most
+ * likely new and goes to sign-up; Clerk's sign-up page links to sign-in.
+ */
+export function resolveAnonymousAuthPath(
+  pathname: string,
+): '/auth/sign-in' | '/auth/sign-up' {
+  return stripTrailingSlash(pathname) === '/plans/new'
+    ? '/auth/sign-up'
+    : '/auth/sign-in';
 }
 
 function isSiteGatePage(path: string): boolean {

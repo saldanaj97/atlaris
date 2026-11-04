@@ -21,7 +21,7 @@ pnpm test smoke -- --project smoke-auth
 pnpm test smoke -- --project smoke-clerk
 ```
 
-For day-to-day iteration on a machine with limited RAM, prefer a single `--project` (see [Memory and local resources](#memory-and-local-resources)). `smoke-anon` is the lightest path (API `request` checks only, anon server).
+For day-to-day iteration on a machine with limited RAM, prefer a single `--project` (see [Memory and local resources](#memory-and-local-resources)). `smoke-anon` is the lightest path (redirect `request` checks plus one landing page check, anon server).
 
 Low-level smoke debugging stays available without extra package scripts:
 
@@ -40,13 +40,13 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - clears `.test-dist/next-smoke-anon` and `.test-dist/next-smoke-auth` before Playwright (avoids stale Turbopack cache inflating memory)
   - invokes Playwright; a **full** run (no `--project` after `--`) is split into sequential invocations so only one app server is alive at a time (see below)
 - `scripts/tests/smoke/start-app.ts`
-  - starts `next dev --turbopack` in `anon` or `auth` mode
+  - starts `next dev --turbopack` in `anon` or `auth` mode, or the local jobs Worker (`cf dev`) in `worker` mode
   - injects the smoke-owned env layer (`SMOKE_NEXT_DIST_DIR` per mode)
 - `tests/helpers/smoke/`
   - owns shared smoke runtime modules: DB prep, container lifecycle, mode env config, state files, and seed verification
 - `playwright.config.ts`
   - defines the `smoke-anon`, `smoke-auth`, and `smoke-clerk` projects
-  - starts only the app server(s) required by the selected `--project` filter (anon/clerk → `:3100`; auth → `:3101`; no filter → both definitions exist, but the wrapper runs projects in server groups so only one Turbopack process is up at a time)
+  - starts only the app server(s) required by the selected `--project` filter (anon/clerk → `:3100`; auth → `:3101` plus the local jobs Worker on `:3102`; no filter → all three definitions exist, but the wrapper runs projects in server groups so only one Turbopack process is up at a time)
   - keeps the local runner serial with `workers: 1` for stability on resource-constrained machines
   - writes traces, screenshots, and other artifacts under `tests/test-results/playwright/artifacts`
 - `next.config.ts` (smoke only)
@@ -65,6 +65,7 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - `LOCAL_PRODUCT_TESTING=true`
   - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
+  - local jobs Worker (`cf dev`) on `http://127.0.0.1:3102`, with mock AI against the smoke database; the app hands plan generation to it with a signed command, as in production. The Worker's local Flagship store is empty, so `module-lesson-generation` is off and smoke does not generate lessons. It refuses to start while `workers/jobs/.dev.vars` exists, because `cf dev` would use that file instead of the smoke env
 
 `smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
 product launch blockers against local auth, Clerk Billing fixture state, mock AI,
@@ -91,13 +92,13 @@ Do not start smoke servers manually for normal runs. Let Playwright own them.
 
 ## Memory and local resources
 
-Smoke is intentionally small (three specs, one browser worker, `video: 'off'`), but the **infrastructure around Playwright** dominates RAM on a laptop:
+Smoke is intentionally small (a few specs, one browser worker, `video: 'off'`), but the **infrastructure around Playwright** dominates RAM on a laptop:
 
-| Component | Typical impact | Notes |
-| --- | --- | --- |
+| Component                        | Typical impact | Notes                                                                                                                                      |
+| -------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `next dev --turbopack`           | Largest        | One Next 16 dev server with React Compiler; on-demand compilation during auth journeys can spike further                                   |
-| Docker Postgres (Testcontainers) | Moderate | One `postgres:17-alpine` container per run; with `--native-db` the native `test` stack (about 339 MB idle) replaces it and needs no Docker |
-| Chromium + Node orchestration | Small | Single worker; traces/screenshots only on failure |
+| Docker Postgres (Testcontainers) | Moderate       | One `postgres:17-alpine` container per run; with `--native-db` the native `test` stack (about 339 MB idle) replaces it and needs no Docker |
+| Chromium + Node orchestration    | Small          | Single worker; traces/screenshots only on failure                                                                                          |
 
 Historically, a full `pnpm test smoke` started **two** Turbopack dev servers at once (anon on `:3100`, auth on `:3101`) even though tests run serially. That could push total usage into swap on 16–24 GB machines. The lane now mitigates that without changing coverage:
 
@@ -108,7 +109,7 @@ Historically, a full `pnpm test smoke` started **two** Turbopack dev servers at 
 **Recommended iteration commands (lowest RAM first):**
 
 ```bash
-pnpm test smoke -- --project smoke-anon    # anon server only; no browser page work
+pnpm test smoke -- --project smoke-anon    # anon server only; one light landing page check
 pnpm test smoke -- --project smoke-auth    # auth server only; heaviest browser journey
 pnpm test smoke -- --project smoke-clerk   # anon server only; needs Clerk env when not skipped
 pnpm test smoke                            # full lane; two sequential Playwright invocations

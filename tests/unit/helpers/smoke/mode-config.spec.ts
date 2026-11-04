@@ -4,17 +4,19 @@ import { LOCAL_PRODUCT_TESTING_SEED_AUTH_USER_ID } from '@/lib/config/local-prod
 import {
   buildAnonModeLayer,
   buildAuthModeLayer,
+  buildWorkerModeLayer,
   mergeSmokeProcessEnv,
   parseSmokeAppMode,
   SMOKE_ANON_PORT,
   SMOKE_AUTH_PORT,
   smokeAnonAppUrl,
   smokeAuthAppUrl,
+  smokeWorkerUrl,
 } from '@tests/helpers/smoke/mode-config';
 import { describe, expect, it } from 'vitest';
 
 const INVALID_MODE_ERROR =
-  'Missing or invalid --mode. Use --mode=anon or --mode=auth.';
+  'Missing or invalid --mode. Use --mode=anon, --mode=auth, or --mode=worker.';
 
 const FAKE_STATE: SmokeStatePayload = {
   POSTGRES_URL: 'postgresql://postgres:pw@127.0.0.1:54399/atlaris_test',
@@ -116,6 +118,47 @@ describe('smoke mode-config', () => {
 
   it('parseSmokeAppMode accepts auth', () => {
     expect(parseSmokeAppMode(['--mode=auth'])).toBe('auth');
+  });
+
+  it('parseSmokeAppMode accepts worker', () => {
+    expect(parseSmokeAppMode(['--mode=worker'])).toBe('worker');
+  });
+
+  it('auth app and Worker layers share a signing secret and the Worker URL', () => {
+    const auth = buildAuthModeLayer(FAKE_STATE);
+    const worker = buildWorkerModeLayer(FAKE_STATE);
+
+    expect(auth.JOBS_WORKER_URL).toBe(smokeWorkerUrl());
+    expect(auth.JOBS_SIGNING_SECRET).toBeTruthy();
+    expect(worker.JOBS_SIGNING_SECRET).toBe(auth.JOBS_SIGNING_SECRET);
+    expect(worker.AI_PROVIDER).toBe('mock');
+    expect(worker.CLOUDFLARE_INCLUDE_PROCESS_ENV).toBe('true');
+    expect(
+      worker.CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE,
+    ).toBe(FAKE_STATE.POSTGRES_URL_NON_POOLING);
+  });
+
+  it('anon layer leaves the jobs Worker unconfigured even when the parent sets it', () => {
+    const merged = mergeSmokeProcessEnv(
+      {
+        NODE_ENV: 'test',
+        JOBS_WORKER_URL: 'https://workers.atlaris.app',
+        JOBS_SIGNING_SECRET: 'parent-secret',
+      },
+      buildAnonModeLayer(FAKE_STATE),
+    );
+
+    expect(merged.JOBS_WORKER_URL).toBeUndefined();
+    expect(merged.JOBS_SIGNING_SECRET).toBeUndefined();
+  });
+
+  it('buildWorkerModeLayer refuses a non-local database', () => {
+    expect(() =>
+      buildWorkerModeLayer({
+        POSTGRES_URL: 'postgresql://u:p@db.example.com:5432/app',
+        POSTGRES_URL_NON_POOLING: 'postgresql://u:p@db.example.com:5432/app',
+      }),
+    ).toThrow(/non-local database/);
   });
 
   it('parseSmokeAppMode throws when mode is invalid', () => {

@@ -74,8 +74,9 @@ export async function DashboardContent() {
     resumePlan: activePlan,
     canCreatePlan,
     progress,
+    recentActivity,
   } = result;
-  const activities = generateActivities(summaries).slice(0, 8);
+  const activities = generateActivities(summaries, recentActivity).slice(0, 8);
 
   return (
     <div className='space-y-4'>
@@ -137,7 +138,7 @@ export function DashboardContentSkeleton() {
 
         <div className={DASHBOARD_GRID}>
           <section aria-label='Resume learning loading'>
-            <Card as='article' className='h-full p-5 sm:p-6'>
+            <Card as='article' className='h-full gap-0 p-5 sm:p-6'>
               <Skeleton className='h-6 w-40' />
               <Skeleton className='mt-4 h-6 w-16 rounded-full bg-secondary' />
               <Skeleton className='mt-4 h-7 w-full max-w-md' />
@@ -150,11 +151,26 @@ export function DashboardContentSkeleton() {
             </Card>
           </section>
 
-          <Card as='aside' aria-label='Progress loading' className='p-5 sm:p-6'>
+          <Card
+            as='aside'
+            aria-label='Progress loading'
+            className='gap-0 p-5 sm:p-6'
+          >
             <Skeleton className='h-6 w-32' />
             <Skeleton className='mt-8 h-9 w-20' />
             <Skeleton className='mt-2 h-4 w-28 bg-muted' />
             <Skeleton className='mt-4 h-1.5 w-full rounded-full bg-muted' />
+            <div className='mt-3 divide-y divide-border/60'>
+              {['modules', 'tasks', 'plans'].map((row) => (
+                <div
+                  key={`dashboard-progress-skeleton-${row}`}
+                  className='flex justify-between gap-3 py-2'
+                >
+                  <Skeleton className='h-5 w-16 bg-muted' />
+                  <Skeleton className='h-5 w-12' />
+                </div>
+              ))}
+            </div>
           </Card>
         </div>
 
@@ -163,17 +179,17 @@ export function DashboardContentSkeleton() {
           <Card
             as='section'
             aria-label='Learning route loading'
-            className='h-full p-5 sm:p-6'
+            className='h-full gap-0 p-5 sm:p-6'
           >
             <Skeleton className='h-7 w-48' />
             <Skeleton className='mt-2 h-5 w-56 bg-muted' />
-            <Skeleton className='mt-6 h-16 w-full bg-secondary' />
-            <Skeleton className='mt-5 h-1.5 w-full rounded-full bg-secondary' />
+            <Skeleton className='mt-4 h-1.5 w-full rounded-full bg-secondary' />
+            <Skeleton className='mt-5 h-16 w-full bg-secondary' />
           </Card>
           <Card
             as='aside'
             aria-label='Weekly pace loading'
-            className='h-full p-5 sm:p-6'
+            className='h-full gap-0 p-5 sm:p-6'
           >
             <Skeleton className='h-7 w-24' />
             <Skeleton className='mt-2 h-5 w-36 bg-muted' />

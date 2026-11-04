@@ -15,7 +15,7 @@ integrations/
 ## Current State
 
 - The Google Calendar integration is intentionally not implemented.
-- The settings UI may still show placeholder cards for future integrations.
+- Settings has no Integrations section; do not add placeholder cards for future integrations.
 
 ## Anti-Patterns
 

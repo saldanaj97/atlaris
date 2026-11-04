@@ -3,7 +3,10 @@
 import type { PlanListItem } from '@/features/plans/read-projection/types';
 
 import { DeletePlanDialog } from '@/app/(app)/plans/components/DeletePlanDialog';
-import { getPlanLastActivityRelative } from '@/app/(app)/plans/components/plan-utils';
+import {
+  getPlanLastActivityRelative,
+  planActionLabel,
+} from '@/app/(app)/plans/components/plan-utils';
 import {
   getPlanStatusBadgeClassName,
   getPlanStatusDotClassName,
@@ -40,24 +43,6 @@ interface PlanRowProps {
   selectable?: boolean;
   onSelectionChange?: (planId: string, selected: boolean) => void;
   successFocusRef?: RefObject<HTMLElement | null>;
-}
-
-function planActionLabel(status: PlanListItem['status']): string {
-  switch (status) {
-    case 'completed':
-    case 'failed':
-      return 'View plan';
-    case 'generating':
-      return 'View progress';
-    case 'active':
-    case 'paused':
-    case 'not_started':
-      return 'Continue learning';
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
-  }
 }
 
 type PlanCardRevealState = 'pending' | 'visible' | undefined;
@@ -157,7 +142,7 @@ function PlanProgress({
         value={progressPercent}
         max={100}
         aria-label={`${progressPercent}% complete`}
-        className='h-2 bg-panel-muted'
+        className='h-2'
       />
     </div>
   );
@@ -293,7 +278,7 @@ export function PlanRow({
               onChange={(event) =>
                 onSelectionChange?.(plan.id, event.currentTarget.checked)
               }
-              className='size-[20px] shrink-0 rounded-[4px] border border-border accent-action-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel disabled:cursor-not-allowed disabled:border-disabled-border disabled:bg-disabled disabled:accent-disabled disabled:opacity-100'
+              className='control-checkbox size-[20px] shrink-0 rounded-[4px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-panel'
             />
             Select
           </label>
@@ -311,7 +296,7 @@ export function PlanRow({
                 {plan.status === 'generating' ? (
                   <Sparkles aria-hidden='true' />
                 ) : null}
-                {planActionLabel(plan.status)}
+                {planActionLabel(plan.status, plan.completedTasks)}
                 <span className='sr-only'> {plan.topic}</span>
                 <ArrowRight
                   aria-hidden='true'
