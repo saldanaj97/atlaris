@@ -67,8 +67,12 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
 }')"
 [ -z "$scan" ] && scan="$cmd"
 
-# Undo backslash escapes before a letter (\git, g\it, pu\sh); the awk pass above already unquoted
-# simple quoted words. Aliases and variables are not normalized.
+# Undo backslash escapes before a letter (\git, g\it, gi\t, pu\sh); the awk pass above already
+# unquoted simple quoted words. `scan` strips every such escape. `scan_b` keeps \n, \r and \t
+# as written, because a string fed to another shell (printf 'x\ngit push' | sh, sh -c $'x\ngit
+# push') turns \n into a real command separator that the `lead` pattern recognizes. Both are
+# checked. Aliases and variables are not normalized.
+scan_b="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-mo-qsu-z])/\1/g')"
 scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g')"
 
 # A git command (optionally path-qualified) at the start of a command, after a shell operator,
@@ -101,12 +105,14 @@ no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:spac
 # Shell aliases and variable indirection are not caught.
 git_push="$lead$git_opts"'[[:space:]]+push'"$end"
 
-if printf '%s' "$scan" | grep -Eq -- "$no_verify" || printf '%s' "$scan" | grep -Eq -- "$no_verify_short"; then
+hit() { printf '%s' "$scan" | grep -Eq -- "$1" || printf '%s' "$scan_b" | grep -Eq -- "$1"; }
+
+if hit "$no_verify" || hit "$no_verify_short"; then
   echo "Blocked: --no-verify skips the hooks. Fix the failing hook instead." >&2
   exit 2
 fi
 
-if printf '%s' "$scan" | grep -Eq -- "$git_push"; then
+if hit "$git_push"; then
   echo "Blocked: this session cannot run git push. Tell the user the branch is ready and let them push." >&2
   exit 2
 fi
