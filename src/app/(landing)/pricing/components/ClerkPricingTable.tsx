@@ -16,6 +16,7 @@ import {
 } from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+import { CREATE_PLAN_LABEL } from '@/features/navigation/create-plan-cta';
 import { ROUTES } from '@/features/navigation/routes';
 import { clientLogger } from '@/lib/logging/client';
 import { SignInButton, SignUpButton, useAuth, useClerk } from '@clerk/nextjs';
@@ -25,6 +26,8 @@ import {
 } from '@clerk/nextjs/experimental';
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
+
+import styles from './PricingCards.module.css';
 
 type ClerkPlanSnapshot = {
   id: string;
@@ -102,17 +105,22 @@ function isPaidPlan(plan: PricingPlan, period: BillingPeriod): boolean {
     : (plan.fee?.amount ?? 0) > 0;
 }
 
-function shouldManageSubscription(
-  planSlug: string,
-  currentPaidPlanSlug: string | null,
-): boolean {
-  if (!currentPaidPlanSlug) return false;
-  if (planSlug === currentPaidPlanSlug) return true;
-  const currentRank = PLAN_RANK[currentPaidPlanSlug];
+/** False when either plan has no rank, so an unknown plan never reads as lower or higher. */
+function isBelowPlan(planSlug: string, otherPlanSlug: string | null): boolean {
+  if (!otherPlanSlug) return false;
+  const otherRank = PLAN_RANK[otherPlanSlug];
   const planRank = PLAN_RANK[planSlug];
-  return currentRank !== undefined && planRank !== undefined
-    ? planRank < currentRank
+  return otherRank !== undefined && planRank !== undefined
+    ? planRank < otherRank
     : false;
+}
+
+/** The recommended plan: the next step up, or the top plan the viewer holds. */
+function featuredPlanSlug(paidPlanSlug: string | null): string {
+  if (!paidPlanSlug) return CLERK_BILLING_PLAN_SLUGS.starter;
+  return paidPlanSlug === CLERK_BILLING_PLAN_SLUGS.starter
+    ? CLERK_BILLING_PLAN_SLUGS.pro
+    : paidPlanSlug;
 }
 
 function currentPaidPlanSlug(
@@ -202,7 +210,8 @@ export function ClerkPricingTable({
         setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);
-        setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
+        const nextPaidPlanSlug = currentPaidPlanSlug(nextSubscription);
+        setActivePaidPlanSlug(nextPaidPlanSlug);
         setSubscriptionUserId(userId ?? null);
 
         const url = new URL(window.location.href);
@@ -232,6 +241,11 @@ export function ClerkPricingTable({
                 : 'annual';
           setPeriod(nextPeriod);
           if (isLoaded && userId) {
+            // A plan below the one they hold has no checkout to resume.
+            if (isBelowPlan(requestedPlan.slug, nextPaidPlanSlug)) {
+              clearCheckoutParams();
+              return;
+            }
             const resumedKey = `${requestedPlan.slug}:${nextPeriod}`;
             // Consent only carries over when the visitor ticked it before signing in.
             if (requestedConsent) {
@@ -288,19 +302,36 @@ export function ClerkPricingTable({
     );
   }
 
+  // Waitlist and maintenance viewers see the signed-out cards; every action
+  // there goes through sign-in, whatever plan the account holds.
+  const viewerPlansKnown =
+    !appClosed && isLoaded && Boolean(userId) && subscriptionUserId === userId;
+  const viewerPaidPlanSlug = viewerPlansKnown ? activePaidPlanSlug : null;
+  const viewerPaidPlanName = viewerPaidPlanSlug
+    ? (plans.find((plan) => plan.slug === viewerPaidPlanSlug)?.name ??
+      PLAN_NAME_BY_SLUG[viewerPaidPlanSlug] ??
+      viewerPaidPlanSlug)
+    : null;
+
   return (
     <PricingCards
+      currentPlanSlug={
+        viewerPlansKnown
+          ? (activePaidPlanSlug ?? CLERK_BILLING_PLAN_SLUGS.free)
+          : null
+      }
+      featuredPlanSlug={featuredPlanSlug(viewerPaidPlanSlug)}
       loading={plansLoading}
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}
       renderAction={(plan, planPeriod, actionClassName) => {
-        const label =
+        const startLabel =
           PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Begin with this plan';
         if (appClosed) {
           return (
             <Link className={actionClassName} href={ROUTES.AUTH.SIGN_IN}>
-              {label}
+              {startLabel}
             </Link>
           );
         }
@@ -314,27 +345,33 @@ export function ClerkPricingTable({
         if (!isLoaded || (userId && subscriptionUserId !== userId)) {
           return (
             <button className={actionClassName} disabled type='button'>
-              {label}
+              {startLabel}
             </button>
           );
         }
 
-        if (userId && shouldManageSubscription(plan.slug, activePaidPlanSlug)) {
+        if (userId && plan.slug === activePaidPlanSlug) {
           return (
             <SubscriptionDetailsButton>
               <button className={actionClassName} ref={actionRef} type='button'>
-                {plan.slug === activePaidPlanSlug
-                  ? 'Current plan'
-                  : 'Manage subscription'}
+                Manage subscription
               </button>
             </SubscriptionDetailsButton>
+          );
+        }
+
+        // Clerk's subscription drawer only cancels the current plan, so a lower
+        // plan has no action to offer here.
+        if (userId && isBelowPlan(plan.slug, activePaidPlanSlug)) {
+          return (
+            <p className={styles.planNote}>You're on {viewerPaidPlanName}</p>
           );
         }
 
         if (!isPaidPlan(plan, planPeriod)) {
           return userId ? (
             <Link className={actionClassName} href={ROUTES.PLANS.NEW}>
-              {label}
+              {CREATE_PLAN_LABEL}
             </Link>
           ) : (
             <SignUpButton
@@ -343,12 +380,18 @@ export function ClerkPricingTable({
               signInForceRedirectUrl={ROUTES.PLANS.NEW}
             >
               <button className={actionClassName} type='button'>
-                {label}
+                {startLabel}
               </button>
             </SignUpButton>
           );
         }
 
+        const label =
+          userId &&
+          activePaidPlanSlug &&
+          isBelowPlan(activePaidPlanSlug, plan.slug)
+            ? `Upgrade to ${plan.name}`
+            : startLabel;
         const agreed = agreedActions[actionKey] === true;
         const hintId = agreed
           ? undefined

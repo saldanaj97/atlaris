@@ -797,12 +797,14 @@ Use `min-height`, not a hard clipping height. Use the inherited label type role:
 
 | State          | Appearance and behavior                                                                                                                         |
 | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Default        | Semantic variant tokens. One clearly dominant action per local decision.                                                                        |
+| Default        | Semantic variant tokens. One clearly dominant action per local decision, and one cantaloupe primary per view (see below).                       |
 | Hover          | Variant hover background; do not add movement to routine working controls.                                                                      |
 | Pressed        | Pressed background while pointer/key activation is held; focus remains visible.                                                                 |
 | Keyboard focus | 2px opaque electric-blue outline with 2px separation; dark separator for bright fills.                                                          |
 | Disabled       | Opaque disabled surface/text/border; native `disabled` where appropriate, with a visible nearby reason when needed. No hover/activation.        |
 | Loading        | Retain a useful action label plus a busy cue, maintain width, prevent duplicate action, provide a concise status message. Do not invent an ETA. |
+
+**One cantaloupe primary per view (2026-11-04):** a view shows one cantaloupe primary action, which belongs to the page's content. Persistent chrome stays neutral: the marketing header CTA uses the inverse style and the app sidebar's "Create a plan" uses `outline`. Explicit legal consent controls are not a competing primary, and a long marketing page may repeat its primary in a later section.
 
 Loading is not identical to unavailable. Where retaining focus during an ongoing action matters, use `aria-disabled="true"` **and an actual click/submit guard**, plus `aria-busy` and an appropriate external status region. Native disabled is valid for genuinely unavailable controls; do not depend on it to preserve focus during all async flows. The existing Button does not have a dedicated `loading` prop, so this is a composed contract until an API change is deliberately introduced. [A01; R02]
 
