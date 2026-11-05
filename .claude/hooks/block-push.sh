@@ -54,6 +54,13 @@ BEGIN { sq = sprintf("%c", 39); dq = "\""; us = sprintf("%c", 31) }
       while (j <= n) {
         d = substr(s, j, 1)
         if ((c == dq || ansi) && d == "\\") { j += 2; continue }
+        # Inside "...", a $(...) is its own shell context: skip to its matching ) so quotes in a
+        # heredoc message ("$(cat <<'EOF' ... say "hi ... EOF )") do not end the string early.
+        if (c == dq && d == "$" && substr(s, j + 1, 1) == "(") {
+          pd = 1; j += 2
+          while (j <= n && pd > 0) { e = substr(s, j, 1); if (e == "(") pd++; else if (e == ")") pd--; j++ }
+          continue
+        }
         if (d == c) { closed = 1; break }
         j++
       }
@@ -96,8 +103,8 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # (git -C "/a b" push) must not split. A $(...) or backtick substitution is also one token, so a
 # `;` inside a heredoc message ahead of a flag cannot end the gap. Redirections that contain &
 # (2>&1, >&2, &>) are not command separators, so `gap` steps over them.
-gap='([^;&|"'"'"'\\]|\\.|[<>]&[0-9-]*|&>>?|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|"([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
-val='(("([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
+gap='([^;&|"'"'"'\\]|\\.|[<>]&[0-9-]*|&>>?|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|"([^"\\$]|\\.|[$]\(([^()]|\([^()]*\))*\)|[$])*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
+val='(("([^"\\$]|\\.|[$]\(([^()]|\([^()]*\))*\)|[$])*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
 end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
