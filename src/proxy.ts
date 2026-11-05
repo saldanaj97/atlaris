@@ -73,12 +73,13 @@ const withCorrelationId = (
   });
 };
 
-/** Auth page for a signed-out request, returning the visitor to it afterwards. */
-function anonymousAuthUrl(request: NextRequest): URL {
-  const url = new URL(
-    resolveAnonymousAuthPath(request.nextUrl.pathname),
-    request.url,
-  );
+/**
+ * Auth page for a signed-out request, returning the visitor to it afterwards.
+ * `pathname` is the decoded policy path; `redirect_url` keeps the raw one,
+ * which the proxy decodes again when the visitor comes back.
+ */
+function anonymousAuthUrl(request: NextRequest, pathname: string): URL {
+  const url = new URL(resolveAnonymousAuthPath(pathname), request.url);
   url.searchParams.set(
     'redirect_url',
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
@@ -86,7 +87,7 @@ function anonymousAuthUrl(request: NextRequest): URL {
   return url;
 }
 
-type ProtectRequest = () => Promise<NextResponse | undefined>;
+type ProtectRequest = (pathname: string) => Promise<NextResponse | undefined>;
 type IsSignedIn = () => Promise<boolean>;
 
 async function handleProxyRequest(
@@ -153,7 +154,7 @@ async function handleProxyRequest(
       return nextWithProxyContext(request, { ctx });
     }
 
-    const protectionResponse = await protectRequest();
+    const protectionResponse = await protectRequest(pathname);
     if (protectionResponse) {
       return withCorrelationId(request, protectionResponse);
     }
@@ -166,9 +167,9 @@ const clerkProxy = clerkMiddleware(
   async (auth, request: NextRequest) =>
     handleProxyRequest(
       request,
-      async () => {
+      async (pathname) => {
         // Clerk's default redirect is sign-in; only the sign-up case needs a URL.
-        const authUrl = anonymousAuthUrl(request);
+        const authUrl = anonymousAuthUrl(request, pathname);
         await auth.protect(
           authUrl.pathname === '/auth/sign-up'
             ? { unauthenticatedUrl: authUrl.toString() }
@@ -198,7 +199,8 @@ function proxy(request: NextRequest, event: NextFetchEvent) {
 
   return handleProxyRequest(
     request,
-    async () => NextResponse.redirect(anonymousAuthUrl(request)),
+    async (pathname) =>
+      NextResponse.redirect(anonymousAuthUrl(request, pathname)),
     // No Clerk keys locally, so no session to admit.
     async () => false,
   );

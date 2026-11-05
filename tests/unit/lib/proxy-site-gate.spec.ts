@@ -140,6 +140,18 @@ describe('proxy path normalization', () => {
     },
   );
 
+  it('sends a signed-out visitor to sign-up for an encoded /plans/new', async () => {
+    mocks.resolveSiteGate.mockResolvedValue(null);
+
+    await runProxy('/%70lans/new');
+
+    expect(mocks.protect).toHaveBeenCalledExactlyOnceWith({
+      unauthenticatedUrl: expect.stringMatching(
+        /^https:\/\/atlaris\.app\/auth\/sign-up\?redirect_url=/,
+      ),
+    });
+  });
+
   it('does not require sign-in for a public page with the gate off', async () => {
     mocks.resolveSiteGate.mockResolvedValue(null);
 
