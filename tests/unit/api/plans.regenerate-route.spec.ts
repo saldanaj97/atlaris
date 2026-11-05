@@ -2,7 +2,12 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   requestPlanRegeneration: vi.fn(),
+  assertAiSpendAllowed: vi.fn(),
   baseDeps: { dbClient: {}, marker: 'default-deps' },
+}));
+
+vi.mock('@/features/billing/ai-spend-guard', () => ({
+  assertAiSpendAllowed: mocks.assertAiSpendAllowed,
 }));
 
 vi.mock('@/features/plans/regeneration-orchestration/request', () => ({
@@ -64,6 +69,8 @@ function regenerate(body: unknown = {}): Promise<Response> {
 
 describe('POST /api/v1/plans/:planId/regenerate', () => {
   beforeEach(() => {
+    mocks.assertAiSpendAllowed.mockReset();
+    mocks.assertAiSpendAllowed.mockResolvedValue(undefined);
     mocks.requestPlanRegeneration.mockReset();
     mocks.requestPlanRegeneration.mockResolvedValue({
       kind: 'enqueued',
@@ -113,6 +120,25 @@ describe('POST /api/v1/plans/:planId/regenerate', () => {
       }),
       expect.anything(),
     );
+  });
+
+  it('does not request regeneration while AI generation is paused', async () => {
+    const { AppError } = await import('@/lib/api/errors');
+    mocks.assertAiSpendAllowed.mockRejectedValueOnce(
+      new AppError('AI generation is paused for today.', {
+        status: 503,
+        code: 'AI_GENERATION_PAUSED',
+        classification: 'capped',
+      }),
+    );
+
+    const response = await regenerate();
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'AI_GENERATION_PAUSED',
+    });
+    expect(mocks.requestPlanRegeneration).not.toHaveBeenCalled();
   });
 
   it('rejects an unknown reason with 400', async () => {

@@ -66,6 +66,59 @@ export async function sumPlanAiSpendMicrousd(
   return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
 }
 
+const usageEventCostSql = sql<
+  string | null
+>`sum(COALESCE(${aiUsageEvents.providerCostMicrousd}, ${aiUsageEvents.costCents}::bigint * 10000))`;
+const researchCostSql = sql<string | null>`sum(${planResearch.costMicrousd})`;
+
+/**
+ * One user's AI spend in micro-USD since `since`, costed like
+ * {@link sumPlanAiSpendMicrousd}. Usage events keep `user_id` when their plan
+ * is deleted, so deleting a plan does not reset the total.
+ *
+ * `plan_research` is left out on purpose: its rows are deleted with the plan,
+ * so counting them would let a user reset research spend by deleting a plan.
+ * Successful grounded research is therefore not yet in this total; grounded
+ * generation stays off through launch (DEV-163, DEV-208).
+ */
+export async function sumUserAiSpendMicrousd(
+  userId: string,
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  const [usage] = await dbClient
+    .select({ spent: usageEventCostSql })
+    .from(aiUsageEvents)
+    .where(
+      and(
+        eq(aiUsageEvents.userId, userId),
+        gte(aiUsageEvents.createdAt, since),
+      ),
+    );
+  return Number(usage?.spent ?? 0);
+}
+
+/**
+ * Every user's AI spend in micro-USD since `since`, research runs included.
+ * Needs the service-role client: RLS would limit the sum to one user.
+ */
+export async function sumAllAiSpendMicrousd(
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  const [usage, research] = await Promise.all([
+    dbClient
+      .select({ spent: usageEventCostSql })
+      .from(aiUsageEvents)
+      .where(gte(aiUsageEvents.createdAt, since)),
+    dbClient
+      .select({ spent: researchCostSql })
+      .from(planResearch)
+      .where(gte(planResearch.createdAt, since)),
+  ]);
+  return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
+}
+
 /**
  * Records the usage an AI call's error carries (`billedUsageOf`) against the
  * plan, as its own usage event: OpenRouter billed the call even though its

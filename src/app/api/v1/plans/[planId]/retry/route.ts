@@ -1,5 +1,6 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
+import { assertAiSpendAllowed } from '@/features/billing/ai-spend-guard';
 import {
   requirePlanContentAccess,
   requireUuidRouteParam,
@@ -73,6 +74,8 @@ export function createRetryHandler(deps?: {
           },
         );
       }
+
+      await assertAiSpendAllowed(actor, db);
 
       const started = await boundary.startRetry({
         req,
