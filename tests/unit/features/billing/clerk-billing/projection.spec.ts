@@ -541,6 +541,219 @@ describe('projectClerkBillingSource', () => {
     });
   });
 
+  describe('scheduled switch from Pro to Starter', () => {
+    const upcomingStarter = item({
+      id: 'item_starter_upcoming',
+      status: 'upcoming',
+      tier: 'starter',
+      planSlug: 'starter_plan',
+      periodEnd: null,
+    });
+
+    it.each([
+      {
+        label: 'Pro active with no cancel marker',
+        pro: item({ status: 'active' }),
+      },
+      {
+        label: 'Pro active with canceledAt',
+        pro: item({ status: 'active', canceledAt: now }),
+      },
+      {
+        label: 'Pro canceled in period',
+        pro: item({ status: 'canceled', canceledAt: now }),
+      },
+    ])(
+      'keeps Pro and does not read as a cancellation while pending: $label',
+      ({ pro }) => {
+        expect(
+          projectClerkBillingSource(
+            source({ items: [pro, upcomingStarter] }),
+            currentPaidState,
+            now,
+          ),
+        ).toEqual({
+          subscriptionTier: 'pro',
+          subscriptionStatus: 'active',
+          subscriptionPeriodEnd: futurePeriodEnd,
+          cancelAtPeriodEnd: false,
+        });
+      },
+    );
+
+    it('still reads as a cancellation when the upcoming plan is Free', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({ status: 'active', canceledAt: now }),
+              item({
+                id: 'item_free_upcoming',
+                status: 'upcoming',
+                tier: 'free',
+                planSlug: 'free_user',
+                periodEnd: null,
+              }),
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toMatchObject({ subscriptionTier: 'pro', cancelAtPeriodEnd: true });
+    });
+
+    it('stays active when Pro is canceled in period and the subscription status is not active', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            subscriptionStatus: 'canceled',
+            items: [
+              item({ status: 'canceled', canceledAt: now }),
+              upcomingStarter,
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toMatchObject({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    it('does not promote to an unpaid upcoming plan above the stored tier', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({
+                id: 'item_pro_upcoming',
+                status: 'upcoming',
+                periodEnd: null,
+              }),
+            ],
+          }),
+          { ...currentPaidState, subscriptionTier: 'starter' },
+          now,
+        ),
+      ).toMatchObject({ subscriptionTier: 'starter' });
+    });
+
+    it('moves to Starter when it activates at period end', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({
+                status: 'ended',
+                periodEnd: pastPeriodEnd,
+              }),
+              item({
+                id: 'item_starter',
+                status: 'active',
+                tier: 'starter',
+                planSlug: 'starter_plan',
+                periodEnd: laterFreePeriodEnd,
+              }),
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toEqual({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+        subscriptionPeriodEnd: laterFreePeriodEnd,
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    it('moves to Starter, not Free, if Pro ends before Starter activates', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            items: [
+              item({ status: 'ended', periodEnd: pastPeriodEnd }),
+              upcomingStarter,
+            ],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toEqual({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+        subscriptionPeriodEnd: futurePeriodEnd,
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    const pastDueStarter = item({
+      id: 'item_starter',
+      status: 'past_due',
+      tier: 'starter',
+      planSlug: 'starter_plan',
+      periodEnd: laterFreePeriodEnd,
+    });
+
+    it.each([
+      {
+        label: 'ended Pro listed',
+        items: [
+          item({ status: 'ended', periodEnd: pastPeriodEnd }),
+          pastDueStarter,
+        ],
+      },
+      { label: 'ended Pro omitted', items: [pastDueStarter] },
+    ])('drops to Starter when its first charge fails: $label', ({ items }) => {
+      expect(
+        projectClerkBillingSource(
+          source({ subscriptionStatus: 'past_due', items }),
+          currentPaidState,
+          now,
+        ),
+      ).toEqual({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'past_due',
+        subscriptionPeriodEnd: laterFreePeriodEnd,
+        cancelAtPeriodEnd: false,
+      });
+    });
+
+    it('drops to Starter on the failed payment attempt too', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            paymentAttemptStatus: 'failed',
+            items: [pastDueStarter],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toMatchObject({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'past_due',
+      });
+    });
+
+    it('keeps Pro when Pro itself is past due beside a past-due Starter', () => {
+      expect(
+        projectClerkBillingSource(
+          source({
+            subscriptionStatus: 'past_due',
+            items: [item({ status: 'past_due' }), pastDueStarter],
+          }),
+          currentPaidState,
+          now,
+        ),
+      ).toMatchObject({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'past_due',
+      });
+    });
+  });
+
   it('preserves prior entitlement when Clerk plan slug is unknown', () => {
     expect(
       projectClerkBillingSource(
