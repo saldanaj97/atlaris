@@ -15,7 +15,14 @@ else
   # are the two characters \n here, and a continuation is backslash plus \n (four characters).
   # JSON-escaped quotes (\") become plain quotes and escaped backslashes (\\) become one, so
   # quoted values and \git parse like the jq path.
-  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g' -e 's/\\\\/\\/g')"
+  raw="$input"
+  # Keep only the command string when the payload has one: drop everything up to
+  # "command":" and everything from the first unescaped quote on, so the JSON's own quotes do
+  # not confuse the quote tracking below.
+  if printf '%s' "$raw" | grep -Eq '"command"[[:space:]]*:[[:space:]]*"'; then
+    raw="$(printf '%s' "$raw" | sed -E -e 's/^.*"command"[[:space:]]*:[[:space:]]*"//' -e 's/^(([^"\\]|\\.)*)".*$/\1/')"
+  fi
+  cmd="$(printf '%s' "$raw" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g' -e 's/\\\\/\\/g')"
 fi
 [ -z "$cmd" ] && exit 0
 
@@ -43,6 +50,12 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
       if (!closed) { out = out substr(s, i); i = n + 1; continue }
       body = substr(s, i + 1, j - i - 1)
       if (out ~ /(^|[ \t])(-[asSvq]*m|--message)[ \t=]*$/ && (c == sq || body !~ /[$`\\]/)) out = out c "X" c
+      else if (body ~ /^[A-Za-z0-9._=\/-]*$/) {
+        # A quoted word with nothing special in it is the same word to the shell: git 'push',
+        # commit '--no-verify', pu'sh', g''it, $'push'. Emit it unquoted.
+        if (c == sq && substr(out, length(out), 1) == "$") out = substr(out, 1, length(out) - 1)
+        out = out body
+      }
       else out = out substr(s, i, j - i + 1)
       i = j + 1; continue
     }
@@ -52,10 +65,9 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
 }')"
 [ -z "$scan" ] && scan="$cmd"
 
-# Undo the ways the word git can be spelled that the shell reads as plain git: \git, 'git',
-# "git", g''it, g\it. Empty quote pairs are dropped only between letters, so an escaped quote
-# followed by a closing quote (\"") is left alone. Aliases and variables are not normalized.
-scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g' -e "s/(^|[^A-Za-z0-9_])['\"]git['\"]/\1git/g" -e "s/([A-Za-z])(''|\"\")([A-Za-z])/\1\3/g")"
+# Undo backslash escapes before a letter (\git, g\it, pu\sh); the awk pass above already unquoted
+# simple quoted words. Aliases and variables are not normalized.
+scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g')"
 
 # A git command (optionally path-qualified) at the start of a command, after a shell operator,
 # inside a quoted shell string or subshell (sh -c "git push", $(git push)), or after a
@@ -66,7 +78,7 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # token. `gap` is the text between a git command and a later flag, and `val` is the value of a git
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
 # a space (git -C "/a b" push) must not split.
-gap='([^;&|"'"'"']|"([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"')*'
+gap='([^;&|"'"'"'\\]|\\.|"([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"')*'
 val='("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|[^[:space:]]+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
