@@ -104,7 +104,7 @@ So on the Next server itself, percent-encoded static segments do not resolve to 
 
    This mirrors the existing `'/(api|trpc)(.*)'` entry. Keep the first entry as is; `robots.txt`, `sitemap.xml`, and `public/` assets stay excluded. The prefix list must match `PROTECTED_PREFIXES` in `middleware-policy.ts`; add a comment pointing at it.
 
-4. Extend `scripts/launch/check-gate.ts` and the "Gate probe" section of `docs/testing/launch-smoke-checklist.md`: add `/plans/x.txt` to the `--expect on` checks (must redirect to `/waitlist`; it proves the matcher change, since the proxy did not run for it before), and add `/%64ashboard` to the `--expect off` checks (must redirect to `/auth/sign-in`). A gate-on check for `/%64ashboard` would be tautological, because the gate redirects every non-exempt path with or without normalization. The gate-off check is the one that shows normalization reached `isProtectedRoute`: before the change it answers 404 (Next does not decode) or 200 (the platform decoded it and the proxy missed it); after the change it is always the sign-in redirect.
+4. Extend `scripts/launch/check-gate.ts` and the "Gate probe" section of `docs/testing/launch-smoke-checklist.md`: add `/plans/x.txt` to the `--expect on` checks (must redirect to `/waitlist`; it proves the matcher change, since the proxy did not run for it before), and add `/%64ashboard` to the `--expect off` checks (must redirect to `/auth/sign-in`). A gate-on check for `/%64ashboard` would be tautological, because the gate redirects every non-exempt path with or without normalization. The gate-off check is the one that shows normalization reached `isProtectedRoute`: before the change it answers 404 (Next does not decode) or 200 (the platform decoded it and the proxy missed it); after the change it is always the sign-in redirect. One prerequisite: `httpProbe` in `check-gate.ts` sends Node's default `Accept: */*`, and Clerk's `auth.protect()` answers **404** instead of redirecting when a request carries neither `Accept: text/html` nor `Sec-Fetch-Dest: document` (`@clerk/nextjs` 7.9.20, `dist/esm/server/protect.js`, `isPageRequest`). Add `headers: { accept: 'text/html' }` to the probe's `fetch` call. Without it the new check cannot pass, and the existing `--expect off` check "`/plans/new` (signed out) redirects to `/auth/sign-up`" cannot pass either, which matters on flag-off night.
 
 **Tests.**
 
@@ -373,8 +373,10 @@ pnpm launch:check-gate --expect on --base-url https://<staging-host>
 With the new checks from A1, `/plans/x.txt` must redirect to the gate page. The encoded-path question needs the gate **off**, because with it on every non-exempt path redirects whether or not it was decoded. So also run, on staging with the gate off (or against production after the flag-off), signed out:
 
 ```bash
-curl -sS -o /dev/null -w '%{http_code} %{redirect_url}\n' https://<host>/%64ashboard
+curl -sS -o /dev/null -H 'accept: text/html' -w '%{http_code} %{redirect_url}\n' https://<host>/%64ashboard
 ```
+
+The `accept: text/html` header is required: without it Clerk's `auth.protect()` returns 404 for a signed-out request instead of the sign-in redirect, which would make the "after" result indistinguishable from the "before" one.
 
 Before PR 1: `404` means Vercel passes the encoded path through and Next does not decode it, so lead 3 is hardening only; `200` means Vercel routed it to `/dashboard` while the proxy saw `/%64ashboard`, which upgrades lead 3 to a real finding (fixed by the same PR). After PR 1 it must be a `307` to `/auth/sign-in` in both cases; the `--expect off` run of the gate probe asserts that. Record the status codes before and after.
 
