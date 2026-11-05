@@ -36,13 +36,15 @@ function startOfUtcMonth(now: Date, monthOffset = 0): Date {
   );
 }
 
+const UTC_DATE_FORMAT = new Intl.DateTimeFormat('en-US', {
+  month: 'long',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+
 function formatUtcDate(date: Date): string {
-  return new Intl.DateTimeFormat('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(date);
+  return UTC_DATE_FORMAT.format(date);
 }
 
 /** One Sentry issue per alert share per UTC day, so a "new issue" alert fires once a day. */
