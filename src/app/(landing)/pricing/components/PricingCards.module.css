@@ -120,7 +120,9 @@
   box-shadow: none;
   transform: translate3d(0, var(--card-lift), 0) rotateX(var(--card-tilt-x))
     rotateY(var(--card-tilt-y));
-  transform-style: preserve-3d;
+  /* Keep this flat: under preserve-3d the card and its contents share one plane
+     and tie in hit testing, so presses land on the card instead of its buttons. */
+  transform-style: flat;
   transform-origin: center center;
   /* Entrance: cards dock in one after another, center last. */
   opacity: 1;

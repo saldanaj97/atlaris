@@ -79,6 +79,81 @@ test('the pricing comparison shows a scroll cue on a phone', async ({
   await expect(comparison).toHaveAttribute('data-scroll-cue', 'start');
 });
 
+// A card tilts toward the pointer, and its button must stay the click target
+// throughout. `preserve-3d` made card and button tie in hit testing, so presses
+// landed on the card and the button never got the click.
+test('a pricing card button takes the click while its card tilts', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/pricing');
+
+  for (const [plan, action] of [
+    ['Free', 'Start free'],
+    ['Starter', 'Begin with Starter'],
+    ['Pro', 'Begin with Pro'],
+  ] as const) {
+    const card = page.getByRole('article', { name: plan });
+    const button = card.getByRole('button', { name: action });
+    await expect(button).toBeVisible();
+    if (plan !== 'Free') await card.getByRole('checkbox').check();
+    await button.scrollIntoViewIfNeeded();
+    await page.mouse.move(0, 0);
+    // The cards dock in on load; measure once they have landed.
+    await card.evaluate(async (element) => {
+      // Settled, not all: moving the pointer away can cancel a tilt transition.
+      await Promise.allSettled(
+        element.getAnimations().map(({ finished }) => finished),
+      );
+    });
+
+    const box = await button.boundingBox();
+    if (!box) throw new Error(`${action} has no box`);
+    const x = box.x + box.width / 2;
+    const y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+
+    // Across the button, every frame of the tilt and after it settles.
+    const misses = await button.evaluate(async (element) => {
+      let count = 0;
+      for (let frame = 0; frame < 30; frame++) {
+        await new Promise(requestAnimationFrame);
+        const rect = element.getBoundingClientRect();
+        for (let column = 1; column < 12; column++) {
+          for (let row = 1; row < 8; row++) {
+            const hit = document.elementFromPoint(
+              rect.left + (rect.width * column) / 12,
+              rect.top + (rect.height * row) / 8,
+            );
+            if (!hit || !element.contains(hit)) count++;
+          }
+        }
+      }
+      return count;
+    });
+    expect(misses, `${action} points that hit something else`).toBe(0);
+
+    // Stopped here so the sign-in modal doesn't cover the next card.
+    const clicked = page.evaluate(
+      () =>
+        new Promise<string | undefined>((resolve) => {
+          window.addEventListener(
+            'click',
+            (event) => {
+              event.preventDefault();
+              event.stopImmediatePropagation();
+              const target = event.target as Element;
+              resolve(target.closest('button')?.textContent ?? target.tagName);
+            },
+            { capture: true, once: true },
+          );
+        }),
+    );
+    await page.mouse.click(x, y, { delay: 60 });
+    expect(await clicked).toBe(action);
+  }
+});
+
 // A paid plan's button stays disabled until the renewal box is ticked; a
 // muted hint under it says why and goes away once the box is ticked.
 for (const colorScheme of ['light', 'dark'] as const) {
