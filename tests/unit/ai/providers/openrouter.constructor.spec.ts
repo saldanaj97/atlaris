@@ -108,5 +108,34 @@ describe('OpenRouterProvider', () => {
       expect(request).not.toHaveProperty('model');
       expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
     });
+
+    it('sends no more fallback routes than the provider allows', async () => {
+      const { client, send } = createOpenRouterMockClient();
+      send.mockResolvedValueOnce({
+        model: AI_DEFAULT_MODEL,
+        choices: [
+          { message: { content: JSON.stringify(VALID_PLAN_RESPONSE) } },
+        ],
+        usage: { promptTokens: 20, completionTokens: 40, totalTokens: 60 },
+      });
+
+      const provider = new OpenRouterProvider(
+        {
+          model: 'test/first',
+          fallbackModels: ['test/second', 'test/third', 'test/4th'],
+        },
+        client,
+      );
+      await provider.generate(OPENROUTER_SAMPLE_INPUT);
+
+      const [request] = send.mock.calls[0] ?? [];
+      expect(request).toMatchObject({
+        models: [
+          `test/first@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+          `test/second@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+          `test/third@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
+        ],
+      });
+    });
   });
 });
