@@ -50,11 +50,18 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # `git log --grep=--no-verify`.
 no_verify="$lead"'[[:space:]]([^;&|]*[[:space:]])?--no-verify([[:space:]]|$|["'"'"';&|)\\])'
 
+# Only git global options between `git` and the subcommand.
+git_opts='([[:space:]]+(-[cC][[:space:]]+[^[:space:]]+|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+[^[:space:]]+|--?[A-Za-z][A-Za-z-]*(=[^[:space:]]+)?))*'
+
+# `git commit -n` is the short form of --no-verify, alone or inside a flag cluster (-an, -nm).
+# Scoped to commit: `git push -n` is --dry-run and `git log -n 5` is a count.
+no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]]([^;&|]*[[:space:]])?-[A-Za-z]*n[A-Za-z]*([[:space:]]|$|["'"'"';&|)\\])'
+
 # git + only git global options + push. Does not match `git log --grep push`.
 # Shell aliases and variable indirection are not caught.
-git_push="$lead"'([[:space:]]+(-[cC][[:space:]]+[^[:space:]]+|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+[^[:space:]]+|--?[A-Za-z][A-Za-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]|$|["'"'"';&|)\\])'
+git_push="$lead$git_opts"'[[:space:]]+push([[:space:]]|$|["'"'"';&|)\\])'
 
-if printf '%s' "$scan" | grep -Eq -- "$no_verify"; then
+if printf '%s' "$scan" | grep -Eq -- "$no_verify" || printf '%s' "$scan" | grep -Eq -- "$no_verify_short"; then
   echo "Blocked: --no-verify skips the hooks. Fix the failing hook instead." >&2
   exit 2
 fi
