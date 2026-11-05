@@ -75,18 +75,18 @@ scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g')"
 lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 
 # Quoted strings are opaque: one quoted string, whatever it contains (spaces, ; & |), is a single
-# token. `gap` is the text between a git command and a later flag, and `val` is the value of a git
+# token, and a value may mix bare text with quoted parts (-c user.name="A B"). `gap` is the text between a git command and a later flag, and `val` is the value of a git
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
 # a space (git -C "/a b" push) must not split.
 gap='([^;&|"'"'"'\\]|\\.|"([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"')*'
-val='("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|[^[:space:]]+)'
+val='(("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
 end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
 
-# --no-verify as an argument of a git command. Does not match `rg -- --no-verify` or
-# `git log --grep=--no-verify`.
-no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-verify'"$end"
+# --no-verify as an argument of a git command, including the abbreviations git accepts
+# (--no-veri, --no-verif). Does not match `rg -- --no-verify` or `git log --grep=--no-verify`.
+no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-veri(f(y)?)?'"$end"
 
 # Only git global options between `git` and the subcommand.
 git_opts='([[:space:]]+(-[cC][[:space:]]+'"$val"'|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+'"$val"'|--?[A-Za-z][A-Za-z-]*(='"$val"')?))*'
