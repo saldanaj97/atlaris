@@ -68,7 +68,9 @@ export class PlanStatusPoller {
     randomFn = Math.random,
     fetchTimeoutMs = PLAN_STATUS_FETCH_TIMEOUT_MS,
   }: PlanStatusPollerConfig) {
-    this.fetcher = fetcher;
+    // Wrapped so `this.fetcher(...)` doesn't pass the poller as `this`: a native
+    // `fetch` throws "Illegal invocation". Sentry's wrapper hides this when on.
+    this.fetcher = (...args) => fetcher(...args);
     this.randomFn = randomFn;
     this.fetchTimeoutMs = fetchTimeoutMs;
     this.state = createInitialPlanPollState(planId, initialStatus);
