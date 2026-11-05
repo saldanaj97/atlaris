@@ -8,6 +8,7 @@
  */
 export const AUTHENTICATED_SERVER_OWNED_WRITE_TABLES = [
   'ai_usage_events',
+  'deleted_plan_generation_attempts',
   'generation_attempts',
   'generation_budget_cuts',
   'generation_quality_issues',

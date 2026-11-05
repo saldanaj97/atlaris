@@ -40,12 +40,12 @@ Drift repair (no webhook): `POST /api/internal/maintenance/billing/reconcile-cle
 
 Prefix matching in `src/features/billing/clerk-billing/projection.ts`:
 
-| Prefix                         | Handler                                                             |
-| ------------------------------ | ------------------------------------------------------------------- |
-| `subscriptionItem.`            | Single subscription item                                            |
-| `subscription.`                | All items on the subscription                                       |
-| `paymentAttempt.`              | Items plus payment attempt status                                   |
-| `user.created`, `user.updated` | Current exact verified primary email and Clerk update watermark     |
+| Prefix                         | Handler                                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------- |
+| `subscriptionItem.`            | Single subscription item                                                                             |
+| `subscription.`                | All items on the subscription                                                                        |
+| `paymentAttempt.`              | Items plus payment attempt status                                                                    |
+| `user.created`, `user.updated` | Current exact verified primary email and Clerk update watermark                                      |
 | `user.deleted`                 | Clear email and name, permanently tombstone the local identity projection, and erase the user's data |
 
 Other types are ignored (`status: 'ignored'`). Subscribe the Clerk endpoint to `subscription.*`, `subscriptionItem.*`, `paymentAttempt.*`, `user.created`, `user.updated`, and `user.deleted`.
@@ -80,7 +80,17 @@ Plan slug → tier mapping lives in `src/features/billing/clerk-billing/plan-map
 
 Optional exact env IDs (`CLERK_BILLING_PLAN_ID_FREE` / `_STARTER` / `_PRO`) are a secondary match only when each ID maps to one tier. Never infer tier from price. Unknown slugs or ambiguous IDs leave the stored tier unchanged. Clerk Dashboard Features and Clerk `has()` / `Protect` are merchandising only — they are not a second authorization system. Dashboard plan/feature setup is ops, not a code commit.
 
-Projection rules (highest paid tier, past-due retention, canceled-but-in-period, terminal downgrade to free, unknown-plan preservation) are implemented in `projectClerkBillingSource` — read that function before changing entitlement semantics.
+Projection rules (highest paid tier, past-due retention, canceled-but-in-period, terminal downgrade to free, scheduled paid-plan switches, unknown-plan preservation) are implemented in `projectClerkBillingSource` — read that function before changing entitlement semantics.
+
+### Moving to a lower paid plan
+
+Clerk applies upgrades immediately and defers a move to a lower paid plan to the end of the period, using an `upcoming` subscription item. There is no charge until then. `ClerkPlanAction` starts the move through `CheckoutButton` (**Switch to Starter**), and subscribing to the held plan again abandons the upcoming item (**Keep Pro**). It offers a switch only in the held billing period, and not while the plan is past due or on a free trial, because Clerk may not defer those.
+
+Confirmed on the Development instance (2026-11-04): after a switch, Pro stays `active` with `canceled_at` set and Starter is `upcoming`, starting at Pro's period end. **Keep Pro** clears `canceled_at` and removes the upcoming item. Both checkouts showed $0.00 due.
+
+The `users` row keeps the current plan until Clerk ends it. A scheduled switch does not set `cancel_at_period_end`, since access continues on the lower plan. If the first charge for the lower plan fails, access follows the lower plan as past due. An upcoming plan above the stored tier never promotes.
+
+Atlaris does not store the scheduled plan. `ScheduledPlanChangeNotice` in Settings reads it from Clerk on the client, for display only; entitlements never read it. Clerk has no documented way to end a billing period early, so the rollover is only proven by waiting for a real period end.
 
 Webhook applies refresh from Clerk Billing API (`refreshFromClerk: true`) before writing. Local fixtures call `applyClerkBillingSource` **without** refresh or webhook idempotency insert.
 
@@ -130,7 +140,7 @@ When Clerk UI is enabled, `/pricing` builds a return URL:
 | Poll     | `GET /api/v1/user/subscription` every 2s for up to 30s                                                                |
 | Done     | Current signature ≠ baseline → clear query params, `router.refresh()`                                                 |
 
-Settings remains DB-backed. Manage/current-plan Clerk buttons live on `/pricing` (`ClerkPricingTable`), not in Settings.
+Settings plan rows remain DB-backed. A new or upgraded subscription uses this return URL. A scheduled switch or **Keep** returns to plain `/settings/billing`, because no entitlement changes for Settings to wait on.
 
 ### Pricing UI modes
 
@@ -162,12 +172,12 @@ Monthly regeneration settlement is owned by `reserveRegenerationQuotaAtProviderS
 
 ## Local / fixture tooling
 
-| Command                                                             | Purpose                                                                                         |
-| ------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `pnpm db fixture --user-id <auth_user_id> --plan pro`               | Apply projection for a local user (localhost Postgres only unless `--allow-non-local true`)     |
-| `pnpm db reconcile-clerk --apply`                                   | One-shot lifecycle projection repair; run only with the intended target environment credentials |
-| `pnpm db fixture starter`                                           | Set the deterministic local starter fixture (run intentionally)                                  |
-| `pnpm db fixture pro`                                               | Set the deterministic local pro fixture (run intentionally)                                      |
+| Command                                               | Purpose                                                                                         |
+| ----------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `pnpm db fixture --user-id <auth_user_id> --plan pro` | Apply projection for a local user (localhost Postgres only unless `--allow-non-local true`)     |
+| `pnpm db reconcile-clerk --apply`                     | One-shot lifecycle projection repair; run only with the intended target environment credentials |
+| `pnpm db fixture starter`                             | Set the deterministic local starter fixture (run intentionally)                                 |
+| `pnpm db fixture pro`                                 | Set the deterministic local pro fixture (run intentionally)                                     |
 
 ### Pitfalls
 
@@ -181,11 +191,11 @@ Monthly regeneration settlement is owned by `reserveRegenerationQuotaAtProviderS
 
 Routed settings sections:
 
-| Route                | Content                                        |
-| -------------------- | ---------------------------------------------- |
-| `/settings/billing`  | Checkout sync + plan rows from DB snapshot     |
-| `/settings/usage`    | Active plans / regenerations meters            |
-| `/settings/ai`       | Model picker gated by `actor.subscriptionTier` |
+| Route               | Content                                        |
+| ------------------- | ---------------------------------------------- |
+| `/settings/billing` | Checkout sync + plan rows from DB snapshot     |
+| `/settings/usage`   | Active plans / regenerations meters            |
+| `/settings/ai`      | Model picker gated by `actor.subscriptionTier` |
 
 ## Code map
 

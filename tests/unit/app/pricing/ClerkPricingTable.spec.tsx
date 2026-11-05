@@ -55,14 +55,20 @@ vi.mock('@clerk/nextjs', () => ({
 vi.mock('@clerk/nextjs/experimental', () => ({
   CheckoutButton: ({
     children,
+    newSubscriptionRedirectUrl,
     planId,
     planPeriod,
   }: {
     children: React.ReactNode;
+    newSubscriptionRedirectUrl?: string;
     planId: string;
     planPeriod?: string;
   }) => (
-    <span data-period={planPeriod} data-testid={`checkout-${planId}`}>
+    <span
+      data-period={planPeriod}
+      data-redirect={newSubscriptionRedirectUrl}
+      data-testid={`checkout-${planId}`}
+    >
       {isValidElement(children)
         ? cloneElement(children as ReactElement<{ onClick?: () => void }>, {
             onClick: () => mocks.openCheckout(planId, planPeriod),
@@ -645,7 +651,7 @@ describe('ClerkPricingTable', () => {
       await renderPricingTable();
 
       expect(
-        await screen.findByRole('button', { name: 'Current plan' }),
+        await screen.findByRole('button', { name: 'Manage subscription' }),
       ).toBeEnabled();
       expect(screen.queryByRole('checkbox')).not.toBeInTheDocument();
       expect(
@@ -663,34 +669,434 @@ describe('ClerkPricingTable', () => {
     });
   });
 
-  it('uses Clerk subscription actions for the current plan and downgrades', async () => {
-    mocks.getSubscription.mockResolvedValue({
+  describe('when signed in', () => {
+    const subscribedTo = (slug: string) => ({
       subscriptionItems: [
-        {
-          plan: { hasBaseFee: true, slug: 'starter_plan' },
-          status: 'active',
-        },
-      ],
-    });
-    mocks.getPlans.mockResolvedValue({
-      data: [
-        FREE_PLAN,
-        {
-          ...STARTER_PLAN,
-          annualFee: null,
-          annualMonthlyFee: null,
-        },
+        { plan: { hasBaseFee: true, slug }, status: 'active' },
       ],
     });
 
-    await renderPricingTable();
+    const expectCard = (
+      name: string,
+      expected: {
+        action: string | RegExp;
+        current: boolean;
+        featured: boolean;
+      },
+    ) => {
+      const card = screen.getByRole('article', { name });
+      expect(within(card).getByText(expected.action)).toBeVisible();
+      if (expected.current) {
+        expect(within(card).getByText('Current plan')).toBeVisible();
+      } else {
+        expect(
+          within(card).queryByText('Current plan'),
+        ).not.toBeInTheDocument();
+      }
+      if (expected.featured) {
+        expect(card).toHaveAttribute('data-featured', 'true');
+      } else {
+        expect(card).not.toHaveAttribute('data-featured');
+      }
+    };
 
-    expect(
-      await screen.findByRole('button', { name: 'Current plan' }),
-    ).toBeVisible();
-    expect(
-      screen.getByRole('button', { name: 'Manage subscription' }),
-    ).toBeVisible();
+    beforeEach(() => {
+      mocks.getPlans.mockResolvedValue({
+        data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
+      });
+    });
+
+    it('offers a Pro user their own plan to manage and Starter to switch to', async () => {
+      mocks.getSubscription.mockResolvedValue(subscribedTo('pro_plan'));
+      const user = userEvent.setup();
+
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Pro' });
+      expectCard('Free', {
+        action: "You're on Pro",
+        current: false,
+        featured: false,
+      });
+      expectCard('Starter', {
+        action: 'Switch to Starter',
+        current: false,
+        featured: false,
+      });
+      expectCard('Pro', {
+        action: 'Manage subscription',
+        current: true,
+        featured: true,
+      });
+      expect(
+        screen.getAllByRole('button', { name: /subscription/i }),
+      ).toHaveLength(1);
+
+      await user.click(
+        screen.getByRole('button', { name: 'Manage subscription' }),
+      );
+      expect(mocks.openSubscription).toHaveBeenCalledTimes(1);
+    });
+
+    describe('moving from Pro to Starter', () => {
+      const proUntil = new Date(2026, 10, 23, 12);
+      const heldPro = (overrides: object = {}) => ({
+        plan: { hasBaseFee: true, name: 'Pro', slug: 'pro_plan' },
+        periodEnd: proUntil,
+        planPeriod: 'month',
+        status: 'active',
+        ...overrides,
+      });
+      const upcomingStarter = {
+        plan: { hasBaseFee: true, name: 'Starter', slug: 'starter_plan' },
+        periodStart: proUntil,
+        status: 'upcoming',
+      };
+      const upcomingFree = {
+        plan: { hasBaseFee: false, name: 'Free', slug: 'free_user' },
+        status: 'upcoming',
+      };
+
+      it('requires renewal consent, says when it starts, and skips the webhook wait', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [heldPro()],
+        });
+        const user = userEvent.setup();
+
+        await renderPricingTable();
+
+        const starter = await screen.findByRole('article', { name: 'Starter' });
+        expect(
+          within(starter).getByText(
+            'You keep Pro until Nov 23, then move to Starter. No charge today.',
+          ),
+        ).toBeVisible();
+        const button = within(starter).getByRole('button', {
+          name: 'Switch to Starter',
+        });
+        expect(button).toBeDisabled();
+
+        await user.click(within(starter).getByRole('checkbox'));
+        await user.click(button);
+
+        expect(mocks.openCheckout).toHaveBeenCalledWith(
+          'plan_starter',
+          'month',
+        );
+        expect(screen.getByTestId('checkout-plan_starter')).toHaveAttribute(
+          'data-redirect',
+          '/settings/billing',
+        );
+      });
+
+      it.each([
+        { label: 'past due', item: { status: 'past_due' } },
+        { label: 'on a free trial', item: { isFreeTrial: true } },
+      ])('offers no switch while Pro is $label', async ({ item }) => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [heldPro(item)],
+        });
+
+        await renderPricingTable();
+
+        const starter = await screen.findByRole('article', { name: 'Starter' });
+        expect(within(starter).getByText("You're on Pro")).toBeVisible();
+        expect(
+          screen.queryByTestId('checkout-plan_starter'),
+        ).not.toBeInTheDocument();
+      });
+
+      it.each([
+        { label: 'canceledAt', item: { canceledAt: new Date() } },
+        { label: 'canceled status', item: { status: 'canceled' } },
+      ])(
+        'shows the scheduled start on Starter and offers Keep Pro: $label',
+        async ({ item }) => {
+          mocks.getSubscription.mockResolvedValue({
+            subscriptionItems: [heldPro(item), upcomingStarter],
+          });
+          const user = userEvent.setup();
+
+          await renderPricingTable();
+
+          const starter = await screen.findByRole('article', {
+            name: 'Starter',
+          });
+          expect(
+            within(starter).getByText(
+              "Starts Nov 23. You're on Pro until then.",
+            ),
+          ).toBeVisible();
+          expect(
+            screen.queryByTestId('checkout-plan_starter'),
+          ).not.toBeInTheDocument();
+
+          const pro = screen.getByRole('article', { name: 'Pro' });
+          expect(within(pro).getByText('Current plan')).toBeVisible();
+          expect(
+            within(pro).getByText('Moves to Starter on Nov 23.'),
+          ).toBeVisible();
+          const keep = within(pro).getByRole('button', { name: 'Keep Pro' });
+          expect(keep).toBeDisabled();
+
+          await user.click(within(pro).getByRole('checkbox'));
+          await user.click(keep);
+
+          expect(mocks.openCheckout).toHaveBeenCalledWith('plan_pro', 'month');
+          expect(screen.getByTestId('checkout-plan_pro')).toHaveAttribute(
+            'data-redirect',
+            '/settings/billing',
+          );
+        },
+      );
+
+      it('offers Keep Pro if Clerk leaves Pro with no cancel marker', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [heldPro(), upcomingStarter],
+        });
+
+        await renderPricingTable();
+
+        const pro = await screen.findByRole('article', { name: 'Pro' });
+        expect(
+          within(pro).getByText('Moves to Starter on Nov 23.'),
+        ).toBeVisible();
+        expect(
+          within(pro).getByRole('button', { name: 'Keep Pro' }),
+        ).toBeVisible();
+        expect(
+          within(pro).queryByRole('button', { name: 'Manage subscription' }),
+        ).not.toBeInTheDocument();
+      });
+
+      it('offers Keep Pro and Starter after canceling to Free', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [
+            heldPro({ canceledAt: new Date() }),
+            upcomingFree,
+          ],
+        });
+
+        await renderPricingTable();
+
+        const pro = await screen.findByRole('article', { name: 'Pro' });
+        expect(within(pro).getByText('Access ends Nov 23.')).toBeVisible();
+        expect(
+          within(pro).getByRole('button', { name: 'Keep Pro' }),
+        ).toBeVisible();
+        expectCard('Free', {
+          action: "You're on Pro",
+          current: false,
+          featured: false,
+        });
+        expectCard('Starter', {
+          action: 'Switch to Starter',
+          current: false,
+          featured: false,
+        });
+      });
+
+      it('uses the live plan when an upgraded plan still lists as canceled', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [
+            {
+              plan: { hasBaseFee: true, name: 'Starter', slug: 'starter_plan' },
+              periodEnd: proUntil,
+              status: 'canceled',
+            },
+            heldPro(),
+          ],
+        });
+
+        await renderPricingTable();
+
+        await screen.findByRole('article', { name: 'Pro' });
+        expectCard('Pro', {
+          action: 'Manage subscription',
+          current: true,
+          featured: true,
+        });
+      });
+
+      it('offers no switch across billing periods, since Clerk may charge now', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [heldPro({ planPeriod: 'annual' })],
+        });
+
+        await renderPricingTable();
+
+        const starter = await screen.findByRole('article', { name: 'Starter' });
+        expect(
+          within(starter).getByText(
+            "You're on Pro. Choose Yearly above to switch.",
+          ),
+        ).toBeVisible();
+        expect(
+          screen.queryByTestId('checkout-plan_starter'),
+        ).not.toBeInTheDocument();
+        expect(screen.queryByText(/No charge today/)).not.toBeInTheDocument();
+      });
+
+      it('keeps the held billing period when keeping Pro on the other toggle', async () => {
+        mocks.getSubscription.mockResolvedValue({
+          subscriptionItems: [
+            heldPro({ canceledAt: new Date(), planPeriod: 'annual' }),
+          ],
+        });
+
+        await renderPricingTable();
+
+        await screen.findByRole('article', { name: 'Pro' });
+        expect(screen.getByTestId('checkout-plan_pro')).toHaveAttribute(
+          'data-period',
+          'annual',
+        );
+      });
+    });
+
+    it('offers a Starter user an upgrade to Pro and emphasizes it', async () => {
+      mocks.getSubscription.mockResolvedValue(subscribedTo('starter_plan'));
+
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Pro' });
+      expectCard('Free', {
+        action: "You're on Starter",
+        current: false,
+        featured: false,
+      });
+      expectCard('Starter', {
+        action: 'Manage subscription',
+        current: true,
+        featured: false,
+      });
+      expectCard('Pro', {
+        action: 'Upgrade to Pro',
+        current: false,
+        featured: true,
+      });
+      expect(screen.getByTestId('checkout-plan_pro')).toBeVisible();
+    });
+
+    it('marks Free as the current plan for a user with no paid subscription', async () => {
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Pro' });
+      expectCard('Free', {
+        action: 'Create a plan',
+        current: true,
+        featured: false,
+      });
+      expect(
+        within(screen.getByRole('article', { name: 'Free' })).getByRole(
+          'link',
+          { name: 'Create a plan' },
+        ),
+      ).toHaveAttribute('href', '/plans/new');
+      expectCard('Starter', {
+        action: 'Begin with Starter',
+        current: false,
+        featured: true,
+      });
+      expectCard('Pro', {
+        action: 'Begin with Pro',
+        current: false,
+        featured: false,
+      });
+    });
+
+    it('offers no upgrade from a paid plan it cannot rank', async () => {
+      mocks.getSubscription.mockResolvedValue(subscribedTo('legacy_plan'));
+
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Pro' });
+      expectCard('Free', {
+        action: 'Create a plan',
+        current: false,
+        featured: false,
+      });
+      expectCard('Starter', {
+        action: 'Begin with Starter',
+        current: false,
+        featured: false,
+      });
+      expectCard('Pro', {
+        action: 'Begin with Pro',
+        current: false,
+        featured: false,
+      });
+    });
+
+    it('keeps a past-due subscriber on their plan', async () => {
+      mocks.getSubscription.mockResolvedValue({
+        subscriptionItems: [
+          {
+            plan: { hasBaseFee: true, slug: 'starter_plan' },
+            status: 'past_due',
+          },
+        ],
+      });
+
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Starter' });
+      expectCard('Starter', {
+        action: 'Manage subscription',
+        current: true,
+        featured: false,
+      });
+    });
+
+    it('drops a resumed checkout for a plan below the one they hold', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/pricing?checkoutPlan=plan_starter&checkoutPeriod=month&checkoutConsent=1',
+      );
+      mocks.getSubscription.mockResolvedValue(subscribedTo('pro_plan'));
+
+      await renderPricingTable();
+
+      await screen.findByRole('article', { name: 'Starter' });
+      await waitFor(() => expect(window.location.search).toBe(''));
+      expect(mocks.openCheckout).not.toHaveBeenCalled();
+      expect(mocks.openSubscription).not.toHaveBeenCalled();
+    });
+
+    it('resumes a checkout for a plan above the one they hold', async () => {
+      window.history.replaceState(
+        {},
+        '',
+        '/pricing?checkoutPlan=plan_pro&checkoutPeriod=month&checkoutConsent=1',
+      );
+      mocks.getSubscription.mockResolvedValue(subscribedTo('starter_plan'));
+
+      await renderPricingTable();
+
+      await waitFor(() =>
+        expect(mocks.openCheckout).toHaveBeenCalledWith('plan_pro', 'month'),
+      );
+      expect(window.location.search).toBe('');
+    });
+
+    it('shows no viewer state while the app is closed', async () => {
+      mocks.getSubscription.mockResolvedValue(subscribedTo('pro_plan'));
+
+      await renderPricingTable({ appClosed: true });
+
+      await screen.findByRole('article', { name: 'Pro' });
+      expectCard('Starter', {
+        action: 'Begin with Starter',
+        current: false,
+        featured: true,
+      });
+      expectCard('Pro', {
+        action: 'Begin with Pro',
+        current: false,
+        featured: false,
+      });
+    });
   });
 
   it('uses an annual-only plan price and checkout period on the monthly view', async () => {

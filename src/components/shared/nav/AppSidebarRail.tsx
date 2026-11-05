@@ -159,6 +159,7 @@ export default function AppSidebarRail({
             <TooltipTrigger asChild>
               <Button
                 asChild
+                variant='outline'
                 size='icon'
                 aria-label={createPlanCta.label}
                 className='size-[36px]'

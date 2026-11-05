@@ -1,6 +1,7 @@
 import { BillingUnavailable } from '@/app/(app)/settings/billing/components/BillingUnavailable';
 import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
 import { ManageSubscriptionButton } from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
+import { ScheduledPlanChangeNotice } from '@/app/(app)/settings/billing/components/ScheduledPlanChangeNotice';
 import {
   AUTO_RENEWAL_NOTICE,
   formatSubscriptionStatus,
@@ -124,6 +125,7 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
       {showRenewalNotice ? (
         <p className='type-body text-muted-foreground'>{AUTO_RENEWAL_NOTICE}</p>
       ) : null}
+      {canManageSubscription ? <ScheduledPlanChangeNotice /> : null}
     </div>
   );
 }

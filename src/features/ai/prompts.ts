@@ -6,6 +6,13 @@ import {
 } from '@/features/ai/constants';
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 
+/**
+ * Task descriptions render as plain text in the plan timeline, so code in one
+ * shows as a run-on sentence or literal backticks.
+ */
+const TASK_DESCRIPTION_RULE =
+  'Never put code, commands, queries, sample data or backticks in a task description: describe the work in plain language, because code belongs in the lesson.';
+
 export function buildUserPrompt(p: GenerationInput): string {
   const sanitizedTopic = sanitizeUserInput(p.topic, TOPIC_PROMPT_MAX_CHARS);
   const lines = [
@@ -34,6 +41,7 @@ export function buildUserPrompt(p: GenerationInput): string {
   lines.push(
     '',
     'Generate a learning plan as JSON that adheres to the schema and constraints.',
+    TASK_DESCRIPTION_RULE,
   );
 
   return lines.join('\n');
