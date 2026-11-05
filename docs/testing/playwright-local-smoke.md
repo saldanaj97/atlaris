@@ -66,6 +66,7 @@ SMOKE_STATE_FILE=/path/state.json pnpm exec tsx scripts/tests/smoke/start-app.ts
   - deterministic AI smoke env
   - app server on `http://127.0.0.1:3101`
   - local jobs Worker (`cf dev`) on `http://127.0.0.1:3102`, with mock AI against the smoke database; the app hands plan generation to it with a signed command, as in production. The Worker's local Flagship store is empty, so `module-lesson-generation` is off and smoke does not generate lessons. It refuses to start while `workers/jobs/.dev.vars` exists, because `cf dev` would use that file instead of the smoke env
+  - the Worker's mock generation is delayed (`SMOKE_WORKER_MOCK_GENERATION_DELAY_MS`) so the plan page renders while the plan is still generating. `auth.launch-blockers.spec.ts` asserts that a status poll succeeded before modules appeared, and `waitForGeneratedModules` never reloads, so modules can only arrive through the page's own polling
 
 `smoke-auth` intentionally does not load Clerk browser JS. It proves authenticated
 product launch blockers against local auth, Clerk Billing fixture state, mock AI,

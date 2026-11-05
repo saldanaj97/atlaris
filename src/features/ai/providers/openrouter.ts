@@ -140,6 +140,12 @@ function createFreshMetadataUsage(): ProviderUsage {
   };
 }
 
+/**
+ * OpenRouter rejects a request whose `models` array holds more than this, with
+ * a 400 before any model runs.
+ */
+export const OPENROUTER_MAX_ROUTE_MODELS = 3;
+
 function buildRouteModels(
   primaryModel: string,
   fallbackModels: readonly string[] = [],
@@ -153,7 +159,20 @@ function buildRouteModels(
     seenModels.add(model);
     routeModels.push(model);
   }
-  return routeModels;
+  if (routeModels.length <= OPENROUTER_MAX_ROUTE_MODELS) {
+    return routeModels;
+  }
+  // A shorter fallback chain beats a request that cannot run at all.
+  logger.warn(
+    {
+      source: 'openrouter-provider',
+      event: 'model_route_truncated',
+      primaryModel,
+      droppedModels: routeModels.slice(OPENROUTER_MAX_ROUTE_MODELS),
+    },
+    'Model route exceeds the OpenRouter limit; dropping its last models',
+  );
+  return routeModels.slice(0, OPENROUTER_MAX_ROUTE_MODELS);
 }
 
 async function getRouteTokenCeiling(

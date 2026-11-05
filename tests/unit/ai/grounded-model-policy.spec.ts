@@ -14,6 +14,7 @@ import {
   PRO_GROUNDED_WRITER_CATALOG,
   STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
+import { OPENROUTER_MAX_ROUTE_MODELS } from '@/features/ai/providers/openrouter';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
 import { describe, expect, it } from 'vitest';
 
@@ -153,6 +154,22 @@ describe('getGroundedOperationPolicy', () => {
 });
 
 describe('getGroundedModelRoute', () => {
+  it('keeps every route, with or without a pick, within the provider limit', () => {
+    for (const tier of TIERS) {
+      for (const operation of GROUNDED_OPERATIONS) {
+        const policy = getGroundedOperationPolicy(tier, operation);
+        if (!policy.allowed) continue;
+        for (const pick of [null, ...policy.catalog]) {
+          const route = getGroundedModelRoute(tier, operation, pick);
+          expect(
+            route?.length,
+            `${tier} ${operation} pick ${String(pick)}`,
+          ).toBeLessThanOrEqual(OPENROUTER_MAX_ROUTE_MODELS);
+        }
+      }
+    }
+  });
+
   it('puts a Pro catalog pick first, then the default route without it', () => {
     expect(
       getGroundedModelRoute('pro', 'initial_outline', 'openai/gpt-6.1-sol'),
