@@ -16,6 +16,14 @@ import {
 } from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+import {
+  findHeldPaidPlan,
+  findScheduledPaidPlan,
+  formatPlanSwitchDate,
+  type ClerkSubscriptionSnapshot,
+  type HeldPaidPlan,
+  type ScheduledPaidPlan,
+} from '@/features/billing/clerk-billing/subscription-snapshot';
 import { CREATE_PLAN_LABEL } from '@/features/navigation/create-plan-cta';
 import { ROUTES } from '@/features/navigation/routes';
 import { clientLogger } from '@/lib/logging/client';
@@ -38,14 +46,8 @@ type ClerkPlanSnapshot = {
   annualMonthlyFee?: PricingMoney | null;
 };
 
-type ClerkSubscriptionSnapshot = {
-  subscriptionItems: Array<{
-    plan: { hasBaseFee: boolean; slug: string };
-    status: 'active' | 'ended' | 'upcoming' | 'past_due';
-  }>;
-};
-
 type ClerkPricingTableProps = {
+  /** Where a new or upgraded subscription lands; carries the wait for its webhook. */
   newSubscriptionRedirectUrl: string;
   /** Maintenance or launch waitlist: plans stay visible but every CTA goes through the proxy instead of Clerk modals. */
   appClosed?: boolean;
@@ -123,16 +125,10 @@ function featuredPlanSlug(paidPlanSlug: string | null): string {
     : paidPlanSlug;
 }
 
-function currentPaidPlanSlug(
-  subscription: ClerkSubscriptionSnapshot | null,
-): string | null {
-  return (
-    subscription?.subscriptionItems.find(
-      (item) =>
-        item.plan.hasBaseFee &&
-        (item.status === 'active' || item.status === 'past_due'),
-    )?.plan.slug ?? null
-  );
+function untilPeriodEnd(heldPlan: HeldPaidPlan): string {
+  return heldPlan.periodEnd
+    ? formatPlanSwitchDate(heldPlan.periodEnd)
+    : 'your billing period ends';
 }
 
 // Card copy comes from our tier limits, not from the Clerk plan description
@@ -170,7 +166,8 @@ export function ClerkPricingTable({
     null,
   );
   const [period, setPeriod] = useState<BillingPeriod>('month');
-  const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
+  const [heldPlan, setHeldPlan] = useState<HeldPaidPlan | null>(null);
+  const [scheduledPlan, setScheduledPlan] = useState<ScheduledPaidPlan | null>(
     null,
   );
   const [loadFailed, setLoadFailed] = useState(false);
@@ -210,8 +207,9 @@ export function ClerkPricingTable({
         setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);
-        const nextPaidPlanSlug = currentPaidPlanSlug(nextSubscription);
-        setActivePaidPlanSlug(nextPaidPlanSlug);
+        const nextHeldPlan = findHeldPaidPlan(nextSubscription);
+        setHeldPlan(nextHeldPlan);
+        setScheduledPlan(findScheduledPaidPlan(nextSubscription));
         setSubscriptionUserId(userId ?? null);
 
         const url = new URL(window.location.href);
@@ -241,8 +239,9 @@ export function ClerkPricingTable({
                 : 'annual';
           setPeriod(nextPeriod);
           if (isLoaded && userId) {
-            // A plan below the one they hold has no checkout to resume.
-            if (isBelowPlan(requestedPlan.slug, nextPaidPlanSlug)) {
+            // A signed-out click meant a new subscription. Moving to a lower plan
+            // is a scheduled switch, so it starts from that plan's own card.
+            if (isBelowPlan(requestedPlan.slug, nextHeldPlan?.slug ?? null)) {
               clearCheckoutParams();
               return;
             }
@@ -306,11 +305,14 @@ export function ClerkPricingTable({
   // there goes through sign-in, whatever plan the account holds.
   const viewerPlansKnown =
     !appClosed && isLoaded && Boolean(userId) && subscriptionUserId === userId;
+  const activePaidPlanSlug = heldPlan?.slug ?? null;
   const viewerPaidPlanSlug = viewerPlansKnown ? activePaidPlanSlug : null;
+  const planNameBySlug = (slug: string): string =>
+    plans.find((plan) => plan.slug === slug)?.name ??
+    PLAN_NAME_BY_SLUG[slug] ??
+    slug;
   const viewerPaidPlanName = viewerPaidPlanSlug
-    ? (plans.find((plan) => plan.slug === viewerPaidPlanSlug)?.name ??
-      PLAN_NAME_BY_SLUG[viewerPaidPlanSlug] ??
-      viewerPaidPlanSlug)
+    ? planNameBySlug(viewerPaidPlanSlug)
     : null;
 
   return (
@@ -350,7 +352,14 @@ export function ClerkPricingTable({
           );
         }
 
-        if (userId && plan.slug === activePaidPlanSlug) {
+        const holdsThisPlan =
+          Boolean(userId) && plan.slug === activePaidPlanSlug;
+        // Subscribing to the held plan again is how Clerk undoes a pending change.
+        const keepsHeldPlan =
+          holdsThisPlan &&
+          (heldPlan?.endingAtPeriodEnd ||
+            (heldPlan?.canScheduleSwitch && scheduledPlan !== null));
+        if (holdsThisPlan && !keepsHeldPlan) {
           return (
             <SubscriptionDetailsButton>
               <button className={actionClassName} ref={actionRef} type='button'>
@@ -360,15 +369,39 @@ export function ClerkPricingTable({
           );
         }
 
-        // Clerk's subscription drawer only cancels the current plan, so a lower
-        // plan has no action to offer here.
-        if (userId && isBelowPlan(plan.slug, activePaidPlanSlug)) {
+        const belowHeldPlan =
+          Boolean(userId) && isBelowPlan(plan.slug, activePaidPlanSlug);
+        if (belowHeldPlan && plan.slug === scheduledPlan?.slug) {
           return (
-            <p className={styles.planNote}>You're on {viewerPaidPlanName}</p>
+            <p className={styles.planNote}>
+              {scheduledPlan.startsAt
+                ? `Starts ${formatPlanSwitchDate(scheduledPlan.startsAt)}. You're on ${viewerPaidPlanName} until then.`
+                : `Starts when your ${viewerPaidPlanName} period ends.`}
+            </p>
           );
         }
 
-        if (!isPaidPlan(plan, planPeriod)) {
+        // Clerk defers a move to a lower paid plan to the end of the period. A
+        // change of billing period may not defer, so it isn't offered as one.
+        const switchesToPlan =
+          belowHeldPlan &&
+          heldPlan?.canScheduleSwitch === true &&
+          isPaidPlan(plan, planPeriod) &&
+          (heldPlan.planPeriod === null || heldPlan.planPeriod === planPeriod);
+        if (belowHeldPlan && !switchesToPlan) {
+          const otherBillingPeriod =
+            heldPlan?.canScheduleSwitch === true &&
+            isPaidPlan(plan, planPeriod);
+          return (
+            <p className={styles.planNote}>
+              {otherBillingPeriod
+                ? `You're on ${viewerPaidPlanName}. Choose ${heldPlan.planPeriod === 'annual' ? 'Yearly' : 'Monthly'} above to switch.`
+                : `You're on ${viewerPaidPlanName}`}
+            </p>
+          );
+        }
+
+        if (!keepsHeldPlan && !isPaidPlan(plan, planPeriod)) {
           return userId ? (
             <Link className={actionClassName} href={ROUTES.PLANS.NEW}>
               {CREATE_PLAN_LABEL}
@@ -386,22 +419,38 @@ export function ClerkPricingTable({
           );
         }
 
-        const label =
-          userId &&
-          activePaidPlanSlug &&
-          isBelowPlan(activePaidPlanSlug, plan.slug)
-            ? `Upgrade to ${plan.name}`
-            : startLabel;
-        const agreed = agreedActions[actionKey] === true;
+        const label = keepsHeldPlan
+          ? `Keep ${plan.name}`
+          : switchesToPlan
+            ? `Switch to ${plan.name}`
+            : userId &&
+                activePaidPlanSlug &&
+                isBelowPlan(activePaidPlanSlug, plan.slug)
+              ? `Upgrade to ${plan.name}`
+              : startLabel;
+        // Keeping a plan renews it on the terms the viewer already has.
+        const checkoutPeriod =
+          (keepsHeldPlan ? heldPlan?.planPeriod : null) ?? planPeriod;
+        const checkoutActionKey = `${plan.slug}:${checkoutPeriod}`;
+        const agreed = agreedActions[checkoutActionKey] === true;
         const hintId = agreed
           ? undefined
-          : renewalConsentHintId(plan, planPeriod);
+          : renewalConsentHintId(plan, checkoutPeriod);
         const redirect = buildCheckoutSignInRedirect(
           plan.id,
           plan.slug,
-          planPeriod,
+          checkoutPeriod,
           agreed,
         );
+        const pendingChangeNote = keepsHeldPlan
+          ? scheduledPlan?.startsAt
+            ? `Moves to ${planNameBySlug(scheduledPlan.slug)} on ${formatPlanSwitchDate(scheduledPlan.startsAt)}.`
+            : scheduledPlan
+              ? `Moves to ${planNameBySlug(scheduledPlan.slug)} when this period ends.`
+              : heldPlan?.periodEnd
+                ? `Access ends ${formatPlanSwitchDate(heldPlan.periodEnd)}.`
+                : 'Access ends when this period ends.'
+          : null;
         return (
           <>
             <RenewalConsent
@@ -409,17 +458,32 @@ export function ClerkPricingTable({
               onAgreedChange={(next) =>
                 setAgreedActions((current) => ({
                   ...current,
-                  [actionKey]: next,
+                  [checkoutActionKey]: next,
                 }))
               }
-              period={planPeriod}
+              period={checkoutPeriod}
               plan={plan}
             />
+            {switchesToPlan && heldPlan ? (
+              <p className={styles.planSwitchNote}>
+                You keep {viewerPaidPlanName} until {untilPeriodEnd(heldPlan)},
+                then move to {plan.name}. No charge today.
+              </p>
+            ) : null}
+            {pendingChangeNote ? (
+              <p className={styles.planSwitchNote}>{pendingChangeNote}</p>
+            ) : null}
             {userId ? (
               <CheckoutButton
-                newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+                // Scheduling or keeping a plan changes no entitlement today, so
+                // there is no webhook for Settings to wait on.
+                newSubscriptionRedirectUrl={
+                  switchesToPlan || keepsHeldPlan
+                    ? ROUTES.SETTINGS.BILLING
+                    : newSubscriptionRedirectUrl
+                }
                 planId={plan.id}
-                planPeriod={planPeriod}
+                planPeriod={checkoutPeriod}
               >
                 <button
                   aria-describedby={hintId}
@@ -449,7 +513,7 @@ export function ClerkPricingTable({
               </SignInButton>
             )}
             {agreed ? null : (
-              <RenewalConsentHint period={planPeriod} plan={plan} />
+              <RenewalConsentHint period={checkoutPeriod} plan={plan} />
             )}
           </>
         );

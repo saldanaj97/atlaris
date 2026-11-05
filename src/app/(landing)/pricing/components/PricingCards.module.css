@@ -434,6 +434,15 @@
   text-align: center;
 }
 
+/* What a plan switch will do, shown with the action that changes or keeps it. */
+.planSwitchNote {
+  margin: 0 0 0.9rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 /* Feature comparison — a quiet, scrollable ledger beneath the cards. */
 .comparison {
   width: 100%;

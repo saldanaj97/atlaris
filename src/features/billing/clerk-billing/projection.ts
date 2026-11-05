@@ -300,6 +300,37 @@ function latestPeriodEnd(items: ClerkBillingProjectionItem[]): Date | null {
   }, null);
 }
 
+/**
+ * After a scheduled switch to a lower plan, a failed first charge leaves the
+ * lower plan past due and the stored tier on a plan Clerk no longer has live
+ * (Clerk may omit ended items). Access follows the lower plan. A past-due item
+ * above the stored tier never promotes.
+ */
+function lowerPastDueItemAfterPlanEnded(
+  paidItems: ClerkBillingProjectionItem[],
+  currentTier: Exclude<SubscriptionTier, 'free'>,
+  now: Date,
+): ClerkBillingProjectionItem | null {
+  const currentPlanIsLive = paidItems.some(
+    (item) =>
+      item.tier === currentTier &&
+      (item.status === 'active' ||
+        item.status === 'past_due' ||
+        isRetainedCanceledItem(item, now)),
+  );
+  if (currentPlanIsLive) {
+    return null;
+  }
+  return chooseHighestTierItem(
+    paidItems.filter(
+      (item) =>
+        item.status === 'past_due' &&
+        item.tier !== null &&
+        PAID_TIER_RANK[item.tier] < PAID_TIER_RANK[currentTier],
+    ),
+  );
+}
+
 function hasTerminalSubscription(
   source: ClerkBillingProjectionSource,
 ): boolean {
@@ -323,6 +354,7 @@ export function projectClerkBillingSource(
   }
 
   const paidItems = source.items.filter((item) => isPaidTier(item.tier));
+  const upcomingPaidItem = paidItems.find((item) => item.status === 'upcoming');
 
   if (source.paymentAttemptStatus === 'failed') {
     // Failed attempts can include active-looking items; never use them to promote a tier.
@@ -330,10 +362,17 @@ export function projectClerkBillingSource(
       return null;
     }
 
+    const downgradedPastDueItem = lowerPastDueItemAfterPlanEnded(
+      paidItems,
+      current.subscriptionTier,
+      now,
+    );
+
     return {
-      subscriptionTier: current.subscriptionTier,
+      subscriptionTier: downgradedPastDueItem?.tier ?? current.subscriptionTier,
       subscriptionStatus: 'past_due',
-      subscriptionPeriodEnd: current.subscriptionPeriodEnd,
+      subscriptionPeriodEnd:
+        downgradedPastDueItem?.periodEnd ?? current.subscriptionPeriodEnd,
       cancelAtPeriodEnd: current.cancelAtPeriodEnd,
     };
   }
@@ -347,7 +386,9 @@ export function projectClerkBillingSource(
       subscriptionTier: activePaidItem.tier,
       subscriptionStatus: activePaidItem.isFreeTrial ? 'trialing' : 'active',
       subscriptionPeriodEnd: activePaidItem.periodEnd,
-      cancelAtPeriodEnd: isCanceledAtPeriodEnd(activePaidItem, now),
+      // A scheduled switch replaces the plan at period end; access does not end.
+      cancelAtPeriodEnd:
+        !upcomingPaidItem && isCanceledAtPeriodEnd(activePaidItem, now),
     };
   }
 
@@ -357,6 +398,20 @@ export function projectClerkBillingSource(
   if (source.subscriptionStatus === 'past_due' || pastDuePaidItems.length > 0) {
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
+    }
+
+    const downgradedPastDueItem = lowerPastDueItemAfterPlanEnded(
+      paidItems,
+      current.subscriptionTier,
+      now,
+    );
+    if (downgradedPastDueItem?.tier) {
+      return {
+        subscriptionTier: downgradedPastDueItem.tier,
+        subscriptionStatus: 'past_due',
+        subscriptionPeriodEnd: downgradedPastDueItem.periodEnd,
+        cancelAtPeriodEnd: isCanceledAtPeriodEnd(downgradedPastDueItem, now),
+      };
     }
 
     const currentTierPastDueItems = pastDuePaidItems.filter(
@@ -385,13 +440,30 @@ export function projectClerkBillingSource(
     return {
       subscriptionTier: retainedPaidItem.tier,
       subscriptionStatus:
-        source.subscriptionStatus === 'active'
+        source.subscriptionStatus === 'active' || upcomingPaidItem
           ? retainedPaidItem.isFreeTrial
             ? 'trialing'
             : 'active'
           : 'canceled',
       subscriptionPeriodEnd: retainedPaidItem.periodEnd,
-      cancelAtPeriodEnd: true,
+      cancelAtPeriodEnd: !upcomingPaidItem,
+    };
+  }
+
+  // The held plan has ended and the scheduled paid plan hasn't started yet. The
+  // customer is moving to that plan, not leaving, so don't fall through to Free.
+  if (upcomingPaidItem?.tier && isPaidTier(current.subscriptionTier)) {
+    return {
+      // An unpaid upcoming plan above the stored tier never promotes.
+      subscriptionTier:
+        PAID_TIER_RANK[upcomingPaidItem.tier] <
+        PAID_TIER_RANK[current.subscriptionTier]
+          ? upcomingPaidItem.tier
+          : current.subscriptionTier,
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd:
+        upcomingPaidItem.periodEnd ?? current.subscriptionPeriodEnd,
+      cancelAtPeriodEnd: false,
     };
   }
 
