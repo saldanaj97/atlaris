@@ -11,6 +11,7 @@ import {
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
+import { normalizeProxyPathname } from '@/lib/proxy/normalize-pathname';
 import {
   applyProxySecurityHeaders,
   createContentSecurityPolicy,
@@ -93,7 +94,11 @@ async function handleProxyRequest(
   protectRequest: ProtectRequest,
   isSignedIn: IsSignedIn,
 ): Promise<NextResponse> {
-  const { pathname } = request.nextUrl;
+  // Policy checks compare the decoded path; see normalizeProxyPathname.
+  const pathname = normalizeProxyPathname(request.nextUrl.pathname);
+  if (pathname === null) {
+    return withCorrelationId(request, new NextResponse(null, { status: 400 }));
+  }
 
   // Payment/auth provider webhooks bypass all checks including maintenance mode.
   if (isProviderWebhookRoute(pathname)) {
@@ -207,5 +212,9 @@ export const config = {
     // the public PostHog proxy stays outside Clerk; that route owns validation.
     '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)).*)',
     '/(api|trpc)(.*)',
+    // Protected app prefixes run the proxy whatever their extension, so
+    // `/plans/x.txt` cannot reach `plans/[id]` without the gate, CSP, and auth.
+    // Keep in step with PROTECTED_PREFIXES in src/lib/proxy/middleware-policy.ts.
+    '/(dashboard|plans|account|settings|analytics)(.*)',
   ],
 };

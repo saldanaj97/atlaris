@@ -216,7 +216,7 @@ Do these Thursday 2026-11-12 in the evening, after a passing run and before Prod
    pnpm launch:check-gate --expect off --wait 180
    ```
 
-   **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, and `/waitlist` redirects away.
+   **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, `/waitlist` redirects away, and signed-out `/%64ashboard` redirects to Clerk sign-in.
 
 6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
 7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
@@ -229,5 +229,5 @@ Do these Thursday 2026-11-12 in the evening, after a passing run and before Prod
 
 `pnpm launch:check-gate --expect on|off [--base-url <origin>] [--wait <seconds>]` (`scripts/launch/check-gate.ts`) sends signed-out GETs with redirects off and prints `PASS`/`FAIL` per check. It exits `1` if any check fails and never needs credentials, so run it from anywhere.
 
-- `--expect on` (before the flag-off, and after a rollback): `/dashboard`, `/auth/sign-up` (with `?from=sign-up`) and `/plans/new` redirect to `/waitlist`; `/waitlist` and `/pricing` answer `200`.
-- `--expect off` (flag-off step 5): the checks listed there.
+- `--expect on` (before the flag-off, and after a rollback): `/dashboard`, `/auth/sign-up` (with `?from=sign-up`) and `/plans/new` redirect to `/waitlist`; `/waitlist` and `/pricing` answer `200`. It also checks that the extension path `/plans/x.txt` redirects to `/waitlist`, which proves the proxy runs for it ([DEV-208](https://linear.app/saldana-software/issue/DEV-208), lead 3).
+- `--expect off` (flag-off step 5): the checks listed there, plus a signed-out `/%64ashboard` that must redirect to `/auth/sign-in`. A `404` or `200` there means the proxy compared the encoded path instead of the routed one (DEV-208, lead 3).

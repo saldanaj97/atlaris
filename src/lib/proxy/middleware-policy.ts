@@ -1,5 +1,6 @@
 import { stripTrailingSlash } from '@/lib/path/strip-trailing-slash';
 
+/** The page prefixes here are also listed in the `config.matcher` of src/proxy.ts. */
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/api',

@@ -80,6 +80,8 @@ export async function runGateChecks(
     pathOf(r.location)?.startsWith('/waitlist') === true;
 
   if (expect === 'on') {
+    // The proxy matcher used to skip extension paths (DEV-208, lead 3).
+    const planWithExtension = await probe('/plans/x.txt');
     return [
       check(
         '/dashboard redirects to /waitlist',
@@ -103,9 +105,18 @@ export async function runGateChecks(
         describe(waitlist),
       ),
       check('/pricing answers 200', pricing.status === 200, describe(pricing)),
+      check(
+        '/plans/x.txt redirects to /waitlist',
+        toWaitlist(planWithExtension),
+        describe(planWithExtension),
+      ),
     ];
   }
 
+  // An encoded protected path still needs sign-in (DEV-208, lead 3). With the
+  // gate on this would pass either way, so it is only checked here.
+  const encodedDashboard = await probe('/%64ashboard');
+  const encodedDashboardPath = pathOf(encodedDashboard.location);
   const csp = signUp.csp;
   const protectAllowed = (directive: string) =>
     (csp[directive] ?? '').split(' ').includes(`https://${PROTECT_HOST}`);
@@ -139,6 +150,12 @@ export async function runGateChecks(
       describe(waitlist),
     ),
     check('/pricing answers 200', pricing.status === 200, describe(pricing)),
+    check(
+      '/%64ashboard (signed out) redirects to /auth/sign-in',
+      isRedirect(encodedDashboard.status) &&
+        encodedDashboardPath?.startsWith('/auth/sign-in') === true,
+      describe(encodedDashboard),
+    ),
   ];
 }
 
@@ -177,6 +194,9 @@ function httpProbe(baseUrl: string): Probe {
   return async (path) => {
     const url = new URL(path, baseUrl);
     const response = await fetch(url, {
+      // Clerk's auth.protect() redirects only page requests; Node's default
+      // `Accept: */*` gets a 404 instead of the sign-in redirect.
+      headers: { accept: 'text/html' },
       redirect: 'manual',
       signal: AbortSignal.timeout(15_000),
     });
