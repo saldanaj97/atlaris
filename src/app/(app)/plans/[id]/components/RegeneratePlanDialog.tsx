@@ -40,6 +40,10 @@ function toSubmitError(
         message: 'Regenerating plans is not included on your plan.',
         upgrade: true,
       };
+    // The server message names the reset date (DEV-208).
+    case API_ERROR_CODES.AI_BUDGET_EXHAUSTED:
+    case API_ERROR_CODES.AI_GENERATION_PAUSED:
+      return { message: parsed.error };
     case 'SERVICE_UNAVAILABLE':
       return {
         message: 'Regeneration is unavailable right now. Try again later.',

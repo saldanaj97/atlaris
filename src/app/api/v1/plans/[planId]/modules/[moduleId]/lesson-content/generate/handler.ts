@@ -1,5 +1,6 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
+import { assertAiSpendAllowed } from '@/features/billing/ai-spend-guard';
 import {
   startModuleLessonGeneration,
   type StartModuleLessonGenerationResult,
@@ -34,6 +35,7 @@ export function createModuleLessonContentGenerateHandler(
         ownerUserId: actor.id,
         dbClient: db,
       });
+      await assertAiSpendAllowed(actor, db);
 
       const result = await startGeneration({
         dbClient: db,

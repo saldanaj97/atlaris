@@ -1,6 +1,8 @@
 import type { ModuleLessonGenerationApiResponse } from '@/shared/types/lesson-content.types';
 
+import { normalizeApiErrorResponse } from '@/lib/api/error-response';
 import { clientLogger } from '@/lib/logging/client';
+import { API_ERROR_CODES } from '@/shared/constants/api-error-codes';
 import {
   ModuleLessonGenerationApiResponseSchema,
   ModuleLessonGenerationStatusResponseSchema,
@@ -305,6 +307,22 @@ export function useModuleLessonGeneration({
           toast.error('Lesson generation returned an invalid response.');
           setLocalFailureKey(generationKey);
           return;
+        }
+
+        if (!response.ok) {
+          const apiError = normalizeApiErrorResponse(raw, {
+            status: response.status,
+            fallbackMessage: 'Lesson generation request failed.',
+          });
+          // AI spend refusals name when generation is available again (DEV-208).
+          if (
+            apiError.code === API_ERROR_CODES.AI_BUDGET_EXHAUSTED ||
+            apiError.code === API_ERROR_CODES.AI_GENERATION_PAUSED
+          ) {
+            toast.error(apiError.error);
+            setLocalFailureKey(generationKey);
+            return;
+          }
         }
 
         const parsed = ModuleLessonGenerationApiResponseSchema.safeParse(raw);

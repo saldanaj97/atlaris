@@ -4,7 +4,9 @@ import {
   countGenerationBudgetCutsForModule,
   insertGenerationBudgetCuts,
   recordDiscardedCallUsage,
+  sumAllAiSpendMicrousd,
   sumPlanAiSpendMicrousd,
+  sumUserAiSpendMicrousd,
 } from '@/lib/db/queries/plan-ai-budget';
 import {
   aiUsageEvents,
@@ -311,5 +313,87 @@ describe('plan AI budget queries', () => {
       .from(aiUsageEvents)
       .where(eq(aiUsageEvents.id, event!.id));
     expect(kept).toEqual({ planId: null });
+  });
+
+  describe('per-user and global spend (DEV-208)', () => {
+    async function userFixture(suffix: string) {
+      const authUserId = buildTestAuthUserId(`spend-${suffix}`);
+      return ensureUser({ authUserId, email: buildTestEmail(authUserId) });
+    }
+
+    it('sums one user since a time, counting estimates and deleted plans', async () => {
+      const userId = await userFixture('user');
+      const otherUserId = await userFixture('other');
+      const plan = await createTestPlan({ userId, topic: 'Spend Plan' });
+      const deleted = await createTestPlan({ userId, topic: 'Deleted Plan' });
+      await db.insert(aiUsageEvents).values([
+        // Last month: not counted.
+        usageEvent(userId, plan.id, '2026-08-31T23:59:59.000Z', {
+          providerCostMicrousd: BigInt(5_000_000),
+        }),
+        usageEvent(userId, plan.id, '2026-09-02T00:00:00.000Z', {
+          providerCostMicrousd: BigInt(1_000),
+        }),
+        // No provider cost: the catalog estimate counts.
+        usageEvent(userId, plan.id, '2026-09-03T00:00:00.000Z', {
+          costCents: 3,
+        }),
+        usageEvent(userId, deleted.id, '2026-09-04T00:00:00.000Z', {
+          providerCostMicrousd: BigInt(20_000),
+        }),
+        usageEvent(otherUserId, null, '2026-09-04T00:00:00.000Z', {
+          providerCostMicrousd: BigInt(9_000_000),
+        }),
+      ]);
+      // Research rows go with their plan, so they are not in the user total.
+      await db.insert(planResearch).values({
+        planId: plan.id,
+        brief: 'Brief',
+        mode: 'fast',
+        status: 'ok',
+        costMicrousd: 400_000,
+        createdAt: new Date('2026-09-02T00:00:00.000Z'),
+      });
+      await db.delete(learningPlans).where(eq(learningPlans.id, deleted.id));
+
+      await expect(
+        sumUserAiSpendMicrousd(
+          userId,
+          new Date('2026-09-01T00:00:00.000Z'),
+          db,
+        ),
+      ).resolves.toBe(1_000 + 30_000 + 20_000);
+    });
+
+    // Past dates only: the guard's live window is "today", and rows dated in
+    // the future would count toward it in other specs on this database.
+    it('sums every user and research run since a time', async () => {
+      const userId = await userFixture('global-a');
+      const otherUserId = await userFixture('global-b');
+      const plan = await createTestPlan({ userId, topic: 'Global Plan' });
+      await db.insert(aiUsageEvents).values([
+        usageEvent(userId, plan.id, '2026-09-13T23:00:00.000Z', {
+          providerCostMicrousd: BigInt(7_000_000),
+        }),
+        usageEvent(userId, plan.id, '2026-09-14T01:00:00.000Z', {
+          providerCostMicrousd: BigInt(2_000),
+        }),
+        usageEvent(otherUserId, null, '2026-09-14T02:00:00.000Z', {
+          costCents: 1,
+        }),
+      ]);
+      await db.insert(planResearch).values({
+        planId: plan.id,
+        brief: 'Brief',
+        mode: 'fast',
+        status: 'ok',
+        costMicrousd: 500,
+        createdAt: new Date('2026-09-14T03:00:00.000Z'),
+      });
+
+      await expect(
+        sumAllAiSpendMicrousd(new Date('2026-09-14T00:00:00.000Z'), db),
+      ).resolves.toBe(2_000 + 10_000 + 500);
+    });
   });
 });

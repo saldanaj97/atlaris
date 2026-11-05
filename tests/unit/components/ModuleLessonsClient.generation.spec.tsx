@@ -96,6 +96,33 @@ describe('ModuleLessonsClient generation', () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
+  it('shows the monthly AI budget message and does not auto-post again', async () => {
+    const message =
+      "You've reached this month's AI budget. It resets on December 1, 2026.";
+    const fetchMock = vi.fn().mockResolvedValue(
+      mockJsonFetchResponse(
+        {
+          error: message,
+          code: 'AI_BUDGET_EXHAUSTED',
+          classification: 'capped',
+          details: { resetsAt: '2026-12-01T00:00:00.000Z' },
+        },
+        { status: 429 },
+      ),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderClient();
+
+    await waitFor(() => {
+      expect(toastErrorMock).toHaveBeenCalledWith(message);
+      expect(
+        screen.getByRole('button', { name: 'Retry lesson generation' }),
+      ).toBeInTheDocument();
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it('does not auto-loop failed modules and keeps Retry', () => {
     renderClient({
       lessonGeneration: {
