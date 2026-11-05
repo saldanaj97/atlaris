@@ -1,6 +1,6 @@
 # Launch smoke checklist (production)
 
-Run this list in **production** before each waitlist batch is invited and again on launch day before and after the `launch-waitlist` flag comes off (launch is Fri 2026-11-13; the flag comes off Thu 2026-11-12 evening). It is a manual or agent-run list, not a test suite. [DEV-178](https://linear.app/saldana-software/issue/DEV-178) covers visual checks on staging; this list covers the production flows end to end. Spec and run log: [DEV-187](https://linear.app/saldana-software/issue/DEV-187).
+Run this list in **production** before each waitlist batch is invited and again on launch day before and after the `launch-waitlist` flag comes off (launch Fri 2026-11-13; the flag-off runs Thu 2026-11-12 evening, [DEV-200](https://linear.app/saldana-software/issue/DEV-200)). It is a manual or agent-run list, not a test suite. [DEV-178](https://linear.app/saldana-software/issue/DEV-178) covers visual checks on staging; this list covers the production flows end to end. Spec and run log: [DEV-187](https://linear.app/saldana-software/issue/DEV-187); the production run for launch is [DEV-199](https://linear.app/saldana-software/issue/DEV-199). Gate probe: `pnpm launch:check-gate --expect on|off` (see [Gate probe](#gate-probe)).
 
 Every production action here (checkouts, account deletion, flag, env and Clerk changes) needs the owner's go-ahead for that run. Provider dashboard steps (Vercel, Clerk, Stripe, Supabase, PostHog, Sentry, OpenRouter) are done by the owner. A failing check gets its own Linear bug, linked from DEV-187. Times are America/Chicago.
 
@@ -11,13 +11,13 @@ Every production action here (checkouts, account deletion, flag, env and Clerk c
 
 ## Before you start
 
-| Need                                | Where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production QA users                 | `qa-free@atlaris.app`, `qa-starter@atlaris.app`, `qa-pro@atlaris.app` on the Clerk production instance. Starter and Pro are on $0 complimentary prices, so their plans cost nothing to bill. `qa-free` has already used its one lifetime Free plan, so plan creation for it returns `403 FREE_PLAN_ALLOWANCE_USED`; the Free check uses a new throwaway user (check 3)                                                                                                                                                                                                                                         |
-| Getting past the gate while it's on | Signed-in users pass the gate without an override (DEV-190), so checks 3–5 only need a Clerk session. The override is needed only for signed-out pages, such as `/auth/sign-up` in check 2. There is no per-request override since DEV-192 (flags moved to Cloudflare Flagship). To check a signed-out gated page, add a short-lived targeting rule to `launch-waitlist` in the Flagship dashboard that serves **off** for `environment = production`, wait up to 90 s (about 30 s propagation plus the 60 s gate cache), run the check, then remove the rule and wait again before continuing |
-| Signing in as a QA user             | In a browser: `/auth/sign-in` with the override set. `scripts/dev/agent-session.ts` only targets `local` and `staging` ([agent-sessions.md](../development/agent-sessions.md)), so production agents sign in with a Clerk sign-in token: Backend API `POST /sign_in_tokens`, then the Frontend API at `https://clerk.atlaris.app/v1/client/sign_ins` with `strategy=ticket` and `Origin: https://atlaris.app` (cookie mode). Production rejects Backend API `POST /sessions`                                                                                                                                   |
-| Reading the production DB           | Supabase Dashboard → production project → SQL Editor (read-only queries below). Never point a local script at production                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| Sentry                              | Org `jcs-software`, projects `atlaris` (app) and `atlaris-jobs` (Worker)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Need                                | Where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Production QA users                 | `qa-free@atlaris.app`, `qa-starter@atlaris.app`, `qa-pro@atlaris.app` on the Clerk production instance. Starter and Pro are on $0 complimentary prices, so their plans cost nothing to bill. `qa-free` has already used its one lifetime Free plan, so plan creation for it returns `403 FREE_PLAN_ALLOWANCE_USED`; the Free check uses a new throwaway user (check 3)                                                                                                                                                                                                                                                                                                                |
+| Getting past the gate while it's on | Signed-in users pass the gate (DEV-190), so checks 3–5 only need a Clerk session. A temporary rule is needed only for signed-out pages, such as `/auth/sign-up` in check 2. There is no per-request override since DEV-192 (flags moved to Cloudflare Flagship). To check a signed-out gated page, add a short-lived targeting rule to `launch-waitlist` in the Flagship dashboard that serves **off** for `environment = production`, wait up to 90 s (about 30 s propagation plus the 60 s gate cache), run the check, then remove the rule and wait again before continuing. The rule opens the gate for **every** production visitor while it exists, so keep it to a few minutes |
+| Signing in as a QA user             | In a browser: `/auth/sign-in` (reachable while the waitlist is on). `scripts/dev/agent-session.ts` only targets `local` and `staging` ([agent-sessions.md](../development/agent-sessions.md)), so production agents sign in with a Clerk sign-in token: Backend API `POST /sign_in_tokens`, then the Frontend API at `https://clerk.atlaris.app/v1/client/sign_ins` with `strategy=ticket` and `Origin: https://atlaris.app` (cookie mode). Production rejects Backend API `POST /sessions`                                                                                                                                                                                           |
+| Reading the production DB           | Supabase Dashboard → production project → SQL Editor (read-only queries below). Never point a local script at production                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| Sentry                              | Org `jcs-software`, projects `atlaris` (app) and `atlaris-jobs` (Worker)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Run sheet
 
@@ -51,7 +51,7 @@ Failures (Linear bug links):
 
 ## 1. Waitlist form accepts entries (flag on only)
 
-User: none. Signed out, **no** override cookie. Use a real browser: Clerk bot protection rejects the join from headless Playwright with `429 bot_detected`, which shows as "We couldn’t add you right now."
+User: none. Signed out, with no temporary `launch-waitlist` rule active. Use a real browser: Clerk bot protection rejects the join from headless Playwright with `429 bot_detected`, which shows as "We couldn’t add you right now."
 
 1. Open `https://atlaris.app/dashboard`. It should redirect to `/waitlist`.
 2. Enter an address you can read (not a QA user) in **Email address** and select **Join the waitlist**.
@@ -62,17 +62,17 @@ User: none. Signed out, **no** override cookie. Use a real browser: Clerk bot pr
 
 User: a new throwaway address you can read.
 
-While the flag is on, Clerk's sign-up mode is **Waitlist**, so only an invited address can finish sign-up. The app's `/auth/sign-up` redirects signed-out visitors to `/waitlist` without the override. The invitation itself opens Clerk's Account Portal (`accounts.atlaris.app/sign-up`), not the app.
+While the flag is on, Clerk's sign-up mode is **Waitlist**, so only an invited address can finish sign-up. The app's `/auth/sign-up` redirects signed-out visitors to `/waitlist`. The invitation itself opens Clerk's Account Portal (`accounts.atlaris.app/sign-up`), not the app.
 
 1. In Clerk Dashboard → Waitlist, select **Invite** on the throwaway entry from check 1.
-2. With the override set, open `https://atlaris.app/auth/sign-up` with DevTools open.
-3. In a private window **without** the override, sign up through the "Accept invitation" link in Clerk's "Waitlist invitation" email.
+2. With the temporary `launch-waitlist` rule from [Before you start](#before-you-start) active, open `https://atlaris.app/auth/sign-up` with DevTools open, then remove the rule.
+3. In a private window, sign up through the "Accept invitation" link in Clerk's "Waitlist invitation" email.
 
 **Pass:** the Clerk sign-up form renders on `/auth/sign-up`, and the console shows no Content Security Policy violation for `*.protect.clerk.com` (allowed in `script-src` and `frame-src` by `src/lib/proxy/security-headers.ts`). After step 3, the browser lands on `https://atlaris.app/dashboard` signed in, with no `/waitlist` redirect, and a `users` row exists for the new Clerk user ID. The full in-app sign-up on `/auth/sign-up` is proven on launch day ([Flag-off](#launch-day-flag-off), step 6).
 
 ## 3. Free plan end to end
 
-User: the throwaway from check 2 (a new user still has its one Free plan). Override set.
+User: the throwaway from check 2 (a new user still has its one Free plan).
 
 1. Open `/plans/new`, fill in a topic and a span of 2 weeks or less (`TIER_LIMITS.free.maxWeeks`), and submit.
 2. Wait for the plan page to show the plan.
@@ -92,7 +92,7 @@ order by p.created_at desc, m.title;
 
 ## 4. Starter plan end to end (watch this one: DEV-180)
 
-User: `qa-starter@atlaris.app`. Override set.
+User: `qa-starter@atlaris.app`.
 
 Starter allows 10 active plans (`TIER_LIMITS.starter.maxActivePlans`). If it is at the limit, delete an old smoke plan first; `DELETE` returns `409` while that plan's lessons are still generating, so retry after they finish.
 
@@ -103,7 +103,7 @@ Starter allows 10 active plans (`TIER_LIMITS.starter.maxActivePlans`). If it is 
 
 ## 5. Pro plan end to end
 
-User: `qa-pro@atlaris.app`. Override set.
+User: `qa-pro@atlaris.app`.
 
 Same steps as check 4 (Pro has no week limit).
 
@@ -131,7 +131,7 @@ The options considered:
 User and card per [the decision above](#checkout-in-production-decision):
 
 - **Batch run (staging):** a new throwaway sign-up on `https://staging.atlaris.app` for each run, deleted at the end of check 7. Use an `@atlaris.app` address you can read: the staging Clerk allowlist admits only that domain ([grounded-eval.md](./grounded-eval.md)). Don't use `scripts/dev/agent-session.ts --tier free`: it always signs in the same `agent-free@atlaris.app` user, which would still be on Pro at the next run. Card `4242 4242 4242 4242`. Check the result in the **staging** Supabase project's SQL Editor and in Clerk Dashboard (**Development** instance) → Webhooks, not in production.
-- **Launch day (production):** the throwaway from checks 2 and 3 (currently Free), override set, the owner's real card.
+- **Launch day (production):** the throwaway from checks 2 and 3 (currently Free), the owner's real card.
 
 1. Open `/pricing`, select **Begin with Starter**, tick "I agree to automatic … renewal and the Terms of Service", and complete Clerk checkout.
 2. You land on `/settings/billing?checkout=1…`, which shows "Updating your subscription…" until the webhook projection catches up.
@@ -204,25 +204,30 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 
 ## Launch day: flag off
 
-Do these on the evening of Thu 2026-11-12 (launch is Fri 2026-11-13) after a passing run. The owner does steps 1–4 in the provider dashboards, back to back in one sitting: since [#913](https://github.com/saldanaj97/atlaris/pull/913), a signed-out "Create a plan" click goes to `/auth/sign-up`, which shows Clerk's "Access restricted" page until sign-up is Open, so the flag and the Clerk switch must not be left half done. Background: [environment.md, Feature flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
+Do these Thursday 2026-11-12 in the evening, after a passing run and before Product Hunt goes live (DEV-200). Run steps 1–4 in one sitting. The owner does steps 1–4 in the provider dashboards. Background: [environment.md, Feature flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
 
 1. **Cloudflare** → Flagship → `atlaris-plan-generation` → `launch-waitlist` → set the default variation to **off** (`false`) and remove any rule that still serves **on** for `environment = production`.
 2. Wait at least 90 s (about 30 s Flagship propagation plus `SITE_GATE_CACHE_TTL_MS`). Check from a fresh browser session.
 3. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Before saving, confirm **Enable allowlist** is off on that page: the allowlist applies in Open mode and, with no identifiers on it, blocks every sign-up (the staging instance uses an `@atlaris.app` allowlist; production must not). Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). Do this after the flag: signed-in users already get past the waitlist gate (DEV-190), so opening Clerk first would let anyone sign up on the Account Portal and get in before launch. Between steps 1 and 3, `/auth/sign-up` shows Clerk's "Sign ups are currently disabled" for a minute.
 4. **Vercel** → Settings → Environment Variables → Production → remove `LAUNCH_WAITLIST`, then redeploy the current Production deployment so running instances drop it. Vercel env changes reach only new deployments. Keep the `launch-waitlist` flag itself defined in Flagship: a missing flag makes every evaluation throw, and the gate then runs on its fail-safe.
-5. Confirm the redirect is gone:
+5. Confirm the gate is off from outside (read-only, no credentials; `--wait` retries until Flagship and the gate cache catch up):
 
    ```bash
-   curl -s -o /dev/null -w '%{http_code} %{redirect_url}\n' https://atlaris.app/dashboard
+   pnpm launch:check-gate --expect off --wait 180
    ```
 
-   **Pass:** the redirect URL no longer contains `/waitlist`. A signed-out `/dashboard` may still answer `307`, but to Clerk sign-in, not to `/waitlist`. `https://atlaris.app/auth/sign-up` answers `200`, and `/waitlist` redirects home.
+   **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, and `/waitlist` redirects away.
 
 6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
-7. Check the two signed-out entry points in a private window (these can't be tested before this step, because no Clerk instance has Open sign-up before launch):
-   - On the landing page and on `/pricing`, select **Create a plan**. **Pass:** you reach the Clerk sign-up form on `/auth/sign-up` (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new`, ready to create a plan. Delete that second account as in check 8.
-   - On `/pricing`, select **Start free** on the Free card. **Pass:** the Clerk sign-up modal opens.
-8. Run checks 3–5 and 10 once more without the override cookie, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
-9. Delete the step 6 account as in check 8.
+7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
+8. Run checks 3–5 and 10 once more, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
+9. Delete the step 6 and step 7 accounts as in check 8.
 
 **Rollback:** set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**) first, then set `launch-waitlist` back to **on** in Flagship (applies within about 90 s), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy. Accounts created while sign-up was open stay signed in and keep getting past the waitlist gate; ban or delete them in Clerk if they must lose access.
+
+## Gate probe
+
+`pnpm launch:check-gate --expect on|off [--base-url <origin>] [--wait <seconds>]` (`scripts/launch/check-gate.ts`) sends signed-out GETs with redirects off and prints `PASS`/`FAIL` per check. It exits `1` if any check fails and never needs credentials, so run it from anywhere.
+
+- `--expect on` (before the flag-off, and after a rollback): `/dashboard`, `/auth/sign-up` (with `?from=sign-up`) and `/plans/new` redirect to `/waitlist`; `/waitlist` and `/pricing` answer `200`.
+- `--expect off` (flag-off step 5): the checks listed there.
