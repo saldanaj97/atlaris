@@ -83,8 +83,9 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # Quoted strings are opaque: one quoted string, whatever it contains (spaces, ; & |), is a single
 # token, and a value may mix bare text with quoted parts (-c user.name="A B"). `gap` is the text between a git command and a later flag, and `val` is the value of a git
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
-# a space (git -C "/a b" push) must not split.
-gap='([^;&|"'"'"'\\]|\\.|"([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
+# a space (git -C "/a b" push) must not split. Redirections that contain & (2>&1, >&2, &>) are
+# not command separators, so `gap` steps over them.
+gap='([^;&|"'"'"'\\]|\\.|[<>]&[0-9-]*|&>>?|"([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
 val='(("([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
