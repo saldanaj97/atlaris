@@ -8,11 +8,38 @@ cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 [ -z "$cmd" ] && cmd="$input"
 [ -z "$cmd" ] && exit 0
 
-# Drop commit-message arguments that cannot execute anything (single-quoted, or double-quoted
-# without $ or a backtick) so words inside a message do not trigger the checks. Anything this
-# cannot parse (multi-line or escaped messages, the raw no-jq payload) stays in the scan and
-# errs toward blocking.
-scan="$(printf '%s' "$cmd" | sed -E "s/(-[A-Za-z]*m|--message)[[:space:]=]*'[^']*'/\1 X/g; s/(-[A-Za-z]*m|--message)[[:space:]=]*\"[^\"\$\`]*\"/\1 X/g")"
+# Drop commit-message arguments that cannot execute anything so words inside a message do not
+# trigger the checks. Quotes are tracked left to right, so only a real opening quote that
+# directly follows a standalone -m / -am / --message flag is stripped, and only when the string
+# is single-quoted or double-quoted without $, a backtick or a backslash. A closing quote is never
+# mistaken for an opening one, and flags like -cm (bash -c) are not treated as message flags.
+# Anything this cannot parse stays in the scan, so it errs toward blocking.
+scan="$(printf '%s' "$cmd" | awk '
+BEGIN { sq = sprintf("%c", 39); dq = "\"" }
+{
+  s = $0; n = length(s); out = ""; i = 1
+  while (i <= n) {
+    c = substr(s, i, 1)
+    if (c == "\\") { out = out substr(s, i, 2); i += 2; continue }
+    if (c == sq || c == dq) {
+      j = i + 1; closed = 0
+      while (j <= n) {
+        d = substr(s, j, 1)
+        if (c == dq && d == "\\") { j += 2; continue }
+        if (d == c) { closed = 1; break }
+        j++
+      }
+      if (!closed) { out = out substr(s, i); i = n + 1; continue }
+      body = substr(s, i + 1, j - i - 1)
+      if (out ~ /(^|[ \t])(-[asSvq]*m|--message)[ \t=]*$/ && (c == sq || body !~ /[$`\\]/)) out = out c "X" c
+      else out = out substr(s, i, j - i + 1)
+      i = j + 1; continue
+    }
+    out = out c; i++
+  }
+  print out
+}')"
+[ -z "$scan" ] && scan="$cmd"
 
 # A git command (optionally path-qualified) at the start of a command, after a shell operator,
 # inside a quoted shell string or subshell (sh -c "git push", $(git push)), or after a
