@@ -40,10 +40,12 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
     c = substr(s, i, 1)
     if (c == "\\") { out = out substr(s, i, 2); i += 2; continue }
     if (c == sq || c == dq) {
+      # $'...' is ANSI-C quoting: a backslash escapes the next character, even a single quote.
+      ansi = (c == sq && i > 1 && substr(s, i - 1, 1) == "$")
       j = i + 1; closed = 0
       while (j <= n) {
         d = substr(s, j, 1)
-        if (c == dq && d == "\\") { j += 2; continue }
+        if ((c == dq || ansi) && d == "\\") { j += 2; continue }
         if (d == c) { closed = 1; break }
         j++
       }
@@ -78,8 +80,8 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # token, and a value may mix bare text with quoted parts (-c user.name="A B"). `gap` is the text between a git command and a later flag, and `val` is the value of a git
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
 # a space (git -C "/a b" push) must not split.
-gap='([^;&|"'"'"'\\]|\\.|"([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"')*'
-val='(("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
+gap='([^;&|"'"'"'\\]|\\.|"([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
+val='(("([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
 end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
