@@ -218,10 +218,10 @@ Do these Thursday 2026-11-12 in the evening, after a passing run and before Prod
 
    **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, and `/waitlist` redirects away.
 
-6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 7.
-7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after sign-up you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
+6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
+7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
 8. Run checks 3–5 and 10 once more, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
-9. Delete the step 6 account as in check 8.
+9. Delete the step 6 and step 7 accounts as in check 8.
 
 **Rollback:** set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**) first, then set `launch-waitlist` back to **on** in Flagship (applies within about 90 s), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy. Accounts created while sign-up was open stay signed in and keep getting past the waitlist gate; ban or delete them in Clerk if they must lose access.
 

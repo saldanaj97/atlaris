@@ -194,7 +194,15 @@ export async function runCheckGate(argv: readonly string[]): Promise<number> {
   const probe = httpProbe(baseUrl);
   const deadline = Date.now() + waitSeconds * 1000;
   for (;;) {
-    const outcomes = await runGateChecks(probe, expect);
+    const outcomes = await runGateChecks(probe, expect).catch(
+      (error: unknown): CheckOutcome[] => [
+        check(
+          'origin reachable',
+          false,
+          error instanceof Error ? error.message : String(error),
+        ),
+      ],
+    );
     const failed = outcomes.filter((outcome) => !outcome.ok);
     if (failed.length === 0 || Date.now() + POLL_INTERVAL_MS > deadline) {
       console.log(`Gate expected ${expect.toUpperCase()} on ${baseUrl}`);
