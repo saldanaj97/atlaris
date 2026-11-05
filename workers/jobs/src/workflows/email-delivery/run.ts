@@ -295,7 +295,16 @@ async function claimRun(
         const unclaimedQueued =
           reservation.run.status === 'queued' &&
           reservation.run.workflowRunId === null;
-        if (reservation.outcome === 'existing' && !unclaimedQueued) {
+        // A retried step whose claim already committed re-enters its own run;
+        // the claim query replays for the same workflowRunId (DEV-208, lead 7).
+        const ownedByThisRun =
+          reservation.run.status === 'running' &&
+          reservation.run.workflowRunId === workflowRunId;
+        if (
+          reservation.outcome === 'existing' &&
+          !unclaimedQueued &&
+          !ownedByThisRun
+        ) {
           logRunEvent(deps, 'info', 'duplicate_invocation', {
             runId,
             workflowRunId,
@@ -322,6 +331,7 @@ async function claimRun(
         runId: claim.run.id,
         workflowRunId,
         runKind: claim.run.runKind,
+        attempt,
       });
       return { kind: 'claimed', runId: claim.run.id };
     } catch (error) {

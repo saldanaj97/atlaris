@@ -1,5 +1,6 @@
 import type { PlainHandler } from '@/lib/api/auth';
 
+import { assertAiSpendAllowed } from '@/features/billing/ai-spend-guard';
 import {
   type CreatePlanRouteLogger,
   parseCreatePlanRequest,
@@ -108,6 +109,7 @@ export function createPlanCreateHandler(deps?: {
       const rateLimit = await checkPlanGenerationRateLimit(actor.id, db);
       const generationRateLimitHeaders =
         getPlanGenerationRateLimitHeaders(rateLimit);
+      await assertAiSpendAllowed(actor, db);
 
       const started = await boundary.startCreate({
         req,

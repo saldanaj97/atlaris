@@ -7,10 +7,15 @@ const ATTEMPT_ID = '5a0d7b6c-1e9f-4d8a-8b3c-2f1a0b9c8d74';
 
 const mocks = vi.hoisted(() => ({
   checkPlanGenerationRateLimit: vi.fn(),
+  assertAiSpendAllowed: vi.fn(),
   requirePlanContentAccess: vi.fn(),
   getGroundedModelPreferences: vi.fn(),
   actorTier: 'starter' as 'free' | 'starter' | 'pro',
   captureException: vi.fn(),
+}));
+
+vi.mock('@/features/billing/ai-spend-guard', () => ({
+  assertAiSpendAllowed: mocks.assertAiSpendAllowed,
 }));
 
 vi.mock('@sentry/nextjs', async (importOriginal) => ({
@@ -110,6 +115,8 @@ const WRITER_PICKS = {
 };
 
 beforeEach(() => {
+  mocks.assertAiSpendAllowed.mockReset();
+  mocks.assertAiSpendAllowed.mockResolvedValue(undefined);
   mocks.actorTier = 'starter';
   mocks.getGroundedModelPreferences.mockReset();
   mocks.getGroundedModelPreferences.mockResolvedValue(WRITER_PICKS);
@@ -306,6 +313,33 @@ describe('POST /api/v1/plans', () => {
       retryAfter: 60,
     });
     expect(boundary.startCreate).not.toHaveBeenCalled();
+  });
+
+  it('refuses to start when the AI spend guard rejects the user', async () => {
+    mocks.assertAiSpendAllowed.mockRejectedValueOnce(
+      new AppError("You've reached this month's AI budget.", {
+        status: 429,
+        code: 'AI_BUDGET_EXHAUSTED',
+        classification: 'capped',
+        details: { resetsAt: '2026-12-01T00:00:00.000Z' },
+      }),
+    );
+    const boundary = makeBoundary();
+    const post = createPlanCreateHandler({ boundary, logger: makeLogger() });
+
+    const response = await post(createRequest(JSON.stringify(VALID_BODY)));
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'AI_BUDGET_EXHAUSTED',
+      classification: 'capped',
+      details: { resetsAt: '2026-12-01T00:00:00.000Z' },
+    });
+    expect(boundary.startCreate).not.toHaveBeenCalled();
+    expect(mocks.assertAiSpendAllowed).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'user-1' }),
+      expect.anything(),
+    );
   });
 
   it('returns the canonical error shape when generation did not start', async () => {

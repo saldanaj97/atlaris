@@ -569,7 +569,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(response.status).toBe(401);
   });
 
-  it('rejects non-JSON body', async () => {
+  it('rejects a non-JSON media type with 415', async () => {
     setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {
@@ -581,7 +581,9 @@ describe('PATCH /api/v1/user/preferences', () => {
     });
 
     const response = await PATCH(request);
-    expect(response.status).toBe(400);
+    expect(response.status).toBe(415);
+    const data = expectJsonObject(await response.json());
+    expect(data.code).toBe('UNSUPPORTED_MEDIA_TYPE');
   });
 
   it('rejects extra JSON fields with 400', async () => {
