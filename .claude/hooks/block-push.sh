@@ -14,9 +14,10 @@ if printf '%s' "$cmd" | grep -Eq -- '--no-verify'; then
 fi
 
 # git (optionally path-qualified) + only git global options + push. Matches inside quoted
-# shell strings and subshells (sh -c "git push", $(git push)); does not match commit messages
+# shell strings and subshells (sh -c "git push", $(git push)) and after a JSON-escaped newline
+# (\n) when the raw payload is scanned without jq; does not match commit messages
 # or `git log --grep push`. Shell aliases and variable indirection are not caught.
-git_push='(^|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git([[:space:]]+(-[cC][[:space:]]+[^[:space:]]+|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+[^[:space:]]+|--?[A-Za-z][A-Za-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]|$|["'"'"';&|)\\])'
+git_push='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git([[:space:]]+(-[cC][[:space:]]+[^[:space:]]+|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+[^[:space:]]+|--?[A-Za-z][A-Za-z-]*(=[^[:space:]]+)?))*[[:space:]]+push([[:space:]]|$|["'"'"';&|)\\])'
 if printf '%s' "$cmd" | grep -Eq -- "$git_push"; then
   echo "Blocked: this session cannot run git push. Tell the user the branch is ready and let them push." >&2
   exit 2
