@@ -9,10 +9,25 @@ root="$(git rev-parse --show-toplevel)"
 zero="0000000000000000000000000000000000000000"
 missing=""
 
-while read -r _local_ref local_sha remote_ref _remote_sha; do
+while read -r _local_ref local_sha remote_ref remote_sha; do
   [ "$remote_ref" = "refs/heads/main" ] || continue
   [ "$local_sha" = "$zero" ] && continue
-  [ -f "$root/.claude/quiz-pass/$local_sha" ] || missing="$missing $local_sha"
+
+  # Every commit the push adds needs a pass, not only the tip.
+  if [ "$remote_sha" = "$zero" ]; then
+    range="$(git rev-list "$local_sha" --not --remotes)" || range=""
+  else
+    range="$(git rev-list "$remote_sha..$local_sha")" || {
+      echo "Push to main blocked: cannot list commits in $remote_sha..$local_sha (fetch first)." >&2
+      exit 1
+    }
+  fi
+  # Nothing new (for example a rewind of main): still require a pass for the tip.
+  [ -z "$range" ] && range="$local_sha"
+
+  for sha in $range; do
+    [ -f "$root/.claude/quiz-pass/$sha" ] || missing="$missing $sha"
+  done
 done
 
 if [ -n "$missing" ]; then
