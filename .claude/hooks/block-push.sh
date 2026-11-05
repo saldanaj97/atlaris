@@ -53,8 +53,9 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
 [ -z "$scan" ] && scan="$cmd"
 
 # Undo the ways the word git can be spelled that the shell reads as plain git: \git, 'git',
-# "git", g''it, g\it. Only these forms are normalized; aliases and variables are not.
-scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g' -e "s/(^|[^A-Za-z0-9_])['\"]git['\"]/\1git/g" -e "s/''//g" -e 's/""//g')"
+# "git", g''it, g\it. Empty quote pairs are dropped only between letters, so an escaped quote
+# followed by a closing quote (\"") is left alone. Aliases and variables are not normalized.
+scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g' -e "s/(^|[^A-Za-z0-9_])['\"]git['\"]/\1git/g" -e "s/([A-Za-z])(''|\"\")([A-Za-z])/\1\3/g")"
 
 # A git command (optionally path-qualified) at the start of a command, after a shell operator,
 # inside a quoted shell string or subshell (sh -c "git push", $(git push)), or after a
@@ -65,8 +66,8 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # token. `gap` is the text between a git command and a later flag, and `val` is the value of a git
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
 # a space (git -C "/a b" push) must not split.
-gap='([^;&|"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*'
-val='("[^"]*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|[^[:space:]]+)'
+gap='([^;&|"'"'"']|"([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"')*'
+val='("([^"\\]|\\.)*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|[^[:space:]]+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
 end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
