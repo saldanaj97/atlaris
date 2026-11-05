@@ -3,6 +3,7 @@ import type { ReactElement } from 'react';
 
 import { loadBillingSnapshot } from '@/app/(app)/settings/billing/components/load-billing-snapshot';
 import { ManageSubscriptionButton } from '@/app/(app)/settings/billing/components/ManageSubscriptionButton';
+import { ScheduledPlanChangeNotice } from '@/app/(app)/settings/billing/components/ScheduledPlanChangeNotice';
 import {
   AUTO_RENEWAL_NOTICE,
   hasManageableSubscription,
@@ -191,6 +192,7 @@ export async function ProfilePlanCard({
               {AUTO_RENEWAL_NOTICE}
             </p>
           ) : null}
+          {canManageSubscription ? <ScheduledPlanChangeNotice /> : null}
           <ul className='grid gap-[12px] @min-[32rem]:grid-cols-2'>
             {features.map((feature) => (
               <li key={feature} className='flex min-w-0 items-start gap-[8px]'>

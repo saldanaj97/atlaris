@@ -84,8 +84,6 @@
 /* Three-card composition. */
 
 .cards {
-  max-width: 77.5rem;
-  margin-inline: auto;
   width: 100%;
 }
 
@@ -124,7 +122,7 @@
     rotateY(var(--card-tilt-y));
   transform-style: preserve-3d;
   transform-origin: center center;
-  /* Entrance: cards dock in one after another, center (featured) last. */
+  /* Entrance: cards dock in one after another, center last. */
   opacity: 1;
   animation: card-arrive 0.5s cubic-bezier(0.22, 1, 0.36, 1) backwards;
   transition:
@@ -204,7 +202,7 @@
   display: none;
 }
 
-/* Center featured plan (Starter) — cantaloupe border, matching its filled CTA */
+/* Featured plan — cantaloupe border, matching its filled CTA */
 .card[data-featured='true'] {
   border-color: var(--action-primary);
   border-width: 2px;
@@ -217,6 +215,13 @@
   gap: 0.5rem;
   transform: translate3d(var(--card-content-x), var(--card-content-y), 0);
   transition: transform 0.12s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.cardTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .cardTitle {
@@ -417,11 +422,30 @@
   opacity: 1;
 }
 
+/* In place of an action on a plan below the one the viewer is on. */
+.planNote {
+  display: grid;
+  place-items: center;
+  min-height: 3.25rem;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-display);
+  font-weight: 500;
+  text-align: center;
+}
+
+/* What a plan switch will do, shown with the action that changes or keeps it. */
+.planSwitchNote {
+  margin: 0 0 0.9rem;
+  color: var(--muted-foreground);
+  font-family: var(--font-family-base);
+  font-size: 0.8125rem;
+  line-height: 1.45;
+}
+
 /* Feature comparison — a quiet, scrollable ledger beneath the cards. */
 .comparison {
   width: 100%;
-  max-width: 77.5rem;
-  margin-inline: auto;
   padding: 1.5rem;
   border: 1px solid color-mix(in oklab, var(--border) 72%, transparent);
   border-radius: var(--radius-xl);

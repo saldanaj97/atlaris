@@ -138,6 +138,14 @@ describe('smoke mode-config', () => {
     ).toBe(FAKE_STATE.POSTGRES_URL_NON_POOLING);
   });
 
+  it('slows mock generation only in the Worker, which runs it for auth smoke', () => {
+    expect(
+      Number(buildWorkerModeLayer(FAKE_STATE).MOCK_GENERATION_DELAY_MS),
+    ).toBeGreaterThan(0);
+    expect(buildAuthModeLayer(FAKE_STATE).MOCK_GENERATION_DELAY_MS).toBe('0');
+    expect(buildAnonModeLayer(FAKE_STATE).MOCK_GENERATION_DELAY_MS).toBe('0');
+  });
+
   it('anon layer leaves the jobs Worker unconfigured even when the parent sets it', () => {
     const merged = mergeSmokeProcessEnv(
       {

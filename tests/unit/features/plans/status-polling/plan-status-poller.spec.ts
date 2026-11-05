@@ -3,9 +3,61 @@ import {
   createMockFetchResponse,
   createPlanStatusResponse,
 } from '@tests/fixtures/plan-status';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+/**
+ * Node's `fetch` ignores `this`, but a browser's rejects anything other than
+ * the global object or `undefined`. This double applies the browser's check.
+ */
+function createBrowserLikeFetch(): typeof fetch {
+  return function (this: unknown) {
+    if (this !== undefined && this !== globalThis) {
+      throw new TypeError(
+        "Failed to execute 'fetch' on 'Window': Illegal invocation",
+      );
+    }
+    return Promise.resolve(
+      createMockFetchResponse(
+        createPlanStatusResponse({ status: 'ready', attempts: 1 }),
+      ),
+    );
+  } as unknown as typeof fetch;
+}
 
 describe('PlanStatusPoller', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it.each([
+    {
+      source: 'an injected fetcher',
+      config: () => ({ fetcher: createBrowserLikeFetch() }),
+    },
+    {
+      source: 'the default global fetch',
+      config: () => {
+        vi.stubGlobal('fetch', createBrowserLikeFetch());
+        return {};
+      },
+    },
+  ])('calls $source the way a browser accepts', async ({ config }) => {
+    const poller = new PlanStatusPoller({
+      planId: 'plan-123',
+      initialStatus: 'pending',
+      ...config(),
+    });
+
+    await poller.revalidate();
+
+    expect(poller.getSnapshot()).toMatchObject({
+      status: 'ready',
+      pollingError: null,
+      isPolling: false,
+    });
+    poller.dispose();
+  });
+
   it('does not apply a late fetch response after disposal', async () => {
     type MockFetchResponse = ReturnType<typeof createMockFetchResponse>;
 

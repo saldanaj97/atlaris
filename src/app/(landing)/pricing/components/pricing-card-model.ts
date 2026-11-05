@@ -1,3 +1,5 @@
+import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
+
 export type BillingPeriod = 'month' | 'annual';
 
 export type PricingMoney = {
@@ -69,4 +71,23 @@ export function renewalConsentHintId(
   period: BillingPeriod,
 ): string {
   return `renewal-${plan.slug}-${period}-hint`;
+}
+
+const PLAN_RANK: Record<string, number> = {
+  [CLERK_BILLING_PLAN_SLUGS.free]: 0,
+  [CLERK_BILLING_PLAN_SLUGS.starter]: 1,
+  [CLERK_BILLING_PLAN_SLUGS.pro]: 2,
+};
+
+/** False when either plan has no rank, so an unknown plan never reads as lower or higher. */
+export function isBelowPlan(
+  planSlug: string,
+  otherPlanSlug: string | null,
+): boolean {
+  if (!otherPlanSlug) return false;
+  const otherRank = PLAN_RANK[otherPlanSlug];
+  const planRank = PLAN_RANK[planSlug];
+  return otherRank !== undefined && planRank !== undefined
+    ? planRank < otherRank
+    : false;
 }

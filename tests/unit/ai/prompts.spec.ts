@@ -16,6 +16,14 @@ describe('AI Prompt Builder', () => {
       expect(prompt).toContain('10');
     });
 
+    it('should tell the writer that task descriptions hold no code', () => {
+      const prompt = buildUserPrompt(basicParams);
+      const afterInput = prompt.slice(prompt.indexOf('---END USER INPUT---'));
+
+      expect(afterInput).toContain('Never put code');
+      expect(afterInput).toContain('in a task description');
+    });
+
     it('should format topic correctly', () => {
       const prompt = buildUserPrompt(basicParams);
 

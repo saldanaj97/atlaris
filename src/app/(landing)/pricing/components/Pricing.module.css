@@ -17,10 +17,6 @@
 .heroContent {
   position: relative;
   z-index: 1;
-  /* The plan cards' column (77.5rem, with a px-6 gutter each side), so the
-     headline starts on the cards' left edge. */
-  width: min(calc(100% - var(--spacing) * 12), 77.5rem);
-  margin-inline: auto;
   padding-block: 2.5rem 2.75rem;
 }
 
@@ -34,10 +30,7 @@
 }
 
 .ctaBanner {
-  /* Match the plan cards and comparison: 77.5rem, inside the section's px-6
-     gutters (6 spacing steps a side). */
-  width: min(calc(100% - var(--spacing) * 12), 77.5rem);
-  margin: 0 auto 3rem;
+  margin-bottom: 3rem;
 }
 
 .ctaContent {

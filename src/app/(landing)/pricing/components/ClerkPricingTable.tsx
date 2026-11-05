@@ -1,14 +1,21 @@
 'use client';
 
 import {
+  CHECKOUT_CONSENT_PARAM,
+  CHECKOUT_PERIOD_PARAM,
+  CHECKOUT_PLAN_PARAM,
+  CHECKOUT_PLAN_SLUG_PARAM,
+  clearCheckoutParams,
+} from './checkout-resume';
+import { ClerkPlanAction } from './ClerkPlanAction';
+import {
+  isBelowPlan,
   planHasAnnual,
-  renewalConsentHintId,
   type BillingPeriod,
   type PricingMoney,
   type PricingPlan,
 } from './pricing-card-model';
 import { PricingCards } from './PricingCards';
-import { RenewalConsent, RenewalConsentHint } from './RenewalDisclosure';
 import {
   PRICING_FEATURES_BY_CLERK_SLUG,
   PRICING_PLAN_DESCRIPTIONS,
@@ -16,14 +23,15 @@ import {
 } from '@/app/(landing)/pricing/pricing-plan-features';
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
-import { ROUTES } from '@/features/navigation/routes';
-import { clientLogger } from '@/lib/logging/client';
-import { SignInButton, SignUpButton, useAuth, useClerk } from '@clerk/nextjs';
 import {
-  CheckoutButton,
-  SubscriptionDetailsButton,
-} from '@clerk/nextjs/experimental';
-import Link from 'next/link';
+  findHeldPaidPlan,
+  findScheduledPaidPlan,
+  type ClerkSubscriptionSnapshot,
+  type HeldPaidPlan,
+  type ScheduledPaidPlan,
+} from '@/features/billing/clerk-billing/subscription-snapshot';
+import { clientLogger } from '@/lib/logging/client';
+import { useAuth, useClerk } from '@clerk/nextjs';
 import { useEffect, useRef, useState } from 'react';
 
 type ClerkPlanSnapshot = {
@@ -35,14 +43,8 @@ type ClerkPlanSnapshot = {
   annualMonthlyFee?: PricingMoney | null;
 };
 
-type ClerkSubscriptionSnapshot = {
-  subscriptionItems: Array<{
-    plan: { hasBaseFee: boolean; slug: string };
-    status: 'active' | 'ended' | 'upcoming' | 'past_due';
-  }>;
-};
-
 type ClerkPricingTableProps = {
+  /** Where a new or upgraded subscription lands; carries the wait for its webhook. */
   newSubscriptionRedirectUrl: string;
   /** Maintenance or launch waitlist: plans stay visible but every CTA goes through the proxy instead of Clerk modals. */
   appClosed?: boolean;
@@ -54,77 +56,12 @@ const PLAN_NAME_BY_SLUG: Record<string, string> = {
   [CLERK_BILLING_PLAN_SLUGS.pro]: 'Pro',
 };
 
-const PLAN_CTA_LABEL_BY_SLUG: Record<string, string> = {
-  [CLERK_BILLING_PLAN_SLUGS.free]: 'Start free',
-  [CLERK_BILLING_PLAN_SLUGS.starter]: 'Begin with Starter',
-  [CLERK_BILLING_PLAN_SLUGS.pro]: 'Begin with Pro',
-};
-
-const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
-const CHECKOUT_PLAN_SLUG_PARAM = 'checkoutPlanSlug';
-const CHECKOUT_PERIOD_PARAM = 'checkoutPeriod';
-/** Set when the visitor ticked the renewal checkbox before signing in, so the resumed checkout stays enabled. */
-const CHECKOUT_CONSENT_PARAM = 'checkoutConsent';
-
-const PLAN_RANK: Record<string, number> = {
-  [CLERK_BILLING_PLAN_SLUGS.free]: 0,
-  [CLERK_BILLING_PLAN_SLUGS.starter]: 1,
-  [CLERK_BILLING_PLAN_SLUGS.pro]: 2,
-};
-
-function buildCheckoutSignInRedirect(
-  planId: string,
-  planSlug: string,
-  period: BillingPeriod,
-  agreed: boolean,
-): string {
-  const params = new URLSearchParams({
-    [CHECKOUT_PLAN_PARAM]: planId,
-    [CHECKOUT_PLAN_SLUG_PARAM]: planSlug,
-    [CHECKOUT_PERIOD_PARAM]: period,
-  });
-  if (agreed) params.set(CHECKOUT_CONSENT_PARAM, '1');
-  return `/pricing?${params.toString()}`;
-}
-
-function clearCheckoutParams(): void {
-  const url = new URL(window.location.href);
-  url.searchParams.delete(CHECKOUT_PLAN_PARAM);
-  url.searchParams.delete(CHECKOUT_PLAN_SLUG_PARAM);
-  url.searchParams.delete(CHECKOUT_PERIOD_PARAM);
-  url.searchParams.delete(CHECKOUT_CONSENT_PARAM);
-  window.history.replaceState(window.history.state, '', url);
-}
-
-function isPaidPlan(plan: PricingPlan, period: BillingPeriod): boolean {
-  return period === 'annual'
-    ? planHasAnnual(plan)
-    : (plan.fee?.amount ?? 0) > 0;
-}
-
-function shouldManageSubscription(
-  planSlug: string,
-  currentPaidPlanSlug: string | null,
-): boolean {
-  if (!currentPaidPlanSlug) return false;
-  if (planSlug === currentPaidPlanSlug) return true;
-  const currentRank = PLAN_RANK[currentPaidPlanSlug];
-  const planRank = PLAN_RANK[planSlug];
-  return currentRank !== undefined && planRank !== undefined
-    ? planRank < currentRank
-    : false;
-}
-
-function currentPaidPlanSlug(
-  subscription: ClerkSubscriptionSnapshot | null,
-): string | null {
-  return (
-    subscription?.subscriptionItems.find(
-      (item) =>
-        item.plan.hasBaseFee &&
-        (item.status === 'active' || item.status === 'past_due'),
-    )?.plan.slug ?? null
-  );
+/** The recommended plan: the next step up, or the top plan the viewer holds. */
+function featuredPlanSlug(paidPlanSlug: string | null): string {
+  if (!paidPlanSlug) return CLERK_BILLING_PLAN_SLUGS.starter;
+  return paidPlanSlug === CLERK_BILLING_PLAN_SLUGS.starter
+    ? CLERK_BILLING_PLAN_SLUGS.pro
+    : paidPlanSlug;
 }
 
 // Card copy comes from our tier limits, not from the Clerk plan description
@@ -162,7 +99,8 @@ export function ClerkPricingTable({
     null,
   );
   const [period, setPeriod] = useState<BillingPeriod>('month');
-  const [activePaidPlanSlug, setActivePaidPlanSlug] = useState<string | null>(
+  const [heldPlan, setHeldPlan] = useState<HeldPaidPlan | null>(null);
+  const [scheduledPlan, setScheduledPlan] = useState<ScheduledPaidPlan | null>(
     null,
   );
   const [loadFailed, setLoadFailed] = useState(false);
@@ -202,7 +140,9 @@ export function ClerkPricingTable({
         setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);
-        setActivePaidPlanSlug(currentPaidPlanSlug(nextSubscription));
+        const nextHeldPlan = findHeldPaidPlan(nextSubscription);
+        setHeldPlan(nextHeldPlan);
+        setScheduledPlan(findScheduledPaidPlan(nextSubscription));
         setSubscriptionUserId(userId ?? null);
 
         const url = new URL(window.location.href);
@@ -232,6 +172,12 @@ export function ClerkPricingTable({
                 : 'annual';
           setPeriod(nextPeriod);
           if (isLoaded && userId) {
+            // A signed-out click meant a new subscription. Moving to a lower plan
+            // is a scheduled switch, so it starts from that plan's own card.
+            if (isBelowPlan(requestedPlan.slug, nextHeldPlan?.slug ?? null)) {
+              clearCheckoutParams();
+              return;
+            }
             const resumedKey = `${requestedPlan.slug}:${nextPeriod}`;
             // Consent only carries over when the visitor ticked it before signing in.
             if (requestedConsent) {
@@ -288,129 +234,60 @@ export function ClerkPricingTable({
     );
   }
 
+  // Waitlist and maintenance viewers see the signed-out cards; every action
+  // there goes through sign-in, whatever plan the account holds.
+  const viewerPlansKnown =
+    !appClosed && isLoaded && Boolean(userId) && subscriptionUserId === userId;
+  const activePaidPlanSlug = heldPlan?.slug ?? null;
+  const viewerPaidPlanSlug = viewerPlansKnown ? activePaidPlanSlug : null;
+  const planNameBySlug = (slug: string): string =>
+    plans.find((plan) => plan.slug === slug)?.name ??
+    PLAN_NAME_BY_SLUG[slug] ??
+    slug;
+  const viewerPaidPlanName = viewerPaidPlanSlug
+    ? planNameBySlug(viewerPaidPlanSlug)
+    : null;
+
   return (
     <PricingCards
+      currentPlanSlug={
+        viewerPlansKnown
+          ? (activePaidPlanSlug ?? CLERK_BILLING_PLAN_SLUGS.free)
+          : null
+      }
+      featuredPlanSlug={featuredPlanSlug(viewerPaidPlanSlug)}
       loading={plansLoading}
       onPeriodChange={setPeriod}
       period={period}
       plans={plans}
-      renderAction={(plan, planPeriod, actionClassName) => {
-        const label =
-          PLAN_CTA_LABEL_BY_SLUG[plan.slug] || 'Begin with this plan';
-        if (appClosed) {
-          return (
-            <Link className={actionClassName} href={ROUTES.AUTH.SIGN_IN}>
-              {label}
-            </Link>
-          );
-        }
-
-        const actionKey = `${plan.slug}:${planPeriod}`;
-        const actionRef = (button: HTMLButtonElement | null) => {
-          if (button) actionButtons.current.set(actionKey, button);
-          else actionButtons.current.delete(actionKey);
-        };
-
-        if (!isLoaded || (userId && subscriptionUserId !== userId)) {
-          return (
-            <button className={actionClassName} disabled type='button'>
-              {label}
-            </button>
-          );
-        }
-
-        if (userId && shouldManageSubscription(plan.slug, activePaidPlanSlug)) {
-          return (
-            <SubscriptionDetailsButton>
-              <button className={actionClassName} ref={actionRef} type='button'>
-                {plan.slug === activePaidPlanSlug
-                  ? 'Current plan'
-                  : 'Manage subscription'}
-              </button>
-            </SubscriptionDetailsButton>
-          );
-        }
-
-        if (!isPaidPlan(plan, planPeriod)) {
-          return userId ? (
-            <Link className={actionClassName} href={ROUTES.PLANS.NEW}>
-              {label}
-            </Link>
-          ) : (
-            <SignUpButton
-              forceRedirectUrl={ROUTES.PLANS.NEW}
-              mode='modal'
-              signInForceRedirectUrl={ROUTES.PLANS.NEW}
-            >
-              <button className={actionClassName} type='button'>
-                {label}
-              </button>
-            </SignUpButton>
-          );
-        }
-
-        const agreed = agreedActions[actionKey] === true;
-        const hintId = agreed
-          ? undefined
-          : renewalConsentHintId(plan, planPeriod);
-        const redirect = buildCheckoutSignInRedirect(
-          plan.id,
-          plan.slug,
-          planPeriod,
-          agreed,
-        );
-        return (
-          <>
-            <RenewalConsent
-              agreed={agreed}
-              onAgreedChange={(next) =>
-                setAgreedActions((current) => ({
-                  ...current,
-                  [actionKey]: next,
-                }))
-              }
-              period={planPeriod}
-              plan={plan}
-            />
-            {userId ? (
-              <CheckoutButton
-                newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
-                planId={plan.id}
-                planPeriod={planPeriod}
-              >
-                <button
-                  aria-describedby={hintId}
-                  className={actionClassName}
-                  disabled={!agreed}
-                  ref={actionRef}
-                  type='button'
-                >
-                  {label}
-                </button>
-              </CheckoutButton>
-            ) : (
-              <SignInButton
-                forceRedirectUrl={redirect}
-                mode='modal'
-                signUpForceRedirectUrl={redirect}
-                withSignUp
-              >
-                <button
-                  aria-describedby={hintId}
-                  className={actionClassName}
-                  disabled={!agreed}
-                  type='button'
-                >
-                  {label}
-                </button>
-              </SignInButton>
-            )}
-            {agreed ? null : (
-              <RenewalConsentHint period={planPeriod} plan={plan} />
-            )}
-          </>
-        );
-      }}
+      renderAction={(plan, planPeriod, actionClassName) => (
+        <ClerkPlanAction
+          actionClassName={actionClassName}
+          agreedActions={agreedActions}
+          appClosed={appClosed}
+          heldPlan={heldPlan}
+          newSubscriptionRedirectUrl={newSubscriptionRedirectUrl}
+          onAgreedChange={(actionKey, agreed) =>
+            setAgreedActions((current) => ({
+              ...current,
+              [actionKey]: agreed,
+            }))
+          }
+          plan={plan}
+          planNameBySlug={planNameBySlug}
+          planPeriod={planPeriod}
+          registerActionButton={(actionKey, button) => {
+            if (button) actionButtons.current.set(actionKey, button);
+            else actionButtons.current.delete(actionKey);
+          }}
+          scheduledPlan={scheduledPlan}
+          signedIn={Boolean(userId)}
+          viewerPaidPlanName={viewerPaidPlanName}
+          viewerPending={
+            !isLoaded || (Boolean(userId) && subscriptionUserId !== userId)
+          }
+        />
+      )}
     />
   );
 }
