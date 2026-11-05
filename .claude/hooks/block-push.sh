@@ -13,8 +13,9 @@ if [ -n "$cmd" ]; then
 else
   # jq missing or payload unparseable: scan the raw payload instead of failing open. Newlines
   # are the two characters \n here, and a continuation is backslash plus \n (four characters).
-  # JSON-escaped quotes (\") become plain quotes so quoted values parse like the jq path.
-  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g')"
+  # JSON-escaped quotes (\") become plain quotes and escaped backslashes (\\) become one, so
+  # quoted values and \git parse like the jq path.
+  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g' -e 's/\\\\/\\/g')"
 fi
 [ -z "$cmd" ] && exit 0
 
@@ -51,6 +52,10 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
 }')"
 [ -z "$scan" ] && scan="$cmd"
 
+# Undo the ways the word git can be spelled that the shell reads as plain git: \git, 'git',
+# "git", g''it, g\it. Only these forms are normalized; aliases and variables are not.
+scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g' -e "s/(^|[^A-Za-z0-9_])['\"]git['\"]/\1git/g" -e "s/''//g" -e 's/""//g')"
+
 # A git command (optionally path-qualified) at the start of a command, after a shell operator,
 # inside a quoted shell string or subshell (sh -c "git push", $(git push)), or after a
 # JSON-escaped newline (\n) when the raw payload is scanned without jq.
@@ -61,22 +66,25 @@ lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 # global option. A separator inside a quoted message must not end the gap, and a quoted value with
 # a space (git -C "/a b" push) must not split.
 gap='([^;&|"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*'
-val='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
+val='("[^"]*"|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|[^[:space:]]+)'
+
+# What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
+end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
 
 # --no-verify as an argument of a git command. Does not match `rg -- --no-verify` or
 # `git log --grep=--no-verify`.
-no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-verify([[:space:]]|$|["'"'"';&|)\\])'
+no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-verify'"$end"
 
 # Only git global options between `git` and the subcommand.
 git_opts='([[:space:]]+(-[cC][[:space:]]+'"$val"'|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+'"$val"'|--?[A-Za-z][A-Za-z-]*(='"$val"')?))*'
 
 # `git commit -n` is the short form of --no-verify, alone or inside a flag cluster (-an, -nm).
 # Scoped to commit: `git push -n` is --dry-run and `git log -n 5` is a count.
-no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:space:]])?-[A-Za-z]*n[A-Za-z]*([[:space:]]|$|["'"'"';&|)\\])'
+no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:space:]])?-[A-Za-z]*n[A-Za-z]*'"$end"
 
 # git + only git global options + push. Does not match `git log --grep push`.
 # Shell aliases and variable indirection are not caught.
-git_push="$lead$git_opts"'[[:space:]]+push([[:space:]]|$|["'"'"';&|)\\])'
+git_push="$lead$git_opts"'[[:space:]]+push'"$end"
 
 if printf '%s' "$scan" | grep -Eq -- "$no_verify" || printf '%s' "$scan" | grep -Eq -- "$no_verify_short"; then
   echo "Blocked: --no-verify skips the hooks. Fix the failing hook instead." >&2
