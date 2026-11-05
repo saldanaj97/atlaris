@@ -84,7 +84,7 @@ Projection rules (highest paid tier, past-due retention, canceled-but-in-period,
 
 ### Moving to a lower paid plan
 
-Clerk applies upgrades immediately and defers a move to a lower paid plan to the end of the period, using an `upcoming` subscription item. There is no charge until then. `ClerkPricingTable` starts the move through `CheckoutButton` (**Switch to Starter**), and subscribing to the held plan again abandons the upcoming item (**Keep Pro**). It offers a switch only in the held billing period, and not while the plan is past due or on a free trial, because Clerk may not defer those.
+Clerk applies upgrades immediately and defers a move to a lower paid plan to the end of the period, using an `upcoming` subscription item. There is no charge until then. `ClerkPlanAction` starts the move through `CheckoutButton` (**Switch to Starter**), and subscribing to the held plan again abandons the upcoming item (**Keep Pro**). It offers a switch only in the held billing period, and not while the plan is past due or on a free trial, because Clerk may not defer those.
 
 Confirmed on the Development instance (2026-11-04): after a switch, Pro stays `active` with `canceled_at` set and Starter is `upcoming`, starting at Pro's period end. **Keep Pro** clears `canceled_at` and removes the upcoming item. Both checkouts showed $0.00 due.
 
