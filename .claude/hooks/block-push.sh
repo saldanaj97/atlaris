@@ -13,7 +13,8 @@ if [ -n "$cmd" ]; then
 else
   # jq missing or payload unparseable: scan the raw payload instead of failing open. Newlines
   # are the two characters \n here, and a continuation is backslash plus \n (four characters).
-  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g')"
+  # JSON-escaped quotes (\") become plain quotes so quoted values parse like the jq path.
+  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g')"
 fi
 [ -z "$cmd" ] && exit 0
 
@@ -55,16 +56,23 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
 # JSON-escaped newline (\n) when the raw payload is scanned without jq.
 lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 
+# Quoted strings are opaque: one quoted string, whatever it contains (spaces, ; & |), is a single
+# token. `gap` is the text between a git command and a later flag, and `val` is the value of a git
+# global option. A separator inside a quoted message must not end the gap, and a quoted value with
+# a space (git -C "/a b" push) must not split.
+gap='([^;&|"'"'"']|"[^"]*"|'"'"'[^'"'"']*'"'"')*'
+val='("[^"]*"|'"'"'[^'"'"']*'"'"'|[^[:space:]]+)'
+
 # --no-verify as an argument of a git command. Does not match `rg -- --no-verify` or
 # `git log --grep=--no-verify`.
-no_verify="$lead"'[[:space:]]([^;&|]*[[:space:]])?--no-verify([[:space:]]|$|["'"'"';&|)\\])'
+no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-verify([[:space:]]|$|["'"'"';&|)\\])'
 
 # Only git global options between `git` and the subcommand.
-git_opts='([[:space:]]+(-[cC][[:space:]]+[^[:space:]]+|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+[^[:space:]]+|--?[A-Za-z][A-Za-z-]*(=[^[:space:]]+)?))*'
+git_opts='([[:space:]]+(-[cC][[:space:]]+'"$val"'|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+'"$val"'|--?[A-Za-z][A-Za-z-]*(='"$val"')?))*'
 
 # `git commit -n` is the short form of --no-verify, alone or inside a flag cluster (-an, -nm).
 # Scoped to commit: `git push -n` is --dry-run and `git log -n 5` is a count.
-no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]]([^;&|]*[[:space:]])?-[A-Za-z]*n[A-Za-z]*([[:space:]]|$|["'"'"';&|)\\])'
+no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:space:]])?-[A-Za-z]*n[A-Za-z]*([[:space:]]|$|["'"'"';&|)\\])'
 
 # git + only git global options + push. Does not match `git log --grep push`.
 # Shell aliases and variable indirection are not caught.
