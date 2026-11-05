@@ -20,6 +20,7 @@ import type {
   TaskProgress,
 } from '@/shared/types/db.types';
 
+import { keepDeletedPlanAttemptsInWindow } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import {
   hasActiveChildModuleGeneration,
   lockPlanLifecycle,
@@ -30,6 +31,7 @@ import {
   fetchTaskProgressRows,
   fetchTaskRelationRows,
 } from '@/lib/db/queries/helpers/task-relations-helpers';
+import { getPlanGenerationWindowStart } from '@/shared/constants/generation';
 import {
   assertValidPaginationOptions,
   type PaginationOptions,
@@ -40,7 +42,7 @@ import {
   modules,
   tasks,
 } from '@supabase/schema';
-import { and, asc, count, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, inArray, sql } from 'drizzle-orm';
 
 export type DeletePlanDbClient = Pick<
   DbClient,
@@ -516,6 +518,17 @@ export async function deletePlan(
       return { success: false, reason: 'active_child_generation' };
     }
 
+    const windowStart = getPlanGenerationWindowStart(new Date());
+    const attemptsInWindow = await tx
+      .select({ createdAt: generationAttempts.createdAt })
+      .from(generationAttempts)
+      .where(
+        and(
+          eq(generationAttempts.planId, planId),
+          gte(generationAttempts.createdAt, windowStart),
+        ),
+      );
+
     const deletedPlans = await tx
       .delete(learningPlans)
       .where(
@@ -528,6 +541,12 @@ export async function deletePlan(
       .returning({ id: learningPlans.id });
 
     if (deletedPlans.length > 0) {
+      await keepDeletedPlanAttemptsInWindow({
+        userId,
+        attemptCreatedAts: attemptsInWindow.map((row) => row.createdAt),
+        windowStart,
+        tx,
+      });
       return { success: true };
     }
 

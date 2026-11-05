@@ -55,16 +55,15 @@ describe('deletePlan', () => {
     );
     mockSelectFn.mockReturnValue({
       from: () => ({
-        where: () => ({
-          limit: mockLimit,
-        }),
+        where: () => Object.assign(Promise.resolve([]), { limit: mockLimit }),
       }),
     });
     mockDeleteFn.mockImplementation((_table: unknown) => ({
       where: mockWhere,
     }));
     mockWhere.mockImplementation((whereClause: unknown) => {
-      capturedDeleteWhere = whereClause as Parameters<
+      // The plan delete runs first; a later delete prunes expired attempt records.
+      capturedDeleteWhere ??= whereClause as Parameters<
         PgDialect['sqlToQuery']
       >[0];
       return { returning: mockReturning };
@@ -137,9 +136,9 @@ describe('deletePlan', () => {
     });
 
     expect(result).toEqual({ success: true });
-    expect(mockDeleteFn).toHaveBeenCalledTimes(1);
-    expect(mockDeleteFn).toHaveBeenCalledWith(learningPlans);
-    expect(mockWhere).toHaveBeenCalledTimes(1);
+    expect(mockDeleteFn).toHaveBeenCalledTimes(2);
+    expect(mockDeleteFn).toHaveBeenNthCalledWith(1, learningPlans);
+    expect(mockWhere).toHaveBeenCalledTimes(2);
 
     const deleteWhereQuery = pgDialect.sqlToQuery(
       capturedDeleteWhere as Parameters<PgDialect['sqlToQuery']>[0],
@@ -192,7 +191,7 @@ describe('deletePlan', () => {
       });
 
       expect(result).toEqual({ success: true });
-      expect(mockDeleteFn).toHaveBeenCalledTimes(1);
+      expect(mockDeleteFn).toHaveBeenCalledTimes(2);
     },
   );
 
