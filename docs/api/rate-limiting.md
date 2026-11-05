@@ -45,13 +45,13 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 
 ### IP Rate Limits (Unauthenticated / Machine Endpoints)
 
-| Category    | Limit        | Window   | Use Case                                               |
-| ----------- | ------------ | -------- | ------------------------------------------------------ |
-| `health`    | 60 requests  | 1 minute | Worker health                                          |
-| `webhook`   | 100 requests | 1 minute | Clerk billing webhook                                  |
-| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST                      |
-| `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only)         |
-| `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs |
+| Category    | Limit        | Window   | Use Case                                       |
+| ----------- | ------------ | -------- | ---------------------------------------------- |
+| `health`    | 60 requests  | 1 minute | Worker health                                  |
+| `webhook`   | 100 requests | 1 minute | Clerk billing webhook                          |
+| `publicApi` | 30 requests  | 1 minute | Signed one-click unsubscribe POST              |
+| `docs`      | 30 requests  | 1 minute | API docs / OpenAPI (development and test only) |
+| `internal`  | 60 requests  | 1 minute | Internal workers, maintenance POSTs            |
 
 ### Plan Generation Rate Limit
 
@@ -94,7 +94,7 @@ Located in `src/lib/api/rate-limit.ts`.
 - **Storage**: Database (`generation_attempts` table)
 - **Key**: RLS-scoped current user
 - **Scope**: Generation, retry, and regeneration attempts
-- **Mechanism**: Fail-closed preflight count of `generation_attempts` in the rolling window. This is not an atomic reservation.
+- **Mechanism**: Fail-closed preflight count of `generation_attempts` in the rolling window, plus `deleted_plan_generation_attempts`, so deleting a plan does not free its attempts. This is not an atomic reservation.
 - **Policy constants**: `PLAN_GENERATION_LIMIT`, `PLAN_GENERATION_WINDOW_MINUTES`
 - **Concurrency note**: Because the check is a non-atomic preflight count with no reservation, concurrent requests can exceed the nominal window.
 

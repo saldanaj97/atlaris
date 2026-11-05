@@ -252,7 +252,8 @@ export default function AppSidebar({
                 expandedMinWidth,
               )}
             >
-              <Button asChild className='min-h-[36px] w-full'>
+              {/* Neutral: the page's own primary is the view's one cantaloupe action. */}
+              <Button asChild variant='outline' className='min-h-[36px] w-full'>
                 <Link href={createPlanCta.href} onClick={onNavigate}>
                   {createPlanCta.href === ROUTES.PLANS.NEW ? (
                     <Plus

@@ -220,7 +220,6 @@ export const FREE_GROUNDED_WRITER_MODEL_IDS = [
   'nvidia/nemotron-3.5-super-vl:free',
   'nvidia/nemotron-3.5-lightning:free',
   'minimax/minimax-m3.1-flash:free',
-  'dots-studio/dots-3-note-preview:free',
 ] as const;
 
 /** Free tier: one grounded regeneration per plan. */
@@ -290,7 +289,6 @@ const GROUNDED_MODELS_BY_TIER = {
       { modelId: FREE_GROUNDED_WRITER_MODEL_IDS[0] },
       { modelId: FREE_GROUNDED_WRITER_MODEL_IDS[1] },
       { modelId: FREE_GROUNDED_WRITER_MODEL_IDS[2] },
-      { modelId: FREE_GROUNDED_WRITER_MODEL_IDS[3] },
     ],
     verifier: null,
     advisor: null,

@@ -1,3 +1,5 @@
+import type { Locator } from '@playwright/test';
+
 import { expect, renderedContrast, test } from './fixtures';
 
 // Pricing cards state plan length in weeks, the same as the comparison table,
@@ -19,6 +21,33 @@ test('pricing states every plan length in weeks', async ({ page }) => {
   await expect(longestPlan).toContainText('24 weeks');
   await expect(longestPlan).not.toContainText(/months?/);
 });
+
+// Pricing and the landing sections share one column, so the left edge doesn't
+// jump between pages.
+for (const width of [390, 1280, 1920]) {
+  test(`pricing starts on the landing column at ${width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height: 900 });
+    const leftEdge = (locator: Locator) =>
+      locator.evaluate((element) => element.getBoundingClientRect().left);
+
+    await page.goto('/');
+    const landing = await leftEdge(
+      page.getByRole('heading', { name: 'Pay only when you need more room' }),
+    );
+
+    await page.goto('/pricing');
+    for (const locator of [
+      page.getByRole('heading', { name: 'Free for one plan.' }),
+      page.getByRole('article', { name: 'Free' }),
+      page.locator('[data-pricing-comparison]'),
+      page.locator('[data-slot="cta-banner"]'),
+    ]) {
+      expect(await leftEdge(locator)).toBeCloseTo(landing, 0);
+    }
+  });
+}
 
 // On a phone the comparison table scrolls sideways; its trailing edge fades
 // so the cut-off columns read as more content.

@@ -7,6 +7,7 @@ import { CtaBanner } from '@/components/ui/cta-banner';
 import { PageHero } from '@/components/ui/page-hero';
 import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
+import { cn } from '@/lib/utils';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import Link from 'next/link';
 
@@ -16,7 +17,7 @@ const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
 
 const copy = {
   headlineLead: 'Free for one plan.',
-  headlineTail: 'Pay when you need more',
+  headlineTail: 'Pay when you need more.',
   subheadline:
     'Start with one free plan. Upgrade for more plans, longer plans and more regenerations.',
   ctaHeadline: 'Your first plan is free',
@@ -33,28 +34,30 @@ export function PricingShell({ children }: { children: ReactNode }) {
       <div className='relative z-10'>
         <Hero />
         <section
-          className='mx-auto w-full max-w-[81rem] px-6 pt-2 pb-12 sm:pt-4'
+          className='mx-auto box-content max-w-7xl px-6 pt-2 pb-12 sm:pt-4 md:px-8'
           aria-label='Subscription plans'
         >
           {children}
         </section>
         {/* oxlint-disable shadcn/require-static-classes -- imported CSS module and shared CTA classes are complete but opaque to the rule */}
-        <CtaBanner
-          aria-labelledby='pricing-cta-heading'
-          className={styles.ctaBanner}
-        >
-          <div className={styles.ctaContent}>
-            <div>
-              <h2 id='pricing-cta-heading' className={styles.ctaTitle}>
-                {copy.ctaHeadline}
-              </h2>
-              <p className={styles.ctaDescription}>{copy.ctaDescription}</p>
+        <div className='px-6 md:px-8'>
+          <CtaBanner
+            aria-labelledby='pricing-cta-heading'
+            className={cn('mx-auto max-w-7xl', styles.ctaBanner)}
+          >
+            <div className={styles.ctaContent}>
+              <div>
+                <h2 id='pricing-cta-heading' className={styles.ctaTitle}>
+                  {copy.ctaHeadline}
+                </h2>
+                <p className={styles.ctaDescription}>{copy.ctaDescription}</p>
+              </div>
+              <Button asChild className={marketingPrimaryCtaClassName}>
+                <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
+              </Button>
             </div>
-            <Button asChild className={marketingPrimaryCtaClassName}>
-              <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
-            </Button>
-          </div>
-        </CtaBanner>
+          </CtaBanner>
+        </div>
         {/* oxlint-enable shadcn/require-static-classes */}
       </div>
     </div>
@@ -65,7 +68,13 @@ function Hero() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */
     <PageHero className={styles.hero} aria-labelledby='pricing-hero-heading'>
-      <div className={styles.heroContent}>
+      {/* The same column and gutters as the landing sections. */}
+      <div
+        className={cn(
+          styles.heroContent,
+          'mx-auto box-content max-w-7xl px-6 md:px-8',
+        )}
+      >
         <h1
           id='pricing-hero-heading'
           className='type-display text-balance text-foreground'
