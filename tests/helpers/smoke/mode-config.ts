@@ -25,6 +25,13 @@ const SMOKE_WORKER_INSPECTOR_PORT = 3103 as const;
 /** Only signs commands between the local smoke app and local smoke Worker. */
 const SMOKE_JOBS_SIGNING_SECRET = 'smoke-jobs-signing-secret';
 
+/**
+ * Keeps mock generation running until the plan page has rendered, so the page
+ * has to poll for status. With no delay the plan can already be ready on first
+ * render, and a broken poller passes.
+ */
+const SMOKE_WORKER_MOCK_GENERATION_DELAY_MS = 4_000;
+
 const SMOKE_CONTROLLED_ENV_KEYS = [
   'ENABLE_SENTRY',
   'APP_URL',
@@ -127,6 +134,7 @@ export function buildWorkerModeLayer(
   return {
     ...baseSmokeLayer(state),
     AI_PROVIDER: 'mock',
+    MOCK_GENERATION_DELAY_MS: String(SMOKE_WORKER_MOCK_GENERATION_DELAY_MS),
     JOBS_SIGNING_SECRET: SMOKE_JOBS_SIGNING_SECRET,
     CLOUDFLARE_INCLUDE_PROCESS_ENV: 'true',
     CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE:
