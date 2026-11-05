@@ -4,8 +4,17 @@
 
 input="$(cat)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
-# jq missing or payload unparseable: scan the raw payload instead of failing open.
-[ -z "$cmd" ] && cmd="$input"
+if [ -n "$cmd" ]; then
+  # Join backslash-newline continuations, then turn the remaining newlines into spaces so a
+  # flag on a later line (git commit \<newline> --no-verify, or `)" --no-verify` after a heredoc)
+  # is still matched against its git command. Cost: two unrelated lines can now be read as one
+  # command, which errs toward blocking.
+  cmd="$(printf '%s' "$cmd" | awk '{ if (sub(/\\$/, "")) printf "%s ", $0; else printf "%s\n", $0 }' | tr '\n' ' ')"
+else
+  # jq missing or payload unparseable: scan the raw payload instead of failing open. Newlines
+  # are the two characters \n here, and a continuation is backslash plus \n (four characters).
+  cmd="$(printf '%s' "$input" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g')"
+fi
 [ -z "$cmd" ] && exit 0
 
 # Drop commit-message arguments that cannot execute anything so words inside a message do not
