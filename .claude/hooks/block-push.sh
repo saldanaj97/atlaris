@@ -5,11 +5,12 @@
 input="$(cat)"
 cmd="$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null)"
 if [ -n "$cmd" ]; then
-  # Join backslash-newline continuations, then turn the remaining newlines into spaces so a
-  # flag on a later line (git commit \<newline> --no-verify, or `)" --no-verify` after a heredoc)
-  # is still matched against its git command. Cost: two unrelated lines can now be read as one
-  # command, which errs toward blocking.
-  cmd="$(printf '%s' "$cmd" | awk '{ if (sub(/\\$/, "")) printf "%s ", $0; else printf "%s\n", $0 }' | tr '\n' ' ')"
+  # Join backslash-newline continuations, then mark every remaining newline with the control
+  # character US (0x1f). The awk pass below turns a marker into `;` (a command separator) outside
+  # quotes and into a space inside quotes or $(...), so a flag on the same command still matches
+  # across a multi-line message or heredoc, while `git commit -m x` newline `head -n 5` stays two
+  # commands.
+  cmd="$(printf '%s' "$cmd" | awk '{ if (sub(/\\$/, "")) printf "%s ", $0; else printf "%s%c", $0, 31 }')"
 else
   # jq missing or payload unparseable: scan the raw payload instead of failing open. Newlines
   # are the two characters \n here, and a continuation is backslash plus \n (four characters).
@@ -22,7 +23,8 @@ else
   if printf '%s' "$raw" | grep -Eq '"command"[[:space:]]*:[[:space:]]*"'; then
     raw="$(printf '%s' "$raw" | sed -E -e 's/^.*"command"[[:space:]]*:[[:space:]]*"//' -e 's/^(([^"\\]|\\.)*)".*$/\1/')"
   fi
-  cmd="$(printf '%s' "$raw" | sed -e 's/\\\\\\n/ /g' -e 's/\\n/ /g' -e 's/\\"/"/g' -e 's/\\\\/\\/g')"
+  us="$(printf '\037')"
+  cmd="$(printf '%s' "$raw" | sed -e 's/\\\\\\n/ /g' -e "s/\\\\n/$us/g" -e 's/\\"/"/g' -e 's/\\\\/\\/g')"
 fi
 [ -z "$cmd" ] && exit 0
 
@@ -33,12 +35,18 @@ fi
 # mistaken for an opening one, and flags like -cm (bash -c) are not treated as message flags.
 # Anything this cannot parse stays in the scan, so it errs toward blocking.
 scan="$(printf '%s' "$cmd" | awk '
-BEGIN { sq = sprintf("%c", 39); dq = "\"" }
+BEGIN { sq = sprintf("%c", 39); dq = "\""; us = sprintf("%c", 31) }
 {
-  s = $0; n = length(s); out = ""; i = 1
+  s = $0; n = length(s); out = ""; i = 1; depth = 0; bt = 0
   while (i <= n) {
     c = substr(s, i, 1)
     if (c == "\\") { out = out substr(s, i, 2); i += 2; continue }
+    # A newline marker outside quotes separates commands; inside $(...) or backticks it stays a
+    # space so a heredoc message does not cut the command in two.
+    if (c == us) { out = out ((depth > 0 || bt) ? " " : ";"); i++; continue }
+    if (c == "$" && substr(s, i + 1, 1) == "(") { depth++; out = out "$("; i += 2; continue }
+    if (c == ")" && depth > 0) depth--
+    if (c == "`") bt = !bt
     if (c == sq || c == dq) {
       # $'...' is ANSI-C quoting: a backslash escapes the next character, even a single quote.
       ansi = (c == sq && i > 1 && substr(s, i - 1, 1) == "$")
@@ -46,6 +54,13 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
       while (j <= n) {
         d = substr(s, j, 1)
         if ((c == dq || ansi) && d == "\\") { j += 2; continue }
+        # Inside "...", a $(...) is its own shell context: skip to its matching ) so quotes in a
+        # heredoc message ("$(cat <<'EOF' ... say "hi ... EOF )") do not end the string early.
+        if (c == dq && d == "$" && substr(s, j + 1, 1) == "(") {
+          pd = 1; j += 2
+          while (j <= n && pd > 0) { e = substr(s, j, 1); if (e == "(") pd++; else if (e == ")") pd--; j++ }
+          continue
+        }
         if (d == c) { closed = 1; break }
         j++
       }
@@ -63,9 +78,10 @@ BEGIN { sq = sprintf("%c", 39); dq = "\"" }
     }
     out = out c; i++
   }
+  gsub(us, " ", out)
   print out
 }')"
-[ -z "$scan" ] && scan="$cmd"
+[ -z "$scan" ] && scan="$(printf '%s' "$cmd" | tr '\037' ';')"
 
 # Undo backslash escapes before a letter (\git, g\it, gi\t, pu\sh); the awk pass above already
 # unquoted simple quoted words. `scan` strips every such escape. `scan_b` keeps \n, \r and \t
@@ -81,12 +97,14 @@ scan="$(printf '%s' "$scan" | sed -E -e 's/\\([A-Za-z])/\1/g')"
 lead='(^|\\[nrt]|[;&|(`"'"'"'[:space:]])([^[:space:];&|()`"'"'"']*/)?git'
 
 # Quoted strings are opaque: one quoted string, whatever it contains (spaces, ; & |), is a single
-# token, and a value may mix bare text with quoted parts (-c user.name="A B"). `gap` is the text between a git command and a later flag, and `val` is the value of a git
-# global option. A separator inside a quoted message must not end the gap, and a quoted value with
-# a space (git -C "/a b" push) must not split. Redirections that contain & (2>&1, >&2, &>) are
-# not command separators, so `gap` steps over them.
-gap='([^;&|"'"'"'\\]|\\.|[<>]&[0-9-]*|&>>?|"([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
-val='(("([^"\\]|\\.)*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
+# token, and a value may mix bare text with quoted parts (-c user.name="A B"). `gap` is the text
+# between a git command and a later flag, and `val` is the value of a git global option. A
+# separator inside a quoted message must not end the gap, and a quoted value with a space
+# (git -C "/a b" push) must not split. A $(...) or backtick substitution is also one token, so a
+# `;` inside a heredoc message ahead of a flag cannot end the gap. Redirections that contain &
+# (2>&1, >&2, &>) are not command separators, so `gap` steps over them.
+gap='([^;&|"'"'"'\\]|\\.|[<>]&[0-9-]*|&>>?|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|"([^"\\$]|\\.|[$]\(([^()]|\([^()]*\))*\)|[$])*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"')*'
+val='(("([^"\\$]|\\.|[$]\(([^()]|\([^()]*\))*\)|[$])*"|[$]'"'"'([^'"'"'\\]|\\.)*'"'"'|'"'"'[^'"'"']*'"'"'|[$]\(([^()]|\([^()]*\))*\)|`[^`]*`|\\.|[^[:space:]"'"'"'`\\])+)'
 
 # What may directly follow a matched word: whitespace, end of input, or a shell delimiter.
 end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
@@ -96,11 +114,12 @@ end='([[:space:]]|$|["'"'"';&|)`<>}\\])'
 no_verify="$lead"'[[:space:]]('"$gap"'[[:space:]])?--no-veri(f(y)?)?'"$end"
 
 # Only git global options between `git` and the subcommand.
-git_opts='([[:space:]]+(-[cC][[:space:]]+'"$val"'|--(git-dir|work-tree|namespace|exec-path)[[:space:]]+'"$val"'|--?[A-Za-z][A-Za-z-]*(='"$val"')?))*'
+git_opts='([[:space:]]+(-[cC][[:space:]]+'"$val"'|--(git-dir|work-tree|namespace|exec-path|config-env|attr-source)[[:space:]]+'"$val"'|--?[A-Za-z][A-Za-z-]*(='"$val"')?))*'
 
 # `git commit -n` is the short form of --no-verify, alone or inside a flag cluster (-an, -nm).
+# Only flags that take no value may come before the n: in -uno or -mnote the n belongs to a value.
 # Scoped to commit: `git push -n` is --dry-run and `git log -n 5` is a count.
-no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:space:]])?-[A-Za-z]*n[A-Za-z]*'"$end"
+no_verify_short="$lead$git_opts"'[[:space:]]+commit[[:space:]](('"$gap"')[[:space:]])?-[aeiopqsvz]*n[A-Za-z]*'"$end"
 
 # git + only git global options + push. Does not match `git log --grep push`.
 # Shell aliases and variable indirection are not caught.
