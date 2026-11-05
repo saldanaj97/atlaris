@@ -1,6 +1,6 @@
 # Launch smoke checklist (production)
 
-Run this list in **production** before each waitlist batch is invited and again on launch day before and after the `launch-waitlist` flag comes off (target Fri 2026-11-06). It is a manual or agent-run list, not a test suite. [DEV-178](https://linear.app/saldana-software/issue/DEV-178) covers visual checks on staging; this list covers the production flows end to end. Spec and run log: [DEV-187](https://linear.app/saldana-software/issue/DEV-187).
+Run this list in **production** before each waitlist batch is invited and again on launch day before and after the `launch-waitlist` flag comes off (launch is Fri 2026-11-13; the flag comes off Thu 2026-11-12 evening). It is a manual or agent-run list, not a test suite. [DEV-178](https://linear.app/saldana-software/issue/DEV-178) covers visual checks on staging; this list covers the production flows end to end. Spec and run log: [DEV-187](https://linear.app/saldana-software/issue/DEV-187).
 
 Every production action here (checkouts, account deletion, flag, env and Clerk changes) needs the owner's go-ahead for that run. Provider dashboard steps (Vercel, Clerk, Stripe, Supabase, PostHog, Sentry, OpenRouter) are done by the owner. A failing check gets its own Linear bug, linked from DEV-187. Times are America/Chicago.
 
@@ -204,11 +204,11 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 
 ## Launch day: flag off
 
-Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the provider dashboards. Background: [environment.md, Feature flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
+Do these on the evening of Thu 2026-11-12 (launch is Fri 2026-11-13) after a passing run. The owner does steps 1–4 in the provider dashboards, back to back in one sitting: since [#913](https://github.com/saldanaj97/atlaris/pull/913), a signed-out "Create a plan" click goes to `/auth/sign-up`, which shows Clerk's "Access restricted" page until sign-up is Open, so the flag and the Clerk switch must not be left half done. Background: [environment.md, Feature flags and Flag and gate ownership](../development/environment.md#flag-and-gate-ownership).
 
 1. **Cloudflare** → Flagship → `atlaris-plan-generation` → `launch-waitlist` → set the default variation to **off** (`false`) and remove any rule that still serves **on** for `environment = production`.
 2. Wait at least 90 s (about 30 s Flagship propagation plus `SITE_GATE_CACHE_TTL_MS`). Check from a fresh browser session.
-3. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). Do this after the flag: signed-in users already get past the waitlist gate (DEV-190), so opening Clerk first would let anyone sign up on the Account Portal and get in before launch. Between steps 1 and 3, `/auth/sign-up` shows Clerk's "Sign ups are currently disabled" for a minute.
+3. **Clerk** sign-up mode to Public: Clerk Dashboard (production instance) → **Access mode** → select **Open** → **Save**. Before saving, confirm **Enable allowlist** is off on that page: the allowlist applies in Open mode and, with no identifiers on it, blocks every sign-up (the staging instance uses an `@atlaris.app` allowlist; production must not). Clerk's dashboard labels the Public sign-up mode (`sign_up_mode: public`) as **Open** ([Clerk: restricting access](https://clerk.com/docs/guides/secure/restricting-access)). Do this after the flag: signed-in users already get past the waitlist gate (DEV-190), so opening Clerk first would let anyone sign up on the Account Portal and get in before launch. Between steps 1 and 3, `/auth/sign-up` shows Clerk's "Sign ups are currently disabled" for a minute.
 4. **Vercel** → Settings → Environment Variables → Production → remove `LAUNCH_WAITLIST`, then redeploy the current Production deployment so running instances drop it. Vercel env changes reach only new deployments. Keep the `launch-waitlist` flag itself defined in Flagship: a missing flag makes every evaluation throw, and the gate then runs on its fail-safe.
 5. Confirm the redirect is gone:
 
@@ -218,8 +218,11 @@ Do these on 2026-11-06 after a passing run. The owner does steps 1–4 in the pr
 
    **Pass:** the redirect URL no longer contains `/waitlist`. A signed-out `/dashboard` may still answer `307`, but to Clerk sign-in, not to `/waitlist`. `https://atlaris.app/auth/sign-up` answers `200`, and `/waitlist` redirects home.
 
-6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 7.
-7. Run checks 3–5 and 10 once more without the override cookie, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
-8. Delete the step 6 account as in check 8.
+6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
+7. Check the two signed-out entry points in a private window (these can't be tested before this step, because no Clerk instance has Open sign-up before launch):
+   - On the landing page and on `/pricing`, select **Create a plan**. **Pass:** you reach the Clerk sign-up form on `/auth/sign-up` (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new`, ready to create a plan. Delete that second account as in check 8.
+   - On `/pricing`, select **Start free** on the Free card. **Pass:** the Clerk sign-up modal opens.
+8. Run checks 3–5 and 10 once more without the override cookie, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
+9. Delete the step 6 account as in check 8.
 
 **Rollback:** set Clerk's sign-up mode back to **Waitlist** (Dashboard → **Access mode**) first, then set `launch-waitlist` back to **on** in Flagship (applies within about 90 s), and restore `LAUNCH_WAITLIST=true` in Production with a redeploy. Accounts created while sign-up was open stay signed in and keep getting past the waitlist gate; ban or delete them in Clerk if they must lose access.
