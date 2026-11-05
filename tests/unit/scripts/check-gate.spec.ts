@@ -36,6 +36,8 @@ const GATE_ON = {
   '/waitlist': page(),
   '/plans/new': redirect('/waitlist'),
   '/pricing': page(),
+  '/%64ashboard': redirect('/waitlist'),
+  '/plans/x.txt': redirect('/waitlist'),
 };
 
 const GATE_OFF = {
@@ -44,6 +46,8 @@ const GATE_OFF = {
   '/waitlist': redirect('/'),
   '/plans/new': redirect('/auth/sign-up?redirect_url=/plans/new'),
   '/pricing': page(),
+  '/%64ashboard': redirect('/auth/sign-in?redirect_url=/%64ashboard'),
+  '/plans/x.txt': redirect('/auth/sign-in?redirect_url=/plans/x.txt'),
 };
 
 describe('check-gate', () => {
@@ -66,6 +70,32 @@ describe('check-gate', () => {
     const outcomes = await runGateChecks(probeFrom(GATE_OFF), 'on');
     expect(outcomes.some((o) => !o.ok)).toBe(true);
   });
+
+  it('fails the on checks when an extension path skips the gate', async () => {
+    const outcomes = await runGateChecks(
+      probeFrom({ ...GATE_ON, '/plans/x.txt': page() }),
+      'on',
+    );
+    expect(outcomes.filter((o) => !o.ok).map((o) => o.name)).toEqual([
+      '/plans/x.txt redirects to /waitlist',
+    ]);
+  });
+
+  it.each([
+    ['skipped the proxy', page()],
+    ['was not routed', { status: 404, location: null, csp: {} }],
+  ])(
+    'fails the off checks when an encoded protected path %s',
+    async (_label, result) => {
+      const outcomes = await runGateChecks(
+        probeFrom({ ...GATE_OFF, '/%64ashboard': result }),
+        'off',
+      );
+      expect(outcomes.filter((o) => !o.ok).map((o) => o.name)).toEqual([
+        '/%64ashboard (signed out) redirects to /auth/sign-in',
+      ]);
+    },
+  );
 
   it('fails when sign-up loses the Clerk bot-protection CSP', async () => {
     const outcomes = await runGateChecks(

@@ -22,6 +22,24 @@ describe('proxy matcher', () => {
     expect(matchesProxyMatcher('/plans')).toBe(true);
   });
 
+  it('runs on protected app prefixes whatever the extension', () => {
+    expect(matchesProxyMatcher('/plans/x.txt')).toBe(true);
+    expect(matchesProxyMatcher('/dashboard/report.csv')).toBe(true);
+    expect(matchesProxyMatcher('/settings/x.html')).toBe(true);
+    expect(matchesProxyMatcher('/account/a.js')).toBe(true);
+    expect(matchesProxyMatcher('/analytics/x.xml')).toBe(true);
+    expect(matchesProxyMatcher('/robots.txt')).toBe(false);
+    expect(matchesProxyMatcher('/landing.txt')).toBe(false);
+  });
+
+  it('runs on percent-encoded paths whatever the extension', () => {
+    expect(matchesProxyMatcher('/%70lans/x.txt')).toBe(true);
+    expect(matchesProxyMatcher('/%64ashboard/report.csv')).toBe(true);
+    expect(matchesProxyMatcher('/%5Fnext/static/x.js')).toBe(true);
+    expect(matchesProxyMatcher('/robots.txt')).toBe(false);
+    expect(matchesProxyMatcher('/fonts/a.woff2')).toBe(false);
+  });
+
   it('only excludes the PostHog ingest path and its descendants', () => {
     expect(matchesProxyMatcher('/ingest')).toBe(false);
     expect(matchesProxyMatcher('/ingest/array')).toBe(false);

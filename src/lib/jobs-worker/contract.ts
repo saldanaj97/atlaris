@@ -17,6 +17,12 @@ export const JOBS_SIGNATURE_HEADER = 'x-atlaris-jobs-signature';
 export const JOBS_SIGNATURE_VERSION = 'v1';
 /** Commands whose timestamp is further than this from the Worker clock are rejected. */
 export const JOBS_SIGNATURE_MAX_SKEW_SECONDS = 300;
+/**
+ * Largest signed command body the Worker reads (DEV-208, lead 5). Real
+ * commands are a few KiB; the cap stops an unsigned client from making the
+ * Worker buffer and hash a large body before the signature check fails.
+ */
+export const JOBS_SIGNED_BODY_MAX_BYTES = 256 * 1024;
 
 export const JOBS_COMMAND_PATHS = {
   regenerationEnqueue: '/v1/regeneration/enqueue',
@@ -151,6 +157,35 @@ function toHex(buffer: ArrayBuffer): string {
   ).join('');
 }
 
+/** Hex SHA-256 of a command body, as it appears in the signed canonical string. */
+export async function hashJobsBody(body: string): Promise<string> {
+  return toHex(await crypto.subtle.digest('SHA-256', encoder.encode(body)));
+}
+
+/**
+ * {@link computeJobsSignature} from a precomputed {@link hashJobsBody}, so a
+ * verifier that tries several secrets hashes the body once.
+ */
+export async function computeJobsSignatureFromBodyHash(input: {
+  readonly secret: string;
+  readonly timestamp: string;
+  readonly method: string;
+  readonly path: string;
+  readonly bodyHash: string;
+}): Promise<string> {
+  const canonical = `${input.timestamp}.${input.method.toUpperCase()}.${input.path}.${input.bodyHash}`;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(input.secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return toHex(
+    await crypto.subtle.sign('HMAC', key, encoder.encode(canonical)),
+  );
+}
+
 /**
  * Hex HMAC-SHA256 over `<timestamp>.<METHOD>.<path>.<hex sha256(body)>`.
  * Returns the bare hex digest; the header value is `v1=<hex>`.
@@ -162,20 +197,11 @@ export async function computeJobsSignature(input: {
   readonly path: string;
   readonly body: string;
 }): Promise<string> {
-  const bodyHash = toHex(
-    await crypto.subtle.digest('SHA-256', encoder.encode(input.body)),
-  );
-  const canonical = `${input.timestamp}.${input.method.toUpperCase()}.${input.path}.${bodyHash}`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    encoder.encode(input.secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  return toHex(
-    await crypto.subtle.sign('HMAC', key, encoder.encode(canonical)),
-  );
+  const { body, ...rest } = input;
+  return computeJobsSignatureFromBodyHash({
+    ...rest,
+    bodyHash: await hashJobsBody(body),
+  });
 }
 
 /**

@@ -7,6 +7,7 @@ import { AppError } from '@/lib/api/errors';
 import { isAbortError } from '@/lib/errors';
 
 const OVERSIZED_BODY_CODE = 'PAYLOAD_TOO_LARGE';
+const UNSUPPORTED_MEDIA_TYPE_CODE = 'UNSUPPORTED_MEDIA_TYPE';
 
 export type ParseJsonBodyOptions = {
   /**
@@ -60,6 +61,25 @@ function oversizedBodyError(): AppError {
 
 function isOversizedBodyError(err: unknown): err is AppError {
   return err instanceof AppError && err.code() === OVERSIZED_BODY_CODE;
+}
+
+/**
+ * A body is parsed only when it is declared as JSON, so a cross-site
+ * `text/plain` form or fetch cannot reach a JSON route (DEV-208, lead 4).
+ */
+function hasJsonMediaType(req: Request): boolean {
+  const mediaType = (req.headers.get('content-type') ?? '')
+    .split(';')[0]
+    .trim()
+    .toLowerCase();
+  return mediaType === 'application/json';
+}
+
+function unsupportedMediaTypeError(): AppError {
+  return new AppError('Unsupported media type', {
+    status: 415,
+    code: UNSUPPORTED_MEDIA_TYPE_CODE,
+  });
 }
 
 /**
@@ -132,6 +152,14 @@ export async function parseJsonBody(
   options: ParseJsonBodyOptions,
 ): Promise<unknown> {
   const detectBody = options.detectBody ?? detectJsonBodyPresence;
+
+  // Checked before reading: an optional body that is absent keeps its fallback.
+  if (
+    !hasJsonMediaType(req) &&
+    (options.mode === 'required' || detectBody(req))
+  ) {
+    throw unsupportedMediaTypeError();
+  }
 
   try {
     if (options.maxBytes !== undefined) {
