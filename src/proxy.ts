@@ -218,5 +218,9 @@ export const config = {
     // `/plans/x.txt` cannot reach `plans/[id]` without the gate, CSP, and auth.
     // Keep in step with PROTECTED_PREFIXES in src/lib/proxy/middleware-policy.ts.
     '/(dashboard|plans|account|settings|analytics)(.*)',
+    // Any percent-encoded path runs the proxy too, so `/%70lans/x.txt` cannot
+    // dodge both entries above if a host decodes it before routing. The proxy
+    // decodes it and rejects dot segments before any policy check.
+    '/(.*%.*)',
   ],
 };
