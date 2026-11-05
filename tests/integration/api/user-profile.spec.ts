@@ -104,6 +104,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: 'New Name' }),
       },
     );
@@ -135,6 +136,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: null }),
       },
     );
@@ -156,6 +158,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ analyticsTimezone: 'America/Chicago' }),
       },
     );
@@ -182,6 +185,7 @@ describe('PUT /api/v1/user/profile', () => {
   it('updates name and analytics timezone atomically in one request', async () => {
     const request = new NextRequest('http://localhost/api/v1/user/profile', {
       method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         name: 'Combined Update',
         analyticsTimezone: 'Europe/London',
@@ -233,6 +237,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: 'Still Valid',
           email: 'should-not-be-allowed@example.com',
@@ -253,6 +258,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ analyticsTimezone: 'Not/AZone' }),
       },
     );
@@ -269,6 +275,7 @@ describe('PUT /api/v1/user/profile', () => {
       'http://localhost:3000/api/v1/user/profile',
       {
         method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH + 1),
         }),

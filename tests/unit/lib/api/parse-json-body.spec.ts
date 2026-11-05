@@ -22,6 +22,8 @@ function mockRequest(init: {
   return request;
 }
 
+const JSON_HEADERS = { 'content-type': 'application/json' };
+
 function jsonBodyRequest(
   body: BodyInit,
   headers: Record<string, string> = {},
@@ -131,6 +133,7 @@ describe('detectJsonBodyPresence', () => {
 describe('parseJsonBody', () => {
   it('required mode: returns parsed JSON', async () => {
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.resolve({ a: 1 }),
     });
     await expect(
@@ -143,6 +146,7 @@ describe('parseJsonBody', () => {
 
   it('required mode: returns undefined when json resolves to undefined', async () => {
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.resolve(undefined),
     });
     const factory = vi.fn((_err: unknown) => new Error('should not run'));
@@ -154,6 +158,7 @@ describe('parseJsonBody', () => {
 
   it('required mode: returns null when json resolves to null without invoking factory', async () => {
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.resolve(null),
     });
     const factory = vi.fn(() => new Error('should not run'));
@@ -166,6 +171,7 @@ describe('parseJsonBody', () => {
   it('required mode: invokes onMalformedJson for SyntaxError', async () => {
     const syntaxErr = new SyntaxError('Unexpected token');
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.reject(syntaxErr),
     });
     const factory = vi.fn(() => new Error('from factory'));
@@ -178,6 +184,7 @@ describe('parseJsonBody', () => {
   it('required mode: invokes onMalformedJson for non-SyntaxError rejections', async () => {
     const typeErr = new TypeError('boom');
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.reject(typeErr),
     });
     const factory = vi.fn(() => new Error('wrapped'));
@@ -191,6 +198,7 @@ describe('parseJsonBody', () => {
     const abort = new Error('aborted');
     abort.name = 'AbortError';
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.reject(abort),
     });
     const factory = vi.fn(() => new Error('should not run'));
@@ -206,6 +214,7 @@ describe('parseJsonBody', () => {
     }
     const abort = new DOMException('Aborted', 'AbortError');
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.reject(abort),
     });
     const factory = vi.fn(() => new Error('should not run'));
@@ -473,6 +482,7 @@ describe('parseJsonBody', () => {
   it('omitted maxBytes: keeps unbounded req.json() behavior', async () => {
     const huge = { pad: 'x'.repeat(10_000) };
     const req = mockRequest({
+      headers: JSON_HEADERS,
       json: () => Promise.resolve(huge),
     });
 
@@ -514,5 +524,99 @@ describe('parseJsonBody', () => {
       }),
     ).resolves.toEqual({});
     expect(factory).not.toHaveBeenCalled();
+  });
+
+  describe('JSON media type', () => {
+    function recordingStream() {
+      const pull = vi.fn((controller: ReadableStreamDefaultController) => {
+        controller.enqueue(new TextEncoder().encode('{"a":1}'));
+        controller.close();
+      });
+      // highWaterMark 0: nothing is pulled until the body is read.
+      const stream = new ReadableStream<Uint8Array>(
+        { pull },
+        { highWaterMark: 0 },
+      );
+      return { stream, pull };
+    }
+
+    function expectUnsupportedMediaType(error: unknown) {
+      expect(error).toBeInstanceOf(AppError);
+      expect((error as AppError).status()).toBe(415);
+      expect((error as AppError).code()).toBe('UNSUPPORTED_MEDIA_TYPE');
+    }
+
+    it.each([
+      ['text/plain', { 'content-type': 'text/plain' }],
+      [
+        'form-urlencoded',
+        { 'content-type': 'application/x-www-form-urlencoded' },
+      ],
+      ['a missing content type', {} as Record<string, string>],
+    ])(
+      'required mode: rejects %s with 415 before reading the body',
+      async (_label, headers) => {
+        const { stream, pull } = recordingStream();
+        const req = new Request('http://localhost/parse-json-body', {
+          method: 'POST',
+          headers,
+          body: stream,
+          duplex: 'half',
+        } as RequestInit & { duplex: string });
+        const factory = vi.fn(() => new Error('should not run'));
+
+        const error = await parseJsonBody(req, {
+          mode: 'required',
+          onMalformedJson: factory,
+          maxBytes: 1024,
+        }).catch((err: unknown) => err);
+
+        expectUnsupportedMediaType(error);
+        expect(pull).not.toHaveBeenCalled();
+        expect(factory).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(['application/json; charset=utf-8', 'Application/JSON'])(
+      'required mode: accepts %s',
+      async (contentType) => {
+        const req = jsonBodyRequest('{"a":1}', { 'content-type': contentType });
+
+        await expect(
+          parseJsonBody(req, {
+            mode: 'required',
+            onMalformedJson: () => new Error('should not run'),
+            maxBytes: 1024,
+          }),
+        ).resolves.toEqual({ a: 1 });
+      },
+    );
+
+    it('rejects a JSON lookalike media type', async () => {
+      const req = jsonBodyRequest('{"a":1}', {
+        'content-type': 'application/jsonp',
+      });
+
+      expectUnsupportedMediaType(
+        await parseJsonBody(req, {
+          mode: 'required',
+          onMalformedJson: () => new Error('should not run'),
+        }).catch((err: unknown) => err),
+      );
+    });
+
+    it('optional mode: a text/plain body that is present is rejected with 415', async () => {
+      const req = mockRequest({
+        headers: { 'content-type': 'text/plain', 'content-length': '5' },
+        json: () => Promise.resolve({ a: 1 }),
+      });
+
+      expectUnsupportedMediaType(
+        await parseJsonBody(req, {
+          mode: 'optional',
+          onMalformedJson: () => new Error('should not run'),
+        }).catch((err: unknown) => err),
+      );
+    });
   });
 });
