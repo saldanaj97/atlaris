@@ -1,7 +1,7 @@
 {
   "lock_version": 1,
-  "generated_at": "2026-11-06T21:40:35Z",
-  "commit": "49608487763b20002fef1fcfe8160e8a3130ef88",
+  "generated_at": "2026-11-06T22:54:47Z",
+  "commit": "64fdd02171cd3187e80797dd36c473383bf9d8ce",
   "working_tree_dirty": false,
   "dirty_paths": [],
   "dirty_check": "git status --porcelain excluding docs/codemap (the generator's own output)",
@@ -63,7 +63,7 @@
       "kind": "module"
     },
     "api-routes": {
-      "fingerprint": "af1f1c431c6a210b423827abaeb52cee6de565adbdec5b5a44bdf5f018287e78",
+      "fingerprint": "004ef50392e256055eea21f3b6439bee15c59d26ea24bdaa39783447ed436d25",
       "file_count": 29,
       "paths": [
         "src/app/api"
@@ -85,7 +85,7 @@
       "kind": "module"
     },
     "plans": {
-      "fingerprint": "bfc23eeac1d986effdd2058497718d7b9f32ac3bd66dde01d0734f3adcddfd43",
+      "fingerprint": "af5ec3686865c73a20d48d075ef107d4c2c5093827bb9547de059cf9e1ac2da2",
       "file_count": 68,
       "paths": [
         "src/features/plans"
@@ -144,8 +144,8 @@
       "kind": "service"
     },
     "db-layer": {
-      "fingerprint": "42fef2768aab14f6ecbc862d71497b344a60b15508043515026e4df85103c55a",
-      "file_count": 152,
+      "fingerprint": "41d265e47815af705ddc6876f59efa0535f4c344fe45f0e24e1a76e4acd90c7e",
+      "file_count": 151,
       "paths": [
         "src/lib/db",
         "supabase"
@@ -290,7 +290,7 @@
       "file_count": 1
     },
     "docs": {
-      "fingerprint": "588b379a2a01e44785d245261ea2d9a5b66951c47acb89e1e36e4a42236a88a3",
+      "fingerprint": "e69e6d0a6569338d71d5145d85374a78a544b377828c5f547c7795fede425ef7",
       "file_count": 49
     },
     "public": {
@@ -302,8 +302,8 @@
       "file_count": 43
     },
     "tests": {
-      "fingerprint": "2d8e2044da8dce31662d01b6a8758961b7f3f41d97a0dbdd5e4a93d527ed099b",
-      "file_count": 537
+      "fingerprint": "f35773c0182df957eb2a4e02fd47914751a8bbf5597c6a2e8cba249dfea48385",
+      "file_count": 536
     }
   }
 }

@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-06T21:40:35Z",
-  "generated_from_commit": "49608487763b20002fef1fcfe8160e8a3130ef88",
+  "generated_at": "2026-11-06T22:54:47Z",
+  "generated_from_commit": "64fdd02171cd3187e80797dd36c473383bf9d8ce",
   "scope": [
     "src",
     "supabase",
@@ -1987,11 +1987,6 @@
           "via": "imports"
         },
         {
-          "path": "tests/unit/lib/db/queries/helpers",
-          "files": 2,
-          "via": "imports"
-        },
-        {
           "path": "tests/unit/mappers",
           "files": 2,
           "via": "imports"
@@ -2078,6 +2073,11 @@
         },
         {
           "path": "tests/unit/helpers/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries/helpers",
           "files": 1,
           "via": "imports"
         },
@@ -2743,11 +2743,6 @@
         },
         {
           "path": "tests/unit/lib/db/queries",
-          "files": 1,
-          "via": "imports"
-        },
-        {
-          "path": "tests/unit/lib/db/queries/helpers",
           "files": 1,
           "via": "imports"
         }
