@@ -23,7 +23,8 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
   return {
     /**
      * Master switch for the manual retention cleanup HTTP endpoint.
-     * Scheduled pg_cron cleanup is controlled separately in Supabase.
+     * The scheduled daily cleanup is owned by the jobs Worker cron (flag
+     * `job-retention-cleanup`), not this switch. The old pg_cron job is gone.
      */
     get retentionCleanupEnabled(): boolean {
       return toBoolean(

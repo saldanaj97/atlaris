@@ -11,8 +11,8 @@ import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
  * GET /api/v1/plans/:planId/status
  * Returns the status of a learning plan's generation process.
  *
- * Uses learning_plans.generationStatus column (updated by streaming route)
- * instead of the legacy job_queue table.
+ * Reads the generation status stored on the learning_plans row, not the
+ * job_queue table.
  */
 
 export const GET = requestBoundary.route(

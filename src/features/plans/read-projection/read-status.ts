@@ -1,12 +1,10 @@
-import type {
-  FailureClassification,
-  PlanStatus as ClientPlanStatus,
-} from '@/shared/types/client.types';
+import type { PlanStatus as ClientPlanStatus } from '@/shared/types/client.types';
 import type {
   GenerationAttempt,
   GenerationStatus,
   LearningPlan,
 } from '@/shared/types/db.types';
+import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { isKnownFailureClassification } from '@/shared/types/failure-classification';

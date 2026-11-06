@@ -159,7 +159,8 @@ export async function findAttemptWithWorkflowIdempotencyKey(params: {
  *
  * Production callers pass serviceRoleDb from feature-owned generation boundaries
  * after request auth and ownership checks. JWT claim replay in transactions is a
- * no-op for service-role; it remains for any legacy RLS-scoped callers/tests.
+ * no-op for service-role; it still applies to RLS-scoped clients, which the
+ * integration tests use (see docs/technical-debt.md).
  * See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
  */
 

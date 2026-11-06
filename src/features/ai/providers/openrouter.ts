@@ -80,7 +80,7 @@ export type OpenRouterProviderConfig = {
   apiKey?: string;
   /**
    * Picks `OPENROUTER_API_KEY_<TIER>` when no `apiKey` is given. Grounded
-   * stages pass it; the legacy pipeline does not, so it keeps one key.
+   * stages pass it; the standard (non-grounded) pipeline does not, so it keeps one key.
    */
   tier?: SubscriptionTier;
   model: string;

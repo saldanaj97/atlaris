@@ -268,7 +268,7 @@ async function resolveCreateStreamModel({
   logger[ignoredSuppliedModel ? 'warn' : 'info'](meta, message);
 
   // Grounded outlines take a valid `?model=` override, else the Pro writer
-  // pick; the legacy saved outline model never applies to them (JCS-169).
+  // pick; the saved standard outline model never applies to them (JCS-169).
   const groundedWriterModelId = resolveGroundedWriterModelId(
     tier,
     resolutionSource === 'query_override' ? modelOverride : undefined,

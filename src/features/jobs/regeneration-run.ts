@@ -175,7 +175,7 @@ type PreparedRegeneration = LoadedRegeneration & {
   readonly tier: SubscriptionTier;
   readonly grounded: boolean;
   readonly modelOverride?: string;
-  /** The grounded outline writer pick (JCS-169); legacy slots never apply. */
+  /** The grounded outline writer pick (JCS-169); standard slots never apply. */
   readonly groundedWriterModelId: string | null;
 };
 

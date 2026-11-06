@@ -135,7 +135,7 @@ export function getModelOperationPolicy(
 }
 
 /*
- * Grounded generation (JCS-154). A separate policy so the legacy one above,
+ * Grounded generation (JCS-154). A separate policy so the standard (non-grounded) one above,
  * and the pipeline it drives, stay unchanged while the `grounded-generation`
  * flag is off. Model IDs are OpenRouter slugs sent per request; presets hold
  * only prompts and stay model-agnostic.
