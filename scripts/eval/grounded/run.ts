@@ -257,9 +257,7 @@ async function setStagingTier(
     [
       'db',
       'query',
-      // Supabase CLI v3 (`--linked` is gone). The `=` form targets the project
-      // explicitly; a bare `--remote` would take the next word as its value.
-      `--remote=${STAGING_PROJECT_REF}`,
+      '--linked',
       `update users set subscription_tier = '${tier}' where auth_user_id = '${clerkUserId}' returning id`,
     ],
     { cwd: dir, timeout: 60_000 },
