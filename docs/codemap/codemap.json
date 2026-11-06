@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-06T18:03:43Z",
-  "generated_from_commit": "f7a3e028f2d38df80d4bd99c5cbe5f22abc974ed",
+  "generated_at": "2026-11-06T21:00:34Z",
+  "generated_from_commit": "02a6b045528ff723a84a68e9329810305ea7e494",
   "scope": [
     "src",
     "supabase",
@@ -1287,7 +1287,7 @@
         "src/features/billing",
         "src/features/integrations"
       ],
-      "role": "Subscription tier and Clerk Billing projection, entitlement/quota reservation, per-plan, per-user and global AI spend ceilings, checkout return. (src/features/integrations is an empty placeholder.)",
+      "role": "Subscription tier and Clerk Billing projection, entitlement/quota reservation, per-plan, per-user and per-tier daily AI spend ceilings, checkout return. (src/features/integrations is an empty placeholder.)",
       "entrypoints": [
         {
           "path": "src/features/billing/clerk-billing/reconciliation.ts",
@@ -1371,10 +1371,10 @@
       ],
       "constraints": [
         {
-          "rule": "Spend ceilings are enforced per plan, per user per month and globally per day.",
+          "rule": "Spend ceilings are enforced per plan, per user per month and per tier per day (Free, Starter and Pro each have their own daily pool).",
           "source": {
             "path": "src/features/billing/plan-ai-budget.ts",
-            "symbol": "GLOBAL_AI_DAILY_BUDGET"
+            "symbol": "TIER_AI_DAILY_BUDGET"
           }
         }
       ],
@@ -4554,7 +4554,7 @@
         },
         {
           "path": "src/features/billing/ai-spend-guard.ts",
-          "symbol": "sumAllAiSpendMicrousd"
+          "symbol": "sumTierAiSpendMicrousd"
         },
         {
           "path": "src/features/billing/clerk-billing/reconciliation.ts",

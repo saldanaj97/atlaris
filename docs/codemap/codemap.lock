@@ -1,7 +1,7 @@
 {
   "lock_version": 1,
-  "generated_at": "2026-11-06T18:03:43Z",
-  "commit": "f7a3e028f2d38df80d4bd99c5cbe5f22abc974ed",
+  "generated_at": "2026-11-06T21:00:34Z",
+  "commit": "02a6b045528ff723a84a68e9329810305ea7e494",
   "working_tree_dirty": false,
   "dirty_paths": [],
   "dirty_check": "git status --porcelain excluding docs/codemap (the generator's own output)",
@@ -109,7 +109,7 @@
       "kind": "module"
     },
     "billing": {
-      "fingerprint": "75529c0eadeab1c158e4f0e1ae2742b2a64c230b3ebf2e8d8ae370ecb96e051a",
+      "fingerprint": "d7f1035d8c2b7d20e18929c8ea19d2efd958940aef75a15b515831aa5731b0c9",
       "file_count": 15,
       "paths": [
         "src/features/billing",
@@ -144,7 +144,7 @@
       "kind": "service"
     },
     "db-layer": {
-      "fingerprint": "3a360ea3903e71fdcd1037e094a16f699bfc32fb4129922afc48edbcf0b6c183",
+      "fingerprint": "571674bbcd7a5e9694168672fe053009303f9a46d06221a36783828a2f45fc5c",
       "file_count": 152,
       "paths": [
         "src/lib/db",
@@ -258,12 +258,12 @@
   },
   "unmapped_top_level": {
     "(root files)": {
-      "fingerprint": "f5f6448c170297d5a017f427bad759ec4d236b5279e23035d94174d3d49770b1",
+      "fingerprint": "92c38909fa3241dc6a945462dee60563fed8b94f25a45c56d3a974e86427f49a",
       "file_count": 32
     },
     ".agents": {
-      "fingerprint": "3a82cf560463a01d08aa029b4d3e7f90fcfaa9e31e5e5d2285541d2f09ffc95a",
-      "file_count": 63
+      "fingerprint": "7ca42b36ef7ed685dc4866352b71f8ab025cb4e7aaf2885e17e7a208cdbebc6e",
+      "file_count": 71
     },
     ".circleci": {
       "fingerprint": "9164038bead348ddbdd5bfbbf61284abbe136a4f045182bdc6514ef19018ac64",
@@ -276,10 +276,6 @@
     ".codex": {
       "fingerprint": "cb3a37a19efc69b49d62b44ddcebda0234dd601ccaf21a15ff85add6a0db2bc9",
       "file_count": 2
-    },
-    ".cursor": {
-      "fingerprint": "c8824a833a38bd7086454be35c818849db36c10bfc3067701a9135deb56212e7",
-      "file_count": 16
     },
     ".github": {
       "fingerprint": "5332aea81ec3f05ea7ad28fee48f6946f2045b973d7c55475afbb655f294e633",
@@ -294,7 +290,7 @@
       "file_count": 1
     },
     "docs": {
-      "fingerprint": "c48fd512e8d847fa4cc40bd725e59e8ff286e79e495670f4cd5bc3ed5f342637",
+      "fingerprint": "0c0902626612fbc226a32c0e2d187d10897ee95d736825bcc6b6f6d39b0d7b7e",
       "file_count": 48
     },
     "public": {
@@ -302,11 +298,11 @@
       "file_count": 18
     },
     "scripts": {
-      "fingerprint": "8dc2c2606e2c963ed52eea183f4e2ad7d14d49be7fdcac1996d9a86af6d1e966",
+      "fingerprint": "6c2da9e224a509be6e0a5625a3950439b6049e6889d805e9d59d2f8acf6a6161",
       "file_count": 43
     },
     "tests": {
-      "fingerprint": "63299edcdab62ae70ff9d5b0958dd7f49524db9fff0ccf13282bf8c3d94d0336",
+      "fingerprint": "78bcd51a42a50def0cb461371d3f6f90d80a66ec9ca093624db7e6274970328a",
       "file_count": 537
     }
   }
