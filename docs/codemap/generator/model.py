@@ -161,10 +161,10 @@ NODES = [
   role="Foundation used by every module: shared types/constants/schemas, typed env access, logger, Sentry and PostHog wiring, utilities. Sentry/PostHog are wired here and are not separate nodes (20-node cap).",
   code_names=['shared','config','logging','observability'],
   entrypoints=[ev('src/lib/config/env.ts','appEnv'), ev('src/lib/logging/logger.ts','createLogger'), ev('src/lib/posthog-server.ts','captureAfterResponse')],
-  constraints=[dict(rule="Shared types are imported from src/shared/types; the README tree calls this directory types/.", source=ev('README.md','Shared application types'))],
+  constraints=[dict(rule="Cross-feature code (types, schemas, constants, policy) lives in src/shared; the README tree matches (there is no src/types).", source=ev('README.md','Cross-feature code'))],
   evidence=[ev('src/lib/logging/logger.ts','createLogger'), ev('src/shared/types/billing.types.ts','SubscriptionTier'), ev('src/lib/observability/sentry-filters.ts','beforeSendSentryEvent')],
   aliases=[
-   dict(word='Shared application types', source_type='README', path='README.md'),
+   dict(word='shared', source_type='README', path='README.md'),
    dict(word='logging', source_type='README', path='README.md'),
   ]),
  # ---------------- external / platform ----------------
@@ -414,10 +414,6 @@ MISMATCHES = [
   why="Next 16 calls it the proxy and AGENTS.md says 'Proxy, site gate, flags', but docs still say Clerk middleware and one policy file is still named middleware-policy.ts.",
   our_word_sources=[ev('docs/api/error-contract.md','middleware')],
   code_evidence=[ev('src/proxy.ts','clerkMiddleware'), ev('src/lib/proxy/middleware-policy.ts','shouldBypassClerkMiddleware')]),
- dict(word='types/ (README tree)', code_name='src/shared/types', path='src/shared/types', change='word',
-  why="README's project tree lists src/types and src/lib/integrations; neither exists. Shared types live in src/shared/types, and integrations is an empty placeholder under src/features.",
-  our_word_sources=[ev('README.md','Shared application types')],
-  code_evidence=[ev('src/shared/types/billing.types.ts','SubscriptionTier'), ev('src/features/integrations/AGENTS.md','UI placeholders only')]),
  dict(word='AI Gateway', code_name='OPENROUTER_BASE_URL / CF_AI_GATEWAY_TOKEN', path='workers/jobs/cloudflare.config.ts', change='word',
   why="Docs and config comments say AI Gateway; the secret names say OPENROUTER_BASE_URL (which holds the gateway's /openrouter URL).",
   our_word_sources=[ev('workers/jobs/cloudflare.config.ts','Cloudflare AI Gateway in front of OpenRouter')],
@@ -426,5 +422,5 @@ MISMATCHES = [
 
 SCOPE_EXCLUDES = ['node_modules','.next','.next-smoke-anon','.next-smoke-auth','.test-dist','dist','build','coverage','.turbo','.cache','.vercel','workers/jobs/.cloudflare','workers/jobs/.wrangler','supabase/migrations/meta','tests/results','docs/codemap','.git']
 
-MISMATCH_NODES = [['billing', 'plans'], ['cf-queue', 'db-layer'], ['api-routes'], ['lesson-content', 'jobs-worker'], ['db-layer'], ['plans', 'web-ui'], ['request-boundary'], ['shared-core'], ['openrouter']]
-MISMATCH_COVERS = [[('billing', 'Free plan')], [], [('api-routes', 'internal worker routes')], [('lesson-content', 'module lessons'), ('lesson-content', 'lessons')], [], [('plans', 'roadmap')], [('request-boundary', 'middleware')], [('shared-core', 'Shared application types')], [('openrouter', 'AI Gateway')]]
+MISMATCH_NODES = [['billing', 'plans'], ['cf-queue', 'db-layer'], ['api-routes'], ['lesson-content', 'jobs-worker'], ['db-layer'], ['plans', 'web-ui'], ['request-boundary'], ['openrouter']]
+MISMATCH_COVERS = [[('billing', 'Free plan')], [], [('api-routes', 'internal worker routes')], [('lesson-content', 'module lessons'), ('lesson-content', 'lessons')], [], [('plans', 'roadmap')], [('request-boundary', 'middleware')], [('openrouter', 'AI Gateway')]]
