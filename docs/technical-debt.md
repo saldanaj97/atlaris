@@ -59,7 +59,9 @@ Resolved on 2026-11-06 by removing `prepareRlsTransactionContext` and
 and every call site.
 
 The RLS client is one dedicated `max: 1` connection opened from
-`POSTGRES_URL_NON_POOLING` (`supabase/rls.ts`), and `transaction()` reuses that
+`POSTGRES_URL_NON_POOLING` (`supabase/rls.ts`; `createRlsConnection` throws via
+`databaseEnv.directUrl` when it is unset instead of falling back to the pooled
+`POSTGRES_URL`), and `transaction()` reuses that
 connection, so the session-scoped `request.jwt.claims` stays visible inside
 transactions. Evidence:
 

@@ -1061,7 +1061,6 @@ _Source: Components v0.3. Chapter text retained from its source stage; reference
 | Contextual commands             | DropdownMenu                                           | Roving keyboard item focus; not a field selector.                                          |
 | Field selection                 | SelectContent                                          | Preserve select behavior, selection and value semantics.                                   |
 | Short supplementary hint        | Tooltip                                                | Focus/hover support; never essential-only content.                                         |
-| Preview behind a link           | HoverCard                                              | Supplemental only; a working destination must remain available.                            |
 | Generic centered dialog/popover | No separate shared file in this directory              | Proposed only when needed; reuse installed primitives rather than fabricate a current API. |
 
 Appearance: raised opaque background, primary text, visible control border, 16px overlay radius, inherited overlay shadow, 24px padding (16px narrow) and 16px content gaps. A default centered overlay maxes at 512px while retaining at least 16px viewport inset. Longer content scrolls within an accessible layout, not behind a clipped fixed-height box. [A01; R01, R06–R07]

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Independent verification of docs/codemap/*. Usage: python3 verify.py [DIR]"""
 import os, re, sys, json, hashlib, subprocess, html
-REPO=os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','..')); os.chdir(REPO)
-D = sys.argv[1] if len(sys.argv)>1 else 'docs/codemap'
+REPO=os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..','..'))
+CALLER_CWD=os.getcwd(); os.chdir(REPO)
+D = os.path.abspath(os.path.join(CALLER_CWD,sys.argv[1])) if len(sys.argv)>1 else 'docs/codemap'  # a relative DIR is relative to where you ran it
 fails=[]; notes=[]
 def fail(m): fails.append(m)
 def sh(*a): return subprocess.check_output(a,text=True).strip()

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Generates docs/codemap/{codemap.json,codemap.lock,codemap.html} together from the repo.
-Run from anywhere: python3 gen.py [--out DIR]. Reads the working tree + git; writes only into DIR."""
+Run from anywhere: python3 gen.py [--out DIR]. Reads the working tree + git; writes only into DIR.
+A relative DIR is resolved against the directory you ran it from."""
 import os, re, sys, json, hashlib, subprocess, datetime, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -9,10 +10,12 @@ import model as M
 
 REPO = os.path.abspath(os.path.join(HERE, '..', '..', '..'))  # generator lives in docs/codemap/generator
 OUT = os.path.join(REPO, 'docs/codemap')
+CALLER_CWD = os.getcwd()
 os.chdir(REPO)
 
-def sh(*a):
-    return subprocess.check_output(a, text=True).strip()
+def sh(*a, strip=True):
+    out = subprocess.check_output(a, text=True)
+    return out.strip() if strip else out
 
 # ---------------- repo facts ----------------
 COMMIT = sh('git', 'rev-parse', 'HEAD')
@@ -216,10 +219,10 @@ def build():
     mism = []
     covered = set()
     for i, m in enumerate(M.MISMATCHES):
-        for c in M.MISMATCH_COVERS[i]: covered.add(c)
+        for c in m['covers']: covered.add(c)
         mm = {'rank': i + 1, 'word': m['word'], 'code_name': m['code_name'], 'path': m['path'], 'change': m['change'],
-              'severity': 'high' if i < 4 else 'medium', 'why': m['why'], 'nodes': M.MISMATCH_NODES[i],
-              'covers': [{'node': a, 'alias': b} for a, b in M.MISMATCH_COVERS[i]],
+              'severity': 'high' if i < 4 else 'medium', 'why': m['why'], 'nodes': m['nodes'],
+              'covers': [{'node': a, 'alias': b} for a, b in m['covers']],
               'our_word_sources': m['our_word_sources'], 'code_evidence': m['code_evidence']}
         mism.append(mm)
     rank = len(mism)
@@ -243,8 +246,9 @@ def build():
     return data
 
 def build_lock(data):
-    porcelain = sh('git', 'status', '--porcelain', '--', '.', ':!docs/codemap')
-    dirty = [l[3:] for l in porcelain.splitlines()] if porcelain else []
+    # strip=False: the first porcelain line starts with a status column that may be a space.
+    porcelain = sh('git', 'status', '--porcelain', '--', '.', ':!docs/codemap', strip=False)
+    dirty = [l[3:] for l in porcelain.splitlines() if l]
     mods = {}
     covered = set()
     for n in M.NODES:
@@ -277,7 +281,11 @@ def build_lock(data):
 
 if __name__ == '__main__':
     out = OUT
-    if '--out' in sys.argv: out = sys.argv[sys.argv.index('--out') + 1]
+    if '--out' in sys.argv:
+        i = sys.argv.index('--out')
+        if i + 1 >= len(sys.argv):
+            sys.exit('usage: gen.py [--out DIR] (--out needs a directory)')
+        out = os.path.abspath(os.path.join(CALLER_CWD, sys.argv[i + 1]))
     data = build()
     lock = build_lock(data)
     os.makedirs(out, exist_ok=True)

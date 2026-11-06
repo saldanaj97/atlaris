@@ -154,10 +154,11 @@ export async function findAttemptWithWorkflowIdempotencyKey(params: {
  * in all params. Do not add default getDb() or make dbClient optional.
  *
  * Production callers pass serviceRoleDb from feature-owned generation boundaries
- * after request auth and ownership checks. RLS-scoped clients keep their JWT
- * claims for the whole session, so nothing re-applies them inside a transaction
- * (see docs/technical-debt.md).
- * See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
+ * after request auth and ownership checks. RLS-scoped clients are one dedicated
+ * session opened from POSTGRES_URL_NON_POOLING (createRlsConnection throws
+ * without it), so their JWT claims stay set for the whole session and nothing
+ * re-applies them inside a transaction (see docs/technical-debt.md).
+ * See supabase/AGENTS.md § "RLS Rules".
  */
 
 /**

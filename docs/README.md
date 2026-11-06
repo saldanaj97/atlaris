@@ -68,13 +68,14 @@ Pipeline and deployment strategy.
 
 ## `codemap/`
 
-Generated architecture overview. Regenerate the three files together; do not edit them by hand.
+Generated architecture overview. Regenerate the three files together with the generator in `generator/`; do not edit them by hand.
 
 | File | Description |
 |------|-------------|
 | [codemap.html](./codemap/codemap.html) | Interactive codemap: modules, edges, flows, and naming mismatches |
 | [codemap.json](./codemap/codemap.json) | Codemap data (nodes, edges, flows, word mismatches) |
 | [codemap.lock](./codemap/codemap.lock) | Module fingerprints used to detect what changed on the next regeneration |
+| [generator/](./codemap/generator/) | Python generator and verifier for the three files above (`gen.py`, `model.py`, `render.py`, `verify.py`); see its [README](./codemap/generator/README.md) |
 
 ## `database/`
 
@@ -179,7 +180,13 @@ docs/
 ├── codemap/
 │   ├── codemap.html
 │   ├── codemap.json
-│   └── codemap.lock
+│   ├── codemap.lock
+│   └── generator/
+│       ├── README.md
+│       ├── gen.py
+│       ├── model.py
+│       ├── render.py
+│       └── verify.py
 ├── database/
 │   ├── client-usage.md
 │   └── schema-overview.md

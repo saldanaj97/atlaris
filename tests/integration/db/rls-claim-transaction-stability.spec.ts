@@ -1,8 +1,11 @@
 /**
  * Integration proof: `request.jwt.claims` set session-wide in
  * `createAuthenticatedRlsClient` stays visible inside `dbClient.transaction()`
- * with no re-application. Production code relies on this; it was also verified
- * against staging (hosted Supabase) on 2026-11-06.
+ * with no re-application. Production code relies on this. A read-only run
+ * against hosted staging (2026-11-06) went through the Supabase API, not the
+ * app's postgres-js connection, so it confirms the setup and not the driver
+ * (see docs/technical-debt.md). createRlsConnection throws when
+ * POSTGRES_URL_NON_POOLING is unset instead of falling back to the pooled URL.
  */
 
 import { createTestPlan } from '../../fixtures/plans';
