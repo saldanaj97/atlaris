@@ -104,9 +104,9 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    [12.5, '50', 'warning'],
-    [20, '80', 'error'],
-    [24.99, '80', 'error'],
+    [2.5, '50', 'warning'],
+    [4, '80', 'error'],
+    [4.99, '80', 'error'],
   ])(
     'alerts once per day at $%s of global spend (%s%%)',
     async (spentUsd, percent, level) => {
@@ -125,7 +125,7 @@ describe('assertAiSpendAllowed', () => {
   );
 
   it('pauses AI for everyone at the global daily ceiling', async () => {
-    mocks.sumAll.mockResolvedValue(25 * USD);
+    mocks.sumAll.mockResolvedValue(5 * USD);
 
     const error = await rejection(check('pro'));
 

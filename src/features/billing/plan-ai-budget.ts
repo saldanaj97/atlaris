@@ -55,7 +55,7 @@ export function userAiCeilingMicrousd(tier: SubscriptionTier): number {
  * before the provider starts failing calls.
  */
 export const GLOBAL_AI_DAILY_BUDGET = {
-  ceilingUsd: 25,
+  ceilingUsd: 5,
   alertShares: [0.5, 0.8],
 } as const;
 
