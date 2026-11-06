@@ -1,0 +1,7006 @@
+{
+  "generated_at": "2026-11-06T18:03:43Z",
+  "generated_from_commit": "f7a3e028f2d38df80d4bd99c5cbe5f22abc974ed",
+  "scope": [
+    "src",
+    "supabase",
+    "workers",
+    "tests (related-test mapping only)",
+    "README.md, AGENTS.md, workers/AGENTS.md, docs/** (alias sources only)",
+    "git commit subjects (alias sources only)"
+  ],
+  "nodes": [
+    {
+      "id": "web-ui",
+      "label": "Web UI",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/app/(app)",
+      "paths": [
+        "src/app/(app)",
+        "src/app/(auth)",
+        "src/app/(landing)",
+        "src/app/_shared",
+        "src/app/maintenance",
+        "src/app/layout.tsx",
+        "src/app/ThemeProvider.tsx",
+        "src/app/VercelTelemetry.tsx",
+        "src/app/fonts.ts",
+        "src/app/globals.css",
+        "src/app/global-error.tsx",
+        "src/app/not-found.tsx",
+        "src/components",
+        "src/hooks",
+        "src/styles",
+        "src/features/navigation",
+        "src/css.d.ts"
+      ],
+      "role": "App Router pages (app, auth, landing, maintenance), shared components, client hooks and navigation. Server components read through plan/billing services; client code calls /api/v1 routes.",
+      "entrypoints": [
+        {
+          "path": "src/app/(app)/plans/new/page.tsx",
+          "symbol": "CreateNewPlanPage"
+        },
+        {
+          "path": "src/app/(auth)/auth/sign-in/[[...sign-in]]/page.tsx",
+          "symbol": "SignInPage"
+        },
+        {
+          "path": "src/hooks/usePlanStatus.ts",
+          "symbol": "usePlanStatus"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/playwright/smoke",
+          "files": 16,
+          "via": "e2e (drives pages by URL, no import)"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 13,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/components",
+          "files": 12,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components/nav",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/analytics",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/pricing",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/billing",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/profile",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/modules",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/new",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/hooks",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/dashboard",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/landing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/waitlist",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/utils",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/about",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/legal",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/maintenance",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/profile",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components/ui",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/navigation",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/notifications",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/shared",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Read DESIGN.md and the named chapters of docs/styles/design-system.md before changing UI, shared components or tokens.",
+          "source": {
+            "path": "AGENTS.md",
+            "symbol": "Design context"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts",
+          "symbol": "lesson-content/generate"
+        },
+        {
+          "path": "src/features/navigation/items.ts",
+          "symbol": "authenticatedNavItems"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "ui",
+          "source_type": "commit title",
+          "source": {
+            "commit": "1848c0e6b542d2b695135ece9ae2f1eddb521344",
+            "subject": "feat(ui): adopt the midnight palette and refine pre-launch screens (#905)"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "App Router pages",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "app",
+        "components",
+        "hooks"
+      ]
+    },
+    {
+      "id": "api-routes",
+      "label": "API routes",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/app/api",
+      "paths": [
+        "src/app/api"
+      ],
+      "role": "Next.js route handlers: /api/v1 product API, Clerk webhook, /api/internal/maintenance operator routes, health and OpenAPI docs.",
+      "entrypoints": [
+        {
+          "path": "src/app/api/v1/plans/route.ts",
+          "symbol": "createPlanCreateHandler"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "POST"
+        },
+        {
+          "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+          "symbol": "POST"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/api",
+          "files": 20,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/contract",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/rls",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/system/light",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/validation",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Internal /api/internal routes bypass Clerk middleware and authenticate with shared maintenance tokens.",
+          "source": {
+            "path": "docs/architecture/internal-worker-routes.md",
+            "symbol": "bypass Clerk middleware"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/route.ts",
+          "symbol": "requestBoundary.route"
+        },
+        {
+          "path": "src/app/api/internal/maintenance/plans/cleanup/route.ts",
+          "symbol": "runPlanCleanupMaintenance"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "API routes",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "api",
+          "source_type": "commit title",
+          "source": {
+            "commit": "5c7dc919957eb6ce2f3ccc3c9d2cf1a5442d1904",
+            "subject": "test(api): expect explicit regenerate orchestration deps"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "internal worker routes",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/internal-worker-routes.md"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "api"
+      ]
+    },
+    {
+      "id": "request-boundary",
+      "label": "Request boundary",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/lib/api",
+      "paths": [
+        "src/proxy.ts",
+        "src/flags.ts",
+        "src/lib/proxy",
+        "src/lib/api",
+        "src/lib/auth",
+        "src/features/auth",
+        "src/app/ingest"
+      ],
+      "role": "Everything a request passes before product code: proxy (CSP, site gate, Clerk middleware), auth wrappers, per-request RLS client, rate limits, error contract, account/user projection, Flagship flag evaluation.",
+      "entrypoints": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "proxy"
+        },
+        {
+          "path": "src/lib/api/request-boundary.ts",
+          "symbol": "requestBoundary"
+        },
+        {
+          "path": "src/flags.ts",
+          "symbol": "FlagEvaluator"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/api",
+          "files": 20,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 13,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/auth",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/session",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/api",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/modules",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/regeneration-orchestration",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/auth",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/system/light",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/about",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/dashboard",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/pricing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/profile",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/waitlist",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/auth",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/ai/orchestrator",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/task-progress",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/profile",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "API routes use the shared auth wrappers and getDb() from @supabase/runtime; RLS identity comes from the Clerk subject.",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md",
+            "symbol": "shared auth wrappers"
+          }
+        },
+        {
+          "rule": "Every flag fails closed except jobs-paused and regeneration-paused.",
+          "source": {
+            "path": "src/flags.ts",
+            "symbol": "fails closed"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "clerkMiddleware"
+        },
+        {
+          "path": "src/lib/api/auth.ts",
+          "symbol": "createAuthenticatedRlsClient"
+        },
+        {
+          "path": "src/lib/proxy/site-gate.ts",
+          "symbol": "resolveGateFlag"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "proxy",
+          "source_type": "AGENTS.md",
+          "source": {
+            "path": "AGENTS.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "site gate",
+          "source_type": "AGENTS.md",
+          "source": {
+            "path": "AGENTS.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "middleware",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/development/environment.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "request boundary",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/api/rate-limiting.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "Auth wrappers",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "proxy",
+          "source_type": "commit title",
+          "source": {
+            "commit": "48cd22d1aaf1438bbda1b36643f7b41d24122568",
+            "subject": "feat(proxy): let signed-in users past the launch waitlist gate (DEV-190) (#889)"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "flags",
+          "source_type": "commit title",
+          "source": {
+            "commit": "218d975fd917a8edc01f107d41c216296ee55e4c",
+            "subject": "feat(flags): move the regeneration switch to flagship regeneration-paused (DEV-194) (#909)"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "request-boundary",
+        "proxy",
+        "site-gate",
+        "api",
+        "auth",
+        "flags"
+      ]
+    },
+    {
+      "id": "plans",
+      "label": "Learning plans",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/plans",
+      "paths": [
+        "src/features/plans"
+      ],
+      "role": "Learning-plan domain: create/retry session boundary, attempt reservation, lifecycle service and single-transaction generation finalization, read projections, regeneration admission, task progress, status polling.",
+      "entrypoints": [
+        {
+          "path": "src/features/plans/session/plan-generation-session.ts",
+          "symbol": "createPlanGenerationSessionBoundary"
+        },
+        {
+          "path": "src/features/plans/start-plan-generation-attempt.ts",
+          "symbol": "startPlanGenerationAttempt"
+        },
+        {
+          "path": "src/features/plans/lifecycle/service.ts",
+          "symbol": "PlanLifecycleService"
+        },
+        {
+          "path": "src/features/plans/regeneration-orchestration/request.ts",
+          "symbol": "requestPlanRegeneration"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/db",
+          "files": 8,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/regeneration-orchestration",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/session",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/read-projection",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/lifecycle",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/task-progress",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/outline",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/mappers",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/modules",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/new",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/policy",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/research",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/status-polling",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/workflows",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/hooks",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/concurrency",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/entitlement",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/task-progress",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/dashboard",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/components",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/validation",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/jobs",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/jobs-worker",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/utils",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/validation",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Generation never runs on the HTTP request; the app reserves an attempt and hands it to the jobs Worker.",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md",
+            "symbol": "Generation never runs on the request"
+          }
+        },
+        {
+          "rule": "Lifecycle settlement owns the single transactional finalize after generation returns.",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md",
+            "symbol": "single transactional finalize"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/plans/start-plan-generation-attempt.ts",
+          "symbol": "dispatchPlanGenerationToWorker"
+        },
+        {
+          "path": "src/features/plans/lifecycle/generation.ts",
+          "symbol": "runGenerationExecution"
+        },
+        {
+          "path": "supabase/schema/tables/plans.ts",
+          "symbol": "learningPlans"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "learning plan",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "plans",
+          "source_type": "commit title",
+          "source": {
+            "commit": "0b2f7d1deb016214049c038ecbdd9629895c5c0d",
+            "subject": "fix(plans): stop passing the poller as fetch's this (DEV-207) (#933)"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "roadmap",
+          "source_type": "UI text",
+          "source": {
+            "path": "src/app/(app)/plans/[id]/components/PlanOverviewHeader.tsx"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "regeneration",
+          "source_type": "commit title",
+          "source": {
+            "commit": "346a432aa600f869b1fa5d32f7b57f4eaffccecd",
+            "subject": "feat(regeneration): add reasons, note and fix guidance (JCS-162) (#831)"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "plans",
+        "learning_plans",
+        "learning-plans"
+      ]
+    },
+    {
+      "id": "ai-generation",
+      "label": "AI generation",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/ai",
+      "paths": [
+        "src/features/ai"
+      ],
+      "role": "Generation control plane: orchestrator, provider factory/router (OpenRouter, mock), streaming parser, pacing, failure classification, timeouts, model catalog and tier model policy, cost accounting, Parallel Search client.",
+      "entrypoints": [
+        {
+          "path": "src/features/ai/orchestrator.ts",
+          "symbol": "runGenerationExecution"
+        },
+        {
+          "path": "src/features/ai/providers/openrouter.ts",
+          "symbol": "OpenRouterProvider"
+        },
+        {
+          "path": "src/features/ai/model-catalog/catalog.ts",
+          "symbol": "syncTierModelCatalog"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/ai",
+          "files": 22,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/providers",
+          "files": 17,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/fixtures",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/ai",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/model-catalog",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/outline",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/session",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/mappers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/contract",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/generation",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/parser",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/modules",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/config",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/ai/orchestrator",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/read-projection",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/research",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/plans",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Large single-path dependencies load inside the handler so the Worker bundle stays under the startup budget.",
+          "source": {
+            "path": "src/features/ai/providers/openrouter.ts",
+            "symbol": "jobs Worker toward Cloudflare"
+          }
+        },
+        {
+          "rule": "The jobs Worker has no tier keys, so it only reads the model catalog the app synced.",
+          "source": {
+            "path": "src/features/ai/model-catalog/catalog.ts",
+            "symbol": "The jobs Worker has no tier keys"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/ai/orchestrator.ts",
+          "symbol": "runGenerationExecution"
+        },
+        {
+          "path": "src/features/ai/providers/parallel-search.ts",
+          "symbol": "PARALLEL_SEARCH_URL"
+        },
+        {
+          "path": "src/features/ai/model-catalog/store.ts",
+          "symbol": "replaceTierModels"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "AI layer",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "ai",
+          "source_type": "commit title",
+          "source": {
+            "commit": "61759938c7f9d1f7b83e6fb586527aa5ea002fa3",
+            "subject": "fix(ai): keep model routes within the openrouter limit (#934)"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "orchestrator",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "ai",
+        "orchestrator",
+        "providers"
+      ]
+    },
+    {
+      "id": "lesson-content",
+      "label": "Lesson content",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/lesson-content",
+      "paths": [
+        "src/features/lesson-content"
+      ],
+      "role": "Module lesson generation: preflight and claim, Worker hand-off, grounded lesson writer, code checks, verifier and repair passes, parse and commit.",
+      "entrypoints": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "startModuleLessonGeneration"
+        },
+        {
+          "path": "src/features/lesson-content/run-module-lesson-generation-work.ts",
+          "symbol": "runModuleLessonGenerationWork"
+        },
+        {
+          "path": "src/features/lesson-content/generation-flag.ts",
+          "symbol": "resolveModuleLessonGenerationEnabled"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 9,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lesson-content",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "The module-lesson-generation Flagship flag must be on before a run is created (fail-closed).",
+          "source": {
+            "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+            "symbol": "fail-closed"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "dispatchModuleLessonsToWorker"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "sendOpenRouterGroundedChat"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "lesson content",
+          "source_type": "UI text",
+          "source": {
+            "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel.tsx"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "module lessons",
+          "source_type": "docs",
+          "source": {
+            "path": "workers/AGENTS.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "lessons",
+          "source_type": "commit title",
+          "source": {
+            "commit": "d95c11ee7c7c0e01bff6363d68ca0668578ca376",
+            "subject": "fix(lessons): render markdown in lesson text (#912)"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "lesson-content"
+      ]
+    },
+    {
+      "id": "billing",
+      "label": "Billing and AI budget",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/billing",
+      "paths": [
+        "src/features/billing",
+        "src/features/integrations"
+      ],
+      "role": "Subscription tier and Clerk Billing projection, entitlement/quota reservation, per-plan, per-user and global AI spend ceilings, checkout return. (src/features/integrations is an empty placeholder.)",
+      "entrypoints": [
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": "applyVerifiedClerkBillingEvent"
+        },
+        {
+          "path": "src/features/billing/ai-spend-guard.ts",
+          "symbol": "assertAiSpendAllowed"
+        },
+        {
+          "path": "src/features/billing/tier.ts",
+          "symbol": "resolveUserTier"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/db",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing/clerk-billing",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/billing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/pricing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/billing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/auth",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/session",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Spend ceilings are enforced per plan, per user per month and globally per day.",
+          "source": {
+            "path": "src/features/billing/plan-ai-budget.ts",
+            "symbol": "GLOBAL_AI_DAILY_BUDGET"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": ".update(users)"
+        },
+        {
+          "path": "src/features/billing/plan-ai-budget.ts",
+          "symbol": "PLAN_AI_BUDGET"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Clerk Billing",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "billing",
+          "source_type": "commit title",
+          "source": {
+            "commit": "34a43b1681475709857f56c8f58fd87902ee4464",
+            "subject": "feat(billing): cap AI spend per user per month and globally per day (DEV-208) (#944)"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "Free plan",
+          "source_type": "UI text",
+          "source": {
+            "path": "src/app/(app)/settings/ai/components/ModelSelectionCard.tsx"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "tier",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/ai/available-models.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "Pricing",
+          "source_type": "routes",
+          "source": {
+            "path": "src/features/navigation/routes.ts"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "billing",
+        "tier",
+        "clerk-billing",
+        "subscription"
+      ]
+    },
+    {
+      "id": "notifications",
+      "label": "Email notifications",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/notifications",
+      "paths": [
+        "src/features/notifications",
+        "src/shared/notifications"
+      ],
+      "role": "Email notification delivery service (recipient selection, content, Resend adapter, signed unsubscribe, delivery monitor) run by the jobs Worker's email Workflow.",
+      "entrypoints": [
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "runEmailNotificationDelivery"
+        },
+        {
+          "path": "src/features/notifications/email/resend-adapter.ts",
+          "symbol": "createResendEmailSender"
+        },
+        {
+          "path": "src/features/notifications/email/unsubscribe.ts",
+          "symbol": "applySignedEmailUnsubscribe"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/features/notifications/email",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/notifications/email/workflows",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/notifications",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/shared/notifications",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Email delivery runs only when WORKER_ENV is production; stopping Worker email takes jobs-paused.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "run only when `WORKER_ENV` is `production`"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/resend-adapter.ts",
+          "symbol": "Resend"
+        },
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "serviceRoleDb"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "email notification",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/email-notification-delivery-runbook.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "email delivery",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/development/environment.md"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "notifications",
+        "notifications/email"
+      ]
+    },
+    {
+      "id": "jobs-dispatch",
+      "label": "Jobs dispatch and contract",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/features/jobs",
+      "paths": [
+        "src/features/jobs",
+        "src/lib/jobs-worker"
+      ],
+      "role": "App-side signed HMAC client and contract for the jobs Worker plus per-job dispatchers; also holds regeneration-run, which the Worker imports to execute queued regenerations.",
+      "entrypoints": [
+        {
+          "path": "src/lib/jobs-worker/client.ts",
+          "symbol": "sendJobsWorkerCommand"
+        },
+        {
+          "path": "src/lib/jobs-worker/contract.ts",
+          "symbol": "JOBS_COMMAND_PATHS"
+        },
+        {
+          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "symbol": "dispatchPlanGenerationToWorker"
+        },
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "processRegenerationRun"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/jobs",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/jobs-worker",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/system/light",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/regeneration-orchestration",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/queue",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "App-to-Worker commands are HMAC-signed POST /v1/<command>; one attempt, 10 s, no automatic retry.",
+          "source": {
+            "path": "src/lib/jobs-worker/client.ts",
+            "symbol": "JOBS_WORKER_TIMEOUT_MS"
+          }
+        },
+        {
+          "rule": "Start work from the app only through a signed Worker command.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "Starting work from the app by any route other than a signed Worker command"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/jobs-worker/client.ts",
+          "symbol": "sendJobsWorkerCommand"
+        },
+        {
+          "path": "src/features/jobs/regeneration-dispatch.ts",
+          "symbol": "dispatchRegenerationToWorker"
+        },
+        {
+          "path": "src/features/jobs/module-lessons-dispatch.ts",
+          "symbol": "dispatchModuleLessonsToWorker"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "dispatch",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/regeneration-worker-runbook.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "signed command",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/cloudflare-jobs-runtime.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "jobs",
+          "source_type": "commit title",
+          "source": {
+            "commit": "c26a1b4876a580d524a947d7ef9bb90a599fa375",
+            "subject": "feat(jobs): move worker switches to flagship and drop per-job switches (DEV-193) (#899)"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "jobs",
+        "jobs-worker",
+        "dispatch"
+      ]
+    },
+    {
+      "id": "jobs-worker",
+      "label": "Jobs Worker",
+      "kind": "service",
+      "boundary": "cf",
+      "path": "workers/jobs",
+      "paths": [
+        "workers"
+      ],
+      "role": "Cloudflare Worker (atlaris-jobs): signed HTTP commands, cron jobs, regeneration Queue consumer and the plan generation, module lessons and email delivery Workflows. Thin entry layer over src/features logic.",
+      "entrypoints": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "PlanGenerationWorkflow"
+        },
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "handleRegenerationBatch"
+        },
+        {
+          "path": "workers/jobs/src/scheduled.ts",
+          "symbol": "runScheduledJobs"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "defineConfig"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 21,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Never create a module-level pool; open the database through withInvocationDb or withStepDb.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "withInvocationDb"
+          }
+        },
+        {
+          "rule": "Never import next, @clerk/*, @vercel/* or react on a job path.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "Importing `next`"
+          }
+        },
+        {
+          "rule": "Every job stops while the Flagship flag jobs-paused is on (fails open).",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "jobs-paused"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "handlePlanGenerationStart"
+        },
+        {
+          "path": "workers/jobs/src/http/signature.ts",
+          "symbol": "verifySignedRequest"
+        },
+        {
+          "path": "workers/jobs/src/db.ts",
+          "symbol": "withInvocationDb"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "jobs Worker",
+          "source_type": "AGENTS.md",
+          "source": {
+            "path": "AGENTS.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "background jobs Worker",
+          "source_type": "docs",
+          "source": {
+            "path": "workers/jobs/cloudflare.config.ts"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "workers",
+          "source_type": "commit title",
+          "source": {
+            "commit": "cfac75a48ca11169efa616371cb2f0a2be211ca4",
+            "subject": "fix(workers): lazy-load the openrouter sdk to cut worker startup cpu (#754)"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "workers",
+        "workers/jobs",
+        "atlaris-jobs",
+        "@atlaris/jobs",
+        "jobs worker"
+      ]
+    },
+    {
+      "id": "db-layer",
+      "label": "Database layer",
+      "kind": "module",
+      "boundary": "app",
+      "path": "supabase",
+      "paths": [
+        "src/lib/db",
+        "supabase"
+      ],
+      "role": "Drizzle schema, migrations, RLS policies and DB clients (request-scoped RLS, service-role) in supabase/, plus query helpers in src/lib/db/queries. '@supabase/*' is a repo path alias, not an npm package.",
+      "entrypoints": [
+        {
+          "path": "supabase/runtime.ts",
+          "symbol": "getDb"
+        },
+        {
+          "path": "supabase/rls.ts",
+          "symbol": "createAuthenticatedRlsClient"
+        },
+        {
+          "path": "supabase/service-role.ts",
+          "symbol": "runWithServiceRoleDb"
+        },
+        {
+          "path": "supabase/schema/index.ts",
+          "symbol": "export"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/db",
+          "files": 40,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 18,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/db",
+          "files": 17,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 13,
+          "via": "imports"
+        },
+        {
+          "path": "tests/security",
+          "files": 10,
+          "via": "imports"
+        },
+        {
+          "path": "tests/fixtures",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers/db",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/generation",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/contract",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/concurrency",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/read-projection",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/billing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/rls",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/setup",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/auth",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/task-progress",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lesson-content",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries/helpers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/mappers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db/schema",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/entitlement",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/task-progress",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/system/light",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/dashboard",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/architecture",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing/clerk-billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/notifications/email",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/helpers/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/jobs-worker",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/shared",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/utils",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Request handlers use getDb() inside auth wrappers; tests, workers and migrations use the service-role client only where appropriate.",
+          "source": {
+            "path": "README.md",
+            "symbol": "Request handlers use `getDb()`"
+          }
+        },
+        {
+          "rule": "@supabase/* resolves to ./supabase/*, not an npm package.",
+          "source": {
+            "path": "tsconfig.json",
+            "symbol": "\"@supabase/*\""
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "supabase/service-role.ts",
+          "symbol": "drizzle"
+        },
+        {
+          "path": "supabase/rls.ts",
+          "symbol": "createAuthenticatedRlsClient"
+        },
+        {
+          "path": "src/lib/db/queries/attempts.ts",
+          "symbol": "reserveAttemptSlot"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "RLS client",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "service-role",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "db",
+          "source_type": "commit title",
+          "source": {
+            "commit": "128029ab275012c18b24f1af8f3ef154b4902c11",
+            "subject": "ci(db): apply production expand migrations on push to main (DEV-191) (#888)"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "Query modules",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "db",
+        "supabase",
+        "queries",
+        "schema",
+        "service-role"
+      ]
+    },
+    {
+      "id": "shared-core",
+      "label": "Shared core",
+      "kind": "module",
+      "boundary": "app",
+      "path": "src/shared",
+      "paths": [
+        "src/shared",
+        "src/lib/config",
+        "src/lib/date",
+        "src/lib/errors",
+        "src/lib/errors.ts",
+        "src/lib/i18n",
+        "src/lib/logging",
+        "src/lib/next",
+        "src/lib/observability",
+        "src/lib/path",
+        "src/lib/posthog",
+        "src/lib/posthog-rewrite-destinations.ts",
+        "src/lib/posthog-server.ts",
+        "src/lib/utils",
+        "src/instrumentation.ts",
+        "src/instrumentation-client.ts",
+        "sentry.edge.config.ts",
+        "sentry.server.config.ts"
+      ],
+      "role": "Foundation used by every module: shared types/constants/schemas, typed env access, logger, Sentry and PostHog wiring, utilities. Sentry/PostHog are wired here and are not separate nodes (20-node cap).",
+      "entrypoints": [
+        {
+          "path": "src/lib/config/env.ts",
+          "symbol": "appEnv"
+        },
+        {
+          "path": "src/lib/logging/logger.ts",
+          "symbol": "createLogger"
+        },
+        {
+          "path": "src/lib/posthog-server.ts",
+          "symbol": "captureAfterResponse"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/ai",
+          "files": 9,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 8,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/shared",
+          "files": 8,
+          "via": "imports"
+        },
+        {
+          "path": "tests/fixtures",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db",
+          "files": 5,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/config",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers/smoke",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/components",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/modules",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/logging",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/observability",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/utils",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/billing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/model-catalog",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/providers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/db",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/errors",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/notifications/email",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/lifecycle",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/session",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/task-progress",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/hooks",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/mappers",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/scripts",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/generation",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/playwright/smoke",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/analytics",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/dashboard",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/plans/new",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/profile",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/waitlist",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/ai/orchestrator",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/auth",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing/clerk-billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/regeneration-orchestration",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/status-polling",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/helpers/smoke",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/api",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/i18n",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/next",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/posthog",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/notifications",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/settings/profile",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Shared types are imported from src/shared/types; the README tree calls this directory types/.",
+          "source": {
+            "path": "README.md",
+            "symbol": "Shared application types"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/lib/logging/logger.ts",
+          "symbol": "createLogger"
+        },
+        {
+          "path": "src/shared/types/billing.types.ts",
+          "symbol": "SubscriptionTier"
+        },
+        {
+          "path": "src/lib/observability/sentry-filters.ts",
+          "symbol": "beforeSendSentryEvent"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Shared application types",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "logging",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "shared",
+        "config",
+        "logging",
+        "observability"
+      ]
+    },
+    {
+      "id": "postgres",
+      "label": "Supabase Postgres",
+      "kind": "database",
+      "boundary": "data",
+      "path": "supabase/schema/index.ts",
+      "paths": [
+        "supabase/schema/index.ts",
+        "supabase/service-role.ts",
+        "supabase/rls.ts",
+        "supabase/config.toml"
+      ],
+      "role": "Hosted Supabase Postgres (staging atlaris-dev, production atlaris-prod). App connects with postgres-js via RLS or service-role clients; the Worker connects through Cloudflare Hyperdrive. Tables include learning_plans, generation_attempts, modules, tasks, job_queue, users, usage_metrics.",
+      "entrypoints": [
+        {
+          "path": "supabase/schema/tables/jobs.ts",
+          "symbol": "jobQueue"
+        },
+        {
+          "path": "supabase/schema/tables/plans.ts",
+          "symbol": "generationAttempts"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/db",
+          "files": 39,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api",
+          "files": 18,
+          "via": "imports"
+        },
+        {
+          "path": "tests/security",
+          "files": 9,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/generation",
+          "files": 7,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers/db",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/contract",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/db",
+          "files": 6,
+          "via": "imports"
+        },
+        {
+          "path": "tests/fixtures",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/helpers",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/concurrency",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/lifecycle",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 3,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/billing",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/rls",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/setup",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/auth",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/db/schema",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/entitlement",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/features/plans/task-progress",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/helpers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/system/light",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/billing/clerk-billing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries/helpers",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "RLS policies are scoped to the authenticated role; ownership resolves through users.id from the auth subject.",
+          "source": {
+            "path": "README.md",
+            "symbol": "RLS policies are explicitly scoped"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "supabase/service-role.ts",
+          "symbol": "postgres"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "hyperdriveId"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Supabase",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "supabase",
+        "postgres",
+        "hyperdrive"
+      ]
+    },
+    {
+      "id": "clerk",
+      "label": "Clerk",
+      "kind": "external",
+      "boundary": "data",
+      "path": "src/lib/auth/server.ts",
+      "paths": [
+        "src/proxy.ts",
+        "src/lib/auth/server.ts",
+        "src/app/api/v1/clerk/billing/webhook/route.ts"
+      ],
+      "role": "Identity (sign-in, sessions, middleware), Clerk Billing (subscriptions, checkout) and user/billing webhooks.",
+      "entrypoints": [
+        {
+          "path": "src/lib/auth/server.ts",
+          "symbol": "currentUser"
+        },
+        {
+          "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+          "symbol": "verifyWebhook"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/integration/api",
+          "files": 8,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/api",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/integration/api/plans",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/pricing",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/settings/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/components",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "The launch waitlist gate relies on Clerk sign-up mode being Waitlist.",
+          "source": {
+            "path": "docs/development/environment.md",
+            "symbol": "sign-up mode being **Waitlist**"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "clerkMiddleware"
+        },
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": "getClerkClient"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Clerk",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "clerk"
+      ]
+    },
+    {
+      "id": "openrouter",
+      "label": "OpenRouter",
+      "kind": "external",
+      "boundary": "data",
+      "path": "src/features/ai/providers/openrouter.ts",
+      "paths": [
+        "src/features/ai/providers/openrouter.ts",
+        "src/features/ai/model-catalog/guardrail-models.ts"
+      ],
+      "role": "LLM gateway for plan outlines, lessons and verifiers; the Worker reaches it through a Cloudflare AI Gateway URL; per-tier guardrails list allowed models.",
+      "entrypoints": [
+        {
+          "path": "src/features/ai/providers/openrouter.ts",
+          "symbol": "OpenRouterProvider"
+        },
+        {
+          "path": "src/features/ai/model-catalog/guardrail-models.ts",
+          "symbol": "GUARDRAIL_MODELS_URL"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/ai/providers",
+          "files": 9,
+          "via": "imports"
+        },
+        {
+          "path": "tests/fixtures",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai/model-catalog",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Model route lists stay within OPENROUTER_MAX_ROUTE_MODELS.",
+          "source": {
+            "path": "src/features/ai/providers/openrouter.ts",
+            "symbol": "OPENROUTER_MAX_ROUTE_MODELS"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/ai/providers/openrouter.ts",
+          "symbol": "OpenRouterProvider"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "OPENROUTER_BASE_URL"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "OpenRouter",
+          "source_type": "README",
+          "source": {
+            "path": "README.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "AI Gateway",
+          "source_type": "docs",
+          "source": {
+            "path": "workers/jobs/cloudflare.config.ts"
+          },
+          "status": "found",
+          "match": false
+        }
+      ],
+      "code_names": [
+        "openrouter",
+        "openrouter_base_url"
+      ]
+    },
+    {
+      "id": "parallel-search",
+      "label": "Parallel Search",
+      "kind": "external",
+      "boundary": "data",
+      "path": "src/features/ai/providers/parallel-search.ts",
+      "paths": [
+        "src/features/ai/providers/parallel-search.ts"
+      ],
+      "role": "Web search API called directly for grounded plan research (flag parallel-direct-research).",
+      "entrypoints": [
+        {
+          "path": "src/features/ai/providers/parallel-search.ts",
+          "symbol": "searchParallel"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/ai/providers",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/research",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Direct research runs only while the parallel-direct-research Flagship flag is on.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "parallel-direct-research"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/ai/providers/parallel-search.ts",
+          "symbol": "PARALLEL_SEARCH_URL"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "PARALLEL_API_KEY"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Parallel Search",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/plan-generation-architecture.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "parallel-search",
+        "parallel"
+      ]
+    },
+    {
+      "id": "resend",
+      "label": "Resend",
+      "kind": "external",
+      "boundary": "data",
+      "path": "src/features/notifications/email/resend-adapter.ts",
+      "paths": [
+        "src/features/notifications/email/resend-adapter.ts"
+      ],
+      "role": "Transactional email provider for notification digests (sender mail.atlaris.app).",
+      "entrypoints": [
+        {
+          "path": "src/features/notifications/email/resend-adapter.ts",
+          "symbol": "createResendEmailSender"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/features/notifications/email",
+          "files": 2,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "The sender domain must be verified in Resend.",
+          "source": {
+            "path": "workers/jobs/cloudflare.config.ts",
+            "symbol": "must be verified in Resend"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/resend-adapter.ts",
+          "symbol": "Resend"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "RESEND_API_KEY"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Resend",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/development/deploy.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "resend"
+      ]
+    },
+    {
+      "id": "cf-queue",
+      "label": "Cloudflare Queue (regeneration)",
+      "kind": "queue",
+      "boundary": "cf",
+      "path": "workers/jobs/cloudflare.config.ts",
+      "paths": [
+        "workers/jobs/cloudflare.config.ts",
+        "workers/jobs/src/jobs/regeneration-enqueue.ts",
+        "workers/jobs/src/jobs/regeneration-consumer.ts",
+        "workers/jobs/src/jobs/regeneration-sweep.ts"
+      ],
+      "role": "atlaris-regeneration-<mode> queue (maxBatchSize 1, maxRetries 3, no dead-letter queue). job_queue in Postgres stays the record; a 15-minute sweep re-sends lost work.",
+      "entrypoints": [
+        {
+          "path": "workers/jobs/src/jobs/regeneration-enqueue.ts",
+          "symbol": "handleRegenerationEnqueue"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-consumer.ts",
+          "symbol": "handleRegenerationBatch"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-sweep.ts",
+          "symbol": "runRegenerationSweep"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 3,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "No dead-letter queue; job_queue is the record and the sweep re-sends lost work.",
+          "source": {
+            "path": "workers/jobs/cloudflare.config.ts",
+            "symbol": "no dead-letter queue"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "regenerationQueue"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-sweep.ts",
+          "symbol": "REGENERATION_SWEEP_CRON"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Cloudflare Queue",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/regeneration-worker-runbook.md"
+          },
+          "status": "found",
+          "match": false
+        },
+        {
+          "word": "regeneration queue",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/architecture/regeneration-worker-runbook.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "regeneration_queue",
+        "regeneration queue"
+      ]
+    },
+    {
+      "id": "cf-workflows",
+      "label": "Cloudflare Workflows",
+      "kind": "queue",
+      "boundary": "cf",
+      "path": "workers/jobs/cloudflare.config.ts",
+      "paths": [
+        "workers/jobs/cloudflare.config.ts",
+        "workers/jobs/src/workflow-instance.ts",
+        "workers/jobs/src/workflows"
+      ],
+      "role": "Durable Workflow instances: plan generation (one per reserved attempt), module lessons, and email delivery (scheduled daily 14:00 UTC and weekly MON 14:30 UTC when deployed).",
+      "entrypoints": [
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "PLAN_GENERATION_WORKFLOW"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "MODULE_LESSONS_WORKFLOW"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "EMAIL_DELIVERY_WORKFLOW"
+        }
+      ],
+      "tests": [],
+      "constraints": [
+        {
+          "rule": "Workflow step names are final once deployed: never rename, reorder or remove while instances may be in flight.",
+          "source": {
+            "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+            "symbol": "Step names are final once deployed"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "bindings.workflow"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "schedules: ['0 14 * * *', '30 14 * * MON']"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Workflow",
+          "source_type": "AGENTS.md",
+          "source": {
+            "path": "workers/AGENTS.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "Workflows",
+          "source_type": "AGENTS.md",
+          "source": {
+            "path": "workers/AGENTS.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "workflows",
+        "plan_generation_workflow",
+        "module_lessons_workflow",
+        "email_delivery_workflow"
+      ]
+    },
+    {
+      "id": "flagship",
+      "label": "Cloudflare Flagship",
+      "kind": "external",
+      "boundary": "cf",
+      "path": "src/flags.ts",
+      "paths": [
+        "src/flags.ts",
+        "workers/jobs/src/flags.ts",
+        "workers/jobs/src/switches.ts",
+        "src/lib/config/env/flagship.ts"
+      ],
+      "role": "Feature-flag and job-switch service: launch-waitlist, maintenance-mode, grounded-generation, module-lesson-generation, jobs-paused, regeneration-paused and others. App reads over HTTP via OpenFeature; Worker via the FLAGS binding.",
+      "entrypoints": [
+        {
+          "path": "src/flags.ts",
+          "symbol": "FlagshipServerProvider"
+        },
+        {
+          "path": "workers/jobs/src/flags.ts",
+          "symbol": "registerWorkerFlags"
+        },
+        {
+          "path": "workers/jobs/src/switches.ts",
+          "symbol": "isJobsPaused"
+        }
+      ],
+      "tests": [
+        {
+          "path": "tests/unit/workers/jobs",
+          "files": 4,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/ai",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/app/about",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/lesson-content",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/features/plans/regeneration-orchestration",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib",
+          "files": 1,
+          "via": "imports"
+        }
+      ],
+      "constraints": [
+        {
+          "rule": "Flags are created only in the Flagship dashboard, never from code.",
+          "source": {
+            "path": "workers/AGENTS.md",
+            "symbol": "Flags are created only in the Flagship dashboard"
+          }
+        }
+      ],
+      "evidence": [
+        {
+          "path": "src/flags.ts",
+          "symbol": "FlagshipServerProvider"
+        },
+        {
+          "path": "workers/jobs/src/flags.ts",
+          "symbol": "getBooleanDetails"
+        }
+      ],
+      "aliases": [
+        {
+          "word": "Flagship",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/development/deploy.md"
+          },
+          "status": "found",
+          "match": true
+        },
+        {
+          "word": "feature flags",
+          "source_type": "docs",
+          "source": {
+            "path": "docs/development/environment.md"
+          },
+          "status": "found",
+          "match": true
+        }
+      ],
+      "code_names": [
+        "flagship",
+        "flags"
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "from": "web-ui",
+      "to": "api-routes",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts",
+          "symbol": "lesson-content/generate"
+        },
+        {
+          "path": "src/app/(app)/plans/[id]/components/RegeneratePlanDialog.tsx",
+          "symbol": "/regenerate"
+        },
+        {
+          "path": "src/app/(app)/plans/components/FreeAccessPlanSelector.tsx",
+          "symbol": "/api/v1/user/free-access-plan"
+        }
+      ],
+      "note": "Browser fetches /api/v1 routes",
+      "status": "evidenced",
+      "id": "web-ui>api-routes:calls"
+    },
+    {
+      "from": "plans",
+      "to": "api-routes",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/plans/session/usePlanGenerationSession.ts",
+          "symbol": "/api/v1/plans"
+        },
+        {
+          "path": "src/features/plans/status-polling/plan-status-poller.ts",
+          "symbol": "/api/v1/plans/${planId}/status"
+        }
+      ],
+      "note": "Client hooks that live in features/plans create/retry and poll status",
+      "status": "evidenced",
+      "id": "plans>api-routes:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "request-boundary",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/route.ts",
+          "symbol": "requestBoundary.route"
+        }
+      ],
+      "note": "Every route handler is wrapped",
+      "status": "evidenced",
+      "id": "api-routes>request-boundary:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "plans",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/route.ts",
+          "symbol": "boundary.startCreate"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "requestPlanRegeneration"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "api-routes>plans:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "billing",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/route.ts",
+          "symbol": "assertAiSpendAllowed"
+        },
+        {
+          "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+          "symbol": "applyVerifiedClerkBillingEvent"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "api-routes>billing:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "lesson-content",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+          "symbol": "startModuleLessonGeneration"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "api-routes>lesson-content:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "jobs-dispatch",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "dispatchRegenerationToWorker"
+        },
+        {
+          "path": "src/app/api/internal/maintenance/notifications/email/route.ts",
+          "symbol": "dispatchEmailDeliveryToWorker"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "api-routes>jobs-dispatch:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "notifications",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/notifications/email/unsubscribe/route.ts",
+          "symbol": "applySignedEmailUnsubscribe"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "api-routes>notifications:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "ai-generation",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "validateModelForTier"
+        }
+      ],
+      "note": "Model validation per tier",
+      "status": "evidenced",
+      "id": "api-routes>ai-generation:calls"
+    },
+    {
+      "from": "api-routes",
+      "to": "db-layer",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/app/api/health/worker/route.ts",
+          "symbol": "jobs-metrics"
+        }
+      ],
+      "note": "Health route reads queue metrics",
+      "status": "evidenced",
+      "id": "api-routes>db-layer:reads"
+    },
+    {
+      "from": "clerk",
+      "to": "api-routes",
+      "type": "publishes",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+          "symbol": "verifyWebhook"
+        }
+      ],
+      "note": "Clerk Billing and user webhooks (svix-signed)",
+      "status": "evidenced",
+      "id": "clerk>api-routes:publishes"
+    },
+    {
+      "from": "request-boundary",
+      "to": "clerk",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "clerkMiddleware"
+        },
+        {
+          "path": "src/lib/auth/server.ts",
+          "symbol": "currentUser"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "request-boundary>clerk:calls"
+    },
+    {
+      "from": "request-boundary",
+      "to": "db-layer",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/lib/api/auth.ts",
+          "symbol": "createAuthenticatedRlsClient"
+        }
+      ],
+      "note": "Per-request RLS client keyed to the Clerk subject",
+      "status": "evidenced",
+      "id": "request-boundary>db-layer:calls"
+    },
+    {
+      "from": "request-boundary",
+      "to": "flagship",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/flags.ts",
+          "symbol": "FlagshipServerProvider"
+        },
+        {
+          "path": "src/lib/proxy/site-gate.ts",
+          "symbol": "launchWaitlist"
+        }
+      ],
+      "note": "Site gate reads launch-waitlist and maintenance-mode",
+      "status": "evidenced",
+      "id": "request-boundary>flagship:reads"
+    },
+    {
+      "from": "web-ui",
+      "to": "clerk",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/(auth)/auth/sign-in/[[...sign-in]]/page.tsx",
+          "symbol": "SignIn"
+        }
+      ],
+      "note": "Clerk hosted components",
+      "status": "evidenced",
+      "id": "web-ui>clerk:calls"
+    },
+    {
+      "from": "web-ui",
+      "to": "request-boundary",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/actions.ts",
+          "symbol": "requestBoundary.action"
+        }
+      ],
+      "note": "Server actions",
+      "status": "evidenced",
+      "id": "web-ui>request-boundary:calls"
+    },
+    {
+      "from": "web-ui",
+      "to": "plans",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/page.tsx",
+          "symbol": "read-projection/service"
+        }
+      ],
+      "note": "Server components read plan projections",
+      "status": "evidenced",
+      "id": "web-ui>plans:reads"
+    },
+    {
+      "from": "web-ui",
+      "to": "billing",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/plans-page-data.ts",
+          "symbol": "usage-metrics"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "web-ui>billing:reads"
+    },
+    {
+      "from": "plans",
+      "to": "billing",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/factory.ts",
+          "symbol": "resolveUserTier"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "plans>billing:calls"
+    },
+    {
+      "from": "plans",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/plans/start-plan-generation-attempt.ts",
+          "symbol": "reserveAttemptSlot"
+        },
+        {
+          "path": "src/features/plans/lifecycle/generation-finalization/store.ts",
+          "symbol": "generationAttempts"
+        }
+      ],
+      "note": "Plan row, attempt reservation, single-transaction finalize",
+      "status": "evidenced",
+      "id": "plans>db-layer:writes"
+    },
+    {
+      "from": "plans",
+      "to": "db-layer",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/plans/read-projection/service.ts",
+          "symbol": "selectOwnedPlanById"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "plans>db-layer:reads"
+    },
+    {
+      "from": "plans",
+      "to": "jobs-dispatch",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/plans/start-plan-generation-attempt.ts",
+          "symbol": "dispatchPlanGenerationToWorker"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "plans>jobs-dispatch:calls"
+    },
+    {
+      "from": "plans",
+      "to": "ai-generation",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/generation.ts",
+          "symbol": "runGenerationExecution"
+        },
+        {
+          "path": "src/features/plans/research/run-research.ts",
+          "symbol": "searchParallel"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "plans>ai-generation:calls"
+    },
+    {
+      "from": "plans",
+      "to": "lesson-content",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/generation-finalization/store.ts",
+          "symbol": "enqueueFirstProgressiveModuleLessons"
+        }
+      ],
+      "note": "After finalize, first modules get lessons",
+      "status": "evidenced",
+      "id": "plans>lesson-content:calls"
+    },
+    {
+      "from": "ai-generation",
+      "to": "openrouter",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/ai/providers/openrouter.ts",
+          "symbol": "OpenRouterProvider"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "ai-generation>openrouter:calls"
+    },
+    {
+      "from": "ai-generation",
+      "to": "openrouter",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/ai/model-catalog/guardrail-models.ts",
+          "symbol": "GUARDRAIL_MODELS_URL"
+        }
+      ],
+      "note": "Tier model lists from guardrails",
+      "status": "evidenced",
+      "id": "ai-generation>openrouter:reads"
+    },
+    {
+      "from": "ai-generation",
+      "to": "parallel-search",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/ai/providers/parallel-search.ts",
+          "symbol": "PARALLEL_SEARCH_URL"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "ai-generation>parallel-search:calls"
+    },
+    {
+      "from": "ai-generation",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/ai/model-catalog/store.ts",
+          "symbol": "replaceTierModels"
+        }
+      ],
+      "note": "openrouter_tier_models",
+      "status": "evidenced",
+      "id": "ai-generation>db-layer:writes"
+    },
+    {
+      "from": "ai-generation",
+      "to": "db-layer",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/ai/model-catalog/store.ts",
+          "symbol": "selectTierModels"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "ai-generation>db-layer:reads"
+    },
+    {
+      "from": "ai-generation",
+      "to": "flagship",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/ai/grounded-generation-flag.ts",
+          "symbol": "isGroundedEnabled"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "ai-generation>flagship:reads"
+    },
+    {
+      "from": "ai-generation",
+      "to": "billing",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/ai/usage.ts",
+          "symbol": "plan-ai-budget"
+        }
+      ],
+      "note": "Usage cost vs plan AI ceiling",
+      "status": "evidenced",
+      "id": "ai-generation>billing:calls"
+    },
+    {
+      "from": "lesson-content",
+      "to": "ai-generation",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "sendOpenRouterGroundedChat"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "lesson-content>ai-generation:calls"
+    },
+    {
+      "from": "lesson-content",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "claimModuleLessonGenerationOrDescribe"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "lesson-content>db-layer:writes"
+    },
+    {
+      "from": "lesson-content",
+      "to": "jobs-dispatch",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "dispatchModuleLessonsToWorker"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "lesson-content>jobs-dispatch:calls"
+    },
+    {
+      "from": "lesson-content",
+      "to": "billing",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/run-module-lesson-generation-work.ts",
+          "symbol": "plan-ai-budget"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "lesson-content>billing:calls"
+    },
+    {
+      "from": "lesson-content",
+      "to": "flagship",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/generation-flag.ts",
+          "symbol": "resolveModuleLessonGenerationEnabled"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "lesson-content>flagship:reads"
+    },
+    {
+      "from": "billing",
+      "to": "clerk",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": "getClerkClient"
+        }
+      ],
+      "note": "Backend subscription read for reconciliation",
+      "status": "evidenced",
+      "id": "billing>clerk:reads"
+    },
+    {
+      "from": "billing",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": ".update(users)"
+        }
+      ],
+      "note": "Projects subscription tier onto users",
+      "status": "evidenced",
+      "id": "billing>db-layer:writes"
+    },
+    {
+      "from": "notifications",
+      "to": "resend",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/resend-adapter.ts",
+          "symbol": "Resend"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "notifications>resend:calls"
+    },
+    {
+      "from": "notifications",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "serviceRoleDb"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "notifications>db-layer:writes"
+    },
+    {
+      "from": "notifications",
+      "to": "flagship",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/delivery-flag.ts",
+          "symbol": "resolveEmailNotificationDeliveryEnabled"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "notifications>flagship:reads"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "jobs-worker",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/lib/jobs-worker/client.ts",
+          "symbol": "sendJobsWorkerCommand"
+        },
+        {
+          "path": "src/lib/jobs-worker/contract.ts",
+          "symbol": "JOBS_COMMAND_PATHS"
+        }
+      ],
+      "note": "HMAC-signed POST /v1/<command>",
+      "status": "evidenced",
+      "id": "jobs-dispatch>jobs-worker:calls"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "ai-generation",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "validateModelForTier"
+        },
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "sumUsages"
+        }
+      ],
+      "note": "Regeneration run reuses model resolution and usage summing",
+      "status": "evidenced",
+      "id": "jobs-dispatch>ai-generation:calls"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "db-layer",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "claimRegenerationRun"
+        }
+      ],
+      "note": "Regeneration run claim and finalize",
+      "status": "evidenced",
+      "id": "jobs-dispatch>db-layer:writes"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "jobs-dispatch",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "runPlanRegeneration"
+        }
+      ],
+      "note": "Worker imports the app regeneration-run logic",
+      "status": "evidenced",
+      "id": "jobs-worker>jobs-dispatch:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "cf-workflows",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/http/plan-generation-start.ts",
+          "symbol": "workflow.create"
+        },
+        {
+          "path": "workers/jobs/src/http/module-lessons-start.ts",
+          "symbol": "workflow.create"
+        },
+        {
+          "path": "workers/jobs/src/http/email-delivery-runs.ts",
+          "symbol": "workflow.create"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>cf-workflows:calls"
+    },
+    {
+      "from": "cf-workflows",
+      "to": "jobs-worker",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/plan-generation.ts",
+          "symbol": "WorkflowEntrypoint"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons.ts",
+          "symbol": "WorkflowEntrypoint"
+        },
+        {
+          "path": "workers/jobs/src/workflows/email-delivery.ts",
+          "symbol": "WorkflowEntrypoint"
+        }
+      ],
+      "note": "Platform runs the Workflow entrypoints",
+      "status": "evidenced",
+      "id": "cf-workflows>jobs-worker:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "cf-queue",
+      "type": "publishes",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/jobs/regeneration-enqueue.ts",
+          "symbol": "queue.send"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-sweep.ts",
+          "symbol": "queue.sendBatch"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>cf-queue:publishes"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "cf-queue",
+      "type": "subscribes",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "async queue("
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-consumer.ts",
+          "symbol": "handleRegenerationBatch"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>cf-queue:subscribes"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "plans",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+          "symbol": "createPlanLifecycleService"
+        },
+        {
+          "path": "workers/jobs/src/jobs/plan-cleanup.ts",
+          "symbol": "runPlanCleanupMaintenance"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>plans:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "ai-generation",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+          "symbol": "resolveTimeoutConfig"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-grounded.ts",
+          "symbol": "isGroundedEnabled"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>ai-generation:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "lesson-content",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/module-lessons/run.ts",
+          "symbol": "run-module-lesson-generation-work"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>lesson-content:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "notifications",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/email-delivery/run.ts",
+          "symbol": "runEmailNotificationDelivery"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>notifications:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "flagship",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/flags.ts",
+          "symbol": "getBooleanDetails"
+        },
+        {
+          "path": "workers/jobs/src/switches.ts",
+          "symbol": "isJobsPaused"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "jobs-worker>flagship:reads"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "db-layer",
+      "type": "calls",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/db.ts",
+          "symbol": "runWithServiceRoleDb"
+        }
+      ],
+      "note": "Reuses service-role db inside a per-invocation pool",
+      "status": "evidenced",
+      "id": "jobs-worker>db-layer:calls"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "postgres",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/db.ts",
+          "symbol": "Hyperdrive"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "hyperdriveId"
+        }
+      ],
+      "note": "Pool over Hyperdrive, closed per invocation or step",
+      "status": "evidenced",
+      "id": "jobs-worker>postgres:writes"
+    },
+    {
+      "from": "db-layer",
+      "to": "postgres",
+      "type": "reads",
+      "evidence": [
+        {
+          "path": "supabase/service-role.ts",
+          "symbol": "postgres"
+        },
+        {
+          "path": "supabase/rls.ts",
+          "symbol": "createAuthenticatedRlsClient"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "db-layer>postgres:reads"
+    },
+    {
+      "from": "db-layer",
+      "to": "postgres",
+      "type": "writes",
+      "evidence": [
+        {
+          "path": "supabase/service-role.ts",
+          "symbol": "drizzle"
+        },
+        {
+          "path": "supabase/rls.ts",
+          "symbol": "drizzle"
+        }
+      ],
+      "note": "",
+      "status": "evidenced",
+      "id": "db-layer>postgres:writes"
+    },
+    {
+      "from": "ai-generation",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/ai/usage.ts",
+          "symbol": "usageCostMicrousd"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "ai-generation>billing:imports"
+    },
+    {
+      "from": "ai-generation",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/ai/model-catalog/store.ts",
+          "symbol": "OpenRouterTierModelRow"
+        },
+        {
+          "path": "src/features/ai/orchestrator.ts",
+          "symbol": "reserveAttemptSlot"
+        },
+        {
+          "path": "src/features/ai/orchestrator/attempt-failures.ts",
+          "symbol": "AttemptRejection"
+        }
+      ],
+      "note": "6 importing files",
+      "status": "evidenced",
+      "id": "ai-generation>db-layer:imports"
+    },
+    {
+      "from": "ai-generation",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/ai/grounded-generation-flag.ts",
+          "symbol": "groundedGeneration"
+        },
+        {
+          "path": "src/features/ai/orchestrator/reservation.ts",
+          "symbol": "AppError"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "ai-generation>request-boundary:imports"
+    },
+    {
+      "from": "ai-generation",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/ai/ai-models.ts",
+          "symbol": "logger"
+        },
+        {
+          "path": "src/features/ai/classification.ts",
+          "symbol": "FailureClassification"
+        },
+        {
+          "path": "src/features/ai/constants.ts",
+          "symbol": "DEFAULT_ATTEMPT_CAP"
+        }
+      ],
+      "note": "32 importing files",
+      "status": "evidenced",
+      "id": "ai-generation>shared-core:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "validateModelForTier"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/status/route.ts",
+          "symbol": "classificationToUserMessage"
+        },
+        {
+          "path": "src/app/api/v1/user/preferences/route.ts",
+          "symbol": "getDefaultModelForTier"
+        }
+      ],
+      "note": "3 importing files",
+      "status": "evidenced",
+      "id": "api-routes>ai-generation:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/internal/maintenance/billing/reconcile-clerk/route.ts",
+          "symbol": "reconcileClerkBillingEntitlements"
+        },
+        {
+          "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+          "symbol": "applyVerifiedClerkBillingEvent"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+          "symbol": "assertAiSpendAllowed"
+        }
+      ],
+      "note": "7 importing files",
+      "status": "evidenced",
+      "id": "api-routes>billing:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/health/worker/route.ts",
+          "symbol": "getSystemWideJobMetrics"
+        },
+        {
+          "path": "src/app/api/internal/maintenance/retention/cleanup/route.ts",
+          "symbol": "cleanupRetainedDbRows"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/retry/route.ts",
+          "symbol": "getGroundedModelPreferences"
+        }
+      ],
+      "note": "9 importing files",
+      "status": "evidenced",
+      "id": "api-routes>db-layer:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "jobs-dispatch",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/internal/maintenance/notifications/email/route.ts",
+          "symbol": "dispatchEmailDeliveryToWorker"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+          "symbol": "dispatchRegenerationToWorker"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "api-routes>jobs-dispatch:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "lesson-content",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+          "symbol": "startModuleLessonGeneration"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "api-routes>lesson-content:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "notifications",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/internal/maintenance/notifications/email/route.ts",
+          "symbol": "resolveEmailNotificationDeliveryEnabled"
+        },
+        {
+          "path": "src/app/api/v1/notifications/email/unsubscribe/route.ts",
+          "symbol": "applySignedEmailUnsubscribe"
+        },
+        {
+          "path": "src/app/api/v1/user/preferences/notifications/route.ts",
+          "symbol": "emailNotificationPreferenceFormValuesFromPreferences"
+        }
+      ],
+      "note": "3 importing files",
+      "status": "evidenced",
+      "id": "api-routes>notifications:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/internal/maintenance/plans/cleanup/route.ts",
+          "symbol": "runPlanCleanupMaintenance"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/attempts/route.ts",
+          "symbol": "requireUuidRouteParam"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+          "symbol": "requirePlanContentAccess"
+        }
+      ],
+      "note": "12 importing files",
+      "status": "evidenced",
+      "id": "api-routes>plans:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/docs/enforce-docs-access.ts",
+          "symbol": "toErrorResponse"
+        },
+        {
+          "path": "src/app/api/docs/openapi/route.ts",
+          "symbol": "getOpenApiDocument"
+        },
+        {
+          "path": "src/app/api/health/worker/route.ts",
+          "symbol": "toErrorResponse"
+        }
+      ],
+      "note": "25 importing files",
+      "status": "evidenced",
+      "id": "api-routes>request-boundary:imports"
+    },
+    {
+      "from": "api-routes",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/api/docs/enforce-docs-access.ts",
+          "symbol": "appEnv"
+        },
+        {
+          "path": "src/app/api/health/worker/route.ts",
+          "symbol": "maintenanceEnv"
+        },
+        {
+          "path": "src/app/api/internal/maintenance/billing/reconcile-clerk/route.ts",
+          "symbol": "maintenanceEnv"
+        }
+      ],
+      "note": "18 importing files",
+      "status": "evidenced",
+      "id": "api-routes>shared-core:imports"
+    },
+    {
+      "from": "billing",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/billing/regeneration-quota-boundary.ts",
+          "symbol": "getGroundedOperationPolicy"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "billing>ai-generation:imports"
+    },
+    {
+      "from": "billing",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/billing/account-snapshot.ts",
+          "symbol": "DbClient"
+        },
+        {
+          "path": "src/features/billing/ai-spend-guard.ts",
+          "symbol": "sumAllAiSpendMicrousd"
+        },
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": "DbTransaction"
+        }
+      ],
+      "note": "7 importing files",
+      "status": "evidenced",
+      "id": "billing>db-layer:imports"
+    },
+    {
+      "from": "billing",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/billing/regeneration-quota-boundary.ts",
+          "symbol": "planRegenerationJobPayloadSchema"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "billing>plans:imports"
+    },
+    {
+      "from": "billing",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/billing/account-snapshot.ts",
+          "symbol": "getCorrelationId"
+        },
+        {
+          "path": "src/features/billing/ai-spend-guard.ts",
+          "symbol": "AppError"
+        },
+        {
+          "path": "src/features/billing/checkout-return-server.ts",
+          "symbol": "requestBoundary"
+        }
+      ],
+      "note": "6 importing files",
+      "status": "evidenced",
+      "id": "billing>request-boundary:imports"
+    },
+    {
+      "from": "billing",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/billing/account-snapshot.ts",
+          "symbol": "SubscriptionTier"
+        },
+        {
+          "path": "src/features/billing/ai-spend-guard.ts",
+          "symbol": "logger"
+        },
+        {
+          "path": "src/features/billing/clerk-billing/plan-mapping.ts",
+          "symbol": "clerkBillingPlanEnv"
+        }
+      ],
+      "note": "10 importing files",
+      "status": "evidenced",
+      "id": "billing>shared-core:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/plan-ai-budget.ts",
+          "symbol": "billedUsageOf"
+        },
+        {
+          "path": "supabase/usage.ts",
+          "symbol": "buildModelPricingSnapshot"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "db-layer>ai-generation:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/module-lesson-generation.ts",
+          "symbol": "getCurrentMonth"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "db-layer>billing:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "notifications",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/email-notification-deliveries.ts",
+          "symbol": "PersistedProviderRequest"
+        },
+        {
+          "path": "src/lib/db/queries/email-notification-delivery-runs.ts",
+          "symbol": "EmailDeliveryRunCounts"
+        },
+        {
+          "path": "src/lib/db/queries/user-preferences.ts",
+          "symbol": "DEFAULT_EMAIL_NOTIFICATION_PREFERENCES"
+        }
+      ],
+      "note": "3 importing files",
+      "status": "evidenced",
+      "id": "db-layer>notifications:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/plan-list.ts",
+          "symbol": "PlanListQuery"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "db-layer>plans:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/helpers/attempts-helpers.ts",
+          "symbol": "getCorrelationId"
+        },
+        {
+          "path": "supabase/runtime.ts",
+          "symbol": "getRequestContext"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "db-layer>request-boundary:imports"
+    },
+    {
+      "from": "db-layer",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/db/queries/admin/jobs-metrics.ts",
+          "symbol": "JOB_TYPES"
+        },
+        {
+          "path": "src/lib/db/queries/attempts.ts",
+          "symbol": "getAttemptCap"
+        },
+        {
+          "path": "src/lib/db/queries/email-delivery-recipients.ts",
+          "symbol": "EmailNotificationCategory"
+        }
+      ],
+      "note": "30 importing files",
+      "status": "evidenced",
+      "id": "db-layer>shared-core:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "resolveGroundedWriterModelId"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "jobs-dispatch>ai-generation:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "reserveRegenerationQuotaAtProviderStart"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "jobs-dispatch>billing:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "symbol": "EmailNotificationDeliveryRunKind"
+        },
+        {
+          "path": "src/features/jobs/queue.ts",
+          "symbol": "claimRegenerationJobById"
+        },
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "findAttemptWithWorkflowIdempotencyKey"
+        }
+      ],
+      "note": "5 importing files",
+      "status": "evidenced",
+      "id": "jobs-dispatch>db-layer:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "lesson-content",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "toLessonResearch"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "jobs-dispatch>lesson-content:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "notifications",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "symbol": "EmailNotificationDeliveryRunAction"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "jobs-dispatch>notifications:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "symbol": "PlanGenerationWorkflowInput"
+        },
+        {
+          "path": "src/features/jobs/regeneration-dispatch.ts",
+          "symbol": "RegenerationDispatchInput"
+        },
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "createPlanLifecycleService"
+        }
+      ],
+      "note": "4 importing files",
+      "status": "evidenced",
+      "id": "jobs-dispatch>plans:imports"
+    },
+    {
+      "from": "jobs-dispatch",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "symbol": "jobsWorkerEnv"
+        },
+        {
+          "path": "src/features/jobs/module-lessons-dispatch.ts",
+          "symbol": "jobsWorkerEnv"
+        },
+        {
+          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "symbol": "jobsWorkerEnv"
+        }
+      ],
+      "note": "8 importing files",
+      "status": "evidenced",
+      "id": "jobs-dispatch>shared-core:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/jobs/regeneration-grounded.ts",
+          "symbol": "isGroundedEnabled"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons.ts",
+          "symbol": "isGroundedEnabled"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons/grounded.ts",
+          "symbol": "resolveGroundedModelPick"
+        }
+      ],
+      "note": "9 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>ai-generation:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/workflows/module-lessons/grounded.ts",
+          "symbol": "PlanAiBudget"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons/lesson-quality.ts",
+          "symbol": "isNearPlanAiCeiling"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>billing:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/db.ts",
+          "symbol": "DbClient"
+        },
+        {
+          "path": "workers/jobs/src/http/email-delivery-runs.ts",
+          "symbol": "countEmailNotificationDeliveryManualReviews"
+        },
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "DbClient"
+        }
+      ],
+      "note": "17 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>db-layer:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "jobs-dispatch",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/http/email-delivery-runs.ts",
+          "symbol": "JOBS_COMMAND_PATHS"
+        },
+        {
+          "path": "workers/jobs/src/http/module-lessons-start.ts",
+          "symbol": "ModuleLessonsStartCommand"
+        },
+        {
+          "path": "workers/jobs/src/http/plan-generation-start.ts",
+          "symbol": "PlanGenerationStartCommand"
+        }
+      ],
+      "note": "12 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>jobs-dispatch:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "lesson-content",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "resolveModuleLessonGenerationEnabled"
+        },
+        {
+          "path": "workers/jobs/src/jobs/regeneration-consumer.ts",
+          "symbol": "startModuleLessonGeneration"
+        },
+        {
+          "path": "workers/jobs/src/switches.ts",
+          "symbol": "resolveModuleLessonGenerationEnabled"
+        }
+      ],
+      "note": "7 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>lesson-content:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "notifications",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/http/email-delivery-runs.ts",
+          "symbol": "createEmailNotificationDeliveryReferenceTimestamp"
+        },
+        {
+          "path": "workers/jobs/src/workflows/email-delivery.ts",
+          "symbol": "createConfiguredEmailSender"
+        },
+        {
+          "path": "workers/jobs/src/workflows/email-delivery/run.ts",
+          "symbol": "runEmailNotificationDelivery"
+        }
+      ],
+      "note": "4 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>notifications:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/jobs/plan-cleanup.ts",
+          "symbol": "runPlanCleanupMaintenance"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons/grounded.ts",
+          "symbol": "buildRegenerationGuidance"
+        },
+        {
+          "path": "workers/jobs/src/workflows/plan-generation/outline.ts",
+          "symbol": "GeneratedModule"
+        }
+      ],
+      "note": "5 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>plans:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/flags.ts",
+          "symbol": "FlagEvaluator"
+        },
+        {
+          "path": "workers/jobs/src/jobs/posthog-deletion.ts",
+          "symbol": "retryPostHogPersonDeletions"
+        },
+        {
+          "path": "workers/jobs/src/switches.ts",
+          "symbol": "jobRetentionCleanup"
+        }
+      ],
+      "note": "3 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>request-boundary:imports"
+    },
+    {
+      "from": "jobs-worker",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "workers/jobs/src/http/email-delivery-runs.ts",
+          "symbol": "Logger"
+        },
+        {
+          "path": "workers/jobs/src/http/module-lessons-start.ts",
+          "symbol": "Logger"
+        },
+        {
+          "path": "workers/jobs/src/http/plan-generation-start.ts",
+          "symbol": "Logger"
+        }
+      ],
+      "note": "24 importing files",
+      "status": "evidenced",
+      "id": "jobs-worker>shared-core:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/generate-module-lessons.types.ts",
+          "symbol": "AiPlanGenerationProvider"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-prompt.ts",
+          "symbol": "NOTES_PROMPT_MAX_CHARS"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "GroundedModelChoice"
+        }
+      ],
+      "note": "9 importing files",
+      "status": "evidenced",
+      "id": "lesson-content>ai-generation:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/run-module-lesson-generation-work.ts",
+          "symbol": "planAiCeilingMicrousd"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "lesson-content>billing:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/generate-module-lessons.types.ts",
+          "symbol": "ModuleLessonGenerationContext"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-prompt.ts",
+          "symbol": "MAX_MODULE_TITLE_LENGTH"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "PlanResearchWithSources"
+        }
+      ],
+      "note": "10 importing files",
+      "status": "evidenced",
+      "id": "lesson-content>db-layer:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "jobs-dispatch",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "dispatchModuleLessonsToWorker"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "lesson-content>jobs-dispatch:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/grounded-lesson-prompt.ts",
+          "symbol": "ResearchBrief"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "ResearchBrief"
+        },
+        {
+          "path": "src/features/lesson-content/lesson-checks.ts",
+          "symbol": "ResearchBrief"
+        }
+      ],
+      "note": "7 importing files",
+      "status": "evidenced",
+      "id": "lesson-content>plans:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/generation-flag.ts",
+          "symbol": "moduleLessonGeneration"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "lesson-content>request-boundary:imports"
+    },
+    {
+      "from": "lesson-content",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/lesson-content/generate-module-lessons.types.ts",
+          "symbol": "ModuleLessonGenerationMetadata"
+        },
+        {
+          "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+          "symbol": "openRouterEnv"
+        },
+        {
+          "path": "src/features/lesson-content/lesson-checks.ts",
+          "symbol": "LessonContentSchema"
+        }
+      ],
+      "note": "11 importing files",
+      "status": "evidenced",
+      "id": "lesson-content>shared-core:imports"
+    },
+    {
+      "from": "notifications",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/delivery-monitor.ts",
+          "symbol": "EmailNotificationDeliveryRunKind"
+        },
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "findEmailDailyReminderPlanForUser"
+        },
+        {
+          "path": "src/features/notifications/email/unsubscribe.ts",
+          "symbol": "DbClient"
+        }
+      ],
+      "note": "4 importing files",
+      "status": "evidenced",
+      "id": "notifications>db-layer:imports"
+    },
+    {
+      "from": "notifications",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/delivery-flag.ts",
+          "symbol": "emailNotificationDelivery"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "notifications>request-boundary:imports"
+    },
+    {
+      "from": "notifications",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/notifications/email/content.ts",
+          "symbol": "addDays"
+        },
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "appEnv"
+        },
+        {
+          "path": "src/features/notifications/email/factory.ts",
+          "symbol": "assertEmailDeliveryConfig"
+        }
+      ],
+      "note": "8 importing files",
+      "status": "evidenced",
+      "id": "notifications>shared-core:imports"
+    },
+    {
+      "from": "plans",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/factory.ts",
+          "symbol": "AiPlanGenerationProvider"
+        },
+        {
+          "path": "src/features/plans/lifecycle/generation.ts",
+          "symbol": "ModelOperation"
+        },
+        {
+          "path": "src/features/plans/lifecycle/plan-persistence-store.ts",
+          "symbol": "getGenerationAttemptCap"
+        }
+      ],
+      "note": "17 importing files",
+      "status": "evidenced",
+      "id": "plans>ai-generation:imports"
+    },
+    {
+      "from": "plans",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/factory.ts",
+          "symbol": "resolveUserTier"
+        },
+        {
+          "path": "src/features/plans/lifecycle/generation-finalization/store.ts",
+          "symbol": "getCurrentMonth"
+        },
+        {
+          "path": "src/features/plans/regeneration-orchestration/deps.ts",
+          "symbol": "countProviderStartedRegenerations"
+        }
+      ],
+      "note": "6 importing files",
+      "status": "evidenced",
+      "id": "plans>billing:imports"
+    },
+    {
+      "from": "plans",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/api/route-context.ts",
+          "symbol": "OwnedPlanRecord"
+        },
+        {
+          "path": "src/features/plans/cleanup.ts",
+          "symbol": "lockPlanLifecycle"
+        },
+        {
+          "path": "src/features/plans/entitlement/access.ts",
+          "symbol": "DbClient"
+        }
+      ],
+      "note": "30 importing files",
+      "status": "evidenced",
+      "id": "plans>db-layer:imports"
+    },
+    {
+      "from": "plans",
+      "to": "jobs-dispatch",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/regeneration-orchestration/deps.ts",
+          "symbol": "computeJobPriority"
+        },
+        {
+          "path": "src/features/plans/regeneration-orchestration/process-workflow-support.ts",
+          "symbol": "Job"
+        },
+        {
+          "path": "src/features/plans/regeneration-orchestration/request.ts",
+          "symbol": "JOB_TYPES"
+        }
+      ],
+      "note": "4 importing files",
+      "status": "evidenced",
+      "id": "plans>jobs-dispatch:imports"
+    },
+    {
+      "from": "plans",
+      "to": "lesson-content",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/lifecycle/generation-finalization/store.ts",
+          "symbol": "enqueueFirstProgressiveModuleLessons"
+        },
+        {
+          "path": "src/features/plans/lifecycle/generation-finalization/types.ts",
+          "symbol": "EnqueueModuleLessonGenerationsDeps"
+        },
+        {
+          "path": "src/features/plans/task-progress/batch-action-core.ts",
+          "symbol": "enqueueFollowUpLessonsAfterProgress"
+        }
+      ],
+      "note": "3 importing files",
+      "status": "evidenced",
+      "id": "plans>lesson-content:imports"
+    },
+    {
+      "from": "plans",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/api/create-plan-request.ts",
+          "symbol": "ValidationError"
+        },
+        {
+          "path": "src/features/plans/api/route-context.ts",
+          "symbol": "NotFoundError"
+        },
+        {
+          "path": "src/features/plans/entitlement/errors.ts",
+          "symbol": "AppError"
+        }
+      ],
+      "note": "14 importing files",
+      "status": "evidenced",
+      "id": "plans>request-boundary:imports"
+    },
+    {
+      "from": "plans",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/api/create-plan-request.ts",
+          "symbol": "serializeErrorForLog"
+        },
+        {
+          "path": "src/features/plans/cleanup.ts",
+          "symbol": "logger"
+        },
+        {
+          "path": "src/features/plans/entitlement/errors.ts",
+          "symbol": "API_ERROR_CODES"
+        }
+      ],
+      "note": "53 importing files",
+      "status": "evidenced",
+      "id": "plans>shared-core:imports"
+    },
+    {
+      "from": "plans",
+      "to": "web-ui",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/plans/entitlement/errors.ts",
+          "symbol": "ROUTES"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "plans>web-ui:imports"
+    },
+    {
+      "from": "request-boundary",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/auth/account-deletion.ts",
+          "symbol": "BackendBillingSubscription"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "request-boundary>billing:imports"
+    },
+    {
+      "from": "request-boundary",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/features/auth/account-deletion.ts",
+          "symbol": "DbClient"
+        },
+        {
+          "path": "src/features/auth/clerk-user-projection.ts",
+          "symbol": "DbTransaction"
+        },
+        {
+          "path": "src/features/auth/posthog-person-deletion.ts",
+          "symbol": "DbClient"
+        }
+      ],
+      "note": "9 importing files",
+      "status": "evidenced",
+      "id": "request-boundary>db-layer:imports"
+    },
+    {
+      "from": "request-boundary",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/ingest/[...path]/route.ts",
+          "symbol": "proxyIngestRequest"
+        },
+        {
+          "path": "src/features/auth/account-deletion.ts",
+          "symbol": "Logger"
+        },
+        {
+          "path": "src/features/auth/clerk-user-projection.ts",
+          "symbol": "Logger"
+        }
+      ],
+      "note": "20 importing files",
+      "status": "evidenced",
+      "id": "request-boundary>shared-core:imports"
+    },
+    {
+      "from": "shared-core",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/shared/schemas/lesson-content.schemas.ts",
+          "symbol": "MAX_LESSON_BLOCK_TEXT_LENGTH"
+        },
+        {
+          "path": "src/shared/types/ai-provider.types.ts",
+          "symbol": "enums"
+        },
+        {
+          "path": "src/shared/types/db.ts",
+          "symbol": "generationPurpose"
+        }
+      ],
+      "note": "4 importing files",
+      "status": "evidenced",
+      "id": "shared-core>db-layer:imports"
+    },
+    {
+      "from": "shared-core",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/lib/logging/request-context.ts",
+          "symbol": "ensureCorrelationId"
+        },
+        {
+          "path": "src/lib/posthog/ingest-proxy.ts",
+          "symbol": "AppError"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "shared-core>request-boundary:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "ai-generation",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/[id]/modules/[moduleId]/module-page-data.ts",
+          "symbol": "isGroundedEnabled"
+        },
+        {
+          "path": "src/app/(app)/plans/[id]/plan-page-data.ts",
+          "symbol": "isGroundedEnabled"
+        },
+        {
+          "path": "src/app/(app)/settings/ai/components/ModelPreferencesSelector.tsx",
+          "symbol": "AvailableModel"
+        }
+      ],
+      "note": "5 importing files",
+      "status": "evidenced",
+      "id": "web-ui>ai-generation:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "api-routes",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/actions.ts",
+          "symbol": "updateUserProfileSchema"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "web-ui>api-routes:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "billing",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/plans-page-data.ts",
+          "symbol": "getBillingAccountSnapshot"
+        },
+        {
+          "path": "src/app/(app)/settings/billing/components/CheckoutSubscriptionSync.tsx",
+          "symbol": "CHECKOUT_BASELINE_QUERY_PARAM"
+        },
+        {
+          "path": "src/app/(app)/settings/billing/components/ScheduledPlanChangeNotice.tsx",
+          "symbol": "findScheduledPaidPlan"
+        }
+      ],
+      "note": "12 importing files",
+      "status": "evidenced",
+      "id": "web-ui>billing:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "db-layer",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/actions.ts",
+          "symbol": "upsertUserAnalyticsTimezone"
+        },
+        {
+          "path": "src/app/(app)/analytics/usage/page.tsx",
+          "symbol": "getLearningActivityEventsForUser"
+        },
+        {
+          "path": "src/app/(app)/dashboard/components/activity-utils.ts",
+          "symbol": "RecentLearningActivityRow"
+        }
+      ],
+      "note": "6 importing files",
+      "status": "evidenced",
+      "id": "web-ui>db-layer:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "lesson-content",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/LessonText.tsx",
+          "symbol": "LessonTextSegment"
+        }
+      ],
+      "note": "1 importing file",
+      "status": "evidenced",
+      "id": "web-ui>lesson-content:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "notifications",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/settings/notifications/components/NotificationPreferencesForm.tsx",
+          "symbol": "EmailNotificationPreferenceFormValues"
+        },
+        {
+          "path": "src/app/(app)/settings/notifications/components/NotificationsSection.tsx",
+          "symbol": "emailNotificationPreferenceFormValuesFromPreferences"
+        }
+      ],
+      "note": "2 importing files",
+      "status": "evidenced",
+      "id": "web-ui>notifications:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "plans",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/page.tsx",
+          "symbol": "listLightweightPlansForApi"
+        },
+        {
+          "path": "src/app/(app)/analytics/usage/usage-analytics-formatters.ts",
+          "symbol": "formatMinutes"
+        },
+        {
+          "path": "src/app/(app)/dashboard/components/ActivityCard.tsx",
+          "symbol": "formatMinutes"
+        }
+      ],
+      "note": "58 importing files",
+      "status": "evidenced",
+      "id": "web-ui>plans:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "request-boundary",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/actions.ts",
+          "symbol": "requestBoundary"
+        },
+        {
+          "path": "src/app/(app)/analytics/usage/page.tsx",
+          "symbol": "requestBoundary"
+        },
+        {
+          "path": "src/app/(app)/dashboard/components/DashboardContent.tsx",
+          "symbol": "requestBoundary"
+        }
+      ],
+      "note": "28 importing files",
+      "status": "evidenced",
+      "id": "web-ui>request-boundary:imports"
+    },
+    {
+      "from": "web-ui",
+      "to": "shared-core",
+      "type": "imports",
+      "evidence": [
+        {
+          "path": "src/app/(app)/analytics/usage/error.tsx",
+          "symbol": "clientLogger"
+        },
+        {
+          "path": "src/app/(app)/analytics/usage/page.tsx",
+          "symbol": "OG_DEFAULT_IMAGE"
+        },
+        {
+          "path": "src/app/(app)/analytics/usage/usage-analytics-charts.tsx",
+          "symbol": "PLAN_CHART_COLORS"
+        }
+      ],
+      "note": "156 importing files",
+      "status": "evidenced",
+      "id": "web-ui>shared-core:imports"
+    }
+  ],
+  "flows": [
+    {
+      "id": "create-plan",
+      "name": "Create a learning plan",
+      "trigger": "User submits the create-plan form on /plans/new (POST /api/v1/plans).",
+      "steps": [
+        {
+          "n": 1,
+          "node": "web-ui",
+          "action": "Create form on /plans/new",
+          "via": null,
+          "evidence": [
+            {
+              "path": "src/app/(app)/plans/new/page.tsx",
+              "symbol": "CreateNewPlanPage"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "node": "plans",
+          "action": "usePlanGenerationSession POSTs /api/v1/plans",
+          "via": "web-ui>plans:imports",
+          "evidence": [
+            {
+              "path": "src/features/plans/session/usePlanGenerationSession.ts",
+              "symbol": "/api/v1/plans"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "node": "api-routes",
+          "action": "createPlanCreateHandler: parse + durable window check",
+          "via": "plans>api-routes:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/route.ts",
+              "symbol": "createPlanCreateHandler"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "node": "request-boundary",
+          "action": "requestBoundary.route: auth + aiGeneration rate limit",
+          "via": "api-routes>request-boundary:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/route.ts",
+              "symbol": "requestBoundary.route"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "node": "clerk",
+          "action": "Session verified",
+          "via": "request-boundary>clerk:calls",
+          "evidence": [
+            {
+              "path": "src/lib/auth/server.ts",
+              "symbol": "currentUser"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "node": "billing",
+          "action": "assertAiSpendAllowed",
+          "via": "api-routes>billing:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/route.ts",
+              "symbol": "assertAiSpendAllowed"
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "node": "plans",
+          "action": "startCreate: create plan, reserve attempt slot",
+          "via": "api-routes>plans:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/route.ts",
+              "symbol": "boundary.startCreate"
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "node": "db-layer",
+          "action": "reserveAttemptSlot",
+          "via": "plans>db-layer:writes",
+          "evidence": [
+            {
+              "path": "src/features/plans/start-plan-generation-attempt.ts",
+              "symbol": "reserveAttemptSlot"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "node": "postgres",
+          "action": "learning_plans + generation_attempts rows",
+          "via": "db-layer>postgres:writes",
+          "evidence": [
+            {
+              "path": "supabase/schema/tables/plans.ts",
+              "symbol": "generationAttempts"
+            }
+          ]
+        },
+        {
+          "n": 10,
+          "node": "jobs-dispatch",
+          "action": "dispatchPlanGenerationToWorker (signed POST /v1/plan-generation/start)",
+          "via": "plans>jobs-dispatch:calls",
+          "evidence": [
+            {
+              "path": "src/features/jobs/plan-generation-dispatch.ts",
+              "symbol": "dispatchPlanGenerationToWorker"
+            }
+          ]
+        },
+        {
+          "n": 11,
+          "node": "jobs-worker",
+          "action": "handlePlanGenerationStart verifies signature",
+          "via": "jobs-dispatch>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/http/plan-generation-start.ts",
+              "symbol": "handlePlanGenerationStart"
+            }
+          ]
+        },
+        {
+          "n": 12,
+          "node": "cf-workflows",
+          "action": "PLAN_GENERATION_WORKFLOW instance plan-<attemptId>",
+          "via": "jobs-worker>cf-workflows:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/http/plan-generation-start.ts",
+              "symbol": "planGenerationInstanceId"
+            }
+          ]
+        },
+        {
+          "n": 13,
+          "node": "jobs-worker",
+          "action": "PlanGenerationWorkflowEntrypoint.run: research, generate, verify, finalize",
+          "via": "cf-workflows>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/workflows/plan-generation.ts",
+              "symbol": "PlanGenerationWorkflowEntrypoint"
+            }
+          ]
+        },
+        {
+          "n": 14,
+          "node": "plans",
+          "action": "createPlanLifecycleService: process + finalize",
+          "via": "jobs-worker>plans:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+              "symbol": "createPlanLifecycleService"
+            }
+          ]
+        },
+        {
+          "n": 15,
+          "node": "ai-generation",
+          "action": "runGenerationExecution + direct research",
+          "via": "plans>ai-generation:calls",
+          "evidence": [
+            {
+              "path": "src/features/plans/lifecycle/generation.ts",
+              "symbol": "runGenerationExecution"
+            }
+          ]
+        },
+        {
+          "n": 16,
+          "node": "parallel-search",
+          "action": "searchParallel (grounded research)",
+          "via": "ai-generation>parallel-search:calls",
+          "evidence": [
+            {
+              "path": "src/features/ai/providers/parallel-search.ts",
+              "symbol": "PARALLEL_SEARCH_URL"
+            }
+          ]
+        },
+        {
+          "n": 17,
+          "node": "openrouter",
+          "action": "Streamed outline generation",
+          "via": "ai-generation>openrouter:calls",
+          "evidence": [
+            {
+              "path": "src/features/ai/providers/openrouter.ts",
+              "symbol": "OpenRouterProvider"
+            }
+          ]
+        },
+        {
+          "n": 18,
+          "node": "postgres",
+          "action": "Finalize: attempt + modules/tasks + plan status + usage in one transaction",
+          "via": "jobs-worker>postgres:writes",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+              "symbol": "finalizeStep"
+            }
+          ]
+        },
+        {
+          "n": 19,
+          "node": "api-routes",
+          "action": "GET /api/v1/plans/:planId/status polled by the plan page",
+          "via": "web-ui>api-routes:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/[planId]/status/route.ts",
+              "symbol": "GET"
+            }
+          ]
+        }
+      ],
+      "outcome": "Plan row and a reserved attempt exist; the jobs Worker's Workflow generates, finalizes plan + modules/tasks + usage in one transaction, and the plan page polling /status sees ready or failed."
+    },
+    {
+      "id": "module-lessons",
+      "name": "Generate module lessons",
+      "trigger": "User opens a module page and starts lesson generation (POST .../lesson-content/generate), or finalize enqueues the first modules.",
+      "steps": [
+        {
+          "n": 1,
+          "node": "web-ui",
+          "action": "useModuleLessonGeneration POST generate",
+          "via": null,
+          "evidence": [
+            {
+              "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/useModuleLessonGeneration.ts",
+              "symbol": "lesson-content/generate"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "node": "api-routes",
+          "action": "Lesson generate handler",
+          "via": "web-ui>api-routes:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+              "symbol": "createModuleLessonContentGenerateHandler"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "node": "lesson-content",
+          "action": "startModuleLessonGeneration: flag + preflight + claim",
+          "via": "api-routes>lesson-content:calls",
+          "evidence": [
+            {
+              "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+              "symbol": "startModuleLessonGeneration"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "node": "db-layer",
+          "action": "claimModuleLessonGenerationOrDescribe",
+          "via": "lesson-content>db-layer:writes",
+          "evidence": [
+            {
+              "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+              "symbol": "claimModuleLessonGenerationOrDescribe"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "node": "jobs-dispatch",
+          "action": "dispatchModuleLessonsToWorker",
+          "via": "lesson-content>jobs-dispatch:calls",
+          "evidence": [
+            {
+              "path": "src/features/jobs/module-lessons-dispatch.ts",
+              "symbol": "dispatchModuleLessonsToWorker"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "node": "jobs-worker",
+          "action": "handleModuleLessonsStart verifies signature",
+          "via": "jobs-dispatch>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/http/module-lessons-start.ts",
+              "symbol": "handleModuleLessonsStart"
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "node": "cf-workflows",
+          "action": "MODULE_LESSONS_WORKFLOW instance",
+          "via": "jobs-worker>cf-workflows:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/http/module-lessons-start.ts",
+              "symbol": "workflow.create"
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "node": "jobs-worker",
+          "action": "ModuleLessonsWorkflowEntrypoint.run",
+          "via": "cf-workflows>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/workflows/module-lessons.ts",
+              "symbol": "ModuleLessonsWorkflowEntrypoint"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "node": "lesson-content",
+          "action": "runModuleLessonGenerationWork",
+          "via": "jobs-worker>lesson-content:calls",
+          "evidence": [
+            {
+              "path": "src/features/lesson-content/run-module-lesson-generation-work.ts",
+              "symbol": "runModuleLessonGenerationWork"
+            }
+          ]
+        },
+        {
+          "n": 10,
+          "node": "ai-generation",
+          "action": "Grounded lesson writer, verifier, repair",
+          "via": "lesson-content>ai-generation:calls",
+          "evidence": [
+            {
+              "path": "src/features/lesson-content/grounded-lesson-writer.ts",
+              "symbol": "sendOpenRouterGroundedChat"
+            }
+          ]
+        },
+        {
+          "n": 11,
+          "node": "openrouter",
+          "action": "Model calls",
+          "via": "ai-generation>openrouter:calls",
+          "evidence": [
+            {
+              "path": "src/features/ai/providers/openrouter.ts",
+              "symbol": "sendOpenRouterGroundedChat"
+            }
+          ]
+        },
+        {
+          "n": 12,
+          "node": "postgres",
+          "action": "Commit lessons and quality issues",
+          "via": "jobs-worker>postgres:writes",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/db.ts",
+              "symbol": "withStepDb"
+            }
+          ]
+        }
+      ],
+      "outcome": "Module lessons are generated by the lessons Workflow, checked, committed to the DB, and the module page polling /lesson-content/status shows them."
+    },
+    {
+      "id": "regenerate-plan",
+      "name": "Regenerate a plan (queued)",
+      "trigger": "User confirms Regenerate on a plan (POST /api/v1/plans/:planId/regenerate).",
+      "steps": [
+        {
+          "n": 1,
+          "node": "web-ui",
+          "action": "RegeneratePlanDialog posts reasons + note",
+          "via": null,
+          "evidence": [
+            {
+              "path": "src/app/(app)/plans/[id]/components/RegeneratePlanDialog.tsx",
+              "symbol": "/regenerate"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "node": "api-routes",
+          "action": "POST regenerate route: model + spend checks",
+          "via": "web-ui>api-routes:calls",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/plans/[planId]/regenerate/route.ts",
+              "symbol": "assertAiSpendAllowed"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "node": "plans",
+          "action": "requestPlanRegeneration: admission + enqueueWithResult",
+          "via": "api-routes>plans:calls",
+          "evidence": [
+            {
+              "path": "src/features/plans/regeneration-orchestration/request.ts",
+              "symbol": "enqueueAdmittedRegeneration"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "node": "db-layer",
+          "action": "Insert job_queue row",
+          "via": "plans>db-layer:writes",
+          "evidence": [
+            {
+              "path": "src/features/plans/regeneration-orchestration/request.ts",
+              "symbol": "enqueueWithResult"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "node": "postgres",
+          "action": "job_queue (pending)",
+          "via": "db-layer>postgres:writes",
+          "evidence": [
+            {
+              "path": "supabase/schema/tables/jobs.ts",
+              "symbol": "jobQueue"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "node": "jobs-dispatch",
+          "action": "dispatchRegenerationToWorker (signed POST /v1/regeneration/enqueue)",
+          "via": "api-routes>jobs-dispatch:calls",
+          "evidence": [
+            {
+              "path": "src/features/jobs/regeneration-dispatch.ts",
+              "symbol": "dispatchRegenerationToWorker"
+            }
+          ]
+        },
+        {
+          "n": 7,
+          "node": "jobs-worker",
+          "action": "handleRegenerationEnqueue",
+          "via": "jobs-dispatch>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/jobs/regeneration-enqueue.ts",
+              "symbol": "handleRegenerationEnqueue"
+            }
+          ]
+        },
+        {
+          "n": 8,
+          "node": "cf-queue",
+          "action": "REGENERATION_QUEUE message { v, jobId }",
+          "via": "jobs-worker>cf-queue:publishes",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/jobs/regeneration-enqueue.ts",
+              "symbol": "queue.send"
+            }
+          ]
+        },
+        {
+          "n": 9,
+          "node": "jobs-worker",
+          "action": "queue(): handleRegenerationBatch",
+          "via": "jobs-worker>cf-queue:subscribes",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/index.ts",
+              "symbol": "handleRegenerationBatch"
+            }
+          ]
+        },
+        {
+          "n": 10,
+          "node": "jobs-dispatch",
+          "action": "runPlanRegeneration: claim, generate, finalize",
+          "via": "jobs-worker>jobs-dispatch:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/index.ts",
+              "symbol": "runPlanRegeneration"
+            }
+          ]
+        },
+        {
+          "n": 11,
+          "node": "ai-generation",
+          "action": "Provider run for the regenerated outline",
+          "via": "jobs-dispatch>ai-generation:calls",
+          "evidence": [
+            {
+              "path": "src/features/jobs/regeneration-run.ts",
+              "symbol": "processRegenerationRun"
+            }
+          ]
+        },
+        {
+          "n": 12,
+          "node": "openrouter",
+          "action": "Model call",
+          "via": "ai-generation>openrouter:calls",
+          "evidence": [
+            {
+              "path": "src/features/ai/providers/openrouter.ts",
+              "symbol": "OpenRouterProvider"
+            }
+          ]
+        },
+        {
+          "n": 13,
+          "node": "postgres",
+          "action": "Finalize regeneration run",
+          "via": "jobs-worker>postgres:writes",
+          "evidence": [
+            {
+              "path": "src/features/jobs/regeneration-run.ts",
+              "symbol": "finalizeRegenerationRun"
+            }
+          ]
+        }
+      ],
+      "outcome": "job_queue row is the record; the Worker publishes it to the Cloudflare Queue, the consumer runs the regeneration and finalizes; a 15-minute sweep re-sends any pending row."
+    },
+    {
+      "id": "billing-webhook",
+      "name": "Subscription change reaches the app",
+      "trigger": "Clerk emits a Billing/user webhook (subscription created, updated, canceled; user deleted).",
+      "steps": [
+        {
+          "n": 1,
+          "node": "clerk",
+          "action": "Billing webhook event (svix-signed)",
+          "via": null,
+          "evidence": [
+            {
+              "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+              "symbol": "verifyWebhook"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "node": "api-routes",
+          "action": "POST /api/v1/clerk/billing/webhook: IP rate limit, body cap, verify",
+          "via": "clerk>api-routes:publishes",
+          "evidence": [
+            {
+              "path": "src/app/api/v1/clerk/billing/webhook/route.ts",
+              "symbol": "WEBHOOK_MAX_BYTES"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "node": "billing",
+          "action": "applyVerifiedClerkBillingEvent",
+          "via": "api-routes>billing:calls",
+          "evidence": [
+            {
+              "path": "src/features/billing/clerk-billing/reconciliation.ts",
+              "symbol": "applyVerifiedClerkBillingEvent"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "node": "clerk",
+          "action": "Backend subscription read for the user",
+          "via": "billing>clerk:reads",
+          "evidence": [
+            {
+              "path": "src/features/billing/clerk-billing/reconciliation.ts",
+              "symbol": "getClerkClient"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "node": "db-layer",
+          "action": "Projection update on users",
+          "via": "billing>db-layer:writes",
+          "evidence": [
+            {
+              "path": "src/features/billing/clerk-billing/reconciliation.ts",
+              "symbol": ".update(users)"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "node": "postgres",
+          "action": "users.subscription_tier updated",
+          "via": "db-layer>postgres:writes",
+          "evidence": [
+            {
+              "path": "supabase/schema/tables/users.ts",
+              "symbol": "subscriptionTier"
+            }
+          ]
+        }
+      ],
+      "outcome": "users.subscriptionTier (and status) is projected locally, so the next request resolves the new tier for limits, models and spend ceilings. Operators can re-run via /api/internal/maintenance/billing/reconcile-clerk."
+    },
+    {
+      "id": "email-delivery",
+      "name": "Email notification delivery",
+      "trigger": "Cloudflare Workflow schedules (daily 14:00 UTC, weekly MON 14:30 UTC in deployed modes), or an operator POST to /api/internal/maintenance/notifications/email.",
+      "steps": [
+        {
+          "n": 1,
+          "node": "cf-workflows",
+          "action": "EMAIL_DELIVERY_WORKFLOW schedule fires",
+          "via": null,
+          "evidence": [
+            {
+              "path": "workers/jobs/cloudflare.config.ts",
+              "symbol": "schedules: ['0 14 * * *', '30 14 * * MON']"
+            }
+          ]
+        },
+        {
+          "n": 2,
+          "node": "jobs-worker",
+          "action": "EmailDeliveryWorkflowEntrypoint.run",
+          "via": "cf-workflows>jobs-worker:calls",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/workflows/email-delivery.ts",
+              "symbol": "EmailDeliveryWorkflowEntrypoint"
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "node": "flagship",
+          "action": "jobs-paused / WORKER_ENV gate",
+          "via": "jobs-worker>flagship:reads",
+          "evidence": [
+            {
+              "path": "workers/jobs/src/switches.ts",
+              "symbol": "isEmailDeliveryEnabled"
+            }
+          ]
+        },
+        {
+          "n": 4,
+          "node": "notifications",
+          "action": "runEmailNotificationDelivery",
+          "via": "jobs-worker>notifications:calls",
+          "evidence": [
+            {
+              "path": "src/features/notifications/email/delivery-service.ts",
+              "symbol": "runEmailNotificationDelivery"
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "node": "db-layer",
+          "action": "Select recipients, claim and record deliveries",
+          "via": "notifications>db-layer:writes",
+          "evidence": [
+            {
+              "path": "src/features/notifications/email/delivery-service.ts",
+              "symbol": "serviceRoleDb"
+            }
+          ]
+        },
+        {
+          "n": 6,
+          "node": "resend",
+          "action": "Send email",
+          "via": "notifications>resend:calls",
+          "evidence": [
+            {
+              "path": "src/features/notifications/email/resend-adapter.ts",
+              "symbol": "createResendEmailSender"
+            }
+          ]
+        }
+      ],
+      "outcome": "Opted-in users get daily/weekly digests via Resend; delivery runs and per-recipient deliveries are recorded in Postgres."
+    }
+  ],
+  "mismatches": [
+    {
+      "rank": 1,
+      "word": "plan (Free / Starter / Pro plan)",
+      "code_name": "SubscriptionTier / subscription_tier",
+      "path": "src/shared/types/billing.types.ts",
+      "change": "word",
+      "severity": "high",
+      "why": "Two different things share 'plan': a learning plan (src/features/plans, learning_plans) and a subscription tier. UI copy says 'Free plan' for the tier and also for the single learning plan a Free account keeps (FreeAccessPlanSelector); billing even holds plan-ai-budget.ts, which is per learning plan.",
+      "nodes": [
+        "billing",
+        "plans"
+      ],
+      "covers": [
+        {
+          "node": "billing",
+          "alias": "Free plan"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "src/app/(app)/settings/ai/components/ModelSelectionCard.tsx",
+          "symbol": "Free plans always use the OpenRouter free router"
+        },
+        {
+          "path": "src/app/(app)/plans/components/PlansContent.tsx",
+          "symbol": "Choose a Free plan"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/shared/types/billing.types.ts",
+          "symbol": "SubscriptionTier"
+        },
+        {
+          "path": "supabase/schema/tables/users.ts",
+          "symbol": "subscriptionTier"
+        },
+        {
+          "path": "src/features/billing/plan-ai-budget.ts",
+          "symbol": "PLAN_AI_BUDGET"
+        }
+      ]
+    },
+    {
+      "rank": 2,
+      "word": "jobs / jobs Worker",
+      "code_name": "src/features/jobs (app dispatch + regeneration-run) vs workers/jobs (the Worker) vs job_queue (table)",
+      "path": "src/features/jobs",
+      "change": "code_name",
+      "severity": "high",
+      "why": "'jobs' names three places. src/features/jobs is not the Worker: it holds the app's dispatchers and regeneration-run, which the Worker imports; workers/jobs is the Worker; job_queue is the DB record for regeneration. Editing 'the jobs code' in the wrong one changes the wrong runtime.",
+      "nodes": [
+        "jobs-dispatch",
+        "jobs-worker",
+        "db-layer"
+      ],
+      "covers": [],
+      "our_word_sources": [
+        {
+          "path": "AGENTS.md",
+          "symbol": "Jobs Worker"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/features/jobs/regeneration-run.ts",
+          "symbol": "processRegenerationRun"
+        },
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "handleRegenerationBatch"
+        },
+        {
+          "path": "supabase/schema/tables/jobs.ts",
+          "symbol": "jobQueue"
+        }
+      ]
+    },
+    {
+      "rank": 3,
+      "word": "queue / regeneration queue",
+      "code_name": "job_queue (Postgres) vs REGENERATION_QUEUE (Cloudflare Queue)",
+      "path": "supabase/schema/tables/jobs.ts",
+      "change": "word",
+      "severity": "high",
+      "why": "'The queue' is two stores. job_queue in Postgres is the record; the Cloudflare Queue only carries { v, jobId } messages and has no dead-letter queue. Fixing 'queue' bugs in the wrong one loses or duplicates work.",
+      "nodes": [
+        "cf-queue",
+        "db-layer"
+      ],
+      "covers": [],
+      "our_word_sources": [
+        {
+          "path": "docs/architecture/regeneration-worker-runbook.md",
+          "symbol": "job_queue"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "supabase/schema/tables/jobs.ts",
+          "symbol": "jobQueue"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "regenerationQueue"
+        }
+      ]
+    },
+    {
+      "rank": 4,
+      "word": "internal worker routes / worker token",
+      "code_name": "/api/internal/maintenance routes, MAINTENANCE_WORKER_TOKEN",
+      "path": "src/lib/api/internal/internal-worker-access.ts",
+      "change": "word",
+      "severity": "high",
+      "why": "These are operator routes inside the Next.js app, not the Cloudflare jobs Worker. File and env names say 'worker' (internal-worker-access.ts, MAINTENANCE_WORKER_TOKEN), so 'worker' is ambiguous. Renaming the env var is a deploy change, so rename the phrase in docs to 'maintenance routes'.",
+      "nodes": [
+        "api-routes"
+      ],
+      "covers": [
+        {
+          "node": "api-routes",
+          "alias": "internal worker routes"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "docs/architecture/internal-worker-routes.md",
+          "symbol": "Internal Worker Routes"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/lib/api/internal/internal-worker-access.ts",
+          "symbol": "assertMaintenanceWorkerAccess"
+        },
+        {
+          "path": "src/app/api/internal/maintenance/plans/cleanup/route.ts",
+          "symbol": "runPlanCleanupMaintenance"
+        }
+      ]
+    },
+    {
+      "rank": 5,
+      "word": "module lessons / lessons",
+      "code_name": "lesson-content (dir, route) vs ModuleLessonsWorkflow, module-lesson-generation (flag)",
+      "path": "src/features/lesson-content",
+      "change": "word",
+      "severity": "medium",
+      "why": "Same feature, three names: the directory and API route say lesson-content, the Workflow and Flagship flag say module lessons, the UI says lessons. A grep for one misses the others.",
+      "nodes": [
+        "lesson-content",
+        "jobs-worker"
+      ],
+      "covers": [
+        {
+          "node": "lesson-content",
+          "alias": "module lessons"
+        },
+        {
+          "node": "lesson-content",
+          "alias": "lessons"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "workers/AGENTS.md",
+          "symbol": "module lessons"
+        },
+        {
+          "path": "src/app/(app)/plans/[id]/modules/[moduleId]/components/GenerationStatePanel.tsx",
+          "symbol": "Detailed lesson content"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/features/lesson-content/start-module-lesson-generation-workflow.ts",
+          "symbol": "startModuleLessonGeneration"
+        },
+        {
+          "path": "workers/jobs/src/workflows/module-lessons.ts",
+          "symbol": "ModuleLessonsWorkflowEntrypoint"
+        },
+        {
+          "path": "src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/handler.ts",
+          "symbol": "createModuleLessonContentGenerateHandler"
+        }
+      ]
+    },
+    {
+      "rank": 6,
+      "word": "@supabase/runtime (reads like the Supabase SDK)",
+      "code_name": "@supabase/* path alias to ./supabase/*",
+      "path": "tsconfig.json",
+      "change": "word",
+      "severity": "medium",
+      "why": "@supabase/runtime, @supabase/rls, @supabase/schema are local files (Drizzle + postgres-js), not the Supabase npm SDK, and the DB layer is split across supabase/ and src/lib/db.",
+      "nodes": [
+        "db-layer"
+      ],
+      "covers": [],
+      "our_word_sources": [
+        {
+          "path": "README.md",
+          "symbol": "@supabase/runtime"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "tsconfig.json",
+          "symbol": "\"@supabase/*\""
+        },
+        {
+          "path": "supabase/runtime.ts",
+          "symbol": "getDb"
+        }
+      ]
+    },
+    {
+      "rank": 7,
+      "word": "roadmap",
+      "code_name": "learning plan (learningPlans, src/features/plans)",
+      "path": "src/features/plans",
+      "change": "word",
+      "severity": "medium",
+      "why": "UI copy calls a learning plan its 'roadmap' (Review roadmap, View roadmap, RoadmapPreview); the code never does, so searching 'roadmap' finds only presentation files.",
+      "nodes": [
+        "plans",
+        "web-ui"
+      ],
+      "covers": [
+        {
+          "node": "plans",
+          "alias": "roadmap"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "src/app/(app)/plans/[id]/components/PlanOverviewHeader.tsx",
+          "symbol": "Review roadmap"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "supabase/schema/tables/plans.ts",
+          "symbol": "learningPlans"
+        }
+      ]
+    },
+    {
+      "rank": 8,
+      "word": "middleware",
+      "code_name": "proxy (src/proxy.ts, src/lib/proxy/middleware-policy.ts)",
+      "path": "src/proxy.ts",
+      "change": "word",
+      "severity": "medium",
+      "why": "Next 16 calls it the proxy and AGENTS.md says 'Proxy, site gate, flags', but docs still say Clerk middleware and one policy file is still named middleware-policy.ts.",
+      "nodes": [
+        "request-boundary"
+      ],
+      "covers": [
+        {
+          "node": "request-boundary",
+          "alias": "middleware"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "docs/api/error-contract.md",
+          "symbol": "middleware"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "clerkMiddleware"
+        },
+        {
+          "path": "src/lib/proxy/middleware-policy.ts",
+          "symbol": "shouldBypassClerkMiddleware"
+        }
+      ]
+    },
+    {
+      "rank": 9,
+      "word": "workflows (src/**/workflows folders)",
+      "code_name": "workers/jobs/src/workflows (the real Workflows)",
+      "path": "src/features/plans/workflows/plan-generation.types.ts",
+      "change": "code_name",
+      "severity": "medium",
+      "why": "src/features/plans/workflows and src/features/notifications/email/workflows hold only shared type files; the Workflow logic lives under workers/jobs/src/workflows. A folder named workflows in src suggests logic that is not there.",
+      "nodes": [
+        "plans",
+        "notifications",
+        "jobs-worker"
+      ],
+      "covers": [],
+      "our_word_sources": [
+        {
+          "path": "workers/AGENTS.md",
+          "symbol": "Workflow"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/features/plans/workflows/plan-generation.types.ts",
+          "symbol": "PlanGenerationWorkflowInput"
+        },
+        {
+          "path": "workers/jobs/src/workflows/plan-generation/run.ts",
+          "symbol": "runPlanGenerationWorkflow"
+        }
+      ]
+    },
+    {
+      "rank": 10,
+      "word": "types/ (README tree)",
+      "code_name": "src/shared/types",
+      "path": "src/shared/types",
+      "change": "word",
+      "severity": "medium",
+      "why": "README's project tree lists src/types and src/lib/integrations; neither exists. Shared types live in src/shared/types, and integrations is an empty placeholder under src/features.",
+      "nodes": [
+        "shared-core"
+      ],
+      "covers": [
+        {
+          "node": "shared-core",
+          "alias": "Shared application types"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "README.md",
+          "symbol": "Shared application types"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "src/shared/types/billing.types.ts",
+          "symbol": "SubscriptionTier"
+        },
+        {
+          "path": "src/features/integrations/AGENTS.md",
+          "symbol": "UI placeholders only"
+        }
+      ]
+    },
+    {
+      "rank": 11,
+      "word": "AI Gateway",
+      "code_name": "OPENROUTER_BASE_URL / CF_AI_GATEWAY_TOKEN",
+      "path": "workers/jobs/cloudflare.config.ts",
+      "change": "word",
+      "severity": "medium",
+      "why": "Docs and config comments say AI Gateway; the secret names say OPENROUTER_BASE_URL (which holds the gateway's /openrouter URL).",
+      "nodes": [
+        "openrouter"
+      ],
+      "covers": [
+        {
+          "node": "openrouter",
+          "alias": "AI Gateway"
+        }
+      ],
+      "our_word_sources": [
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "Cloudflare AI Gateway in front of OpenRouter"
+        }
+      ],
+      "code_evidence": [
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "OPENROUTER_BASE_URL"
+        },
+        {
+          "path": "workers/jobs/cloudflare.config.ts",
+          "symbol": "CF_AI_GATEWAY_TOKEN"
+        }
+      ]
+    },
+    {
+      "rank": 12,
+      "word": "ui",
+      "code_name": "app / components / hooks",
+      "path": "src/app/(app)",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Web UI with no matching code name (commit title: feat(ui): adopt the midnight palette and refine pre-launch screens (#905)).",
+      "nodes": [
+        "web-ui"
+      ],
+      "covers": [
+        {
+          "node": "web-ui",
+          "alias": "ui"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/app/(app)/plans/new/page.tsx",
+          "symbol": "CreateNewPlanPage"
+        }
+      ]
+    },
+    {
+      "rank": 13,
+      "word": "Auth wrappers",
+      "code_name": "request-boundary / proxy / site-gate",
+      "path": "src/lib/api",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Request boundary with no matching code name (README: README.md).",
+      "nodes": [
+        "request-boundary"
+      ],
+      "covers": [
+        {
+          "node": "request-boundary",
+          "alias": "Auth wrappers"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/proxy.ts",
+          "symbol": "proxy"
+        }
+      ]
+    },
+    {
+      "rank": 14,
+      "word": "regeneration",
+      "code_name": "plans / learning_plans / learning-plans",
+      "path": "src/features/plans",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Learning plans with no matching code name (commit title: feat(regeneration): add reasons, note and fix guidance (JCS-162) (#831)).",
+      "nodes": [
+        "plans"
+      ],
+      "covers": [
+        {
+          "node": "plans",
+          "alias": "regeneration"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/features/plans/session/plan-generation-session.ts",
+          "symbol": "createPlanGenerationSessionBoundary"
+        }
+      ]
+    },
+    {
+      "rank": 15,
+      "word": "Pricing",
+      "code_name": "billing / tier / clerk-billing",
+      "path": "src/features/billing",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Billing and AI budget with no matching code name (routes: src/features/navigation/routes.ts).",
+      "nodes": [
+        "billing"
+      ],
+      "covers": [
+        {
+          "node": "billing",
+          "alias": "Pricing"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/features/billing/clerk-billing/reconciliation.ts",
+          "symbol": "applyVerifiedClerkBillingEvent"
+        }
+      ]
+    },
+    {
+      "rank": 16,
+      "word": "email delivery",
+      "code_name": "notifications / notifications/email",
+      "path": "src/features/notifications",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Email notifications with no matching code name (docs: docs/development/environment.md).",
+      "nodes": [
+        "notifications"
+      ],
+      "covers": [
+        {
+          "node": "notifications",
+          "alias": "email delivery"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "runEmailNotificationDelivery"
+        }
+      ]
+    },
+    {
+      "rank": 17,
+      "word": "signed command",
+      "code_name": "jobs / jobs-worker / dispatch",
+      "path": "src/features/jobs",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Jobs dispatch and contract with no matching code name (docs: docs/architecture/cloudflare-jobs-runtime.md).",
+      "nodes": [
+        "jobs-dispatch"
+      ],
+      "covers": [
+        {
+          "node": "jobs-dispatch",
+          "alias": "signed command"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "src/lib/jobs-worker/client.ts",
+          "symbol": "sendJobsWorkerCommand"
+        }
+      ]
+    },
+    {
+      "rank": 18,
+      "word": "background jobs Worker",
+      "code_name": "workers / workers/jobs / atlaris-jobs",
+      "path": "workers/jobs",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Jobs Worker with no matching code name (docs: workers/jobs/cloudflare.config.ts).",
+      "nodes": [
+        "jobs-worker"
+      ],
+      "covers": [
+        {
+          "node": "jobs-worker",
+          "alias": "background jobs Worker"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "workers/jobs/src/index.ts",
+          "symbol": "PlanGenerationWorkflow"
+        }
+      ]
+    },
+    {
+      "rank": 19,
+      "word": "RLS client",
+      "code_name": "db / supabase / queries",
+      "path": "supabase",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Database layer with no matching code name (README: README.md).",
+      "nodes": [
+        "db-layer"
+      ],
+      "covers": [
+        {
+          "node": "db-layer",
+          "alias": "RLS client"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "supabase/runtime.ts",
+          "symbol": "getDb"
+        }
+      ]
+    },
+    {
+      "rank": 20,
+      "word": "Cloudflare Queue",
+      "code_name": "regeneration_queue / regeneration queue",
+      "path": "workers/jobs/cloudflare.config.ts",
+      "change": "word",
+      "severity": "low",
+      "why": "Synonym for Cloudflare Queue (regeneration) with no matching code name (docs: docs/architecture/regeneration-worker-runbook.md).",
+      "nodes": [
+        "cf-queue"
+      ],
+      "covers": [
+        {
+          "node": "cf-queue",
+          "alias": "Cloudflare Queue"
+        }
+      ],
+      "our_word_sources": [],
+      "code_evidence": [
+        {
+          "path": "workers/jobs/src/jobs/regeneration-enqueue.ts",
+          "symbol": "handleRegenerationEnqueue"
+        }
+      ]
+    }
+  ]
+}
