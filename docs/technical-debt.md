@@ -67,6 +67,14 @@ including with `pg_advisory_xact_lock`, RLS `SELECT`s, and nested transactions
 Hosted Postgres behind a pooler or edge driver is not fully covered by that test; keep the
 re-apply pattern until production behavior is verified or explicitly safe.
 
+**Status (2026-11-06):** Not removed yet. The RLS client is one dedicated
+`max: 1` connection opened from `POSTGRES_URL_NON_POOLING` (`supabase/rls.ts`), and
+`transaction()` reuses that same connection, so a pooler should not be in the
+path. That is an argument, not proof, and the staging run below is still
+pending. Production generation paths use the service-role client, where the
+replay is already a no-op; the ceremony only matters for the RLS-client callers
+(`user/profile` route, `user-preferences`, `module-lesson-generation`).
+
 **Follow-up:** Run the same claim-visibility scenarios against the **staging** database
 (a one-off script connecting with `POSTGRES_URL`, setting
 `SET ROLE authenticated` + `set_config('request.jwt.claims', ..., false)`, then
