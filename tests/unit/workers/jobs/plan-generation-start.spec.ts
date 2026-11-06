@@ -4,7 +4,7 @@ import {
   handlePlanGenerationStart,
   type PlanGenerationStartDeps,
 } from '../../../../workers/jobs/src/http/plan-generation-start';
-import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
+import { toSerializableReservation } from '@/features/plans/contracts/plan-generation.types';
 import {
   computeJobsSignature,
   JOBS_COMMAND_PATHS,

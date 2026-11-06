@@ -15,7 +15,7 @@ import type {
   JobPayload,
   JobResult,
   JobType,
-} from '@/features/jobs/types';
+} from '@/features/job-queue/types';
 import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
 
 import {

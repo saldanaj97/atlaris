@@ -14,7 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const dispatchMock = vi.hoisted(() => vi.fn(async () => undefined));
 
-vi.mock('@/features/jobs/regeneration-dispatch', () => ({
+vi.mock('@/features/job-queue/regeneration-dispatch', () => ({
   dispatchRegenerationToWorker: dispatchMock,
 }));
 

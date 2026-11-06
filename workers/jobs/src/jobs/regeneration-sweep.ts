@@ -9,7 +9,7 @@ import {
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
 } from './regeneration-shared';
-import { claimRegenerationSweepJobIds } from '@/features/jobs/regeneration-sweep-query';
+import { claimRegenerationSweepJobIds } from '@/features/job-queue/regeneration-sweep-query';
 
 /** Runs on the shared `*\/15` tick (Decision 8). */
 export const REGENERATION_SWEEP_CRON = '*/15 * * * *';

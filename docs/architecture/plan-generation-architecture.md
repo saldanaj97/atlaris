@@ -63,7 +63,7 @@ This separation between external auth identity and internal app user row is not 
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `src/features/plans/session/plan-generation-session.ts`    | Session boundary: `startCreate` / `startRetry`, error mapping                |
 | `src/features/plans/start-plan-generation-attempt.ts`      | Reserve the attempt and hand it to the jobs Worker; settle when not started  |
-| `src/features/jobs/plan-generation-dispatch.ts`            | Signed `POST /v1/plan-generation/start` to the jobs Worker; never throws     |
+| `src/features/job-queue/plan-generation-dispatch.ts`            | Signed `POST /v1/plan-generation/start` to the jobs Worker; never throws     |
 | `src/features/plans/session/usePlanGenerationSession.ts`   | Client create/retry request (`starting` → `started` on 202)                  |
 | `src/app/(app)/plans/[id]/components/PlanPendingState.tsx` | Plan page: status polling (`usePlanStatus`) and retry (`useRetryGeneration`) |
 
@@ -301,7 +301,7 @@ The jobs Worker (`workers/jobs`) runs generation as the Cloudflare Workflow `Mod
 - **Regeneration consumer:** `createWorkflowModuleLessonStarter` (`workers/jobs/src/jobs/regeneration-consumer.ts`) calls `startModuleLessonGeneration` with the invocation's database client and the Worker switch, and creates the instance directly through an injected `dispatch` (no HTTP hop). A thrown create reports `duplicate` for a live or successfully completed existing instance, and `failed` (which reverts the provisional claim) otherwise.
 - **Instance ID:** `lessons-<moduleId>-<batchRequestId>`, or `lessons-<moduleId>-<first 32 hex of SHA-256(batchRequestId)>` when the batch ID has other characters or the ID would pass 100 characters (`workers/jobs/src/workflows/module-lessons/instance-id.ts`).
 
-**App routing.** `startModuleLessonGeneration` keeps the flag check, preflight, and provisional claim (`batchRequestId = correlationId`), then calls `dispatchModuleLessonsToWorker` (`src/features/jobs/module-lessons-dispatch.ts`), so the generate route and progressive enqueue both follow it:
+**App routing.** `startModuleLessonGeneration` keeps the flag check, preflight, and provisional claim (`batchRequestId = correlationId`), then calls `dispatchModuleLessonsToWorker` (`src/features/job-queue/module-lessons-dispatch.ts`), so the generate route and progressive enqueue both follow it:
 
 | Worker answer                                                                      | Start result                               | Generate route                        | Claim                               |
 | ---------------------------------------------------------------------------------- | ------------------------------------------ | ------------------------------------- | ----------------------------------- |

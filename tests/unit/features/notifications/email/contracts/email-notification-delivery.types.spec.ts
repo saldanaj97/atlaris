@@ -1,7 +1,7 @@
 import {
   createEmailNotificationDeliveryReferenceTimestamp,
   getEmailNotificationDeliveryLedgerKeys,
-} from '@/features/notifications/email/workflows/email-notification-delivery.types';
+} from '@/features/notifications/email/contracts/email-notification-delivery.types';
 import { describe, expect, it } from 'vitest';
 
 describe('email notification delivery workflow types', () => {

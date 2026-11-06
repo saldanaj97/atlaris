@@ -2,13 +2,13 @@ import {
   completeJob,
   enqueueJobWithResult,
   failJob,
-} from '@/features/jobs/queue';
+} from '@/features/job-queue/queue';
 import {
   JOB_TYPES,
   type JobPayload,
   type JobType,
   type PlanRegenerationJobData,
-} from '@/features/jobs/types';
+} from '@/features/job-queue/types';
 import {
   JOB_RETRY_BASE_SECONDS,
   JOB_RETRY_MAX_DELAY_SECONDS,

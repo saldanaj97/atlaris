@@ -2,7 +2,7 @@
 
 Terms in this repo that mean more than one thing, or that docs, UI copy, and code name differently. Read this before searching or editing when a word like "plan", "jobs", "queue", or "worker" could point at two places.
 
-Paths are relative to the repo root. Entries marked **rename pending** describe the name as it is today; another change is renaming it, and this page is updated when it lands. The architecture behind these terms lives in the linked docs. The generated overview is the [codemap](./codemap/codemap.html) (data in [`codemap/codemap.json`](./codemap/codemap.json)); this glossary covers its word mismatches.
+Paths are relative to the repo root. The architecture behind these terms lives in the linked docs. The generated overview is the [codemap](./codemap/codemap.html) (data in [`codemap/codemap.json`](./codemap/codemap.json)); this glossary covers its word mismatches.
 
 ## Quick lookup
 
@@ -14,7 +14,7 @@ Paths are relative to the repo root. Entries marked **rename pending** describe 
 | regeneration Cloudflare Queue | the queue | `workers/jobs/cloudflare.config.ts` |
 | maintenance routes | internal worker routes | `src/app/api/internal/maintenance/**` |
 | jobs Worker | jobs | `workers/jobs` |
-| jobs dispatch (**rename pending**) | jobs | `src/features/jobs` |
+| job-queue (app-side dispatch and `job_queue` operations) | jobs | `src/features/job-queue` |
 | proxy | middleware | `src/proxy.ts` |
 | lesson generation (module lessons) | lessons, lesson-content | see [Module lessons](#module-lessons) |
 
@@ -46,15 +46,15 @@ Four runtimes share the word "jobs" or "worker". Edit the right one.
 | Name | What it is | Path |
 |------|-----------|------|
 | **Jobs Worker** (also "background jobs Worker") | The Cloudflare Worker: cron, queue consumer, Workflows. Deployed as `atlaris-jobs-staging` / `atlaris-jobs-production`. | `workers/jobs` |
-| **Jobs dispatch** | App-side code that signs and sends commands to the Worker, plus `regeneration-run.ts`, which the Worker imports. Not the Worker. **Rename pending** (folder is `src/features/jobs`). | `src/features/jobs`, `src/lib/jobs-worker/client.ts` |
-| **`job_queue`** | The Postgres table that records regeneration work. | `supabase/schema/tables/jobs.ts` |
+| **`job-queue` feature** | App-side code that signs and sends commands to the Worker (the per-kind dispatchers), reads and writes `job_queue` rows (`queue.ts`, `types.ts`, `priority.ts`, sweep selection), and holds `regeneration-run.ts`, which the Worker imports. Not the Worker. | `src/features/job-queue`, `src/lib/jobs-worker/client.ts` |
+| **`job_queue`** | The Postgres table that records regeneration work. Operated on by `src/features/job-queue`. | `supabase/schema/tables/jobs.ts` |
 | **Maintenance routes** | Operator-only HTTP routes inside the Next.js app. Not the Worker. | `src/app/api/internal/maintenance/**` |
 
 When someone says "the jobs code", ask which row. Overview: [`docs/architecture/cloudflare-jobs-runtime.md`](./architecture/cloudflare-jobs-runtime.md), [`workers/AGENTS.md`](../workers/AGENTS.md).
 
 ### Signed command
 
-A request from the app to the jobs Worker, HMAC-signed and sent by `sendJobsWorkerCommand` (`src/lib/jobs-worker/client.ts`) with the per-kind dispatchers in `src/features/jobs`. Docs call it a "signed command" or "signed enqueue/start". Contract: [`docs/architecture/cloudflare-jobs-runtime.md`](./architecture/cloudflare-jobs-runtime.md).
+A request from the app to the jobs Worker, HMAC-signed and sent by `sendJobsWorkerCommand` (`src/lib/jobs-worker/client.ts`) with the per-kind dispatchers in `src/features/job-queue`. Docs call it a "signed command" or "signed enqueue/start". Contract: [`docs/architecture/cloudflare-jobs-runtime.md`](./architecture/cloudflare-jobs-runtime.md).
 
 ### The queue
 
@@ -71,7 +71,7 @@ Fixing a "queue bug" in the wrong store loses or duplicates work. Runbook: [`doc
 
 ### Workflows folders
 
-**Rename pending.** `src/features/plans/workflows` and `src/features/notifications/email/workflows` hold only shared **type** files. The real Workflow logic is under `workers/jobs/src/workflows`. A `workflows` folder under `src/` does not contain Workflow code.
+`src/features/plans/contracts` and `src/features/notifications/email/contracts` hold the shared input/result shapes that cross the app/Worker boundary, plus small pure helpers. The real Workflow logic is under `workers/jobs/src/workflows`. These folders were named `workflows` until 2026-11-06; nothing under `src/` contains Workflow code.
 
 ### Background jobs vs Workflows vs cron
 
@@ -89,7 +89,7 @@ One feature, several names: the directory and API route say **lesson-content** (
 
 ### Regeneration
 
-"Regeneration" means regenerating a learning plan. There is no `regeneration` feature folder; the code is in `src/features/plans` plus the dispatch and run files in `src/features/jobs`.
+"Regeneration" means regenerating a learning plan. There is no `regeneration` feature folder; the code is in `src/features/plans` plus the dispatch and run files in `src/features/job-queue`.
 
 ## Request boundary and platform
 

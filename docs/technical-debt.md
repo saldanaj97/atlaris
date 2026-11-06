@@ -17,9 +17,9 @@ TypeScript constant map, and all associated dead types (`PlanGenerationJobData`,
 `PlanGenerationJobResult`, `PlanGenerationJobPayload`). A migration drops the
 enum value from PostgreSQL.
 
-## ~~Thin queue wrapper in `src/features/jobs/queue.ts`~~ _(resolved: intentional boundary)_
+## ~~Thin queue wrapper in `src/features/job-queue/queue.ts`~~ _(resolved: intentional boundary)_
 
-`src/features/jobs/queue.ts` mostly delegates one-for-one into
+`src/features/job-queue/queue.ts` mostly delegates one-for-one into
 `src/lib/db/queries/jobs.ts`. That duplication is intentional today because it
 keeps service-role binding in one place and avoids leaking service-role DB
 imports throughout worker and route code.

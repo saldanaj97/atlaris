@@ -2,7 +2,7 @@ import {
   fromSerializableReservation,
   resolvePlanGenerationWorkflowPurpose,
   toSerializableReservation,
-} from '@/features/plans/workflows/plan-generation.types';
+} from '@/features/plans/contracts/plan-generation.types';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { describe, expect, it } from 'vitest';
 

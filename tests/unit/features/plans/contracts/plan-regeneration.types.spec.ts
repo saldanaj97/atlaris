@@ -1,4 +1,4 @@
-import { resolvePlanRegenerationWorkflowPurpose } from '@/features/plans/workflows/plan-regeneration.types';
+import { resolvePlanRegenerationWorkflowPurpose } from '@/features/plans/contracts/plan-regeneration.types';
 import { describe, expect, it } from 'vitest';
 
 describe('plan regeneration workflow purpose', () => {

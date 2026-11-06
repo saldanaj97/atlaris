@@ -75,7 +75,7 @@ On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged fi
 src/
 ├── app/           # App Router pages + API routes
 ├── components/    # Shared UI and feature components
-├── features/      # Domain features (ai, auth, billing, integrations, jobs, lesson-content, navigation, notifications, plans)
+├── features/      # Domain features (ai, auth, billing, integrations, job-queue, lesson-content, navigation, notifications, plans)
 ├── hooks/         # Client hooks
 ├── lib/
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers

@@ -1,9 +1,9 @@
-import type { Job } from '@/features/jobs/types';
+import type { Job } from '@/features/job-queue/types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
 
-import { JOB_TYPES } from '@/features/jobs/types';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import {
   applyRegenerationGenerationResult,
   buildRegenerationGenerationInput,

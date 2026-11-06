@@ -1,5 +1,6 @@
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 import type { GenerationRunResult } from '@/features/plans/lifecycle/service';
 import type {
   GeneratedModule,
@@ -7,7 +8,6 @@ import type {
   ProcessGenerationInput,
 } from '@/features/plans/lifecycle/types';
 import type { ResearchBrief } from '@/features/plans/research/contract';
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
 import type {
   AttemptReservation,
   AttemptWorkflowMetadata,
@@ -29,14 +29,14 @@ import {
 import { RESEARCH_STEPS, runPlanResearchSteps } from './research';
 import { resolveTimeoutConfig } from '@/features/ai/orchestrator/timeout-lifecycle';
 import { sumUsages } from '@/features/ai/usage';
-import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
-import { validateReservation } from '@/features/plans/lifecycle/generation';
-import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
 import {
   fromSerializableReservation,
   resolvePlanGenerationWorkflowPurpose,
   toPlanGenerationProcessInput,
-} from '@/features/plans/workflows/plan-generation.types';
+} from '@/features/plans/contracts/plan-generation.types';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
+import { validateReservation } from '@/features/plans/lifecycle/generation';
+import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
 import { mergeAttemptWorkflowMetadata } from '@/lib/db/queries/attempts';
 import {
   type PlanGenerationStartCommand,

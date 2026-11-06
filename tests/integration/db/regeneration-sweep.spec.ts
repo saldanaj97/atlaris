@@ -1,5 +1,5 @@
-import { claimRegenerationSweepJobIds } from '@/features/jobs/regeneration-sweep-query';
-import { JOB_TYPES } from '@/features/jobs/types';
+import { claimRegenerationSweepJobIds } from '@/features/job-queue/regeneration-sweep-query';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import { jobQueue, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
