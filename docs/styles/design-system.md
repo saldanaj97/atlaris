@@ -16,6 +16,8 @@ JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 
 
 Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
+> **Maintenance note (2026-11-06).** This file is about 252 KB, which is more than an agent or reviewer can load whole; read it by chapter as [DESIGN.md](../../DESIGN.md) directs. Open item, post-launch: trim or split it (for example one file per chapter group, with this file as the index). Not done now on purpose, because the content is the canonical spec. Some paths it cites do not exist in the repo: the external reference package (`reference/*.md`, `tokens/atlaris.tokens.json`, `docs/registries/`, `docs/source-register.json`), the removed `docs/styles/after-hours-direction.md` and `docs/styles/style-guide.md`, and everything under `.cursor/`, which #948 removed on 2026-11-06 (so the §27 rows that say `.cursor/rules/redesign.md` or `design-system.mdc` are "Retained"/"Replaced by" no longer; both are gone). Treat them as provenance, as the line above says.
+
 ### Token source
 
 `src/styles/atlaris-tokens.css` is the single editable source for dark tokens (primitive, semantic and component layers on `[data-atlaris-theme="dark"]`). The light theme is authored once in `:root` in `src/app/globals.css`, and the semantic bridge in the same file maps both onto the application's existing CSS variables. Edit values in those two places only.

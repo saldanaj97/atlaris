@@ -75,23 +75,25 @@ On commit, **Husky** runs **`lint-staged`** (Oxlint `--fix` + oxfmt on staged fi
 src/
 ├── app/           # App Router pages + API routes
 ├── components/    # Shared UI and feature components
-├── features/      # Domain features (ai, plans, billing, jobs, lesson-content, integrations)
+├── features/      # Domain features (ai, auth, billing, integrations, jobs, lesson-content, navigation, notifications, plans)
 ├── hooks/         # Client hooks
 ├── lib/
 │   ├── api/       # Auth wrappers, errors, rate limiting, helpers
 │   ├── auth/      # Auth server/client wiring
 │   ├── config/    # Typed environment access
 │   ├── db/        # Query modules and shared DB types
-│   ├── integrations/ # OAuth token/state utilities
 │   ├── logging/   # Server/client logging helpers
 │   └── ...
-└── types/         # Shared application types
+├── proxy.ts       # Next.js proxy (Clerk, site gate); formerly "middleware"
+└── shared/        # Cross-feature code: types, schemas, constants, policy
 supabase/
 ├── schema/        # Drizzle schema, relations, and policy definitions
 ├── migrations/    # Committed DB migrations
 ├── rls.ts         # RLS client factory
 ├── runtime.ts     # Request-scoped DB resolver
 └── service-role.ts # Service-role DB client for tests/workers
+workers/
+└── jobs/          # Cloudflare jobs Worker (cron, queue consumer, Workflows)
 ```
 
 ## Security model

@@ -20,6 +20,7 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 
 **Docs index:** `[docs/README.md](docs/README.md)` lists every folder and file under `docs/`; open it for any area not listed here. For these areas, open the doc before reading code:
 
+- **Ambiguous names** (plan vs tier, the queue, jobs, worker, proxy vs middleware): `docs/glossary.md`
 - **Plan or lesson generation** (grounded pipeline, Worker workflow steps, per-plan AI ceiling): `docs/architecture/plan-generation-architecture.md`
 - **Model routing, tiers, per-model pricing:** `docs/ai/available-models.md`
 - **Jobs Worker** (`workers/jobs`): `workers/AGENTS.md`, then `docs/architecture/cloudflare-jobs-runtime.md`
