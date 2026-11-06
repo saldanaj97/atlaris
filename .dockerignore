@@ -32,7 +32,6 @@ tests
 # IDE
 .vscode
 .idea
-.cursor
 .claude
 
 # CI

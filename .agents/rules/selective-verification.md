@@ -1,8 +1,3 @@
----
-description: Match verification to changed behavior and risk; stop once relevant evidence is sufficient
-alwaysApply: true
----
-
 # Selective Verification
 
 This is the repository's single source for verification timing and scope. Skills and tool-specific rules defer to it. File counts, committing, or finishing a turn do not independently require a test suite or automated review.

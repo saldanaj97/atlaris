@@ -170,15 +170,6 @@ describe('legacy Cursor Cloud PostgreSQL safety boundary', () => {
     expect(RLS_ROLE_NORMALIZATION_SQL).toContain('ALTER ROLE service_role');
   });
 
-  it('selects Node 24 for Cursor install and startup commands', async () => {
-    const config = JSON.parse(
-      await readFile('.cursor/environment.json', 'utf8'),
-    ) as { install: string; start: string };
-
-    expect(config.install).toContain('nvm install 24');
-    expect(config.start).toContain('nvm use 24');
-  });
-
   it('checks effective column grants, all application RLS, and canonical seed identity', async () => {
     const source = await readFile('scripts/agents/legacy-postgres.ts', 'utf8');
     const common = await readFile('scripts/agents/agent-db-common.ts', 'utf8');

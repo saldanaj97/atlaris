@@ -61,7 +61,7 @@ Do not call test-only endpoints or set client state from the console to fake a u
 
 ## Evidence
 
-Save under `.cursor/skills/verify-atlaris/artifacts/<run-id>/<feature-id>/`. Proof artifacts **survive cleanup**.
+Save under `.agents/skills/verify-atlaris/artifacts/<run-id>/<feature-id>/`. Proof artifacts **survive cleanup**.
 
 | Kind | What |
 | --- | --- |
