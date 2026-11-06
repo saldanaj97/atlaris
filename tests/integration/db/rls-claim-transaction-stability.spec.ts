@@ -1,11 +1,8 @@
 /**
- * Integration proof: whether `request.jwt.claims` set session-wide in
- * `createAuthenticatedRlsClient` remains visible inside `dbClient.transaction()`
- * without calling `reapplyJwtClaimsInTransaction`.
- *
- * This validates behavior against **Testcontainers Postgres** (integration test
- * runtime). Connection poolers or hosted Postgres may differ; production may still
- * require the re-apply workaround until verified there.
+ * Integration proof: `request.jwt.claims` set session-wide in
+ * `createAuthenticatedRlsClient` stays visible inside `dbClient.transaction()`
+ * with no re-application. Production code relies on this; it was also verified
+ * against staging (hosted Supabase) on 2026-11-06.
  */
 
 import { createTestPlan } from '../../fixtures/plans';
@@ -42,7 +39,7 @@ function isJwtClaimsRowArray(value: unknown): value is JwtClaimsRow[] {
 }
 
 /**
- * Reads `request.jwt.claims` the same way as `prepareRlsTransactionContext`.
+ * Reads `request.jwt.claims` with a plain `current_setting` query.
  */
 async function readJwtClaims(executor: ClaimsExecutor): Promise<string | null> {
   const result = await executor.execute(

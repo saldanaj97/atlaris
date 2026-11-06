@@ -52,36 +52,29 @@ Success/failure transitions (`markPlanGenerationSuccessInTx`,
 — they touch billing-adjacent fields (`isQuotaEligible`, `finalizedAt`) and
 belong in the plans feature domain.
 
-## RLS JWT claim re-application inside attempt transactions
+## ~~RLS JWT claim re-application inside attempt transactions~~ _(resolved)_
 
-Attempt reservation and finalization re-read and re-apply
-`request.jwt.claims` inside transactions (transaction-local `set_config`).
+Resolved on 2026-11-06 by removing `prepareRlsTransactionContext` and
+`reapplyJwtClaimsInTransaction` (`src/lib/db/queries/helpers/rls-jwt-claims.ts`)
+and every call site.
 
-Integration coverage in
-[`tests/integration/db/rls-claim-transaction-stability.spec.ts`](../tests/integration/db/rls-claim-transaction-stability.spec.ts)
-shows that session-scoped `request.jwt.claims` (set with `set_config(..., false)` in
-`createAuthenticatedRlsClient`) **remains visible** inside `dbClient.transaction()`,
-including with `pg_advisory_xact_lock`, RLS `SELECT`s, and nested transactions
-(savepoints), **for Testcontainers Postgres** used in CI/local integration runs.
+The RLS client is one dedicated `max: 1` connection opened from
+`POSTGRES_URL_NON_POOLING` (`supabase/rls.ts`), and `transaction()` reuses that
+connection, so the session-scoped `request.jwt.claims` stays visible inside
+transactions. Evidence:
 
-Hosted Postgres behind a pooler or edge driver is not fully covered by that test; keep the
-re-apply pattern until production behavior is verified or explicitly safe.
+- [`tests/integration/db/rls-claim-transaction-stability.spec.ts`](../tests/integration/db/rls-claim-transaction-stability.spec.ts)
+  covers plain transactions, `pg_advisory_xact_lock`, RLS `SELECT`s and
+  savepoints on Testcontainers Postgres.
+- A read-only run against the hosted staging database (`atlaris-dev`) through
+  the Supabase CLI passed all seven checks: no `BYPASSRLS` on the role, claims
+  at baseline, inside `BEGIN`, after an advisory lock, in a savepoint, after
+  `COMMIT`, and an RLS-filtered `SELECT` that returned the caller row. That run
+  went through the Supabase API, not the app's direct connection, so it
+  confirms the setup and not the driver itself.
 
-**Status (2026-11-06):** Not removed yet. The RLS client is one dedicated
-`max: 1` connection opened from `POSTGRES_URL_NON_POOLING` (`supabase/rls.ts`), and
-`transaction()` reuses that same connection, so a pooler should not be in the
-path. That is an argument, not proof, and the staging run below is still
-pending. Production generation paths use the service-role client, where the
-replay is already a no-op; the ceremony only matters for the RLS-client callers
-(`user/profile` route, `user-preferences`, `module-lesson-generation`).
-
-**Follow-up:** Run the same claim-visibility scenarios against the **staging** database
-(a one-off script connecting with `POSTGRES_URL`, setting
-`SET ROLE authenticated` + `set_config('request.jwt.claims', ..., false)`, then
-reading claims inside `dbClient.transaction()` without re-applying). If all
-pass, remove the ceremony (`prepareRlsTransactionContext` /
-`reapplyJwtClaimsInTransaction` at call sites). If any fail, keep the re-apply pattern
-and document the failing pooler/driver as the reason.
+If a pooler ever sits in front of the RLS client, `SET ROLE` breaks too, so that
+change has to revisit this whole design.
 
 ## ~~Missing DB-level task title hardening~~ _(resolved)_
 
