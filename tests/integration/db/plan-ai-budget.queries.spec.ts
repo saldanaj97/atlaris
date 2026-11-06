@@ -4,8 +4,8 @@ import {
   countGenerationBudgetCutsForModule,
   insertGenerationBudgetCuts,
   recordDiscardedCallUsage,
-  sumAllAiSpendMicrousd,
   sumPlanAiSpendMicrousd,
+  sumTierAiSpendMicrousd,
   sumUserAiSpendMicrousd,
 } from '@/lib/db/queries/plan-ai-budget';
 import {
@@ -16,6 +16,7 @@ import {
   modules,
   planResearch,
   tasks,
+  users,
 } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
@@ -315,7 +316,7 @@ describe('plan AI budget queries', () => {
     expect(kept).toEqual({ planId: null });
   });
 
-  describe('per-user and global spend (DEV-208)', () => {
+  describe('per-user and per-tier spend (DEV-208)', () => {
     async function userFixture(suffix: string) {
       const authUserId = buildTestAuthUserId(`spend-${suffix}`);
       return ensureUser({ authUserId, email: buildTestEmail(authUserId) });
@@ -367,10 +368,27 @@ describe('plan AI budget queries', () => {
 
     // Past dates only: the guard's live window is "today", and rows dated in
     // the future would count toward it in other specs on this database.
-    it('sums every user and research run since a time', async () => {
-      const userId = await userFixture('global-a');
-      const otherUserId = await userFixture('global-b');
-      const plan = await createTestPlan({ userId, topic: 'Global Plan' });
+    it("sums one tier's users and research runs since a time", async () => {
+      const userId = await userFixture('tier-a');
+      const otherUserId = await userFixture('tier-b');
+      const proUserId = await userFixture('tier-pro');
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'starter' })
+        .where(eq(users.id, userId));
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'starter' })
+        .where(eq(users.id, otherUserId));
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'pro' })
+        .where(eq(users.id, proUserId));
+      const plan = await createTestPlan({ userId, topic: 'Tier Plan' });
+      const proPlan = await createTestPlan({
+        userId: proUserId,
+        topic: 'Pro Plan',
+      });
       await db.insert(aiUsageEvents).values([
         usageEvent(userId, plan.id, '2026-09-13T23:00:00.000Z', {
           providerCostMicrousd: BigInt(7_000_000),
@@ -381,19 +399,37 @@ describe('plan AI budget queries', () => {
         usageEvent(otherUserId, null, '2026-09-14T02:00:00.000Z', {
           costCents: 1,
         }),
+        // Another tier: not counted.
+        usageEvent(proUserId, proPlan.id, '2026-09-14T02:00:00.000Z', {
+          providerCostMicrousd: BigInt(3_000_000),
+        }),
       ]);
-      await db.insert(planResearch).values({
-        planId: plan.id,
-        brief: 'Brief',
-        mode: 'fast',
-        status: 'ok',
-        costMicrousd: 500,
-        createdAt: new Date('2026-09-14T03:00:00.000Z'),
-      });
+      await db.insert(planResearch).values([
+        {
+          planId: plan.id,
+          brief: 'Brief',
+          mode: 'fast',
+          status: 'ok',
+          costMicrousd: 500,
+          createdAt: new Date('2026-09-14T03:00:00.000Z'),
+        },
+        {
+          planId: proPlan.id,
+          brief: 'Brief',
+          mode: 'fast',
+          status: 'ok',
+          costMicrousd: 800_000,
+          createdAt: new Date('2026-09-14T03:00:00.000Z'),
+        },
+      ]);
 
-      await expect(
-        sumAllAiSpendMicrousd(new Date('2026-09-14T00:00:00.000Z'), db),
-      ).resolves.toBe(2_000 + 10_000 + 500);
+      const since = new Date('2026-09-14T00:00:00.000Z');
+      await expect(sumTierAiSpendMicrousd('starter', since, db)).resolves.toBe(
+        2_000 + 10_000 + 500,
+      );
+      await expect(sumTierAiSpendMicrousd('pro', since, db)).resolves.toBe(
+        3_000_000 + 800_000,
+      );
     });
   });
 });

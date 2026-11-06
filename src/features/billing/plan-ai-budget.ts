@@ -48,19 +48,25 @@ export function userAiCeilingMicrousd(tier: SubscriptionTier): number {
 }
 
 /**
- * Second layer behind the per-user ceiling (DEV-208): all users' AI spend per
- * UTC day. New AI work pauses for everyone at the ceiling, and Sentry gets a
- * new issue each day spend first passes each alert share. The ceiling sits
- * under the sum of the per-tier provider key limits, so the app stops cleanly
- * before the provider starts failing calls.
+ * Second layer behind the per-user ceiling (DEV-208): each tier's total AI
+ * spend per UTC day, so a surge on one tier (say, free sign-ups on launch day)
+ * cannot pause the others. New AI work pauses for that tier at its ceiling,
+ * and Sentry gets a new issue each day a tier's spend first passes each alert
+ * share. Keep each ceiling under that tier's OpenRouter key limit, so the app
+ * stops cleanly before the provider starts failing calls.
  */
-export const GLOBAL_AI_DAILY_BUDGET = {
-  ceilingUsd: 5,
+export const TIER_AI_DAILY_BUDGET: {
+  readonly ceilingUsdByTier: Readonly<Record<SubscriptionTier, number>>;
+  readonly alertShares: readonly number[];
+} = {
+  ceilingUsdByTier: { free: 2, starter: 3, pro: 5 },
   alertShares: [0.5, 0.8],
-} as const;
+};
 
-export function globalAiDailyCeilingMicrousd(): number {
-  return Math.round(GLOBAL_AI_DAILY_BUDGET.ceilingUsd * MICROUSD_PER_USD);
+export function tierAiDailyCeilingMicrousd(tier: SubscriptionTier): number {
+  return Math.round(
+    TIER_AI_DAILY_BUDGET.ceilingUsdByTier[tier] * MICROUSD_PER_USD,
+  );
 }
 
 /**

@@ -3,13 +3,13 @@ import { AppError } from '@/lib/api/errors';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  sumAll: vi.fn(),
+  sumTier: vi.fn(),
   sumUser: vi.fn(),
   captureMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
-  sumAllAiSpendMicrousd: mocks.sumAll,
+  sumTierAiSpendMicrousd: mocks.sumTier,
   sumUserAiSpendMicrousd: mocks.sumUser,
 }));
 
@@ -49,14 +49,15 @@ async function rejection(promise: Promise<unknown>): Promise<AppError> {
 describe('assertAiSpendAllowed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.sumAll.mockResolvedValue(0);
+    mocks.sumTier.mockResolvedValue(0);
     mocks.sumUser.mockResolvedValue(0);
   });
 
   it('admits spend under both ceilings and reads the right windows', async () => {
     await expect(check()).resolves.toBeUndefined();
 
-    expect(mocks.sumAll).toHaveBeenCalledWith(
+    expect(mocks.sumTier).toHaveBeenCalledWith(
+      'starter',
       new Date('2026-11-14T00:00:00.000Z'),
       SERVICE_DB,
     );
@@ -104,28 +105,33 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    [2.5, '50', 'warning'],
-    [4, '80', 'error'],
-    [4.99, '80', 'error'],
+    [1.5, '50', 'warning'],
+    [2.4, '80', 'error'],
+    [2.99, '80', 'error'],
   ])(
-    'alerts once per day at $%s of global spend (%s%%)',
+    'alerts once per day at $%s of Starter spend (%s%%)',
     async (spentUsd, percent, level) => {
-      mocks.sumAll.mockResolvedValue(spentUsd * USD);
+      mocks.sumTier.mockResolvedValue(spentUsd * USD);
 
       await expect(check()).resolves.toBeUndefined();
 
       expect(mocks.captureMessage).toHaveBeenCalledExactlyOnceWith(
-        `Global daily AI spend passed ${percent}% of the ceiling`,
+        `Starter daily AI spend passed ${percent}% of the ceiling`,
         expect.objectContaining({
           level,
-          fingerprint: ['ai_global_daily_spend', percent, '2026-11-14'],
+          fingerprint: [
+            'ai_tier_daily_spend',
+            'starter',
+            percent,
+            '2026-11-14',
+          ],
         }),
       );
     },
   );
 
-  it('pauses AI for everyone at the global daily ceiling', async () => {
-    mocks.sumAll.mockResolvedValue(5 * USD);
+  it('pauses AI for a tier at its daily ceiling', async () => {
+    mocks.sumTier.mockResolvedValue(5 * USD);
 
     const error = await rejection(check('pro'));
 
@@ -136,15 +142,36 @@ describe('assertAiSpendAllowed', () => {
       resetsAt: '2026-11-15T00:00:00.000Z',
     });
     expect(mocks.captureMessage).toHaveBeenCalledExactlyOnceWith(
-      'Global daily AI spend ceiling reached; new AI work is paused',
+      'Pro daily AI spend ceiling reached; new Pro AI work is paused',
       expect.objectContaining({
         level: 'fatal',
-        fingerprint: ['ai_global_daily_spend', '100', '2026-11-14'],
+        fingerprint: ['ai_tier_daily_spend', 'pro', '100', '2026-11-14'],
       }),
     );
   });
 
-  it.each(['sumAll', 'sumUser'] as const)(
+  it.each([
+    ['free', 2],
+    ['starter', 3],
+    ['pro', 5],
+  ] as const)(
+    'reads %s spend against its own $%s daily ceiling',
+    async (tier, ceilingUsd) => {
+      mocks.sumTier.mockResolvedValue(ceilingUsd * USD - 1);
+      await expect(check(tier)).resolves.toBeUndefined();
+      expect(mocks.sumTier).toHaveBeenCalledWith(
+        tier,
+        expect.any(Date),
+        SERVICE_DB,
+      );
+
+      mocks.sumTier.mockResolvedValue(ceilingUsd * USD);
+      const error = await rejection(check(tier));
+      expect(error.code()).toBe('AI_GENERATION_PAUSED');
+    },
+  );
+
+  it.each(['sumTier', 'sumUser'] as const)(
     'fails closed with 503 when %s cannot be read',
     async (failing) => {
       mocks[failing].mockRejectedValue(new Error('db down'));

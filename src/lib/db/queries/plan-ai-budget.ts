@@ -3,6 +3,7 @@ import type {
   NewGenerationBudgetCut,
 } from '@/lib/db/queries/types/generation-budget-cuts.types';
 import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   canonicalUsageToRecordParams,
@@ -14,7 +15,9 @@ import {
   aiUsageEvents,
   generationAttempts,
   generationBudgetCuts,
+  learningPlans,
   planResearch,
+  users,
 } from '@supabase/schema';
 import { and, count, eq, gte, max, sql } from 'drizzle-orm';
 
@@ -99,10 +102,13 @@ export async function sumUserAiSpendMicrousd(
 }
 
 /**
- * Every user's AI spend in micro-USD since `since`, research runs included.
- * Needs the service-role client: RLS would limit the sum to one user.
+ * AI spend in micro-USD since `since` by every user now on `tier`, research
+ * runs included. Spend follows the user's current tier, so a user who
+ * upgrades mid-day carries that day's spend into the new tier. Needs the
+ * service-role client: RLS would limit the sum to one user.
  */
-export async function sumAllAiSpendMicrousd(
+export async function sumTierAiSpendMicrousd(
+  tier: SubscriptionTier,
   since: Date,
   dbClient: Pick<DbClient, 'select'>,
 ): Promise<number> {
@@ -110,11 +116,24 @@ export async function sumAllAiSpendMicrousd(
     dbClient
       .select({ spent: usageEventCostSql })
       .from(aiUsageEvents)
-      .where(gte(aiUsageEvents.createdAt, since)),
+      .innerJoin(users, eq(users.id, aiUsageEvents.userId))
+      .where(
+        and(
+          eq(users.subscriptionTier, tier),
+          gte(aiUsageEvents.createdAt, since),
+        ),
+      ),
     dbClient
       .select({ spent: researchCostSql })
       .from(planResearch)
-      .where(gte(planResearch.createdAt, since)),
+      .innerJoin(learningPlans, eq(learningPlans.id, planResearch.planId))
+      .innerJoin(users, eq(users.id, learningPlans.userId))
+      .where(
+        and(
+          eq(users.subscriptionTier, tier),
+          gte(planResearch.createdAt, since),
+        ),
+      ),
   ]);
   return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
 }
