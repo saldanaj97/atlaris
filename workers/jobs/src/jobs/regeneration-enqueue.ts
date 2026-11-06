@@ -6,7 +6,10 @@ import type {
 } from './regeneration-shared';
 import type { Logger } from '@/lib/logging/logger';
 
-import { unauthorizedResponse, verifySignedRequest } from '../http/signature';
+import {
+  signatureFailureResponse,
+  verifySignedRequest,
+} from '../http/signature';
 import {
   REGENERATION_JOB_TAG,
   REGENERATION_SENTRY_TAGS,
@@ -43,7 +46,7 @@ export async function handleRegenerationEnqueue(
 ): Promise<Response> {
   const verification = await verifySignedRequest(request, deps.env, deps.nowMs);
   if (!verification.ok) {
-    return unauthorizedResponse();
+    return signatureFailureResponse(verification);
   }
 
   if (await deps.isPaused()) {

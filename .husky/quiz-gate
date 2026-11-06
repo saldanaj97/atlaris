@@ -1,0 +1,37 @@
+#!/bin/sh
+set -e
+
+# Blocks pushes to main unless .claude/quiz-pass/<commit sha> exists for each commit being pushed.
+# Only the user's quiz run writes that file; this script never creates it.
+# Reads git's pre-push stdin: <local ref> <local sha> <remote ref> <remote sha>
+
+root="$(git rev-parse --show-toplevel)"
+zero="0000000000000000000000000000000000000000"
+missing=""
+
+while read -r _local_ref local_sha remote_ref remote_sha; do
+  [ "$remote_ref" = "refs/heads/main" ] || continue
+  [ "$local_sha" = "$zero" ] && continue
+
+  # Every commit the push adds needs a pass, not only the tip.
+  if [ "$remote_sha" = "$zero" ]; then
+    range="$(git rev-list "$local_sha" --not --remotes)" || range=""
+  else
+    range="$(git rev-list "$remote_sha..$local_sha")" || {
+      echo "Push to main blocked: cannot list commits in $remote_sha..$local_sha (fetch first)." >&2
+      exit 1
+    }
+  fi
+  # Nothing new (for example a rewind of main): still require a pass for the tip.
+  [ -z "$range" ] && range="$local_sha"
+
+  for sha in $range; do
+    [ -f "$root/.claude/quiz-pass/$sha" ] || missing="$missing $sha"
+  done
+done
+
+if [ -n "$missing" ]; then
+  echo "Push to main blocked: no quiz pass for commit(s):$missing" >&2
+  echo "Run the quiz (5/5) for each commit. The pass file is .claude/quiz-pass/<sha>." >&2
+  exit 1
+fi

@@ -314,7 +314,11 @@ describe('runEmailDeliveryWorkflow', () => {
   });
 
   it('exits a duplicate firing without claiming or sending', async () => {
-    runs.reserve.mockResolvedValue({ outcome: 'existing', run: runRow() });
+    // Another instance owns the running row.
+    runs.reserve.mockResolvedValue({
+      outcome: 'existing',
+      run: runRow({ workflowRunId: 'cf:scheduled-instance-0' }),
+    });
     const { deps, sender } = makeDeps();
     const { step, calls } = createStep();
 
@@ -325,6 +329,39 @@ describe('runEmailDeliveryWorkflow', () => {
     expect(runs.claim).not.toHaveBeenCalled();
     expect(sender.sendResolved).not.toHaveBeenCalled();
     expect(calls).toHaveLength(1);
+  });
+
+  it('re-enters its own run when the claim committed and the step failed', async () => {
+    runs.reserve
+      .mockResolvedValueOnce({
+        outcome: 'reserved',
+        run: runRow({ status: 'queued', workflowRunId: null }),
+      })
+      .mockResolvedValueOnce({ outcome: 'existing', run: runRow() });
+    const { deps, logger, sender } = makeDeps();
+    // The claim commits, then the step throws on the way out.
+    logger.info.mockImplementationOnce((fields: { event?: string }) => {
+      if (fields.event === 'run_claimed') throw new Error('log sink down');
+    });
+    const { step, calls } = createStep();
+
+    await expect(
+      runEmailDeliveryWorkflow(scheduledEvent(), step, deps),
+    ).resolves.toEqual({ kind: 'completed' });
+
+    expect(runs.reserve).toHaveBeenCalledTimes(2);
+    expect(runs.claim).toHaveBeenCalledTimes(2);
+    expect(calls.map((call) => call.name)).toEqual([
+      'claim-run',
+      'page-1',
+      'finalize',
+    ]);
+    expect(calls[0]!.attempts).toBe(2);
+    expect(sender.sendResolved).toHaveBeenCalledTimes(1);
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'run_claimed', attempt: 2 }),
+      expect.any(String),
+    );
   });
 
   it('claims an existing unclaimed queued run left by a crashed firing', async () => {

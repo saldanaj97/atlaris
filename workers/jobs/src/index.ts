@@ -11,7 +11,10 @@ import {
 import { handleModuleLessonsStart } from './http/module-lessons-start';
 import { handlePlanGenerationStart } from './http/plan-generation-start';
 import { handleFetch } from './http/router';
-import { unauthorizedResponse, verifySignedRequest } from './http/signature';
+import {
+  signatureFailureResponse,
+  verifySignedRequest,
+} from './http/signature';
 import { runHeartbeat } from './jobs/heartbeat';
 import { runPlanCleanup } from './jobs/plan-cleanup';
 import { runPostHogDeletion } from './jobs/posthog-deletion';
@@ -122,7 +125,7 @@ export default Sentry.withSentry<WorkerEnv>(sentryOptions, {
     if (request.method === 'POST' && pathname === EMAIL_DELIVERY_RUNS_PATH) {
       const verification = await verifySignedRequest(request, workerEnv);
       if (!verification.ok) {
-        return unauthorizedResponse();
+        return signatureFailureResponse(verification);
       }
       // The verifier consumed the body; hand the handler the signed bytes.
       const verified = new Request(request.url, {

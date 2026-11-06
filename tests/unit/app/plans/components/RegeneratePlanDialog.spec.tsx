@@ -98,6 +98,23 @@ describe('RegeneratePlanDialog', () => {
     expect(mockRefresh).not.toHaveBeenCalled();
   });
 
+  it('shows the monthly AI budget message with its reset date', async () => {
+    const message =
+      "You've reached this month's AI budget. It resets on December 1, 2026.";
+    vi.mocked(fetch).mockResolvedValue(
+      Response.json(
+        { error: message, code: 'AI_BUDGET_EXHAUSTED' },
+        { status: 429 },
+      ),
+    );
+    const user = await openDialog();
+
+    await user.click(submitButton());
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(mockRefresh).not.toHaveBeenCalled();
+  });
+
   it('links to pricing when regeneration is not included', async () => {
     vi.mocked(fetch).mockResolvedValue(
       Response.json(

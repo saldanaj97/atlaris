@@ -6,7 +6,11 @@ import {
   JOBS_SIGNATURE_HEADER,
   planGenerationStartCommandSchema,
 } from '@/lib/jobs-worker/contract';
-import { generationAttempts, learningPlans } from '@supabase/schema';
+import {
+  aiUsageEvents,
+  generationAttempts,
+  learningPlans,
+} from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { desc, eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -34,12 +38,15 @@ function create(body: unknown = payload): Promise<Response> {
   );
 }
 
-async function setUpUser(label: string) {
+async function setUpUser(
+  label: string,
+  subscriptionTier: 'free' | 'starter' | 'pro' = 'pro',
+) {
   const authUserId = buildTestAuthUserId(label);
   const userId = await ensureUser({
     authUserId,
     email: buildTestEmail(authUserId),
-    subscriptionTier: 'pro',
+    subscriptionTier,
   });
   setTestUser(authUserId);
   return userId;
@@ -167,6 +174,28 @@ describe('POST /api/v1/plans — create + poll', () => {
       status: 'failure',
       classification: 'provider_error',
     });
+    expect(workerFetch).not.toHaveBeenCalled();
+  });
+
+  it('refuses a user who reached the monthly AI budget before creating a plan (DEV-208)', async () => {
+    const userId = await setUpUser('plans-create-budget', 'free');
+    // Free's monthly ceiling is $0.25; keep the row small so the global
+    // daily total other specs see stays far below its ceiling.
+    await db.insert(aiUsageEvents).values({
+      userId,
+      provider: 'openrouter',
+      model: 'test/model',
+      providerCostMicrousd: BigInt(250_000),
+    });
+
+    const response = await create();
+
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'AI_BUDGET_EXHAUSTED',
+      classification: 'capped',
+    });
+    await expect(listUserPlans(userId)).resolves.toEqual([]);
     expect(workerFetch).not.toHaveBeenCalled();
   });
 });

@@ -27,6 +27,10 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mocks.routerRefreshMock }),
 }));
 
+vi.mock('@clerk/nextjs', () => ({
+  useClerk: () => ({ loaded: false }),
+}));
+
 vi.mock('@clerk/nextjs/experimental', () => ({
   SubscriptionDetailsButton: ({ children }: { children: React.ReactNode }) => (
     <div data-testid='clerk-subscription-details'>{children}</div>

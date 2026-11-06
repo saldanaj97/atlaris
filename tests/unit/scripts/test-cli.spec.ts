@@ -81,22 +81,60 @@ describe('pnpm test dispatcher', () => {
     ]);
   });
 
-  it('forwards smoke runner options without changing suite semantics', () => {
-    const smoke = firstCommand(
-      parseTestArgs(['smoke', '--project', 'smoke-anon'])[0],
-    );
+  // run.ts only reads Playwright args after `--`, so the separator must survive.
+  it.each([
+    {
+      name: 'a project',
+      input: ['--', '--project', 'smoke-anon'],
+      playwrightArgs: ['--project', 'smoke-anon'],
+    },
+    {
+      name: 'a project without the separator',
+      input: ['--project', 'smoke-anon'],
+      playwrightArgs: ['--project', 'smoke-anon'],
+    },
+    {
+      name: 'a spec path with a project',
+      input: ['--', 'anon.pricing.spec.ts', '--project', 'smoke-anon'],
+      playwrightArgs: ['anon.pricing.spec.ts', '--project', 'smoke-anon'],
+    },
+    {
+      name: 'a repeat count with a project',
+      input: ['--', '--project=smoke-auth', '--repeat-each', '3'],
+      playwrightArgs: ['--project=smoke-auth', '--repeat-each', '3'],
+    },
+  ])('forwards $name to Playwright', ({ input, playwrightArgs }) => {
+    const smoke = firstCommand(parseTestArgs(['smoke', ...input])[0]);
+
     expect(smoke.args).toEqual([
       'exec',
       'tsx',
       'scripts/tests/smoke/run.ts',
-      '--project',
-      'smoke-anon',
+      '--',
+      ...playwrightArgs,
     ]);
+  });
 
-    const separatedSmoke = firstCommand(
-      parseTestArgs(['smoke', '--', '--project', 'smoke-anon'])[0],
+  it('keeps runner options ahead of the Playwright separator', () => {
+    const smoke = firstCommand(
+      parseTestArgs(['smoke', '--smoke-step=db', '--', '--project', 'x'])[0],
     );
-    expect(separatedSmoke.args).toEqual(smoke.args);
+
+    expect(smoke.args).toEqual([
+      'exec',
+      'tsx',
+      'scripts/tests/smoke/run.ts',
+      '--smoke-step=db',
+      '--',
+      '--project',
+      'x',
+    ]);
+  });
+
+  it('adds no separator when smoke has nothing to forward', () => {
+    const smoke = firstCommand(parseTestArgs(['smoke'])[0]);
+
+    expect(smoke.args).toEqual(['exec', 'tsx', 'scripts/tests/smoke/run.ts']);
   });
 
   it('leaves the database choice to the environment by default', () => {

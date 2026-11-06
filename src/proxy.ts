@@ -11,6 +11,7 @@ import {
   shouldBypassClerkMiddleware,
   shouldUseClerkMiddleware,
 } from '@/lib/proxy/middleware-policy';
+import { normalizeProxyPathname } from '@/lib/proxy/normalize-pathname';
 import {
   applyProxySecurityHeaders,
   createContentSecurityPolicy,
@@ -72,12 +73,13 @@ const withCorrelationId = (
   });
 };
 
-/** Auth page for a signed-out request, returning the visitor to it afterwards. */
-function anonymousAuthUrl(request: NextRequest): URL {
-  const url = new URL(
-    resolveAnonymousAuthPath(request.nextUrl.pathname),
-    request.url,
-  );
+/**
+ * Auth page for a signed-out request, returning the visitor to it afterwards.
+ * `pathname` is the decoded policy path; `redirect_url` keeps the raw one,
+ * which the proxy decodes again when the visitor comes back.
+ */
+function anonymousAuthUrl(request: NextRequest, pathname: string): URL {
+  const url = new URL(resolveAnonymousAuthPath(pathname), request.url);
   url.searchParams.set(
     'redirect_url',
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
@@ -85,7 +87,7 @@ function anonymousAuthUrl(request: NextRequest): URL {
   return url;
 }
 
-type ProtectRequest = () => Promise<NextResponse | undefined>;
+type ProtectRequest = (pathname: string) => Promise<NextResponse | undefined>;
 type IsSignedIn = () => Promise<boolean>;
 
 async function handleProxyRequest(
@@ -93,7 +95,11 @@ async function handleProxyRequest(
   protectRequest: ProtectRequest,
   isSignedIn: IsSignedIn,
 ): Promise<NextResponse> {
-  const { pathname } = request.nextUrl;
+  // Policy checks compare the decoded path; see normalizeProxyPathname.
+  const pathname = normalizeProxyPathname(request.nextUrl.pathname);
+  if (pathname === null) {
+    return withCorrelationId(request, new NextResponse(null, { status: 400 }));
+  }
 
   // Payment/auth provider webhooks bypass all checks including maintenance mode.
   if (isProviderWebhookRoute(pathname)) {
@@ -148,7 +154,7 @@ async function handleProxyRequest(
       return nextWithProxyContext(request, { ctx });
     }
 
-    const protectionResponse = await protectRequest();
+    const protectionResponse = await protectRequest(pathname);
     if (protectionResponse) {
       return withCorrelationId(request, protectionResponse);
     }
@@ -161,9 +167,9 @@ const clerkProxy = clerkMiddleware(
   async (auth, request: NextRequest) =>
     handleProxyRequest(
       request,
-      async () => {
+      async (pathname) => {
         // Clerk's default redirect is sign-in; only the sign-up case needs a URL.
-        const authUrl = anonymousAuthUrl(request);
+        const authUrl = anonymousAuthUrl(request, pathname);
         await auth.protect(
           authUrl.pathname === '/auth/sign-up'
             ? { unauthenticatedUrl: authUrl.toString() }
@@ -193,7 +199,8 @@ function proxy(request: NextRequest, event: NextFetchEvent) {
 
   return handleProxyRequest(
     request,
-    async () => NextResponse.redirect(anonymousAuthUrl(request)),
+    async (pathname) =>
+      NextResponse.redirect(anonymousAuthUrl(request, pathname)),
     // No Clerk keys locally, so no session to admit.
     async () => false,
   );
@@ -207,5 +214,13 @@ export const config = {
     // the public PostHog proxy stays outside Clerk; that route owns validation.
     '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)).*)',
     '/(api|trpc)(.*)',
+    // Protected app prefixes run the proxy whatever their extension, so
+    // `/plans/x.txt` cannot reach `plans/[id]` without the gate, CSP, and auth.
+    // Keep in step with PROTECTED_PREFIXES in src/lib/proxy/middleware-policy.ts.
+    '/(dashboard|plans|account|settings|analytics)(.*)',
+    // Any percent-encoded path runs the proxy too, so `/%70lans/x.txt` cannot
+    // dodge both entries above if a host decodes it before routing. The proxy
+    // decodes it and rejects dot segments before any policy check.
+    '/(.*%.*)',
   ],
 };

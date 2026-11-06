@@ -4,6 +4,7 @@ import type { PlainHandler } from '@/lib/api/auth';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { validateModelForTier } from '@/features/ai/model-resolver';
+import { assertAiSpendAllowed } from '@/features/billing/ai-spend-guard';
 import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { throwPlanEntitlementRequired } from '@/features/plans/entitlement/errors';
@@ -99,6 +100,7 @@ export const POST: PlainHandler = requestBoundary.route(
       actor.subscriptionTier,
       overrides?.model,
     );
+    await assertAiSpendAllowed(actor, db);
 
     const result = await requestPlanRegeneration(
       {

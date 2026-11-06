@@ -4,6 +4,7 @@ import type { WebhookEvent } from '@clerk/nextjs/webhooks';
 
 import {
   aiUsageEvents,
+  deletedPlanGenerationAttempts,
   emailNotificationDeliveries,
   jobQueue,
   learningActivityEvents,
@@ -201,6 +202,7 @@ export function clerkUserDeletionProjectionSource(
 /** Every table with a user_id foreign key to users. Plan children cascade. */
 export const USER_SCOPED_ERASE_TABLES = [
   learningPlans,
+  deletedPlanGenerationAttempts,
   taskProgress,
   learningActivityEvents,
   usageMetrics,

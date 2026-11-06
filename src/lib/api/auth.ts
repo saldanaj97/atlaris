@@ -14,6 +14,7 @@ import type { DbClient } from '@/lib/db/types';
 import { AuthError, DeletedAuthUserError } from './errors';
 import { provisionUserFromVerifiedAuthSession } from '@/features/auth/user-provisioning';
 import { createRequestContext, withRequestContext } from '@/lib/api/context';
+import { assertSameOriginMutation } from '@/lib/api/request-origin';
 import { auth, getSessionSafe } from '@/lib/auth/server';
 import { appEnv, devAuthEnv, localProductTestingEnv } from '@/lib/config/env';
 import { getUserByAuthId } from '@/lib/db/queries/users';
@@ -177,6 +178,9 @@ type RouteHandlerParams = AuthHandlerContext['params'];
 
 export function withAuth(handler: AuthHandler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
+    // Before auth, so a cross-site mutation never reaches the handler (DEV-208).
+    assertSameOriginMutation(req);
+
     const params: RouteHandlerParams = routeContext?.params
       ? await routeContext.params
       : {};

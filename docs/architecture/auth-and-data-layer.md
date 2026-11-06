@@ -133,7 +133,7 @@ withAuth / requestBoundary (component: `runServerComponentContext`; action: `wit
     │
     ├── createAuthenticatedRlsClient(authUserId)
     │   ├── Opens dedicated Postgres connection (non-pooled, max: 1)
-    │   ├── SET ROLE authenticated          ← drops BYPASSRLS privilege
+    │   ├── SET ROLE authenticated          ← drops BYPASSRLS privilege (session state: a lost connection ends the client instead of reconnecting)
     │   ├── SET search_path = public
     │   └── set_config('request.jwt.claims', '{"sub":"<authUserId>"}', false)
     │                                        ↑ parameterized, no injection risk

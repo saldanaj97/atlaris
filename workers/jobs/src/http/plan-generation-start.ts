@@ -3,7 +3,7 @@ import type { SigningSecrets } from './signature';
 import type { Logger } from '@/lib/logging/logger';
 
 import { PLAN_GENERATION_JOB } from '../workflows/plan-generation/run';
-import { unauthorizedResponse, verifySignedRequest } from './signature';
+import { signatureFailureResponse, verifySignedRequest } from './signature';
 import {
   type PlanGenerationStartCommand,
   planGenerationStartCommandSchema,
@@ -58,7 +58,7 @@ export async function handlePlanGenerationStart(
 ): Promise<Response> {
   const verification = await verifySignedRequest(request, deps.env, deps.nowMs);
   if (!verification.ok) {
-    return unauthorizedResponse();
+    return signatureFailureResponse(verification);
   }
 
   const command = parseBody(verification.body);

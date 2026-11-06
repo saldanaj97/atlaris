@@ -119,3 +119,56 @@ describe('proxy site gate per viewer', () => {
     expect(mocks.auth).not.toHaveBeenCalled();
   });
 });
+
+describe('proxy path normalization', () => {
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mocks.auth.mockResolvedValue({ userId: null });
+    mocks.protect.mockResolvedValue(undefined);
+  });
+
+  // Gate off: the gate redirects every non-exempt path either way, so only the
+  // sign-in check shows whether the decoded path reached isProtectedRoute.
+  it.each(['/%64ashboard', '/%61pi/v1/plans'])(
+    'requires sign-in for the encoded protected path %s with the gate off',
+    async (pathname) => {
+      mocks.resolveSiteGate.mockResolvedValue(null);
+
+      await runProxy(pathname);
+
+      expect(mocks.protect).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('sends a signed-out visitor to sign-up for an encoded /plans/new', async () => {
+    mocks.resolveSiteGate.mockResolvedValue(null);
+
+    await runProxy('/%70lans/new');
+
+    expect(mocks.protect).toHaveBeenCalledExactlyOnceWith({
+      unauthenticatedUrl: expect.stringMatching(
+        /^https:\/\/atlaris\.app\/auth\/sign-up\?redirect_url=/,
+      ),
+    });
+  });
+
+  it('does not require sign-in for a public page with the gate off', async () => {
+    mocks.resolveSiteGate.mockResolvedValue(null);
+
+    expect(redirectTarget(await runProxy('/landing'))).toBeNull();
+    expect(mocks.protect).not.toHaveBeenCalled();
+  });
+
+  it.each(['/%ZZashboard', '/api/internal%2F..%2F..%2Fdashboard'])(
+    'answers 400 for %s before any policy check',
+    async (pathname) => {
+      mocks.resolveSiteGate.mockResolvedValue('waitlist');
+
+      const response = await runProxy(pathname);
+
+      expect(response.status).toBe(400);
+      expect(mocks.resolveSiteGate).not.toHaveBeenCalled();
+      expect(mocks.protect).not.toHaveBeenCalled();
+    },
+  );
+});

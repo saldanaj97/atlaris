@@ -23,6 +23,7 @@ import {
 } from '@/features/ai/providers/openrouter';
 import { extractFirstJsonObject } from '@/features/ai/providers/openrouter-json';
 import { toWireServerTool } from '@/features/ai/providers/openrouter-server-tools';
+import { logger } from '@/lib/logging/logger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const GATEWAY_BASE_URL =
@@ -195,6 +196,34 @@ describe('sendOpenRouterGroundedChat', () => {
     const [, , lastPart] =
       (body.messages as { content: object[] }[])[0]?.content ?? [];
     expect(lastPart).not.toHaveProperty('cache_control');
+  });
+
+  it('sends no more than the provider allows, in route order, and logs what it dropped', async () => {
+    const warn = vi.spyOn(logger, 'warn');
+    const { fetchMock, call } = captureFetch();
+
+    await sendOpenRouterGroundedChat(
+      {
+        ...BASE_REQUEST,
+        model: 'test/first',
+        fallbackModels: ['test/first', 'test/second', 'test/third', 'test/4th'],
+      },
+      { fetch: fetchMock },
+    );
+
+    const preset = `@preset/${OPENROUTER_TEST_PLAN_PRESET}`;
+    expect(call().body.models).toEqual([
+      `test/first${preset}`,
+      `test/second${preset}`,
+      `test/third${preset}`,
+    ]);
+    expect(warn).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'model_route_truncated',
+        droppedModels: ['test/4th'],
+      }),
+      expect.any(String),
+    );
   });
 
   it('caps max_tokens at the default ceiling for catalog models with a larger one', async () => {

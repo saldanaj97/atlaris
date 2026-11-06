@@ -32,6 +32,44 @@ export function planAiCeilingMicrousd(tier: SubscriptionTier): number {
 }
 
 /**
+ * AI spend ceiling per user per calendar month (UTC), across all of the
+ * user's plans, including deleted ones (DEV-208). New AI work is refused once
+ * a user reaches it; a run already admitted is still bounded by the per-plan
+ * ceiling. Values approved 2026-11-05.
+ */
+export const USER_AI_BUDGET_USD_BY_TIER = {
+  free: 0.25,
+  starter: 7.5,
+  pro: 30,
+} as const satisfies Record<SubscriptionTier, number>;
+
+export function userAiCeilingMicrousd(tier: SubscriptionTier): number {
+  return Math.round(USER_AI_BUDGET_USD_BY_TIER[tier] * MICROUSD_PER_USD);
+}
+
+/**
+ * Second layer behind the per-user ceiling (DEV-208): each tier's total AI
+ * spend per UTC day, so a surge on one tier (say, free sign-ups on launch day)
+ * cannot pause the others. New AI work pauses for that tier at its ceiling,
+ * and Sentry gets a new issue each day a tier's spend first passes each alert
+ * share. Keep each ceiling under that tier's OpenRouter key limit, so the app
+ * stops cleanly before the provider starts failing calls.
+ */
+export const TIER_AI_DAILY_BUDGET: {
+  readonly ceilingUsdByTier: Readonly<Record<SubscriptionTier, number>>;
+  readonly alertShares: readonly number[];
+} = {
+  ceilingUsdByTier: { free: 2, starter: 3, pro: 5 },
+  alertShares: [0.5, 0.8],
+};
+
+export function tierAiDailyCeilingMicrousd(tier: SubscriptionTier): number {
+  return Math.round(
+    TIER_AI_DAILY_BUDGET.ceilingUsdByTier[tier] * MICROUSD_PER_USD,
+  );
+}
+
+/**
  * One call's cost in micro-USD: the provider-reported cost, else the catalog
  * estimate. Matches how `sumPlanAiSpendMicrousd` reads `ai_usage_events`.
  */

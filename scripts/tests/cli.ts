@@ -38,7 +38,7 @@ function usage(): never {
       '  pnpm test unit [--changed] [paths...]',
       '  pnpm test integration [--changed] [paths...]',
       '  pnpm test security',
-      '  pnpm test smoke [options]',
+      '  pnpm test smoke [--smoke-step=db] [-- playwright args]',
       '  pnpm test all',
       '',
       `Add ${NATIVE_DB_FLAG} to any suite to use the native Supabase "test" stack`,
@@ -122,8 +122,24 @@ function securityPhase(): TestPhase {
   };
 }
 
+function isSmokeRunnerOption(arg: string): boolean {
+  return arg.startsWith('--smoke-step=');
+}
+
+/** `run.ts` only reads Playwright args after `--`, so always pass them there. */
 function smokePhase(args: readonly string[]): TestPhase {
-  const forwardedArgs = args[0] === '--' ? args.slice(1) : args;
+  const separator = args.indexOf('--');
+  const own = separator === -1 ? args : args.slice(0, separator);
+  const afterSeparator = separator === -1 ? [] : args.slice(separator + 1);
+  const playwrightArgs = [
+    ...own.filter((arg) => !isSmokeRunnerOption(arg)),
+    ...afterSeparator,
+  ];
+  const forwardedArgs = [
+    ...own.filter(isSmokeRunnerOption),
+    ...(playwrightArgs.length > 0 ? ['--', ...playwrightArgs] : []),
+  ];
+
   return {
     label:
       forwardedArgs.length > 0 ? `smoke ${forwardedArgs.join(' ')}` : 'smoke',

@@ -3,6 +3,7 @@ import type {
   NewGenerationBudgetCut,
 } from '@/lib/db/queries/types/generation-budget-cuts.types';
 import type { DbClient } from '@/lib/db/types';
+import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   canonicalUsageToRecordParams,
@@ -14,7 +15,9 @@ import {
   aiUsageEvents,
   generationAttempts,
   generationBudgetCuts,
+  learningPlans,
   planResearch,
+  users,
 } from '@supabase/schema';
 import { and, count, eq, gte, max, sql } from 'drizzle-orm';
 
@@ -60,6 +63,75 @@ export async function sumPlanAiSpendMicrousd(
         and(
           eq(planResearch.planId, planId),
           since ? gte(planResearch.createdAt, since) : undefined,
+        ),
+      ),
+  ]);
+  return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
+}
+
+const usageEventCostSql = sql<
+  string | null
+>`sum(COALESCE(${aiUsageEvents.providerCostMicrousd}, ${aiUsageEvents.costCents}::bigint * 10000))`;
+const researchCostSql = sql<string | null>`sum(${planResearch.costMicrousd})`;
+
+/**
+ * One user's AI spend in micro-USD since `since`, costed like
+ * {@link sumPlanAiSpendMicrousd}. Usage events keep `user_id` when their plan
+ * is deleted, so deleting a plan does not reset the total.
+ *
+ * `plan_research` is left out on purpose: its rows are deleted with the plan,
+ * so counting them would let a user reset research spend by deleting a plan.
+ * Successful grounded research is therefore not yet in this total; grounded
+ * generation stays off through launch (DEV-163, DEV-208).
+ */
+export async function sumUserAiSpendMicrousd(
+  userId: string,
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  const [usage] = await dbClient
+    .select({ spent: usageEventCostSql })
+    .from(aiUsageEvents)
+    .where(
+      and(
+        eq(aiUsageEvents.userId, userId),
+        gte(aiUsageEvents.createdAt, since),
+      ),
+    );
+  return Number(usage?.spent ?? 0);
+}
+
+/**
+ * AI spend in micro-USD since `since` by every user now on `tier`, research
+ * runs included. Spend follows the user's current tier, so a user who
+ * upgrades mid-day carries that day's spend into the new tier. Needs the
+ * service-role client: RLS would limit the sum to one user.
+ */
+export async function sumTierAiSpendMicrousd(
+  tier: SubscriptionTier,
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  const [usage, research] = await Promise.all([
+    dbClient
+      .select({ spent: usageEventCostSql })
+      .from(aiUsageEvents)
+      .innerJoin(users, eq(users.id, aiUsageEvents.userId))
+      .where(
+        and(
+          eq(users.subscriptionTier, tier),
+          gte(aiUsageEvents.createdAt, since),
+        ),
+      ),
+    dbClient
+      .select({ spent: researchCostSql })
+      .from(planResearch)
+      .innerJoin(learningPlans, eq(learningPlans.id, planResearch.planId))
+      .innerJoin(users, eq(users.id, learningPlans.userId))
+      .where(
+        and(
+          eq(users.subscriptionTier, tier),
+          gte(planResearch.createdAt, since),
         ),
       ),
   ]);

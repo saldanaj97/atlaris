@@ -13,6 +13,7 @@ import {
   PRICING_COMPARISON_ROWS,
   PRICING_TIER_BY_CLERK_SLUG,
 } from '@/app/(landing)/pricing/pricing-plan-features';
+import { Badge } from '@/components/ui/badge';
 import { CLERK_BILLING_PLAN_SLUGS } from '@/features/billing/clerk-billing/plan-mapping';
 import { useScrollCue } from '@/hooks/useScrollCue';
 import { cn } from '@/lib/utils';
@@ -22,6 +23,10 @@ import { useRef, type ReactNode } from 'react';
 import styles from './PricingCards.module.css';
 
 type PricingCardsProps = {
+  /** The plan the viewer is on; its card carries a "Current plan" badge. */
+  currentPlanSlug?: string | null;
+  /** The plan whose card and action get the page's emphasis. */
+  featuredPlanSlug?: string;
   loading?: boolean;
   period: BillingPeriod;
   plans: readonly PricingPlan[];
@@ -35,6 +40,8 @@ type PricingCardsProps = {
 
 /* oxlint-disable jsx-a11y/no-noninteractive-tabindex -- the named overflow region is intentionally tabbable so keyboard users can scroll the comparison table. */
 export function PricingCards({
+  currentPlanSlug = null,
+  featuredPlanSlug = CLERK_BILLING_PLAN_SLUGS.starter,
   loading = false,
   onPeriodChange,
   period,
@@ -97,9 +104,7 @@ export function PricingCards({
                 aria-labelledby={titleId}
                 className={styles.card}
                 data-featured={
-                  plan.slug === CLERK_BILLING_PLAN_SLUGS.starter
-                    ? 'true'
-                    : undefined
+                  plan.slug === featuredPlanSlug ? 'true' : undefined
                 }
                 data-pricing-card
                 key={`${plan.id}-${plan.slug}`}
@@ -108,9 +113,14 @@ export function PricingCards({
                 <span aria-hidden className={styles.cardUnderGlow} />
                 <header className={styles.cardHeader}>
                   <div className={styles.cardTitleContainer}>
-                    <h2 className={styles.cardTitle} id={titleId}>
-                      {plan.name}
-                    </h2>
+                    <div className={styles.cardTitleRow}>
+                      <h2 className={styles.cardTitle} id={titleId}>
+                        {plan.name}
+                      </h2>
+                      {plan.slug === currentPlanSlug ? (
+                        <Badge>Current plan</Badge>
+                      ) : null}
+                    </div>
                     <p className={styles.cardDescription}>{plan.description}</p>
                   </div>
                   <div>

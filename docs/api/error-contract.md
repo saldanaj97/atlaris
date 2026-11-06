@@ -65,19 +65,33 @@ Stable machine-readable codes for Free lifetime admission, selection, and
 content access. HTTP statuses are fixed; reuse existing quota `429` mapping
 for regeneration overage (`REGENERATION_QUOTA_EXCEEDED`).
 
-| Code                                | HTTP | Thrown in this contract                                  |
-| ----------------------------------- | ---- | -------------------------------------------------------- |
-| `FREE_PLAN_ALLOWANCE_USED`          | 403  | Free second initial create                               |
-| `FREE_PLAN_GENERATION_IN_PROGRESS`  | 409  | Another Free initial attempt is in progress              |
-| `FREE_PLAN_SELECTION_REQUIRED`      | 409  | Downgrade with 2+ unselected plans                       |
-| `PLAN_ENTITLEMENT_REQUIRED`         | 403  | Direct access to a locked owned plan                     |
-| `PLAN_REGENERATION_NOT_INCLUDED`    | 403  | Free regeneration request (before monthly meter)         |
-| `REGENERATION_QUOTA_EXCEEDED`       | 429  | Paid regeneration monthly overage                        |
-| `PLAN_DURATION_LIMIT_EXCEEDED`      | 403  | Create or regenerate duration exceeds the actor tier cap |
-| `MODEL_NOT_AVAILABLE_FOR_OPERATION` | 403  | Reserved for model-policy API mapping                    |
+| Code                                | HTTP | Thrown in this contract                                                           |
+| ----------------------------------- | ---- | --------------------------------------------------------------------------------- |
+| `FREE_PLAN_ALLOWANCE_USED`          | 403  | Free second initial create                                                        |
+| `FREE_PLAN_GENERATION_IN_PROGRESS`  | 409  | Another Free initial attempt is in progress                                       |
+| `FREE_PLAN_SELECTION_REQUIRED`      | 409  | Downgrade with 2+ unselected plans                                                |
+| `PLAN_ENTITLEMENT_REQUIRED`         | 403  | Direct access to a locked owned plan                                              |
+| `PLAN_REGENERATION_NOT_INCLUDED`    | 403  | Free regeneration request (before monthly meter)                                  |
+| `REGENERATION_QUOTA_EXCEEDED`       | 429  | Paid regeneration monthly overage                                                 |
+| `PLAN_DURATION_LIMIT_EXCEEDED`      | 403  | Create or regenerate duration exceeds the actor tier cap                          |
+| `MODEL_NOT_AVAILABLE_FOR_OPERATION` | 403  | Reserved for model-policy API mapping                                             |
+| `AI_BUDGET_EXHAUSTED`               | 429  | The user reached their monthly AI spend ceiling (DEV-208); `details.resetsAt`     |
+| `AI_GENERATION_PAUSED`              | 503  | The actor's tier reached its daily AI spend ceiling (DEV-208); `details.resetsAt` |
 
 Do not add `MODULE_ENTITLEMENT_REQUIRED`. Clerk Dashboard Features and Clerk `has()` / `Protect` are merchandising only; they are not a second authorization system and do not emit these codes. Constants live in
 `src/shared/constants/api-error-codes.ts`.
+
+## Request admission codes
+
+Checks that run before a route handler (DEV-208):
+
+| Code                     | HTTP | When                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FORBIDDEN`              | 403  | A mutating request (`POST`, `PUT`, `PATCH`, `DELETE`) to an authenticated route whose `Sec-Fetch-Site` is not `same-origin` or `none`, or whose `Origin` host differs from the request host. Message: `Cross-origin request rejected.` (`src/lib/api/request-origin.ts`, called by `withAuth`) |
+| `UNSUPPORTED_MEDIA_TYPE` | 415  | `parseJsonBody` was given a body whose `Content-Type` media type is not `application/json`, checked before the body is read                                                                                                                                                                    |
+| `PAYLOAD_TOO_LARGE`      | 413  | `parseJsonBody` with `maxBytes`: the declared or streamed body is over the cap                                                                                                                                                                                                                 |
+
+Requests with neither `Sec-Fetch-Site` nor `Origin` (scripts, server-to-server calls) pass the origin check; the session is still required.
 
 ## Default status-to-code mapping
 

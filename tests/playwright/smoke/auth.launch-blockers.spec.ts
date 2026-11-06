@@ -9,6 +9,7 @@ import {
   test,
   waitForGeneratedModules,
 } from './fixtures';
+import { randomUUID } from 'node:crypto';
 
 test.describe.configure({ mode: 'serial' });
 // Keep the suite-level timeout above PLAN_GENERATION_TIMEOUT_MS because this
@@ -20,6 +21,7 @@ const ANALYTICS_USAGE_URL = /\/analytics\/usage$/;
 const SETTINGS_URL = /\/settings\/billing$/;
 const MODULE_URL = /\/plans\/[0-9a-f-]{36}\/modules\/[0-9a-f-]{36}$/i;
 const PLAN_URL = /\/plans\/[0-9a-f-]{36}$/i;
+const PLAN_STATUS_PATH = /^\/api\/v1\/plans\/[0-9a-f-]{36}\/status$/i;
 const PLAN_GENERATION_TIMEOUT_MS = 90_000;
 const STANDARD_NAVIGATION_TIMEOUT_MS = 15_000;
 
@@ -46,6 +48,11 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     await expect(page).toHaveURL(/\/plans$/);
     await expectHeading(page, 'Your Plans');
 
+    // Compile the plan route now. A cold compile can outlast mock generation,
+    // and a plan that is already ready on first render never polls.
+    await page.goto(`/plans/${randomUUID()}`);
+    await expectHeading(page, 'Plan not found');
+
     await page.goto('/plans/new');
     await expect(page).toHaveURL(/\/plans\/new$/);
     await expectHeading(page, /what do you want to learn/i);
@@ -57,6 +64,16 @@ test('authenticated launch blockers stay green', async ({ page }) => {
     await selectInlineDropdown(page, 'Weekly hours', planInput.weeklyHours);
     await selectInlineDropdown(page, 'Learning style', planInput.learningStyle);
     await selectInlineDropdown(page, 'Deadline', planInput.deadline);
+
+    let planStatusResponseCount = 0;
+    page.on('response', (response) => {
+      if (
+        response.ok() &&
+        PLAN_STATUS_PATH.test(new URL(response.url()).pathname)
+      ) {
+        planStatusResponseCount += 1;
+      }
+    });
 
     const generationResponsePromise = page.waitForResponse(
       (response) =>
@@ -74,6 +91,10 @@ test('authenticated launch blockers stay green', async ({ page }) => {
 
     const planUrl = page.url();
     await waitForGeneratedModules(page, PLAN_GENERATION_TIMEOUT_MS);
+    expect(
+      planStatusResponseCount,
+      'Expected the plan page to poll for status before modules appeared.',
+    ).toBeGreaterThan(0);
     const generatedModuleLinkCount = await page
       .getByRole('link', { name: /view full module/i })
       .count();

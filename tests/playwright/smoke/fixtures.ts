@@ -78,13 +78,12 @@ export async function selectInlineDropdown(
 
 const PLAN_GENERATION_TIMEOUT_MS = 60_000;
 const MODULE_LINK_VISIBLE_TIMEOUT_MS = 500;
-const PLAN_RELOAD_INTERVAL_MS = 2_000;
+const PLAN_CHECK_INTERVAL_MS = 2_000;
 
 async function checkGeneratedModules(page: Page): Promise<void> {
   const firstModuleLink = page
     .getByRole('link', { name: /view full module/i })
     .first();
-  const emptyState = page.getByText('No modules available yet.');
   const pendingErrorAlert = page
     .getByText(/generation failed|connection issue/i)
     .first();
@@ -105,13 +104,13 @@ async function checkGeneratedModules(page: Page): Promise<void> {
     );
   }
 
-  if (await emptyState.isVisible()) {
-    await page.reload({ waitUntil: 'domcontentloaded' });
-  }
-
   throw new Error('Generated modules are not visible yet.');
 }
 
+/**
+ * Waits on the open page without reloading it: a reload would show a finished
+ * plan even when the page's own status polling is broken.
+ */
 export async function waitForGeneratedModules(
   page: Page,
   timeoutMs = PLAN_GENERATION_TIMEOUT_MS,
@@ -119,7 +118,7 @@ export async function waitForGeneratedModules(
   const emptyState = page.getByText('No modules available yet.');
   try {
     await expect(async () => checkGeneratedModules(page)).toPass({
-      intervals: [PLAN_RELOAD_INTERVAL_MS],
+      intervals: [PLAN_CHECK_INTERVAL_MS],
       timeout: timeoutMs,
     });
   } catch (error) {

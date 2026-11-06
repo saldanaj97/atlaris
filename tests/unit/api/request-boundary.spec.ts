@@ -126,6 +126,52 @@ describe('requestBoundary', () => {
     expect(response.status).toBe(200);
   });
 
+  it('rejects a cross-origin mutation with the canonical 403 before auth', async () => {
+    const run = vi.fn(async () => new Response('ok', { status: 200 }));
+    const handler = createRequestBoundary().route(run);
+
+    const response = await handler(
+      new Request('http://localhost/api', {
+        method: 'POST',
+        headers: { host: 'localhost', origin: 'https://evil.example' },
+      }),
+      { params: Promise.resolve({}) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: 'Cross-origin request rejected.',
+      code: 'FORBIDDEN',
+    });
+    expect(run).not.toHaveBeenCalled();
+    expect(getUserByAuthIdMock).not.toHaveBeenCalled();
+  });
+
+  it('runs a same-origin mutation', async () => {
+    const user = buildUserFixture({
+      id: 'user_same_origin',
+      authUserId: 'auth_same_origin',
+      email: 'same-origin@example.test',
+      name: 'Same Origin User',
+    });
+    setTestUser(user.authUserId);
+    getUserByAuthIdMock.mockResolvedValue(user);
+
+    const handler = createRequestBoundary().route(
+      async () => new Response('ok', { status: 200 }),
+    );
+
+    const response = await handler(
+      new Request('http://localhost/api', {
+        method: 'POST',
+        headers: { 'sec-fetch-site': 'same-origin' },
+      }),
+      { params: Promise.resolve({}) },
+    );
+
+    expect(response.status).toBe(200);
+  });
+
   it('returns canonical 401 on unauthenticated route access', async () => {
     const handler = createRequestBoundary().route(async () => {
       return new Response('ok', { status: 200 });

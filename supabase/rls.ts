@@ -22,7 +22,9 @@ import { drizzle } from 'drizzle-orm/postgres-js';
  * - The cleanup() function MUST be called when done to close the connection
  * - In request handlers, cleanup is automatically called via withAuth() wrapper's finally block
  * - Cleanup is idempotent: safe to call multiple times without errors
- * - Connections have idle_timeout: 20s as a safety net if cleanup is missed
+ * - Connections have an idle timeout as a safety net if cleanup is missed
+ * - A closed connection ends the whole client (see createRlsConnection): role and
+ *   claims live on that one session, so the client never reconnects without them
  * - Always use try/finally pattern to ensure cleanup is called even on errors
  *
  * RLS ARCHITECTURE (SET ROLE + Session Variable Approach):
@@ -56,6 +58,43 @@ function createIdempotentPostgresCleanup(
       options.onConnectionCloseError(error);
     }
   };
+}
+
+/**
+ * Far above any route's maxDuration (60s where set), so a request does not idle out
+ * between queries and the timeout only reclaims connections whose cleanup was missed.
+ */
+const AUTHENTICATED_IDLE_TIMEOUT_SECONDS = 300;
+const ANONYMOUS_IDLE_TIMEOUT_SECONDS = 20;
+
+/**
+ * Opens the single connection behind an RLS client.
+ *
+ * SET ROLE and the JWT claims are session state on this one connection. After any
+ * close (idle timeout, max lifetime, lost socket), postgres-js would open a new
+ * session as the owner role, which has BYPASSRLS, with neither applied. So the first
+ * close ends the client: queued and later queries reject with CONNECTION_ENDED
+ * instead of running without RLS.
+ */
+function createRlsConnection(idleTimeoutSeconds: number): Sql {
+  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
+  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
+  // Callers SET ROLE to a role that lacks BYPASSRLS before running any query.
+  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
+  const sql: Sql = postgres(connectionUrl, {
+    max: 1, // Single connection per client (important for session variable isolation)
+    idle_timeout: idleTimeoutSeconds,
+    connect_timeout: 10, // Timeout for connection attempts
+    onclose: () => {
+      sql.end({ timeout: 0 }).catch((error: unknown) => {
+        logger.warn(
+          { error },
+          'Failed to end RLS client after connection close',
+        );
+      });
+    },
+  });
+  return sql;
 }
 
 export type RlsClient = DbClient;
@@ -98,16 +137,9 @@ export async function createAuthenticatedRlsClient(
 ): Promise<RlsClientResult> {
   const jwtClaims = JSON.stringify({ sub: authUserId });
 
-  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
-  // We use SET ROLE to switch to authenticated role which lacks BYPASSRLS.
-  // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
-  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
-  const sql: Sql = postgres(connectionUrl, {
-    max: 1, // Single connection per client (important for session variable isolation)
-    idle_timeout: options?.idleTimeout ?? 20, // Default 20s; stream routes use longer timeouts
-    connect_timeout: 10, // Timeout for connection attempts
-  });
+  const sql = createRlsConnection(
+    options?.idleTimeout ?? AUTHENTICATED_IDLE_TIMEOUT_SECONDS,
+  );
 
   // Switch to authenticated role (without BYPASSRLS privilege)
   // CRITICAL: Must await to ensure role is switched before setting session variable
@@ -161,20 +193,9 @@ export async function createAuthenticatedRlsClient(
  * }
  * ```
  */
-// Anonymous sessions are short-lived (auth redirects, public pages) so
-// idle_timeout is fixed at 20s. Only authenticated stream connections
-// need the configurable timeout (up to 180s for AI generation).
+// Anonymous sessions are short-lived (auth redirects, public pages).
 export async function createAnonymousRlsClient(): Promise<RlsClientResult> {
-  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
-  // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
-  // We use SET ROLE to switch to anon role which lacks BYPASSRLS.
-  // Must use non-pooling connection because poolers may not handle SET ROLE correctly.
-  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
-  const sql: Sql = postgres(connectionUrl, {
-    max: 1, // Single connection per client
-    idle_timeout: 20,
-    connect_timeout: 10,
-  });
+  const sql = createRlsConnection(ANONYMOUS_IDLE_TIMEOUT_SECONDS);
 
   // Switch to anon role (without BYPASSRLS privilege)
   // CRITICAL: Must await to ensure role is switched before setting session variable

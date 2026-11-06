@@ -8,7 +8,7 @@ import {
 } from '../workflow-instance';
 import { moduleLessonsInstanceId } from '../workflows/module-lessons/instance-id';
 import { MODULE_LESSONS_JOB } from '../workflows/module-lessons/run';
-import { unauthorizedResponse, verifySignedRequest } from './signature';
+import { signatureFailureResponse, verifySignedRequest } from './signature';
 import {
   type ModuleLessonsStartCommand,
   moduleLessonsStartCommandSchema,
@@ -54,7 +54,7 @@ export async function handleModuleLessonsStart(
 ): Promise<Response> {
   const verification = await verifySignedRequest(request, deps.env, deps.nowMs);
   if (!verification.ok) {
-    return unauthorizedResponse();
+    return signatureFailureResponse(verification);
   }
 
   const command = parseBody(verification.body);
