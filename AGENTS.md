@@ -108,7 +108,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Testing
 
-- `.cursor/rules/selective-verification.mdc` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
+- `.agents/rules/selective-verification.md` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
 - Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
 - Report the checks actually run and their outcomes. A skipped check is not a pass.
 

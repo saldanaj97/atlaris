@@ -10,7 +10,7 @@ This directory is the maintained source for verifying user-facing Atlaris behavi
 - Never drive `:3000` or any instance this run did not start.
 - One mode at a time. Cleanup before switching anon ↔ auth.
 - Auth uses the seeded local product-testing user, mock AI, and fixture pricing (checkout disabled). The seed creates three fixed plus 42 additional ready plans, so a fresh auth dashboard is resume, not empty.
-- Put proof under `.cursor/skills/verify-atlaris/artifacts/<run-id>/<feature-id>/`. Cleanup must not delete it.
+- Put proof under `.agents/skills/verify-atlaris/artifacts/<run-id>/<feature-id>/`. Cleanup must not delete it.
 
 ## Driving conventions
 
