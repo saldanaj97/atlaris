@@ -1,7 +1,7 @@
 {
   "lock_version": 1,
-  "generated_at": "2026-11-06T22:54:47Z",
-  "commit": "64fdd02171cd3187e80797dd36c473383bf9d8ce",
+  "generated_at": "2026-11-09T15:31:38Z",
+  "commit": "44c8bb66f25fd06993d6ce1745174beb756066ef",
   "working_tree_dirty": false,
   "dirty_paths": [],
   "dirty_check": "git status --porcelain excluding docs/codemap (the generator's own output)",
@@ -144,7 +144,7 @@
       "kind": "service"
     },
     "db-layer": {
-      "fingerprint": "41d265e47815af705ddc6876f59efa0535f4c344fe45f0e24e1a76e4acd90c7e",
+      "fingerprint": "57ac8dd4d336d6f5b6033a35a7a12751081f350d27e0bd0ee4653a220f156ee8",
       "file_count": 151,
       "paths": [
         "src/lib/db",
@@ -153,7 +153,7 @@
       "kind": "module"
     },
     "shared-core": {
-      "fingerprint": "4f2e84cce79abb97fef0f7ca5b26f73742389be2ed17957edcbc9fd61aacd179",
+      "fingerprint": "de5e117faf0bb0535837d7fca277a8822a23b375d51b7f2a89d68f718f392528",
       "file_count": 78,
       "paths": [
         "src/shared",
@@ -178,7 +178,7 @@
       "kind": "module"
     },
     "postgres": {
-      "fingerprint": "c5000e99b34d59a2230bf557359bb437e85fe45ec779779a994b4fb561624856",
+      "fingerprint": "ae49d06f01b8ba3baf10db6ddab18635d25f546ccf133421067975da3e162f16",
       "file_count": 4,
       "paths": [
         "supabase/schema/index.ts",
@@ -258,7 +258,7 @@
   },
   "unmapped_top_level": {
     "(root files)": {
-      "fingerprint": "a17c410a775499a112946308a3382e76f21d314ed7333657241e91bdb07ca6b0",
+      "fingerprint": "34e6f435b3ff9345ef5c9ed3ef41c59d979e3be00d21c9a4b52a72ac5f451f68",
       "file_count": 32
     },
     ".agents": {
@@ -290,7 +290,7 @@
       "file_count": 1
     },
     "docs": {
-      "fingerprint": "e69e6d0a6569338d71d5145d85374a78a544b377828c5f547c7795fede425ef7",
+      "fingerprint": "8bf84b8ed0770478d19fd0342759253e8fd38a3bff89de8c5445e8c7b8e9bbd9",
       "file_count": 49
     },
     "public": {
@@ -302,7 +302,7 @@
       "file_count": 43
     },
     "tests": {
-      "fingerprint": "f35773c0182df957eb2a4e02fd47914751a8bbf5597c6a2e8cba249dfea48385",
+      "fingerprint": "523dd2806cb13d0022f7e5f74dc0d117af2a184704ae1b09e17c2d7038283ef2",
       "file_count": 536
     }
   }

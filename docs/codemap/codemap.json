@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-06T22:54:47Z",
-  "generated_from_commit": "64fdd02171cd3187e80797dd36c473383bf9d8ce",
+  "generated_at": "2026-11-09T15:31:38Z",
+  "generated_from_commit": "44c8bb66f25fd06993d6ce1745174beb756066ef",
   "scope": [
     "src",
     "supabase",
@@ -1453,7 +1453,7 @@
         "src/features/notifications",
         "src/shared/notifications"
       ],
-      "role": "Email notification delivery service (recipient selection, content, Resend adapter, signed unsubscribe, delivery monitor) run by the jobs Worker's email Workflow.",
+      "role": "Email notification delivery service (recipient selection, content, Resend adapter, signed unsubscribe) run by the jobs Worker's email Workflow.",
       "entrypoints": [
         {
           "path": "src/features/notifications/email/delivery-service.ts",
@@ -1711,6 +1711,7 @@
         }
       ],
       "code_names": [
+        "job-queue",
         "jobs",
         "jobs-worker",
         "dispatch"
@@ -6800,7 +6801,7 @@
     {
       "rank": 14,
       "word": "signed command",
-      "code_name": "jobs / jobs-worker / dispatch",
+      "code_name": "job-queue / jobs / jobs-worker",
       "path": "src/features/job-queue",
       "change": "word",
       "severity": "low",
