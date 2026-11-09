@@ -139,8 +139,7 @@ type PlanStatusUpdateClient = Pick<DbClient, 'update'>;
  * is the durable cap reservation (`generating` + `isQuotaEligible=false`).
  *
  * Only touches `generationStatus` and `updatedAt` — callers retain full
- * control of transaction boundaries, advisory locks, and JWT claim
- * reapplication.
+ * control of transaction boundaries and advisory locks.
  */
 export async function setLearningPlanGenerating(
   tx: PlanStatusUpdateClient,

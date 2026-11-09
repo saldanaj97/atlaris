@@ -1,4 +1,4 @@
-import type { EmailNotificationDeliveryRunAction } from '@/features/notifications/email/workflows/email-notification-delivery.types';
+import type { EmailNotificationDeliveryRunAction } from '@/features/notifications/email/contracts/email-notification-delivery.types';
 import type { EmailNotificationDeliveryRunKind } from '@supabase/schema';
 
 import { jobsWorkerEnv } from '@/lib/config/env/jobs-worker';

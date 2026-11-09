@@ -10,7 +10,10 @@ import {
   resolveRegenerationPolicyDenial,
 } from './admission';
 import { groundedRegenerationPlanCap } from '@/features/billing/regeneration-quota-boundary';
-import { JOB_TYPES, type PlanRegenerationJobData } from '@/features/jobs/types';
+import {
+  JOB_TYPES,
+  type PlanRegenerationJobData,
+} from '@/features/job-queue/types';
 
 type EnqueuedRegenerationWork =
   | { kind: 'enqueued'; jobId: string }

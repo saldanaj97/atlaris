@@ -39,10 +39,6 @@ import {
   lockPlanLifecycle,
 } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
@@ -158,9 +154,11 @@ export async function findAttemptWithWorkflowIdempotencyKey(params: {
  * in all params. Do not add default getDb() or make dbClient optional.
  *
  * Production callers pass serviceRoleDb from feature-owned generation boundaries
- * after request auth and ownership checks. JWT claim replay in transactions is a
- * no-op for service-role; it remains for any legacy RLS-scoped callers/tests.
- * See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
+ * after request auth and ownership checks. RLS-scoped clients are one dedicated
+ * session opened from POSTGRES_URL_NON_POOLING (createRlsConnection throws
+ * without it), so their JWT claims stay set for the whole session and nothing
+ * re-applies them inside a transaction (see docs/technical-debt.md).
+ * See supabase/AGENTS.md § "RLS Rules".
  */
 
 /**
@@ -198,11 +196,8 @@ export async function reserveAttemptSlot(
     input,
   );
 
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     await lockUserPlanAdmission(tx, userId);
     await lockPlanLifecycle(tx, planId);

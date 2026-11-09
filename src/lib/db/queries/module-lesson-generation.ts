@@ -15,10 +15,6 @@ import {
 } from '@/features/billing/usage-metrics';
 import { executeRows } from '@/lib/db/execute-rows';
 import { lockPlanLifecycle } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { ModuleLessonGenerationMetadataSchema } from '@/shared/schemas/lesson-content.schemas';
 import { learningPlans, modules, tasks } from '@supabase/schema';
 import {
@@ -371,10 +367,7 @@ export async function claimModuleLessonGenerationOrDescribe(
     ? new Date(options.workflow.startedAt)
     : now();
 
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
   return dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
     await lockPlanLifecycle(tx, planId);
 
     const [parent] = await tx
@@ -550,11 +543,7 @@ export async function commitModuleLessonBatchSuccess(
     input.requestId,
   );
 
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
   await dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
     const currentTasks = await tx
       .select({ id: tasks.id })
       .from(tasks)
@@ -622,11 +611,8 @@ export async function commitModuleLessonGenerationFailure(
   const usageParams = input.usage
     ? await canonicalUsageToRecordParams(input.usage, input.userId)
     : null;
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
 
   await dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
     const moduleUpdated = await tx
       .update(modules)
       .set({

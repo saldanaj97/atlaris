@@ -8,7 +8,7 @@ import type {
   RegenerationRunResult,
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
-} from '@/features/jobs/regeneration-run';
+} from '@/features/job-queue/regeneration-run';
 import type { DbClient } from '@/lib/db/types';
 import type { Logger } from '@/lib/logging/logger';
 

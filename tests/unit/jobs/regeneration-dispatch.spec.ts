@@ -1,4 +1,4 @@
-import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
+import { dispatchRegenerationToWorker } from '@/features/job-queue/regeneration-dispatch';
 import { describe, expect, it, vi } from 'vitest';
 
 const input = { jobId: 'job-1', planId: 'plan-1', userId: 'user-1' };

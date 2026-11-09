@@ -11,7 +11,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
   parseGenerationPurpose,
-  resolveLegacyWorkflowGenerationPurpose,
+  resolveWorkflowGenerationPurpose,
   type GenerationPurpose,
 } from '@/shared/types/generation-purpose';
 
@@ -124,7 +124,7 @@ export function fromSerializableReservation(
       : {}),
     promptHash: reservation.promptHash,
     sanitized: reservation.sanitized,
-    generationPurpose: resolveLegacyWorkflowGenerationPurpose(
+    generationPurpose: resolveWorkflowGenerationPurpose(
       reservation.generationPurpose,
       fallbackPurpose,
     ),

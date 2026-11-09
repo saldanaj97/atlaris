@@ -1,7 +1,7 @@
 {
   "lock_version": 1,
-  "generated_at": "2026-11-06T18:03:43Z",
-  "commit": "f7a3e028f2d38df80d4bd99c5cbe5f22abc974ed",
+  "generated_at": "2026-11-09T15:31:38Z",
+  "commit": "44c8bb66f25fd06993d6ce1745174beb756066ef",
   "working_tree_dirty": false,
   "dirty_paths": [],
   "dirty_check": "git status --porcelain excluding docs/codemap (the generator's own output)",
@@ -39,8 +39,8 @@
   },
   "modules": {
     "web-ui": {
-      "fingerprint": "5720a8133f013cafbc0fc085caab2cc4c09ca0be8c0913650e7e147ea531f986",
-      "file_count": 293,
+      "fingerprint": "5571be685d402238f573d14b482a1f9e9d305eb85903005b00b05aaf690facca",
+      "file_count": 292,
       "paths": [
         "src/app/(app)",
         "src/app/(auth)",
@@ -63,7 +63,7 @@
       "kind": "module"
     },
     "api-routes": {
-      "fingerprint": "6af7f528b74ec70bab50410534851f8177c239254487fcb2d551e5356faa9c4b",
+      "fingerprint": "004ef50392e256055eea21f3b6439bee15c59d26ea24bdaa39783447ed436d25",
       "file_count": 29,
       "paths": [
         "src/app/api"
@@ -85,7 +85,7 @@
       "kind": "module"
     },
     "plans": {
-      "fingerprint": "10053719f7191172f7efdad66f5dd2ee991368102c7750d9f4a6b02d707ca067",
+      "fingerprint": "af5ec3686865c73a20d48d075ef107d4c2c5093827bb9547de059cf9e1ac2da2",
       "file_count": 68,
       "paths": [
         "src/features/plans"
@@ -93,7 +93,7 @@
       "kind": "module"
     },
     "ai-generation": {
-      "fingerprint": "c22f3fe5d90e9ae578877f7d683cc4586db46799b7181d2f54798fdd569a2d4d",
+      "fingerprint": "472140076b6ada76736ded1632ff53b7466e683e628b8e394dcecfc14748eb60",
       "file_count": 47,
       "paths": [
         "src/features/ai"
@@ -101,7 +101,7 @@
       "kind": "module"
     },
     "lesson-content": {
-      "fingerprint": "32cb67f4c740c1383724d0b62f88531421844d359e5418648a0d4737323b1c06",
+      "fingerprint": "d084ee2f0ddd728f1f89ed140e14c6238b347b58def76530587eb204d750fa28",
       "file_count": 17,
       "paths": [
         "src/features/lesson-content"
@@ -109,7 +109,7 @@
       "kind": "module"
     },
     "billing": {
-      "fingerprint": "75529c0eadeab1c158e4f0e1ae2742b2a64c230b3ebf2e8d8ae370ecb96e051a",
+      "fingerprint": "d7f1035d8c2b7d20e18929c8ea19d2efd958940aef75a15b515831aa5731b0c9",
       "file_count": 15,
       "paths": [
         "src/features/billing",
@@ -118,8 +118,8 @@
       "kind": "module"
     },
     "notifications": {
-      "fingerprint": "b2fd9829425741146586c10bc6f9b0b2622012d7f1e7c6a2aa41d8ddac11a1f3",
-      "file_count": 12,
+      "fingerprint": "21aa6ccfac4199836440e838efec02cffe4dd61a03129fd985bd7dbf07984fef",
+      "file_count": 11,
       "paths": [
         "src/features/notifications",
         "src/shared/notifications"
@@ -127,16 +127,16 @@
       "kind": "module"
     },
     "jobs-dispatch": {
-      "fingerprint": "6992677d38e3fd4f75caeccc022edc270fd23055838cb709ffbe8ac1762e6301",
+      "fingerprint": "256dca61d26e4ba7ab8f20a7c6f3f6f87bbfeb63ce78e9c860fcf96b3711e63c",
       "file_count": 11,
       "paths": [
-        "src/features/jobs",
+        "src/features/job-queue",
         "src/lib/jobs-worker"
       ],
       "kind": "module"
     },
     "jobs-worker": {
-      "fingerprint": "917bdc18b04af202a24312515b7730bc6cba6a74cd67ebed104321c3933f44a7",
+      "fingerprint": "56037dc508530f6b939dd745fb749aaf7ee4ea2b0357c3bb3ad4b1f6cbcb1de6",
       "file_count": 42,
       "paths": [
         "workers"
@@ -144,8 +144,8 @@
       "kind": "service"
     },
     "db-layer": {
-      "fingerprint": "3a360ea3903e71fdcd1037e094a16f699bfc32fb4129922afc48edbcf0b6c183",
-      "file_count": 152,
+      "fingerprint": "57ac8dd4d336d6f5b6033a35a7a12751081f350d27e0bd0ee4653a220f156ee8",
+      "file_count": 151,
       "paths": [
         "src/lib/db",
         "supabase"
@@ -153,7 +153,7 @@
       "kind": "module"
     },
     "shared-core": {
-      "fingerprint": "b12c21ee846c03fc0b4a9b35be9543f2acf038334e813566f02d95dab227f8c7",
+      "fingerprint": "de5e117faf0bb0535837d7fca277a8822a23b375d51b7f2a89d68f718f392528",
       "file_count": 78,
       "paths": [
         "src/shared",
@@ -178,7 +178,7 @@
       "kind": "module"
     },
     "postgres": {
-      "fingerprint": "c5000e99b34d59a2230bf557359bb437e85fe45ec779779a994b4fb561624856",
+      "fingerprint": "ae49d06f01b8ba3baf10db6ddab18635d25f546ccf133421067975da3e162f16",
       "file_count": 4,
       "paths": [
         "supabase/schema/index.ts",
@@ -199,7 +199,7 @@
       "kind": "external"
     },
     "openrouter": {
-      "fingerprint": "2c553c0da7ba30e3c6e6de11fd5b57e7b4e71458a28faeef7f7e99ba3790ccbb",
+      "fingerprint": "837353c8744cd4befd19d2eba5d1aca1821f6255f362236c24de96f0d87fa7e5",
       "file_count": 2,
       "paths": [
         "src/features/ai/providers/openrouter.ts",
@@ -224,7 +224,7 @@
       "kind": "external"
     },
     "cf-queue": {
-      "fingerprint": "05641e7196253924c38d2485379dafe9b86caac8b290cc10973e3d81905ba2fd",
+      "fingerprint": "8af20233d8187b756bdeb1d66ab866f729670dab99d6044fe461c59402913338",
       "file_count": 4,
       "paths": [
         "workers/jobs/cloudflare.config.ts",
@@ -235,7 +235,7 @@
       "kind": "queue"
     },
     "cf-workflows": {
-      "fingerprint": "9889923ab51dfabee16e135bc0c81927ac175f4c58f7530b5fdf577a2397ddd8",
+      "fingerprint": "c0bdfd148487e25ce95b7aa2e69eb1e01ab9f0161705d9ec0aa4ecf80574526d",
       "file_count": 15,
       "paths": [
         "workers/jobs/cloudflare.config.ts",
@@ -258,12 +258,12 @@
   },
   "unmapped_top_level": {
     "(root files)": {
-      "fingerprint": "f5f6448c170297d5a017f427bad759ec4d236b5279e23035d94174d3d49770b1",
+      "fingerprint": "34e6f435b3ff9345ef5c9ed3ef41c59d979e3be00d21c9a4b52a72ac5f451f68",
       "file_count": 32
     },
     ".agents": {
-      "fingerprint": "3a82cf560463a01d08aa029b4d3e7f90fcfaa9e31e5e5d2285541d2f09ffc95a",
-      "file_count": 63
+      "fingerprint": "7ca42b36ef7ed685dc4866352b71f8ab025cb4e7aaf2885e17e7a208cdbebc6e",
+      "file_count": 71
     },
     ".circleci": {
       "fingerprint": "9164038bead348ddbdd5bfbbf61284abbe136a4f045182bdc6514ef19018ac64",
@@ -276,10 +276,6 @@
     ".codex": {
       "fingerprint": "cb3a37a19efc69b49d62b44ddcebda0234dd601ccaf21a15ff85add6a0db2bc9",
       "file_count": 2
-    },
-    ".cursor": {
-      "fingerprint": "c8824a833a38bd7086454be35c818849db36c10bfc3067701a9135deb56212e7",
-      "file_count": 16
     },
     ".github": {
       "fingerprint": "5332aea81ec3f05ea7ad28fee48f6946f2045b973d7c55475afbb655f294e633",
@@ -294,20 +290,20 @@
       "file_count": 1
     },
     "docs": {
-      "fingerprint": "c48fd512e8d847fa4cc40bd725e59e8ff286e79e495670f4cd5bc3ed5f342637",
-      "file_count": 48
+      "fingerprint": "8bf84b8ed0770478d19fd0342759253e8fd38a3bff89de8c5445e8c7b8e9bbd9",
+      "file_count": 49
     },
     "public": {
       "fingerprint": "33798ccaaf2952b7ddd28cdf81f1fbd621ce5a2a01f5b361699396847c057472",
       "file_count": 18
     },
     "scripts": {
-      "fingerprint": "8dc2c2606e2c963ed52eea183f4e2ad7d14d49be7fdcac1996d9a86af6d1e966",
+      "fingerprint": "6c2da9e224a509be6e0a5625a3950439b6049e6889d805e9d59d2f8acf6a6161",
       "file_count": 43
     },
     "tests": {
-      "fingerprint": "63299edcdab62ae70ff9d5b0958dd7f49524db9fff0ccf13282bf8c3d94d0336",
-      "file_count": 537
+      "fingerprint": "523dd2806cb13d0022f7e5f74dc0d117af2a184704ae1b09e17c2d7038283ef2",
+      "file_count": 536
     }
   }
 }

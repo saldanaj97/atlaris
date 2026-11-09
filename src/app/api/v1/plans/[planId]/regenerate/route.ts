@@ -5,7 +5,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import { validateModelForTier } from '@/features/ai/model-resolver';
 import { assertAiSpendAllowed } from '@/features/billing/ai-spend-guard';
-import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
+import { dispatchRegenerationToWorker } from '@/features/job-queue/regeneration-dispatch';
 import { requireUuidRouteParam } from '@/features/plans/api/route-context';
 import { throwPlanEntitlementRequired } from '@/features/plans/entitlement/errors';
 import { createDefaultRegenerationOrchestrationDeps } from '@/features/plans/regeneration-orchestration/deps';

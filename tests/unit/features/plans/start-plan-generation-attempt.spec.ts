@@ -1,4 +1,4 @@
-import type { PlanGenerationDispatchResult } from '@/features/jobs/plan-generation-dispatch';
+import type { PlanGenerationDispatchResult } from '@/features/job-queue/plan-generation-dispatch';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';

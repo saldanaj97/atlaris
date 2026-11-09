@@ -10,6 +10,11 @@ import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.type
  * through the injected `startModuleLessons`.
  */
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
+import type {
+  PlanRegenerationWorkflowClaimResult,
+  PlanRegenerationWorkflowResult,
+  PlanRegenerationWorkflowTerminalResult,
+} from '@/features/plans/contracts/plan-regeneration.types';
 import type { GenerationRunResult } from '@/features/plans/lifecycle/service';
 import type {
   GeneratedModule,
@@ -18,11 +23,6 @@ import type {
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { PlanRegenerationJobPayload } from '@/features/plans/regeneration-orchestration/schema';
 import type { ResearchBrief } from '@/features/plans/research/contract';
-import type {
-  PlanRegenerationWorkflowClaimResult,
-  PlanRegenerationWorkflowResult,
-  PlanRegenerationWorkflowTerminalResult,
-} from '@/features/plans/workflows/plan-regeneration.types';
 import type {
   AttemptRejection,
   AttemptReservation,
@@ -45,8 +45,8 @@ import {
   failJob,
   loadJobById,
   updateJobPayload,
-} from '@/features/jobs/queue';
-import { JOB_TYPES, type Job } from '@/features/jobs/types';
+} from '@/features/job-queue/queue';
+import { JOB_TYPES, type Job } from '@/features/job-queue/types';
 import { toLessonResearch } from '@/features/lesson-content/grounded-lesson-writer';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { createGroundedOutlineProvider } from '@/features/plans/outline/grounded-writer';
@@ -175,7 +175,7 @@ type PreparedRegeneration = LoadedRegeneration & {
   readonly tier: SubscriptionTier;
   readonly grounded: boolean;
   readonly modelOverride?: string;
-  /** The grounded outline writer pick (JCS-169); legacy slots never apply. */
+  /** The grounded outline writer pick (JCS-169); standard slots never apply. */
   readonly groundedWriterModelId: string | null;
 };
 

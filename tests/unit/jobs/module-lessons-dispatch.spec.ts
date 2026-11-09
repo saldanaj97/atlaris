@@ -1,6 +1,6 @@
 import type { JobsWorkerCommandResult } from '@/lib/jobs-worker/client';
 
-import { dispatchModuleLessonsToWorker } from '@/features/jobs/module-lessons-dispatch';
+import { dispatchModuleLessonsToWorker } from '@/features/job-queue/module-lessons-dispatch';
 import { sendJobsWorkerCommand } from '@/lib/jobs-worker/client';
 import { describe, expect, it, vi } from 'vitest';
 

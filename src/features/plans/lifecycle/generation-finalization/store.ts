@@ -32,10 +32,6 @@ import {
   assertAttemptIdMatchesReservation,
   persistSuccessfulAttemptInTx,
 } from '@/lib/db/queries/helpers/attempts-persistence-success';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { logger } from '@/lib/logging/logger';
 import { describeGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts, users } from '@supabase/schema';
@@ -71,7 +67,6 @@ export async function commitPlanGenerationSuccess(
     extendedTimeout: input.extendedTimeout,
   });
 
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
   const usageMonth = getCurrentMonth(finishedAt);
   const isInitialSuccess = input.generationPurpose === 'initial';
   const usageParams = await canonicalUsageToRecordParams(
@@ -80,8 +75,6 @@ export async function commitPlanGenerationSuccess(
   );
 
   const attempt = await dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
     const [inProgressAttempt] = await tx
       .select({ metadata: generationAttempts.metadata })
       .from(generationAttempts)
@@ -180,7 +173,6 @@ export async function commitPlanGenerationFailure(
   const nowFn = input.now ?? (() => new Date());
   const finishedAt = nowFn();
   const usageMonth = getCurrentMonth(finishedAt);
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
   const usageParams =
     !input.retryable && input.usage
       ? await canonicalUsageToRecordParams(input.usage, input.userId)
@@ -188,7 +180,6 @@ export async function commitPlanGenerationFailure(
 
   if (input.variant === 'plan_only') {
     await dbClient.transaction(async (tx) => {
-      await reapplyJwtClaimsInTransaction(tx, rlsCtx);
       await markPlanGenerationFailureInTx(tx, input.planId, finishedAt);
       if (usageParams) {
         await recordUsageInTx(tx, { ...usageParams, planId: input.planId });
@@ -215,8 +206,6 @@ export async function commitPlanGenerationFailure(
   });
 
   const attempt = await dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
     const updated = await persistFailedAttemptInTx(tx, {
       attemptId: input.attemptId,
       planId: input.planId,

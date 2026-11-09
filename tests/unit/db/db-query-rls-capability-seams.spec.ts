@@ -299,11 +299,13 @@ describe('DB query RLS capability seams', () => {
   it('covers unlisted feature directories such as jobs and auth', () => {
     const featureFiles = walkSourceFiles(resolve(SRC_ROOT, 'features'));
     const rels = featureFiles.map((file) => srcRelative(file));
-    expect(rels.some((rel) => rel.startsWith('features/jobs/'))).toBe(true);
+    expect(rels.some((rel) => rel.startsWith('features/job-queue/'))).toBe(
+      true,
+    );
     expect(rels.some((rel) => rel.startsWith('features/auth/'))).toBe(true);
     expect(
       collectAmbientGetDbViolations(featureFiles).filter((v) =>
-        v.startsWith('features/jobs/'),
+        v.startsWith('features/job-queue/'),
       ),
     ).toEqual([]);
 
@@ -312,11 +314,11 @@ import { getDb } from '@supabase/runtime';
 export const db = getDb();
 `;
     expect(
-      findRuntimeGetDbImports(forbidden, 'features/jobs/synthetic.ts'),
+      findRuntimeGetDbImports(forbidden, 'features/job-queue/synthetic.ts'),
     ).toEqual(['named getDb import']);
-    expect(findGetDbCallSites(forbidden, 'features/jobs/synthetic.ts')).toEqual(
-      ['<module>'],
-    );
+    expect(
+      findGetDbCallSites(forbidden, 'features/job-queue/synthetic.ts'),
+    ).toEqual(['<module>']);
 
     const typeOnly = `import type { getDb } from '@supabase/runtime';\n`;
     expect(
@@ -328,10 +330,10 @@ export const db = getDb();
 
     const commentOnly = `// import { getDb } from '@supabase/runtime'\nconst x = 1;\n`;
     expect(
-      findRuntimeGetDbImports(commentOnly, 'features/jobs/synthetic.ts'),
+      findRuntimeGetDbImports(commentOnly, 'features/job-queue/synthetic.ts'),
     ).toEqual([]);
     expect(
-      findGetDbCallSites(commentOnly, 'features/jobs/synthetic.ts'),
+      findGetDbCallSites(commentOnly, 'features/job-queue/synthetic.ts'),
     ).toEqual([]);
   });
 

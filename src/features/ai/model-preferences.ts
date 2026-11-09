@@ -3,7 +3,7 @@
  * runtime-only defaults (e.g. `openrouter/free`).
  *
  * Tier access comes from the operation policy and the synced guardrail
- * models, not the legacy PostgreSQL `preferred_ai_model` enum.
+ * models, not the old PostgreSQL `preferred_ai_model` enum.
  */
 
 import type {
@@ -217,7 +217,7 @@ export async function resolveSavedPreferenceForSettings(
 /*
  * Grounded generation (JCS-157). Pro users pick the writer, verifier and
  * advisor models from the role catalogs in `model-operation-policy.ts`. These
- * picks live in their own slots so the legacy ones above stay unchanged.
+ * picks live in their own slots so the standard (non-grounded) ones above stay unchanged.
  */
 
 export const GROUNDED_PICK_ROLES = ['writer', 'verifier', 'advisor'] as const;
@@ -312,7 +312,7 @@ export function resolveGroundedModelPick(
  * The writer model to lead a grounded call (JCS-169): an explicit
  * per-request override in the tier's writer catalog, else the saved Pro writer
  * pick. An off-catalog override falls through rather than masking the pick.
- * The legacy slots above never apply to grounded runs. `null` runs the tier's
+ * The standard slots above never apply to grounded runs. `null` runs the tier's
  * code-owned writers.
  */
 export function resolveGroundedWriterModelId(

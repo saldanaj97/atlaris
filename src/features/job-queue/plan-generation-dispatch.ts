@@ -1,4 +1,4 @@
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 
 import { jobsWorkerEnv } from '@/lib/config/env/jobs-worker';
 import {

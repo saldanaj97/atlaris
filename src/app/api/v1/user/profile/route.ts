@@ -5,10 +5,6 @@ import { AppError, ValidationError } from '@/lib/api/errors';
 import { parseJsonBody } from '@/lib/api/parse-json-body';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { upsertUserAnalyticsTimezone } from '@/lib/db/queries/user-preferences';
 import { logger } from '@/lib/logging/logger';
 import { users } from '@supabase/schema';
@@ -67,10 +63,7 @@ export const PUT = requestBoundary.route(
       );
     }
 
-    const rlsCtx = await prepareRlsTransactionContext(db);
     const responseUser = await db.transaction(async (tx) => {
-      await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
       let nextUser = actor;
 
       if (parsed.data.name !== undefined) {

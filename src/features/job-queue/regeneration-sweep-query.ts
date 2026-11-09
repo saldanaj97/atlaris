@@ -5,7 +5,7 @@
  */
 import type { DbClient } from '@/lib/db/types';
 
-import { JOB_TYPES } from '@/features/jobs/types';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import { jobQueue } from '@supabase/schema';
 import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 

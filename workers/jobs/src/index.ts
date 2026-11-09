@@ -41,7 +41,7 @@ import { PlanGenerationWorkflowEntrypoint } from './workflows/plan-generation';
 import {
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
-} from '@/features/jobs/regeneration-run';
+} from '@/features/job-queue/regeneration-run';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { JOBS_COMMAND_PATHS } from '@/lib/jobs-worker/contract';
 import { createLogger } from '@/lib/logging/logger';

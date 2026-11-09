@@ -1,7 +1,7 @@
 import type { GenerateModuleLessonsResult } from '@/features/lesson-content/generate-module-lessons.types';
 import type { DbClient } from '@/lib/db/types';
 
-import { dispatchModuleLessonsToWorker } from '@/features/jobs/module-lessons-dispatch';
+import { dispatchModuleLessonsToWorker } from '@/features/job-queue/module-lessons-dispatch';
 import { resolveModuleLessonGenerationEnabled } from '@/features/lesson-content/generation-flag';
 import { classifyModuleLessonGenerationPreflight } from '@/features/lesson-content/module-lesson-generation-preflight';
 import {

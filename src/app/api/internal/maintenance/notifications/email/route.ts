@@ -1,9 +1,9 @@
 import {
   dispatchEmailDeliveryToWorker,
   type EmailDeliveryDispatchResult,
-} from '@/features/jobs/email-delivery-dispatch';
+} from '@/features/job-queue/email-delivery-dispatch';
+import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/contracts/email-notification-delivery.types';
 import { resolveEmailNotificationDeliveryEnabled } from '@/features/notifications/email/delivery-flag';
-import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/workflows/email-notification-delivery.types';
 import {
   ConflictError,
   ServiceUnavailableError,

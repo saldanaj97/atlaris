@@ -55,7 +55,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
 const PLAN_ID = '0c834f38-e9e1-4c7d-bdc0-2e28c505256a';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
+import { dispatchRegenerationToWorker } from '@/features/job-queue/regeneration-dispatch';
 
 function regenerate(body: unknown = {}): Promise<Response> {
   return POST(

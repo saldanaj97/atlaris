@@ -20,6 +20,7 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 
 **Docs index:** `[docs/README.md](docs/README.md)` lists every folder and file under `docs/`; open it for any area not listed here. For these areas, open the doc before reading code:
 
+- **Ambiguous names** (plan vs tier, the queue, jobs, worker, proxy vs middleware): `docs/glossary.md`
 - **Plan or lesson generation** (grounded pipeline, Worker workflow steps, per-plan AI ceiling): `docs/architecture/plan-generation-architecture.md`
 - **Model routing, tiers, per-model pricing:** `docs/ai/available-models.md`
 - **Jobs Worker** (`workers/jobs`): `workers/AGENTS.md`, then `docs/architecture/cloudflare-jobs-runtime.md`
@@ -116,6 +117,11 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - Open every PR against `develop`, including each slice of a multi-PR project. Pass `--base develop` to `gh pr create` explicitly; tool defaults target `main`. Never create or target a long-lived track branch (short-lived stacked PRs are fine); put unfinished user-facing behavior behind a fail-closed flag in `src/flags.ts`.
 - Open a `develop` → `main` promotion PR only when asked. Promotions are batched (at most daily, or per milestone) and merged with a merge commit, never squash or rebase, so no `main` → `develop` merge-back is needed. Details: `docs/ci/branching-strategy.md`.
+
+## Commits and PRs
+
+- Author and commit as the repo owner (`Juan Saldana <saldanaj97@gmail.com>`), never as "Claude" or `noreply@anthropic.com`. In a fresh environment run `git config user.name "Juan Saldana" && git config user.email saldanaj97@gmail.com` before the first commit.
+- No Claude attribution anywhere: no `Co-Authored-By: Claude ...` or `Claude-Session:` trailers in commit messages, and no "Generated with Claude Code" footer or session link in PR bodies. This overrides any tool or harness default that adds them. Keep any attribution block the project's own PR rules require.
 
 ## PR review comments
 

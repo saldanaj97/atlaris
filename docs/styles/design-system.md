@@ -16,6 +16,8 @@ JCS-65 page, shared-component, branding and asset children are **Done**. JCS-96 
 
 Historical package paths and future example destinations below are not claims that those paths exist in the application repository.
 
+> **Maintenance note (2026-11-06).** This file is about 252 KB, which is more than an agent or reviewer can load whole; read it by chapter as [DESIGN.md](../../DESIGN.md) directs. Open item, post-launch: trim or split it (for example one file per chapter group, with this file as the index). Not done now on purpose, because the content is the canonical spec. Some paths it cites do not exist in the repo: the external reference package (`reference/*.md`, `tokens/atlaris.tokens.json`, `docs/registries/`, `docs/source-register.json`), the removed `docs/styles/after-hours-direction.md` and `docs/styles/style-guide.md`, and everything under `.cursor/`, which #948 removed on 2026-11-06 (so the §27 rows that say `.cursor/rules/redesign.md` or `design-system.mdc` are "Retained"/"Replaced by" no longer; both are gone). Treat them as provenance, as the line above says.
+
 ### Token source
 
 `src/styles/atlaris-tokens.css` is the single editable source for dark tokens (primitive, semantic and component layers on `[data-atlaris-theme="dark"]`). The light theme is authored once in `:root` in `src/app/globals.css`, and the semantic bridge in the same file maps both onto the application's existing CSS variables. Edit values in those two places only.
@@ -1059,7 +1061,6 @@ _Source: Components v0.3. Chapter text retained from its source stage; reference
 | Contextual commands             | DropdownMenu                                           | Roving keyboard item focus; not a field selector.                                          |
 | Field selection                 | SelectContent                                          | Preserve select behavior, selection and value semantics.                                   |
 | Short supplementary hint        | Tooltip                                                | Focus/hover support; never essential-only content.                                         |
-| Preview behind a link           | HoverCard                                              | Supplemental only; a working destination must remain available.                            |
 | Generic centered dialog/popover | No separate shared file in this directory              | Proposed only when needed; reuse installed primitives rather than fabricate a current API. |
 
 Appearance: raised opaque background, primary text, visible control border, 16px overlay radius, inherited overlay shadow, 24px padding (16px narrow) and 16px content gaps. A default centered overlay maxes at 512px while retaining at least 16px viewport inset. Longer content scrolls within an accessible layout, not behind a clipped fixed-height box. [A01; R01, R06–R07]

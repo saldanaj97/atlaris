@@ -115,20 +115,12 @@ function resolveServiceRoleDb(): DbClient {
   return scopedServiceRoleDb.getStore() ?? initializeDb();
 }
 
-/** Recognized by RLS helpers so `=== serviceDb` is not the only bypass signal. */
+/** Marks the service-role client so it can be recognized without `=== db`. */
 export const SERVICE_ROLE_DB_MARKER = Symbol.for('atlaris.serviceRoleDb');
 
 const serviceRoleProxyTarget: Record<PropertyKey, unknown> = {
   [SERVICE_ROLE_DB_MARKER]: true,
 };
-
-export function isServiceRoleDbClient(client: unknown): boolean {
-  return (
-    typeof client === 'object' &&
-    client !== null &&
-    Reflect.get(client, SERVICE_ROLE_DB_MARKER) === true
-  );
-}
 
 /**
  * Service role database client - BYPASSES RLS (lazily initialized, or the

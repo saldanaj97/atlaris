@@ -2,6 +2,8 @@
 
 Design handoff for [DEV-208](https://linear.app/saldana-software/issue/DEV-208/review-the-open-items-from-the-pre-launch-security-audit-before-launch). Written 2026-11-05 against `origin/develop` at `892ca05`. It is self-contained: an implementing agent can work from this file alone. Launch is Fri 2026-11-13; the `launch-waitlist` flag comes off Thu 2026-11-12 evening (DEV-200).
 
+> **Status note (2026-11-06).** This is a design document, so the test paths below are the paths it *planned*; several differ from what shipped in #941 and #946. Find the as-built tests with `grep -rln` on the symbol, not the path. As built: the proxy cases are split across `tests/unit/lib/proxy-*.spec.ts` (there is no `proxy.spec.ts`); the AI spend admission helper lives in `src/features/billing/ai-spend-guard.ts` (`assertAiSpendAllowed`, not a helper in `rate-limit.ts`) and is covered by `tests/unit/features/billing/ai-spend-guard.spec.ts` (not `tests/unit/lib/api/rate-limit.spec.ts`); the spend query is covered by `tests/integration/db/plan-ai-budget.queries.spec.ts` (not `plan-ai-budget.spec.ts`). #946 added per-tier daily AI spend pools on top of the design here. Do not recreate the planned paths.
+
 Leads 1 and 2 from the audit were fixed in PR 930 (merged to `develop` 2026-11-04) and are not covered here, except for one follow-up check under [Juan's hands](#part-b-juans-hands).
 
 ## How to use this document

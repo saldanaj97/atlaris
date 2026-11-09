@@ -1,6 +1,6 @@
 {
-  "generated_at": "2026-11-06T18:03:43Z",
-  "generated_from_commit": "f7a3e028f2d38df80d4bd99c5cbe5f22abc974ed",
+  "generated_at": "2026-11-09T15:31:38Z",
+  "generated_from_commit": "44c8bb66f25fd06993d6ce1745174beb756066ef",
   "scope": [
     "src",
     "supabase",
@@ -775,6 +775,11 @@
           "via": "imports"
         },
         {
+          "path": "tests/unit/features/plans/contracts",
+          "files": 2,
+          "via": "imports"
+        },
+        {
           "path": "tests/unit/features/plans/policy",
           "files": 2,
           "via": "imports"
@@ -786,11 +791,6 @@
         },
         {
           "path": "tests/unit/features/plans/status-polling",
-          "files": 2,
-          "via": "imports"
-        },
-        {
-          "path": "tests/unit/features/plans/workflows",
           "files": 2,
           "via": "imports"
         },
@@ -1287,7 +1287,7 @@
         "src/features/billing",
         "src/features/integrations"
       ],
-      "role": "Subscription tier and Clerk Billing projection, entitlement/quota reservation, per-plan, per-user and global AI spend ceilings, checkout return. (src/features/integrations is an empty placeholder.)",
+      "role": "Subscription tier and Clerk Billing projection, entitlement/quota reservation, per-plan, per-user and per-tier daily AI spend ceilings, checkout return. (src/features/integrations is an empty placeholder.)",
       "entrypoints": [
         {
           "path": "src/features/billing/clerk-billing/reconciliation.ts",
@@ -1371,10 +1371,10 @@
       ],
       "constraints": [
         {
-          "rule": "Spend ceilings are enforced per plan, per user per month and globally per day.",
+          "rule": "Spend ceilings are enforced per plan, per user per month and per tier per day (Free, Starter and Pro each have their own daily pool).",
           "source": {
             "path": "src/features/billing/plan-ai-budget.ts",
-            "symbol": "GLOBAL_AI_DAILY_BUDGET"
+            "symbol": "TIER_AI_DAILY_BUDGET"
           }
         }
       ],
@@ -1453,7 +1453,7 @@
         "src/features/notifications",
         "src/shared/notifications"
       ],
-      "role": "Email notification delivery service (recipient selection, content, Resend adapter, signed unsubscribe, delivery monitor) run by the jobs Worker's email Workflow.",
+      "role": "Email notification delivery service (recipient selection, content, Resend adapter, signed unsubscribe) run by the jobs Worker's email Workflow.",
       "entrypoints": [
         {
           "path": "src/features/notifications/email/delivery-service.ts",
@@ -1490,7 +1490,7 @@
           "via": "imports"
         },
         {
-          "path": "tests/unit/features/notifications/email/workflows",
+          "path": "tests/unit/features/notifications/email/contracts",
           "files": 1,
           "via": "imports"
         },
@@ -1559,9 +1559,9 @@
       "label": "Jobs dispatch and contract",
       "kind": "module",
       "boundary": "app",
-      "path": "src/features/jobs",
+      "path": "src/features/job-queue",
       "paths": [
-        "src/features/jobs",
+        "src/features/job-queue",
         "src/lib/jobs-worker"
       ],
       "role": "App-side signed HMAC client and contract for the jobs Worker plus per-job dispatchers; also holds regeneration-run, which the Worker imports to execute queued regenerations.",
@@ -1575,11 +1575,11 @@
           "symbol": "JOBS_COMMAND_PATHS"
         },
         {
-          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "path": "src/features/job-queue/plan-generation-dispatch.ts",
           "symbol": "dispatchPlanGenerationToWorker"
         },
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "processRegenerationRun"
         }
       ],
@@ -1672,11 +1672,11 @@
           "symbol": "sendJobsWorkerCommand"
         },
         {
-          "path": "src/features/jobs/regeneration-dispatch.ts",
+          "path": "src/features/job-queue/regeneration-dispatch.ts",
           "symbol": "dispatchRegenerationToWorker"
         },
         {
-          "path": "src/features/jobs/module-lessons-dispatch.ts",
+          "path": "src/features/job-queue/module-lessons-dispatch.ts",
           "symbol": "dispatchModuleLessonsToWorker"
         }
       ],
@@ -1711,6 +1711,7 @@
         }
       ],
       "code_names": [
+        "job-queue",
         "jobs",
         "jobs-worker",
         "dispatch"
@@ -1987,11 +1988,6 @@
           "via": "imports"
         },
         {
-          "path": "tests/unit/lib/db/queries/helpers",
-          "files": 2,
-          "via": "imports"
-        },
-        {
           "path": "tests/unit/mappers",
           "files": 2,
           "via": "imports"
@@ -2078,6 +2074,11 @@
         },
         {
           "path": "tests/unit/helpers/db",
+          "files": 1,
+          "via": "imports"
+        },
+        {
+          "path": "tests/unit/lib/db/queries/helpers",
           "files": 1,
           "via": "imports"
         },
@@ -2519,10 +2520,10 @@
       ],
       "constraints": [
         {
-          "rule": "Shared types are imported from src/shared/types; the README tree calls this directory types/.",
+          "rule": "Cross-feature code (types, schemas, constants, policy) lives in src/shared; the README tree matches (there is no src/types).",
           "source": {
             "path": "README.md",
-            "symbol": "Shared application types"
+            "symbol": "Cross-feature code"
           }
         }
       ],
@@ -2542,13 +2543,13 @@
       ],
       "aliases": [
         {
-          "word": "Shared application types",
+          "word": "shared",
           "source_type": "README",
           "source": {
             "path": "README.md"
           },
           "status": "found",
-          "match": false
+          "match": true
         },
         {
           "word": "logging",
@@ -2743,11 +2744,6 @@
         },
         {
           "path": "tests/unit/lib/db/queries",
-          "files": 1,
-          "via": "imports"
-        },
-        {
-          "path": "tests/unit/lib/db/queries/helpers",
           "files": 1,
           "via": "imports"
         }
@@ -3997,11 +3993,11 @@
       "type": "calls",
       "evidence": [
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "validateModelForTier"
         },
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "sumUsages"
         }
       ],
@@ -4015,7 +4011,7 @@
       "type": "writes",
       "evidence": [
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "claimRegenerationRun"
         }
       ],
@@ -4448,7 +4444,7 @@
       "evidence": [
         {
           "path": "src/app/api/internal/maintenance/notifications/email/route.ts",
-          "symbol": "resolveEmailNotificationDeliveryEnabled"
+          "symbol": "isEmailNotificationDeliveryWeeklyDate"
         },
         {
           "path": "src/app/api/v1/notifications/email/unsubscribe/route.ts",
@@ -4554,7 +4550,7 @@
         },
         {
           "path": "src/features/billing/ai-spend-guard.ts",
-          "symbol": "sumAllAiSpendMicrousd"
+          "symbol": "sumTierAiSpendMicrousd"
         },
         {
           "path": "src/features/billing/clerk-billing/reconciliation.ts",
@@ -4737,7 +4733,7 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "resolveGroundedWriterModelId"
         }
       ],
@@ -4751,7 +4747,7 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "reserveRegenerationQuotaAtProviderStart"
         }
       ],
@@ -4765,15 +4761,15 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "path": "src/features/job-queue/email-delivery-dispatch.ts",
           "symbol": "EmailNotificationDeliveryRunKind"
         },
         {
-          "path": "src/features/jobs/queue.ts",
+          "path": "src/features/job-queue/queue.ts",
           "symbol": "claimRegenerationJobById"
         },
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "findAttemptWithWorkflowIdempotencyKey"
         }
       ],
@@ -4787,7 +4783,7 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/regeneration-run.ts",
+          "path": "src/features/job-queue/regeneration-run.ts",
           "symbol": "toLessonResearch"
         }
       ],
@@ -4801,7 +4797,7 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "path": "src/features/job-queue/email-delivery-dispatch.ts",
           "symbol": "EmailNotificationDeliveryRunAction"
         }
       ],
@@ -4815,16 +4811,16 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "path": "src/features/job-queue/plan-generation-dispatch.ts",
           "symbol": "PlanGenerationWorkflowInput"
         },
         {
-          "path": "src/features/jobs/regeneration-dispatch.ts",
+          "path": "src/features/job-queue/regeneration-dispatch.ts",
           "symbol": "RegenerationDispatchInput"
         },
         {
-          "path": "src/features/jobs/regeneration-run.ts",
-          "symbol": "createPlanLifecycleService"
+          "path": "src/features/job-queue/regeneration-run.ts",
+          "symbol": "PlanRegenerationWorkflowClaimResult"
         }
       ],
       "note": "4 importing files",
@@ -4837,15 +4833,15 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/jobs/email-delivery-dispatch.ts",
+          "path": "src/features/job-queue/email-delivery-dispatch.ts",
           "symbol": "jobsWorkerEnv"
         },
         {
-          "path": "src/features/jobs/module-lessons-dispatch.ts",
+          "path": "src/features/job-queue/module-lessons-dispatch.ts",
           "symbol": "jobsWorkerEnv"
         },
         {
-          "path": "src/features/jobs/plan-generation-dispatch.ts",
+          "path": "src/features/job-queue/plan-generation-dispatch.ts",
           "symbol": "jobsWorkerEnv"
         }
       ],
@@ -4974,7 +4970,7 @@
         },
         {
           "path": "workers/jobs/src/workflows/email-delivery/run.ts",
-          "symbol": "runEmailNotificationDelivery"
+          "symbol": "createEmailNotificationDeliveryReferenceTimestamp"
         }
       ],
       "note": "4 importing files",
@@ -5183,7 +5179,7 @@
       "type": "imports",
       "evidence": [
         {
-          "path": "src/features/notifications/email/delivery-monitor.ts",
+          "path": "src/features/notifications/email/contracts/email-notification-delivery.types.ts",
           "symbol": "EmailNotificationDeliveryRunKind"
         },
         {
@@ -5195,7 +5191,7 @@
           "symbol": "DbClient"
         }
       ],
-      "note": "4 importing files",
+      "note": "3 importing files",
       "status": "evidenced",
       "id": "notifications>db-layer:imports"
     },
@@ -5223,12 +5219,12 @@
           "symbol": "addDays"
         },
         {
-          "path": "src/features/notifications/email/delivery-service.ts",
-          "symbol": "appEnv"
+          "path": "src/features/notifications/email/contracts/email-notification-delivery.types.ts",
+          "symbol": "EmailNotificationCategory"
         },
         {
-          "path": "src/features/notifications/email/factory.ts",
-          "symbol": "assertEmailDeliveryConfig"
+          "path": "src/features/notifications/email/delivery-service.ts",
+          "symbol": "appEnv"
         }
       ],
       "note": "8 importing files",
@@ -5293,8 +5289,8 @@
           "symbol": "lockPlanLifecycle"
         },
         {
-          "path": "src/features/plans/entitlement/access.ts",
-          "symbol": "DbClient"
+          "path": "src/features/plans/contracts/plan-generation.types.ts",
+          "symbol": "AttemptReservation"
         }
       ],
       "note": "30 importing files",
@@ -5381,8 +5377,8 @@
           "symbol": "logger"
         },
         {
-          "path": "src/features/plans/entitlement/errors.ts",
-          "symbol": "API_ERROR_CODES"
+          "path": "src/features/plans/contracts/plan-generation.types.ts",
+          "symbol": "GenerationInput"
         }
       ],
       "note": "53 importing files",
@@ -5675,7 +5671,7 @@
           "symbol": "PLAN_CHART_COLORS"
         }
       ],
-      "note": "156 importing files",
+      "note": "155 importing files",
       "status": "evidenced",
       "id": "web-ui>shared-core:imports"
     }
@@ -5801,7 +5797,7 @@
           "via": "plans>jobs-dispatch:calls",
           "evidence": [
             {
-              "path": "src/features/jobs/plan-generation-dispatch.ts",
+              "path": "src/features/job-queue/plan-generation-dispatch.ts",
               "symbol": "dispatchPlanGenerationToWorker"
             }
           ]
@@ -5977,7 +5973,7 @@
           "via": "lesson-content>jobs-dispatch:calls",
           "evidence": [
             {
-              "path": "src/features/jobs/module-lessons-dispatch.ts",
+              "path": "src/features/job-queue/module-lessons-dispatch.ts",
               "symbol": "dispatchModuleLessonsToWorker"
             }
           ]
@@ -6141,7 +6137,7 @@
           "via": "api-routes>jobs-dispatch:calls",
           "evidence": [
             {
-              "path": "src/features/jobs/regeneration-dispatch.ts",
+              "path": "src/features/job-queue/regeneration-dispatch.ts",
               "symbol": "dispatchRegenerationToWorker"
             }
           ]
@@ -6201,7 +6197,7 @@
           "via": "jobs-dispatch>ai-generation:calls",
           "evidence": [
             {
-              "path": "src/features/jobs/regeneration-run.ts",
+              "path": "src/features/job-queue/regeneration-run.ts",
               "symbol": "processRegenerationRun"
             }
           ]
@@ -6225,7 +6221,7 @@
           "via": "jobs-worker>postgres:writes",
           "evidence": [
             {
-              "path": "src/features/jobs/regeneration-run.ts",
+              "path": "src/features/job-queue/regeneration-run.ts",
               "symbol": "finalizeRegenerationRun"
             }
           ]
@@ -6440,41 +6436,6 @@
     },
     {
       "rank": 2,
-      "word": "jobs / jobs Worker",
-      "code_name": "src/features/jobs (app dispatch + regeneration-run) vs workers/jobs (the Worker) vs job_queue (table)",
-      "path": "src/features/jobs",
-      "change": "code_name",
-      "severity": "high",
-      "why": "'jobs' names three places. src/features/jobs is not the Worker: it holds the app's dispatchers and regeneration-run, which the Worker imports; workers/jobs is the Worker; job_queue is the DB record for regeneration. Editing 'the jobs code' in the wrong one changes the wrong runtime.",
-      "nodes": [
-        "jobs-dispatch",
-        "jobs-worker",
-        "db-layer"
-      ],
-      "covers": [],
-      "our_word_sources": [
-        {
-          "path": "AGENTS.md",
-          "symbol": "Jobs Worker"
-        }
-      ],
-      "code_evidence": [
-        {
-          "path": "src/features/jobs/regeneration-run.ts",
-          "symbol": "processRegenerationRun"
-        },
-        {
-          "path": "workers/jobs/src/index.ts",
-          "symbol": "handleRegenerationBatch"
-        },
-        {
-          "path": "supabase/schema/tables/jobs.ts",
-          "symbol": "jobQueue"
-        }
-      ]
-    },
-    {
-      "rank": 3,
       "word": "queue / regeneration queue",
       "code_name": "job_queue (Postgres) vs REGENERATION_QUEUE (Cloudflare Queue)",
       "path": "supabase/schema/tables/jobs.ts",
@@ -6504,7 +6465,7 @@
       ]
     },
     {
-      "rank": 4,
+      "rank": 3,
       "word": "internal worker routes / worker token",
       "code_name": "/api/internal/maintenance routes, MAINTENANCE_WORKER_TOKEN",
       "path": "src/lib/api/internal/internal-worker-access.ts",
@@ -6538,12 +6499,12 @@
       ]
     },
     {
-      "rank": 5,
+      "rank": 4,
       "word": "module lessons / lessons",
       "code_name": "lesson-content (dir, route) vs ModuleLessonsWorkflow, module-lesson-generation (flag)",
       "path": "src/features/lesson-content",
       "change": "word",
-      "severity": "medium",
+      "severity": "high",
       "why": "Same feature, three names: the directory and API route say lesson-content, the Workflow and Flagship flag say module lessons, the UI says lessons. A grep for one misses the others.",
       "nodes": [
         "lesson-content",
@@ -6585,7 +6546,7 @@
       ]
     },
     {
-      "rank": 6,
+      "rank": 5,
       "word": "@supabase/runtime (reads like the Supabase SDK)",
       "code_name": "@supabase/* path alias to ./supabase/*",
       "path": "tsconfig.json",
@@ -6614,7 +6575,7 @@
       ]
     },
     {
-      "rank": 7,
+      "rank": 6,
       "word": "roadmap",
       "code_name": "learning plan (learningPlans, src/features/plans)",
       "path": "src/features/plans",
@@ -6645,7 +6606,7 @@
       ]
     },
     {
-      "rank": 8,
+      "rank": 7,
       "word": "middleware",
       "code_name": "proxy (src/proxy.ts, src/lib/proxy/middleware-policy.ts)",
       "path": "src/proxy.ts",
@@ -6679,72 +6640,7 @@
       ]
     },
     {
-      "rank": 9,
-      "word": "workflows (src/**/workflows folders)",
-      "code_name": "workers/jobs/src/workflows (the real Workflows)",
-      "path": "src/features/plans/workflows/plan-generation.types.ts",
-      "change": "code_name",
-      "severity": "medium",
-      "why": "src/features/plans/workflows and src/features/notifications/email/workflows hold only shared type files; the Workflow logic lives under workers/jobs/src/workflows. A folder named workflows in src suggests logic that is not there.",
-      "nodes": [
-        "plans",
-        "notifications",
-        "jobs-worker"
-      ],
-      "covers": [],
-      "our_word_sources": [
-        {
-          "path": "workers/AGENTS.md",
-          "symbol": "Workflow"
-        }
-      ],
-      "code_evidence": [
-        {
-          "path": "src/features/plans/workflows/plan-generation.types.ts",
-          "symbol": "PlanGenerationWorkflowInput"
-        },
-        {
-          "path": "workers/jobs/src/workflows/plan-generation/run.ts",
-          "symbol": "runPlanGenerationWorkflow"
-        }
-      ]
-    },
-    {
-      "rank": 10,
-      "word": "types/ (README tree)",
-      "code_name": "src/shared/types",
-      "path": "src/shared/types",
-      "change": "word",
-      "severity": "medium",
-      "why": "README's project tree lists src/types and src/lib/integrations; neither exists. Shared types live in src/shared/types, and integrations is an empty placeholder under src/features.",
-      "nodes": [
-        "shared-core"
-      ],
-      "covers": [
-        {
-          "node": "shared-core",
-          "alias": "Shared application types"
-        }
-      ],
-      "our_word_sources": [
-        {
-          "path": "README.md",
-          "symbol": "Shared application types"
-        }
-      ],
-      "code_evidence": [
-        {
-          "path": "src/shared/types/billing.types.ts",
-          "symbol": "SubscriptionTier"
-        },
-        {
-          "path": "src/features/integrations/AGENTS.md",
-          "symbol": "UI placeholders only"
-        }
-      ]
-    },
-    {
-      "rank": 11,
+      "rank": 8,
       "word": "AI Gateway",
       "code_name": "OPENROUTER_BASE_URL / CF_AI_GATEWAY_TOKEN",
       "path": "workers/jobs/cloudflare.config.ts",
@@ -6778,7 +6674,7 @@
       ]
     },
     {
-      "rank": 12,
+      "rank": 9,
       "word": "ui",
       "code_name": "app / components / hooks",
       "path": "src/app/(app)",
@@ -6803,7 +6699,7 @@
       ]
     },
     {
-      "rank": 13,
+      "rank": 10,
       "word": "Auth wrappers",
       "code_name": "request-boundary / proxy / site-gate",
       "path": "src/lib/api",
@@ -6828,7 +6724,7 @@
       ]
     },
     {
-      "rank": 14,
+      "rank": 11,
       "word": "regeneration",
       "code_name": "plans / learning_plans / learning-plans",
       "path": "src/features/plans",
@@ -6853,7 +6749,7 @@
       ]
     },
     {
-      "rank": 15,
+      "rank": 12,
       "word": "Pricing",
       "code_name": "billing / tier / clerk-billing",
       "path": "src/features/billing",
@@ -6878,7 +6774,7 @@
       ]
     },
     {
-      "rank": 16,
+      "rank": 13,
       "word": "email delivery",
       "code_name": "notifications / notifications/email",
       "path": "src/features/notifications",
@@ -6903,10 +6799,10 @@
       ]
     },
     {
-      "rank": 17,
+      "rank": 14,
       "word": "signed command",
-      "code_name": "jobs / jobs-worker / dispatch",
-      "path": "src/features/jobs",
+      "code_name": "job-queue / jobs / jobs-worker",
+      "path": "src/features/job-queue",
       "change": "word",
       "severity": "low",
       "why": "Synonym for Jobs dispatch and contract with no matching code name (docs: docs/architecture/cloudflare-jobs-runtime.md).",
@@ -6928,7 +6824,7 @@
       ]
     },
     {
-      "rank": 18,
+      "rank": 15,
       "word": "background jobs Worker",
       "code_name": "workers / workers/jobs / atlaris-jobs",
       "path": "workers/jobs",
@@ -6953,7 +6849,7 @@
       ]
     },
     {
-      "rank": 19,
+      "rank": 16,
       "word": "RLS client",
       "code_name": "db / supabase / queries",
       "path": "supabase",
@@ -6978,7 +6874,7 @@
       ]
     },
     {
-      "rank": 20,
+      "rank": 17,
       "word": "Cloudflare Queue",
       "code_name": "regeneration_queue / regeneration queue",
       "path": "workers/jobs/cloudflare.config.ts",
