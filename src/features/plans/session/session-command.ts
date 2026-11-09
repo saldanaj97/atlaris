@@ -5,7 +5,6 @@ import type { CreateLearningPlanInput } from '@/features/plans/validation/learni
 import type { DbClient } from '@/lib/db/types';
 import type { PlanGenerationCoreFieldsNormalized } from '@/shared/types/ai-provider.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { throwCreatePlanResultError } from './create-plan-result-error';
 import {
@@ -14,7 +13,6 @@ import {
 } from './generation-input';
 import { resolveStreamModelResolution } from './model-resolution';
 import {
-  DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
   handleUnhandledStreamError,
   type UnhandledGenerationErrorHandler,
   classifyUnhandledGenerationError,
@@ -83,7 +81,6 @@ export interface PreparedSessionPlan {
    * call it where a failure still runs `onUnhandledError`.
    */
   resolveGenerationInput: () => Promise<ProcessGenerationInput>;
-  fallbackClassification: FailureClassification;
   onUnhandledError: UnhandledGenerationErrorHandler;
 }
 
@@ -147,7 +144,6 @@ async function prepareCreate(
         groundedWriterModelId,
       });
     },
-    fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
       handleUnhandledStreamError({
         error,
@@ -207,7 +203,6 @@ async function prepareRetry(
         groundedWriterModelId,
       };
     },
-    fallbackClassification: DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
     onUnhandledError: (error, startedAt, sessionDbClient) =>
       handleUnhandledStreamError({
         error,

@@ -9,7 +9,10 @@ import {
   commitPlanGenerationFailure,
   commitPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/generation-finalization/store';
-import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import {
+  ReservationPlanNotFoundError,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import {
   generationAttempts,
   learningPlans,
@@ -80,6 +83,23 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     });
     expect(attempts).toHaveLength(1);
     expect(attempts[0].status).toBe('in_progress');
+  });
+
+  it('throws ReservationPlanNotFoundError when the plan row is missing', async () => {
+    await expect(
+      reserveAttemptSlot({
+        planId: randomUUID(),
+        userId,
+        generationPurpose: 'initial',
+        input: {
+          topic: 'Test Topic',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+        },
+        dbClient: db,
+      }),
+    ).rejects.toBeInstanceOf(ReservationPlanNotFoundError);
   });
 
   it('rejects concurrent attempts with in_progress reason', async () => {

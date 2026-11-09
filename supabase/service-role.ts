@@ -84,6 +84,12 @@ function initializeClient(): Sql {
       max: 10, // Connection pool size for service-role client
       idle_timeout: 20,
       connect_timeout: 10,
+      // POSTGRES_URL is Supavisor transaction mode on hosted deploys, which can run
+      // a transaction on a backend that lacks this connection's cached named
+      // statements. postgres-js then re-prepares a failed `commit` inside the
+      // aborted transaction, Postgres answers ROLLBACK without an error, and the
+      // transaction resolves as if it committed. Unnamed statements avoid it.
+      prepare: false,
     });
   }
 

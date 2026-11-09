@@ -51,6 +51,17 @@ import { generationAttempts } from '@supabase/schema';
 import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
+/**
+ * The plan row was missing when a reservation locked it: deleted, never
+ * committed, or owned by someone else. Not a provider failure.
+ */
+export class ReservationPlanNotFoundError extends Error {
+  constructor(readonly planId: string) {
+    super('Learning plan not found or inaccessible for user');
+    this.name = 'ReservationPlanNotFoundError';
+  }
+}
+
 function readWorkflowIdempotencyKey(metadata: unknown): string | null {
   if (metadata == null || typeof metadata !== 'object') {
     return null;
@@ -209,7 +220,7 @@ export async function reserveAttemptSlot(
     });
 
     if (!plan) {
-      throw new Error('Learning plan not found or inaccessible for user');
+      throw new ReservationPlanNotFoundError(planId);
     }
 
     const statusAllowed =
