@@ -6,6 +6,9 @@ import {
 } from '../../../scripts/eval/grounded/judge';
 import {
   type ArmSummary,
+  armCitationError,
+  billingProjectionSettled,
+  billingTierError,
   type ScoredLesson,
   type TierVerdictInput,
   classifyWorkflowSteps,
@@ -401,5 +404,48 @@ describe('classifyWorkflowSteps', () => {
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+});
+
+describe('armCitationError', () => {
+  it('rejects a v15 run that cites sources', () => {
+    expect(armCitationError('v15', 2)).toMatch(/not a v15 run/);
+    expect(armCitationError('v15', 0)).toBeNull();
+  });
+
+  it('rejects a grounded run with no citations', () => {
+    expect(armCitationError('grounded', 0)).toMatch(/not a grounded run/);
+    expect(armCitationError('grounded', 3)).toBeNull();
+  });
+});
+
+describe('billingTierError', () => {
+  const landed = '2026-11-09T10:00:00Z';
+
+  it('waits for the billing projection before trusting the tier', () => {
+    expect(
+      billingTierError({ tier: 'starter', billingUpdatedAt: null }, 'starter'),
+    ).toMatch(/not landed/);
+  });
+
+  it('flags a tier a webhook reset to free', () => {
+    expect(
+      billingTierError({ tier: 'free', billingUpdatedAt: landed }, 'starter'),
+    ).toMatch(/tier is free, expected starter/);
+  });
+
+  it('passes once the projection landed and the tier matches', () => {
+    expect(
+      billingTierError({ tier: 'pro', billingUpdatedAt: landed }, 'pro'),
+    ).toBeNull();
+  });
+});
+
+describe('billingProjectionSettled', () => {
+  it('needs a timestamp that two consecutive polls agree on', () => {
+    expect(billingProjectionSettled(null, null)).toBe(false);
+    expect(billingProjectionSettled(null, 't1')).toBe(false);
+    expect(billingProjectionSettled('t1', 't2')).toBe(false);
+    expect(billingProjectionSettled('t2', 't2')).toBe(true);
   });
 });
