@@ -1,8 +1,6 @@
-import {
-  DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
-  classifyUnhandledGenerationError,
-} from '@/features/plans/session/stream-cleanup-policy';
+import { classifyUnhandledGenerationError } from '@/features/plans/session/stream-cleanup-policy';
 import { AppError } from '@/lib/api/errors';
+import { ReservationPlanNotFoundError } from '@/lib/db/queries/attempts';
 import { describe, expect, it } from 'vitest';
 
 describe('classifyUnhandledGenerationError', () => {
@@ -11,11 +9,9 @@ describe('classifyUnhandledGenerationError', () => {
     expect(classifyUnhandledGenerationError(err)).toBe('validation');
   });
 
-  it('falls back to provider_error when AppError omits classification', () => {
+  it('falls back to unknown when AppError omits classification', () => {
     const err = new AppError('nope');
-    expect(classifyUnhandledGenerationError(err)).toBe(
-      DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
-    );
+    expect(classifyUnhandledGenerationError(err)).toBe('unknown');
   });
 
   it('classifies AbortError as timeout', () => {
@@ -30,9 +26,13 @@ describe('classifyUnhandledGenerationError', () => {
     expect(classifyUnhandledGenerationError(err)).toBe('timeout');
   });
 
-  it('defaults unknown errors to provider_error', () => {
-    expect(classifyUnhandledGenerationError('boom')).toBe(
-      DEFAULT_PROVIDER_FAILURE_CLASSIFICATION,
-    );
+  it('classifies a plan missing at reservation as unknown, not provider_error', () => {
+    const err = new ReservationPlanNotFoundError('plan-1');
+    expect(classifyUnhandledGenerationError(err)).toBe('unknown');
+  });
+
+  it('defaults unrecognized errors to unknown', () => {
+    expect(classifyUnhandledGenerationError(new Error('boom'))).toBe('unknown');
+    expect(classifyUnhandledGenerationError('boom')).toBe('unknown');
   });
 });

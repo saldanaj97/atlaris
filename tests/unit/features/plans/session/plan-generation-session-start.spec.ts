@@ -259,7 +259,7 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
     expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
   });
 
-  it('marks the plan failed and returns the fallback error when the start throws', async () => {
+  it('marks the plan failed and returns an unknown error, not a provider error, when the start throws', async () => {
     const boom = new Error('reservation transaction failed');
     mocks.reserveAttemptSlot.mockRejectedValue(boom);
 
@@ -270,8 +270,9 @@ describe('PlanGenerationSessionBoundary.startCreate', () => {
       'internal-user',
       expect.anything(),
     );
-    expect(error.status()).toBe(503);
+    expect(error.status()).toBe(500);
     expect(error.code()).toBe('GENERATION_FAILED');
+    expect(error.classification()).toBeUndefined();
     expect(error.details()).toEqual({ planId: PLAN_ID, retryable: true });
     expect(error.cause).toBe(boom);
   });

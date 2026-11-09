@@ -1,6 +1,6 @@
+import type { UnhandledGenerationErrorClassification } from './stream-cleanup-policy';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
-import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import {
   preparePlanGenerationSessionCommand,
@@ -8,6 +8,7 @@ import {
   type StartCreateArgs,
   type StartRetryArgs,
 } from './session-command';
+import { classifyUnhandledGenerationError } from './stream-cleanup-policy';
 import { getFailurePresentation } from '@/features/ai/failure-presentation';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { PLAN_CREATION_FAILURE_HTTP_MAP } from '@/features/plans/plan-creation-failure-http';
@@ -99,7 +100,7 @@ export function createPlanGenerationSessionBoundary(
  */
 function planGenerationNotStartedError(
   planId: string,
-  classification: FailureClassification | 'unknown',
+  classification: UnhandledGenerationErrorClassification,
   cause?: unknown,
 ): AppError {
   const presentation = getFailurePresentation(classification);
@@ -157,7 +158,7 @@ async function startGeneration(
     }
     throw planGenerationNotStartedError(
       prepared.planId,
-      prepared.fallbackClassification,
+      classifyUnhandledGenerationError(error),
       error,
     );
   }
