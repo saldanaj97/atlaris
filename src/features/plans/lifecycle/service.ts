@@ -231,8 +231,10 @@ export class PlanLifecycleService {
       };
     }
 
-    const tier = await this.ports.quota.resolveUserTier(userId);
-    const trialing = await this.ports.quota.resolveUserTrialing(userId);
+    const [tier, trialing] = await Promise.all([
+      this.ports.quota.resolveUserTier(userId),
+      this.ports.quota.resolveUserTrialing(userId),
+    ]);
     logger.info(
       { userId, tier, trialing },
       `${CREATE_LOG_BASE}: tier resolved`,
