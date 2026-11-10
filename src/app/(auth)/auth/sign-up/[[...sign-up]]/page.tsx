@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 
 import { PageShell } from '@/components/ui/page-shell';
+import { ROUTES } from '@/features/navigation/routes';
 import { SignUp } from '@clerk/nextjs';
 
 export const metadata: Metadata = {
@@ -12,7 +13,7 @@ export const metadata: Metadata = {
 export default function SignUpPage() {
   return (
     <PageShell className='flex flex-col items-center justify-center gap-6'>
-      <SignUp fallbackRedirectUrl='/dashboard' signInUrl='/auth/sign-in' />
+      <SignUp forceRedirectUrl={ROUTES.PRICING} signInUrl='/auth/sign-in' />
     </PageShell>
   );
 }

@@ -21,7 +21,6 @@ import {
   markPlanGenerationFailureInTx,
   markPlanGenerationSuccessInTx,
 } from '@/features/plans/lifecycle/plan-persistence-store';
-import { isFreeAdmittedTier } from '@/features/plans/policy/entitlement';
 import { getCorrelationId } from '@/lib/api/context';
 import { persistFailedAttemptInTx } from '@/lib/db/queries/attempts';
 import { readAdmittedTierFromAttemptMetadata } from '@/lib/db/queries/helpers/attempt-admitted-tier';
@@ -113,20 +112,6 @@ export async function commitPlanGenerationSuccess(
         .where(
           and(eq(users.id, input.userId), isNull(users.initialPlanGeneratedAt)),
         );
-      if (isFreeAdmittedTier(admittedTier)) {
-        await tx
-          .update(users)
-          .set({
-            freeAccessPlanId: input.planId,
-            freeAccessPlanSelectedAt: finishedAt,
-          })
-          .where(
-            and(
-              eq(users.id, input.userId),
-              isNull(users.freeAccessPlanSelectedAt),
-            ),
-          );
-      }
     }
 
     return persisted;

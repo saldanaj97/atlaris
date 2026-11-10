@@ -55,8 +55,7 @@ export interface AttemptRejection {
     | 'rate_limited'
     | 'plan_limit'
     | 'active_child_generation'
-    | 'free_allowance_used'
-    | 'free_initial_in_progress';
+    | 'subscription_required';
   currentStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
