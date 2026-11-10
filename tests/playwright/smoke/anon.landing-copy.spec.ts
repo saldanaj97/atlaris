@@ -1,29 +1,31 @@
 import { expect, test } from './fixtures';
 
-// Free allows one plan in total, not one plan at a time, so the landing copy
-// must never call it an "active" plan.
-test('landing describes the Free allowance as one plan', async ({ page }) => {
+// Atlaris is paid-only: the landing page must not advertise a free plan.
+test('landing offers Starter and Pro, with no free plan', async ({ page }) => {
   await page.goto('/landing');
 
   await expect(
-    page.getByText('Free plan: one plan, up to two weeks', { exact: true }),
+    page.getByText('Starter and Pro plans. Cancel any time.', { exact: true }),
   ).toBeVisible();
+  await expect(page.locator('main')).not.toContainText(/free plan|free for/i);
 
-  // The allowance is stated in the hero and the pricing intro, not a third
-  // time in the closing banner.
-  await expect(
-    page.locator('section[aria-labelledby="landing-cta-heading"]'),
-  ).not.toContainText(/one plan, up to two weeks/i);
-
-  // Paid tiers hold plans at a time ("10 active plans"); Free never does.
+  // Both tiers hold plans at a time ("10 active plans"); the hero never says so.
   await expect(
     page.locator('section[aria-labelledby="landing-hero-heading"]'),
   ).not.toContainText(/active plan/i);
-  const freeTier = page
-    .locator('section[aria-labelledby="landing-pricing-heading"] li')
-    .filter({ has: page.getByRole('heading', { name: 'Free', exact: true }) });
-  await expect(freeTier).toContainText('1 plan included');
-  await expect(freeTier).not.toContainText(/active plan/i);
+  const tiers = page.locator(
+    'section[aria-labelledby="landing-pricing-heading"] li',
+  );
+  await expect(
+    tiers.filter({
+      has: page.getByRole('heading', { name: 'Free', exact: true }),
+    }),
+  ).toHaveCount(0);
+  await expect(
+    tiers.filter({
+      has: page.getByRole('heading', { name: 'Starter', exact: true }),
+    }),
+  ).toContainText('10 active plans');
 });
 
 // Below the hero, each section answers one question for a first-time visitor:
@@ -37,8 +39,8 @@ test('landing sections come in order, with limits but no prices', async ({
     "Most plans are written for hours you don't have",
     'How a plan comes together',
     "What's inside a plan",
-    'Pay only when you need more room',
-    'Start with one free plan',
+    'Two plans, sized to your pace',
+    'Start your first plan',
   ]);
 
   const planSection = page.locator(

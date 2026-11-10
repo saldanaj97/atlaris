@@ -5,7 +5,7 @@ import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
 import { SectionOverline } from '@/components/ui/section-overline';
 
 export const LEGAL_CONTACT_EMAIL = 'business@juansaldana.dev';
-export const LEGAL_EFFECTIVE_DATE = 'October 14, 2026';
+export const LEGAL_EFFECTIVE_DATE = 'November 10, 2026';
 
 interface LegalDocumentProps {
   overline: string;

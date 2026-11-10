@@ -34,13 +34,13 @@ for (const width of [390, 1280, 1920]) {
 
     await page.goto('/');
     const landing = await leftEdge(
-      page.getByRole('heading', { name: 'Pay only when you need more room' }),
+      page.getByRole('heading', { name: 'Two plans, sized to your pace' }),
     );
 
     await page.goto('/pricing');
     for (const locator of [
-      page.getByRole('heading', { name: 'Free for one plan.' }),
-      page.getByRole('article', { name: 'Free' }),
+      page.getByRole('heading', { name: 'Pick your plan.' }),
+      page.getByRole('article', { name: 'Starter' }),
       page.locator('[data-pricing-comparison]'),
       page.locator('[data-slot="cta-banner"]'),
     ]) {
@@ -89,14 +89,13 @@ test('a pricing card button takes the click while its card tilts', async ({
   await page.goto('/pricing');
 
   for (const [plan, action] of [
-    ['Free', 'Start free'],
     ['Starter', 'Begin with Starter'],
     ['Pro', 'Begin with Pro'],
   ] as const) {
     const card = page.getByRole('article', { name: plan });
     const button = card.getByRole('button', { name: action });
     await expect(button).toBeVisible();
-    if (plan !== 'Free') await card.getByRole('checkbox').check();
+    await card.getByRole('checkbox').check();
     await button.scrollIntoViewIfNeeded();
     await page.mouse.move(0, 0);
     // The cards dock in on load; measure once they have landed.

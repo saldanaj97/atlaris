@@ -219,7 +219,7 @@ Do these Thursday 2026-11-12 in the evening, after a passing run and before Prod
    **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, `/waitlist` redirects away, and signed-out `/%64ashboard` redirects to Clerk sign-in.
 
 6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
-7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
+7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, open `/pricing`. **Pass:** only the Starter and Pro cards show (no Free card), and the page makes no free-plan claim.
 8. Run checks 3–5 and 10 once more, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
 9. Delete the step 6 and step 7 accounts as in check 8.
 
