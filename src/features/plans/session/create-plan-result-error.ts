@@ -43,19 +43,11 @@ export function throwCreatePlanResultError(
     });
   }
 
-  if (createResult.status === 'free_allowance_used') {
+  if (createResult.status === 'subscription_required') {
     throw new AppError(createResult.reason, {
-      status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
-      code: API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
+      status: API_ERROR_HTTP_STATUS.SUBSCRIPTION_REQUIRED,
+      code: API_ERROR_CODES.SUBSCRIPTION_REQUIRED,
       details: { upgradeUrl: createResult.upgradeUrl },
-    });
-  }
-
-  if (createResult.status === 'free_generation_in_progress') {
-    throw new AppError(createResult.reason, {
-      status: API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
-      code: API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
-      classification: 'conflict',
     });
   }
 

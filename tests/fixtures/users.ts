@@ -68,7 +68,7 @@ export async function createTestUser(
     .values({
       authUserId: baseAuthUserId,
       email: baseEmail,
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
       ...DEFAULT_SUBSCRIPTION_LIFECYCLE,
       ...overrides,
     } as UserInsert)
