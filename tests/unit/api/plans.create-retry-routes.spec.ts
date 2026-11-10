@@ -197,6 +197,23 @@ describe('POST /api/v1/plans', () => {
     expect(mocks.getGroundedModelPreferences).not.toHaveBeenCalled();
   });
 
+  it('returns 403 SUBSCRIPTION_REQUIRED before any rate-limit or spend work for a no-subscription user', async () => {
+    mocks.actorTier = 'free';
+    const boundary = makeBoundary();
+    const post = createPlanCreateHandler({ boundary, logger: makeLogger() });
+
+    const response = await post(createRequest(JSON.stringify(VALID_BODY)));
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+      details: { upgradeUrl: '/pricing' },
+    });
+    expect(mocks.checkPlanGenerationRateLimit).not.toHaveBeenCalled();
+    expect(mocks.assertAiSpendAllowed).not.toHaveBeenCalled();
+    expect(boundary.startCreate).not.toHaveBeenCalled();
+  });
+
   it('loads and passes the saved grounded picks for Pro', async () => {
     mocks.actorTier = 'pro';
     const boundary = makeBoundary();
@@ -448,6 +465,23 @@ describe('POST /api/v1/plans/:planId/retry', () => {
       expect(boundary.startRetry).not.toHaveBeenCalled();
     },
   );
+
+  it('returns 403 SUBSCRIPTION_REQUIRED before reading the plan for a no-subscription user', async () => {
+    mocks.actorTier = 'free';
+    const boundary = makeBoundary();
+    const post = createRetryHandler({ boundary });
+
+    const response = await post(retryRequest());
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+      details: { upgradeUrl: '/pricing' },
+    });
+    expect(mocks.checkPlanGenerationRateLimit).not.toHaveBeenCalled();
+    expect(mocks.requirePlanContentAccess).not.toHaveBeenCalled();
+    expect(boundary.startRetry).not.toHaveBeenCalled();
+  });
 
   it('returns 429 before reading the plan when the generation window is full', async () => {
     mocks.checkPlanGenerationRateLimit.mockRejectedValue(

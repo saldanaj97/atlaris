@@ -42,8 +42,7 @@ export type AtomicInsertResult =
       readonly currentCount: number;
       readonly limit: number;
     }
-  | { readonly status: 'free_allowance_used' }
-  | { readonly status: 'free_generation_in_progress' };
+  | { readonly status: 'subscription_required' };
 
 /** Result of a duration cap check. */
 export type DurationCapResult = {
@@ -98,15 +97,11 @@ export type DurationExceeded = {
   readonly upgradeUrl?: string;
 };
 
-export type FreeAllowanceUsed = {
-  readonly status: 'free_allowance_used';
+/** The actor has no active subscription, so no generation can start. */
+export type SubscriptionRequired = {
+  readonly status: 'subscription_required';
   readonly reason: string;
   readonly upgradeUrl: string;
-};
-
-export type FreeGenerationInProgress = {
-  readonly status: 'free_generation_in_progress';
-  readonly reason: string;
 };
 
 /** User has an existing plan that exhausted generation attempts (attempt cap). */
@@ -132,8 +127,7 @@ export type CreatePlanResult =
   | PermanentFailure
   | QuotaRejection
   | DurationExceeded
-  | FreeAllowanceUsed
-  | FreeGenerationInProgress
+  | SubscriptionRequired
   | AttemptCapExceeded
   | DuplicateDetected;
 

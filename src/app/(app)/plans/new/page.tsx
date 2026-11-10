@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 
 import { CreatePlanPageClient } from '@/app/(app)/plans/new/components/CreatePlanPageClient';
 import { ROUTES } from '@/features/navigation/routes';
+import { canCreatePlanOnCurrentTier } from '@/features/plans/policy/entitlement';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { redirect } from 'next/navigation';
 
@@ -20,6 +21,10 @@ export default async function CreateNewPlanPage() {
 
   if (!subscriptionTier) {
     redirect(SIGN_IN_RETURN_PATH);
+  }
+
+  if (!canCreatePlanOnCurrentTier({ subscriptionTier })) {
+    redirect(ROUTES.PRICING);
   }
 
   return (

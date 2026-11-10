@@ -170,7 +170,7 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
   });
 
   it('does not map a lesson product-quota denial', async () => {
-    const userId = await authenticateTestUser('quota', 'free');
+    const userId = await authenticateTestUser('quota', 'starter');
     await seedOwnedPlanForLessonContentApi(userId);
     mockStartModuleLessonGeneration.mockResolvedValue({
       kind: 'already_ready',
@@ -187,6 +187,20 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       moduleId: VALID_MODULE_ID,
     });
     expect(body).not.toHaveProperty('state', 'quota_denied');
+  });
+
+  it('refuses a user with no subscription before starting generation', async () => {
+    const userId = await authenticateTestUser('no-subscription', 'free');
+    await seedOwnedPlanForLessonContentApi(userId);
+
+    const { request, context } = createRequest();
+    const response = await POST(request, context);
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+    });
+    expect(mockStartModuleLessonGeneration).not.toHaveBeenCalled();
   });
 
   it('maps failed generation to a generic provider failure response', async () => {

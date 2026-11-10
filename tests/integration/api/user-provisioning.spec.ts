@@ -28,7 +28,6 @@ describe('POST /api/v1/plans user provisioning', () => {
 
     setTestUser(authUserId);
 
-    // The create route sends the start command to the jobs Worker; no generation runs here.
     vi.stubEnv('JOBS_WORKER_URL', 'https://workers-test.atlaris.app');
     vi.stubEnv('JOBS_SIGNING_SECRET', 'integration-secret');
     vi.stubGlobal(
@@ -48,7 +47,7 @@ describe('POST /api/v1/plans user provisioning', () => {
     vi.unstubAllGlobals();
   });
 
-  it('creates a database user when the Auth user is new', async () => {
+  it('creates a database user when the Auth user is new, who then needs a subscription to generate', async () => {
     const planPayload = {
       topic: 'Integration testing guardrails',
       skillLevel: 'beginner',
@@ -69,7 +68,10 @@ describe('POST /api/v1/plans user provisioning', () => {
       }),
     );
 
-    expect(response.status).toBe(202);
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+    });
 
     const [provisionedUser] = await db
       .select()

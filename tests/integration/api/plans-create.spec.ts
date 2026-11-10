@@ -2,6 +2,7 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { POST } from '@/app/api/v1/plans/route';
+import { userAiCeilingMicrousd } from '@/features/billing/plan-ai-budget';
 import {
   JOBS_SIGNATURE_HEADER,
   planGenerationStartCommandSchema,
@@ -177,34 +178,41 @@ describe('POST /api/v1/plans — create + poll', () => {
     expect(workerFetch).not.toHaveBeenCalled();
   });
 
-  // The row below is dated the first second of the month, outside today's
-  // daily pool; on the 1st (UTC) it would land in today's pool instead.
-  it.skipIf(new Date().getUTCDate() === 1)(
-    'refuses a user who reached the monthly AI budget before creating a plan (DEV-208)',
-    async () => {
-      const userId = await setUpUser('plans-create-budget', 'starter');
-      // Starter's monthly ceiling is $7.50. Dating the row at the start of the
-      // month keeps it out of today's tier pool, so the monthly check answers.
-      const now = new Date();
-      await db.insert(aiUsageEvents).values({
-        userId,
-        provider: 'openrouter',
-        model: 'test/model',
-        providerCostMicrousd: BigInt(7_500_000),
-        createdAt: new Date(
-          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 1),
-        ),
-      });
+  it('refuses a user who reached the monthly AI budget before creating a plan (DEV-208)', async () => {
+    const userId = await setUpUser('plans-create-budget', 'starter');
+    // Dated to the start of the UTC month so the tier's daily pool, which the
+    // guard checks first, does not count it.
+    const now = new Date();
+    await db.insert(aiUsageEvents).values({
+      userId,
+      provider: 'openrouter',
+      model: 'test/model',
+      providerCostMicrousd: BigInt(userAiCeilingMicrousd('starter')),
+      createdAt: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)),
+    });
 
-      const response = await create();
+    const response = await create();
 
-      expect(response.status).toBe(429);
-      await expect(response.json()).resolves.toMatchObject({
-        code: 'AI_BUDGET_EXHAUSTED',
-        classification: 'capped',
-      });
-      await expect(listUserPlans(userId)).resolves.toEqual([]);
-      expect(workerFetch).not.toHaveBeenCalled();
-    },
-  );
+    expect(response.status).toBe(429);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'AI_BUDGET_EXHAUSTED',
+      classification: 'capped',
+    });
+    await expect(listUserPlans(userId)).resolves.toEqual([]);
+    expect(workerFetch).not.toHaveBeenCalled();
+  });
+
+  it('refuses a user with no subscription before creating a plan', async () => {
+    const userId = await setUpUser('plans-create-no-subscription', 'free');
+
+    const response = await create();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+      details: { upgradeUrl: '/pricing' },
+    });
+    await expect(listUserPlans(userId)).resolves.toEqual([]);
+    expect(workerFetch).not.toHaveBeenCalled();
+  });
 });
