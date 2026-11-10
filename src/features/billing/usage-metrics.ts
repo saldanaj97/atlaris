@@ -4,7 +4,7 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { UsageMetricsLoadError } from './errors';
 import { ValidationError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { TIER_LIMITS, TRIAL_LIMITS } from '@/shared/constants/tier-limits';
 import { learningPlans, usageMetrics } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
@@ -70,10 +70,15 @@ async function selectUsageMetricsForMonth(
 export async function getUsageSummaryForTier(args: {
   userId: string;
   tier: SubscriptionTier;
+  /** True while the paid plan is in its free trial; the trial limits apply. */
+  trialing?: boolean;
   dbClient: DbClient;
 }): Promise<UsageSummary> {
   const { userId, tier, dbClient } = args;
-  const limits = TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
+  const limits =
+    args.trialing === true && tier !== 'free'
+      ? TRIAL_LIMITS
+      : TIER_LIMITS[tier as keyof typeof TIER_LIMITS];
   if (limits === undefined) {
     logger.info(
       { userId, tier },

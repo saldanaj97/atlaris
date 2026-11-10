@@ -63,11 +63,15 @@ export type PlanGenerationFailureMarker = Pick<
 export interface PlanLifecycleQuota {
   resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
 
+  /** True while the user's paid plan is in its free trial. */
+  resolveUserTrialing(this: void, userId: string): Promise<boolean>;
+
   checkDurationCap(
     this: void,
     params: {
       tier: SubscriptionTier;
       totalWeeks: number;
+      trialing?: boolean;
     },
   ): DurationCapResult;
 
@@ -228,7 +232,11 @@ export class PlanLifecycleService {
     }
 
     const tier = await this.ports.quota.resolveUserTier(userId);
-    logger.info({ userId, tier }, `${CREATE_LOG_BASE}: tier resolved`);
+    const trialing = await this.ports.quota.resolveUserTrialing(userId);
+    logger.info(
+      { userId, tier, trialing },
+      `${CREATE_LOG_BASE}: tier resolved`,
+    );
 
     const requestedWeeks = calculateTotalWeeks({
       startDate,
@@ -236,6 +244,7 @@ export class PlanLifecycleService {
     });
     const requestedCap = this.ports.quota.checkDurationCap({
       tier,
+      trialing,
       totalWeeks: requestedWeeks,
     });
     if (!requestedCap.allowed) {
@@ -257,6 +266,7 @@ export class PlanLifecycleService {
 
     const durationCap = this.ports.quota.checkDurationCap({
       tier,
+      trialing,
       totalWeeks: duration.totalWeeks,
     });
     if (!durationCap.allowed) {

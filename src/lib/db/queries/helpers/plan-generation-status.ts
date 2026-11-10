@@ -45,11 +45,13 @@ export async function selectUserEntitlementForAdmission(
   userId: string,
 ): Promise<{
   subscriptionTier: SubscriptionTier;
+  subscriptionStatus: (typeof users.$inferSelect)['subscriptionStatus'];
   initialPlanGeneratedAt: Date | null;
 }> {
   const [user] = await tx
     .select({
       subscriptionTier: users.subscriptionTier,
+      subscriptionStatus: users.subscriptionStatus,
       initialPlanGeneratedAt: users.initialPlanGeneratedAt,
     })
     .from(users)

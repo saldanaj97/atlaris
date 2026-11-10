@@ -16,7 +16,7 @@ import {
   selectUserEntitlementForAdmission,
 } from '@/lib/db/queries/helpers/plan-generation-status';
 import { logger } from '@/lib/logging/logger';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { limitsForUser } from '@/shared/constants/tier-limits';
 import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { and, count, eq, gte, inArray, notExists, or, sql } from 'drizzle-orm';
@@ -179,7 +179,7 @@ export async function atomicCheckAndInsertPlan(
     }
 
     const tier = user.subscriptionTier;
-    const tierConfig = TIER_LIMITS[tier];
+    const tierConfig = limitsForUser(user);
     if (!tierConfig) {
       throw new Error(`Unknown subscription tier: ${tier}`);
     }

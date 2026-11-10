@@ -73,6 +73,35 @@ export function tierAiDailyCeilingMicrousd(tier: AiBudgetTier): number {
 }
 
 /**
+ * AI budget for a card-required free trial. A trial is a Starter plan with
+ * tighter caps, kept apart from paid Starter so abusing trials cannot pause
+ * paying users:
+ *
+ * - per plan: the Starter ceiling (`PLAN_AI_BUDGET`); a unit test keeps the two
+ *   equal;
+ * - per user per calendar month (UTC): `userMonthlyUsd`;
+ * - all trial users together per UTC day: `dailyPoolUsd`, the real control on
+ *   trial abuse (Clerk dedupes trials by verified email, not by card).
+ *
+ * Trials route through the Starter OpenRouter key, so that key's daily limit
+ * is shared with paid Starter spend. Keep the Starter pool plus this pool under
+ * it, or give trials a key of their own.
+ */
+export const TRIAL_AI_BUDGET = {
+  planCeilingUsd: 1.25,
+  userMonthlyUsd: 1.5,
+  dailyPoolUsd: 10,
+} as const;
+
+export function trialUserAiCeilingMicrousd(): number {
+  return Math.round(TRIAL_AI_BUDGET.userMonthlyUsd * MICROUSD_PER_USD);
+}
+
+export function trialDailyCeilingMicrousd(): number {
+  return Math.round(TRIAL_AI_BUDGET.dailyPoolUsd * MICROUSD_PER_USD);
+}
+
+/**
  * One call's cost in micro-USD: the provider-reported cost, else the catalog
  * estimate. Matches how `sumPlanAiSpendMicrousd` reads `ai_usage_events`.
  */

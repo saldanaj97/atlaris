@@ -5,15 +5,19 @@ import {
   type AiBudgetTier,
   TIER_AI_DAILY_BUDGET,
   tierAiDailyCeilingMicrousd,
+  trialDailyCeilingMicrousd,
+  trialUserAiCeilingMicrousd,
   userAiCeilingMicrousd,
 } from '@/features/billing/plan-ai-budget';
 import { AppError, ServiceUnavailableError } from '@/lib/api/errors';
 import {
   sumTierAiSpendMicrousd,
+  sumTrialAiSpendMicrousd,
   sumUserAiSpendMicrousd,
 } from '@/lib/db/queries/plan-ai-budget';
 import { logger } from '@/lib/logging/logger';
 import { API_ERROR_CODES } from '@/shared/constants/api-error-codes';
+import { isTrialing } from '@/shared/constants/tier-limits';
 import * as Sentry from '@sentry/nextjs';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
@@ -48,7 +52,11 @@ function formatUtcDate(date: Date): string {
   return UTC_DATE_FORMAT.format(date);
 }
 
-const TIER_LABEL: Record<AiBudgetTier, string> = {
+/** The daily pools: one per paid tier, and one for all free trials. */
+type AiPool = AiBudgetTier | 'trial';
+
+const TIER_LABEL: Record<AiPool, string> = {
+  trial: 'Trial',
   starter: 'Starter',
   pro: 'Pro',
 };
@@ -58,7 +66,7 @@ const TIER_LABEL: Record<AiBudgetTier, string> = {
  * fires once a day for each.
  */
 function reportTierSpend(
-  tier: AiBudgetTier,
+  tier: AiPool,
   spent: number,
   ceiling: number,
   day: string,
@@ -102,11 +110,16 @@ function reportTierSpend(
  * with `503 AI_GENERATION_PAUSED` once the actor's tier has spent its daily
  * ceiling today, then with `429 AI_BUDGET_EXHAUSTED` once this user's
  * spend this month reaches their tier ceiling. Fails closed when spend cannot
- * be read. The `free` tier (no subscription) has no budget to check; the
+ * be read. A free trial draws on its own daily pool and a smaller monthly cap
+ * (`TRIAL_AI_BUDGET`); paid Starter spend counts toward neither. The `free` tier (no subscription) has no budget to check; the
  * paid-only entitlement gate is what keeps it off paid AI.
  */
 export async function assertAiSpendAllowed(
-  actor: { readonly id: string; readonly subscriptionTier: SubscriptionTier },
+  actor: {
+    readonly id: string;
+    readonly subscriptionTier: SubscriptionTier;
+    readonly subscriptionStatus?: string | null;
+  },
   dbClient: SpendReader,
   deps: AiSpendGuardDeps = {},
 ): Promise<void> {
@@ -116,12 +129,20 @@ export async function assertAiSpendAllowed(
 
   const tier = actor.subscriptionTier;
   if (tier === 'free') return;
+  const trial = isTrialing(actor);
+  const pool: AiPool = trial ? 'trial' : tier;
 
   let tierSpent: number;
   let userSpent: number;
   try {
     [tierSpent, userSpent] = await Promise.all([
-      sumTierAiSpendMicrousd(tier, dayStart, deps.serviceDb ?? serviceRoleDb),
+      trial
+        ? sumTrialAiSpendMicrousd(dayStart, deps.serviceDb ?? serviceRoleDb)
+        : sumTierAiSpendMicrousd(
+            tier,
+            dayStart,
+            deps.serviceDb ?? serviceRoleDb,
+          ),
       sumUserAiSpendMicrousd(actor.id, monthStart, dbClient),
     ]);
   } catch (err) {
@@ -135,9 +156,11 @@ export async function assertAiSpendAllowed(
     );
   }
 
-  const tierCeiling = tierAiDailyCeilingMicrousd(tier);
+  const tierCeiling = trial
+    ? trialDailyCeilingMicrousd()
+    : tierAiDailyCeilingMicrousd(tier);
   reportTierSpend(
-    tier,
+    pool,
     tierSpent,
     tierCeiling,
     dayStart.toISOString().slice(0, 10),
@@ -155,13 +178,17 @@ export async function assertAiSpendAllowed(
     );
   }
 
-  if (userSpent >= userAiCeilingMicrousd(tier)) {
+  if (
+    userSpent >=
+    (trial ? trialUserAiCeilingMicrousd() : userAiCeilingMicrousd(tier))
+  ) {
     const resetsAt = startOfUtcMonth(now, 1);
     logger.info(
       {
         event: 'ai_user_budget_exhausted',
         userId: actor.id,
         tier,
+        trial,
         spentMicrousd: userSpent,
       },
       'User reached the monthly AI budget',
