@@ -177,25 +177,34 @@ describe('POST /api/v1/plans — create + poll', () => {
     expect(workerFetch).not.toHaveBeenCalled();
   });
 
-  it('refuses a user who reached the monthly AI budget before creating a plan (DEV-208)', async () => {
-    const userId = await setUpUser('plans-create-budget', 'free');
-    // Free's monthly ceiling is $0.25; keep the row small so the global
-    // daily total other specs see stays far below its ceiling.
-    await db.insert(aiUsageEvents).values({
-      userId,
-      provider: 'openrouter',
-      model: 'test/model',
-      providerCostMicrousd: BigInt(250_000),
-    });
+  // The row below is dated the first second of the month, outside today's
+  // daily pool; on the 1st (UTC) it would land in today's pool instead.
+  it.skipIf(new Date().getUTCDate() === 1)(
+    'refuses a user who reached the monthly AI budget before creating a plan (DEV-208)',
+    async () => {
+      const userId = await setUpUser('plans-create-budget', 'starter');
+      // Starter's monthly ceiling is $7.50. Dating the row at the start of the
+      // month keeps it out of today's tier pool, so the monthly check answers.
+      const now = new Date();
+      await db.insert(aiUsageEvents).values({
+        userId,
+        provider: 'openrouter',
+        model: 'test/model',
+        providerCostMicrousd: BigInt(7_500_000),
+        createdAt: new Date(
+          Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 1),
+        ),
+      });
 
-    const response = await create();
+      const response = await create();
 
-    expect(response.status).toBe(429);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'AI_BUDGET_EXHAUSTED',
-      classification: 'capped',
-    });
-    await expect(listUserPlans(userId)).resolves.toEqual([]);
-    expect(workerFetch).not.toHaveBeenCalled();
-  });
+      expect(response.status).toBe(429);
+      await expect(response.json()).resolves.toMatchObject({
+        code: 'AI_BUDGET_EXHAUSTED',
+        classification: 'capped',
+      });
+      await expect(listUserPlans(userId)).resolves.toEqual([]);
+      expect(workerFetch).not.toHaveBeenCalled();
+    },
+  );
 });
