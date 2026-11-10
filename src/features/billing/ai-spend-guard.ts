@@ -2,6 +2,7 @@ import type { DbClient } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
+  type AiBudgetTier,
   TIER_AI_DAILY_BUDGET,
   tierAiDailyCeilingMicrousd,
   userAiCeilingMicrousd,
@@ -47,8 +48,7 @@ function formatUtcDate(date: Date): string {
   return UTC_DATE_FORMAT.format(date);
 }
 
-const TIER_LABEL: Record<SubscriptionTier, string> = {
-  free: 'Free',
+const TIER_LABEL: Record<AiBudgetTier, string> = {
   starter: 'Starter',
   pro: 'Pro',
 };
@@ -58,7 +58,7 @@ const TIER_LABEL: Record<SubscriptionTier, string> = {
  * fires once a day for each.
  */
 function reportTierSpend(
-  tier: SubscriptionTier,
+  tier: AiBudgetTier,
   spent: number,
   ceiling: number,
   day: string,
@@ -102,7 +102,8 @@ function reportTierSpend(
  * with `503 AI_GENERATION_PAUSED` once the actor's tier has spent its daily
  * ceiling today, then with `429 AI_BUDGET_EXHAUSTED` once this user's
  * spend this month reaches their tier ceiling. Fails closed when spend cannot
- * be read.
+ * be read. The `free` tier (no subscription) has no budget to check; the
+ * paid-only entitlement gate is what keeps it off paid AI.
  */
 export async function assertAiSpendAllowed(
   actor: { readonly id: string; readonly subscriptionTier: SubscriptionTier },
@@ -114,6 +115,8 @@ export async function assertAiSpendAllowed(
   const monthStart = startOfUtcMonth(now);
 
   const tier = actor.subscriptionTier;
+  if (tier === 'free') return;
+
   let tierSpent: number;
   let userSpent: number;
   try {

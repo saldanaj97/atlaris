@@ -70,7 +70,6 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    ['free', 0.25],
     ['starter', 7.5],
     ['pro', 30],
   ] as const)(
@@ -93,6 +92,17 @@ describe('assertAiSpendAllowed', () => {
       });
     },
   );
+
+  it('has no budget for the free tier and reads no spend', async () => {
+    mocks.sumTier.mockResolvedValue(1_000 * USD);
+    mocks.sumUser.mockResolvedValue(1_000 * USD);
+
+    await expect(check('free')).resolves.toBeUndefined();
+
+    expect(mocks.sumTier).not.toHaveBeenCalled();
+    expect(mocks.sumUser).not.toHaveBeenCalled();
+    expect(mocks.captureMessage).not.toHaveBeenCalled();
+  });
 
   it('resets a December budget on January 1 of the next year', async () => {
     mocks.sumUser.mockResolvedValue(30 * USD);
@@ -151,7 +161,6 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    ['free', 2],
     ['starter', 3],
     ['pro', 5],
   ] as const)(
