@@ -9,12 +9,14 @@ import {
   createFailureResult,
   createSyntheticFailureAttempt,
 } from '@/features/ai/orchestrator/attempt-failures';
+import { ROUTES } from '@/features/navigation/routes';
 import { AppError } from '@/lib/api/errors';
 import { logger } from '@/lib/logging/logger';
 import {
   API_ERROR_CODES,
   API_ERROR_HTTP_STATUS,
 } from '@/shared/constants/api-error-codes';
+import { SUBSCRIPTION_REQUIRED_MESSAGE } from '@/shared/policy/generation-admission';
 
 const RESERVATION_REJECTION_DETAILS: Record<
   AttemptRejection['reason'],
@@ -31,15 +33,9 @@ const RESERVATION_REJECTION_DETAILS: Record<
     classification: 'capped',
     message: () => 'Active plan limit reached for this subscription tier',
   },
-  free_allowance_used: {
+  subscription_required: {
     classification: 'capped',
-    message: () =>
-      'Your free plan allowance has already been used. Upgrade to create another plan.',
-  },
-  free_initial_in_progress: {
-    classification: 'conflict',
-    message: () =>
-      'A free plan is already being generated. Wait for it to finish or fail before starting another.',
+    message: () => SUBSCRIPTION_REQUIRED_MESSAGE,
   },
   rate_limited: {
     classification: 'rate_limit',
@@ -67,17 +63,11 @@ function errorForReservationRejection(
   message: string,
 ): Error {
   switch (reservation.reason) {
-    case 'free_allowance_used':
+    case 'subscription_required':
       return new AppError(message, {
-        status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
-        code: API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
-        details: { upgradeUrl: '/pricing' },
-      });
-    case 'free_initial_in_progress':
-      return new AppError(message, {
-        status: API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
-        code: API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
-        classification: 'conflict',
+        status: API_ERROR_HTTP_STATUS.SUBSCRIPTION_REQUIRED,
+        code: API_ERROR_CODES.SUBSCRIPTION_REQUIRED,
+        details: { upgradeUrl: ROUTES.PRICING },
       });
     case 'capped':
     case 'plan_limit':

@@ -5,6 +5,7 @@ import {
   type CreatePlanRouteLogger,
   parseCreatePlanRequest,
 } from '@/features/plans/api/create-plan-request';
+import { assertGenerationEntitled } from '@/features/plans/entitlement/errors';
 import {
   getPlanListTotalCount,
   listLightweightPlansForApi,
@@ -95,6 +96,7 @@ export function createPlanCreateHandler(deps?: {
   return requestBoundary.route(
     { rateLimit: 'aiGeneration' },
     async ({ req, actor, db, correlationId }) => {
+      assertGenerationEntitled(actor);
       const authUserId = actor.authUserId;
 
       const body = await parseCreatePlanRequest({

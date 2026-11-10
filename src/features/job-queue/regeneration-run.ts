@@ -416,14 +416,13 @@ function isRetryableReservationRejection(
 ): boolean {
   switch (reason) {
     case 'active_child_generation':
-    case 'free_initial_in_progress':
     case 'in_progress':
     case 'rate_limited':
       return true;
     case 'capped':
-    case 'free_allowance_used':
     case 'invalid_status':
     case 'plan_limit':
+    case 'subscription_required':
       return false;
     default: {
       const _never: never = reason;

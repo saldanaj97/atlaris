@@ -84,7 +84,7 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createPlan(userId, {
       topic: 'Populated ready plan',
@@ -103,7 +103,7 @@ describe('last-good plan vs active-plan cap', () => {
     const result = await lifecycle.processGenerationAttempt({
       planId: plan.id,
       userId,
-      tier: 'free',
+      tier: 'starter',
       generationPurpose: 'regeneration',
       input: {
         topic: plan.topic,
@@ -134,7 +134,7 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const inserted = await atomicCheckAndInsertPlan(
       userId,
@@ -169,9 +169,9 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
-    await fillEligibleReadyPlans(userId, TIER_LIMITS.free.maxActivePlans);
+    await fillEligibleReadyPlans(userId, TIER_LIMITS.starter.maxActivePlans);
     const failed = await createFailedIneligiblePlan(userId, 'Hidden leftover');
     const generateSpy = vi.spyOn(MockGenerationProvider.prototype, 'generate');
 
@@ -179,7 +179,7 @@ describe('last-good plan vs active-plan cap', () => {
     const result = await lifecycle.processGenerationAttempt({
       planId: failed.id,
       userId,
-      tier: 'free',
+      tier: 'starter',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
       generationPurpose: 'initial',
@@ -188,7 +188,7 @@ describe('last-good plan vs active-plan cap', () => {
     expect(result.status).toBe('permanent_failure');
     expect(generateSpy).not.toHaveBeenCalled();
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
 
     const [row] = await db
@@ -204,37 +204,42 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
-    await fillEligibleReadyPlans(userId, TIER_LIMITS.free.maxActivePlans - 1);
+    await fillEligibleReadyPlans(
+      userId,
+      TIER_LIMITS.starter.maxActivePlans - 1,
+    );
     const failed = await createFailedIneligiblePlan(userId, 'Retry me');
     const originalGenerate = MockGenerationProvider.prototype.generate;
     const sawReservation = createDeferredPromise<void>();
     const releaseProvider = createDeferredPromise<void>();
     const generateSpy = vi
       .spyOn(MockGenerationProvider.prototype, 'generate')
-      .mockImplementation(
-        async function generate(this: MockGenerationProvider, input, options) {
-          const [row] = await db
-            .select()
-            .from(learningPlans)
-            .where(eq(learningPlans.id, failed.id));
-          expect(row?.generationStatus).toBe('generating');
-          expect(row?.isQuotaEligible).toBe(false);
-          expect(await countPlansContributingToCap(db, userId)).toBe(
-            TIER_LIMITS.free.maxActivePlans,
-          );
-          sawReservation.resolve();
-          await releaseProvider.promise;
-          return originalGenerate.call(this, input, options);
-        },
-      );
+      .mockImplementation(async function generate(
+        this: MockGenerationProvider,
+        input,
+        options,
+      ) {
+        const [row] = await db
+          .select()
+          .from(learningPlans)
+          .where(eq(learningPlans.id, failed.id));
+        expect(row?.generationStatus).toBe('generating');
+        expect(row?.isQuotaEligible).toBe(false);
+        expect(await countPlansContributingToCap(db, userId)).toBe(
+          TIER_LIMITS.starter.maxActivePlans,
+        );
+        sawReservation.resolve();
+        await releaseProvider.promise;
+        return originalGenerate.call(this, input, options);
+      });
 
     const lifecycle = createPlanLifecycleService({ dbClient: db });
     const run = lifecycle.processGenerationAttempt({
       planId: failed.id,
       userId,
-      tier: 'free',
+      tier: 'starter',
       allowedGenerationStatuses: ['failed', 'pending_retry'],
       input: TEST_INPUT,
       generationPurpose: 'initial',
@@ -254,7 +259,7 @@ describe('last-good plan vs active-plan cap', () => {
 
     expect(result.status).toBe('generation_success');
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
 
     const [row] = await db
@@ -317,11 +322,11 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const [target] = await fillEligibleReadyPlans(
       userId,
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
     await createTestModule({ planId: target.id, title: 'Old module' });
 
@@ -329,7 +334,7 @@ describe('last-good plan vs active-plan cap', () => {
     const result = await lifecycle.processGenerationAttempt({
       planId: target.id,
       userId,
-      tier: 'free',
+      tier: 'starter',
       generationPurpose: 'regeneration',
       input: {
         topic: target.topic,
@@ -341,7 +346,7 @@ describe('last-good plan vs active-plan cap', () => {
 
     expect(result.status).toBe('generation_success');
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans,
+      TIER_LIMITS.starter.maxActivePlans,
     );
 
     const [row] = await db
@@ -465,9 +470,12 @@ describe('last-good plan vs active-plan cap', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
-    await fillEligibleReadyPlans(userId, TIER_LIMITS.free.maxActivePlans + 2);
+    await fillEligibleReadyPlans(
+      userId,
+      TIER_LIMITS.starter.maxActivePlans + 2,
+    );
 
     const rejected = await atomicCheckAndInsertPlan(
       userId,
@@ -476,7 +484,7 @@ describe('last-good plan vs active-plan cap', () => {
     );
     expect(rejected.status).toBe('limit_reached');
     expect(await countPlansContributingToCap(db, userId)).toBe(
-      TIER_LIMITS.free.maxActivePlans + 2,
+      TIER_LIMITS.starter.maxActivePlans + 2,
     );
   });
 });

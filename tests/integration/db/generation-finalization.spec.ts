@@ -169,7 +169,7 @@ describe('plan generation finalization (single transaction)', () => {
         and(eq(usageMetrics.userId, userId), eq(usageMetrics.month, month)),
       );
     expect(afterMetrics[0]?.plansGenerated).toBe(beforePlansGenerated + 1);
-    expect(attemptMetadata?.admitted_tier).toBe('free');
+    expect(attemptMetadata?.admitted_tier).toBe('starter');
 
     const [entitlement] = await db
       .select({
@@ -182,10 +182,8 @@ describe('plan generation finalization (single transaction)', () => {
     expect(entitlement?.initialPlanGeneratedAt).toEqual(
       new Date('2026-03-01T10:00:05.000Z'),
     );
-    expect(entitlement?.freeAccessPlanId).toBe(planId);
-    expect(entitlement?.freeAccessPlanSelectedAt).toEqual(
-      new Date('2026-03-01T10:00:05.000Z'),
-    );
+    expect(entitlement?.freeAccessPlanId).toBeNull();
+    expect(entitlement?.freeAccessPlanSelectedAt).toBeNull();
   });
 
   it('retryable failure updates attempt and plan failed without usage', async () => {

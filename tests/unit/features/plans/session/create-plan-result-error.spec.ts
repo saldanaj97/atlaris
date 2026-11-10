@@ -25,28 +25,17 @@ function expectThrownAppError(
 }
 
 describe('throwCreatePlanResultError', () => {
-  it('maps Free lifetime admission denials to the documented codes', () => {
+  it('maps a missing subscription to SUBSCRIPTION_REQUIRED', () => {
     expectThrownAppError(
       () =>
         throwCreatePlanResultError({
-          status: 'free_allowance_used',
-          reason: 'used',
+          status: 'subscription_required',
+          reason: 'subscribe',
           upgradeUrl: '/pricing',
         }),
       {
-        status: API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
-        code: API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
-      },
-    );
-    expectThrownAppError(
-      () =>
-        throwCreatePlanResultError({
-          status: 'free_generation_in_progress',
-          reason: 'in progress',
-        }),
-      {
-        status: API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
-        code: API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
+        status: API_ERROR_HTTP_STATUS.SUBSCRIPTION_REQUIRED,
+        code: API_ERROR_CODES.SUBSCRIPTION_REQUIRED,
       },
     );
   });
