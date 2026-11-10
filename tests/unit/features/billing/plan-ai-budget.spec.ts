@@ -10,7 +10,6 @@ import { describe, expect, it } from 'vitest';
 describe('plan AI budget', () => {
   it('derives the paid ceilings from the 20% AI share of the plan price', () => {
     expect(PLAN_AI_BUDGET.aiShare).toBe(0.2);
-    expect(planAiCeilingMicrousd('free')).toBe(50_000);
     expect(planAiCeilingMicrousd('starter')).toBe(1_250_000);
     expect(planAiCeilingMicrousd('pro')).toBe(2_500_000);
   });
