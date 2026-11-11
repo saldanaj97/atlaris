@@ -923,3 +923,555 @@ describe('reconcileClerkBillingEntitlements', () => {
     expect(db.update).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Regression coverage for the staging report "paid for Starter but still shows
+ * Free". Event shapes and timestamps come from the real Clerk deliveries: a
+ * sign-up `subscription.created` carrying only the Free item, then a
+ * `subscriptionItem.active` for Starter. Each case replays events one at a
+ * time, carrying the stored user row forward, so ordering and the
+ * `clerkBillingUpdatedAt` staleness guard are exercised the way production
+ * sees them. The SQL-level `lt(clerkBillingUpdatedAt, ...)` guard mirrors the
+ * in-code `<=` check, so this harness does not model it separately.
+ */
+describe('Starter upgrade ordering (staging regression)', () => {
+  const STAGING_USER_ID = 'user_3Ly0zOrW5kwtP6VWB4WCs0XNfrZ';
+  const FREE_CREATED_AT = 1794411261932;
+  const STARTER_ACTIVE_AT = 1794411451954;
+  const STARTER_PERIOD_END = 1797003450965;
+
+  const FREE_PLAN = {
+    id: 'cplan_35fIWJtRxMfzbpbxpiOWCTjKWdQ',
+    slug: 'free_user',
+  };
+  const STARTER_PLAN = {
+    id: 'cplan_3G8pAq7nNr5wGtYQJA19VnnYNKA',
+    slug: 'starter_plan',
+  };
+
+  function freeWebhookItem() {
+    return {
+      id: 'csub_item_3Ly0zOE4quhCBl3aoXoGXxyQ1cc',
+      status: 'active',
+      is_free_trial: false,
+      period_end: null,
+      plan_id: FREE_PLAN.id,
+      plan: { ...FREE_PLAN, amount: 0 },
+      updated_at: FREE_CREATED_AT,
+    };
+  }
+
+  function subscriptionEvent(
+    type: 'subscription.created' | 'subscription.updated',
+    updatedAt: number,
+  ): WebhookEvent {
+    return {
+      type,
+      data: {
+        id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+        status: 'active',
+        payer: { user_id: STAGING_USER_ID },
+        payer_id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+        updated_at: updatedAt,
+        items: [freeWebhookItem()],
+      },
+    } as unknown as WebhookEvent;
+  }
+
+  function starterItemActiveEvent(): WebhookEvent {
+    return {
+      type: 'subscriptionItem.active',
+      data: {
+        id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+        status: 'active',
+        is_free_trial: false,
+        payer: { user_id: STAGING_USER_ID },
+        period_end: STARTER_PERIOD_END,
+        plan_id: STARTER_PLAN.id,
+        plan: { ...STARTER_PLAN, amount: 2500 },
+        subscription_id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+        updated_at: STARTER_ACTIVE_AT,
+      },
+    } as unknown as WebhookEvent;
+  }
+
+  function freeBackendItem() {
+    return {
+      id: 'csub_item_3Ly0zOE4quhCBl3aoXoGXxyQ1cc',
+      status: 'active' as const,
+      planId: FREE_PLAN.id,
+      plan: FREE_PLAN,
+      amount: { amount: 0 },
+      periodEnd: null,
+      isFreeTrial: false,
+    };
+  }
+
+  function starterBackendItem() {
+    return {
+      id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+      status: 'active' as const,
+      planId: STARTER_PLAN.id,
+      plan: STARTER_PLAN,
+      amount: { amount: 2500 },
+      periodEnd: STARTER_PERIOD_END,
+      isFreeTrial: false,
+    };
+  }
+
+  function freeOnlySnapshot(updatedAt: number): BackendBillingSubscription {
+    return makeSubscription({
+      payerId: STAGING_USER_ID,
+      updatedAt,
+      subscriptionItems: [freeBackendItem()],
+    });
+  }
+
+  function starterSnapshot(updatedAt: number): BackendBillingSubscription {
+    return makeSubscription({
+      payerId: STAGING_USER_ID,
+      updatedAt,
+      subscriptionItems: [starterBackendItem()],
+    });
+  }
+
+  type Delivery = {
+    event: WebhookEvent;
+    eventId: string;
+    /** What `getUserBillingSubscription` returns while this event is processed. */
+    clerkRefetch: BackendBillingSubscription;
+  };
+
+  /** Replays deliveries in order, persisting each `update().set()` onto the user row. */
+  async function replay(
+    deliveries: Delivery[],
+    initialUser: Record<string, unknown> = {},
+  ) {
+    let user = makeLocalUser({
+      authUserId: STAGING_USER_ID,
+      subscriptionTier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: null,
+      clerkBillingUpdatedAt: null,
+      ...initialUser,
+    });
+    const results: unknown[] = [];
+
+    for (const delivery of deliveries) {
+      const db = makeDb({ selectResults: [[], [user]] });
+      results.push(
+        await applyVerifiedClerkBillingEvent(delivery.event, delivery.eventId, {
+          clerkClient: makeClerkClient(delivery.clerkRefetch),
+          db,
+          logger: makeLogger(),
+        }),
+      );
+      const written = db.updateSet.mock.calls.at(-1)?.[0];
+      if (written) {
+        user = { ...user, ...written };
+      }
+    }
+
+    return { user, results };
+  }
+
+  function expectUserOnStarter(user: ReturnType<typeof makeLocalUser>) {
+    expect(user).toMatchObject({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(STARTER_PERIOD_END),
+    });
+  }
+
+  it('moves Free to Starter when the sign-up subscription.created is followed by subscriptionItem.active', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('moves Free to Starter when a free-only subscription.updated with an equal updated_at lands just before the Starter item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: subscriptionEvent('subscription.updated', STARTER_ACTIVE_AT),
+        eventId: 'evt_sub_updated_equal',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('moves Free to Starter when a free-only subscription.updated with a newer updated_at lands just before the Starter item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: subscriptionEvent(
+          'subscription.updated',
+          STARTER_ACTIVE_AT + 1_000,
+        ),
+        eventId: 'evt_sub_updated_newer',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 1_000),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('keeps the Starter item when the Clerk re-fetch is stale and older than the item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT - 1_000),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('keeps the Starter item when the Clerk re-fetch returns free-only data with the same updated_at', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('keeps the Starter item when the Clerk re-fetch returns free-only data with a newer updated_at', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 1_000),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+  describe('active paid item rule: only an explicit ended or canceled item downgrades', () => {
+    const PRO_PLAN = { id: 'cplan_pro_fixture', slug: 'pro_plan' };
+
+    function paidItemEvent(args: {
+      type: string;
+      plan: { id: string; slug: string };
+      itemId: string;
+      status: string;
+      updatedAt: number;
+      periodEnd: number;
+    }): WebhookEvent {
+      return {
+        type: args.type,
+        data: {
+          id: args.itemId,
+          status: args.status,
+          is_free_trial: false,
+          payer: { user_id: STAGING_USER_ID },
+          period_end: args.periodEnd,
+          plan_id: args.plan.id,
+          plan: { ...args.plan, amount: 2500 },
+          updated_at: args.updatedAt,
+        },
+      } as unknown as WebhookEvent;
+    }
+
+    const paidUser = (
+      tier: 'starter' | 'pro',
+      clerkBillingUpdatedAt: number,
+    ) => ({
+      subscriptionTier: tier,
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(STARTER_PERIOD_END),
+      clerkBillingUpdatedAt: new Date(clerkBillingUpdatedAt),
+    });
+
+    it('downgrades a Starter user when the Starter item is explicitly ended', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.ended',
+              plan: STARTER_PLAN,
+              itemId: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'ended',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_ACTIVE_AT - 1_000,
+            }),
+            eventId: 'evt_item_ended',
+            clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 5_000),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user.subscriptionTier).toBe('free');
+    });
+
+    it('downgrades to canceled when the ended item is newer than a lagging Clerk re-fetch', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.ended',
+              plan: STARTER_PLAN,
+              itemId: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'ended',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_ACTIVE_AT - 1_000,
+            }),
+            eventId: 'evt_item_ended',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user).toMatchObject({
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
+      });
+    });
+
+    it('still applies a genuine Pro to Starter change', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('pro', STARTER_ACTIVE_AT - 10_000),
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('still applies a genuine Starter to Pro change', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.active',
+              plan: PRO_PLAN,
+              itemId: 'item_pro',
+              status: 'active',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_PERIOD_END,
+            }),
+            eventId: 'evt_item_pro_active',
+            clerkRefetch: makeSubscription({
+              payerId: STAGING_USER_ID,
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+            }),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user).toMatchObject({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
+      });
+    });
+
+    it('ignores a late Starter event for a user who already downgraded to canceled Free', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_late_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        {
+          subscriptionTier: 'free',
+          subscriptionStatus: 'canceled',
+          subscriptionPeriodEnd: null,
+          clerkBillingUpdatedAt: new Date(STARTER_ACTIVE_AT + 5_000),
+        },
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user).toMatchObject({
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
+      });
+    });
+
+    it('ignores a late Starter event for a user who already moved to Pro', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_late_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('pro', STARTER_ACTIVE_AT + 5_000),
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user.subscriptionTier).toBe('pro');
+    });
+  });
+  describe('pending payment attempt must not poison the stored timestamp', () => {
+    // Real staging order (Clerk webhook ledger): paymentAttempt.created arrived
+    // before the Starter subscriptionItem.active. The re-fetch for the pending
+    // attempt reports the subscription's later updated_at, and the projection
+    // is null for a pending attempt.
+    const REFETCH_UPDATED_AT = STARTER_ACTIVE_AT + 6;
+
+    function pendingAttemptEvent(): WebhookEvent {
+      return {
+        type: 'paymentAttempt.created',
+        data: {
+          id: 'cpay_attempt_fixture',
+          status: 'pending',
+          payer: { user_id: STAGING_USER_ID },
+          payer_id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+          updated_at: STARTER_ACTIVE_AT - 50,
+          subscription_items: [
+            {
+              id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'upcoming',
+              is_free_trial: false,
+              period_end: STARTER_PERIOD_END,
+              plan_id: STARTER_PLAN.id,
+              plan: { ...STARTER_PLAN, amount: 2500 },
+            },
+          ],
+        },
+      } as unknown as WebhookEvent;
+    }
+
+    const newUser = {
+      subscriptionTier: 'free',
+      subscriptionStatus: null,
+      subscriptionPeriodEnd: null,
+      clerkBillingUpdatedAt: null,
+    };
+
+    it('does not store a timestamp when the projection is null', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user.clerkBillingUpdatedAt).toBeNull();
+    });
+
+    it('moves a new user to Starter when a pending attempt precedes the older-timestamped Starter item', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: starterSnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('still lands on Starter when the Clerk re-fetch for the item lags with free-only data', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('heals a row already poisoned by an earlier null-projection write (Free, null status)', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active_retry',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        {
+          ...newUser,
+          clerkBillingUpdatedAt: new Date(REFETCH_UPDATED_AT),
+        },
+      );
+
+      expectUserOnStarter(user);
+    });
+  });
+});
