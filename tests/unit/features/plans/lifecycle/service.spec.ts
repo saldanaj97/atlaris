@@ -80,6 +80,30 @@ describe('PlanLifecycleService', () => {
       }
     });
 
+    it('passes the trial flag to the duration cap', async () => {
+      const checkDurationCap = vi.fn().mockReturnValue({
+        allowed: false,
+        reason: 'Free trial plans are limited to 2 weeks.',
+        upgradeUrl: '/pricing',
+      });
+      ports = createMockPorts({
+        quota: {
+          ...createMockPorts().quota,
+          resolveUserTier: async () => 'starter' as const,
+          resolveUserTrialing: async () => true,
+          checkDurationCap,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('duration_exceeded');
+      expect(checkDurationCap).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: 'starter', trialing: true }),
+      );
+    });
+
     it('returns permanent_failure when topic is too short', async () => {
       const result = await service.createPlan({ ...validInput, topic: 'ab' });
 

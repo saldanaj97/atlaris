@@ -58,6 +58,7 @@ export async function getBillingAccountSnapshot(
   const usage = await getUsageSummaryForTier({
     userId,
     tier: billingRow.tier,
+    trialing: billingRow.subscriptionStatus === 'trialing',
     dbClient,
   });
 

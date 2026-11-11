@@ -1,4 +1,9 @@
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import {
+  TIER_LIMITS,
+  TRIAL_LIMITS,
+  isTrialing,
+  limitsForUser,
+} from '@/shared/constants/tier-limits';
 import { describe, expect, it } from 'vitest';
 
 describe('TIER_LIMITS', () => {
@@ -25,5 +30,43 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.free).not.toHaveProperty('maxHours');
     expect(TIER_LIMITS.starter).not.toHaveProperty('maxHours');
     expect(TIER_LIMITS.pro).not.toHaveProperty('maxHours');
+  });
+});
+
+describe('free trial limits', () => {
+  it('allows one plan up to two weeks and no regenerations', () => {
+    expect(TRIAL_LIMITS).toEqual({
+      maxActivePlans: 1,
+      monthlyRegenerations: 0,
+      maxWeeks: 2,
+    });
+  });
+
+  it.each([
+    ['starter', 'trialing', true],
+    ['starter', 'active', false],
+    ['starter', null, false],
+    ['pro', 'trialing', true],
+    ['free', 'trialing', false],
+  ] as const)('%s with status %s: trialing is %s', (tier, status, expected) => {
+    expect(
+      isTrialing({ subscriptionTier: tier, subscriptionStatus: status }),
+    ).toBe(expected);
+  });
+
+  it('applies the trial limits only while trialing', () => {
+    expect(
+      limitsForUser({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'trialing',
+      }),
+    ).toBe(TRIAL_LIMITS);
+    expect(
+      limitsForUser({
+        subscriptionTier: 'starter',
+        subscriptionStatus: 'active',
+      }),
+    ).toBe(TIER_LIMITS.starter);
+    expect(limitsForUser({ subscriptionTier: 'pro' })).toBe(TIER_LIMITS.pro);
   });
 });

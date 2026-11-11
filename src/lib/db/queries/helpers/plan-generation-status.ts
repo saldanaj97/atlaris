@@ -45,9 +45,13 @@ export async function selectUserEntitlementForAdmission(
   userId: string,
 ): Promise<{
   subscriptionTier: SubscriptionTier;
+  subscriptionStatus: (typeof users.$inferSelect)['subscriptionStatus'];
 }> {
   const [user] = await tx
-    .select({ subscriptionTier: users.subscriptionTier })
+    .select({
+      subscriptionTier: users.subscriptionTier,
+      subscriptionStatus: users.subscriptionStatus,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .for('update');

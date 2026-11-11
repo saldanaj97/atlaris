@@ -19,7 +19,7 @@ import {
   planResearch,
   users,
 } from '@supabase/schema';
-import { and, count, eq, gte, max, sql } from 'drizzle-orm';
+import { type SQL, and, count, eq, gte, max, not, sql } from 'drizzle-orm';
 
 /**
  * AI spend in micro-USD for a plan's current generation: usage events and
@@ -101,14 +101,12 @@ export async function sumUserAiSpendMicrousd(
   return Number(usage?.spent ?? 0);
 }
 
-/**
- * AI spend in micro-USD since `since` by every user now on `tier`, research
- * runs included. Spend follows the user's current tier, so a user who
- * upgrades mid-day carries that day's spend into the new tier. Needs the
- * service-role client: RLS would limit the sum to one user.
- */
-export async function sumTierAiSpendMicrousd(
-  tier: SubscriptionTier,
+/** Users on a free trial: a paid tier whose subscription status is `trialing`. */
+// coalesce keeps a null status false rather than null, so `not()` stays true.
+const onFreeTrial = sql`(${users.subscriptionTier} <> 'free' and coalesce(${users.subscriptionStatus}::text, '') = 'trialing')`;
+
+async function sumPoolAiSpendMicrousd(
+  userFilter: SQL | undefined,
   since: Date,
   dbClient: Pick<DbClient, 'select'>,
 ): Promise<number> {
@@ -117,25 +115,46 @@ export async function sumTierAiSpendMicrousd(
       .select({ spent: usageEventCostSql })
       .from(aiUsageEvents)
       .innerJoin(users, eq(users.id, aiUsageEvents.userId))
-      .where(
-        and(
-          eq(users.subscriptionTier, tier),
-          gte(aiUsageEvents.createdAt, since),
-        ),
-      ),
+      .where(and(userFilter, gte(aiUsageEvents.createdAt, since))),
     dbClient
       .select({ spent: researchCostSql })
       .from(planResearch)
       .innerJoin(learningPlans, eq(learningPlans.id, planResearch.planId))
       .innerJoin(users, eq(users.id, learningPlans.userId))
-      .where(
-        and(
-          eq(users.subscriptionTier, tier),
-          gte(planResearch.createdAt, since),
-        ),
-      ),
+      .where(and(userFilter, gte(planResearch.createdAt, since))),
   ]);
   return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
+}
+
+/**
+ * AI spend in micro-USD since `since` by every user now on `tier` and not on a
+ * free trial (trials have their own pool), research runs included. Spend
+ * follows the user's current tier, so a user who upgrades mid-day carries that
+ * day's spend into the new tier. Needs the service-role client: RLS would limit
+ * the sum to one user.
+ */
+export async function sumTierAiSpendMicrousd(
+  tier: SubscriptionTier,
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  return sumPoolAiSpendMicrousd(
+    and(eq(users.subscriptionTier, tier), not(onFreeTrial)),
+    since,
+    dbClient,
+  );
+}
+
+/**
+ * AI spend in micro-USD since `since` by every user now on a free trial,
+ * research runs included. Needs the service-role client, like
+ * `sumTierAiSpendMicrousd`.
+ */
+export async function sumTrialAiSpendMicrousd(
+  since: Date,
+  dbClient: Pick<DbClient, 'select'>,
+): Promise<number> {
+  return sumPoolAiSpendMicrousd(onFreeTrial, since, dbClient);
 }
 
 /**

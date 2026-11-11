@@ -43,7 +43,7 @@ import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { limitsForUser } from '@/shared/constants/tier-limits';
 import { evaluateGenerationAdmission } from '@/shared/policy/generation-admission';
 import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts } from '@supabase/schema';
@@ -316,7 +316,7 @@ export async function reserveAttemptSlot(
     }
 
     if (!planOwnsActiveCapSlot(plan)) {
-      const tierConfig = TIER_LIMITS[user.subscriptionTier];
+      const tierConfig = limitsForUser(user);
       if (!tierConfig) {
         throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
       }

@@ -1,5 +1,8 @@
 import {
   PLAN_AI_BUDGET,
+  TRIAL_AI_BUDGET,
+  trialDailyCeilingMicrousd,
+  trialUserAiCeilingMicrousd,
   isNearPlanAiCeiling,
   planAiCeilingMicrousd,
   usageCostMicrousd,
@@ -12,6 +15,14 @@ describe('plan AI budget', () => {
     expect(PLAN_AI_BUDGET.aiShare).toBe(0.2);
     expect(planAiCeilingMicrousd('starter')).toBe(1_250_000);
     expect(planAiCeilingMicrousd('pro')).toBe(2_500_000);
+  });
+
+  it('caps a free trial at the Starter plan ceiling, $1.50 a month and $10 a day', () => {
+    expect(TRIAL_AI_BUDGET.planCeilingUsd).toBe(
+      PLAN_AI_BUDGET.ceilingUsdByTier.starter,
+    );
+    expect(trialUserAiCeilingMicrousd()).toBe(1_500_000);
+    expect(trialDailyCeilingMicrousd()).toBe(10_000_000);
   });
 
   it('costs a call by the provider cost, else the catalog estimate', () => {

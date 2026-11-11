@@ -6,6 +6,7 @@ import {
   recordDiscardedCallUsage,
   sumPlanAiSpendMicrousd,
   sumTierAiSpendMicrousd,
+  sumTrialAiSpendMicrousd,
   sumUserAiSpendMicrousd,
 } from '@/lib/db/queries/plan-ai-budget';
 import {
@@ -429,6 +430,47 @@ describe('plan AI budget queries', () => {
       );
       await expect(sumTierAiSpendMicrousd('pro', since, db)).resolves.toBe(
         3_000_000 + 800_000,
+      );
+    });
+
+    it('keeps free-trial spend in the trial pool and out of the tier pool', async () => {
+      const paidId = await userFixture('trial-paid');
+      const trialId = await userFixture('trial-user');
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'starter', subscriptionStatus: 'active' })
+        .where(eq(users.id, paidId));
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'starter', subscriptionStatus: 'trialing' })
+        .where(eq(users.id, trialId));
+      const trialPlan = await createTestPlan({
+        userId: trialId,
+        topic: 'Trial Plan',
+      });
+      await db.insert(aiUsageEvents).values([
+        usageEvent(paidId, null, '2026-09-14T01:00:00.000Z', {
+          providerCostMicrousd: BigInt(2_000),
+        }),
+        usageEvent(trialId, trialPlan.id, '2026-09-14T01:00:00.000Z', {
+          providerCostMicrousd: BigInt(40_000),
+        }),
+      ]);
+      await db.insert(planResearch).values({
+        planId: trialPlan.id,
+        brief: 'Brief',
+        mode: 'fast',
+        status: 'ok',
+        costMicrousd: 600,
+        createdAt: new Date('2026-09-14T03:00:00.000Z'),
+      });
+
+      const since = new Date('2026-09-14T00:00:00.000Z');
+      await expect(sumTierAiSpendMicrousd('starter', since, db)).resolves.toBe(
+        2_000,
+      );
+      await expect(sumTrialAiSpendMicrousd(since, db)).resolves.toBe(
+        40_000 + 600,
       );
     });
   });

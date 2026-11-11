@@ -8,7 +8,7 @@ import {
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { countPlansContributingToCap } from '@/lib/db/queries/helpers/plan-generation-status';
 import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { learningPlans, modules } from '@supabase/schema';
+import { learningPlans, modules, users } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { seedFailedAttemptsForDurableWindow } from '@tests/fixtures/attempts';
 import { createTestModule } from '@tests/fixtures/modules';
@@ -486,5 +486,43 @@ describe('last-good plan vs active-plan cap', () => {
     expect(await countPlansContributingToCap(db, userId)).toBe(
       TIER_LIMITS.starter.maxActivePlans + 2,
     );
+  });
+
+  it('limits a Starter free trial to one plan, then lifts the limit when it ends', async () => {
+    const authUserId = buildTestAuthUserId('cap-trial');
+    const userId = await ensureUser({
+      authUserId,
+      email: buildTestEmail(authUserId),
+      subscriptionTier: 'starter',
+    });
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'trialing' })
+      .where(eq(users.id, userId));
+
+    const first = await atomicCheckAndInsertPlan(
+      userId,
+      { ...PLAN_CORE, topic: 'Trial first' },
+      db,
+    );
+    expect(first.status).toBe('created');
+
+    const second = await atomicCheckAndInsertPlan(
+      userId,
+      { ...PLAN_CORE, topic: 'Trial second' },
+      db,
+    );
+    expect(second).toMatchObject({ status: 'limit_reached', limit: 1 });
+
+    await db
+      .update(users)
+      .set({ subscriptionStatus: 'active' })
+      .where(eq(users.id, userId));
+    const afterTrial = await atomicCheckAndInsertPlan(
+      userId,
+      { ...PLAN_CORE, topic: 'Trial third' },
+      db,
+    );
+    expect(afterTrial.status).toBe('created');
   });
 });
