@@ -136,7 +136,11 @@ export function ClerkPricingTable({
     ])
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
-        const nextPlans = result.data.map(normalizePlan);
+        // Atlaris is paid-only: the Clerk default plan stays as the "no
+        // subscription" state but is never offered as a card.
+        const nextPlans = result.data
+          .filter((plan) => plan.slug !== CLERK_BILLING_PLAN_SLUGS.free)
+          .map(normalizePlan);
         setCompletedFetchKey(fetchKey);
         setLoadFailed(false);
         setPlans(nextPlans);

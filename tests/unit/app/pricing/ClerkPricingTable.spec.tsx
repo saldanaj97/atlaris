@@ -212,7 +212,7 @@ describe('ClerkPricingTable', () => {
       expect(
         await screen.findByRole('link', { name: 'Begin with Starter' }),
       ).toHaveAttribute('href', '/auth/sign-in');
-      for (const name of ['Start free', 'Begin with Pro']) {
+      for (const name of ['Begin with Pro']) {
         expect(screen.getByRole('link', { name })).toHaveAttribute(
           'href',
           '/auth/sign-in',
@@ -227,7 +227,7 @@ describe('ClerkPricingTable', () => {
   );
 
   it('disables parallax pointer tracking for reduced motion', async () => {
-    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
+    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
     vi.stubGlobal(
       'matchMedia',
       vi.fn((query: string) => ({
@@ -242,7 +242,7 @@ describe('ClerkPricingTable', () => {
 
     await renderPricingTable();
 
-    const card = await screen.findByRole('article', { name: 'Free' });
+    const card = await screen.findByRole('article', { name: 'Starter' });
     fireEvent.pointerMove(card, { clientX: 150, clientY: 50 });
     expect(requestAnimationFrame).not.toHaveBeenCalled();
   });
@@ -353,17 +353,21 @@ describe('ClerkPricingTable', () => {
     }
   });
 
-  it('opens sign-up from the free plan for a signed-out visitor', async () => {
+  it('never offers the free plan, even though Clerk still lists it', async () => {
     mocks.useAuth.mockReturnValue({ isLoaded: true, userId: null });
-    mocks.getPlans.mockResolvedValue({ data: [FREE_PLAN] });
+    mocks.getPlans.mockResolvedValue({
+      data: [FREE_PLAN, STARTER_PLAN, PRO_PLAN],
+    });
 
     await renderPricingTable();
 
-    expect(await screen.findByTestId('sign-up-free')).toHaveAttribute(
-      'data-redirect',
-      '/plans/new',
-    );
-    expect(screen.queryByTestId('sign-in-checkout')).not.toBeInTheDocument();
+    await screen.findByRole('article', { name: 'Starter' });
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+    expect(
+      screen.queryByRole('article', { name: 'Free' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('sign-up-free')).not.toBeInTheDocument();
+    expect(screen.queryByText('Start free')).not.toBeInTheDocument();
   });
 
   it("preserves a signed-out visitor's selected plan and period through sign-in", async () => {
@@ -713,11 +717,6 @@ describe('ClerkPricingTable', () => {
       await renderPricingTable();
 
       await screen.findByRole('article', { name: 'Pro' });
-      expectCard('Free', {
-        action: "You're on Pro",
-        current: false,
-        featured: false,
-      });
       expectCard('Starter', {
         action: 'Switch to Starter',
         current: false,
@@ -884,11 +883,6 @@ describe('ClerkPricingTable', () => {
         expect(
           within(pro).getByRole('button', { name: 'Keep Pro' }),
         ).toBeVisible();
-        expectCard('Free', {
-          action: "You're on Pro",
-          current: false,
-          featured: false,
-        });
         expectCard('Starter', {
           action: 'Switch to Starter',
           current: false,
@@ -960,11 +954,6 @@ describe('ClerkPricingTable', () => {
       await renderPricingTable();
 
       await screen.findByRole('article', { name: 'Pro' });
-      expectCard('Free', {
-        action: "You're on Starter",
-        current: false,
-        featured: false,
-      });
       expectCard('Starter', {
         action: 'Manage subscription',
         current: true,
@@ -978,21 +967,11 @@ describe('ClerkPricingTable', () => {
       expect(screen.getByTestId('checkout-plan_pro')).toBeVisible();
     });
 
-    it('marks Free as the current plan for a user with no paid subscription', async () => {
+    it('marks no plan as current for a user with no paid subscription', async () => {
       await renderPricingTable();
 
       await screen.findByRole('article', { name: 'Pro' });
-      expectCard('Free', {
-        action: 'Create a plan',
-        current: true,
-        featured: false,
-      });
-      expect(
-        within(screen.getByRole('article', { name: 'Free' })).getByRole(
-          'link',
-          { name: 'Create a plan' },
-        ),
-      ).toHaveAttribute('href', '/plans/new');
+      expect(screen.queryByText('Current plan')).not.toBeInTheDocument();
       expectCard('Starter', {
         action: 'Begin with Starter',
         current: false,
@@ -1011,11 +990,6 @@ describe('ClerkPricingTable', () => {
       await renderPricingTable();
 
       await screen.findByRole('article', { name: 'Pro' });
-      expectCard('Free', {
-        action: 'Create a plan',
-        current: false,
-        featured: false,
-      });
       expectCard('Starter', {
         action: 'Begin with Starter',
         current: false,
@@ -1194,14 +1168,13 @@ describe('ClerkPricingTable', () => {
     mocks.getPlans.mockResolvedValue({
       data: [
         {
-          ...FREE_PLAN,
-          name: 'Free',
+          ...STARTER_PLAN,
           features: [
             { name: '10 active learning plans' },
             { name: '50 exports per month' },
           ],
         },
-        { ...STARTER_PLAN, features: [{ name: 'Priority queue access' }] },
+        { ...PRO_PLAN, features: [{ name: 'Priority queue access' }] },
       ],
     });
 
@@ -1218,7 +1191,7 @@ describe('ClerkPricingTable', () => {
       within(plansIncluded)
         .getAllByRole('cell')
         .map((cell) => cell.textContent),
-    ).toEqual(['1', '10 at a time']);
+    ).toEqual(['10 at a time', 'Unlimited']);
     expect(
       within(comparison).queryByText(/exports?|priority queue/i),
     ).not.toBeInTheDocument();
@@ -1241,7 +1214,6 @@ describe('ClerkPricingTable', () => {
         .map((header) => header.textContent);
     expect(headerText()).toEqual([
       'Feature',
-      'Free$0',
       'Starter$10 per month',
       'Pro$20 per month',
     ]);
@@ -1250,7 +1222,6 @@ describe('ClerkPricingTable', () => {
 
     expect(headerText()).toEqual([
       'Feature',
-      'Free$0',
       'Starter$8 per month',
       'Pro$16 per month',
     ]);

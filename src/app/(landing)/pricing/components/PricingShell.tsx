@@ -8,20 +8,18 @@ import { PageHero } from '@/components/ui/page-hero';
 import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import Link from 'next/link';
 
 import styles from './Pricing.module.css';
 
-const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
-
 const copy = {
-  headlineLead: 'Free for one plan.',
-  headlineTail: 'Pay when you need more.',
+  headlineLead: 'Pick your plan.',
+  headlineTail: 'Cancel any time.',
   subheadline:
-    'Start with one free plan. Upgrade for more plans, longer plans and more regenerations.',
-  ctaHeadline: 'Your first plan is free',
-  ctaDescription: `Pick a topic and Atlaris writes the plan. Free includes one plan of up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}.`,
+    'Starter and Pro both write full plans with lessons for every module. Pro adds unlimited active plans, longer plans and more regenerations.',
+  ctaHeadline: 'Ready for your first plan?',
+  ctaDescription:
+    'Choose Starter or Pro above, then pick a topic and Atlaris writes the plan.',
 } as const;
 
 /**

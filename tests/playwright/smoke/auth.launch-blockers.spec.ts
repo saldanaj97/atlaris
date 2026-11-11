@@ -196,7 +196,7 @@ test('authenticated launch blockers stay green', async ({ page }) => {
   await test.step('Clerk pricing and billing settings stay green', async () => {
     await page.goto('/pricing');
     await expect(page).toHaveURL(/\/pricing$/);
-    await expectHeading(page, /free for one plan\. pay when you need more/i);
+    await expectHeading(page, /pick your plan\. cancel any time/i);
 
     await page.goto('/settings/billing');
     await expect(page).toHaveURL(SETTINGS_URL);

@@ -6,21 +6,17 @@ import { Button } from '@/components/ui/button';
 import { ROUTES } from '@/features/navigation/routes';
 import { formatMinutes } from '@/features/plans/formatters';
 import { cn } from '@/lib/utils';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import { ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
-
-const FREE_WEEKS = TIER_LIMITS.free.maxWeeks;
-const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
 
 const copy = {
   subheadline:
     'Set your level and weekly hours. Atlaris writes the plan in modules and tasks, each with a time estimate.',
   primaryCta: 'Create a plan',
   secondaryCta: 'See pricing',
-  freePlan: `Free plan: ${FREE_PLANS === 1 ? 'one plan' : `${FREE_PLANS} plans`}, up to ${FREE_WEEKS === 2 ? 'two weeks' : `${FREE_WEEKS} weeks`}`,
+  plans: 'Starter and Pro plans. Cancel any time.',
 } as const;
 
 /** Example plan shown in the hero. Illustrative data, labelled as such. */
@@ -136,7 +132,7 @@ export function HeroSection() {
               styles.chip,
             )}
           >
-            {copy.freePlan}
+            {copy.plans}
           </p>
         </div>
 
