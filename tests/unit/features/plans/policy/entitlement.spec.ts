@@ -1,76 +1,10 @@
 import {
   canCreatePlanOnCurrentTier,
-  evaluateFreeInitialAdmission,
   projectLockedPlanListItem,
   resolveFreeAccessSelection,
   resolvePlanContentAccess,
 } from '@/features/plans/policy/entitlement';
 import { describe, expect, it } from 'vitest';
-
-describe('evaluateFreeInitialAdmission', () => {
-  it('allows paid initial creation even when the lifetime marker is set', () => {
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'starter',
-        generationPurpose: 'initial',
-        initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z'),
-        inProgressInitialCount: 0,
-      }),
-    ).toBe('ok');
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'pro',
-        generationPurpose: 'initial',
-        initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z'),
-        inProgressInitialCount: 1,
-      }),
-    ).toBe('ok');
-  });
-
-  it('ignores the marker for regeneration on every tier', () => {
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'free',
-        generationPurpose: 'regeneration',
-        initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z'),
-        inProgressInitialCount: 1,
-      }),
-    ).toBe('ok');
-  });
-
-  it('rejects a second Free initial when the marker is set', () => {
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'free',
-        generationPurpose: 'initial',
-        initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z'),
-        inProgressInitialCount: 0,
-      }),
-    ).toBe('free_allowance_used');
-  });
-
-  it('rejects another in-progress Free initial attempt', () => {
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'free',
-        generationPurpose: 'initial',
-        initialPlanGeneratedAt: null,
-        inProgressInitialCount: 1,
-      }),
-    ).toBe('free_initial_in_progress');
-  });
-
-  it('allows the first Free initial when the marker is null', () => {
-    expect(
-      evaluateFreeInitialAdmission({
-        tier: 'free',
-        generationPurpose: 'initial',
-        initialPlanGeneratedAt: null,
-        inProgressInitialCount: 0,
-      }),
-    ).toBe('ok');
-  });
-});
 
 describe('resolvePlanContentAccess', () => {
   const selectedAt = new Date('2026-04-01T00:00:00.000Z');
@@ -184,26 +118,17 @@ describe('resolveFreeAccessSelection', () => {
 });
 
 describe('canCreatePlanOnCurrentTier', () => {
-  it('blocks Free create after the lifetime marker is set', () => {
-    expect(
-      canCreatePlanOnCurrentTier({
-        subscriptionTier: 'free',
-        initialPlanGeneratedAt: new Date(),
-        freeAccessPlanId: 'plan-1',
-        freeAccessPlanSelectedAt: new Date(),
-      }),
-    ).toBe(false);
+  it('blocks the no-subscription tier from creating plans', () => {
+    expect(canCreatePlanOnCurrentTier({ subscriptionTier: 'free' })).toBe(
+      false,
+    );
   });
 
-  it('allows paid create after the lifetime marker is set', () => {
-    expect(
-      canCreatePlanOnCurrentTier({
-        subscriptionTier: 'starter',
-        initialPlanGeneratedAt: new Date(),
-        freeAccessPlanId: null,
-        freeAccessPlanSelectedAt: null,
-      }),
-    ).toBe(true);
+  it('allows paid tiers to create plans', () => {
+    expect(canCreatePlanOnCurrentTier({ subscriptionTier: 'starter' })).toBe(
+      true,
+    );
+    expect(canCreatePlanOnCurrentTier({ subscriptionTier: 'pro' })).toBe(true);
   });
 });
 

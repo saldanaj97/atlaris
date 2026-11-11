@@ -117,11 +117,11 @@ export default function TermsPage(): ReactElement {
 
       <LegalSection id='terms-paid' heading='7. Paid plans and billing'>
         <p>
-          Atlaris offers free and paid plans. Current plans and prices are shown
-          on the <Link href={ROUTES.PRICING}>pricing page</Link>. Paid plans are
-          billed through Clerk Billing on the schedule shown at checkout
-          (monthly, or yearly where offered), and payments are processed by
-          Stripe. There is currently no free trial.
+          Atlaris is a paid service. There is no free plan. Current plans and
+          prices are shown on the{' '}
+          <Link href={ROUTES.PRICING}>pricing page</Link>. Plans are billed
+          through Clerk Billing on the schedule shown at checkout (monthly, or
+          yearly where offered), and payments are processed by Stripe.
         </p>
         <p>
           Paid subscriptions renew automatically at the end of each billing
@@ -130,10 +130,10 @@ export default function TermsPage(): ReactElement {
           billing period, and your paid plan stays active until then.
         </p>
         <p>
-          Fees are non-refundable, including for partial billing periods, except
-          where the law requires otherwise. We may change prices or plan
-          features going forward; changes will not affect a billing period you
-          have already paid for.
+          All fees are non-refundable, including for partial billing periods and
+          unused time, except where the law requires otherwise. We may change
+          prices or plan features going forward; changes will not affect a
+          billing period you have already paid for.
         </p>
       </LegalSection>
 

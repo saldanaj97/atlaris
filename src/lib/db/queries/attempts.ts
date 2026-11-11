@@ -27,7 +27,6 @@ import {
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import {
-  countInProgressInitialAttemptsForUser,
   countPlansContributingToCap,
   lockUserPlanAdmission,
   planOwnsActiveCapSlot,
@@ -44,8 +43,8 @@ import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
+import { limitsForUser } from '@/shared/constants/tier-limits';
+import { evaluateGenerationAdmission } from '@/shared/policy/generation-admission';
 import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts } from '@supabase/schema';
 import { asc, count, eq, sql } from 'drizzle-orm';
@@ -312,27 +311,12 @@ export async function reserveAttemptSlot(
     }
 
     const user = await selectUserEntitlementForAdmission(tx, userId);
-    const freeAdmission = evaluateFreeInitialAdmission({
-      tier: user.subscriptionTier,
-      generationPurpose,
-      initialPlanGeneratedAt: user.initialPlanGeneratedAt,
-      inProgressInitialCount:
-        user.subscriptionTier === 'free' && generationPurpose === 'initial'
-          ? await countInProgressInitialAttemptsForUser(tx, {
-              userId,
-              excludePlanId: planId,
-            })
-          : 0,
-    });
-    if (freeAdmission === 'free_allowance_used') {
-      return { reserved: false, reason: 'free_allowance_used' } as const;
-    }
-    if (freeAdmission === 'free_initial_in_progress') {
-      return { reserved: false, reason: 'free_initial_in_progress' } as const;
+    if (evaluateGenerationAdmission({ tier: user.subscriptionTier }) !== 'ok') {
+      return { reserved: false, reason: 'subscription_required' } as const;
     }
 
     if (!planOwnsActiveCapSlot(plan)) {
-      const tierConfig = TIER_LIMITS[user.subscriptionTier];
+      const tierConfig = limitsForUser(user);
       if (!tierConfig) {
         throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
       }

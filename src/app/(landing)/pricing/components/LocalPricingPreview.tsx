@@ -13,16 +13,6 @@ import { useState } from 'react';
 
 const LOCAL_PRICING_PLANS: readonly PricingPlan[] = [
   {
-    id: 'local-free',
-    slug: CLERK_BILLING_PLAN_SLUGS.free,
-    name: 'Free',
-    description: PRICING_PLAN_DESCRIPTIONS.free,
-    features: PRICING_PLAN_FEATURES.free,
-    fee: null,
-    annualFee: null,
-    annualMonthlyFee: null,
-  },
-  {
     id: 'local-starter',
     slug: CLERK_BILLING_PLAN_SLUGS.starter,
     name: 'Starter',

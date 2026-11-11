@@ -5,6 +5,7 @@ import {
   requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
+import { assertGenerationEntitled } from '@/features/plans/entitlement/errors';
 import {
   createPlanGenerationSessionBoundary,
   PLAN_RETRY_RESERVATION_ALLOWED_STATUSES,
@@ -49,6 +50,7 @@ export function createRetryHandler(deps?: {
   return requestBoundary.route(
     { rateLimit: 'aiGeneration' },
     async ({ req, params, actor, db, correlationId }): Promise<Response> => {
+      assertGenerationEntitled(actor);
       const authUserId = actor.authUserId;
       const internalUserId = actor.id;
       const planId = requireUuidRouteParam(params, 'planId');

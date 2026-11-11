@@ -7,16 +7,14 @@ import { CtaBanner } from '@/components/ui/cta-banner';
 import { CREATE_PLAN_LABEL } from '@/features/navigation';
 import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
 
-const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
 const SUPPORT_EMAIL = 'support@atlaris.app';
 
 const copy = {
-  headline: `Start with ${FREE_PLANS === 1 ? 'one free plan' : `${FREE_PLANS} free plans`}`,
+  headline: 'Start your first plan',
   subheadline:
     'Name the goal and the hours you have. Atlaris writes the route.',
   support: 'A question, a bug, or a plan that missed the point:',

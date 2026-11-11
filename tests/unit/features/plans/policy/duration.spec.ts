@@ -79,6 +79,28 @@ describe('checkPlanDurationCap', () => {
     expect(res.allowed).toBe(true);
   });
 
+  it('blocks a Starter free trial above 2 weeks and allows 2', () => {
+    const blocked = checkPlanDurationCap({
+      tier: 'starter',
+      trialing: true,
+      totalWeeks: 3,
+    });
+    expect(blocked.allowed).toBe(false);
+    expect(blocked.reason).toMatch(/Free trial plans are limited to 2 weeks/);
+    expect(blocked.upgradeUrl).toBe('/pricing');
+    expect(
+      checkPlanDurationCap({ tier: 'starter', trialing: true, totalWeeks: 2 })
+        .allowed,
+    ).toBe(true);
+  });
+
+  it('keeps the Starter 8-week cap once the trial is over', () => {
+    expect(
+      checkPlanDurationCap({ tier: 'starter', trialing: false, totalWeeks: 8 })
+        .allowed,
+    ).toBe(true);
+  });
+
   it('allows pro unlimited', () => {
     const res = checkPlanDurationCap({
       tier: 'pro',

@@ -9,6 +9,7 @@ import {
   requirePlanContentAccess,
   requireUuidRouteParam,
 } from '@/features/plans/api/route-context';
+import { assertGenerationEntitled } from '@/features/plans/entitlement/errors';
 import { requestBoundary } from '@/lib/api/request-boundary';
 import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
@@ -27,6 +28,7 @@ export function createModuleLessonContentGenerateHandler(
   return requestBoundary.route(
     { rateLimit: 'lessonGeneration' },
     async ({ actor, db, params, correlationId }) => {
+      assertGenerationEntitled(actor);
       const planId = requireUuidRouteParam(params, 'planId');
       const moduleId = requireUuidRouteParam(params, 'moduleId');
 

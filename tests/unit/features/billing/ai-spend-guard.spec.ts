@@ -4,12 +4,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   sumTier: vi.fn(),
+  sumTrial: vi.fn(),
   sumUser: vi.fn(),
   captureMessage: vi.fn(),
 }));
 
 vi.mock('@/lib/db/queries/plan-ai-budget', () => ({
   sumTierAiSpendMicrousd: mocks.sumTier,
+  sumTrialAiSpendMicrousd: mocks.sumTrial,
   sumUserAiSpendMicrousd: mocks.sumUser,
 }));
 
@@ -26,9 +28,10 @@ const USD = 1_000_000;
 function check(
   tier: 'free' | 'starter' | 'pro' = 'starter',
   now: Date = NOW,
+  subscriptionStatus: string | null = 'active',
 ): Promise<void> {
   return assertAiSpendAllowed(
-    { id: 'user-1', subscriptionTier: tier },
+    { id: 'user-1', subscriptionTier: tier, subscriptionStatus },
     USER_DB,
     {
       serviceDb: SERVICE_DB,
@@ -50,6 +53,7 @@ describe('assertAiSpendAllowed', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.sumTier.mockResolvedValue(0);
+    mocks.sumTrial.mockResolvedValue(0);
     mocks.sumUser.mockResolvedValue(0);
   });
 
@@ -70,7 +74,6 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    ['free', 0.25],
     ['starter', 7.5],
     ['pro', 30],
   ] as const)(
@@ -93,6 +96,17 @@ describe('assertAiSpendAllowed', () => {
       });
     },
   );
+
+  it('has no budget for the free tier and reads no spend', async () => {
+    mocks.sumTier.mockResolvedValue(1_000 * USD);
+    mocks.sumUser.mockResolvedValue(1_000 * USD);
+
+    await expect(check('free')).resolves.toBeUndefined();
+
+    expect(mocks.sumTier).not.toHaveBeenCalled();
+    expect(mocks.sumUser).not.toHaveBeenCalled();
+    expect(mocks.captureMessage).not.toHaveBeenCalled();
+  });
 
   it('resets a December budget on January 1 of the next year', async () => {
     mocks.sumUser.mockResolvedValue(30 * USD);
@@ -151,7 +165,6 @@ describe('assertAiSpendAllowed', () => {
   });
 
   it.each([
-    ['free', 2],
     ['starter', 3],
     ['pro', 5],
   ] as const)(
@@ -182,4 +195,67 @@ describe('assertAiSpendAllowed', () => {
       expect(error.code()).toBe('SERVICE_UNAVAILABLE');
     },
   );
+
+  describe('free trial', () => {
+    const checkTrial = () => check('starter', NOW, 'trialing');
+
+    it('reads the trial pool, not the Starter pool', async () => {
+      await expect(checkTrial()).resolves.toBeUndefined();
+
+      expect(mocks.sumTrial).toHaveBeenCalledWith(
+        new Date('2026-11-14T00:00:00.000Z'),
+        SERVICE_DB,
+      );
+      expect(mocks.sumTier).not.toHaveBeenCalled();
+    });
+
+    it('refuses a trial user at $1.50 this month, not before', async () => {
+      mocks.sumUser.mockResolvedValue(1.5 * USD - 1);
+      await expect(checkTrial()).resolves.toBeUndefined();
+
+      mocks.sumUser.mockResolvedValue(1.5 * USD);
+      const error = await rejection(checkTrial());
+
+      expect(error.status()).toBe(429);
+      expect(error.code()).toBe('AI_BUDGET_EXHAUSTED');
+    });
+
+    it('does not let Starter spend or the Starter monthly cap apply to a trial', async () => {
+      mocks.sumTier.mockResolvedValue(1_000 * USD);
+      mocks.sumUser.mockResolvedValue(1.4 * USD);
+
+      await expect(checkTrial()).resolves.toBeUndefined();
+    });
+
+    it('pauses trials at the $10 daily pool and leaves paid Starter running', async () => {
+      mocks.sumTrial.mockResolvedValue(10 * USD - 1);
+      await expect(checkTrial()).resolves.toBeUndefined();
+      mocks.captureMessage.mockClear();
+
+      mocks.sumTrial.mockResolvedValue(10 * USD);
+      const error = await rejection(checkTrial());
+
+      expect(error.status()).toBe(503);
+      expect(error.code()).toBe('AI_GENERATION_PAUSED');
+      expect(mocks.captureMessage).toHaveBeenCalledExactlyOnceWith(
+        'Trial daily AI spend ceiling reached; new Trial AI work is paused',
+        expect.objectContaining({
+          level: 'fatal',
+          fingerprint: ['ai_tier_daily_spend', 'trial', '100', '2026-11-14'],
+        }),
+      );
+
+      mocks.sumTier.mockResolvedValue(0);
+      await expect(check('starter')).resolves.toBeUndefined();
+    });
+
+    it('fails closed when the trial pool cannot be read', async () => {
+      mocks.sumTrial.mockRejectedValue(new Error('db down'));
+
+      const error = await rejection(checkTrial());
+
+      expect(error.status()).toBe(503);
+      expect(error.code()).toBe('SERVICE_UNAVAILABLE');
+    });
+  });
 });
