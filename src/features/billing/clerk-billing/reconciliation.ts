@@ -478,6 +478,16 @@ async function finalizeClerkWebhookEvent(
   });
 }
 
+function isPaidTier(tier: string | null): boolean {
+  return tier === 'starter' || tier === 'pro';
+}
+
+function hasActivePaidItem(source: ClerkBillingProjectionSource): boolean {
+  return source.items.some(
+    (item) => item.status === 'active' && isPaidTier(item.tier),
+  );
+}
+
 async function refreshClerkBillingSource(
   source: ClerkBillingProjectionSource,
   deps: ReconciliationDeps,
@@ -513,12 +523,26 @@ async function refreshClerkBillingSource(
   const sourceIsNewer =
     sourceUpdatedAt !== null &&
     (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt);
+  // An active paid item always wins over a snapshot that has no paid item at
+  // all: Clerk's re-fetch can lag or omit the item, so a free-only snapshot must
+  // not erase a paid upgrade just because its timestamp is equal or newer. A
+  // snapshot that does list a paid item (canceled, ended, past due, ...) still
+  // decides, so explicit downgrades keep working.
+  const preferWebhook =
+    sourceIsNewer ||
+    (hasActivePaidItem(source) &&
+      !refreshedSource.items.some((item) => isPaidTier(item.tier)));
   const sourceItem = source.items[0];
-  const effectiveSource = sourceIsNewer
+  const effectiveSource = preferWebhook
     ? source.type.startsWith('subscriptionItem.')
       ? {
           ...refreshedSource,
-          clerkBillingUpdatedAt: sourceUpdatedAt,
+          clerkBillingUpdatedAt:
+            sourceUpdatedAt !== null &&
+            (refreshedUpdatedAt === null ||
+              sourceUpdatedAt > refreshedUpdatedAt)
+              ? sourceUpdatedAt
+              : refreshedUpdatedAt,
           items: sourceItem
             ? refreshedSource.items.some((item) => item.id === sourceItem.id)
               ? refreshedSource.items.map((item) =>
@@ -579,13 +603,31 @@ export async function applyClerkBillingSource(
     return 'skipped_no_user';
   }
 
-  if (
+  const isStale =
     source.clerkBillingUpdatedAt !== null &&
     user.clerkBillingUpdatedAt !== null &&
-    source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt
-  ) {
+    source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt;
+  // A free-only event can store an equal or newer timestamp than the paid item
+  // event that follows it. An active paid item still upgrades a user who is
+  // sitting on an active Free tier. Users in any other state (canceled, paid)
+  // keep the strict staleness check, so late events never undo a downgrade.
+  const isPaidUpgradeOverStaleFree =
+    isStale &&
+    hasActivePaidItem(source) &&
+    (source.paymentAttemptStatus === null ||
+      source.paymentAttemptStatus === 'paid') &&
+    user.subscriptionTier === 'free' &&
+    user.subscriptionStatus === 'active';
+  if (isStale && !isPaidUpgradeOverStaleFree) {
     return 'ignored';
   }
+  const storedUpdatedAt =
+    isPaidUpgradeOverStaleFree &&
+    source.clerkBillingUpdatedAt !== null &&
+    user.clerkBillingUpdatedAt !== null &&
+    user.clerkBillingUpdatedAt > source.clerkBillingUpdatedAt
+      ? user.clerkBillingUpdatedAt
+      : source.clerkBillingUpdatedAt;
 
   const projection = projectClerkBillingSource(source, user);
 
@@ -617,13 +659,13 @@ export async function applyClerkBillingSource(
     .update(users)
     .set({
       ...(projection ?? {}),
-      ...(source.clerkBillingUpdatedAt !== null
-        ? { clerkBillingUpdatedAt: source.clerkBillingUpdatedAt }
+      ...(storedUpdatedAt !== null
+        ? { clerkBillingUpdatedAt: storedUpdatedAt }
         : {}),
       ...(projection !== null ? { updatedAt: new Date() } : {}),
     })
     .where(
-      source.clerkBillingUpdatedAt === null
+      source.clerkBillingUpdatedAt === null || isPaidUpgradeOverStaleFree
         ? eq(users.id, user.id)
         : and(
             eq(users.id, user.id),

@@ -1043,13 +1043,17 @@ describe('Starter upgrade ordering (staging regression)', () => {
   };
 
   /** Replays deliveries in order, persisting each `update().set()` onto the user row. */
-  async function replay(deliveries: Delivery[]) {
+  async function replay(
+    deliveries: Delivery[],
+    initialUser: Record<string, unknown> = {},
+  ) {
     let user = makeLocalUser({
       authUserId: STAGING_USER_ID,
       subscriptionTier: 'free',
       subscriptionStatus: 'active',
       subscriptionPeriodEnd: null,
       clerkBillingUpdatedAt: null,
+      ...initialUser,
     });
     const results: unknown[] = [];
 
@@ -1096,13 +1100,7 @@ describe('Starter upgrade ordering (staging regression)', () => {
     expectUserOnStarter(user);
   });
 
-  // KNOWN FAILURE (expected-fail): finding A. `applyClerkBillingSource` ignores
-  // any source whose `clerkBillingUpdatedAt <= users.clerkBillingUpdatedAt`.
-  // A free-only subscription.updated stores its own (equal or newer) timestamp
-  // first, so the Starter item event is then dropped as stale and the user
-  // stays Free. Subscription and item timestamps come from different Clerk
-  // resources, so comparing them directly is unsafe. Remove `.fails` once fixed.
-  it.fails('moves Free to Starter when a free-only subscription.updated with an equal updated_at lands just before the Starter item event', async () => {
+  it('moves Free to Starter when a free-only subscription.updated with an equal updated_at lands just before the Starter item event', async () => {
     const { user } = await replay([
       {
         event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
@@ -1124,15 +1122,7 @@ describe('Starter upgrade ordering (staging regression)', () => {
     expectUserOnStarter(user);
   });
 
-  // KNOWN FAILURE (expected-fail): finding A. `applyClerkBillingSource` ignores
-  // any source whose `clerkBillingUpdatedAt <= users.clerkBillingUpdatedAt`.
-  // A free-only subscription.updated stores its own (equal or newer) timestamp
-  // first, so the Starter item event is then dropped as stale and the user
-  // stays Free. Subscription and item timestamps come from different Clerk
-  // resources, so comparing them directly is unsafe. Remove `.fails` once fixed.
-  // The newer-timestamp variant is debatable: a genuinely later free-only state
-  // could be a real downgrade. Confirm the intended rule before fixing.
-  it.fails('moves Free to Starter when a free-only subscription.updated with a newer updated_at lands just before the Starter item event', async () => {
+  it('moves Free to Starter when a free-only subscription.updated with a newer updated_at lands just before the Starter item event', async () => {
     const { user } = await replay([
       {
         event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
@@ -1174,13 +1164,7 @@ describe('Starter upgrade ordering (staging regression)', () => {
     expectUserOnStarter(user);
   });
 
-  // KNOWN FAILURE (expected-fail): finding B. `refreshClerkBillingSource` only
-  // keeps the webhook item when the webhook is strictly newer than the
-  // re-fetch (`sourceIsNewer`). With an equal or newer free-only re-fetch the
-  // whole refreshed snapshot replaces the Starter item, the user is projected
-  // to Free, and `clerkBillingUpdatedAt` advances so later retries are ignored.
-  // Remove `.fails` once fixed.
-  it.fails('keeps the Starter item when the Clerk re-fetch returns free-only data with the same updated_at', async () => {
+  it('keeps the Starter item when the Clerk re-fetch returns free-only data with the same updated_at', async () => {
     const { user } = await replay([
       {
         event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
@@ -1197,14 +1181,7 @@ describe('Starter upgrade ordering (staging regression)', () => {
     expectUserOnStarter(user);
   });
 
-  // KNOWN FAILURE (expected-fail): finding B. `refreshClerkBillingSource` only
-  // keeps the webhook item when the webhook is strictly newer than the
-  // re-fetch (`sourceIsNewer`). With an equal or newer free-only re-fetch the
-  // whole refreshed snapshot replaces the Starter item, the user is projected
-  // to Free, and `clerkBillingUpdatedAt` advances so later retries are ignored.
-  // Remove `.fails` once fixed.
-  // Debatable like the newer-timestamp case above: confirm the intended rule.
-  it.fails('keeps the Starter item when the Clerk re-fetch returns free-only data with a newer updated_at', async () => {
+  it('keeps the Starter item when the Clerk re-fetch returns free-only data with a newer updated_at', async () => {
     const { user } = await replay([
       {
         event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
@@ -1219,5 +1196,171 @@ describe('Starter upgrade ordering (staging regression)', () => {
     ]);
 
     expectUserOnStarter(user);
+  });
+  describe('active paid item rule: only an explicit ended or canceled item downgrades', () => {
+    const PRO_PLAN = { id: 'cplan_pro_fixture', slug: 'pro_plan' };
+
+    function paidItemEvent(args: {
+      type: string;
+      plan: { id: string; slug: string };
+      itemId: string;
+      status: string;
+      updatedAt: number;
+      periodEnd: number;
+    }): WebhookEvent {
+      return {
+        type: args.type,
+        data: {
+          id: args.itemId,
+          status: args.status,
+          is_free_trial: false,
+          payer: { user_id: STAGING_USER_ID },
+          period_end: args.periodEnd,
+          plan_id: args.plan.id,
+          plan: { ...args.plan, amount: 2500 },
+          updated_at: args.updatedAt,
+        },
+      } as unknown as WebhookEvent;
+    }
+
+    const paidUser = (
+      tier: 'starter' | 'pro',
+      clerkBillingUpdatedAt: number,
+    ) => ({
+      subscriptionTier: tier,
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(STARTER_PERIOD_END),
+      clerkBillingUpdatedAt: new Date(clerkBillingUpdatedAt),
+    });
+
+    it('downgrades a Starter user when the Starter item is explicitly ended', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.ended',
+              plan: STARTER_PLAN,
+              itemId: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'ended',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_ACTIVE_AT - 1_000,
+            }),
+            eventId: 'evt_item_ended',
+            clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 5_000),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user.subscriptionTier).toBe('free');
+    });
+
+    it('downgrades to canceled when the ended item is newer than a lagging Clerk re-fetch', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.ended',
+              plan: STARTER_PLAN,
+              itemId: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'ended',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_ACTIVE_AT - 1_000,
+            }),
+            eventId: 'evt_item_ended',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user).toMatchObject({
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
+      });
+    });
+
+    it('still applies a genuine Pro to Starter change', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('pro', STARTER_ACTIVE_AT - 10_000),
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('still applies a genuine Starter to Pro change', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: paidItemEvent({
+              type: 'subscriptionItem.active',
+              plan: PRO_PLAN,
+              itemId: 'item_pro',
+              status: 'active',
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+              periodEnd: STARTER_PERIOD_END,
+            }),
+            eventId: 'evt_item_pro_active',
+            clerkRefetch: makeSubscription({
+              payerId: STAGING_USER_ID,
+              updatedAt: STARTER_ACTIVE_AT + 5_000,
+            }),
+          },
+        ],
+        paidUser('starter', STARTER_ACTIVE_AT),
+      );
+
+      expect(user).toMatchObject({
+        subscriptionTier: 'pro',
+        subscriptionStatus: 'active',
+      });
+    });
+
+    it('ignores a late Starter event for a user who already downgraded to canceled Free', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_late_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        {
+          subscriptionTier: 'free',
+          subscriptionStatus: 'canceled',
+          subscriptionPeriodEnd: null,
+          clerkBillingUpdatedAt: new Date(STARTER_ACTIVE_AT + 5_000),
+        },
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user).toMatchObject({
+        subscriptionTier: 'free',
+        subscriptionStatus: 'canceled',
+      });
+    });
+
+    it('ignores a late Starter event for a user who already moved to Pro', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_late_item_active',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        paidUser('pro', STARTER_ACTIVE_AT + 5_000),
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user.subscriptionTier).toBe('pro');
+    });
   });
 });
