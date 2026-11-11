@@ -923,3 +923,301 @@ describe('reconcileClerkBillingEntitlements', () => {
     expect(db.update).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Regression coverage for the staging report "paid for Starter but still shows
+ * Free". Event shapes and timestamps come from the real Clerk deliveries: a
+ * sign-up `subscription.created` carrying only the Free item, then a
+ * `subscriptionItem.active` for Starter. Each case replays events one at a
+ * time, carrying the stored user row forward, so ordering and the
+ * `clerkBillingUpdatedAt` staleness guard are exercised the way production
+ * sees them. The SQL-level `lt(clerkBillingUpdatedAt, ...)` guard mirrors the
+ * in-code `<=` check, so this harness does not model it separately.
+ */
+describe('Starter upgrade ordering (staging regression)', () => {
+  const STAGING_USER_ID = 'user_3Ly0zOrW5kwtP6VWB4WCs0XNfrZ';
+  const FREE_CREATED_AT = 1794411261932;
+  const STARTER_ACTIVE_AT = 1794411451954;
+  const STARTER_PERIOD_END = 1797003450965;
+
+  const FREE_PLAN = {
+    id: 'cplan_35fIWJtRxMfzbpbxpiOWCTjKWdQ',
+    slug: 'free_user',
+  };
+  const STARTER_PLAN = {
+    id: 'cplan_3G8pAq7nNr5wGtYQJA19VnnYNKA',
+    slug: 'starter_plan',
+  };
+
+  function freeWebhookItem() {
+    return {
+      id: 'csub_item_3Ly0zOE4quhCBl3aoXoGXxyQ1cc',
+      status: 'active',
+      is_free_trial: false,
+      period_end: null,
+      plan_id: FREE_PLAN.id,
+      plan: { ...FREE_PLAN, amount: 0 },
+      updated_at: FREE_CREATED_AT,
+    };
+  }
+
+  function subscriptionEvent(
+    type: 'subscription.created' | 'subscription.updated',
+    updatedAt: number,
+  ): WebhookEvent {
+    return {
+      type,
+      data: {
+        id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+        status: 'active',
+        payer: { user_id: STAGING_USER_ID },
+        payer_id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+        updated_at: updatedAt,
+        items: [freeWebhookItem()],
+      },
+    } as unknown as WebhookEvent;
+  }
+
+  function starterItemActiveEvent(): WebhookEvent {
+    return {
+      type: 'subscriptionItem.active',
+      data: {
+        id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+        status: 'active',
+        is_free_trial: false,
+        payer: { user_id: STAGING_USER_ID },
+        period_end: STARTER_PERIOD_END,
+        plan_id: STARTER_PLAN.id,
+        plan: { ...STARTER_PLAN, amount: 2500 },
+        subscription_id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+        updated_at: STARTER_ACTIVE_AT,
+      },
+    } as unknown as WebhookEvent;
+  }
+
+  function freeBackendItem() {
+    return {
+      id: 'csub_item_3Ly0zOE4quhCBl3aoXoGXxyQ1cc',
+      status: 'active' as const,
+      planId: FREE_PLAN.id,
+      plan: FREE_PLAN,
+      amount: { amount: 0 },
+      periodEnd: null,
+      isFreeTrial: false,
+    };
+  }
+
+  function starterBackendItem() {
+    return {
+      id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+      status: 'active' as const,
+      planId: STARTER_PLAN.id,
+      plan: STARTER_PLAN,
+      amount: { amount: 2500 },
+      periodEnd: STARTER_PERIOD_END,
+      isFreeTrial: false,
+    };
+  }
+
+  function freeOnlySnapshot(updatedAt: number): BackendBillingSubscription {
+    return makeSubscription({
+      payerId: STAGING_USER_ID,
+      updatedAt,
+      subscriptionItems: [freeBackendItem()],
+    });
+  }
+
+  function starterSnapshot(updatedAt: number): BackendBillingSubscription {
+    return makeSubscription({
+      payerId: STAGING_USER_ID,
+      updatedAt,
+      subscriptionItems: [starterBackendItem()],
+    });
+  }
+
+  type Delivery = {
+    event: WebhookEvent;
+    eventId: string;
+    /** What `getUserBillingSubscription` returns while this event is processed. */
+    clerkRefetch: BackendBillingSubscription;
+  };
+
+  /** Replays deliveries in order, persisting each `update().set()` onto the user row. */
+  async function replay(deliveries: Delivery[]) {
+    let user = makeLocalUser({
+      authUserId: STAGING_USER_ID,
+      subscriptionTier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: null,
+      clerkBillingUpdatedAt: null,
+    });
+    const results: unknown[] = [];
+
+    for (const delivery of deliveries) {
+      const db = makeDb({ selectResults: [[], [user]] });
+      results.push(
+        await applyVerifiedClerkBillingEvent(delivery.event, delivery.eventId, {
+          clerkClient: makeClerkClient(delivery.clerkRefetch),
+          db,
+          logger: makeLogger(),
+        }),
+      );
+      const written = db.updateSet.mock.calls.at(-1)?.[0];
+      if (written) {
+        user = { ...user, ...written };
+      }
+    }
+
+    return { user, results };
+  }
+
+  function expectUserOnStarter(user: ReturnType<typeof makeLocalUser>) {
+    expect(user).toMatchObject({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(STARTER_PERIOD_END),
+    });
+  }
+
+  it('moves Free to Starter when the sign-up subscription.created is followed by subscriptionItem.active', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  // KNOWN FAILURE (expected-fail): finding A. `applyClerkBillingSource` ignores
+  // any source whose `clerkBillingUpdatedAt <= users.clerkBillingUpdatedAt`.
+  // A free-only subscription.updated stores its own (equal or newer) timestamp
+  // first, so the Starter item event is then dropped as stale and the user
+  // stays Free. Subscription and item timestamps come from different Clerk
+  // resources, so comparing them directly is unsafe. Remove `.fails` once fixed.
+  it.fails('moves Free to Starter when a free-only subscription.updated with an equal updated_at lands just before the Starter item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: subscriptionEvent('subscription.updated', STARTER_ACTIVE_AT),
+        eventId: 'evt_sub_updated_equal',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  // KNOWN FAILURE (expected-fail): finding A. `applyClerkBillingSource` ignores
+  // any source whose `clerkBillingUpdatedAt <= users.clerkBillingUpdatedAt`.
+  // A free-only subscription.updated stores its own (equal or newer) timestamp
+  // first, so the Starter item event is then dropped as stale and the user
+  // stays Free. Subscription and item timestamps come from different Clerk
+  // resources, so comparing them directly is unsafe. Remove `.fails` once fixed.
+  // The newer-timestamp variant is debatable: a genuinely later free-only state
+  // could be a real downgrade. Confirm the intended rule before fixing.
+  it.fails('moves Free to Starter when a free-only subscription.updated with a newer updated_at lands just before the Starter item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: subscriptionEvent(
+          'subscription.updated',
+          STARTER_ACTIVE_AT + 1_000,
+        ),
+        eventId: 'evt_sub_updated_newer',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 1_000),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  it('keeps the Starter item when the Clerk re-fetch is stale and older than the item event', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT - 1_000),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  // KNOWN FAILURE (expected-fail): finding B. `refreshClerkBillingSource` only
+  // keeps the webhook item when the webhook is strictly newer than the
+  // re-fetch (`sourceIsNewer`). With an equal or newer free-only re-fetch the
+  // whole refreshed snapshot replaces the Starter item, the user is projected
+  // to Free, and `clerkBillingUpdatedAt` advances so later retries are ignored.
+  // Remove `.fails` once fixed.
+  it.fails('keeps the Starter item when the Clerk re-fetch returns free-only data with the same updated_at', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+
+  // KNOWN FAILURE (expected-fail): finding B. `refreshClerkBillingSource` only
+  // keeps the webhook item when the webhook is strictly newer than the
+  // re-fetch (`sourceIsNewer`). With an equal or newer free-only re-fetch the
+  // whole refreshed snapshot replaces the Starter item, the user is projected
+  // to Free, and `clerkBillingUpdatedAt` advances so later retries are ignored.
+  // Remove `.fails` once fixed.
+  // Debatable like the newer-timestamp case above: confirm the intended rule.
+  it.fails('keeps the Starter item when the Clerk re-fetch returns free-only data with a newer updated_at', async () => {
+    const { user } = await replay([
+      {
+        event: subscriptionEvent('subscription.created', FREE_CREATED_AT),
+        eventId: 'evt_sub_created',
+        clerkRefetch: freeOnlySnapshot(FREE_CREATED_AT),
+      },
+      {
+        event: starterItemActiveEvent(),
+        eventId: 'evt_item_active',
+        clerkRefetch: freeOnlySnapshot(STARTER_ACTIVE_AT + 1_000),
+      },
+    ]);
+
+    expectUserOnStarter(user);
+  });
+});
