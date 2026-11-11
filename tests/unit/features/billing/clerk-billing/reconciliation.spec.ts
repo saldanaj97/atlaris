@@ -1363,4 +1363,115 @@ describe('Starter upgrade ordering (staging regression)', () => {
       expect(user.subscriptionTier).toBe('pro');
     });
   });
+  describe('pending payment attempt must not poison the stored timestamp', () => {
+    // Real staging order (Clerk webhook ledger): paymentAttempt.created arrived
+    // before the Starter subscriptionItem.active. The re-fetch for the pending
+    // attempt reports the subscription's later updated_at, and the projection
+    // is null for a pending attempt.
+    const REFETCH_UPDATED_AT = STARTER_ACTIVE_AT + 6;
+
+    function pendingAttemptEvent(): WebhookEvent {
+      return {
+        type: 'paymentAttempt.created',
+        data: {
+          id: 'cpay_attempt_fixture',
+          status: 'pending',
+          payer: { user_id: STAGING_USER_ID },
+          payer_id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+          updated_at: STARTER_ACTIVE_AT - 50,
+          subscription_items: [
+            {
+              id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+              status: 'upcoming',
+              is_free_trial: false,
+              period_end: STARTER_PERIOD_END,
+              plan_id: STARTER_PLAN.id,
+              plan: { ...STARTER_PLAN, amount: 2500 },
+            },
+          ],
+        },
+      } as unknown as WebhookEvent;
+    }
+
+    const newUser = {
+      subscriptionTier: 'free',
+      subscriptionStatus: null,
+      subscriptionPeriodEnd: null,
+      clerkBillingUpdatedAt: null,
+    };
+
+    it('does not store a timestamp when the projection is null', async () => {
+      const { user, results } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expect(results).toEqual([{ status: 'inserted', result: 'ignored' }]);
+      expect(user.clerkBillingUpdatedAt).toBeNull();
+    });
+
+    it('moves a new user to Starter when a pending attempt precedes the older-timestamped Starter item', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: starterSnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('still lands on Starter when the Clerk re-fetch for the item lags with free-only data', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: pendingAttemptEvent(),
+            eventId: 'evt_attempt_created',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active',
+            clerkRefetch: freeOnlySnapshot(REFETCH_UPDATED_AT),
+          },
+        ],
+        newUser,
+      );
+
+      expectUserOnStarter(user);
+    });
+
+    it('heals a row already poisoned by an earlier null-projection write (Free, null status)', async () => {
+      const { user } = await replay(
+        [
+          {
+            event: starterItemActiveEvent(),
+            eventId: 'evt_item_active_retry',
+            clerkRefetch: starterSnapshot(STARTER_ACTIVE_AT),
+          },
+        ],
+        {
+          ...newUser,
+          clerkBillingUpdatedAt: new Date(REFETCH_UPDATED_AT),
+        },
+      );
+
+      expectUserOnStarter(user);
+    });
+  });
 });

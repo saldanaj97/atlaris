@@ -609,7 +609,7 @@ export async function applyClerkBillingSource(
     source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt;
   // A free-only event can store an equal or newer timestamp than the paid item
   // event that follows it. An active paid item still upgrades a user who is
-  // sitting on an active Free tier. Users in any other state (canceled, paid)
+  // sitting on Free that was never canceled (active or no status yet). Users in any other state (canceled, paid)
   // keep the strict staleness check, so late events never undo a downgrade.
   const isPaidUpgradeOverStaleFree =
     isStale &&
@@ -617,7 +617,7 @@ export async function applyClerkBillingSource(
     (source.paymentAttemptStatus === null ||
       source.paymentAttemptStatus === 'paid') &&
     user.subscriptionTier === 'free' &&
-    user.subscriptionStatus === 'active';
+    (user.subscriptionStatus === 'active' || user.subscriptionStatus === null);
   if (isStale && !isPaidUpgradeOverStaleFree) {
     return 'ignored';
   }
@@ -650,7 +650,12 @@ export async function applyClerkBillingSource(
         'Clerk Billing event did not require a local projection update',
       );
     }
-    if (source.clerkBillingUpdatedAt === null) {
+    // An event that learned nothing (for example a pending payment attempt)
+    // must not advance the stored timestamp. It used to store the re-fetch's
+    // later subscription updated_at here, which made the Starter item event
+    // that followed look stale and left the payer on Free. Unmapped plans keep
+    // recording the timestamp, as before.
+    if (unmappedItems.length === 0 || source.clerkBillingUpdatedAt === null) {
       return 'ignored';
     }
   }
