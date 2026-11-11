@@ -36,6 +36,35 @@ export function resolveCreatePlanCta({
   return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
 }
 
+export type MarketingCreatePlanCta = { href: string; label: string };
+
+/**
+ * The marketing pages' create-plan buttons. A signed-out visitor goes to
+ * sign-up and returns to the plan form; a signed-in user with no active
+ * subscription goes to pricing, because the plan form would send them there
+ * anyway; everyone else goes to the plan form.
+ */
+export function resolveMarketingCreatePlanCta({
+  isAuthenticated,
+  canCreatePlan,
+}: {
+  isAuthenticated: boolean;
+  canCreatePlan?: boolean;
+}): MarketingCreatePlanCta {
+  if (!isAuthenticated) {
+    return {
+      href: `${ROUTES.AUTH.SIGN_UP}?redirect_url=${encodeURIComponent(ROUTES.PLANS.NEW)}`,
+      label: CREATE_PLAN_LABEL,
+    };
+  }
+
+  if (canCreatePlan === false) {
+    return { href: ROUTES.PRICING, label: 'Choose a plan' };
+  }
+
+  return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
+}
+
 /**
  * The marketing header's one call to action. Signed-in visitors go to the
  * dashboard; on the auth pages a visitor is already mid sign-in, so the

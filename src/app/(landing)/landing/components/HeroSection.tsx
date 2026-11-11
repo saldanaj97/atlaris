@@ -1,3 +1,4 @@
+import type { MarketingCreatePlanCta } from '@/features/navigation';
 import type { CSSProperties } from 'react';
 
 import { HeroStars } from './HeroStars';
@@ -14,7 +15,6 @@ import styles from './landing.module.css';
 const copy = {
   subheadline:
     'Set your level and weekly hours. Atlaris writes the plan in modules and tasks, each with a time estimate.',
-  primaryCta: 'Create a plan',
   secondaryCta: 'See pricing',
   plans: 'Starter and Pro plans. Cancel any time.',
 } as const;
@@ -59,7 +59,11 @@ const moduleProgress = EXAMPLE_PLAN.modules.map((module, index) => ({
   planned: module.hours * 60,
 }));
 
-export function HeroSection() {
+export function HeroSection({
+  createPlanCta,
+}: {
+  createPlanCta: MarketingCreatePlanCta;
+}) {
   return (
     <section
       className={cn(
@@ -103,8 +107,8 @@ export function HeroSection() {
               size='lg'
               className={cn('rounded-full', styles.ctaMotion)}
             >
-              <Link href={ROUTES.PLANS.NEW}>
-                {copy.primaryCta}
+              <Link href={createPlanCta.href}>
+                {createPlanCta.label}
                 <ArrowRight
                   className='size-4 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none'
                   aria-hidden='true'

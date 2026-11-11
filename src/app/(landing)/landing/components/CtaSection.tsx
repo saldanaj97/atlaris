@@ -1,11 +1,10 @@
+import type { MarketingCreatePlanCta } from '@/features/navigation';
 import type { CSSProperties } from 'react';
 
 import { RevealAnimation } from './RevealAnimation';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
-import { CREATE_PLAN_LABEL } from '@/features/navigation';
-import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
@@ -20,7 +19,11 @@ const copy = {
   support: 'A question, a bug, or a plan that missed the point:',
 } as const;
 
-export function CtaSection() {
+export function CtaSection({
+  createPlanCta,
+}: {
+  createPlanCta: MarketingCreatePlanCta;
+}) {
   return (
     <section className='px-6 pb-16 md:px-8 md:pb-20'>
       <RevealAnimation>
@@ -51,7 +54,7 @@ export function CtaSection() {
               style={{ '--i': 3 } as CSSProperties}
             >
               <Button asChild className={marketingPrimaryCtaClassName}>
-                <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
+                <Link href={createPlanCta.href}>{createPlanCta.label}</Link>
               </Button>
             </div>
 

@@ -1,3 +1,5 @@
+import type { MarketingCreatePlanCta } from '@/features/navigation';
+
 import { CtaSection } from './CtaSection';
 import { HeroSection } from './HeroSection';
 import { HowItWorksSection } from './HowItWorksSection';
@@ -12,16 +14,20 @@ import { ibmPlexMono } from '@/app/fonts';
  * the problem, how it works, what a plan contains, what it costs, and the
  * closing banner. The sections borrow the hero's mono for labels and examples.
  */
-export function Landing() {
+export function Landing({
+  createPlanCta,
+}: {
+  createPlanCta: MarketingCreatePlanCta;
+}) {
   return (
     <LandingPageShell>
       <div className={`relative z-10 ${ibmPlexMono.variable}`}>
-        <HeroSection />
+        <HeroSection createPlanCta={createPlanCta} />
         <ProblemSection />
         <HowItWorksSection />
-        <PlanContentsSection />
+        <PlanContentsSection createPlanCta={createPlanCta} />
         <PricingSummarySection />
-        <CtaSection />
+        <CtaSection createPlanCta={createPlanCta} />
       </div>
     </LandingPageShell>
   );
