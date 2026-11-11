@@ -1,8 +1,8 @@
 import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import { generationAttempts, learningPlans, users } from '@supabase/schema';
-import { and, eq, ne, sql } from 'drizzle-orm';
+import { learningPlans, users } from '@supabase/schema';
+import { eq, sql } from 'drizzle-orm';
 
 type LearningPlanInsert = typeof learningPlans.$inferInsert;
 
@@ -45,12 +45,12 @@ export async function selectUserEntitlementForAdmission(
   userId: string,
 ): Promise<{
   subscriptionTier: SubscriptionTier;
-  initialPlanGeneratedAt: Date | null;
+  subscriptionStatus: (typeof users.$inferSelect)['subscriptionStatus'];
 }> {
   const [user] = await tx
     .select({
       subscriptionTier: users.subscriptionTier,
-      initialPlanGeneratedAt: users.initialPlanGeneratedAt,
+      subscriptionStatus: users.subscriptionStatus,
     })
     .from(users)
     .where(eq(users.id, userId))
@@ -61,31 +61,6 @@ export async function selectUserEntitlementForAdmission(
   }
 
   return user;
-}
-
-export async function countInProgressInitialAttemptsForUser(
-  tx: Pick<DbClient, 'select'>,
-  params: { userId: string; excludePlanId?: string },
-): Promise<number> {
-  const conditions = [
-    eq(learningPlans.userId, params.userId),
-    eq(generationAttempts.status, 'in_progress'),
-    eq(generationAttempts.generationPurpose, 'initial'),
-  ];
-  if (params.excludePlanId) {
-    conditions.push(ne(learningPlans.id, params.excludePlanId));
-  }
-
-  const [row] = await tx
-    .select({
-      count: sql<number>`count(*)::int`,
-    })
-    .from(generationAttempts)
-    .innerJoin(learningPlans, eq(generationAttempts.planId, learningPlans.id))
-    .where(and(...conditions));
-
-  const parsed = Number(row?.count ?? 0);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 /**

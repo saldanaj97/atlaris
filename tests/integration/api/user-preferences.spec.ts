@@ -108,6 +108,7 @@ describe('GET /api/v1/user/preferences', () => {
     await ensureUser({
       authUserId: testAuthUserId,
       email: `${testAuthUserId}@example.com`,
+      subscriptionTier: 'free',
     });
   });
 

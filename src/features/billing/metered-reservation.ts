@@ -14,7 +14,7 @@ import {
   getCurrentMonth,
   incrementExistingUsageInTx,
 } from './usage-metrics';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { limitsForUser } from '@/shared/constants/tier-limits';
 import { usageMetrics, users } from '@supabase/schema';
 import { and, eq } from 'drizzle-orm';
 
@@ -33,9 +33,15 @@ export type ReserveMeteredResult =
 export async function selectUserSubscriptionTierForUpdate(
   tx: BillingTx,
   userId: string,
-): Promise<{ subscriptionTier: SubscriptionTier }> {
+): Promise<{
+  subscriptionTier: SubscriptionTier;
+  subscriptionStatus: (typeof users.$inferSelect)['subscriptionStatus'];
+}> {
   const [user] = await tx
-    .select({ subscriptionTier: users.subscriptionTier })
+    .select({
+      subscriptionTier: users.subscriptionTier,
+      subscriptionStatus: users.subscriptionStatus,
+    })
     .from(users)
     .where(eq(users.id, userId))
     .for('update');
@@ -75,7 +81,7 @@ export async function reserveMeteredUsageInTx(
   options: ReserveMeteredUsageOptions = {},
 ): Promise<ReserveMeteredResult> {
   const user = await selectUserSubscriptionTierForUpdate(tx, userId);
-  const limit = TIER_LIMITS[user.subscriptionTier].monthlyRegenerations;
+  const limit = limitsForUser(user).monthlyRegenerations;
   const month = getCurrentMonth(options.now?.());
 
   const metrics = await lockUsageMetricsForMonth(tx, userId, month);

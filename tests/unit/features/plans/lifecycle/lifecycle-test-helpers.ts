@@ -44,6 +44,7 @@ export function createMockPorts(
     },
     quota: {
       resolveUserTier: async () => 'free' as const,
+      resolveUserTrialing: async () => false,
       checkDurationCap: () => ({ allowed: true }),
       normalizePlanDuration: () => ({
         startDate: '2025-01-01',

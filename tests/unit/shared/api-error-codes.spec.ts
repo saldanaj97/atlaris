@@ -6,12 +6,9 @@ import { describe, expect, it } from 'vitest';
 
 describe('API_ERROR_CODES', () => {
   it('maps entitlement codes to the documented HTTP statuses', () => {
-    expect(
-      API_ERROR_HTTP_STATUS[API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED],
-    ).toBe(403);
-    expect(
-      API_ERROR_HTTP_STATUS[API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS],
-    ).toBe(409);
+    expect(API_ERROR_HTTP_STATUS[API_ERROR_CODES.SUBSCRIPTION_REQUIRED]).toBe(
+      403,
+    );
     expect(
       API_ERROR_HTTP_STATUS[API_ERROR_CODES.FREE_PLAN_SELECTION_REQUIRED],
     ).toBe(409);

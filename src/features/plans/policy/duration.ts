@@ -8,7 +8,7 @@ import {
   DEFAULT_PLAN_DURATION_WEEKS,
   MILLISECONDS_PER_WEEK,
 } from '@/features/plans/validation/learningPlans';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
+import { limitsForUser } from '@/shared/constants/tier-limits';
 
 // Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
@@ -103,9 +103,22 @@ export function normalizePlanDurationForTier({
 export function checkPlanDurationCap(params: {
   tier: SubscriptionTier;
   totalWeeks: number;
+  /** On a free trial: the trial's shorter cap applies. */
+  trialing?: boolean;
 }): PlanDurationCapResult {
-  const caps = TIER_LIMITS[params.tier];
+  const trialing = params.trialing === true;
+  const caps = limitsForUser({
+    subscriptionTier: params.tier,
+    subscriptionStatus: trialing ? 'trialing' : null,
+  });
   if (caps.maxWeeks !== null && params.totalWeeks > caps.maxWeeks) {
+    if (trialing && params.tier !== 'free') {
+      return {
+        allowed: false,
+        reason: `Free trial plans are limited to ${caps.maxWeeks} weeks.`,
+        upgradeUrl: '/pricing',
+      };
+    }
     const recommended = UPGRADE_PATH[params.tier];
     return {
       allowed: false,

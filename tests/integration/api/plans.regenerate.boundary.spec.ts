@@ -100,7 +100,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
     expect(await countJobsForPlan(plan.id)).toBe(0);
   });
 
-  it('returns 403 PLAN_REGENERATION_NOT_INCLUDED for Free and does not enqueue', async () => {
+  it('returns 403 SUBSCRIPTION_REQUIRED for a user with no subscription and does not enqueue', async () => {
     const authUserId = buildTestAuthUserId('regen-boundary-free');
     setTestUser(authUserId);
     const userId = await ensureUser({
@@ -118,7 +118,7 @@ describe('POST /api/v1/plans/:id/regenerate real boundary', () => {
 
     expect(response.status).toBe(403);
     const body = await response.json();
-    expect(body.code).toBe('PLAN_REGENERATION_NOT_INCLUDED');
+    expect(body.code).toBe('SUBSCRIPTION_REQUIRED');
     expect(await countJobsForPlan(plan.id)).toBe(0);
   });
 
