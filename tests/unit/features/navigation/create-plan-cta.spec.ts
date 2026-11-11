@@ -1,6 +1,7 @@
 import {
   CREATE_PLAN_LABEL,
   resolveCreatePlanCta,
+  resolveMarketingCreatePlanCta,
   resolveMarketingPrimaryCta,
 } from '@/features/navigation/create-plan-cta';
 import { ROUTES } from '@/features/navigation/routes';
@@ -77,4 +78,31 @@ describe('resolveMarketingPrimaryCta', () => {
       }),
     ).toEqual({ href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL });
   });
+});
+
+describe('resolveMarketingCreatePlanCta', () => {
+  it('sends a signed-out visitor to sign-up, back to the plan form', () => {
+    expect(resolveMarketingCreatePlanCta({ isAuthenticated: false })).toEqual({
+      href: '/auth/sign-up?redirect_url=%2Fplans%2Fnew',
+      label: CREATE_PLAN_LABEL,
+    });
+  });
+
+  it('sends a signed-in user with no subscription to pricing', () => {
+    expect(
+      resolveMarketingCreatePlanCta({
+        isAuthenticated: true,
+        canCreatePlan: false,
+      }),
+    ).toEqual({ href: ROUTES.PRICING, label: 'Choose a plan' });
+  });
+
+  it.each([true, undefined])(
+    'sends a subscribed user (entitlement %s) to the plan form',
+    (canCreatePlan) => {
+      expect(
+        resolveMarketingCreatePlanCta({ isAuthenticated: true, canCreatePlan }),
+      ).toEqual({ href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL });
+    },
+  );
 });

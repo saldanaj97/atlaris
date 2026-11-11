@@ -84,10 +84,15 @@ describe('PricingPage', () => {
         name: 'Ready for your first plan?',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
+    // The pricing page's own CTA scrolls to the plan cards: /plans/new would
+    // send a user with no subscription straight back here.
+    expect(screen.getByRole('link', { name: 'Choose a plan' })).toHaveAttribute(
       'href',
-      ROUTES.PLANS.NEW,
+      '#pricing-plans',
     );
+    expect(
+      screen.queryByRole('link', { name: 'Create a plan' }),
+    ).not.toBeInTheDocument();
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
         appClosed: false,
