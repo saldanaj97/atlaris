@@ -70,6 +70,17 @@ The rule above covers security fixes only. The entries below are a one-off excep
 
 When the after-audit remains high/critical, the scheduled run fails without creating or mutating a partial PR and reports the GHSA/advisory ID, package, vulnerable range, patched version when supplied, and whether the package is direct. The dependency-policy owner opens a dedicated `fix(deps): remediate <GHSA>` PR from `develop`, applies the narrowest reviewed manifest or `pnpm up <package>@<version>` change, regenerates the lockfile, and runs frozen install, scoped compatibility checks, and the production/high audit. This work never leaks into the feature PR that happened to encounter the audit. Fresh exceptions still require the code-owner gate above.
 
+### Active accepted advisory: picomatch GHSA-fc5q-39xc-vjpf
+
+When no patched release exists, the code owner may accept one advisory by its exact GHSA ID in `auditConfig.ignoreGhsas` in `pnpm-workspace.yaml`. Each entry needs a reason and a removal trigger.
+
+| Field | Value |
+| --- | --- |
+| Advisory | [GHSA-fc5q-39xc-vjpf](https://github.com/advisories/GHSA-fc5q-39xc-vjpf), high: ReDoS through repeated extglobs. It affects picomatch `<=4.0.7`, and 4.0.7 is the latest published release (checked 2026-11-17) |
+| Path | `@sentry/nextjs` > `@rollup/plugin-commonjs` (directly, via `@rollup/pluginutils`, and via `fdir`) > picomatch. This is build-time bundling code, and the ReDoS needs attacker-controlled glob patterns |
+| Known limitation | `pnpm audit --json` still counts ignored advisories in `metadata.vulnerabilities`, so the remediation parser (`audit-status`) reports `vulnerable` while `pnpm audit` exits 0. Until the parser accounts for ignored IDs, the scheduled remediation run fails closed on `develop` |
+| Removal | [DEV-227](https://linear.app/saldana-software/issue/DEV-227). Once picomatch publishes a fix, remove the entry and resolve the patched version |
+
 ## Override and exception removal evidence
 
 Override cleanup is a human-owned PR, not another privileged workflow. Start with `kysely`; retain every ambiguous floor. A currently resolved version above an override is not proof that the override is stale.
