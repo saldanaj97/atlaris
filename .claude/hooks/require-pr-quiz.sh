@@ -3,9 +3,11 @@
 # commit (.claude/quiz-pass/<sha>). Only the user's 5/5 quiz writes that file.
 # Exit 2 blocks the call and feeds stderr back to the agent. Anything this cannot resolve blocks.
 #
-# Checked before the command runs, so the check uses this project's current HEAD and branch:
-# a `cd`, `git switch` or `GH_REPO=` earlier in the same command is not followed, and
-# `gh pr merge --auto` is checked against the head at the time it is enabled.
+# The repo checked is the one the command runs in: the session's cwd, or the last `cd <path>`
+# before gh in the same command. Its HEAD (or --head branch) and its .claude/quiz-pass/ are used.
+# -R/--repo must name one of that repo's remotes; otherwise the call blocks (cd into it first).
+# Checked before the command runs: a `git switch` or `GH_REPO=` earlier in the same command is
+# not followed, and `gh pr merge --auto` is checked against the head at the time it is enabled.
 # Not caught: gh aliases (`gh alias set`), `gh api` calls, and shell aliases. Text that merely
 # mentions `gh pr create` (a commit message, a search) also blocks; move that text to a file.
 
@@ -55,7 +57,8 @@ if printf '%s' "$cmd" | grep -Eiq 'gh[^[:space:]]*[)}][[:space:]]+pr[[:space:]]+
 fi
 
 # Find every `gh pr <subcommand>` and print one line per create/merge:
-#   kind US repo US arg   (arg = --head value for create, PR selector for merge)
+#   kind US repo US arg US dir   (arg = --head value for create, PR selector for merge;
+#                                 dir = path of the last `cd` before this gh, if any)
 # Words are read shell-style: quotes join, a backslash escapes. A word ends at whitespace or an
 # unquoted ; & | ) ` or newline. When gh follows a quote (sh -c "gh pr merge 1"), that quote
 # character also ends the command.
@@ -63,6 +66,7 @@ calls="$(printf '%s' "$cmd" | awk '
 BEGIN {
   RS = "\001"; sq = sprintf("%c", 39); dq = "\""; us = sprintf("%c", 31)
   re = "(^|[;&|(`\"" sq " \t\n\\\\])([^ \t\n;&|()`\"" sq "]*/)?gh[ \t]+pr([ \t]|$)"
+  cdre = "(^|[;&|( \t\n])cd[ \t]+[^;&|) \t\n]+"
 }
 function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c == "&" || c == "|" || c == ")" || c == "`" }
 {
@@ -73,6 +77,13 @@ function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c ==
     encl = (lead == sq || lead == dq) ? lead : ""
     i = start + RLENGTH
     pos = i
+    # The last `cd <path>` before this gh sets the directory it runs in.
+    pre = substr(s, 1, start); dir = ""
+    while (match(pre, cdre)) {
+      d = substr(pre, RSTART, RLENGTH); sub(/^[;&|( \t\n]?cd[ \t]+/, "", d)
+      gsub(sq, "", d); gsub(dq, "", d); dir = d
+      pre = substr(pre, RSTART + RLENGTH)
+    }
     split("", tok); nt = 0; done = 0
     while (i <= n && !done) {
       c = substr(s, i, 1)
@@ -124,45 +135,70 @@ function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c ==
       }
       if (kind == "merge" && arg == "") arg = t
     }
-    print kind us repo us arg
+    print kind us repo us arg us dir
   }
 }')" || block "could not parse the command to check for gh pr create/merge."
 
 [ -z "$calls" ] && exit 0
 
-root="${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
-[ -n "$root" ] && cd "$root" || block "cannot find the project root to look for quiz passes."
-passdir="$root/.claude/quiz-pass"
+# Directory the Bash command starts in: the payload's cwd, else the project dir.
+base="$(printf '%s' "$input" | jq -r '.cwd // empty' 2>/dev/null)"
+[ -n "$base" ] || base="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 us="$(printf '\037')"
 ghbin="$(command -v gh 2>/dev/null || echo /opt/homebrew/bin/gh)"
 
+# owner/name from a remote URL or a --repo value (o/r, host/o/r, https://host/o/r.git, git@host:o/r).
+slug() { printf '%s' "$1" | sed -E -e 's#\.git$##' -e 's#/+$##' -e 's#^.*[:/]([^/:]+/[^/:]+)$#\1#' | tr 'A-Z' 'a-z'; }
+
 printf '%s\n' "$calls" | {
-  while IFS="$us" read -r kind repo arg; do
+  while IFS="$us" read -r kind repo arg dir; do
+    what="gh pr $kind${arg:+ $arg}${dir:+ (after cd $dir)}"
+    # Resolve the repo the command runs in. A path the hook cannot follow (a variable) blocks.
+    wd="$base"
+    if [ -n "$dir" ]; then
+      case "$dir" in
+        "~") wd="$HOME" ;;
+        "~/"*) wd="$HOME/${dir#\~/}" ;;
+        /*) wd="$dir" ;;
+        *) wd="$base/$dir" ;;
+      esac
+    fi
+    root="$(git -C "$wd" rev-parse --show-toplevel 2>/dev/null)"
+    if [ -z "$root" ]; then
+      echo "Blocked: $what: cannot find the git repo it runs in ($wd), so the quiz pass cannot be checked." >&2
+      exit 2
+    fi
+    if [ -n "$repo" ]; then
+      want="$(slug "$repo")"
+      if ! git -C "$root" remote -v 2>/dev/null | awk '{ print $2 }' | sort -u |
+        while read -r url; do [ "$(slug "$url")" = "$want" ] && echo match; done | grep -q match; then
+        echo "Blocked: $what targets --repo $repo, which is not a remote of $root. cd into a local clone of $repo first." >&2
+        exit 2
+      fi
+    fi
     if [ "$kind" = "create" ]; then
       if [ -n "$arg" ]; then
         branch="${arg#*:}"
-        sha="$(git rev-parse --verify -q "refs/heads/$branch^{commit}" 2>/dev/null ||
-          git rev-parse --verify -q "refs/remotes/origin/$branch^{commit}" 2>/dev/null)"
-        what="gh pr create (--head $arg)"
+        sha="$(git -C "$root" rev-parse --verify -q "refs/heads/$branch^{commit}" 2>/dev/null ||
+          git -C "$root" rev-parse --verify -q "refs/remotes/origin/$branch^{commit}" 2>/dev/null)"
       else
-        sha="$(git rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null)"
-        what="gh pr create (HEAD)"
+        sha="$(git -C "$root" rev-parse --verify -q 'HEAD^{commit}' 2>/dev/null)"
       fi
     else
       set -- pr view
       [ -n "$arg" ] && set -- "$@" "$arg"
       [ -n "$repo" ] && set -- "$@" --repo "$repo"
       # Bounded below the hook timeout so a hung gh blocks instead of timing the hook out.
-      sha="$(perl -e 'alarm 10; exec @ARGV' "$ghbin" "$@" --json headRefOid -q .headRefOid </dev/null 2>/dev/null)"
-      what="gh pr merge ${arg:-(current branch)}"
+      sha="$(cd "$root" && perl -e 'alarm 10; exec @ARGV' "$ghbin" "$@" --json headRefOid -q .headRefOid </dev/null 2>/dev/null)"
     fi
+    passdir="$root/.claude/quiz-pass"
     if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
       echo "Blocked: cannot resolve the head commit for $what (git rev-parse or gh pr view failed), so the quiz pass cannot be checked." >&2
       echo "If the command only mentions it in text (a message or a search), move that text to a file." >&2
       exit 2
     fi
     if [ ! -f "$passdir/$sha" ]; then
-      echo "Blocked: $what needs a quiz pass for head commit $sha (.claude/quiz-pass/$sha)." >&2
+      echo "Blocked: $what needs a quiz pass for head commit $sha ($passdir/$sha)." >&2
       exit 2
     fi
   done
