@@ -11,10 +11,14 @@
 
 quiz_help() {
   cat >&2 <<'EOF'
-Run the quiz in this session before retrying:
+Run the quiz in this session before retrying, with the AskUserQuestion tool:
 - Ask the user 5 questions about this commit's diff: 4 on random lines of the diff, 1 on what
   breaks if your main assumption is wrong.
-- The user answers in their own words. Give no hints and never show answers before they answer.
+- Ask questions 1-4 in one AskUserQuestion call, then question 5 in a second call. Every
+  question gets the same two options: "I don't know (counts as a miss)" and "Stop the quiz
+  (no pass this round)". Never put a candidate answer in an option, label, description or
+  preview. The user answers in their own words through the free-text Other field.
+- Give no hints and never show answers before the user answers.
 - Grade against the diff and show the right line for every miss.
 - Only a 5/5 score lets you write the empty pass file .claude/quiz-pass/<full commit sha>.
   Never write a pass file for any other reason, and never for a commit you did not quiz on.

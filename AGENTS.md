@@ -127,7 +127,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - The user is quizzed on a commit before it ships. A pass is the empty local file `.claude/quiz-pass/<full sha>` (gitignored, never pushed). The agent writes it only after the user scores 5/5 on that commit in the current session, never otherwise.
 - Gated: pushes to `main` (`.husky/quiz-gate`, every pushed commit), `gh pr create` (local `HEAD`, or the `--head` branch), and `gh pr merge` (the PR's head commit from `gh pr view`). The Claude hook is `.claude/hooks/require-pr-quiz.sh`; it blocks when it cannot resolve the head commit, and also when a command only mentions those gh commands in text (move that text to a file).
-- The quiz: 5 questions, 4 on random lines of the diff and 1 on what breaks if your main assumption is wrong. The user answers in their own words with no hints; never show answers before they answer. Grade against the diff and show the right line for every miss. If the head moves after a pass, quiz again on the new commit.
+- The quiz: 5 questions, 4 on random lines of the diff and 1 on what breaks if your main assumption is wrong. Ask them with the AskUserQuestion tool: questions 1-4 in one call, then question 5 in a second. Every question gets the same two options, "I don't know (counts as a miss)" and "Stop the quiz (no pass this round)"; never put a candidate answer in an option, label, description or preview. The user answers in their own words through the free-text Other field, with no hints; never show answers before they answer. Grade against the diff and show the right line for every miss. If the head moves after a pass, quiz again on the new commit.
 
 ## PR review comments
 
