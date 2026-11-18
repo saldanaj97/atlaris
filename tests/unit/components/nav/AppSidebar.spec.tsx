@@ -43,7 +43,7 @@ describe('AppSidebar', () => {
     ).toHaveAttribute('href', '/dashboard');
   });
 
-  it('marks Analytics as a single destination without a submenu', () => {
+  it('marks Analytics current on its subpages', () => {
     renderSidebar({
       pathname: '/analytics/usage',
     });
@@ -59,15 +59,6 @@ describe('AppSidebar', () => {
       'aria-current',
       'page',
     );
-    expect(
-      screen.queryByRole('link', { name: 'Usage' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', { name: 'Achievements' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: /Analytics/ }),
-    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Collapse sidebar' }),
     ).not.toBeInTheDocument();

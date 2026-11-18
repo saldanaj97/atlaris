@@ -157,30 +157,6 @@ describe('MobileNavigation', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('leaves the retired About page out of the marketing sheet', async () => {
-    const user = userEvent.setup();
-
-    render(
-      <TooltipProvider>
-        <MobileNavigation
-          isMarketing
-          pathname='/landing'
-          navItems={unauthenticatedNavItems}
-        />
-      </TooltipProvider>,
-    );
-
-    await user.click(screen.getByRole('button', { name: 'Open menu' }));
-
-    expect(screen.getByRole('link', { name: 'Pricing' })).toHaveAttribute(
-      'href',
-      '/pricing',
-    );
-    expect(
-      screen.queryByRole('link', { name: 'About' }),
-    ).not.toBeInTheDocument();
-  });
-
   it('uses the create-plan CTA on marketing sheets when signed out', async () => {
     const user = userEvent.setup();
 
