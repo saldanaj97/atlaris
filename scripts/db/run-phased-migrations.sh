@@ -32,6 +32,7 @@ readonly -a EXPAND_MIGRATIONS=(
   supabase/migrations/20261022180600_create_openrouter_tier_models.sql
   supabase/migrations/20261023210000_seed_openrouter_tier_models.sql
   supabase/migrations/20261104120000_add_deleted_plan_generation_attempts.sql
+  supabase/migrations/20261118205043_add_lesson_problem_reports.sql
 )
 
 # Keep the users INSERT revoke contract-only until service-role provisioning is live.
