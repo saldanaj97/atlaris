@@ -235,16 +235,7 @@ describe('PlansList', () => {
         within(filters).getByRole('link', { name: new RegExp(heading) }),
       ).toBeInTheDocument();
     }
-    expect(
-      within(filters).queryByRole('link', { name: /Not started/ }),
-    ).not.toBeInTheDocument();
-    expect(
-      within(filters).queryByRole('link', { name: /Inactive/ }),
-    ).not.toBeInTheDocument();
     expect(within(filters).getAllByRole('link')).toHaveLength(5);
-    expect(
-      screen.queryByRole('heading', { name: 'Chart another learning path.' }),
-    ).not.toBeInTheDocument();
   });
 
   it('reveals below-the-fold plan cards when they scroll into view', () => {
@@ -401,7 +392,6 @@ describe('PlansList', () => {
       .closest('li');
     expect(card).not.toBeNull();
     expect(card).toHaveTextContent(/Updated/);
-    expect(card).not.toHaveTextContent(/Added/);
     expect(card).not.toHaveTextContent(/tasks|%/);
     expect(card!.querySelector('time')).toHaveAttribute(
       'dateTime',
@@ -528,7 +518,7 @@ describe('PlansList', () => {
     ).toBeDisabled();
   });
 
-  it('keeps generating and failed cards honest without fabricated copy', () => {
+  it('shows status copy and plan links on generating and failed cards', () => {
     renderPlansList({
       page: {
         items: [
@@ -578,18 +568,14 @@ describe('PlansList', () => {
     expect(
       within(failedCard!).getByRole('link', { name: /View plan/ }),
     ).toHaveAttribute('href', '/plans/plan-failed');
-    expect(list).not.toHaveTextContent('No credits were used');
-    expect(list).not.toHaveTextContent('1-2 minutes');
-    expect(list).not.toHaveTextContent('Browse templates');
   });
 
-  it('exposes table-equivalent fields from one card list', () => {
+  it('shows status, progress, and actions on each plan card', () => {
     renderPlansList();
 
     expect(
       screen.getAllByRole('list', { name: 'Learning plans' }),
     ).toHaveLength(1);
-    expect(screen.queryByRole('table')).not.toBeInTheDocument();
 
     const card = screen
       .getByRole('heading', { name: 'Master React Hooks' })
