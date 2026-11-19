@@ -10,7 +10,6 @@ import {
   JOBS_COMMAND_PATHS,
   JOBS_SIGNATURE_HEADER,
   JOBS_TIMESTAMP_HEADER,
-  planGenerationStartCommandSchema,
 } from '@/lib/jobs-worker/contract';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -108,7 +107,7 @@ describe('handlePlanGenerationStart', () => {
     });
     expect(create).toHaveBeenCalledWith({
       id: INSTANCE_ID,
-      params: planGenerationStartCommandSchema.parse(command),
+      params: command,
     });
   });
 

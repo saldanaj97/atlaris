@@ -52,7 +52,7 @@ type PreparedRun =
  * Deterministic per run state: a repeated command for the same queued run
  * maps to the same instance, and each resume gets a new one.
  */
-export function emailDeliveryInstanceId(
+function emailDeliveryInstanceId(
   run: Pick<EmailNotificationDeliveryRun, 'id' | 'updatedAt'>,
 ): string {
   return `email-${run.id}-${run.updatedAt.getTime()}`;

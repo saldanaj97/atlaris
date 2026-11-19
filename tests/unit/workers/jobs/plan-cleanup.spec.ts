@@ -1,7 +1,6 @@
 import type { DbClient } from '@/lib/db/types';
 
 import {
-  PLAN_CLEANUP_CRON,
   runPlanCleanup,
   type PlanCleanupDeps,
 } from '../../../../workers/jobs/src/jobs/plan-cleanup';
@@ -40,7 +39,6 @@ describe('runPlanCleanup', () => {
 
     await expect(runPlanCleanup(deps)).resolves.toEqual(summary);
 
-    expect(PLAN_CLEANUP_CRON).toBe('*/15 * * * *');
     expect(withDb).toHaveBeenCalledTimes(1);
     expect(cleanup.run).toHaveBeenCalledTimes(1);
     expect(logger.info).toHaveBeenCalledWith(

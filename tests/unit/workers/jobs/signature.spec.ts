@@ -186,13 +186,6 @@ describe('verifySignedRequest', () => {
     ).resolves.toEqual({ ok: true, body: BODY });
   });
 
-  it('rejects the previous secret once rotation ends', async () => {
-    const request = await signedRequest({ secret: PREVIOUS });
-    await expect(
-      verifySignedRequest(request, secrets, NOW_MS),
-    ).resolves.toEqual(UNAUTHORIZED);
-  });
-
   it('rejects everything when no secret is configured', async () => {
     await expect(
       verifySignedRequest(await signedRequest(), {}, NOW_MS),

@@ -42,7 +42,7 @@ export const EMAIL_DELIVERY_JOB = 'email-delivery';
  * (rarely two), plus Sentry, against the Free plan's 50 external subrequests
  * per step (design note, Decision 9).
  */
-export const EMAIL_DELIVERY_PAGE_SIZE = 20;
+const EMAIL_DELIVERY_PAGE_SIZE = 20;
 
 /** Retries per step after the first attempt; the last attempt fails the run. */
 export const EMAIL_DELIVERY_STEP_RETRY_LIMIT = 3;

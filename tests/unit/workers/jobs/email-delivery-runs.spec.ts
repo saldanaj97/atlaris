@@ -2,7 +2,6 @@ import type { DbClient } from '@/lib/db/types';
 
 import {
   type EmailDeliveryRunsDeps,
-  emailDeliveryInstanceId,
   handleEmailDeliveryRunsCommand,
 } from '../../../../workers/jobs/src/http/email-delivery-runs';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -152,7 +151,6 @@ describe('handleEmailDeliveryRunsCommand', () => {
       instanceId: INSTANCE_ID,
       runId: RUN_ID,
     });
-    expect(emailDeliveryInstanceId(runRow())).toBe(INSTANCE_ID);
     expect(workflow.create).toHaveBeenCalledWith({
       id: INSTANCE_ID,
       params: { v: 1, runId: RUN_ID },
@@ -209,6 +207,7 @@ describe('handleEmailDeliveryRunsCommand', () => {
         duplicate: true,
         instanceId: INSTANCE_ID,
       });
+      expect(workflow.get).toHaveBeenCalledWith(INSTANCE_ID);
       expect(runs.fail).not.toHaveBeenCalled();
     },
   );
@@ -271,23 +270,6 @@ describe('handleEmailDeliveryRunsCommand', () => {
     const response = await handleEmailDeliveryRunsCommand(post(START), deps);
 
     expect(response.status).toBe(200);
-    expect(runs.fail).not.toHaveBeenCalled();
-  });
-
-  it('treats an existing instance as a duplicate and leaves the run alone (get called with the instance id)', async () => {
-    const { deps, workflow } = makeDeps();
-    workflow.create.mockRejectedValue(new Error('instance already exists'));
-    workflow.get.mockResolvedValue(instanceWithStatus('running'));
-
-    const response = await handleEmailDeliveryRunsCommand(post(START), deps);
-
-    expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
-      accepted: true,
-      duplicate: true,
-      instanceId: INSTANCE_ID,
-    });
-    expect(workflow.get).toHaveBeenCalledWith(INSTANCE_ID);
     expect(runs.fail).not.toHaveBeenCalled();
   });
 

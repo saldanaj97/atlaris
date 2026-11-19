@@ -8,7 +8,6 @@ import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 
 import { resolveEmailRecipientGuard } from '../../../../workers/jobs/src/workflows/email-delivery/recipient-allowlist';
 import {
-  EMAIL_DELIVERY_PAGE_SIZE,
   type EmailDeliveryWorkflowDeps,
   type EmailDeliveryWorkflowParams,
   runEmailDeliveryWorkflow,
@@ -279,7 +278,6 @@ describe('runEmailDeliveryWorkflow', () => {
       { runId: RUN_ID, workflowRunId: WORKFLOW_RUN_ID },
       expect.anything(),
     );
-    expect(EMAIL_DELIVERY_PAGE_SIZE).toBe(20);
     expect(recipients.list).toHaveBeenCalledWith(
       expect.objectContaining({ batchSize: 20, cursorUserId: null }),
     );
