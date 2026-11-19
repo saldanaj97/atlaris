@@ -27,12 +27,12 @@ async function collectStream(
   return output;
 }
 
-describe('Phase 2: Mock AI Provider Tests', () => {
+describe('MockGenerationProvider', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
   });
 
-  describe('T020: Provider selection test', () => {
+  describe('provider selection', () => {
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
       vi.stubEnv('NODE_ENV', 'development');
       vi.stubEnv('AI_PROVIDER', undefined);
@@ -43,7 +43,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
   });
 
-  describe('T021: Mock generate baseline test', () => {
+  describe('generate', () => {
     it('generates parsable JSON with 3-5 modules and 3-5 tasks per module', async () => {
       const provider = new MockGenerationProvider({
         delayMs: 0,
@@ -81,7 +81,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       expect(parsed.modules.length).toBeGreaterThan(0);
     });
 
-    it('generates content based on input topic and skill level', async () => {
+    it('includes the input topic in generated content', async () => {
       const provider = new MockGenerationProvider({
         delayMs: 0,
         failureRate: 0,
@@ -115,7 +115,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
   });
 
-  describe('T023: Failure rate toggle test', () => {
+  describe('failure rate', () => {
     it('rejects failure rates below 0', () => {
       expect(
         () =>
@@ -192,7 +192,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
     });
   });
 
-  describe('T024: Metadata reasonableness test (optional)', () => {
+  describe('module metadata', () => {
     it('generates modules with estimated_minutes between 120-450', async () => {
       const provider = new MockGenerationProvider({
         delayMs: 0,

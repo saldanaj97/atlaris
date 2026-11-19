@@ -74,7 +74,7 @@ describe('AI Provider Factory', () => {
       });
     });
 
-    it('throws EnvValidationError for unsupported AI_PROVIDER values', async () => {
+    it('throws for unsupported AI_PROVIDER values', async () => {
       const { getGenerationProvider } = await loadProviderFactory();
 
       for (const providerType of ['openai', 'anthropic', 'google']) {

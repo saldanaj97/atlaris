@@ -358,7 +358,7 @@ describe('grounded model picks', () => {
     preferredAdvisorAiModel: null,
   };
 
-  it('offers the 1b Pro catalog for each role', () => {
+  it('offers the Pro grounded catalog for each role', () => {
     expect(getGroundedPickCatalog('writer')).toEqual(
       PRO_GROUNDED_WRITER_CATALOG,
     );

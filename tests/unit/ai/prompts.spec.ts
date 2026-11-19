@@ -182,7 +182,7 @@ describe('AI Prompt Builder', () => {
       expect(prompt).toContain('Advanced Concepts');
     });
 
-    it('should sanitize notes with special characters', () => {
+    it('should keep special characters in notes unchanged', () => {
       const params = createPromptParams({
         notes: '<script>alert(1)</script> & C++',
       });
@@ -208,7 +208,7 @@ describe('AI Prompt Builder', () => {
       expect(prompt).not.toMatch(/Notes:.*---BEGIN USER INPUT---/);
     });
 
-    it('should handle notes with quotes and escape sequences', () => {
+    it('should keep quotes and escape sequences in notes unchanged', () => {
       const params = createPromptParams({
         notes: 'Focus on "Design Patterns" and \\n concepts',
       });
