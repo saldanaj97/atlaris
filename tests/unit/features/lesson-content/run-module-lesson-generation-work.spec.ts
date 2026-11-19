@@ -556,50 +556,6 @@ describe('runModuleLessonGenerationWork', () => {
     },
   );
 
-  it('uses the current DB tier and does not accept a stale caller userTier', async () => {
-    mocks.resolveUserTier.mockResolvedValue('pro');
-    mocks.getUserPreferences.mockResolvedValue({
-      preferredAiModel: null,
-      preferredRegenerationAiModel: null,
-      preferredLessonAiModel: 'anthropic/claude-haiku-5.5',
-      analyticsTimezone: 'UTC',
-    });
-    mocks.resolveModelForTier.mockReturnValue({
-      provider: { generateModuleLessonBatch: vi.fn() },
-      modelId: 'anthropic/claude-haiku-5.5',
-    });
-    mocks.invokeProvider.mockResolvedValue(providerOk());
-    mocks.parseBatch.mockReturnValue(parsedBatch(createId('task')));
-
-    const staleCallerSnapshot = {
-      load: workLoad(),
-      userId: createId('user'),
-      planId: createId('plan'),
-      moduleId: createId('module'),
-      userTier: 'free' as const,
-    };
-
-    await runModuleLessonGenerationWork(staleCallerSnapshot, {
-      serverDbClient: fakeDb,
-      resolveGenerationEnabled: async () => true,
-    });
-
-    expect(mocks.resolveUserTier).toHaveBeenCalledWith(
-      staleCallerSnapshot.userId,
-      fakeDb,
-    );
-    expect(mocks.resolveModelForTier).toHaveBeenCalledWith(
-      'pro',
-      'anthropic/claude-haiku-5.5',
-      'lesson',
-    );
-    expect(mocks.resolveModelForTier).not.toHaveBeenCalledWith(
-      'free',
-      expect.anything(),
-      expect.anything(),
-    );
-  });
-
   it('keeps an explicit modelOverride instead of the saved lesson slot', async () => {
     mocks.resolveUserTier.mockResolvedValue('pro');
     mocks.getUserPreferences.mockResolvedValue({

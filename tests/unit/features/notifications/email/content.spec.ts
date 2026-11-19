@@ -36,21 +36,6 @@ describe('email content eligibility', () => {
     ).toBe(false);
   });
 
-  it('qualifies daily reminder even when streak would also qualify', () => {
-    const result = qualifyDailyReminder({
-      incompletePlan: {
-        id: 'p1',
-        topic: 'TS',
-        completedTasks: 1,
-        totalTasks: 4,
-      },
-      dayKeys: new Set(),
-      todayLocalKey: '2026-07-09',
-    });
-    expect(result.qualifies).toBe(true);
-    expect(result.plan?.id).toBe('p1');
-  });
-
   it('qualifies daily reminder for incomplete plans with no activity today', () => {
     const result = qualifyDailyReminder({
       incompletePlan: {

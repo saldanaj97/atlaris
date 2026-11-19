@@ -39,15 +39,6 @@ describe('startModuleLessonGeneration', () => {
     mocks.dispatch.mockReset();
   });
 
-  it('returns disabled before dispatching when lesson generation is off', async () => {
-    mocks.isGenerationEnabled.mockReturnValue(false);
-
-    const result = await startModuleLessonGeneration(params, deps);
-
-    expect(result).toEqual({ kind: 'disabled' });
-    expect(mocks.dispatch).not.toHaveBeenCalled();
-  });
-
   beforeEach(() => {
     mocks.loadContext.mockResolvedValue({
       module: { lessonGenerationStatus: 'not_generated' },

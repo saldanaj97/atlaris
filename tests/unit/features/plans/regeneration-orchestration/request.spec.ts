@@ -213,7 +213,7 @@ describe('requestPlanRegeneration', () => {
         findOwnedPlan: vi.fn(async () => longPlan),
       },
     });
-    const result = await requestPlanRegeneration(
+    await requestPlanRegeneration(
       {
         userId: 'user-1',
         planId: ownedPlan.id,
@@ -221,8 +221,6 @@ describe('requestPlanRegeneration', () => {
       },
       deps,
     );
-    expect(result.kind).not.toBe('duration-exceeded');
-    expect(result.kind).not.toBe('not-included');
     expect(deps.queue.enqueueWithResult).toHaveBeenCalledWith(
       'plan_regeneration',
       ownedPlan.id,

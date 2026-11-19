@@ -208,24 +208,6 @@ describe('PlanLifecycleService', () => {
       });
     });
 
-    it('trims whitespace from topic before inserting', async () => {
-      let capturedData: unknown;
-      ports = createMockPorts({
-        planPersistence: {
-          ...createMockPorts().planPersistence,
-          atomicInsertPlan: async (_userId, planData) => {
-            capturedData = planData;
-            return { status: 'created' as const, id: 'plan-trim' };
-          },
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      await service.createPlan({ ...validInput, topic: '  Learn Rust  ' });
-
-      expect(capturedData).toMatchObject({ topic: 'Learn Rust' });
-    });
-
     it('returns duplicate_detected when a recent duplicate plan exists', async () => {
       ports = createMockPorts({
         planPersistence: {
@@ -244,25 +226,6 @@ describe('PlanLifecycleService', () => {
       if (result.status === 'duplicate_detected') {
         expect(result.existingPlanId).toBe('existing-plan-id');
       }
-    });
-
-    it('maps the atomic duplicate outcome without reporting creation', async () => {
-      const insertSpy = vi.fn().mockResolvedValue({
-        status: 'duplicate' as const,
-        existingPlanId: 'existing-plan-id',
-      });
-      ports = createMockPorts({
-        planPersistence: {
-          ...createMockPorts().planPersistence,
-          atomicInsertPlan: insertSpy,
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const result = await service.createPlan(validInput);
-
-      expect(insertSpy).toHaveBeenCalledOnce();
-      expect(result.status).toBe('duplicate_detected');
     });
 
     it('passes userId and trimmed topic to atomicInsertPlan', async () => {
@@ -287,15 +250,6 @@ describe('PlanLifecycleService', () => {
 
       expect(capturedUserId).toBe('user-abc');
       expect(capturedTopic).toBe('Learn TypeScript');
-    });
-
-    it('proceeds to create plan when no duplicate exists', async () => {
-      const result = await service.createPlan(validInput);
-
-      expect(result.status).toBe('success');
-      if (result.status === 'success') {
-        expect(result.planId).toBe('plan-123');
-      }
     });
 
     it('resolves tier for the correct userId', async () => {

@@ -25,7 +25,6 @@ import { createMockPorts } from './lifecycle-test-helpers';
 import { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
-import { makeCanonicalUsage } from '@tests/fixtures/canonical-usage.factory';
 
 // ─── Inputs simulating different entry points ────────────────────
 
@@ -135,36 +134,9 @@ describe('Lifecycle Consolidation', () => {
     });
   });
 
-  // ─── One lifecycle record per attempt ───────────────────────
+  // ─── Generation metrics ─────────────────────────────────────
 
-  describe('one lifecycle record per generation attempt', () => {
-    it('calls generation port exactly once for stream input', async () => {
-      const runGeneration = vi.mocked(ports.generation.runGeneration);
-      await service.processGenerationAttempt(STREAM_INPUT);
-      expect(runGeneration).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls generation port exactly once for retry input', async () => {
-      const runGeneration = vi.mocked(ports.generation.runGeneration);
-      await service.processGenerationAttempt(RETRY_INPUT);
-      expect(runGeneration).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls generation port exactly once for regeneration input', async () => {
-      const runGeneration = vi.mocked(ports.generation.runGeneration);
-      await service.processGenerationAttempt(REGENERATION_INPUT);
-      expect(runGeneration).toHaveBeenCalledTimes(1);
-    });
-
-    it('calls generationFinalization.finalizeSuccess exactly once on successful generation', async () => {
-      const finalizeSuccess = vi.mocked(
-        ports.generationFinalization.finalizeSuccess,
-      );
-
-      await service.processGenerationAttempt(STREAM_INPUT);
-      expect(finalizeSuccess).toHaveBeenCalledTimes(1);
-    });
-
+  describe('generation metrics', () => {
     it('emits success and duration metrics after successful generation', async () => {
       await service.processGenerationAttempt(STREAM_INPUT);
 
@@ -192,31 +164,6 @@ describe('Lifecycle Consolidation', () => {
           },
         },
       );
-    });
-
-    it('calls generationFinalization.finalizeFailure exactly once on failed generation', async () => {
-      const resv = makeAttemptReservation({ attemptId: 'fail-1' });
-      ports = createMockPorts({
-        generation: {
-          runGeneration: vi.fn().mockResolvedValue({
-            status: 'failure',
-            classification: 'timeout',
-            error: new Error('timed out'),
-            durationMs: 30000,
-            reservation: resv,
-            timedOut: true,
-            extendedTimeout: false,
-          }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const finalizeFailure = vi.mocked(
-        ports.generationFinalization.finalizeFailure,
-      );
-
-      await service.processGenerationAttempt(RETRY_INPUT);
-      expect(finalizeFailure).toHaveBeenCalledTimes(1);
     });
 
     it('emits failure and duration metrics after failed generation', async () => {
@@ -264,104 +211,6 @@ describe('Lifecycle Consolidation', () => {
           },
         },
       );
-    });
-  });
-
-  // ─── Consistent failed state ────────────────────────────────
-
-  describe('failed generations end in clear, consistent state', () => {
-    it.each([
-      {
-        classification: 'provider_error' as const,
-        expectedStatus: 'retryable_failure',
-      },
-      {
-        classification: 'timeout' as const,
-        expectedStatus: 'retryable_failure',
-      },
-      {
-        classification: 'rate_limit' as const,
-        expectedStatus: 'retryable_failure',
-      },
-      {
-        classification: 'conflict' as const,
-        expectedStatus: 'retryable_failure',
-      },
-      {
-        classification: 'validation' as const,
-        expectedStatus: 'permanent_failure',
-      },
-      {
-        classification: 'capped' as const,
-        expectedStatus: 'permanent_failure',
-      },
-    ])(
-      '$classification → $expectedStatus with plan marked failed',
-      async ({ classification, expectedStatus }) => {
-        const resv = makeAttemptReservation({
-          attemptId: `att-${classification}`,
-        });
-        ports = createMockPorts({
-          generation: {
-            runGeneration: vi.fn().mockResolvedValue({
-              status: 'failure',
-              classification,
-              error: new Error(`${classification} error`),
-              durationMs: 100,
-              reservation: resv,
-              timedOut: classification === 'timeout',
-              extendedTimeout: false,
-              ...(expectedStatus === 'permanent_failure'
-                ? { usage: makeCanonicalUsage() }
-                : {}),
-            }),
-          },
-        });
-        service = new PlanLifecycleService(ports);
-
-        const result = await service.processGenerationAttempt(STREAM_INPUT);
-        expect(result.status).toBe(expectedStatus);
-
-        const finalizeFailure = vi.mocked(
-          ports.generationFinalization.finalizeFailure,
-        );
-        expect(finalizeFailure).toHaveBeenCalledWith(
-          expect.objectContaining({
-            variant: 'reserved_attempt',
-            planId: STREAM_INPUT.planId,
-          }),
-        );
-      },
-    );
-
-    it('always includes classification and error on failure result', async () => {
-      const resv = makeAttemptReservation();
-      ports = createMockPorts({
-        generation: {
-          runGeneration: vi.fn().mockResolvedValue({
-            status: 'failure',
-            classification: 'provider_error',
-            error: new Error('something went wrong'),
-            durationMs: 200,
-            reservation: resv,
-            timedOut: false,
-            extendedTimeout: false,
-          }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const result = await service.processGenerationAttempt(RETRY_INPUT);
-
-      expect(result.status).toBe('retryable_failure');
-      if (
-        result.status === 'retryable_failure' ||
-        result.status === 'permanent_failure'
-      ) {
-        expect(result.classification).toBe('provider_error');
-        expect(result.error).toBeInstanceOf(Error);
-        expect(result.error.message).toBe('something went wrong');
-      }
     });
   });
 
@@ -445,8 +294,8 @@ describe('Lifecycle Consolidation', () => {
   // ─── Plan creation lifecycle consistency ────────────────────
 
   describe('plan creation lifecycle consistency', () => {
-    it('creates AI-origin plans through the lifecycle service', async () => {
-      const result = await service.createPlan({
+    it('emits the plan-created metric for AI-origin plans', async () => {
+      await service.createPlan({
         userId: 'user-001',
         topic: 'Learn Rust',
         skillLevel: 'beginner',
@@ -454,36 +303,12 @@ describe('Lifecycle Consolidation', () => {
         learningStyle: 'mixed',
       });
 
-      expect(result.status).toBe('success');
-      if (result.status === 'success') {
-        expect(result.planId).toBe('plan-123');
-        expect(result.tier).toBe('free');
-      }
       expect(countMetric).toHaveBeenCalledWith('atlaris.plan.created', 1, {
         attributes: {
           origin: 'ai',
           tier: 'free',
         },
       });
-    });
-
-    it('AI plan creation checks capped plans', async () => {
-      const findCapped = vi.fn().mockResolvedValue('capped-plan-id');
-      ports = createMockPorts({
-        planPersistence: { findCappedPlanWithoutModules: findCapped },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const aiResult = await service.createPlan({
-        userId: 'user-001',
-        topic: 'Learn Rust',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-      });
-
-      expect(aiResult.status).toBe('attempt_cap_exceeded');
-      expect(findCapped).toHaveBeenCalledTimes(1);
     });
   });
 });

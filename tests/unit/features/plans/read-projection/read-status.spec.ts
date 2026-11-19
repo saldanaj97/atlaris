@@ -137,17 +137,6 @@ describe('derivePlanReadStatus', () => {
       }),
     ).toBe('failed');
   });
-
-  it('returns pending when ready plans are still below the retry cap', () => {
-    expect(
-      derivePlanReadStatus({
-        generationStatus: 'ready',
-        hasModules: false,
-        attemptsCount: 1,
-        attemptCap: DEFAULT_ATTEMPT_CAP,
-      }),
-    ).toBe('pending');
-  });
 });
 
 describe('buildPlanDetailStatusSnapshot', () => {

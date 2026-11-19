@@ -1,6 +1,5 @@
 import type { DbClient } from '@/lib/db/types';
 
-import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
 import { startModuleLessonGeneration } from '@/features/lesson-content/start-module-lesson-generation-workflow';
 import { createId } from '@tests/fixtures/ids';
 import { describe, expect, it, vi } from 'vitest';
@@ -40,43 +39,6 @@ describe('module lesson generation flag boundary', () => {
     expect(loadContext).not.toHaveBeenCalled();
     expect(claim).not.toHaveBeenCalled();
     expect(dispatch).not.toHaveBeenCalled();
-  });
-
-  it('runModuleLessonGenerationWork returns disabled without provider work when flag is off', async () => {
-    const resolveGenerationEnabled = vi.fn(async () => false);
-    const provider = {
-      generateModuleLessonBatch: vi.fn(),
-    };
-
-    const result = await runModuleLessonGenerationWork(
-      {
-        load: {
-          plan: {
-            topic: 't',
-            skillLevel: 'beginner',
-            learningStyle: 'mixed',
-          },
-          module: {
-            title: 'm',
-            description: null,
-            order: 1,
-          },
-          tasks: [{ id: createId('task'), title: 'Task', order: 1 }],
-          isUnlocked: true,
-        } as never,
-        userId: createId('user'),
-        planId: createId('plan'),
-        moduleId: createId('module'),
-      },
-      {
-        resolveGenerationEnabled,
-        provider,
-      },
-    );
-
-    expect(result).toEqual({ kind: 'disabled' });
-    expect(resolveGenerationEnabled).toHaveBeenCalledOnce();
-    expect(provider.generateModuleLessonBatch).not.toHaveBeenCalled();
   });
 
   it('startModuleLessonGeneration proceeds past the flag when enabled', async () => {

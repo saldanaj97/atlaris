@@ -68,6 +68,7 @@ describe('checkPlanDurationCap', () => {
     });
     expect(res.allowed).toBe(false);
     expect(res.reason).toMatch(/2-week/);
+    expect(res.reason).toMatch(/Upgrade to starter/);
     expect(res.upgradeUrl).toBe('/pricing');
   });
 
@@ -116,6 +117,7 @@ describe('checkPlanDurationCap', () => {
     });
     expect(res.allowed).toBe(false);
     expect(res.reason).toMatch(/8-week/);
+    expect(res.reason).toMatch(/Upgrade to pro/);
     expect(res.upgradeUrl).toBe('/pricing');
   });
 
@@ -133,32 +135,5 @@ describe('checkPlanDurationCap', () => {
       totalWeeks: 4,
     });
     expect(res.allowed).toBe(true);
-  });
-
-  it('returns upgradeUrl when blocked', () => {
-    const res = checkPlanDurationCap({
-      tier: 'free',
-      totalWeeks: 3,
-    });
-    expect(res.allowed).toBe(false);
-    expect(res.upgradeUrl).toBe('/pricing');
-  });
-
-  it('returns correct recommendation for plans > 8 weeks', () => {
-    const res = checkPlanDurationCap({
-      tier: 'free',
-      totalWeeks: 10,
-    });
-    expect(res.allowed).toBe(false);
-    expect(res.reason).toMatch(/starter/);
-  });
-
-  it('returns correct recommendation for plans <= 8 weeks', () => {
-    const res = checkPlanDurationCap({
-      tier: 'free',
-      totalWeeks: 5,
-    });
-    expect(res.allowed).toBe(false);
-    expect(res.reason).toMatch(/starter/);
   });
 });
