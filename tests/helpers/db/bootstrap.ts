@@ -1,4 +1,5 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '../../../supabase/privileges/authenticated-table-privileges';
+import { LESSON_PROBLEM_REPORTS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/lesson-problem-reports-authenticated-update-columns';
 import { TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS } from '../../../supabase/privileges/task-progress-authenticated-update-columns';
 import {
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS,
@@ -183,6 +184,10 @@ export async function grantRlsPermissions(
       REVOKE UPDATE ON "task_progress" FROM authenticated;
       GRANT UPDATE (${TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "task_progress" TO authenticated;
       REVOKE DELETE ON "task_progress" FROM authenticated;
+      GRANT INSERT ON "lesson_problem_reports" TO authenticated;
+      REVOKE UPDATE ON "lesson_problem_reports" FROM authenticated;
+      GRANT UPDATE (${LESSON_PROBLEM_REPORTS_AUTHENTICATED_UPDATE_COLUMNS.join(', ')}) ON "lesson_problem_reports" TO authenticated;
+      REVOKE DELETE ON "lesson_problem_reports" FROM authenticated;
     `);
 
     const updateColumnGrants = await sql<{ column_name: string }[]>`

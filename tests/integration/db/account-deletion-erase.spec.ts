@@ -7,6 +7,7 @@ import {
 import { executeRows } from '@/lib/db/execute-rows';
 import {
   learningPlans,
+  lessonProblemReports,
   oauthStateTokens,
   taskProgress,
   usageMetrics,
@@ -63,6 +64,13 @@ async function seedAccountData(name: string) {
   const learningModule = await createTestModule({ planId: plan.id });
   const task = await createTestTask({ moduleId: learningModule.id });
   await db.insert(taskProgress).values({ taskId: task.id, userId });
+  await db.insert(lessonProblemReports).values({
+    userId,
+    planId: plan.id,
+    moduleId: learningModule.id,
+    taskId: task.id,
+    reason: 'unclear',
+  });
   await db.insert(userPreferences).values({ userId });
   await db.insert(usageMetrics).values({ userId, month: '2026-10' });
   await db.insert(oauthStateTokens).values({

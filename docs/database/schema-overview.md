@@ -15,6 +15,7 @@ plan_research 1—* research_sources   (latest `plan_research` row per plan is c
 modules 1—* tasks   (module row holds `lesson_generation_*` batch state; no separate lesson-run table)
 tasks 1—* task_resources, task_progress   (`tasks.lesson_content` = structured lesson blocks)
 task_progress status changes → learning_activity_events (DB trigger; server-owned writes)
+users 1—* lesson_problem_reports *—1 tasks   (at most one report per learner and lesson; also carries plan_id and module_id)
 task_resources —* resources
 users 1—* oauth_state_tokens
 clerk_webhook_events  (service-owned completed-event idempotency ledger)
@@ -43,6 +44,7 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 | `research_mode`                          | `fast`, `advanced`                                                                                        |
 | `research_status`                        | `ok`, `failed_skipped`                                                                                    |
 | `generation_quality_stage`               | `outline`, `lesson`                                                                                       |
+| `lesson_problem_reason`                  | `incorrect`, `unclear`, `broken_source`, `other`                                                          |
 | `preferred_ai_model`                     | tier-gated model ids (see AI catalog / settings)                                                          |
 | `email_notification_category`            | `weekly_summary`, `daily_reminder`, `streak_reminder`                                                     |
 | `email_notification_delivery_status`     | `pending`, `sent`, `skipped`, `failed`, `manual_review`                                                   |
@@ -60,6 +62,7 @@ Defined in `supabase/enums.ts` (plus delivery status enums on delivery table mod
 - **Preferences:** `user_preferences.user_id` and `user_email_notification_settings.user_id` are 1:1 with `users`; category prefs use `unique(user_id, category)`
 - **Email delivery:** `unique(user_id, category, delivery_key)` on deliveries; `unique(run_kind, scheduler_date_utc)` on runs
 - **Grounded generation:** `research_sources.citation_key` matches `S1`, `S2`, … and is `unique(research_id, citation_key)`; `generation_quality_issues.pass` is 0–2; `generation_budget_cuts.step` is `advisor` or `repair`, `pass` is 1–2, and spend/ceiling micro-USD are non-negative; `learning_plans.regeneration_note` is at most 500 characters (`regeneration_reasons` chip values are validated by the app)
+- **Lesson problem reports:** `unique(task_id, user_id)`; `note` is at most 1,000 characters (app and DB CHECK); `lesson_content_updated_at` is the task's value when the report was written
 
 ## Row Level Security (RLS)
 
@@ -73,6 +76,8 @@ RLS is enforced through request-scoped Postgres session state:
 Preference / notification preference tables use own-row `select` / `insert` / `update` with authenticated column grants. `learning_activity_events` is authenticated **select-only** (writes via trigger). `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` are authenticated **select-only** for the plan owner; writes are service-role only. `deleted_plan_generation_attempts` is authenticated **select-only** for its owner; writes are service-role only. `clerk_webhook_events`, `email_notification_deliveries`, `email_notification_delivery_runs`, and `openrouter_tier_models` use deny-all RLS (service-role only).
 
 Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDATE`; `DELETE` is intentionally absent from both the policy set and table grants.
+
+`lesson_problem_reports` is owner-writable like `task_progress`: own-row `SELECT`, `INSERT` and `UPDATE` policies, where insert and update also require the task to sit in the row's module and plan and the plan to belong to the row's user. Authenticated `UPDATE` is limited to `reason`, `note`, `lesson_content_updated_at` and `updated_at`; `DELETE` has no policy and no grant.
 
 ## Frequently referenced indexes
 
@@ -89,6 +94,7 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 | `generation_quality_issues`        | `(plan_id, created_at)`, `(module_id)`, `(task_id)`                                                    |
 | `deleted_plan_generation_attempts` | `(user_id, attempt_created_at)`                                                                        |
 | `generation_budget_cuts`           | `(plan_id, created_at)`, `(module_id)`, `(task_id)`                                                    |
+| `lesson_problem_reports`           | `(task_id, user_id)` unique, `(user_id)`, `(plan_id)`, `(module_id)`                                   |
 | `job_queue`                        | partial pending claim index on `(job_type, scheduled_for, priority desc, created_at)`                  |
 | `usage_metrics`                    | `(user_id, month)` unique; `lesson_modules_generated` is an observational column (not a product quota) |
 | `ai_usage_events`                  | `(user_id, created_at)`, `(plan_id, created_at)`                                                       |
@@ -109,6 +115,7 @@ Authenticated `task_progress` access is limited to `SELECT`, `INSERT`, and `UPDA
 - `ai_usage_events` raw rows are retained until a monthly aggregation/accounting model exists; do not delete them as a generic log cleanup.
 - `learning_activity_events` follows FK cascades; there is no separate retention prune for analytics history today.
 - `deleted_plan_generation_attempts` needs no retention job: each plan delete prunes that owner's rows older than the hourly window, and rows follow the cascade from `users`.
+- `lesson_problem_reports` keeps one row per learner and lesson (a new report replaces it) and follows FK cascades from the user, plan, module and task; there is no retention prune.
 - `plan_research`, `research_sources`, `generation_quality_issues`, and `generation_budget_cuts` keep every row (regeneration appends research runs) and follow FK cascades from the plan; there is no retention prune yet.
 - Email delivery run/ledger tables are operational state for the scheduler; see [email-notification-delivery-runbook.md](../architecture/email-notification-delivery-runbook.md).
 
@@ -128,6 +135,7 @@ Scheduled invocation: the jobs Worker's cron (`0 3 * * *`) runs `private.cleanup
 | Preference queries       | `src/lib/db/queries/user-preferences.ts`                                    |
 | Module lesson generation | `src/lib/db/queries/module-lesson-generation.ts`                            |
 | Research and quality     | `plan-research.ts`, `generation-quality-issues.ts` in `src/lib/db/queries/` |
+| Lesson problem reports   | `tables/lesson-problem-reports.ts`, `queries/lesson-problem-reports.ts`     |
 | Usage tracking           | `supabase/usage.ts`                                                         |
 | Migrations               | `supabase/migrations/`                                                      |
 | Request DB               | `supabase/runtime.ts`                                                       |
@@ -144,6 +152,7 @@ Scheduled invocation: the jobs Worker's cron (`0 3 * * *`) runs `private.cleanup
 - Monthly usage and billing-related usage accounting (`usage_metrics.regenerations_used`; `lesson_modules_generated` remains observational)
 - Clerk Billing entitlement projection + webhook idempotency ledger
 - Opted-in email notification preferences and delivery orchestration (flag-gated), with durable delivery ledger/runs (see `docs/architecture/email-notification-delivery-runbook.md`)
+- Learner reports of wrong or unhelpful lessons (`lesson_problem_reports`, one per learner and lesson)
 - On-demand **module** lesson batch generation: `modules.lesson_generation_*` lifecycle plus `tasks.lesson_content` JSON payloads (see `docs/architecture/plan-generation-architecture.md`)
 
 ## Related docs
