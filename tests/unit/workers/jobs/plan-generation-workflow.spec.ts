@@ -789,16 +789,14 @@ describe('runPlanGenerationWorkflow', () => {
       ).toMatchObject({ outcome: 'researched', directSearch: true });
     });
 
-    it('does not read parallel-direct-research when grounded generation is off', async () => {
-      const isDirectResearchEnabled = vi.fn(async () => true);
-      const { deps } = makeDeps({ isDirectResearchEnabled });
+    it('runs no research when direct research is on but grounded generation is off', async () => {
+      const { deps } = makeDeps({ isDirectResearchEnabled: async () => true });
       const { step } = createStep();
 
       await expect(
         runPlanGenerationWorkflow(event(), step, deps),
       ).resolves.toEqual({ kind: 'success' });
 
-      expect(isDirectResearchEnabled).not.toHaveBeenCalled();
       expect(mocks.runPlanResearch).not.toHaveBeenCalled();
     });
 

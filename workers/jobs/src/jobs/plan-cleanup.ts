@@ -4,7 +4,6 @@ import type { captureException as sentryCaptureException } from '@sentry/cloudfl
 
 import { runPlanCleanupMaintenance } from '@/features/plans/cleanup';
 
-export const PLAN_CLEANUP_CRON = '*/15 * * * *';
 export const PLAN_CLEANUP_JOB = 'plan-cleanup';
 
 export type PlanCleanupDeps = {

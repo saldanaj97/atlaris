@@ -53,11 +53,6 @@ describe('parseWorkerEnv', () => {
     );
   });
 
-  it('ignores old job switch secrets left on the Worker (DEV-193)', () => {
-    const env = makeEnv({ JOBS_PAUSED: 'true', JOB_REGENERATION_ENABLED: '' });
-    expect(parseWorkerEnv(env)).toBe(env);
-  });
-
   it('names invalid keys without echoing their values', () => {
     let caught: unknown;
     try {

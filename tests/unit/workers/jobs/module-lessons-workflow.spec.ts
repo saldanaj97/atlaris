@@ -1472,7 +1472,6 @@ describe('runModuleLessonsWorkflow', () => {
           const { writerModel, repairModel } = await runFlaggedLesson();
 
           expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
-          expect(writerModel).not.toBe('anthropic/claude-haiku-5.5');
           expect(repairModel).toBe(writerModel);
         });
       });
