@@ -140,7 +140,7 @@ describe('AI Parser', () => {
       await expect(parsePromise).rejects.toMatchObject({ name: 'AbortError' });
     });
 
-    it('should throw ParserError when response is not an object', async () => {
+    it('should throw ParserError when the response is an array', async () => {
       const stream = createStream(['[]']);
 
       await expect(parseGenerationStream(stream)).rejects.toThrow(ParserError);

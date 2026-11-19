@@ -43,7 +43,7 @@ describe('computeCostCents', () => {
     expect(await computeCostCents('openrouter/free', 100_000, 50_000)).toBe(0);
   });
 
-  it('prices the Pro regeneration default from the synced catalog', async () => {
+  it('prices Claude Sonnet 5.5 from the synced catalog', async () => {
     // anthropic/claude-sonnet-5.5: $2/M input, $10/M output
     // 1M input = 200 cents, 500K output = 500 cents
     expect(
@@ -180,7 +180,7 @@ describe('getOutputTokenCeiling', () => {
 // ─── Tier consistency ────────────────────────────────────────────
 
 describe('tier consistency', () => {
-  it('enforces the same ceiling for a model regardless of user tier', async () => {
+  it('uses the catalog max output as the ceiling for models shared by Starter and Pro', async () => {
     const starterModels = await getModelsForTier('starter', 'initial_outline');
     const proModels = await getModelsForTier('pro', 'initial_outline');
     const shared = starterModels.filter((model) =>

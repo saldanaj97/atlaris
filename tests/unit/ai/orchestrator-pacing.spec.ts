@@ -167,7 +167,7 @@ function createDbHarness(params?: {
   };
 }
 
-describe('runGenerationExecution pacing', () => {
+describe('runGenerationExecution', () => {
   const parsedModules = [
     {
       title: 'Module 1',

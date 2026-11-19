@@ -25,7 +25,7 @@ describe('OpenRouterProvider', () => {
   });
 
   describe('generate', () => {
-    it('generates a valid plan from string content response', async () => {
+    it('streams the plan JSON from a string content response', async () => {
       const { client, send } = createOpenRouterMockClient();
       send.mockResolvedValueOnce({
         choices: [
@@ -57,7 +57,7 @@ describe('OpenRouterProvider', () => {
       expect(result.metadata.model).toBe(OPENROUTER_TEST_MODEL);
     });
 
-    it('generates a valid plan from array content response', async () => {
+    it('streams the plan JSON from an array content response', async () => {
       const { client, send } = createOpenRouterMockClient();
       send.mockResolvedValueOnce({
         choices: [

@@ -213,7 +213,7 @@ describe('Model resolver', () => {
       });
     });
 
-    it('allows DeepSeek for Starter outline and regeneration only', async () => {
+    it('allows DeepSeek for Starter outline and regeneration and denies it on Pro', async () => {
       const deepseek = 'deepseek/deepseek-v4.1-flash';
       for (const operation of ['initial_outline', 'regeneration'] as const) {
         expect(
