@@ -15,7 +15,7 @@ const baseFormData: PlanFormData = {
 };
 
 describe('buildCreatePlanPayloadFromForm', () => {
-  it('maps form values directly to the create payload', () => {
+  it('maps form values to the create payload, using the top of the weekly-hours range', () => {
     const result = buildCreatePlanPayloadFromForm(baseFormData);
 
     expect(result).toMatchObject({

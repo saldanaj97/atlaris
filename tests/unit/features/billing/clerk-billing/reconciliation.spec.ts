@@ -556,7 +556,7 @@ describe('applyVerifiedClerkBillingEvent', () => {
     expect(db.delete).toHaveBeenCalledTimes(1);
   });
 
-  it('keeps the completed ledger insert atomic with the projection', async () => {
+  it('rethrows a projection failure from the single billing transaction', async () => {
     const projectionError = new Error('projection failed');
     const db = makeDb({ selectResults: [[], [makeLocalUser()]] });
     db.updateReturning.mockRejectedValueOnce(projectionError);

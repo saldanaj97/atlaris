@@ -81,7 +81,7 @@ describe('requestPlanRegeneration', () => {
     expect(deps.queue.enqueueWithResult).not.toHaveBeenCalled();
   });
 
-  it('maps queue dedupe to queue-dedupe-conflict without settling quota', async () => {
+  it('maps queue dedupe to queue-dedupe-conflict with the existing job id', async () => {
     const deps = buildDeps({
       queue: {
         enqueueWithResult: vi.fn(async () => ({
@@ -105,7 +105,7 @@ describe('requestPlanRegeneration', () => {
     });
   });
 
-  it('does not settle quota when enqueue throws', async () => {
+  it('rethrows when enqueue fails', async () => {
     const enqueueError = new Error('enqueue failed');
     const deps = buildDeps({
       queue: {

@@ -123,7 +123,9 @@ describe('clerkUserProjectionSourceFromWebhook', () => {
       clerkDeletedAt: receivedAt,
     });
   });
+});
 
+describe('reconcileClerkUserIdentities', () => {
   it('dry-runs updates and Clerk 404 tombstones without writing', async () => {
     const db = dryRunDb([
       {
