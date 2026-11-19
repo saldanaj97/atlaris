@@ -39,7 +39,7 @@ describe('calculateTotalWeeks', () => {
 });
 
 describe('normalizePlanDurationForTier', () => {
-  it('does not clamp an over-cap deadline', () => {
+  it('keeps an over-cap deadline and computes total weeks', () => {
     const res = normalizePlanDurationForTier({
       startDate: '2025-01-01',
       deadlineDate: '2025-06-01',

@@ -39,7 +39,7 @@ describe('tierFromClerkPlan', () => {
     expect(tierFromClerkPlan({ id: 'cplan_pro_env' }, planIds)).toBe('pro');
   });
 
-  it('does not infer tier from price or a shared plan id', () => {
+  it('returns no tier for a plan id shared by several tiers', () => {
     const sharedPlanId = 'cplan_shared_free_starter';
 
     expect(tierFromClerkPlan({ id: sharedPlanId })).toBeNull();
