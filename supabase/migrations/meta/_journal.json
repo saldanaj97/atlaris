@@ -477,6 +477,13 @@
       "when": 1793826000000,
       "tag": "20261104120000_add_deleted_plan_generation_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795035043000,
+      "tag": "20261118205043_add_lesson_problem_reports",
+      "breakpoints": true
     }
   ]
 }

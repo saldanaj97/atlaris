@@ -1,3 +1,4 @@
+import { LESSON_PROBLEM_REASONS } from './schema/constants';
 import { JOB_TYPE_VALUES } from '@/shared/constants/jobs';
 import { GENERATION_PURPOSES } from '@/shared/types/generation-purpose';
 import { pgEnum } from 'drizzle-orm/pg-core';
@@ -50,6 +51,11 @@ export const researchStatus = pgEnum('research_status', [
 export const generationQualityStage = pgEnum('generation_quality_stage', [
   'outline',
   'lesson',
+]);
+
+/** Why a learner reported a lesson (`lesson_problem_reports.reason`). */
+export const lessonProblemReason = pgEnum('lesson_problem_reason', [
+  ...LESSON_PROBLEM_REASONS,
 ]);
 
 export const resourceType = pgEnum('resource_type', [

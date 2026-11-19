@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requestPlanRegeneration: vi.fn(),
   assertAiSpendAllowed: vi.fn(),
   baseDeps: { dbClient: {}, marker: 'default-deps' },
+  actorTier: 'pro' as 'free' | 'pro',
 }));
 
 vi.mock('@/features/billing/ai-spend-guard', () => ({
@@ -34,7 +35,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
         handler: (scope: {
           req: Request;
           params: Record<string, string>;
-          actor: { id: string; subscriptionTier: 'pro' };
+          actor: { id: string; subscriptionTier: 'free' | 'pro' };
           db: unknown;
           correlationId: string;
         }) => Promise<Response>,
@@ -43,7 +44,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
           handler({
             req,
             params: { planId: PLAN_ID },
-            actor: { id: 'user-1', subscriptionTier: 'pro' },
+            actor: { id: 'user-1', subscriptionTier: mocks.actorTier },
             db: {},
             correlationId: 'test-correlation-id',
           }),
@@ -55,7 +56,7 @@ vi.mock('@/lib/api/request-boundary', async () => {
 const PLAN_ID = '0c834f38-e9e1-4c7d-bdc0-2e28c505256a';
 
 import { POST } from '@/app/api/v1/plans/[planId]/regenerate/route';
-import { dispatchRegenerationToWorker } from '@/features/jobs/regeneration-dispatch';
+import { dispatchRegenerationToWorker } from '@/features/job-queue/regeneration-dispatch';
 
 function regenerate(body: unknown = {}): Promise<Response> {
   return POST(
@@ -69,6 +70,7 @@ function regenerate(body: unknown = {}): Promise<Response> {
 
 describe('POST /api/v1/plans/:planId/regenerate', () => {
   beforeEach(() => {
+    mocks.actorTier = 'pro';
     mocks.assertAiSpendAllowed.mockReset();
     mocks.assertAiSpendAllowed.mockResolvedValue(undefined);
     mocks.requestPlanRegeneration.mockReset();
@@ -120,6 +122,19 @@ describe('POST /api/v1/plans/:planId/regenerate', () => {
       }),
       expect.anything(),
     );
+  });
+
+  it('refuses a no-subscription user with SUBSCRIPTION_REQUIRED', async () => {
+    mocks.actorTier = 'free';
+
+    const response = await regenerate();
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      code: 'SUBSCRIPTION_REQUIRED',
+    });
+    expect(mocks.assertAiSpendAllowed).not.toHaveBeenCalled();
+    expect(mocks.requestPlanRegeneration).not.toHaveBeenCalled();
   });
 
   it('does not request regeneration while AI generation is paused', async () => {

@@ -85,6 +85,10 @@ function getSettingsContentHeading(
   }
 }
 
+/**
+ * Intentionally kept: forwards old `/settings#<section>` links (bookmarks,
+ * emails, dashboard return URLs) to the per-section routes.
+ */
 export function SettingsLegacyHashRedirect(): null {
   const pathname = usePathname();
   const router = useRouter();

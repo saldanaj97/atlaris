@@ -38,6 +38,8 @@ function renderLesson(
   return render(
     <Accordion type='single' defaultValue={lesson.id}>
       <LessonAccordionItem
+        planId={createId('plan')}
+        moduleId={createId('module')}
         lesson={lesson}
         status={lesson.status}
         onStatusChange={vi.fn()}
@@ -85,6 +87,29 @@ describe('LessonAccordionItem', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('offers "Report a problem" for a lesson with generated content', () => {
+    renderLesson({
+      ...baseLesson,
+      lessonContent: {
+        version: 1,
+        blocks: [{ type: 'paragraph', text: 'State stores values.' }],
+      },
+      lessonContentUpdatedAt: new Date('2026-11-01T10:00:00.123Z'),
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Report a problem' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not offer "Report a problem" before the lesson has content', () => {
+    renderLesson(baseLesson);
+
+    expect(
+      screen.queryByRole('button', { name: 'Report a problem' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps resources and progress controls visible for unlocked missing content', () => {
     renderLesson(baseLesson);
 
@@ -124,6 +149,9 @@ describe('LessonAccordionItem', () => {
     expect(screen.queryByText('State guide')).not.toBeInTheDocument();
     expect(
       screen.queryByRole('button', { name: 'Mark task as complete' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Report a problem' }),
     ).not.toBeInTheDocument();
   });
 });

@@ -29,9 +29,11 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { createReservationRejectionResult } from '@/features/ai/orchestrator/reservation';
+import { ROUTES } from '@/features/navigation/routes';
 import { calculateTotalWeeks } from '@/features/plans/policy/duration';
 import { logger } from '@/lib/logging/logger';
 import { countMetric, distributionMetric } from '@/lib/observability/metrics';
+import { SUBSCRIPTION_REQUIRED_MESSAGE } from '@/shared/policy/generation-admission';
 import { isRetryableClassification } from '@/shared/types/failure-classification';
 import {
   describeGenerationPurpose,
@@ -63,11 +65,15 @@ export type PlanGenerationFailureMarker = Pick<
 export interface PlanLifecycleQuota {
   resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
 
+  /** True while the user's paid plan is in its free trial. */
+  resolveUserTrialing(this: void, userId: string): Promise<boolean>;
+
   checkDurationCap(
     this: void,
     params: {
       tier: SubscriptionTier;
       totalWeeks: number;
+      trialing?: boolean;
     },
   ): DurationCapResult;
 
@@ -227,8 +233,14 @@ export class PlanLifecycleService {
       };
     }
 
-    const tier = await this.ports.quota.resolveUserTier(userId);
-    logger.info({ userId, tier }, `${CREATE_LOG_BASE}: tier resolved`);
+    const [tier, trialing] = await Promise.all([
+      this.ports.quota.resolveUserTier(userId),
+      this.ports.quota.resolveUserTrialing(userId),
+    ]);
+    logger.info(
+      { userId, tier, trialing },
+      `${CREATE_LOG_BASE}: tier resolved`,
+    );
 
     const requestedWeeks = calculateTotalWeeks({
       startDate,
@@ -236,6 +248,7 @@ export class PlanLifecycleService {
     });
     const requestedCap = this.ports.quota.checkDurationCap({
       tier,
+      trialing,
       totalWeeks: requestedWeeks,
     });
     if (!requestedCap.allowed) {
@@ -257,6 +270,7 @@ export class PlanLifecycleService {
 
     const durationCap = this.ports.quota.checkDurationCap({
       tier,
+      trialing,
       totalWeeks: duration.totalWeeks,
     });
     if (!durationCap.allowed) {
@@ -329,25 +343,12 @@ export class PlanLifecycleService {
       };
     }
 
-    if (insertResult.status === 'free_allowance_used') {
-      logger.info({ userId }, `${CREATE_LOG_BASE}: free plan allowance used`);
+    if (insertResult.status === 'subscription_required') {
+      logger.info({ userId }, `${CREATE_LOG_BASE}: subscription required`);
       return {
-        status: 'free_allowance_used',
-        reason:
-          'Your free plan allowance has already been used. Upgrade to create another plan.',
-        upgradeUrl: '/pricing',
-      };
-    }
-
-    if (insertResult.status === 'free_generation_in_progress') {
-      logger.info(
-        { userId },
-        `${CREATE_LOG_BASE}: free initial generation in progress`,
-      );
-      return {
-        status: 'free_generation_in_progress',
-        reason:
-          'A free plan is already being generated. Wait for it to finish or fail before starting another.',
+        status: 'subscription_required',
+        reason: SUBSCRIPTION_REQUIRED_MESSAGE,
+        upgradeUrl: ROUTES.PRICING,
       };
     }
 

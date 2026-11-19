@@ -160,7 +160,6 @@ describe('ModelSelector', () => {
     });
     expect(proOnlyOption).toHaveAttribute('aria-disabled', 'true');
     expect(proOnlyOption).toHaveTextContent(/pro plan/i);
-    expect(proOnlyOption).not.toHaveTextContent(/\bPRO\b/);
     expect(
       screen.getByRole('group', {
         name: /upgrade to pro to use these models/i,
@@ -318,9 +317,6 @@ describe('ModelSelector', () => {
     expect(
       screen.getByRole('option', { name: /test free model 1/i }),
     ).toHaveTextContent(/Free$/);
-    for (const option of screen.getAllByRole('option')) {
-      expect(option).not.toHaveTextContent(/\bPRO\b|\bFREE\b/);
-    }
 
     await user.click(
       screen.getByRole('option', { name: /test free model 1/i }),

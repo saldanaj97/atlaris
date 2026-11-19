@@ -1,7 +1,6 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { CSSProperties } from 'react';
 
-import { FREE_PLAN_COUNT, FREE_PLAN_LENGTH } from './free-plan-copy';
 import { RevealAnimation } from './RevealAnimation';
 import { marketingSecondaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import {
@@ -16,7 +15,6 @@ import Link from 'next/link';
 import styles from './landing.module.css';
 
 const TIERS: ReadonlyArray<{ tier: SubscriptionTier; name: string }> = [
-  { tier: 'free', name: 'Free' },
   { tier: 'starter', name: 'Starter' },
   { tier: 'pro', name: 'Pro' },
 ];
@@ -43,15 +41,15 @@ export function PricingSummarySection() {
               id='landing-pricing-heading'
               className='max-w-[18ch] type-display-section text-balance text-foreground'
             >
-              Pay only when you need more room
+              Two plans, sized to your pace
             </h2>
             <p className='max-w-[60ch] type-reading text-muted-foreground'>
-              Free covers {FREE_PLAN_COUNT} of up to {FREE_PLAN_LENGTH}. Starter
-              and Pro add more plans, longer plans and regenerations.
+              Starter and Pro both include lessons for every module. Pro adds
+              unlimited active plans, longer plans and more regenerations.
             </p>
           </div>
 
-          <ul className='m-0 mt-12 grid list-none gap-8 p-0 md:grid-cols-3 md:gap-0'>
+          <ul className='m-0 mt-12 grid list-none gap-8 p-0 md:grid-cols-2 md:gap-0'>
             {TIERS.map(({ tier, name }, index) => (
               <li
                 key={tier}

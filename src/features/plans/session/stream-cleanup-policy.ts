@@ -6,8 +6,14 @@ import { AppError } from '@/lib/api/errors';
 import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
-export const DEFAULT_PROVIDER_FAILURE_CLASSIFICATION =
-  'provider_error' as const;
+/**
+ * Classification for an exception thrown while starting a generation. These
+ * run before the jobs Worker gets the attempt, so the provider has not run and
+ * an unrecognized error is `unknown`, not `provider_error`.
+ */
+export type UnhandledGenerationErrorClassification =
+  | FailureClassification
+  | 'unknown';
 
 export type UnhandledGenerationErrorHandler = (
   error: unknown,
@@ -29,7 +35,7 @@ export async function handleUnhandledStreamError({
   dbClient: AttemptsDbClient;
   planId: string;
   userId: string;
-  classification: FailureClassification;
+  classification: UnhandledGenerationErrorClassification;
   message: string;
 }): Promise<void> {
   logger.error(
@@ -48,9 +54,9 @@ export async function handleUnhandledStreamError({
 
 export function classifyUnhandledGenerationError(
   error: unknown,
-): FailureClassification {
+): UnhandledGenerationErrorClassification {
   if (error instanceof AppError) {
-    return error.classification() ?? DEFAULT_PROVIDER_FAILURE_CLASSIFICATION;
+    return error.classification() ?? 'unknown';
   }
 
   if (
@@ -60,5 +66,5 @@ export function classifyUnhandledGenerationError(
     return 'timeout';
   }
 
-  return DEFAULT_PROVIDER_FAILURE_CLASSIFICATION;
+  return 'unknown';
 }

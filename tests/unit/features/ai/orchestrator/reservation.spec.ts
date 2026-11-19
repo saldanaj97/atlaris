@@ -19,36 +19,20 @@ const context = {
 };
 
 describe('createReservationRejectionResult', () => {
-  it('maps free_allowance_used to FREE_PLAN_ALLOWANCE_USED', () => {
+  it('maps subscription_required to SUBSCRIPTION_REQUIRED', () => {
     const result = createReservationRejectionResult(
       context,
-      { reserved: false, reason: 'free_allowance_used' },
+      { reserved: false, reason: 'subscription_required' },
       0,
       () => 10,
       () => new Date('2026-08-26T00:00:00.000Z'),
     );
     expect(result.error).toBeInstanceOf(AppError);
     expect((result.error as AppError).code()).toBe(
-      API_ERROR_CODES.FREE_PLAN_ALLOWANCE_USED,
+      API_ERROR_CODES.SUBSCRIPTION_REQUIRED,
     );
     expect((result.error as AppError).status()).toBe(
-      API_ERROR_HTTP_STATUS.FREE_PLAN_ALLOWANCE_USED,
-    );
-  });
-
-  it('maps free_initial_in_progress to FREE_PLAN_GENERATION_IN_PROGRESS', () => {
-    const result = createReservationRejectionResult(
-      context,
-      { reserved: false, reason: 'free_initial_in_progress' },
-      0,
-      () => 10,
-      () => new Date('2026-08-26T00:00:00.000Z'),
-    );
-    expect((result.error as AppError).code()).toBe(
-      API_ERROR_CODES.FREE_PLAN_GENERATION_IN_PROGRESS,
-    );
-    expect((result.error as AppError).status()).toBe(
-      API_ERROR_HTTP_STATUS.FREE_PLAN_GENERATION_IN_PROGRESS,
+      API_ERROR_HTTP_STATUS.SUBSCRIPTION_REQUIRED,
     );
   });
 });

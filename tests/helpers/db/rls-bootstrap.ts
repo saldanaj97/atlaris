@@ -1,4 +1,5 @@
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES_SQL } from '../../../supabase/privileges/authenticated-table-privileges';
+import { LESSON_PROBLEM_REPORTS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/lesson-problem-reports-authenticated-update-columns';
 import { TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS_SQL } from '../../../supabase/privileges/task-progress-authenticated-update-columns';
 import {
   USER_EMAIL_NOTIFICATION_PREFERENCES_AUTHENTICATED_INSERT_COLUMNS_SQL,
@@ -92,6 +93,10 @@ export async function ensureRlsRolesAndPermissions() {
     REVOKE UPDATE ON "task_progress" FROM authenticated;
     GRANT UPDATE (${sql.raw(TASK_PROGRESS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "task_progress" TO authenticated;
     REVOKE DELETE ON "task_progress" FROM authenticated;
+    GRANT INSERT ON "lesson_problem_reports" TO authenticated;
+    REVOKE UPDATE ON "lesson_problem_reports" FROM authenticated;
+    GRANT UPDATE (${sql.raw(LESSON_PROBLEM_REPORTS_AUTHENTICATED_UPDATE_COLUMNS_SQL)}) ON "lesson_problem_reports" TO authenticated;
+    REVOKE DELETE ON "lesson_problem_reports" FROM authenticated;
   `);
 
   // Grant permissions on sequences (for auto-increment IDs)

@@ -4,7 +4,7 @@ import {
   GENERATION_PURPOSES,
   isGenerationPurpose,
   parseGenerationPurpose,
-  resolveLegacyWorkflowGenerationPurpose,
+  resolveWorkflowGenerationPurpose,
   type GenerationPurpose,
 } from '@/shared/types/generation-purpose';
 import { describe, expect, it } from 'vitest';
@@ -38,18 +38,18 @@ describe('generation purpose domain', () => {
   });
 
   it('resolves missing workflow payload purpose once at the trusted fallback', () => {
-    expect(resolveLegacyWorkflowGenerationPurpose(undefined, 'initial')).toBe(
+    expect(resolveWorkflowGenerationPurpose(undefined, 'initial')).toBe(
       'initial',
     );
-    expect(
-      resolveLegacyWorkflowGenerationPurpose(undefined, 'regeneration'),
-    ).toBe('regeneration');
-    expect(
-      resolveLegacyWorkflowGenerationPurpose('initial', 'regeneration'),
-    ).toBe('initial');
-    expect(() =>
-      resolveLegacyWorkflowGenerationPurpose('retry', 'initial'),
-    ).toThrow(/Invalid generation purpose/);
+    expect(resolveWorkflowGenerationPurpose(undefined, 'regeneration')).toBe(
+      'regeneration',
+    );
+    expect(resolveWorkflowGenerationPurpose('initial', 'regeneration')).toBe(
+      'initial',
+    );
+    expect(() => resolveWorkflowGenerationPurpose('retry', 'initial')).toThrow(
+      /Invalid generation purpose/,
+    );
   });
 
   it('handles every purpose exhaustively', () => {

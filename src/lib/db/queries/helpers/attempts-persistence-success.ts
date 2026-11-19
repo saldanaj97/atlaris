@@ -43,7 +43,7 @@ export function whereInProgressGenerationAttemptForPlan(params: {
 
 /**
  * Persists server-owned generation content inside an existing transaction.
- * The lifecycle caller owns transaction setup and JWT claim replay.
+ * The lifecycle caller owns transaction setup.
  */
 export async function persistSuccessfulAttemptInTx(
   tx: DbTransaction,

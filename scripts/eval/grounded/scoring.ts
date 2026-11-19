@@ -450,3 +450,44 @@ export function selectSpotCheck(
     lesson,
   }));
 }
+
+/** What a lesson run found; null when the arm's citations match its label. */
+export function armCitationError(
+  arm: EvalArm,
+  citedLessons: number,
+): string | null {
+  if (arm === 'v15' && citedLessons > 0) {
+    return `${citedLessons} lesson(s) cite sources, so grounded generation is on; this is not a v15 run`;
+  }
+  if (arm === 'grounded' && citedLessons === 0) {
+    return 'no lesson cites a source, so grounded generation was off; this is not a grounded run (check the grounded flags for this tier)';
+  }
+  return null;
+}
+
+export type BillingState = {
+  readonly tier: SubscriptionTier;
+  readonly billingUpdatedAt: string | null;
+};
+
+/** Why a user is not ready to run at `expected`; null when it is. */
+export function billingTierError(
+  state: BillingState,
+  expected: SubscriptionTier,
+): string | null {
+  if (state.billingUpdatedAt === null) {
+    return 'Clerk Billing projection has not landed yet; its webhook would overwrite the tier';
+  }
+  if (state.tier !== expected) {
+    return `tier is ${state.tier}, expected ${expected}; a billing webhook overwrote it`;
+  }
+  return null;
+}
+
+/** True once the billing timestamp is set and two consecutive polls agree. */
+export function billingProjectionSettled(
+  previous: string | null,
+  current: string | null,
+): boolean {
+  return current !== null && current === previous;
+}

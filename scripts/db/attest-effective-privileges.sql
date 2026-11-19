@@ -5,6 +5,7 @@ DECLARE
   migration_phase text := current_setting('app.atlaris_migration_phase', true);
   users_update_columns text[] := ARRAY['name', 'updated_at'];
   task_progress_update_columns text[] := ARRAY['status', 'completed_at', 'updated_at'];
+  lesson_problem_reports_update_columns text[] := ARRAY['reason', 'note', 'lesson_content_updated_at', 'updated_at'];
 BEGIN
   IF migration_phase IS NULL OR migration_phase NOT IN ('expand', 'contract') THEN
     RAISE EXCEPTION 'attestation phase must be expand or contract';
@@ -304,7 +305,7 @@ BEGIN
 
   WITH required_tables AS (
     SELECT unnest(
-      ARRAY['users', 'task_progress', 'user_preferences', 'user_email_notification_settings', 'user_email_notification_preferences']
+      ARRAY['users', 'task_progress', 'lesson_problem_reports', 'user_preferences', 'user_email_notification_settings', 'user_email_notification_preferences']
     ) AS table_name
   )
   SELECT format('authenticated has DELETE on public.%I', required_tables.table_name)
@@ -373,6 +374,22 @@ BEGIN
     RAISE EXCEPTION '%', violation;
   END IF;
 
+  WITH required_privileges AS (
+    SELECT unnest(ARRAY['SELECT', 'INSERT']) AS privilege_type
+  )
+  SELECT format('authenticated lacks %s on public.lesson_problem_reports', privilege_type)
+    INTO violation
+  FROM required_privileges
+  LEFT JOIN pg_class AS class
+    ON class.relname = 'lesson_problem_reports'
+   AND class.relnamespace = 'public'::regnamespace
+  WHERE class.oid IS NULL
+     OR NOT has_table_privilege('authenticated', class.oid, privilege_type)
+  LIMIT 1;
+  IF violation IS NOT NULL THEN
+    RAISE EXCEPTION '%', violation;
+  END IF;
+
   WITH client_roles AS (
     SELECT unnest(ARRAY['anon', 'authenticated']) AS role_name
   ), forbidden_privileges AS (
@@ -397,6 +414,7 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
+      ('lesson_problem_reports', 'UPDATE', lesson_problem_reports_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),
@@ -429,6 +447,7 @@ BEGIN
     FROM (VALUES
       ('users', 'UPDATE', users_update_columns),
       ('task_progress', 'UPDATE', task_progress_update_columns),
+      ('lesson_problem_reports', 'UPDATE', lesson_problem_reports_update_columns),
       ('user_preferences', 'INSERT', ARRAY['user_id', 'preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_preferences', 'UPDATE', ARRAY['preferred_ai_model', 'preferred_regeneration_ai_model', 'preferred_lesson_ai_model', 'preferred_writer_ai_model', 'preferred_verifier_ai_model', 'preferred_advisor_ai_model', 'analytics_timezone', 'updated_at']),
       ('user_email_notification_settings', 'INSERT', ARRAY['user_id', 'unsubscribe_all_optional_emails', 'updated_at']),

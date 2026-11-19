@@ -7,6 +7,7 @@ export * from './tables/generation-budget-cuts';
 export * from './tables/generation-quality-issues';
 export * from './tables/integrations';
 export * from './tables/jobs';
+export * from './tables/lesson-problem-reports';
 export * from './tables/openrouter-tier-models';
 export * from './tables/plan-research';
 export * from './tables/plans';

@@ -1,10 +1,10 @@
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
 
 import {
   fromSerializableReservation,
   toSerializableReservation,
-} from '@/features/plans/workflows/plan-generation.types';
+} from '@/features/plans/contracts/plan-generation.types';
 import {
   moduleLessonsStartCommandSchema,
   planGenerationStartCommandSchema,

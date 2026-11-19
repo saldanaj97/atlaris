@@ -1,0 +1,309 @@
+{
+  "lock_version": 1,
+  "generated_at": "2026-11-09T15:31:38Z",
+  "commit": "44c8bb66f25fd06993d6ce1745174beb756066ef",
+  "working_tree_dirty": false,
+  "dirty_paths": [],
+  "dirty_check": "git status --porcelain excluding docs/codemap (the generator's own output)",
+  "scanned_scope": [
+    "src",
+    "supabase",
+    "workers",
+    "tests (related-test mapping only)",
+    "README.md, AGENTS.md, workers/AGENTS.md, docs/** (alias sources only)",
+    "git commit subjects (alias sources only)"
+  ],
+  "excluded_directories": [
+    "node_modules",
+    ".next",
+    ".next-smoke-anon",
+    ".next-smoke-auth",
+    ".test-dist",
+    "dist",
+    "build",
+    "coverage",
+    ".turbo",
+    ".cache",
+    ".vercel",
+    "workers/jobs/.cloudflare",
+    "workers/jobs/.wrangler",
+    "supabase/migrations/meta",
+    "tests/results",
+    "docs/codemap",
+    ".git"
+  ],
+  "fingerprint_algorithm": {
+    "name": "sha256-of-sorted-path-content-pairs",
+    "file_hash": "sha256 of raw file bytes (working tree)",
+    "module_hash": "sha256 over the UTF-8 concatenation, in ascending path order, of '<path>\\0<file sha256 hex>\\n' for every git-tracked, non-excluded file under the module's paths"
+  },
+  "modules": {
+    "web-ui": {
+      "fingerprint": "5571be685d402238f573d14b482a1f9e9d305eb85903005b00b05aaf690facca",
+      "file_count": 292,
+      "paths": [
+        "src/app/(app)",
+        "src/app/(auth)",
+        "src/app/(landing)",
+        "src/app/_shared",
+        "src/app/maintenance",
+        "src/app/layout.tsx",
+        "src/app/ThemeProvider.tsx",
+        "src/app/VercelTelemetry.tsx",
+        "src/app/fonts.ts",
+        "src/app/globals.css",
+        "src/app/global-error.tsx",
+        "src/app/not-found.tsx",
+        "src/components",
+        "src/hooks",
+        "src/styles",
+        "src/features/navigation",
+        "src/css.d.ts"
+      ],
+      "kind": "module"
+    },
+    "api-routes": {
+      "fingerprint": "004ef50392e256055eea21f3b6439bee15c59d26ea24bdaa39783447ed436d25",
+      "file_count": 29,
+      "paths": [
+        "src/app/api"
+      ],
+      "kind": "module"
+    },
+    "request-boundary": {
+      "fingerprint": "b165e196f2484e3dfadddfb55dd67e19a18dd16fa6506ddb30f385871145ea53",
+      "file_count": 35,
+      "paths": [
+        "src/proxy.ts",
+        "src/flags.ts",
+        "src/lib/proxy",
+        "src/lib/api",
+        "src/lib/auth",
+        "src/features/auth",
+        "src/app/ingest"
+      ],
+      "kind": "module"
+    },
+    "plans": {
+      "fingerprint": "af5ec3686865c73a20d48d075ef107d4c2c5093827bb9547de059cf9e1ac2da2",
+      "file_count": 68,
+      "paths": [
+        "src/features/plans"
+      ],
+      "kind": "module"
+    },
+    "ai-generation": {
+      "fingerprint": "472140076b6ada76736ded1632ff53b7466e683e628b8e394dcecfc14748eb60",
+      "file_count": 47,
+      "paths": [
+        "src/features/ai"
+      ],
+      "kind": "module"
+    },
+    "lesson-content": {
+      "fingerprint": "d084ee2f0ddd728f1f89ed140e14c6238b347b58def76530587eb204d750fa28",
+      "file_count": 17,
+      "paths": [
+        "src/features/lesson-content"
+      ],
+      "kind": "module"
+    },
+    "billing": {
+      "fingerprint": "d7f1035d8c2b7d20e18929c8ea19d2efd958940aef75a15b515831aa5731b0c9",
+      "file_count": 15,
+      "paths": [
+        "src/features/billing",
+        "src/features/integrations"
+      ],
+      "kind": "module"
+    },
+    "notifications": {
+      "fingerprint": "21aa6ccfac4199836440e838efec02cffe4dd61a03129fd985bd7dbf07984fef",
+      "file_count": 11,
+      "paths": [
+        "src/features/notifications",
+        "src/shared/notifications"
+      ],
+      "kind": "module"
+    },
+    "jobs-dispatch": {
+      "fingerprint": "256dca61d26e4ba7ab8f20a7c6f3f6f87bbfeb63ce78e9c860fcf96b3711e63c",
+      "file_count": 11,
+      "paths": [
+        "src/features/job-queue",
+        "src/lib/jobs-worker"
+      ],
+      "kind": "module"
+    },
+    "jobs-worker": {
+      "fingerprint": "56037dc508530f6b939dd745fb749aaf7ee4ea2b0357c3bb3ad4b1f6cbcb1de6",
+      "file_count": 42,
+      "paths": [
+        "workers"
+      ],
+      "kind": "service"
+    },
+    "db-layer": {
+      "fingerprint": "57ac8dd4d336d6f5b6033a35a7a12751081f350d27e0bd0ee4653a220f156ee8",
+      "file_count": 151,
+      "paths": [
+        "src/lib/db",
+        "supabase"
+      ],
+      "kind": "module"
+    },
+    "shared-core": {
+      "fingerprint": "de5e117faf0bb0535837d7fca277a8822a23b375d51b7f2a89d68f718f392528",
+      "file_count": 78,
+      "paths": [
+        "src/shared",
+        "src/lib/config",
+        "src/lib/date",
+        "src/lib/errors",
+        "src/lib/errors.ts",
+        "src/lib/i18n",
+        "src/lib/logging",
+        "src/lib/next",
+        "src/lib/observability",
+        "src/lib/path",
+        "src/lib/posthog",
+        "src/lib/posthog-rewrite-destinations.ts",
+        "src/lib/posthog-server.ts",
+        "src/lib/utils",
+        "src/instrumentation.ts",
+        "src/instrumentation-client.ts",
+        "sentry.edge.config.ts",
+        "sentry.server.config.ts"
+      ],
+      "kind": "module"
+    },
+    "postgres": {
+      "fingerprint": "ae49d06f01b8ba3baf10db6ddab18635d25f546ccf133421067975da3e162f16",
+      "file_count": 4,
+      "paths": [
+        "supabase/schema/index.ts",
+        "supabase/service-role.ts",
+        "supabase/rls.ts",
+        "supabase/config.toml"
+      ],
+      "kind": "database"
+    },
+    "clerk": {
+      "fingerprint": "a6ebceef73b4ed94d675242e0769cd0627479213153443bd3051a88667193138",
+      "file_count": 3,
+      "paths": [
+        "src/proxy.ts",
+        "src/lib/auth/server.ts",
+        "src/app/api/v1/clerk/billing/webhook/route.ts"
+      ],
+      "kind": "external"
+    },
+    "openrouter": {
+      "fingerprint": "837353c8744cd4befd19d2eba5d1aca1821f6255f362236c24de96f0d87fa7e5",
+      "file_count": 2,
+      "paths": [
+        "src/features/ai/providers/openrouter.ts",
+        "src/features/ai/model-catalog/guardrail-models.ts"
+      ],
+      "kind": "external"
+    },
+    "parallel-search": {
+      "fingerprint": "622f684499f07ba3fae47f2d04ecf96df1e6c7f13e2f9a1cb7e23aee2c847ca4",
+      "file_count": 1,
+      "paths": [
+        "src/features/ai/providers/parallel-search.ts"
+      ],
+      "kind": "external"
+    },
+    "resend": {
+      "fingerprint": "8524b2df18362ee0fad2e60887999a287e6f412e1bcf9cc7e8c10039e914647d",
+      "file_count": 1,
+      "paths": [
+        "src/features/notifications/email/resend-adapter.ts"
+      ],
+      "kind": "external"
+    },
+    "cf-queue": {
+      "fingerprint": "8af20233d8187b756bdeb1d66ab866f729670dab99d6044fe461c59402913338",
+      "file_count": 4,
+      "paths": [
+        "workers/jobs/cloudflare.config.ts",
+        "workers/jobs/src/jobs/regeneration-enqueue.ts",
+        "workers/jobs/src/jobs/regeneration-consumer.ts",
+        "workers/jobs/src/jobs/regeneration-sweep.ts"
+      ],
+      "kind": "queue"
+    },
+    "cf-workflows": {
+      "fingerprint": "c0bdfd148487e25ce95b7aa2e69eb1e01ab9f0161705d9ec0aa4ecf80574526d",
+      "file_count": 15,
+      "paths": [
+        "workers/jobs/cloudflare.config.ts",
+        "workers/jobs/src/workflow-instance.ts",
+        "workers/jobs/src/workflows"
+      ],
+      "kind": "queue"
+    },
+    "flagship": {
+      "fingerprint": "d26f383fbf50fe87fd95aa2661f55a3f58b06309bd1a803e331c5a1b285eb084",
+      "file_count": 4,
+      "paths": [
+        "src/flags.ts",
+        "workers/jobs/src/flags.ts",
+        "workers/jobs/src/switches.ts",
+        "src/lib/config/env/flagship.ts"
+      ],
+      "kind": "external"
+    }
+  },
+  "unmapped_top_level": {
+    "(root files)": {
+      "fingerprint": "34e6f435b3ff9345ef5c9ed3ef41c59d979e3be00d21c9a4b52a72ac5f451f68",
+      "file_count": 32
+    },
+    ".agents": {
+      "fingerprint": "7ca42b36ef7ed685dc4866352b71f8ab025cb4e7aaf2885e17e7a208cdbebc6e",
+      "file_count": 71
+    },
+    ".circleci": {
+      "fingerprint": "9164038bead348ddbdd5bfbbf61284abbe136a4f045182bdc6514ef19018ac64",
+      "file_count": 7
+    },
+    ".claude": {
+      "fingerprint": "b12648c1a9928f309898d6836853a70989c94067779506585add88189fd5487b",
+      "file_count": 5
+    },
+    ".codex": {
+      "fingerprint": "cb3a37a19efc69b49d62b44ddcebda0234dd601ccaf21a15ff85add6a0db2bc9",
+      "file_count": 2
+    },
+    ".github": {
+      "fingerprint": "5332aea81ec3f05ea7ad28fee48f6946f2045b973d7c55475afbb655f294e633",
+      "file_count": 17
+    },
+    ".husky": {
+      "fingerprint": "214b994cd63007259c1c7e243929a8be00a8689647122aa466ed2ffa30cb4606",
+      "file_count": 5
+    },
+    ".vscode": {
+      "fingerprint": "c0062218cc70c5f20f8c8f0399cffec7b97e8fc6c4f59349616c60165110ef74",
+      "file_count": 1
+    },
+    "docs": {
+      "fingerprint": "8bf84b8ed0770478d19fd0342759253e8fd38a3bff89de8c5445e8c7b8e9bbd9",
+      "file_count": 49
+    },
+    "public": {
+      "fingerprint": "33798ccaaf2952b7ddd28cdf81f1fbd621ce5a2a01f5b361699396847c057472",
+      "file_count": 18
+    },
+    "scripts": {
+      "fingerprint": "6c2da9e224a509be6e0a5625a3950439b6049e6889d805e9d59d2f8acf6a6161",
+      "file_count": 43
+    },
+    "tests": {
+      "fingerprint": "523dd2806cb13d0022f7e5f74dc0d117af2a184704ae1b09e17c2d7038283ef2",
+      "file_count": 536
+    }
+  }
+}

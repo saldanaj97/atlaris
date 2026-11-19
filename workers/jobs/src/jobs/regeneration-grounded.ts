@@ -1,4 +1,4 @@
-import type { GroundedRegenerationStages } from '@/features/jobs/regeneration-run';
+import type { GroundedRegenerationStages } from '@/features/job-queue/regeneration-run';
 import type { Logger } from '@/lib/logging/logger';
 import type { WorkflowStep } from 'cloudflare:workers';
 

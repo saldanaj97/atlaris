@@ -13,12 +13,12 @@ import {
   resolveScheduledEmailDeliveryRun,
   type ScheduledEmailDeliveryRun,
 } from './schedule';
-import { runEmailNotificationDelivery } from '@/features/notifications/email/delivery-service';
 import {
   createEmailNotificationDeliveryReferenceTimestamp,
   getEmailNotificationDeliveryLedgerKeys,
   getEmailNotificationDeliveryRunDefinition,
-} from '@/features/notifications/email/workflows/email-notification-delivery.types';
+} from '@/features/notifications/email/contracts/email-notification-delivery.types';
+import { runEmailNotificationDelivery } from '@/features/notifications/email/delivery-service';
 import { EnvValidationError } from '@/lib/config/env/shared';
 import { summarizeEmailNotificationDeliveriesForRun } from '@/lib/db/queries/email-notification-deliveries';
 import {

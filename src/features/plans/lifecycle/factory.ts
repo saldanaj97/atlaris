@@ -31,7 +31,7 @@ import {
   markPlanGenerationSuccess,
 } from './plan-persistence-store';
 import { PlanLifecycleService } from './service';
-import { resolveUserTier } from '@/features/billing/tier';
+import { resolveUserTier, resolveUserTrialing } from '@/features/billing/tier';
 import {
   checkPlanDurationCap,
   normalizePlanDurationForTier,
@@ -59,6 +59,7 @@ export function createPlanLifecycleService(params: {
     },
     quota: {
       resolveUserTier: (userId) => resolveUserTier(userId, dbClient),
+      resolveUserTrialing: (userId) => resolveUserTrialing(userId, dbClient),
       checkDurationCap: checkPlanDurationCap,
       normalizePlanDuration: normalizePlanDurationForTier,
     },

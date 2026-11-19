@@ -82,7 +82,7 @@ function repoRoot(): string {
 }
 
 function skillDir(): string {
-  return join(repoRoot(), '.cursor/skills/verify-atlaris');
+  return join(repoRoot(), '.agents/skills/verify-atlaris');
 }
 
 function runFilePath(): string {

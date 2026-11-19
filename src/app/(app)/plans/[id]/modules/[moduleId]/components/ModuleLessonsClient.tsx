@@ -354,6 +354,8 @@ export function ModuleLessonsClient({
                 return (
                   <LessonAccordionItem
                     key={lesson.id}
+                    planId={planId}
+                    moduleId={moduleId}
                     lesson={lesson}
                     status={statuses[lesson.id] ?? lesson.status}
                     onStatusChange={onStatusChange}

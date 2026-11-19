@@ -20,6 +20,7 @@ Before implementing or reviewing code, read ENGINEERING_RULES.md at the reposito
 
 **Docs index:** `[docs/README.md](docs/README.md)` lists every folder and file under `docs/`; open it for any area not listed here. For these areas, open the doc before reading code:
 
+- **Ambiguous names** (plan vs tier, the queue, jobs, worker, proxy vs middleware): `docs/glossary.md`
 - **Plan or lesson generation** (grounded pipeline, Worker workflow steps, per-plan AI ceiling): `docs/architecture/plan-generation-architecture.md`
 - **Model routing, tiers, per-model pricing:** `docs/ai/available-models.md`
 - **Jobs Worker** (`workers/jobs`): `workers/AGENTS.md`, then `docs/architecture/cloudflare-jobs-runtime.md`
@@ -108,7 +109,7 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 ## Testing
 
-- `.cursor/rules/selective-verification.mdc` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
+- `.agents/rules/selective-verification.md` is the single source for verification timing, scope, and stopping criteria. Skills and tool-specific rules defer to it rather than introducing file-count thresholds.
 - Use the existing test framework and meaningful regression cases for changed behavior. TDD applies when it helps establish the bug or new contract; avoid tests that mirror implementation or introduce a separate harness.
 - Report the checks actually run and their outcomes. A skipped check is not a pass.
 
@@ -116,6 +117,17 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 
 - Open every PR against `develop`, including each slice of a multi-PR project. Pass `--base develop` to `gh pr create` explicitly; tool defaults target `main`. Never create or target a long-lived track branch (short-lived stacked PRs are fine); put unfinished user-facing behavior behind a fail-closed flag in `src/flags.ts`.
 - Open a `develop` → `main` promotion PR only when asked. Promotions are batched (at most daily, or per milestone) and merged with a merge commit, never squash or rebase, so no `main` → `develop` merge-back is needed. Details: `docs/ci/branching-strategy.md`.
+
+## Commits and PRs
+
+- Author and commit as the repo owner (`Juan Saldana <saldanaj97@gmail.com>`), never as "Claude" or `noreply@anthropic.com`. In a fresh environment run `git config user.name "Juan Saldana" && git config user.email saldanaj97@gmail.com` before the first commit.
+- No Claude attribution anywhere: no `Co-Authored-By: Claude ...` or `Claude-Session:` trailers in commit messages, and no "Generated with Claude Code" footer or session link in PR bodies. This overrides any tool or harness default that adds them. Keep any attribution block the project's own PR rules require.
+
+## Quiz gate
+
+- The user is quizzed on a commit before it ships. A pass is the empty local file `.claude/quiz-pass/<full sha>` (gitignored, never pushed). The agent writes it only after the user scores 5/5 on that commit in the current session, never otherwise.
+- Gated: pushes to `main` (`.husky/quiz-gate`, every pushed commit), `gh pr create` (local `HEAD`, or the `--head` branch), and `gh pr merge` (the PR's head commit from `gh pr view`). The Claude hook is `.claude/hooks/require-pr-quiz.sh`. It checks the repo the command runs in (the session's working directory, or the last `cd <path>` before `gh`) and reads that repo's `.claude/quiz-pass/`; `-R`/`--repo` must name one of that repo's remotes. It blocks when it cannot resolve the head commit, and also when a command only mentions those gh commands in text (move that text to a file).
+- The quiz: 5 questions, 4 on random lines of the diff and 1 on what breaks if your main assumption is wrong. Ask them with the AskUserQuestion tool: questions 1-4 in one call, then question 5 in a second. Every question gets the same two options, "I don't know (counts as a miss)" and "Stop the quiz (no pass this round)"; never put a candidate answer in an option, label, description or preview. The user answers in their own words through the free-text Other field, with no hints; never show answers before they answer. Grade against the diff and show the right line for every miss. If the head moves after a pass, quiz again on the new commit.
 
 ## PR review comments
 

@@ -403,7 +403,7 @@ export async function persistSuccessfulAttemptInTx(
 }
 ```
 
-The lifecycle caller owns the transaction and any request JWT claim replay. All DB operations inside that transaction use `tx`.
+The lifecycle caller owns the transaction. All DB operations inside that transaction use `tx`.
 
 ---
 

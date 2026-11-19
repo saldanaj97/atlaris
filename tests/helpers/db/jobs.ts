@@ -1,6 +1,6 @@
-import type { Job } from '@/features/jobs/types';
+import type { Job } from '@/features/job-queue/types';
 
-import { claimRegenerationJob, loadJobById } from '@/features/jobs/queue';
+import { claimRegenerationJob, loadJobById } from '@/features/job-queue/queue';
 
 /**
  * Claims a pending regeneration job by id, the way the worker does, keeping

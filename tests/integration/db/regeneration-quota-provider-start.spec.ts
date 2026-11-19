@@ -1,7 +1,7 @@
 import { reserveRegenerationQuotaAtProviderStart } from '@/features/billing/regeneration-quota-boundary';
 import { getCurrentMonth } from '@/features/billing/usage-metrics';
-import { enqueueJobWithResult, failJob } from '@/features/jobs/queue';
-import { JOB_TYPES } from '@/features/jobs/types';
+import { enqueueJobWithResult, failJob } from '@/features/job-queue/queue';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import { planRegenerationJobPayloadSchema } from '@/features/plans/regeneration-orchestration/schema';
 import { jobQueue, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';

@@ -2,7 +2,7 @@ import {
   computeJobPriority,
   isPriorityTopic,
   PRIORITY_TOPICS,
-} from '@/features/jobs/priority';
+} from '@/features/job-queue/priority';
 import { describe, expect, it } from 'vitest';
 
 describe('computeJobPriority', () => {

@@ -1,3 +1,5 @@
+import type { WebhookEvent } from '@clerk/nextjs/webhooks';
+
 import {
   clerkBillingSourceFromBackendSubscription,
   clerkBillingSourceFromWebhook,
@@ -889,5 +891,177 @@ describe('projectClerkBillingSource', () => {
 
     expect(subscriptionItemSource?.payerUserId).toBe('user_fallback');
     expect(paymentAttemptSource?.payerUserId).toBe('user_fallback');
+  });
+});
+
+/**
+ * Regression fixtures captured from the staging Clerk dashboard (webhook
+ * delivery log) when a user who paid for Starter kept showing as Free.
+ * Payer name, email and image are scrubbed; ids and timestamps are the real
+ * ones so ordering assertions stay meaningful.
+ */
+const STAGING_PAYER_USER_ID = 'user_3Ly0zOrW5kwtP6VWB4WCs0XNfrZ';
+
+// `subscription.created` delivered at sign-up: the Free default plan only.
+// Clerk's payload showed the items array; the surrounding subscription
+// envelope below is reconstructed (its own updated_at was not captured, so it
+// reuses the free item's updated_at).
+const stagingFreeItem = {
+  created_at: 1794411261932,
+  id: 'csub_item_3Ly0zOE4quhCBl3aoXoGXxyQ1cc',
+  interval: 'month',
+  is_free_trial: false,
+  object: 'commerce_subscription_item',
+  period_end: null,
+  period_start: 1794411261927,
+  plan: {
+    amount: 0,
+    currency: '',
+    id: 'cplan_35fIWJtRxMfzbpbxpiOWCTjKWdQ',
+    is_recurring: true,
+    name: 'Free',
+    slug: 'free_user',
+  },
+  plan_id: 'cplan_35fIWJtRxMfzbpbxpiOWCTjKWdQ',
+  status: 'active',
+  updated_at: 1794411261932,
+};
+
+const stagingSubscriptionCreatedEvent = {
+  type: 'subscription.created',
+  data: {
+    id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+    status: 'active',
+    payer: { user_id: STAGING_PAYER_USER_ID },
+    payer_id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+    updated_at: stagingFreeItem.updated_at,
+    items: [stagingFreeItem],
+  },
+} as unknown as WebhookEvent;
+
+// `subscriptionItem.active` delivered when the user paid for Starter.
+const stagingStarterItemActiveEvent = {
+  type: 'subscriptionItem.active',
+  data: {
+    created_at: 1794411450965,
+    id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+    interval: 'month',
+    is_free_trial: false,
+    object: 'commerce_subscription_item',
+    payer: {
+      email: 'payer@example.com',
+      first_name: 'QA',
+      id: 'cpayer_3Ly0zNtFul0UzJk0pkKVUooh4tD',
+      image_url: 'https://img.clerk.com/scrubbed',
+      last_name: 'Payer',
+      organization_id: '',
+      organization_name: '',
+      user_id: STAGING_PAYER_USER_ID,
+    },
+    period_end: 1797003450965,
+    period_start: 1794411450965,
+    plan: {
+      amount: 2500,
+      currency: 'USD',
+      id: 'cplan_3G8pAq7nNr5wGtYQJA19VnnYNKA',
+      is_recurring: true,
+      name: 'Starter',
+      slug: 'starter_plan',
+    },
+    plan_id: 'cplan_3G8pAq7nNr5wGtYQJA19VnnYNKA',
+    status: 'active',
+    subscription_id: 'csub_3Ly0zQT0Sifgrnh0eSD4DKjMT3l',
+    updated_at: 1794411451954,
+  },
+} as unknown as WebhookEvent;
+
+describe('Starter upgrade webhooks captured from staging', () => {
+  it('parses the real subscriptionItem.active payload into a Starter source', () => {
+    expect(
+      clerkBillingSourceFromWebhook(stagingStarterItemActiveEvent),
+    ).toEqual({
+      type: 'subscriptionItem.active',
+      payerUserId: STAGING_PAYER_USER_ID,
+      clerkBillingUpdatedAt: new Date(1794411451954),
+      subscriptionStatus: null,
+      paymentAttemptStatus: null,
+      items: [
+        {
+          id: 'csub_item_3Ly1N4yAQK6zM0n4wHIGhRa3TJ6',
+          status: 'active',
+          tier: 'starter',
+          planId: 'cplan_3G8pAq7nNr5wGtYQJA19VnnYNKA',
+          planSlug: 'starter_plan',
+          amountInCents: null,
+          periodEnd: new Date(1797003450965),
+          canceledAt: null,
+          isFreeTrial: false,
+        },
+      ],
+    });
+  });
+
+  it('projects the real subscriptionItem.active payload to Starter for a Free user', () => {
+    const projectionSource = clerkBillingSourceFromWebhook(
+      stagingStarterItemActiveEvent,
+    );
+    expect(projectionSource).not.toBeNull();
+
+    expect(
+      projectClerkBillingSource(projectionSource!, currentFreeState, now),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(1797003450965),
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('projects the sign-up subscription.created payload to Free', () => {
+    const projectionSource = clerkBillingSourceFromWebhook(
+      stagingSubscriptionCreatedEvent,
+    );
+    expect(projectionSource).not.toBeNull();
+    expect(projectionSource?.items[0]).toMatchObject({
+      tier: 'free',
+      status: 'active',
+      planSlug: 'free_user',
+    });
+
+    expect(
+      projectClerkBillingSource(projectionSource!, currentFreeState, now),
+    ).toEqual({
+      subscriptionTier: 'free',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: null,
+      cancelAtPeriodEnd: false,
+    });
+  });
+
+  it('projects Starter when the same snapshot lists the Free item next to the active Starter item', () => {
+    const itemSource = clerkBillingSourceFromWebhook(
+      stagingStarterItemActiveEvent,
+    )!;
+    const freeSource = clerkBillingSourceFromWebhook(
+      stagingSubscriptionCreatedEvent,
+    )!;
+
+    expect(
+      projectClerkBillingSource(
+        {
+          ...itemSource,
+          type: 'subscription.updated',
+          subscriptionStatus: 'active',
+          items: [...freeSource.items, ...itemSource.items],
+        },
+        currentFreeState,
+        now,
+      ),
+    ).toEqual({
+      subscriptionTier: 'starter',
+      subscriptionStatus: 'active',
+      subscriptionPeriodEnd: new Date(1797003450965),
+      cancelAtPeriodEnd: false,
+    });
   });
 });

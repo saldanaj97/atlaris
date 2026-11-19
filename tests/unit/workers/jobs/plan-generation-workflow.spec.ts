@@ -14,13 +14,13 @@ import {
   probeCatalog,
 } from '../../../helpers/catalog-db-scope';
 import { ProviderRateLimitError } from '@/features/ai/providers/errors';
-import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import {
   fromSerializableReservation,
   type PlanGenerationWorkflowInput,
   toPlanGenerationProcessInput,
   toSerializableReservation,
-} from '@/features/plans/workflows/plan-generation.types';
+} from '@/features/plans/contracts/plan-generation.types';
+import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({

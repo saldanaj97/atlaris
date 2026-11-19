@@ -36,12 +36,12 @@ Do not add WAF rules for authenticated APIs, Svix/Clerk signature headers, worke
 
 ### User Rate Limits (Authenticated Endpoints)
 
-| Category           | Limit        | Window   | Use Case                                                      |
-| ------------------ | ------------ | -------- | ------------------------------------------------------------- |
-| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                              |
-| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate request limiter)     |
-| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, profile, preferences, Server Actions |
-| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences                     |
+| Category           | Limit        | Window   | Use Case                                                                              |
+| ------------------ | ------------ | -------- | ------------------------------------------------------------------------------------- |
+| `aiGeneration`     | 10 requests  | 1 hour   | Plan generation and regeneration                                                      |
+| `lessonGeneration` | 5 requests   | 1 hour   | Module lesson batch generation (separate request limiter)                             |
+| `mutation`         | 60 requests  | 1 minute | Plan delete/bulk-delete, lesson problem reports, profile, preferences, Server Actions |
+| `read`             | 120 requests | 1 minute | Status checks, profile reads, preferences                                             |
 
 ### IP Rate Limits (Unauthenticated / Machine Endpoints)
 
@@ -159,12 +159,12 @@ Server Actions share framework POST paths, so they cannot be targeted reliably w
 
 ### Category Selection Guide
 
-| Endpoint Type                                                 | Category           |
-| ------------------------------------------------------------- | ------------------ |
-| Plan generation, regeneration                                 | `aiGeneration`     |
-| Module lesson batch generation                                | `lessonGeneration` |
-| Plan delete/bulk-delete, profile, preferences, Server Actions | `mutation`         |
-| GET endpoints for data retrieval / status polls               | `read`             |
+| Endpoint Type                                                                         | Category           |
+| ------------------------------------------------------------------------------------- | ------------------ |
+| Plan generation, regeneration                                                         | `aiGeneration`     |
+| Module lesson batch generation                                                        | `lessonGeneration` |
+| Plan delete/bulk-delete, lesson problem reports, profile, preferences, Server Actions | `mutation`         |
+| GET endpoints for data retrieval / status polls                                       | `read`             |
 
 ### IP limiter (`checkIpRateLimit`)
 
@@ -254,6 +254,7 @@ Source: `USER_RATE_LIMIT_CONFIGS.lessonGeneration` in `src/lib/api/user-rate-lim
 
 - `DELETE /api/v1/plans/[planId]`
 - `POST /api/v1/plans/bulk-delete`
+- `PUT /api/v1/plans/[planId]/modules/[moduleId]/tasks/[taskId]/problem-report`
 - `PATCH /api/v1/user/preferences`
 - `PATCH /api/v1/user/preferences/notifications`
 - `PUT /api/v1/user/profile`

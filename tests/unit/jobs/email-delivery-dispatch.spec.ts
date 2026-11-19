@@ -1,6 +1,6 @@
 import type { JobsWorkerCommandResult } from '@/lib/jobs-worker/client';
 
-import { dispatchEmailDeliveryToWorker } from '@/features/jobs/email-delivery-dispatch';
+import { dispatchEmailDeliveryToWorker } from '@/features/job-queue/email-delivery-dispatch';
 import { sendJobsWorkerCommand } from '@/lib/jobs-worker/client';
 import { describe, expect, it, vi } from 'vitest';
 

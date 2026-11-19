@@ -13,7 +13,6 @@ describe('LocalPricingPreview', () => {
 
     const starter = screen.getByRole('article', { name: 'Starter' });
     const pro = screen.getByRole('article', { name: 'Pro' });
-    const free = screen.getByRole('article', { name: 'Free' });
 
     expect(within(starter).getByText('$25')).toBeVisible();
     expect(within(pro).getByText('$100')).toBeVisible();
@@ -25,8 +24,8 @@ describe('LocalPricingPreview', () => {
     expect(
       within(pro).getByText(/\$100 USD billed monthly\. Renews automatically/),
     ).toBeVisible();
-    expect(within(free).queryByText(/renews automatically/i)).toBeNull();
-    for (const card of [free, starter, pro]) {
+    expect(screen.queryByRole('article', { name: 'Free' })).toBeNull();
+    for (const card of [starter, pro]) {
       expect(
         within(card).getByRole('button', { name: 'Preview only' }),
       ).toBeDisabled();
@@ -49,7 +48,6 @@ describe('LocalPricingPreview comparison', () => {
     const headers = within(table).getAllByRole('columnheader');
     expect(headers.map((header) => header.textContent)).toEqual([
       'Feature',
-      'Free$0',
       'Starter$25 per month',
       'Pro$100 per month',
     ]);
@@ -58,7 +56,6 @@ describe('LocalPricingPreview comparison', () => {
     expect(rows).toHaveLength(5);
     const plansIncluded = within(rows[0]).getAllByRole('cell');
     expect(plansIncluded.map((cell) => cell.textContent)).toEqual([
-      '1',
       '10 at a time',
       'Unlimited',
     ]);
@@ -67,7 +64,7 @@ describe('LocalPricingPreview comparison', () => {
         expect(cell.textContent?.trim()).not.toBe('');
       }
     }
-    expect(within(rows[4]).getAllByText('Included')).toHaveLength(3);
+    expect(within(rows[4]).getAllByText('Included')).toHaveLength(2);
   });
 
   it('keeps the scrollable comparison region reachable by keyboard', async () => {

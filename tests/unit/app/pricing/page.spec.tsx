@@ -75,19 +75,24 @@ describe('PricingPage', () => {
 
     expect(
       screen.getByRole('heading', {
-        name: 'Free for one plan. Pay when you need more.',
+        name: 'Pick your plan. Cancel any time.',
       }),
     ).toBeVisible();
     expect(screen.getByTestId('clerk-pricing-table')).toBeVisible();
     expect(
       screen.getByRole('heading', {
-        name: 'Your first plan is free',
+        name: 'Ready for your first plan?',
       }),
     ).toBeVisible();
-    expect(screen.getByRole('link', { name: 'Create a plan' })).toHaveAttribute(
+    // The pricing page's own CTA scrolls to the plan cards: /plans/new would
+    // send a user with no subscription straight back here.
+    expect(screen.getByRole('link', { name: 'Choose a plan' })).toHaveAttribute(
       'href',
-      ROUTES.PLANS.NEW,
+      '#pricing-plans',
     );
+    expect(
+      screen.queryByRole('link', { name: 'Create a plan' }),
+    ).not.toBeInTheDocument();
     expect(mocks.clerkPricingTableMock).toHaveBeenCalledWith(
       expect.objectContaining({
         appClosed: false,
@@ -139,13 +144,13 @@ describe('PricingPage', () => {
     await renderPricingPage();
 
     expect(screen.queryByTestId('clerk-pricing-table')).not.toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Free' })).toBeVisible();
+    expect(screen.queryByRole('heading', { name: 'Free' })).toBeNull();
     expect(screen.getByRole('heading', { name: 'Starter' })).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Pro' })).toBeVisible();
     expect(screen.getByText(/local pricing preview/i)).toBeVisible();
     expect(
       screen.getAllByRole('button', { name: /preview only/i }),
-    ).toHaveLength(3);
+    ).toHaveLength(2);
 
     expect(
       screen.queryByRole('group', { name: 'Billing period' }),

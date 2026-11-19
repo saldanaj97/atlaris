@@ -1,6 +1,6 @@
 import { ensureUser } from '../../../helpers/db/users';
 import { GET } from '@/app/api/health/worker/route';
-import { JOB_TYPES } from '@/features/jobs/types';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import { clearAllRateLimiters } from '@/lib/api/ip-rate-limit';
 import { jobQueue } from '@supabase/schema';
 import { db } from '@supabase/service-role';

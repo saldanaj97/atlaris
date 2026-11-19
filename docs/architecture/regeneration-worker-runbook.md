@@ -21,9 +21,9 @@ The app accepts regeneration requests unless the Flagship flag `regeneration-pau
 ### Flow
 
 1. `POST /api/v1/plans/:planId/regenerate` runs admission (rate limit, tier, duration, content access, non-settling quota peek) and inserts the `job_queue` row.
-2. The route always sends a signed `POST {JOBS_WORKER_URL}/v1/regeneration/enqueue { v: 1, jobId }` (`dispatchRegenerationToWorker`, `src/features/jobs/regeneration-dispatch.ts`). It always answers `202 pending`. Any non-2xx response, timeout (10 s, no retry), or missing configuration is logged and leaves the row `pending` for the sweep.
+2. The route always sends a signed `POST {JOBS_WORKER_URL}/v1/regeneration/enqueue { v: 1, jobId }` (`dispatchRegenerationToWorker`, `src/features/job-queue/regeneration-dispatch.ts`). It always answers `202 pending`. Any non-2xx response, timeout (10 s, no retry), or missing configuration is logged and leaves the row `pending` for the sweep.
 3. The Worker verifies the HMAC signature (`workers/jobs/src/http/signature.ts`), then puts `{ v: 1, jobId }` on `atlaris-regeneration-<env>`.
-4. The queue consumer (`workers/jobs/src/jobs/regeneration-consumer.ts`; `max_batch_size: 1`, `max_batch_timeout: 0`, `max_retries: 3`, `max_concurrency: 2`) runs the job inline with `runPlanRegeneration` (`src/features/jobs/regeneration-run.ts`): claim (CAS) → reserve attempt → process → finalize.
+4. The queue consumer (`workers/jobs/src/jobs/regeneration-consumer.ts`; `max_batch_size: 1`, `max_batch_timeout: 0`, `max_retries: 3`, `max_concurrency: 2`) runs the job inline with `runPlanRegeneration` (`src/features/job-queue/regeneration-run.ts`): claim (CAS) → reserve attempt → process → finalize.
 5. Every `*/15` tick, the sweep (`workers/jobs/src/jobs/regeneration-sweep.ts`) re-sends `pending` regeneration rows that are due (`scheduled_for <= now()`) and untouched for 10 minutes (`updated_at`), at most 50 per tick, and bumps their `updated_at` so the next tick does not re-send them. `job_queue` stays the durable record; there is no dead-letter queue.
 
 The `regeneration-paused` flag gates the route on the app.

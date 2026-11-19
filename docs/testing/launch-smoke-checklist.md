@@ -4,6 +4,12 @@ Run this list in **production** before each waitlist batch is invited and again 
 
 Every production action here (checkouts, account deletion, flag, env and Clerk changes) needs the owner's go-ahead for that run. Provider dashboard steps (Vercel, Clerk, Stripe, Supabase, PostHog, Sentry, OpenRouter) are done by the owner. A failing check gets its own Linear bug, linked from DEV-187. Times are America/Chicago.
 
+## Paid-only pivot (2026-11-10)
+
+The hosted app is paid-only for launch: no free tier, and no free plan on `/pricing`. Decisions: Starter $25 and Pro $100 stay; a card-required Clerk trial (Starter only, 3 days) replaces the free plan, and it stays off until the trial caps ship. The internal `free` tier and Clerk `free_user` plan remain as the "no subscription" state. This list was updated before the app change landed, so the "no subscription" and trial expectations below are the intended behavior: confirm each against the shipped code and correct the wording.
+
+Changes to this list: check 3 is now the no-subscription check (and the trial check, only if the trial is on); the launch-day sign-up steps no longer expect a new user to create a plan; the `Start free` card is gone. Check 10 and the run sheet no longer expect a Free plan.
+
 ## Decisions before the first batch
 
 1. **How invited batches get past the gate.** Decided in [DEV-190](https://linear.app/saldana-software/issue/DEV-190): while `launch-waitlist` is on, the gate lets any signed-in user through (maintenance still blocks everyone). Clerk's sign-up mode is **Waitlist**, so only invited or admin-created users have an account. Before batch 1, check Clerk Dashboard (production) → **Users**: every existing account gets past the gate.
@@ -13,7 +19,7 @@ Every production action here (checkouts, account deletion, flag, env and Clerk c
 
 | Need                                | Where                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Production QA users                 | `qa-free@atlaris.app`, `qa-starter@atlaris.app`, `qa-pro@atlaris.app` on the Clerk production instance. Starter and Pro are on $0 complimentary prices, so their plans cost nothing to bill. `qa-free` has already used its one lifetime Free plan, so plan creation for it returns `403 FREE_PLAN_ALLOWANCE_USED`; the Free check uses a new throwaway user (check 3)                                                                                                                                                                                                                                                                                                                |
+| Production QA users                 | `qa-free@atlaris.app`, `qa-starter@atlaris.app`, `qa-pro@atlaris.app` on the Clerk production instance. Starter and Pro are on $0 complimentary prices, so their plans cost nothing to bill. `qa-free` is the no-subscription user for check 3; a new throwaway user has the same state, so either works                                                                                                                                                                                                                                                                                                                |
 | Getting past the gate while it's on | Signed-in users pass the gate (DEV-190), so checks 3–5 only need a Clerk session. A temporary rule is needed only for signed-out pages, such as `/auth/sign-up` in check 2. There is no per-request override since DEV-192 (flags moved to Cloudflare Flagship). To check a signed-out gated page, add a short-lived targeting rule to `launch-waitlist` in the Flagship dashboard that serves **off** for `environment = production`, wait up to 90 s (about 30 s propagation plus the 60 s gate cache), run the check, then remove the rule and wait again before continuing. The rule opens the gate for **every** production visitor while it exists, so keep it to a few minutes |
 | Signing in as a QA user             | In a browser: `/auth/sign-in` (reachable while the waitlist is on). `scripts/dev/agent-session.ts` only targets `local` and `staging` ([agent-sessions.md](../development/agent-sessions.md)), so production agents sign in with a Clerk sign-in token: Backend API `POST /sign_in_tokens`, then the Frontend API at `https://clerk.atlaris.app/v1/client/sign_ins` with `strategy=ticket` and `Origin: https://atlaris.app` (cookie mode). Production rejects Backend API `POST /sessions`                                                                                                                                                                                           |
 | Reading the production DB           | Supabase Dashboard → production project → SQL Editor (read-only queries below). Never point a local script at production                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
@@ -27,9 +33,9 @@ Copy this into a DEV-187 comment for each run and fill it in.
 Run: <batch N | launch day before flag-off | launch day after flag-off>   Date/time (CT):
 Production deployment / commit:
 OpenRouter balance before:            after:
-Key usage before (free/starter/pro):  after:
+Key usage before (starter/pro):        after:
 Sentry: new issues since <start time> in atlaris / atlaris-jobs:
-1 Waitlist form   2 Sign-up page   3 Free plan   4 Starter plan   5 Pro plan
+1 Waitlist form   2 Sign-up page   3 No subscription (+ trial if on)   4 Starter plan   5 Pro plan
 6 Starter checkout   7 Pro checkout (staging on batch runs, production on launch day)
 8 Account deletion   9 Notification email
 Failures (Linear bug links):
@@ -39,13 +45,13 @@ Failures (Linear bug links):
 
 1. Note the start time. Sentry issues created after it count against this run.
 2. OpenRouter → Credits: note the balance.
-3. Note the generation key's usage. While grounded generation is off, every plan and lesson call runs on the jobs Worker with its `OPENROUTER_API_KEY`; only grounded stages pass a tier, so the per-tier keys `OPENROUTER_API_KEY_FREE`, `_STARTER` and `_PRO` don't move ([environment.md](../development/environment.md), `openRouterEnv`). `GET https://openrouter.ai/api/v1/key` returns `data.usage` (all time) and `data.usage_daily` (current UTC day) for the key that calls it:
+3. Note the generation key's usage. While grounded generation is off, every plan and lesson call runs on the jobs Worker with its `OPENROUTER_API_KEY`; only grounded stages pass a tier, so the per-tier keys `OPENROUTER_API_KEY_STARTER` and `_PRO` (and the unused `_FREE`) don't move ([environment.md](../development/environment.md), `openRouterEnv`). `GET https://openrouter.ai/api/v1/key` returns `data.usage` (all time) and `data.usage_daily` (current UTC day) for the key that calls it:
 
    ```bash
    op run --environment <atlaris-worker-production Environment ID> -- sh -c 'curl -s https://openrouter.ai/api/v1/key -H "Authorization: Bearer $OPENROUTER_API_KEY"'
    ```
 
-   Also note the tier keys from `atlaris-vercel-prod` (same call with `$OPENROUTER_API_KEY_FREE`, `_STARTER`, `_PRO`); they should stay flat. The Environment names are from [secrets-sync.md](../development/secrets-sync.md); production values prompt the 1Password desktop app. Per-plan cost is also in the DB: `select model, sum(provider_cost_microusd) from ai_usage_events where plan_id = '<plan id>' group by 1`.
+   Also note the tier keys from `atlaris-vercel-prod` (same call with `$OPENROUTER_API_KEY_STARTER`, `_PRO`); they should stay flat. The Environment names are from [secrets-sync.md](../development/secrets-sync.md); production values prompt the 1Password desktop app. Per-plan cost is also in the DB: `select model, sum(provider_cost_microusd) from ai_usage_events where plan_id = '<plan id>' group by 1`.
 
 **Pass:** balance and the Worker key's usage recorded. Balance at or above the launch buffer.
 
@@ -70,25 +76,24 @@ While the flag is on, Clerk's sign-up mode is **Waitlist**, so only an invited a
 
 **Pass:** the Clerk sign-up form renders on `/auth/sign-up`, and the console shows no Content Security Policy violation for `*.protect.clerk.com` (allowed in `script-src` and `frame-src` by `src/lib/proxy/security-headers.ts`). After step 3, the browser lands on `https://atlaris.app/dashboard` signed in, with no `/waitlist` redirect, and a `users` row exists for the new Clerk user ID. The full in-app sign-up on `/auth/sign-up` is proven on launch day ([Flag-off](#launch-day-flag-off), step 6).
 
-## 3. Free plan end to end
+## 3. No subscription, and the trial if it is on
 
-User: the throwaway from check 2 (a new user still has its one Free plan).
+User: the throwaway from check 2 (a new user has no subscription) or `qa-free@atlaris.app`.
 
-1. Open `/plans/new`, fill in a topic and a span of 2 weeks or less (`TIER_LIMITS.free.maxWeeks`), and submit.
-2. Wait for the plan page to show the plan.
-3. Open the first module (`/plans/<id>/modules/<moduleId>`) and wait for lessons.
+**No subscription (always):**
 
-**Pass:** the plan reaches `generation_status = 'ready'`; the first two modules reach `lesson_generation_status = 'ready'` on their own (finalization starts them, see [plan-generation-architecture.md](../architecture/plan-generation-architecture.md#module-lesson-generation-separate-pipeline)); a module page shows lesson content. Free runs on the `openrouter/free` router only (`freePolicy` in `src/features/ai/model-operation-policy.ts`), and the plan's `ai_usage_events` cost stays near $0.
+1. Open `/pricing`. **Pass:** Starter and Pro are the only plans shown, and there is no Free card or `Start free` button.
+2. Open `/plans/new`. **Pass:** the user cannot generate a plan and is sent to pricing or shown a clear upgrade prompt, not a plan form that starts a generation.
+3. Check the DB for spend. **Pass:** no `ai_usage_events` rows for this user.
 
 ```sql
 -- Replace <auth_user_id> (Clerk user ID).
-select p.id, p.generation_status, m.title, m.lesson_generation_status
-from learning_plans p
-join users u on u.id = p.user_id
-join modules m on m.plan_id = p.id
-where u.auth_user_id = '<auth_user_id>'
-order by p.created_at desc, m.title;
+select count(*) from ai_usage_events e
+join users u on u.id = e.user_id
+where u.auth_user_id = '<auth_user_id>';
 ```
+
+**Trial (only if the Clerk trial is on):** the throwaway starts the Starter trial on `/pricing` with a card, and Settings → Billing shows the trial. Its caps are 1 plan of up to 2 weeks, 0 regenerations, a $1.25 per-plan ceiling, $1.50 for the month and a separate $10/day trial pool. **Pass:** the first plan of up to 2 weeks reaches `generation_status = 'ready'` with its first two modules' lessons `ready`; a second plan and a regeneration are refused; the plan's `ai_usage_events` cost is at or under $1.25. Run it on staging for batch runs and in production on launch day with the owner's real card (it is charged after day 3 unless cancelled in Settings → Billing). If the trial is off, mark it skipped on the run sheet.
 
 ## 4. Starter plan end to end (watch this one: DEV-180)
 
@@ -131,7 +136,7 @@ The options considered:
 User and card per [the decision above](#checkout-in-production-decision):
 
 - **Batch run (staging):** a new throwaway sign-up on `https://staging.atlaris.app` for each run, deleted at the end of check 7. Use an `@atlaris.app` address you can read: the staging Clerk allowlist admits only that domain ([grounded-eval.md](./grounded-eval.md)). Don't use `scripts/dev/agent-session.ts --tier free`: it always signs in the same `agent-free@atlaris.app` user, which would still be on Pro at the next run. Card `4242 4242 4242 4242`. Check the result in the **staging** Supabase project's SQL Editor and in Clerk Dashboard (**Development** instance) → Webhooks, not in production.
-- **Launch day (production):** the throwaway from checks 2 and 3 (currently Free), the owner's real card.
+- **Launch day (production):** the throwaway from checks 2 and 3 (currently with no subscription), the owner's real card.
 
 1. Open `/pricing`, select **Begin with Starter**, tick "I agree to automatic … renewal and the Terms of Service", and complete Clerk checkout.
 2. You land on `/settings/billing?checkout=1…`, which shows "Updating your subscription…" until the webhook projection catches up.
@@ -153,11 +158,11 @@ User: the same user as check 6 (now Starter), in the same environment.
 
 **Pass:** Settings → Billing says "You're currently on the Pro plan."; `subscription_tier = 'pro'` in the DB; webhook deliveries `200`.
 
-**Batch run (staging) cleanup:** delete the staging throwaway at `/settings/profile` → **Delete account**, which ends its subscription before deleting the Clerk user. The next batch run starts from a new Free user.
+**Batch run (staging) cleanup:** delete the staging throwaway at `/settings/profile` → **Delete account**, which ends its subscription before deleting the Clerk user. The next batch run starts from a new user with no subscription.
 
 ## 8. Account deletion clears DB and PostHog (DEV-184)
 
-User: the production throwaway from checks 2 and 3: paid on launch day, still Free on batch runs (those skip production checkouts). Never delete a shared `qa-*` user.
+User: the production throwaway from checks 2 and 3: paid on launch day, still without a subscription on batch runs (those skip production checkouts). Never delete a shared `qa-*` user.
 
 1. Note the throwaway's Clerk user ID.
 2. `/settings/profile` → **Delete account** → confirm **Delete account** in "Delete your account?" (Clerk asks to re-verify if the session is older than 10 minutes).
@@ -200,7 +205,7 @@ User: `qa-starter@atlaris.app` (needs an inbox you can read for that address; co
 1. Repeat the OpenRouter balance and key-usage readings from check 0.
 2. Sentry, both projects: filter issues by "first seen" after the start time.
 
-**Pass:** no new Sentry issue groups from the run (an existing group that grew gets a note); usage deltas match the plans run (Free ≈ $0; Starter and Pro within their per-plan targets). Post the run sheet on DEV-187.
+**Pass:** no new Sentry issue groups from the run (an existing group that grew gets a note); usage deltas match the plans run (Starter and Pro within their per-plan targets; the no-subscription user adds none). Post the run sheet on DEV-187.
 
 ## Launch day: flag off
 
@@ -218,8 +223,8 @@ Do these Thursday 2026-11-12 in the evening, after a passing run and before Prod
 
    **Pass:** every line says `PASS`: `/dashboard` no longer redirects to `/waitlist` (a signed-out `307` to Clerk sign-in is fine), `/auth/sign-up` answers `200` with `*.protect.clerk.com` in the CSP, signed-out `/plans/new` redirects to `/auth/sign-up?redirect_url=/plans/new`, `/waitlist` redirects away, and signed-out `/%64ashboard` redirects to Clerk sign-in.
 
-6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and `/dashboard` loads signed in. Keep this account: it is the Free user for step 8.
-7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land on `/plans/new` and can create a plan. Then, signed out again, select **Start free** on the Free card at `/pricing`. **Pass:** the sign-up modal opens (not sign-in).
+6. Sign up through `https://atlaris.app/auth/sign-up` with a new throwaway address, DevTools open. **Pass:** bot protection loads without CSP errors, sign-up completes, and the browser lands signed in (on `/pricing`: the sign-up page sends every new user there, and a no-subscription user cannot open `/plans/new`). Keep this account: it is the no-subscription user for step 8.
+7. Signed-out, in a private window (DEV-200): select **Create a plan** on the landing page. **Pass:** you reach the Clerk sign-up form (not "Access restricted"), and after signing up with a second new throwaway address you land signed in on `/pricing`, not a plan form that generates for free. Then, signed out again, open `/pricing`. **Pass:** only the Starter and Pro cards show (no Free card), and the page makes no free-plan claim.
 8. Run checks 3–5 and 10 once more, using the step 6 account for check 3 and the `qa-starter` and `qa-pro` users for checks 4 and 5.
 9. Delete the step 6 and step 7 accounts as in check 8.
 

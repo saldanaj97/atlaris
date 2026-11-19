@@ -1,9 +1,9 @@
+import type { MarketingCreatePlanCta } from '@/features/navigation';
+
 import { RevealAnimation } from './RevealAnimation';
 import { RoadmapPreview } from './RoadmapPreview';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
-import { CREATE_PLAN_LABEL } from '@/features/navigation';
-import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
 import { BarChart3, Clock, Sparkles } from 'lucide-react';
 import Link from 'next/link';
@@ -37,7 +37,11 @@ const LEAVES_TO_YOU = [
 ] as const;
 
 /** What a plan contains, beside a themed copy of the plan page. */
-export function PlanContentsSection() {
+export function PlanContentsSection({
+  createPlanCta,
+}: {
+  createPlanCta: MarketingCreatePlanCta;
+}) {
   return (
     // box-content: the 7xl cap applies inside the gutter, so the content lines
     // up with the CTA card below, which is 7xl wide inside the same gutter.
@@ -84,7 +88,7 @@ export function PlanContentsSection() {
               asChild
               className={cn('mt-9', marketingPrimaryCtaClassName)}
             >
-              <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
+              <Link href={createPlanCta.href}>{createPlanCta.label}</Link>
             </Button>
           </div>
 
