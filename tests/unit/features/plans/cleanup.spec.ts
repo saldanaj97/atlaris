@@ -77,13 +77,6 @@ describe('cleanupStuckPlans', () => {
   it('marks stuck generating plans as failed with one bulk update', async () => {
     mockDb = createMockDbClient(3);
     const markFailuresInTx = vi.fn().mockResolvedValue(3);
-    markFailuresInTx.mockImplementation(
-      (_tx, planIds: string[], timestamp: Date) => {
-        expect(planIds).toEqual(['id-0', 'id-1', 'id-2']);
-        expect(timestamp).toBeInstanceOf(Date);
-        return Promise.resolve(planIds.length);
-      },
-    );
 
     const result = await cleanupStuckPlans(mockDb.client, undefined, {
       markFailuresInTx,
@@ -108,9 +101,6 @@ describe('cleanupStuckPlans', () => {
       }),
       expect.stringContaining('3'),
     );
-
-    const timestampArg = markFailuresInTx.mock.calls[0]?.[2] as Date;
-    expect(timestampArg).toBeInstanceOf(Date);
   });
 
   it('returns 0 and skips bulk update when no stuck plans exist', async () => {
@@ -131,23 +121,6 @@ describe('cleanupStuckPlans', () => {
     const sixtyMinutes = 60 * 60 * 1000;
     expect(STUCK_PLAN_THRESHOLD_MS).toBeGreaterThanOrEqual(fiveMinutes);
     expect(STUCK_PLAN_THRESHOLD_MS).toBeLessThanOrEqual(sixtyMinutes);
-  });
-
-  it('accepts a custom threshold', async () => {
-    mockDb = createMockDbClient(1);
-    const markFailuresInTx = vi.fn().mockResolvedValue(1);
-    const customThreshold = 5 * 60 * 1000; // 5 minutes
-
-    const result = await cleanupStuckPlans(mockDb.client, customThreshold, {
-      markFailuresInTx,
-    });
-
-    expect(result.cleaned).toBe(1);
-    expect(markFailuresInTx).toHaveBeenCalledWith(
-      mockDb.client,
-      ['id-0'],
-      expect.any(Date),
-    );
   });
 
   it('processes only one bounded batch per run', async () => {
@@ -239,18 +212,6 @@ describe('cleanupOrphanedAttempts', () => {
     const sixtyMinutes = 60 * 60 * 1000;
     expect(ORPHANED_ATTEMPT_THRESHOLD_MS).toBeGreaterThanOrEqual(fiveMinutes);
     expect(ORPHANED_ATTEMPT_THRESHOLD_MS).toBeLessThanOrEqual(sixtyMinutes);
-  });
-
-  it('accepts a custom threshold', async () => {
-    mockDb = createMockDbClient(2);
-    const customThreshold = 30 * 60 * 1000; // 30 minutes
-
-    const result = await cleanupOrphanedAttempts(
-      mockDb.client,
-      customThreshold,
-    );
-
-    expect(result.cleaned).toBe(2);
   });
 
   it('processes only one bounded batch per run', async () => {

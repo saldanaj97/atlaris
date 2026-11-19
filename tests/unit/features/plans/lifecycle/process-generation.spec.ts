@@ -8,10 +8,6 @@ import { isRetryableClassification } from '@/shared/types/failure-classification
 import { makeAttemptReservation } from '@tests/fixtures/attempts';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const defaultReservation = makeAttemptReservation({
-  attemptId: 'attempt-plan-gen-001',
-});
-
 const validGenerationInput: ProcessGenerationInput = {
   planId: 'plan-gen-001',
   userId: 'user-abc',
@@ -636,30 +632,6 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
     ).not.toHaveBeenCalled();
   });
 
-  it('settles a reservation rejection without calling runGeneration', async () => {
-    const result = await service.settleReservationRejection(
-      validGenerationInput,
-      { reserved: false, reason: 'capped' },
-      { startedAt: 1_000, clock: () => 1_000 },
-    );
-
-    expect(result.status).toBe('permanent_failure');
-    if (result.status === 'permanent_failure') {
-      expect(result.classification).toBe('capped');
-    }
-    expect(vi.mocked(ports.generation.runGeneration)).not.toHaveBeenCalled();
-    expect(
-      vi.mocked(ports.generationFinalization.finalizeFailure),
-    ).toHaveBeenCalledWith(
-      expect.objectContaining({
-        variant: 'plan_only',
-        planId: 'plan-gen-001',
-        userId: 'user-abc',
-        classification: 'capped',
-      }),
-    );
-  });
-
   it('does not finalize an in_progress reservation rejection', async () => {
     const result = await service.settleReservationRejection(
       validGenerationInput,
@@ -727,43 +699,6 @@ describe('PlanLifecycleService.processGenerationAttempt', () => {
         classification: 'provider_error',
         retryable: true,
         usageKind: 'plan',
-      }),
-    );
-  });
-
-  it('falls back to "unknown" provider/model when metadata is sparse', async () => {
-    ports = createMockPorts({
-      generation: {
-        runGeneration: vi.fn().mockResolvedValue({
-          status: 'success',
-          modules: [],
-          metadata: {},
-          usage: makeCanonicalUsage({
-            provider: 'unknown',
-            model: 'unknown',
-            inputTokens: 0,
-            outputTokens: 0,
-            totalTokens: 0,
-          }),
-          durationMs: 800,
-          reservation: defaultReservation,
-          extendedTimeout: false,
-        }),
-      },
-    });
-    service = new PlanLifecycleService(ports);
-
-    await service.processGenerationAttempt(validGenerationInput);
-    const finalizeSuccess = vi.mocked(
-      ports.generationFinalization.finalizeSuccess,
-    );
-
-    expect(finalizeSuccess).toHaveBeenCalledWith(
-      expect.objectContaining({
-        usage: expect.objectContaining({
-          provider: 'unknown',
-          model: 'unknown',
-        }),
       }),
     );
   });

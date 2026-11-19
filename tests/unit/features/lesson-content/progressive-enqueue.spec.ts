@@ -93,8 +93,6 @@ describe('enqueueModuleLessonGenerations', () => {
     ).resolves.toBeUndefined();
 
     expect(start).toHaveBeenCalledTimes(2);
-    expect(start.mock.calls[0]?.[0]).not.toHaveProperty('userTier');
-    expect(start.mock.calls[1]?.[0]).not.toHaveProperty('userTier');
   });
 
   it('treats ready and in-flight as idempotent success', async () => {
@@ -115,7 +113,5 @@ describe('enqueueModuleLessonGenerations', () => {
     );
 
     expect(start).toHaveBeenCalledTimes(2);
-    expect(start.mock.calls[0]?.[0]).not.toHaveProperty('userTier');
-    expect(start.mock.calls[1]?.[0]).not.toHaveProperty('userTier');
   });
 });

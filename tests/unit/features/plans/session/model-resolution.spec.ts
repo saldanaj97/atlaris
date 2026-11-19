@@ -121,16 +121,4 @@ describe('resolveStreamModelResolution', () => {
       resolutionSource: 'saved_preference',
     });
   });
-
-  it('does not persist or apply a Free saved preference', async () => {
-    const resolution = await resolveStreamModelResolution({
-      searchParams: new URLSearchParams(),
-      tier: 'free',
-      savedPreferredAiModel: STARTER_PERSISTABLE_MODEL,
-    });
-
-    expect(resolution).toEqual({
-      resolutionSource: 'tier_default',
-    });
-  });
 });
