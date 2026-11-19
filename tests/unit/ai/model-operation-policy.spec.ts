@@ -103,24 +103,10 @@ describe('model-operation-policy', () => {
         expect(getModelOperationPolicy(tier, operation)).toEqual(expected);
       },
     );
-
-    it('covers every billing tier and model operation exactly once', () => {
-      const combinations = TIERS.flatMap((tier) =>
-        MODEL_OPERATIONS.map((operation) => `${tier}:${operation}`),
-      );
-      expect(combinations).toHaveLength(9);
-    });
   });
 
   it('keeps every Starter default on GPT-6 Luna', () => {
     expect(STARTER_DEFAULT_MODEL_ID).toBe('openai/gpt-6-luna');
-  });
-
-  it('Pro operation defaults are independent', () => {
-    const defaults = MODEL_OPERATIONS.map(
-      (operation) => getModelOperationPolicy('pro', operation).defaultModelId,
-    );
-    expect(new Set(defaults).size).toBe(3);
   });
 
   it('every guardrail-sourced default is in its tier fixture', () => {

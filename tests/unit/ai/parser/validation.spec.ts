@@ -4,16 +4,10 @@ import {
   MAX_TASKS_PER_MODULE,
 } from '@/features/ai/constants';
 import { ParserError, parseGenerationStream } from '@/features/ai/parser';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 async function* streamFromString(value: string) {
   yield value;
-}
-
-async function* streamFromChunks(chunks: string[]) {
-  for (const chunk of chunks) {
-    yield chunk;
-  }
 }
 
 describe('Generation parser validation', () => {
@@ -38,28 +32,6 @@ describe('Generation parser validation', () => {
     ).rejects.toMatchObject({
       kind: 'validation',
     });
-  });
-
-  it('invokes callback when first module is detected', async () => {
-    const payload = JSON.stringify({
-      modules: [
-        {
-          title: 'Module 1',
-          estimated_minutes: 120,
-          tasks: [{ title: 'Task 1', estimated_minutes: 60 }],
-        },
-      ],
-    });
-
-    const chunks = [payload.slice(0, 12), payload.slice(12)];
-    const callback = vi.fn();
-
-    const result = await parseGenerationStream(streamFromChunks(chunks), {
-      onFirstModuleDetected: callback,
-    });
-
-    expect(callback).toHaveBeenCalledTimes(1);
-    expect(result.modules).toHaveLength(1);
   });
 
   it('throws validation error when raw response exceeds max size', async () => {

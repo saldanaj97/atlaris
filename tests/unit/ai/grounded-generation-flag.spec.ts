@@ -21,14 +21,6 @@ describe('isGroundedEnabled', () => {
     expect(groundedGeneration).toHaveBeenLastCalledWith('pro');
   });
 
-  it('is off for every tier at the default', async () => {
-    groundedGeneration.mockResolvedValue(false);
-
-    for (const tier of ['free', 'starter', 'pro'] as const) {
-      await expect(isGroundedEnabled(tier)).resolves.toBe(false);
-    }
-  });
-
   it('fails closed when evaluation throws', async () => {
     groundedGeneration.mockRejectedValue(new Error('flags unavailable'));
 

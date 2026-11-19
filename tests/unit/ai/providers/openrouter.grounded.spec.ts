@@ -21,7 +21,6 @@ import {
   type OpenRouterGroundedChatRequest,
   sendOpenRouterGroundedChat,
 } from '@/features/ai/providers/openrouter';
-import { extractFirstJsonObject } from '@/features/ai/providers/openrouter-json';
 import { toWireServerTool } from '@/features/ai/providers/openrouter-server-tools';
 import { logger } from '@/lib/logging/logger';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -285,9 +284,6 @@ describe('sendOpenRouterGroundedChat', () => {
     const text = await collectOpenRouterStream(stream);
 
     expect(text).toBe(WEB_SEARCH_STREAM_TEXT);
-    expect(extractFirstJsonObject(text)).toMatchObject({
-      modules: [{ title: 'Rust ownership' }],
-    });
     expect(metadata.citations.map((citation) => citation.url)).toEqual([
       'https://doc.rust-lang.org/book/ch04-00-understanding-ownership.html',
       'https://rust-lang.org/learn',

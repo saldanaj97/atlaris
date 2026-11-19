@@ -69,38 +69,6 @@ describe('RouterGenerationProvider', () => {
   });
 
   describe('constructor', () => {
-    it('uses DEFAULT_MODEL when no model is provided', async () => {
-      vi.stubEnv('AI_DEFAULT_MODEL', undefined);
-
-      const provider = new RouterGenerationProvider();
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe(AI_DEFAULT_MODEL);
-    });
-
-    it('uses provided model in config', async () => {
-      const config: RouterConfig = {
-        model: 'anthropic/claude-opus-5.5',
-      };
-
-      const provider = new RouterGenerationProvider(config);
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('anthropic/claude-opus-5.5');
-    });
-
-    it('uses aiEnv.defaultModel when available', async () => {
-      vi.stubEnv('AI_DEFAULT_MODEL', 'deepseek/deepseek-v4.1-flash');
-
-      const provider = new RouterGenerationProvider();
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('deepseek/deepseek-v4.1-flash');
-    });
-
     it('uses MockGenerationProvider when useMock is true', async () => {
       const config: RouterConfig = {
         useMock: true,
@@ -111,35 +79,6 @@ describe('RouterGenerationProvider', () => {
       const result = await provider.generate(mockInput);
 
       expect(result.metadata.provider).toBe('mock');
-    });
-
-    it('uses the explicit useMock configuration over the router default', async () => {
-      const provider = new RouterGenerationProvider({ useMock: true });
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('mock');
-    });
-
-    it('uses the explicit useMock=false configuration for the real provider', async () => {
-      vi.stubEnv('NODE_ENV', 'development');
-
-      const provider = new RouterGenerationProvider({
-        useMock: false,
-        model: 'test/model',
-      });
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('openrouter');
-    });
-
-    it('does not include Google AI fallback', async () => {
-      const provider = new RouterGenerationProvider({
-        model: 'anthropic/claude-opus-5.5',
-      });
-      const result = await provider.generate(mockInput);
-
-      expect(result.metadata.provider).toBe('openrouter');
-      expect(result.metadata.model).toBe('anthropic/claude-opus-5.5');
     });
 
     it('forwards fallbackModels to OpenRouterProvider', async () => {

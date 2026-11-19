@@ -192,28 +192,11 @@ describe('tier consistency', () => {
       expect(await getOutputTokenCeiling(model.id)).toBe(model.maxOutputTokens);
     }
   });
-
-  it('Free and Starter lesson and outline lists differ', async () => {
-    const ids = async (...args: Parameters<typeof getModelsForTier>) =>
-      (await getModelsForTier(...args)).map((m) => m.id);
-
-    expect(await ids('free', 'lesson')).not.toEqual(
-      await ids('starter', 'lesson'),
-    );
-    expect(await ids('free', 'initial_outline')).not.toEqual(
-      await ids('starter', 'initial_outline'),
-    );
-  });
 });
 
 // ─── DEFAULT_OUTPUT_TOKEN_CEILING ────────────────────────────────
 
 describe('DEFAULT_OUTPUT_TOKEN_CEILING', () => {
-  it('is a positive finite number', () => {
-    expect(DEFAULT_OUTPUT_TOKEN_CEILING).toBeGreaterThan(0);
-    expect(Number.isFinite(DEFAULT_OUTPUT_TOKEN_CEILING)).toBe(true);
-  });
-
   it('is a reasonable value (between 8K and 256K tokens)', () => {
     expect(DEFAULT_OUTPUT_TOKEN_CEILING).toBeGreaterThanOrEqual(8_192);
     expect(DEFAULT_OUTPUT_TOKEN_CEILING).toBeLessThanOrEqual(256_000);

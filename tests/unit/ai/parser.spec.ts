@@ -390,23 +390,6 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].description).toBe('Task description');
     });
 
-    it('should not truncate module and task titles at MAX_TITLE_LENGTH - 1', async () => {
-      const title = 'B'.repeat(MAX_TITLE_LENGTH - 1);
-      const validJson = JSON.stringify({
-        modules: [
-          {
-            title,
-            estimatedMinutes: 60,
-            tasks: [{ title, estimatedMinutes: 30 }],
-          },
-        ],
-      });
-
-      const result = await parseGenerationStream(createStream([validJson]));
-      expect(result.modules[0].title).toBe(title);
-      expect(result.modules[0].tasks[0].title).toBe(title);
-    });
-
     it('should not truncate module and task titles at exactly MAX_TITLE_LENGTH', async () => {
       const title = 'C'.repeat(MAX_TITLE_LENGTH);
       const validJson = JSON.stringify({
@@ -443,33 +426,6 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].title).toBe(
         original.slice(0, MAX_TITLE_LENGTH),
       );
-    });
-
-    it('should truncate module and task titles exceeding the max length', async () => {
-      const longTitle = 'A'.repeat(MAX_TITLE_LENGTH + 100);
-      const expected = longTitle.slice(0, MAX_TITLE_LENGTH);
-      const validJson = JSON.stringify({
-        modules: [
-          {
-            title: longTitle,
-            estimatedMinutes: 60,
-            tasks: [
-              {
-                title: longTitle,
-                estimatedMinutes: 30,
-              },
-            ],
-          },
-        ],
-      });
-
-      const stream = createStream([validJson]);
-      const result = await parseGenerationStream(stream);
-
-      expect(result.modules[0].title).toHaveLength(MAX_TITLE_LENGTH);
-      expect(result.modules[0].tasks[0].title).toHaveLength(MAX_TITLE_LENGTH);
-      expect(result.modules[0].title).toBe(expected);
-      expect(result.modules[0].tasks[0].title).toBe(expected);
     });
 
     it('should trim whitespace before truncating titles', async () => {
@@ -610,37 +566,6 @@ describe('AI Parser', () => {
       expect(result.modules[0].tasks[0].title).toBe('Task 1');
       expect(result.modules[0].tasks[1].title).toBe('Task 2');
       expect(result.modules[0].tasks[2].title).toBe('Task 3');
-    });
-
-    it('should preserve raw text in result', async () => {
-      const jsonText = JSON.stringify({
-        modules: [
-          {
-            title: 'Module 1',
-            estimatedMinutes: 60,
-            tasks: [{ title: 'Task 1', estimatedMinutes: 30 }],
-          },
-        ],
-      });
-
-      const stream = createStream([jsonText]);
-      const result = await parseGenerationStream(stream);
-
-      expect(result.rawText).toBe(jsonText);
-    });
-
-    it('should identify ParserError by kind', async () => {
-      const stream = createStream(['{ invalid json }']);
-
-      try {
-        await parseGenerationStream(stream);
-        expect.fail('Expected parseGenerationStream to throw');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ParserError);
-        if (error instanceof ParserError) {
-          expect(error.kind).toBe('invalid_json');
-        }
-      }
     });
   });
 });

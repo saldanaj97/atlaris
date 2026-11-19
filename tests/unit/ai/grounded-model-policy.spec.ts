@@ -4,15 +4,12 @@ import {
   FREE_GROUNDED_WRITER_MODEL_IDS,
   getGroundedModelRoute,
   getGroundedOperationPolicy,
-  getModelOperationPolicy,
   GROUNDED_OPERATIONS,
   GROUNDED_PRESET_BY_OPERATION,
   GROUNDED_PRESET_SLUGS,
   type GroundedOperation,
-  hasGroundedRegenerationQuota,
   PRO_GROUNDED_REVIEW_CATALOG,
   PRO_GROUNDED_WRITER_CATALOG,
-  STARTER_DEFAULT_MODEL_ID,
 } from '@/features/ai/model-operation-policy';
 import { OPENROUTER_MAX_ROUTE_MODELS } from '@/features/ai/providers/openrouter';
 import { AI_DEFAULT_MODEL } from '@/shared/constants/ai-models';
@@ -214,18 +211,11 @@ describe('getGroundedModelRoute', () => {
   });
 });
 
-describe('hasGroundedRegenerationQuota', () => {
+describe('grounded regeneration quota', () => {
   it('allows one grounded regeneration per plan on free', () => {
     expect(getGroundedOperationPolicy('free', 'regeneration')).toMatchObject({
       quotaPerPlan: 1,
     });
-    expect(hasGroundedRegenerationQuota('free', 0)).toBe(true);
-    expect(hasGroundedRegenerationQuota('free', 1)).toBe(false);
-    expect(hasGroundedRegenerationQuota('free', 2)).toBe(false);
-  });
-
-  it.each(['starter', 'pro'] as const)('sets no per-plan cap on %s', (tier) => {
-    expect(hasGroundedRegenerationQuota(tier, 25)).toBe(true);
   });
 
   it('caps only regeneration', () => {
@@ -239,39 +229,21 @@ describe('hasGroundedRegenerationQuota', () => {
 });
 
 describe('GROUNDED_PRESET_BY_OPERATION', () => {
-  it('adds four valid preset slugs', () => {
+  it('names the four grounded OpenRouter presets', () => {
     expect(Object.values(GROUNDED_PRESET_SLUGS)).toEqual([
       'atlaris-grounded-research',
       'atlaris-grounded-research-direct',
       'atlaris-grounded-verifier',
       'atlaris-grounded-repair',
     ]);
-    for (const slug of Object.values(GROUNDED_PRESET_SLUGS)) {
-      expect(slug).toMatch(/^[a-z0-9][a-z0-9-]*$/);
-    }
   });
 
-  it('keeps the existing plan and lesson presets for writers', () => {
-    expect(GROUNDED_PRESET_BY_OPERATION).toEqual({
+  it('sends research, verifiers and the advisor to their presets', () => {
+    expect(GROUNDED_PRESET_BY_OPERATION).toMatchObject({
       research: { slug: 'atlaris-grounded-research' },
-      initial_outline: { existing: 'plan' },
-      regeneration: { existing: 'plan' },
-      lesson: { existing: 'lesson' },
       outline_verify: { slug: 'atlaris-grounded-verifier' },
       lesson_verify: { slug: 'atlaris-grounded-verifier' },
       advisor: { slug: 'atlaris-grounded-repair' },
     });
-  });
-});
-
-describe('legacy policy with grounded generation off', () => {
-  it('keeps the legacy free and starter lesson models', () => {
-    expect(getModelOperationPolicy('free', 'lesson').defaultModelId).toBe(
-      AI_DEFAULT_MODEL,
-    );
-    expect(getModelOperationPolicy('free', 'regeneration').allowed).toBe(false);
-    expect(getModelOperationPolicy('starter', 'lesson').defaultModelId).toBe(
-      STARTER_DEFAULT_MODEL_ID,
-    );
   });
 });

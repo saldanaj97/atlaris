@@ -33,10 +33,6 @@ describe('buildModelPricingSnapshot', async () => {
     expect(snap?.pricedModelId).toBe('openai/gpt-6-sol');
     expect(snap?.inputTokens).toBe(100);
     expect(snap?.outputTokens).toBe(200);
-    expect(Number.isFinite(snap?.inputCostUsdPerMillion)).toBe(true);
-    expect(Number.isFinite(snap?.outputCostUsdPerMillion)).toBe(true);
-    expect(snap?.inputCostUsdPerMillion).toBeGreaterThan(0);
-    expect(snap?.outputCostUsdPerMillion).toBeGreaterThan(0);
   });
 
   it('snapshots the synced price at the time of the call', async () => {

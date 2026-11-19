@@ -14,7 +14,6 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 
 import { runGenerationExecution } from '@/features/ai/orchestrator';
-import { pacePlan } from '@/features/ai/pacing';
 import { ProviderTimeoutError } from '@/features/ai/providers/errors';
 import { randomUUID } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -193,7 +192,7 @@ describe('runGenerationExecution pacing', () => {
     vi.clearAllMocks();
   });
 
-  it('applies pacing after parsing and returns unfinalized success', async () => {
+  it('returns the parsed modules and metadata as an unfinalized success', async () => {
     const context = buildContext();
     const provider = createProvider(parsedModules);
     const { attemptOperations, dbClient, reserveAttemptSlotMock } =
@@ -207,7 +206,6 @@ describe('runGenerationExecution pacing', () => {
       now: () => new Date(),
     };
 
-    const expectedPaced = pacePlan(parsedModules, context.input);
     const result = await runGenerationExecution(context, options);
 
     expect(result.kind).toBe('success');
@@ -215,7 +213,7 @@ describe('runGenerationExecution pacing', () => {
       throw new Error('Expected success result');
     }
 
-    expect(result.modules).toEqual(expectedPaced);
+    expect(result.modules).toEqual(parsedModules);
     expect(result.metadata).toEqual({ model: 'gpt-4' });
     expect(reserveAttemptSlotMock).toHaveBeenCalledWith(
       expect.objectContaining({

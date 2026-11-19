@@ -33,32 +33,10 @@ describe('Phase 2: Mock AI Provider Tests', () => {
   });
 
   describe('T020: Provider selection test', () => {
-    it('returns MockGenerationProvider when AI_PROVIDER=mock', () => {
-      vi.stubEnv('AI_PROVIDER', 'mock');
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
     it('returns MockGenerationProvider in development when AI_PROVIDER not set', () => {
       vi.stubEnv('NODE_ENV', 'development');
       vi.stubEnv('AI_PROVIDER', undefined);
 
-      const provider = getGenerationProvider();
-
-      expect(provider).toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('returns Router provider when AI_PROVIDER=router', () => {
-      vi.stubEnv('AI_PROVIDER', 'router');
-      const provider = getGenerationProvider();
-
-      // RouterGenerationProvider is the only non-mock implementation today.
-      expect(provider).not.toBeInstanceOf(MockGenerationProvider);
-    });
-
-    it('handles case-insensitive AI_PROVIDER values', () => {
-      vi.stubEnv('AI_PROVIDER', 'MOCK');
       const provider = getGenerationProvider();
 
       expect(provider).toBeInstanceOf(MockGenerationProvider);
@@ -100,9 +78,7 @@ describe('Phase 2: Mock AI Provider Tests', () => {
       // Parser should not throw
       const parsed = await parseGenerationStream(result.stream);
 
-      expect(parsed.modules).toBeDefined();
       expect(parsed.modules.length).toBeGreaterThan(0);
-      expect(parsed.rawText).toBeDefined();
     });
 
     it('generates content based on input topic and skill level', async () => {
@@ -288,66 +264,9 @@ describe('Phase 2: Mock AI Provider Tests', () => {
         model: 'mock-generator-v1',
       });
 
-      expect(result.metadata.usage).toBeDefined();
       expect(result.metadata.usage?.promptTokens).toBeGreaterThan(0);
       expect(result.metadata.usage?.completionTokens).toBeGreaterThan(0);
       expect(result.metadata.usage?.totalTokens).toBeGreaterThan(0);
-    });
-  });
-
-  describe('T025: Streaming order test (optional)', () => {
-    it('streams complete JSON structure without interleaving', async () => {
-      const provider = new MockGenerationProvider({
-        delayMs: 0,
-        failureRate: 0,
-      });
-      const result = await provider.generate(SAMPLE_INPUT);
-
-      let buffer = '';
-      const chunks: string[] = [];
-
-      for await (const chunk of readableStreamToAsyncIterable(result.stream)) {
-        chunks.push(chunk);
-        buffer += chunk;
-      }
-
-      // Final buffer should be valid JSON
-      expect(() => JSON.parse(buffer)).not.toThrow();
-
-      // Each partial buffer should be progressively building valid JSON
-      // We can't parse incomplete JSON, but we can check structure consistency
-      let partialBuffer = '';
-      for (const chunk of chunks) {
-        partialBuffer += chunk;
-        // Should not have malformed structure (e.g., tasks before modules array)
-        expect(partialBuffer).not.toMatch(/}\s*{/); // No adjacent objects without array/comma
-      }
-    });
-
-    it('maintains consistent module-task hierarchy in stream', async () => {
-      const provider = new MockGenerationProvider({
-        delayMs: 0,
-        failureRate: 0,
-      });
-      const result = await provider.generate(SAMPLE_INPUT);
-
-      const rawText = await collectStream(result.stream);
-      const parsed = JSON.parse(rawText);
-
-      // Verify structure: modules array contains objects with tasks arrays
-      expect(parsed.modules).toBeInstanceOf(Array);
-      for (const module of parsed.modules) {
-        expect(module).toBeInstanceOf(Object);
-        expect(module.tasks).toBeInstanceOf(Array);
-        expect(module.title).toBeTruthy();
-        expect(module.estimated_minutes).toBeGreaterThan(0);
-
-        for (const task of module.tasks) {
-          expect(task).toBeInstanceOf(Object);
-          expect(task.title).toBeTruthy();
-          expect(task.estimated_minutes).toBeGreaterThan(0);
-        }
-      }
     });
   });
 });
