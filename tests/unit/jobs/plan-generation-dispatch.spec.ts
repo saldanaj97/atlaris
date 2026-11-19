@@ -1,8 +1,8 @@
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 import type { JobsWorkerCommandResult } from '@/lib/jobs-worker/client';
 
-import { dispatchPlanGenerationToWorker } from '@/features/jobs/plan-generation-dispatch';
-import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
+import { dispatchPlanGenerationToWorker } from '@/features/job-queue/plan-generation-dispatch';
+import { toSerializableReservation } from '@/features/plans/contracts/plan-generation.types';
 import { sendJobsWorkerCommand } from '@/lib/jobs-worker/client';
 import { planGenerationStartCommandSchema } from '@/lib/jobs-worker/contract';
 import { makeAttemptReservation } from '@tests/fixtures/attempts';

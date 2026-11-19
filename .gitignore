@@ -62,15 +62,10 @@ next-env.d.ts
 # git worktrees
 .worktrees/
 
-# shared Cursor agent files
-.cursor/*
-!.cursor/environment.json
-!.cursor/rules/
-!.cursor/rules/**
-!.cursor/skills/
-!.cursor/skills/**
-.cursor/skills/**/artifacts/
-.cursor/skills/**/.run.json
+# Cursor config is intentionally not loaded or tracked
+.cursor/
+.agents/skills/verify-atlaris/artifacts/
+.agents/skills/verify-atlaris/.run.json
 .opencode/*
 
 # extras

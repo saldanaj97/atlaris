@@ -69,7 +69,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({ userId, topic: 'Ready parent' });
     const mod = await createTestModule({ planId: plan.id });
@@ -94,7 +94,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({
       userId,
@@ -123,7 +123,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({ userId, topic: 'Last-good ready' });
     const mod = await createTestModule({ planId: plan.id });
@@ -181,7 +181,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({
       userId,
@@ -262,7 +262,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({ userId, topic: 'Delete blocked' });
     const mod = await createTestModule({ planId: plan.id });
@@ -286,7 +286,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({ userId, topic: 'Delete wins lock' });
     const mod = await createTestModule({ planId: plan.id });
@@ -342,7 +342,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({
       userId,
@@ -418,7 +418,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const plan = await createTestPlan({
       userId,
@@ -492,7 +492,7 @@ describe('plan lifecycle lock (integration)', () => {
     const userId = await ensureUser({
       authUserId,
       email: buildTestEmail(authUserId),
-      subscriptionTier: 'free',
+      subscriptionTier: 'starter',
     });
     const planA = await createTestPlan({ userId, topic: 'Lock A' });
     const planB = await createTestPlan({ userId, topic: 'Lock B' });

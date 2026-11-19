@@ -17,7 +17,8 @@ This directory owns local Supabase configuration, SQL migrations, and Drizzle sc
 - Do not omit `to`; PostgreSQL treats omitted policy roles as `PUBLIC`.
 - Current product posture has no anonymous app-data policies.
 - Query helpers that are RLS-sensitive must require an explicit `dbClient` parameter instead of defaulting to `getDb()`. This makes the caller prove which request or service-role context is being used.
-- If an RLS-sensitive flow opens a transaction, use `prepareRlsTransactionContext(dbClient)` before `transaction()` and `reapplyJwtClaimsInTransaction(tx, ctx)` inside the transaction when required.
+- RLS clients are one dedicated `max: 1` connection opened from `POSTGRES_URL_NON_POOLING` (`createRlsConnection` in `supabase/rls.ts` throws when it is unset). `SET ROLE` and `request.jwt.claims` are session state, so they stay visible inside `dbClient.transaction()`; do not re-apply claims inside a transaction. A pooler in front of the RLS client breaks this design.
+- The service-role client (`supabase/service-role.ts`) connects through `POSTGRES_URL`, which is Supavisor transaction mode on hosted deploys. Keep `prepare: false` on it: with named statements, postgres-js can resolve a transaction whose `commit` was rolled back (DEV-211).
 - Helpers that lock rows, such as `lockOwnedPlanById`, must run on the same explicit `dbClient` as the surrounding transaction.
 
 ## Schema Constants

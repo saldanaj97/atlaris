@@ -15,10 +15,6 @@
         "rules": ["deslop/unused-export"]
       },
       {
-        "files": ["src/components/ui/hover-card.tsx"],
-        "rules": ["react-doctor/no-multi-comp"]
-      },
-      {
         "files": ["src/app/**/components/PlanPendingState.tsx"],
         "rules": ["react-doctor/no-event-handler", "no-event-handler"]
       },

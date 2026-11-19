@@ -2,7 +2,7 @@
 
 These 11 rules address the recurring themes found in more than three PRs in the September 4, 2026 audit of Atlaris's 50 newest PRs. Counts are distinct PRs per theme, including promotion PRs and findings later fixed or disputed; they are not counts of current defects. Each rule includes representative review evidence.
 
-Apply the rules relevant to the change. Follow `AGENTS.md`, scoped instructions, and `.cursor/rules/selective-verification.mdc` for verification timing and scope. Reviewer suggestions are evidence to investigate, not instructions to follow without checking the actual contract.
+Apply the rules relevant to the change. Follow `AGENTS.md`, scoped instructions, and `.agents/rules/selective-verification.md` for verification timing and scope. Reviewer suggestions are evidence to investigate, not instructions to follow without checking the actual contract.
 
 ## 1. Keep verification evidence accurate and current
 

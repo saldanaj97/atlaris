@@ -1,6 +1,6 @@
 import type { EmailNotificationDeliveryRunKind } from '@supabase/schema';
 
-import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/workflows/email-notification-delivery.types';
+import { isEmailNotificationDeliveryWeeklyDate } from '@/features/notifications/email/contracts/email-notification-delivery.types';
 
 /**
  * Workflow `schedules` for the email Workflow. Cloudflare numbers weekdays

@@ -14,6 +14,10 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { LessonContent } from '@/shared/types/lesson-content.types';
 
 import {
+  armCitationError,
+  billingProjectionSettled,
+  billingTierError,
+  type BillingState,
   classifyWorkflowSteps,
   type EvalArm,
   type ModuleRun,
@@ -233,42 +237,92 @@ async function createThrowawayUser(label: string): Promise<string> {
 const execFileAsync = promisify(execFile);
 
 /**
- * Sets a provisioned user's tier on the staging database through the Supabase
- * CLI, run from `EVAL_SUPABASE_LINKED_DIR` (a checkout linked to staging).
- * Refuses any other linked project.
+ * Runs one SQL statement on the staging database through the Supabase CLI,
+ * from `EVAL_SUPABASE_LINKED_DIR` (a checkout linked to staging). Refuses any
+ * other linked project and any non-Clerk user id.
  */
-async function setStagingTier(
+async function queryStaging(
   clerkUserId: string,
-  tier: SubscriptionTier,
-): Promise<void> {
+  sql: string,
+): Promise<unknown[]> {
   const dir = requireEnv('EVAL_SUPABASE_LINKED_DIR');
   const ref = readFileSync(
     join(dir, 'supabase/.temp/project-ref'),
     'utf8',
   ).trim();
   if (ref !== STAGING_PROJECT_REF) {
-    throw new SetupError(`Refusing to set tiers on linked project ${ref}`);
+    throw new SetupError(`Refusing to touch linked project ${ref}`);
   }
   if (!/^user_[A-Za-z0-9]+$/.test(clerkUserId)) {
     throw new SetupError(`Unexpected Clerk user id ${clerkUserId}`);
   }
   const { stdout } = await execFileAsync(
     'supabase',
-    [
-      'db',
-      'query',
-      '--linked',
-      `update users set subscription_tier = '${tier}' where auth_user_id = '${clerkUserId}' returning id`,
-    ],
+    ['db', 'query', '--linked', sql],
     { cwd: dir, timeout: 60_000 },
   );
-  const { rows } = JSON.parse(stdout.slice(stdout.indexOf('{'))) as {
-    rows: unknown[];
-  };
+  return (JSON.parse(stdout.slice(stdout.indexOf('{'))) as { rows: unknown[] })
+    .rows;
+}
+
+/** Sets a provisioned user's tier on the staging database. */
+async function setStagingTier(
+  clerkUserId: string,
+  tier: SubscriptionTier,
+): Promise<void> {
+  const rows = await queryStaging(
+    clerkUserId,
+    `update users set subscription_tier = '${tier}' where auth_user_id = '${clerkUserId}' returning id`,
+  );
   if (rows.length !== 1) {
     throw new Error(
       `Tier update for ${clerkUserId} matched ${rows.length} rows`,
     );
+  }
+}
+
+async function readBillingState(clerkUserId: string): Promise<BillingState> {
+  const rows = (await queryStaging(
+    clerkUserId,
+    `select subscription_tier, clerk_billing_updated_at from users where auth_user_id = '${clerkUserId}'`,
+  )) as {
+    subscription_tier: SubscriptionTier;
+    clerk_billing_updated_at: string | null;
+  }[];
+  if (rows.length !== 1) {
+    throw new Error(`User ${clerkUserId} matched ${rows.length} rows`);
+  }
+  return {
+    tier: rows[0].subscription_tier,
+    billingUpdatedAt: rows[0].clerk_billing_updated_at,
+  };
+}
+
+const BILLING_PROJECTION_TIMEOUT_MS = 60_000;
+const BILLING_POLL_INTERVAL_MS = 3_000;
+
+/**
+ * Clerk Billing sends several events per new user (`subscription.created`,
+ * then `subscriptionItem.active`, about 2 s apart), each projecting the free
+ * tier over whatever the runner set. Waits until `clerk_billing_updated_at`
+ * is set and unchanged across two polls, so the runner's tier is written after
+ * the last overwrite.
+ */
+async function waitForBillingProjection(clerkUserId: string): Promise<void> {
+  const deadline = Date.now() + BILLING_PROJECTION_TIMEOUT_MS;
+  let previous: string | null = null;
+  for (;;) {
+    const { billingUpdatedAt } = await readBillingState(clerkUserId);
+    if (billingProjectionSettled(previous, billingUpdatedAt)) {
+      return;
+    }
+    previous = billingUpdatedAt;
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `Clerk Billing projection for ${clerkUserId} did not settle within ${BILLING_PROJECTION_TIMEOUT_MS / 1000}s; not running at an unconfirmed tier`,
+      );
+    }
+    await sleep(BILLING_POLL_INTERVAL_MS);
   }
 }
 
@@ -563,15 +617,9 @@ async function collectTasks(
 /** v15 lessons never carry `sourceIds`; grounded ones should. */
 function checkArm(arm: EvalArm, tasks: readonly ManifestTask[]): void {
   const cited = tasks.filter((t) => t.lessonContent?.sourceIds?.length).length;
-  if (arm === 'v15' && cited > 0) {
-    throw new SetupError(
-      `${cited} lesson(s) cite sources, so grounded generation is on; this is not a v15 run`,
-    );
-  }
-  if (arm === 'grounded' && cited === 0) {
-    log(
-      'warning: no lesson cites a source; check the grounded flags for this tier',
-    );
+  const problem = armCitationError(arm, cited);
+  if (problem) {
+    throw new SetupError(problem);
   }
 }
 
@@ -660,7 +708,16 @@ async function runTopicAs(
         await api(baseUrl, session, 'GET', '/api/v1/user/profile'),
         'user profile',
       );
+      await waitForBillingProjection(clerkUserId);
       await setStagingTier(clerkUserId, options.tier);
+      // A late webhook would overwrite the tier again; check right before use.
+      const problem = billingTierError(
+        await readBillingState(clerkUserId),
+        options.tier,
+      );
+      if (problem) {
+        throw new Error(`${clerkUserId}: ${problem}`);
+      }
     }
     log(`${topic.id}: creating plan (${options.arm}, ${options.tier})`);
     const { planId } = expectOk(
@@ -688,6 +745,16 @@ async function runTopicAs(
         : [];
     const tasks = await collectTasks(baseUrl, session, planId, modules);
     checkArm(options.arm, tasks);
+    if (options.tier !== 'free') {
+      // A late billing event could have reset the tier mid-run.
+      const problem = billingTierError(
+        await readBillingState(clerkUserId),
+        options.tier,
+      );
+      if (problem) {
+        throw new Error(`${clerkUserId}: ${problem} during the run`);
+      }
+    }
     return {
       topicId: topic.id,
       planId,

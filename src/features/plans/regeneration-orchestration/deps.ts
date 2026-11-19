@@ -13,12 +13,15 @@ import {
   getUsageSummaryForTier,
   type UsageSummary,
 } from '@/features/billing/usage-metrics';
-import { computeJobPriority, isPriorityTopic } from '@/features/jobs/priority';
+import {
+  computeJobPriority,
+  isPriorityTopic,
+} from '@/features/job-queue/priority';
 import {
   completeJob,
   enqueueJobWithResult,
   failJob,
-} from '@/features/jobs/queue';
+} from '@/features/job-queue/queue';
 import { readPlanContentAccess } from '@/features/plans/entitlement/access';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { checkPlanGenerationRateLimit } from '@/lib/api/rate-limit';

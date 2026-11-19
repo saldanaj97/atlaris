@@ -67,7 +67,7 @@ describe('hourly generation limit after deleting plans', () => {
     vi.unstubAllGlobals();
   });
 
-  it.each(['free', 'pro'] as const)(
+  it.each(['starter', 'pro'] as const)(
     'stops a %s user who deletes each plan, across fresh server instances',
     async (subscriptionTier) => {
       const authUserId = buildTestAuthUserId(

@@ -39,10 +39,11 @@ describe('runWithServiceRoleDb', () => {
   });
 
   it('keeps the service-role marker inside and outside a scope', () => {
-    expect(serviceRole.isServiceRoleDbClient(serviceRole.db)).toBe(true);
+    const marker = serviceRole.SERVICE_ROLE_DB_MARKER;
+    expect(Reflect.get(serviceRole.db, marker)).toBe(true);
     expect(
       serviceRole.runWithServiceRoleDb(fakeClient('x'), () =>
-        serviceRole.isServiceRoleDbClient(serviceRole.db),
+        Reflect.get(serviceRole.db, marker),
       ),
     ).toBe(true);
     expect(serviceRole.isClientInitialized()).toBe(false);

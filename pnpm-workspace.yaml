@@ -2,17 +2,6 @@ packages:
   - workers/jobs
 minimumReleaseAge: 10080
 minimumReleaseAgeExclude:
-  - brace-expansion@5.0.9
-  - "@next/env@16.2.11"
-  - "@next/swc-darwin-arm64@16.2.11"
-  - "@next/swc-darwin-x64@16.2.11"
-  - "@next/swc-linux-arm64-gnu@16.2.11"
-  - "@next/swc-linux-arm64-musl@16.2.11"
-  - "@next/swc-linux-x64-gnu@16.2.11"
-  - "@next/swc-linux-x64-musl@16.2.11"
-  - "@next/swc-win32-arm64-msvc@16.2.11"
-  - "@next/swc-win32-x64-msvc@16.2.11"
-  - next@16.2.11
   - tsrs@0.18.0-ts7.1.0-dev.20260929
   - "@tsrs/darwin-arm64@0.18.0-ts7.1.0-dev.20260929"
   - "@tsrs/linux-x64-gnu@0.18.0-ts7.1.0-dev.20260929"
@@ -65,6 +54,12 @@ overrides:
   source-map-js: ^1.2.2
   webpack: ^5.104.1
   dompurify: ^3.4.17
+auditConfig:
+  ignoreGhsas:
+    # picomatch ReDoS (<=4.0.7). No patched release exists (latest is 4.0.7).
+    # Reached only via @sentry/nextjs > @rollup/plugin-commonjs build tooling.
+    # Remove once picomatch ships a fix: https://linear.app/saldana-software/issue/DEV-227
+    - GHSA-fc5q-39xc-vjpf
 allowBuilds:
   "@openrouter/sdk": true
   "@sentry/cli": true

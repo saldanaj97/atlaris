@@ -6,9 +6,9 @@
         "hooks": [
           {
             "type": "command",
-            "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/block-push.sh\"",
-            "timeout": 5,
-            "statusMessage": "Checking for git push or --no-verify"
+            "command": "sh \"${CLAUDE_PROJECT_DIR:-.}/.claude/hooks/require-pr-quiz.sh\"",
+            "timeout": 30,
+            "statusMessage": "Checking for a quiz pass before gh pr create or merge"
           }
         ]
       }

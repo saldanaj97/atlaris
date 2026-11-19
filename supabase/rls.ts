@@ -77,10 +77,13 @@ const ANONYMOUS_IDLE_TIMEOUT_SECONDS = 20;
  * instead of running without RLS.
  */
 function createRlsConnection(idleTimeoutSeconds: number): Sql {
-  // Connect with owner role using non-pooling connection (SET ROLE incompatible with poolers)
+  // Connect with owner role using the direct (non-pooled) connection: SET ROLE and
+  // request.jwt.claims are session state, which a transaction-mode pooler drops.
+  // directUrl throws when POSTGRES_URL_NON_POOLING is unset instead of falling back
+  // to the pooled POSTGRES_URL.
   // IMPORTANT: The owner role has BYPASSRLS privilege which bypasses RLS policies.
   // Callers SET ROLE to a role that lacks BYPASSRLS before running any query.
-  const connectionUrl = databaseEnv.nonPoolingUrl || databaseEnv.url;
+  const connectionUrl = databaseEnv.directUrl;
   const sql: Sql = postgres(connectionUrl, {
     max: 1, // Single connection per client (important for session variable isolation)
     idle_timeout: idleTimeoutSeconds,

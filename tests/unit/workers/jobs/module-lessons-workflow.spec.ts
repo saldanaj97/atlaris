@@ -1606,7 +1606,7 @@ describe('runModuleLessonsWorkflow', () => {
           expect(budget.insert).toHaveBeenCalledWith([], expect.anything());
         });
 
-        it('records no advisor cut on free, which has no advisor', async () => {
+        it('runs every repair pass on free, which has no AI budget', async () => {
           budget.spent.mockResolvedValueOnce(40_000);
           writerFlaggingTaskA();
           // The repair never adds completion criteria, so pass 2 is due.
@@ -1624,15 +1624,8 @@ describe('runModuleLessonsWorkflow', () => {
 
           const names = calls.map((call) => call.name);
           expect(names).toContain('lesson-1-repair-1');
-          expect(names).not.toContain('lesson-1-repair-2');
-          const [cuts] = budget.insert.mock.calls[0] ?? [];
-          expect(cuts).toEqual([
-            expect.objectContaining({
-              step: 'repair',
-              pass: 2,
-              ceilingMicrousd: 50_000,
-            }),
-          ]);
+          expect(names).toContain('lesson-1-repair-2');
+          expect(budget.insert).toHaveBeenCalledWith([], expect.anything());
         });
 
         it('does not save the cuts twice when a retry finds its own rows', async () => {

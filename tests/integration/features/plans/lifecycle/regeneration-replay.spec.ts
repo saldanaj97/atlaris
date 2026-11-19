@@ -5,8 +5,8 @@ import {
   completeJob,
   enqueueJobWithResult,
   failJob,
-} from '@/features/jobs/queue';
-import { JOB_TYPES } from '@/features/jobs/types';
+} from '@/features/job-queue/queue';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import { createPlanLifecycleService } from '@/features/plans/lifecycle/factory';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import {

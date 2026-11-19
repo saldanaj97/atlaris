@@ -1,8 +1,8 @@
 import type { RegenerationOrchestrationDeps } from './deps';
 import type { PlanRegenerationJobPayload } from './schema';
-import type { Job } from '@/features/jobs/types';
+import type { Job } from '@/features/job-queue/types';
+import type { PlanRegenerationWorkflowTerminalResult } from '@/features/plans/contracts/plan-regeneration.types';
 import type { GenerationAttemptResult } from '@/features/plans/lifecycle/types';
-import type { PlanRegenerationWorkflowTerminalResult } from '@/features/plans/workflows/plan-regeneration.types';
 import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 import {

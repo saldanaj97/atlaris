@@ -8,7 +8,7 @@ import {
   getEmailNotificationDeliveryLedgerKeys,
   getEmailNotificationDeliveryRunDefinition,
   isEmailNotificationDeliveryWeeklyDate,
-} from '@/features/notifications/email/workflows/email-notification-delivery.types';
+} from '@/features/notifications/email/contracts/email-notification-delivery.types';
 import { countEmailNotificationDeliveryManualReviews } from '@/lib/db/queries/email-notification-deliveries';
 import {
   type EmailNotificationDeliveryRun,

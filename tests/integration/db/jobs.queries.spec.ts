@@ -1,7 +1,7 @@
 import type { InferInsertModel, InferSelectModel } from 'drizzle-orm';
 
 import { createTestUser } from '../../fixtures/users';
-import { JOB_TYPES } from '@/features/jobs/types';
+import { JOB_TYPES } from '@/features/job-queue/types';
 import {
   claimRegenerationJobById,
   getActiveRegenerationJob,

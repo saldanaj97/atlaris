@@ -80,6 +80,30 @@ describe('PlanLifecycleService', () => {
       }
     });
 
+    it('passes the trial flag to the duration cap', async () => {
+      const checkDurationCap = vi.fn().mockReturnValue({
+        allowed: false,
+        reason: 'Free trial plans are limited to 2 weeks.',
+        upgradeUrl: '/pricing',
+      });
+      ports = createMockPorts({
+        quota: {
+          ...createMockPorts().quota,
+          resolveUserTier: async () => 'starter' as const,
+          resolveUserTrialing: async () => true,
+          checkDurationCap,
+        },
+      });
+      service = new PlanLifecycleService(ports);
+
+      const result = await service.createPlan(validInput);
+
+      expect(result.status).toBe('duration_exceeded');
+      expect(checkDurationCap).toHaveBeenCalledWith(
+        expect.objectContaining({ tier: 'starter', trialing: true }),
+      );
+    });
+
     it('returns permanent_failure when topic is too short', async () => {
       const result = await service.createPlan({ ...validInput, topic: 'ab' });
 
@@ -298,12 +322,12 @@ describe('PlanLifecycleService', () => {
       }
     });
 
-    it('rejects when the free plan allowance has already been used', async () => {
+    it('rejects when the user has no active subscription', async () => {
       ports = createMockPorts({
         planPersistence: {
           ...createMockPorts().planPersistence,
           atomicInsertPlan: async () => ({
-            status: 'free_allowance_used' as const,
+            status: 'subscription_required' as const,
           }),
         },
       });
@@ -311,29 +335,10 @@ describe('PlanLifecycleService', () => {
 
       const result = await service.createPlan(validInput);
 
-      expect(result.status).toBe('free_allowance_used');
-      if (result.status === 'free_allowance_used') {
-        expect(result.reason).toContain('free plan allowance');
+      expect(result.status).toBe('subscription_required');
+      if (result.status === 'subscription_required') {
+        expect(result.reason).toContain('active subscription');
         expect(result.upgradeUrl).toBe('/pricing');
-      }
-    });
-
-    it('rejects when a free initial generation is already in progress', async () => {
-      ports = createMockPorts({
-        planPersistence: {
-          ...createMockPorts().planPersistence,
-          atomicInsertPlan: async () => ({
-            status: 'free_generation_in_progress' as const,
-          }),
-        },
-      });
-      service = new PlanLifecycleService(ports);
-
-      const result = await service.createPlan(validInput);
-
-      expect(result.status).toBe('free_generation_in_progress');
-      if (result.status === 'free_generation_in_progress') {
-        expect(result.reason).toContain('already being generated');
       }
     });
 

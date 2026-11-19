@@ -1,4 +1,4 @@
-import type { Job } from '@/features/jobs/types';
+import type { Job } from '@/features/job-queue/types';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { RegenerationPlanRow } from '@/features/plans/regeneration-orchestration/process-workflow-support';
 import type { AttemptReservation } from '@/lib/db/queries/types/attempts.types';
@@ -9,7 +9,7 @@ import {
   PLAN_REGENERATION_FAILURE_MESSAGE,
   runPlanRegeneration,
   terminalizeAbandonedRegenerationRun,
-} from '@/features/jobs/regeneration-run';
+} from '@/features/job-queue/regeneration-run';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
@@ -36,7 +36,7 @@ const mocks = vi.hoisted(() => ({
   updatePlan: vi.fn(),
 }));
 
-vi.mock('@/features/jobs/queue', () => ({
+vi.mock('@/features/job-queue/queue', () => ({
   claimRegenerationJob: mocks.claimJob,
   loadJobById: mocks.loadJob,
   updateJobPayload: mocks.updateJobPayload,

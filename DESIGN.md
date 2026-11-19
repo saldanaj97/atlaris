@@ -56,4 +56,4 @@ The intended direction is the **Midnight** palette (adopted 2026-10-30): restrai
 
 ## Validation
 
-Follow the [repository verification policy](.cursor/rules/selective-verification.mdc) for the changed behavior. `pnpm exec designmd lint DESIGN.md` validates this entry point's tooling schema; it does not prove runtime adoption, visual parity or accessibility. Frontmatter deliberately carries metadata only so it cannot become a competing editable token source.
+Follow the [repository verification policy](.agents/rules/selective-verification.md) for the changed behavior. `pnpm exec designmd lint DESIGN.md` validates this entry point's tooling schema; it does not prove runtime adoption, visual parity or accessibility. Frontmatter deliberately carries metadata only so it cannot become a competing editable token source.

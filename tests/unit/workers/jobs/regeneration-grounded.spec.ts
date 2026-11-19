@@ -1,4 +1,4 @@
-import type { GroundedRegenerationStageInput } from '@/features/jobs/regeneration-run';
+import type { GroundedRegenerationStageInput } from '@/features/job-queue/regeneration-run';
 import type { DbClient } from '@/lib/db/types';
 
 import { createGroundedRegenerationStages } from '../../../../workers/jobs/src/jobs/regeneration-grounded';

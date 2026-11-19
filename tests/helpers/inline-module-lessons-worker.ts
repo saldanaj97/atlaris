@@ -1,4 +1,4 @@
-import type { dispatchModuleLessonsToWorker } from '@/features/jobs/module-lessons-dispatch';
+import type { dispatchModuleLessonsToWorker } from '@/features/job-queue/module-lessons-dispatch';
 
 import { runModuleLessonGenerationWork } from '@/features/lesson-content/run-module-lesson-generation-work';
 import {

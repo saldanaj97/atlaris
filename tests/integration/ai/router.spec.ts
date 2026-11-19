@@ -27,7 +27,7 @@ describe('AI Router (mock in tests)', () => {
   it('returns modules using mock provider via router', async () => {
     const [userRow] = await db
       .insert(users)
-      .values({ authUserId, email, name: 'Test' })
+      .values({ authUserId, email, name: 'Test', subscriptionTier: 'starter' })
       .onConflictDoNothing()
       .returning();
     const userId =

@@ -27,7 +27,6 @@ import {
   selectUserGenerationAttemptWindowStats,
 } from '@/lib/db/queries/helpers/attempts-rate-limit';
 import {
-  countInProgressInitialAttemptsForUser,
   countPlansContributingToCap,
   lockUserPlanAdmission,
   planOwnsActiveCapSlot,
@@ -39,21 +38,28 @@ import {
   lockPlanLifecycle,
 } from '@/lib/db/queries/helpers/plan-lifecycle-lock';
 import { lockOwnedPlanById } from '@/lib/db/queries/helpers/plans-helpers';
-import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
 import { logger } from '@/lib/logging/logger';
 import {
   getPlanGenerationWindowStart,
   PLAN_GENERATION_LIMIT,
 } from '@/shared/constants/generation';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
-import { evaluateFreeInitialAdmission } from '@/shared/policy/free-initial-admission';
+import { limitsForUser } from '@/shared/constants/tier-limits';
+import { evaluateGenerationAdmission } from '@/shared/policy/generation-admission';
 import { parseGenerationPurpose } from '@/shared/types/generation-purpose';
 import { generationAttempts } from '@supabase/schema';
 import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
+
+/**
+ * The plan row was missing when a reservation locked it: deleted, never
+ * committed, or owned by someone else. Not a provider failure.
+ */
+export class ReservationPlanNotFoundError extends Error {
+  constructor(readonly planId: string) {
+    super('Learning plan not found or inaccessible for user');
+    this.name = 'ReservationPlanNotFoundError';
+  }
+}
 
 function readWorkflowIdempotencyKey(metadata: unknown): string | null {
   if (metadata == null || typeof metadata !== 'object') {
@@ -158,9 +164,11 @@ export async function findAttemptWithWorkflowIdempotencyKey(params: {
  * in all params. Do not add default getDb() or make dbClient optional.
  *
  * Production callers pass serviceRoleDb from feature-owned generation boundaries
- * after request auth and ownership checks. JWT claim replay in transactions is a
- * no-op for service-role; it remains for any legacy RLS-scoped callers/tests.
- * See src/lib/db/AGENTS.md § "RLS-sensitive query modules".
+ * after request auth and ownership checks. RLS-scoped clients are one dedicated
+ * session opened from POSTGRES_URL_NON_POOLING (createRlsConnection throws
+ * without it), so their JWT claims stay set for the whole session and nothing
+ * re-applies them inside a transaction (see docs/technical-debt.md).
+ * See supabase/AGENTS.md § "RLS Rules".
  */
 
 /**
@@ -198,11 +206,8 @@ export async function reserveAttemptSlot(
     input,
   );
 
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
   return dbClient.transaction(async (tx) => {
     const startedAt = nowFn();
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
 
     await lockUserPlanAdmission(tx, userId);
     await lockPlanLifecycle(tx, planId);
@@ -214,7 +219,7 @@ export async function reserveAttemptSlot(
     });
 
     if (!plan) {
-      throw new Error('Learning plan not found or inaccessible for user');
+      throw new ReservationPlanNotFoundError(planId);
     }
 
     const statusAllowed =
@@ -306,27 +311,12 @@ export async function reserveAttemptSlot(
     }
 
     const user = await selectUserEntitlementForAdmission(tx, userId);
-    const freeAdmission = evaluateFreeInitialAdmission({
-      tier: user.subscriptionTier,
-      generationPurpose,
-      initialPlanGeneratedAt: user.initialPlanGeneratedAt,
-      inProgressInitialCount:
-        user.subscriptionTier === 'free' && generationPurpose === 'initial'
-          ? await countInProgressInitialAttemptsForUser(tx, {
-              userId,
-              excludePlanId: planId,
-            })
-          : 0,
-    });
-    if (freeAdmission === 'free_allowance_used') {
-      return { reserved: false, reason: 'free_allowance_used' } as const;
-    }
-    if (freeAdmission === 'free_initial_in_progress') {
-      return { reserved: false, reason: 'free_initial_in_progress' } as const;
+    if (evaluateGenerationAdmission({ tier: user.subscriptionTier }) !== 'ok') {
+      return { reserved: false, reason: 'subscription_required' } as const;
     }
 
     if (!planOwnsActiveCapSlot(plan)) {
-      const tierConfig = TIER_LIMITS[user.subscriptionTier];
+      const tierConfig = limitsForUser(user);
       if (!tierConfig) {
         throw new Error(`Unknown subscription tier: ${user.subscriptionTier}`);
       }

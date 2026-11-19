@@ -9,7 +9,10 @@ import {
   commitPlanGenerationFailure,
   commitPlanGenerationSuccess,
 } from '@/features/plans/lifecycle/generation-finalization/store';
-import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
+import {
+  ReservationPlanNotFoundError,
+  reserveAttemptSlot,
+} from '@/lib/db/queries/attempts';
 import {
   generationAttempts,
   learningPlans,
@@ -80,6 +83,23 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     });
     expect(attempts).toHaveLength(1);
     expect(attempts[0].status).toBe('in_progress');
+  });
+
+  it('throws ReservationPlanNotFoundError when the plan row is missing', async () => {
+    await expect(
+      reserveAttemptSlot({
+        planId: randomUUID(),
+        userId,
+        generationPurpose: 'initial',
+        input: {
+          topic: 'Test Topic',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+        },
+        dbClient: db,
+      }),
+    ).rejects.toBeInstanceOf(ReservationPlanNotFoundError);
   });
 
   it('rejects concurrent attempts with in_progress reason', async () => {
@@ -191,13 +211,9 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     const rejected = [first, second].find((r) => !r.reserved);
     expect(rejected).toBeDefined();
     if (rejected && !rejected.reserved) {
-      expect([
-        'rate_limited',
-        'in_progress',
-        'capped',
-        'free_initial_in_progress',
-        'plan_limit',
-      ]).toContain(rejected.reason);
+      expect(['rate_limited', 'in_progress', 'capped', 'plan_limit']).toContain(
+        rejected.reason,
+      );
       if (rejected.reason === 'rate_limited') {
         expect(typeof rejected.retryAfter).toBe('number');
         expect(rejected.retryAfter).toBeGreaterThanOrEqual(0);
@@ -455,65 +471,31 @@ describe('Atomic attempt reservation (Task 1 - Phase 2)', () => {
     }
   });
 
-  it('rejects Free initial reservation after the lifetime marker is set', async () => {
-    await db
-      .update(users)
-      .set({ initialPlanGeneratedAt: new Date('2026-01-01T00:00:00.000Z') })
-      .where(eq(users.id, userId));
+  it.each(['initial', 'regeneration'] as const)(
+    'rejects a %s reservation for a user with no subscription',
+    async (generationPurpose) => {
+      await db
+        .update(users)
+        .set({ subscriptionTier: 'free' })
+        .where(eq(users.id, userId));
 
-    const result = await reserveAttemptSlot({
-      planId,
-      userId,
-      generationPurpose: 'initial',
-      input: {
-        topic: 'Test Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-      },
-      dbClient: db,
-    });
+      const result = await reserveAttemptSlot({
+        planId,
+        userId,
+        generationPurpose,
+        input: {
+          topic: 'Test Topic',
+          skillLevel: 'beginner',
+          weeklyHours: 5,
+          learningStyle: 'mixed',
+        },
+        dbClient: db,
+      });
 
-    expect(result).toEqual({ reserved: false, reason: 'free_allowance_used' });
-  });
-
-  it('rejects Free initial reservation when another initial attempt is in progress', async () => {
-    const otherPlan = await createPlan(userId, {
-      topic: 'Other in-flight plan',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-      generationStatus: 'failed',
-      isQuotaEligible: false,
-    });
-    await db.insert(generationAttempts).values({
-      planId: otherPlan.id,
-      status: 'in_progress',
-      generationPurpose: 'initial',
-      classification: null,
-      durationMs: 0,
-      modulesCount: 0,
-      tasksCount: 0,
-    });
-
-    const result = await reserveAttemptSlot({
-      planId,
-      userId,
-      generationPurpose: 'initial',
-      input: {
-        topic: 'Test Topic',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-      },
-      dbClient: db,
-    });
-
-    expect(result).toEqual({
-      reserved: false,
-      reason: 'free_initial_in_progress',
-    });
-  });
+      expect(result).toEqual({
+        reserved: false,
+        reason: 'subscription_required',
+      });
+    },
+  );
 });

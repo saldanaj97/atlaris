@@ -36,7 +36,7 @@ export async function ensureUser({
       authUserId,
       email,
       name: name ?? email,
-      ...(subscriptionTier && { subscriptionTier }),
+      subscriptionTier: subscriptionTier ?? 'starter',
     })
     .returning({ id: users.id });
 

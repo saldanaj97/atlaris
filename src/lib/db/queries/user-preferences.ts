@@ -4,10 +4,6 @@ import type { SQL } from 'drizzle-orm';
 
 import { executeRows } from '@/lib/db/execute-rows';
 import {
-  prepareRlsTransactionContext,
-  reapplyJwtClaimsInTransaction,
-} from '@/lib/db/queries/helpers/rls-jwt-claims';
-import {
   DEFAULT_EMAIL_NOTIFICATION_PREFERENCES,
   type EmailNotificationPreferenceValues,
 } from '@/shared/notifications/email-preferences';
@@ -153,11 +149,7 @@ export async function saveEmailNotificationPreferences(
   values: EmailNotificationPreferenceValues,
   dbClient: Pick<DbClient, 'execute' | 'transaction'>,
 ): Promise<EmailNotificationPreferenceValues> {
-  const rlsCtx = await prepareRlsTransactionContext(dbClient);
-
   return dbClient.transaction(async (tx) => {
-    await reapplyJwtClaimsInTransaction(tx, rlsCtx);
-
     const currentRows = await tx
       .select({
         category: userEmailNotificationPreferences.category,

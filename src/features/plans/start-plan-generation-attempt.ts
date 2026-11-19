@@ -1,6 +1,6 @@
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 import type { PlanLifecycleService } from '@/features/plans/lifecycle/service';
 import type { ProcessGenerationInput } from '@/features/plans/lifecycle/types';
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
 import type {
   AttemptReservation,
   AttemptsDbClient,
@@ -8,8 +8,8 @@ import type {
 } from '@/lib/db/queries/types/attempts.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
-import { dispatchPlanGenerationToWorker } from '@/features/jobs/plan-generation-dispatch';
-import { toSerializableReservation } from '@/features/plans/workflows/plan-generation.types';
+import { dispatchPlanGenerationToWorker } from '@/features/job-queue/plan-generation-dispatch';
+import { toSerializableReservation } from '@/features/plans/contracts/plan-generation.types';
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
 import { logger } from '@/lib/logging/logger';
 

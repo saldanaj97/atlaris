@@ -55,7 +55,6 @@ copy_from_main ".env.local"
 # Launcher config lives in ~/.config/atlaris/dev.sh and is shared by worktrees.
 link_from_main ".vercel"
 link_from_main ".agents"
-link_from_main ".cursor"
 link_from_main ".daily-recap"
 link_from_main "screenshots"
 

@@ -1,12 +1,7 @@
 import type { PlanListItem } from '@/features/plans/read-projection/types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-import {
-  evaluateFreeInitialAdmission,
-  type FreeInitialAdmissionDecision,
-} from '@/shared/policy/free-initial-admission';
-
-export { evaluateFreeInitialAdmission, type FreeInitialAdmissionDecision };
+import { evaluateGenerationAdmission } from '@/shared/policy/generation-admission';
 
 export type PlanContentAccess = 'full' | 'locked' | 'selection_pending';
 
@@ -33,12 +28,6 @@ export type PlanEntitlementSnapshot = {
   readonly freeAccessPlanId: string | null;
   readonly freeAccessPlanSelectedAt: Date | null;
 };
-
-export function isFreeAdmittedTier(
-  tier: SubscriptionTier | null | undefined,
-): tier is 'free' {
-  return tier === 'free';
-}
 
 export function resolvePlanContentAccess(params: {
   tier: SubscriptionTier;
@@ -115,10 +104,9 @@ export function projectPlanListItemForAccess(
 }
 
 export function canCreatePlanOnCurrentTier(
-  snapshot: PlanEntitlementSnapshot,
+  snapshot: Pick<PlanEntitlementSnapshot, 'subscriptionTier'>,
 ): boolean {
-  return !(
-    snapshot.subscriptionTier === 'free' &&
-    snapshot.initialPlanGeneratedAt != null
+  return (
+    evaluateGenerationAdmission({ tier: snapshot.subscriptionTier }) === 'ok'
   );
 }

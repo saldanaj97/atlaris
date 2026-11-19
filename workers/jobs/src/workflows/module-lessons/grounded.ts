@@ -138,7 +138,15 @@ export async function resolveGroundedLessonContext(
       reasons: plan?.regenerationReasons,
       note: plan?.regenerationNote,
     }),
-    budget: { ceilingMicrousd: planAiCeilingMicrousd(tier), spentMicrousd },
+    // No subscription, no AI budget: the plan runs unbudgeted.
+    ...(tier === 'free'
+      ? {}
+      : {
+          budget: {
+            ceilingMicrousd: planAiCeilingMicrousd(tier),
+            spentMicrousd,
+          },
+        }),
   };
 }
 

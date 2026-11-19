@@ -1,28 +1,29 @@
+import type { MarketingCreatePlanCta } from '@/features/navigation';
 import type { CSSProperties } from 'react';
 
 import { RevealAnimation } from './RevealAnimation';
 import { marketingPrimaryCtaClassName } from '@/app/(landing)/_shared/marketing-cta';
 import { Button } from '@/components/ui/button';
 import { CtaBanner } from '@/components/ui/cta-banner';
-import { CREATE_PLAN_LABEL } from '@/features/navigation';
-import { ROUTES } from '@/features/navigation/routes';
 import { cn } from '@/lib/utils';
-import { TIER_LIMITS } from '@/shared/constants/tier-limits';
 import Link from 'next/link';
 
 import styles from './landing.module.css';
 
-const FREE_PLANS = TIER_LIMITS.free.maxActivePlans;
 const SUPPORT_EMAIL = 'support@atlaris.app';
 
 const copy = {
-  headline: `Start with ${FREE_PLANS === 1 ? 'one free plan' : `${FREE_PLANS} free plans`}`,
+  headline: 'Start your first plan',
   subheadline:
     'Name the goal and the hours you have. Atlaris writes the route.',
   support: 'A question, a bug, or a plan that missed the point:',
 } as const;
 
-export function CtaSection() {
+export function CtaSection({
+  createPlanCta,
+}: {
+  createPlanCta: MarketingCreatePlanCta;
+}) {
   return (
     <section className='px-6 pb-16 md:px-8 md:pb-20'>
       <RevealAnimation>
@@ -53,7 +54,7 @@ export function CtaSection() {
               style={{ '--i': 3 } as CSSProperties}
             >
               <Button asChild className={marketingPrimaryCtaClassName}>
-                <Link href={ROUTES.PLANS.NEW}>{CREATE_PLAN_LABEL}</Link>
+                <Link href={createPlanCta.href}>{createPlanCta.label}</Link>
               </Button>
             </div>
 

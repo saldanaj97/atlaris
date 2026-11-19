@@ -9,6 +9,7 @@ Index of every folder and file under `docs/`. Paths are relative to this file.
 | File | Description |
 |------|-------------|
 | [CHANGELOG.md](./CHANGELOG.md) | Project changelog |
+| [glossary.md](./glossary.md) | Terms with more than one meaning (plan vs tier, the queue, jobs, worker, proxy) and their code names |
 | [technical-debt.md](./technical-debt.md) | Known technical debt tracker |
 | [README.md](./README.md) | This index |
 
@@ -64,6 +65,17 @@ Pipeline and deployment strategy.
 |------|-------------|
 | [pipeline-and-deployment-strategy.md](./ci-cd/pipeline-and-deployment-strategy.md) | Preview / staging / staged Production / live Production pipeline |
 | [staged-production-deployment.md](./ci-cd/staged-production-deployment.md) | Trusted staged Production proof and JCS-52 Deployment Checks |
+
+## `codemap/`
+
+Generated architecture overview. Regenerate the three files together with the generator in `generator/`; do not edit them by hand.
+
+| File | Description |
+|------|-------------|
+| [codemap.html](./codemap/codemap.html) | Interactive codemap: modules, edges, flows, and naming mismatches |
+| [codemap.json](./codemap/codemap.json) | Codemap data (nodes, edges, flows, word mismatches) |
+| [codemap.lock](./codemap/codemap.lock) | Module fingerprints used to detect what changed on the next regeneration |
+| [generator/](./codemap/generator/) | Python generator and verifier for the three files above (`gen.py`, `model.py`, `render.py`, `verify.py`); see its [README](./codemap/generator/README.md) |
 
 ## `database/`
 
@@ -140,6 +152,7 @@ External tool and CLI references used in local/dev workflows.
 docs/
 ├── README.md
 ├── CHANGELOG.md
+├── glossary.md
 ├── technical-debt.md
 ├── ai/
 │   └── available-models.md
@@ -164,6 +177,16 @@ docs/
 ├── ci-cd/
 │   ├── pipeline-and-deployment-strategy.md
 │   └── staged-production-deployment.md
+├── codemap/
+│   ├── codemap.html
+│   ├── codemap.json
+│   ├── codemap.lock
+│   └── generator/
+│       ├── README.md
+│       ├── gen.py
+│       ├── model.py
+│       ├── render.py
+│       └── verify.py
 ├── database/
 │   ├── client-usage.md
 │   └── schema-overview.md

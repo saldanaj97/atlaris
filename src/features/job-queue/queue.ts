@@ -1,0 +1,79 @@
+/**
+ * Queue operations for background workers.
+ *
+ * All functions bind the service-role DB client because queue operations
+ * run in worker context without a user session. This module exists to
+ * centralize that binding and prevent service-role imports from spreading
+ * to multiple consumer files.
+ *
+ * This is intentionally a thin wrapper over db/queries/jobs.ts rather than a
+ * second abstraction layer. The value here is the single service-role binding
+ * point, not additional business logic.
+ */
+import type {
+  Job,
+  JobPayload,
+  JobResult,
+  JobType,
+} from '@/features/job-queue/types';
+import type { JobEnqueueResult } from '@/lib/db/queries/types/jobs.types';
+
+import {
+  claimRegenerationJobById,
+  completeJobRecord,
+  failJobRecord,
+  getJobById,
+  insertJobRecord,
+  updateRegenerationJobPayload,
+} from '@/lib/db/queries/jobs';
+import { db } from '@supabase/service-role';
+
+type FailJobOptions = {
+  retryable?: boolean;
+  /** Minimum seconds before a scheduled retry, such as a durable rate-limit reset. */
+  retryAfter?: number;
+};
+
+export async function enqueueJobWithResult(
+  type: JobType,
+  planId: string | null,
+  userId: string,
+  data: JobPayload,
+  priority = 0,
+): Promise<JobEnqueueResult> {
+  return insertJobRecord({ type, planId, userId, data, priority }, db);
+}
+
+export async function claimRegenerationJob(
+  jobId: string,
+  expected: { planId: string; userId: string },
+  payload: JobPayload,
+): Promise<Job | null> {
+  return claimRegenerationJobById(jobId, expected, payload, db);
+}
+
+export async function updateJobPayload(
+  jobId: string,
+  payload: JobPayload,
+): Promise<Job | null> {
+  return updateRegenerationJobPayload(jobId, payload, db);
+}
+
+export async function completeJob(
+  jobId: string,
+  result: JobResult,
+): Promise<Job | null> {
+  return completeJobRecord(jobId, result, db);
+}
+
+export async function failJob(
+  jobId: string,
+  error: string,
+  options: FailJobOptions = {},
+): Promise<Job | null> {
+  return failJobRecord(jobId, error, options.retryable, db, options.retryAfter);
+}
+
+export async function loadJobById(jobId: string): Promise<Job | null> {
+  return getJobById(jobId, db);
+}

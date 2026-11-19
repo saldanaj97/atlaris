@@ -1,5 +1,7 @@
 # Codex Security Scan Verification
 
+> **Point-in-time record (2026-08-20).** Paths below were correct for the sealed scan SHA. Since then `src/app/api/v1/plans/stream/route.ts` was removed with the SSE plan create/retry path (JCS-133, #731), so it no longer exists on `develop`. Leave the table as history.
+
 ## Baseline
 
 - Scan ID: `1ebeff2f-25a0-4eff-bdb5-efabddda8453`

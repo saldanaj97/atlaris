@@ -4,7 +4,7 @@
  * both sides sign the same canonical string. Web Crypto only: runs on Node and
  * workerd.
  */
-import type { PlanGenerationWorkflowInput } from '@/features/plans/workflows/plan-generation.types';
+import type { PlanGenerationWorkflowInput } from '@/features/plans/contracts/plan-generation.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 

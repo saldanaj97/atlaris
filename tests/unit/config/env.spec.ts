@@ -8,6 +8,7 @@ import {
   createMaintenanceEnvForTests,
   createServerEnvAccess,
   createSupabasePublicEnv,
+  databaseEnv,
   EnvValidationError,
   assertHostedDeployForbiddenFlags,
   assertMixedDevAuthIdentity,
@@ -879,6 +880,30 @@ describe('Environment Configuration', () => {
     it('treats empty strings as missing and falls back', () => {
       expect(toBoolean('', true)).toBe(true);
       expect(toBoolean('   ', false)).toBe(false);
+    });
+  });
+
+  describe('databaseEnv.directUrl', () => {
+    it('returns POSTGRES_URL_NON_POOLING', () => {
+      vi.stubEnv('POSTGRES_URL', 'postgresql://pooled.example.com:6543/db');
+      vi.stubEnv(
+        'POSTGRES_URL_NON_POOLING',
+        'postgresql://direct.example.com:5432/db',
+      );
+
+      expect(databaseEnv.directUrl).toBe(
+        'postgresql://direct.example.com:5432/db',
+      );
+    });
+
+    it('throws instead of falling back to the pooled POSTGRES_URL', () => {
+      vi.stubEnv('POSTGRES_URL', 'postgresql://pooled.example.com:6543/db');
+      vi.stubEnv('POSTGRES_URL_NON_POOLING', '');
+
+      expect(() => databaseEnv.directUrl).toThrow(/POSTGRES_URL_NON_POOLING/);
+      expect(databaseEnv.nonPoolingUrl).toBe(
+        'postgresql://pooled.example.com:6543/db',
+      );
     });
   });
 

@@ -63,7 +63,7 @@ function pluralizePastUnit(
 }
 
 /**
- * Verbose style keeps the legacy precise one-minute label; compact style fuzzes
+ * Verbose style keeps the precise one-minute label; compact style fuzzes
  * one minute into "Just now" for denser plan-card copy.
  */
 function formatVerbosePastDelta(delta: PastDelta): string {
@@ -84,7 +84,7 @@ function formatVerbosePastDelta(delta: PastDelta): string {
  * Past-only relative time (plan cards: compact; dashboard activity: verbose).
  *
  * Negative deltas (reference before target, i.e. `date` in the future) are
- * clamped to zero so callers get “Just now” / minimal buckets — same behavior as the legacy plan-card helper.
+ * clamped to zero so callers get “Just now” / minimal buckets — the behavior the plan-card helper had before this module replaced it.
  */
 export function formatRelativePast(
   date: ValidDateInput,
