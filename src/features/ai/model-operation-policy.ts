@@ -385,15 +385,3 @@ export function getGroundedModelRoute(
     ...policy.models.filter((model) => model.modelId !== pickedModelId),
   ];
 }
-
-/** Whether a plan that already ran `used` grounded regenerations may run another. */
-export function hasGroundedRegenerationQuota(
-  tier: SubscriptionTier,
-  used: number,
-): boolean {
-  const policy = getGroundedOperationPolicy(tier, 'regeneration');
-  if (!policy.allowed) {
-    return false;
-  }
-  return policy.quotaPerPlan === null || used < policy.quotaPerPlan;
-}

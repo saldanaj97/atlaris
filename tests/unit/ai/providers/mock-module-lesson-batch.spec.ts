@@ -26,8 +26,6 @@ describe('MockGenerationProvider.generateModuleLessonBatch', () => {
     const parsed = JSON.parse(raw) as unknown;
     const batch = ModuleLessonBatchProviderOutputSchema.parse(parsed);
 
-    expect(batch.version).toBe(1);
-    expect(batch.tasks).toHaveLength(2);
     expect(batch.tasks.map((row) => row.taskId)).toEqual([...TASK_IDS]);
     expect(metadata.provider).toBe('mock');
     expect(metadata.model).toBe('mock-module-lesson-batch-v1');

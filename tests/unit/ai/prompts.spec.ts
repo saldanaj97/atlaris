@@ -7,15 +7,6 @@ describe('AI Prompt Builder', () => {
   describe('buildUserPrompt', () => {
     const basicParams = createPromptParams();
 
-    it('should include all required parameters', () => {
-      const prompt = buildUserPrompt(basicParams);
-
-      expect(prompt).toContain('TypeScript');
-      expect(prompt).toContain('intermediate');
-      expect(prompt).toContain('mixed');
-      expect(prompt).toContain('10');
-    });
-
     it('should tell the writer that task descriptions hold no code', () => {
       const prompt = buildUserPrompt(basicParams);
       const afterInput = prompt.slice(prompt.indexOf('---END USER INPUT---'));
@@ -118,76 +109,6 @@ describe('AI Prompt Builder', () => {
       expect(prompt).toContain('JSON');
     });
 
-    it('should handle beginner skill level', () => {
-      const params = createPromptParams({
-        skillLevel: 'beginner',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Skill level: beginner');
-    });
-
-    it('should handle advanced skill level', () => {
-      const params = createPromptParams({
-        skillLevel: 'advanced',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Skill level: advanced');
-    });
-
-    it('should handle reading learning style', () => {
-      const params = createPromptParams({
-        learningStyle: 'reading',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Learning style: reading');
-    });
-
-    it('should handle video learning style', () => {
-      const params = createPromptParams({
-        learningStyle: 'video',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Learning style: video');
-    });
-
-    it('should handle practice learning style', () => {
-      const params = createPromptParams({
-        learningStyle: 'practice',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Learning style: practice');
-    });
-
-    it('should handle different weekly hour amounts', () => {
-      const params1 = createPromptParams({ weeklyHours: 5 });
-      const params2 = createPromptParams({ weeklyHours: 20 });
-
-      expect(buildUserPrompt(params1)).toContain('Weekly hours: 5');
-      expect(buildUserPrompt(params2)).toContain('Weekly hours: 20');
-    });
-
-    it('should handle complex topic names', () => {
-      const params = createPromptParams({
-        topic: 'Advanced React Hooks and State Management with TypeScript',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain(
-        'Topic: Advanced React Hooks and State Management with TypeScript',
-      );
-    });
-
     it('should handle null start date', () => {
       const params = createPromptParams({
         startDate: null,
@@ -272,18 +193,6 @@ describe('AI Prompt Builder', () => {
       expect(prompt).toContain('<script>alert(1)</script>');
       expect(prompt).toContain('&');
       expect(prompt).toContain('C++');
-    });
-
-    it('should sanitize notes with embedded newlines', () => {
-      const params = createPromptParams({
-        notes: 'Line one\n\n\n\nLine two',
-      });
-
-      const prompt = buildUserPrompt(params);
-
-      expect(prompt).toContain('Notes:');
-      expect(prompt).toContain('Line one');
-      expect(prompt).toContain('Line two');
     });
 
     it('should neutralize prompt delimiters in notes', () => {

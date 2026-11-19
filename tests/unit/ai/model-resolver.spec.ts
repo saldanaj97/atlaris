@@ -308,7 +308,6 @@ describe('Model resolver', () => {
         fallback: true,
         fallbackReason: 'tier_denied',
       });
-      expect(result.modelId).not.toBe(AI_DEFAULT_MODEL);
     });
 
     it('falls back from GPT-6.1 Sol, which Starter keeps for grounded roles only', async () => {

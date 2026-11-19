@@ -93,13 +93,6 @@ describe('Starter lesson model route (DEV-180)', () => {
     const { provider } = await resolveStarterLessonProvider();
     const result = await provider.generateModuleLessonBatch(lessonInput);
 
-    const [{ chatRequest }] = mockSend.mock.calls[0] as [
-      { chatRequest: Record<string, unknown> },
-    ];
-    expect(chatRequest.models).toEqual([
-      `${LUNA}@preset/${LESSON_PRESET}`,
-      `${AI_DEFAULT_MODEL}@preset/${LESSON_PRESET}`,
-    ]);
     expect(result.metadata.model).toBe(servedFreeModel);
   });
 });

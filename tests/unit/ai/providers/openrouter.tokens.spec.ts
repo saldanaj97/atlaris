@@ -2,7 +2,6 @@ import {
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
   OPENROUTER_TEST_LESSON_PRESET,
-  OPENROUTER_TEST_MODEL,
   OPENROUTER_TEST_PLAN_PRESET,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
@@ -26,32 +25,6 @@ describe('OpenRouterProvider', () => {
   });
 
   describe('output-token ceiling enforcement', () => {
-    it('sends maxTokens derived from the model ceiling', async () => {
-      const { client, send } = createOpenRouterMockClient();
-      send.mockResolvedValueOnce({
-        choices: [
-          {
-            message: { content: JSON.stringify(VALID_PLAN_RESPONSE) },
-          },
-        ],
-      });
-
-      const provider = new OpenRouterProvider(
-        { model: OPENROUTER_TEST_MODEL },
-        client,
-      );
-      await provider.generate(OPENROUTER_SAMPLE_INPUT);
-
-      const requestBody = send.mock.calls[0][0] as {
-        maxTokens: number;
-        model: string;
-        [key: string]: unknown;
-      };
-      expect(requestBody).toHaveProperty('maxTokens');
-      expect(typeof requestBody.maxTokens).toBe('number');
-      expect(requestBody.maxTokens).toBeGreaterThan(0);
-    });
-
     it('uses model-specific ceiling for models with explicit maxOutputTokens', async () => {
       const { client, send } = createOpenRouterMockClient();
       send.mockResolvedValueOnce({

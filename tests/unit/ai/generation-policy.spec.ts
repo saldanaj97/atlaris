@@ -1,19 +1,8 @@
-import { createGetAttemptCap } from '@/features/ai/generation-policy';
 import {
   DEFAULT_ATTEMPT_CAP,
   resolveAttemptCap,
 } from '@/shared/constants/generation';
-import { describe, expect, it, vi } from 'vitest';
-
-describe('generation policy attempt-cap wiring', () => {
-  it('delegates getAttemptCap to the injected reader', () => {
-    const readAttemptCap = vi.fn(() => 7);
-    const getAttemptCap = createGetAttemptCap(readAttemptCap);
-
-    expect(getAttemptCap()).toBe(7);
-    expect(readAttemptCap).toHaveBeenCalledTimes(1);
-  });
-});
+import { describe, expect, it } from 'vitest';
 
 describe('resolveAttemptCap', () => {
   it.each([

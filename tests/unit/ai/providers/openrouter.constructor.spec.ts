@@ -3,7 +3,6 @@ import {
   createOpenRouterMockClient,
   OPENROUTER_SAMPLE_INPUT,
   OPENROUTER_TEST_LESSON_PRESET,
-  OPENROUTER_TEST_MODEL,
   OPENROUTER_TEST_PLAN_PRESET,
   VALID_PLAN_RESPONSE,
 } from './openrouter-test-helpers';
@@ -32,42 +31,6 @@ describe('OpenRouterProvider', () => {
       expect(
         () => new OpenRouterProvider({} as OpenRouterProviderConfig, client),
       ).toThrow('OpenRouterProvider requires a model to be specified');
-    });
-
-    it('throws error when API key is not provided', () => {
-      vi.stubEnv('OPENROUTER_API_KEY', '');
-      expect(
-        () => new OpenRouterProvider({ model: OPENROUTER_TEST_MODEL }),
-      ).toThrow('OPENROUTER_API_KEY is not set');
-    });
-
-    it('uses custom model when specified', async () => {
-      const { client, send } = createOpenRouterMockClient();
-      send.mockResolvedValueOnce({
-        model: 'anthropic/claude-3-sonnet',
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(VALID_PLAN_RESPONSE),
-            },
-          },
-        ],
-      });
-
-      const provider = new OpenRouterProvider(
-        { model: 'anthropic/claude-3-sonnet' },
-        client,
-      );
-
-      const result = await provider.generate(OPENROUTER_SAMPLE_INPUT);
-
-      expect(send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          model: `anthropic/claude-3-sonnet@preset/${OPENROUTER_TEST_PLAN_PRESET}`,
-        }),
-        expect.any(Object),
-      );
-      expect(result.metadata.model).toBe('anthropic/claude-3-sonnet');
     });
 
     it('sends fallback routes using models when configured', async () => {

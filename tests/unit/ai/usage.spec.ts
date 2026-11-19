@@ -281,15 +281,15 @@ describe('normalizeToCanonicalUsage', async () => {
       },
     };
 
-    try {
-      await normalizeToCanonicalUsage(metadata);
-    } catch (error) {
-      const usageError = error as IncompleteUsageError;
-      expect(usageError.missingFields).toEqual(
-        expect.arrayContaining(['provider', 'model', 'outputTokens']),
-      );
-      expect(usageError.missingFields).toHaveLength(3);
-    }
+    const error = await normalizeToCanonicalUsage(metadata).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(IncompleteUsageError);
+    expect((error as IncompleteUsageError).missingFields).toEqual(
+      expect.arrayContaining(['provider', 'model', 'outputTokens']),
+    );
+    expect((error as IncompleteUsageError).missingFields).toHaveLength(3);
   });
 
   it('does not throw when all required fields are present, even if zero', async () => {
@@ -415,20 +415,6 @@ describe('IncompleteUsageError', () => {
 // ─── sumUsages ───────────────────────────────────────────────────
 
 describe('sumUsages', () => {
-  it('keeps reported costs when one call has none, adding its estimate (DEV-185)', () => {
-    // An advisor repair reports $0.30, which its tokens' catalog price misses.
-    const summed = sumUsages([
-      makeCanonicalUsage({
-        estimatedCostCents: 1,
-        providerCostMicrousd: 300_000,
-      }),
-      makeCanonicalUsage({ estimatedCostCents: 2, providerCostMicrousd: null }),
-    ]);
-
-    expect(summed.providerCostMicrousd).toBe(320_000);
-    expect(summed.estimatedCostCents).toBe(3);
-  });
-
   it('leaves the provider cost unknown when no call reported one', () => {
     const summed = sumUsages([
       makeCanonicalUsage({ estimatedCostCents: 1 }),

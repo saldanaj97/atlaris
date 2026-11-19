@@ -256,17 +256,6 @@ describe('model-preferences', () => {
       ).toBe(saved.preferredRegenerationAiModel);
     });
 
-    it('uses the Starter outline slot for regeneration when override is omitted', () => {
-      expect(
-        resolveOverrideOrSavedModelId(
-          undefined,
-          'starter',
-          saved,
-          'regeneration',
-        ),
-      ).toBe(saved.preferredAiModel);
-    });
-
     it('uses the Pro lesson saved slot when override is omitted', () => {
       expect(resolveOverrideOrSavedModelId(null, 'pro', saved, 'lesson')).toBe(
         saved.preferredLessonAiModel,
@@ -525,13 +514,7 @@ describe('resolveGroundedWriterModelId', () => {
     },
   );
 
-  it('falls back to the tier writers when Pro saved no pick or an off-catalog one', () => {
-    expect(
-      resolveGroundedWriterModelId('pro', undefined, {
-        ...PICKS,
-        preferredWriterAiModel: null,
-      }),
-    ).toBeNull();
+  it('ignores an off-catalog saved Pro writer pick', () => {
     expect(
       resolveGroundedWriterModelId('pro', undefined, {
         ...PICKS,

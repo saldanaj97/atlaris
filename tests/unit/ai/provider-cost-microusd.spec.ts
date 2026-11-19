@@ -40,8 +40,7 @@ describe('usdCostToMicrousdInteger', () => {
   });
 
   it('supports large finite costs within safe integer range', () => {
-    const usd = 1_234_567.891234;
-    expect(usdCostToMicrousdInteger(usd)).toBe(Math.round(usd * 1_000_000));
+    expect(usdCostToMicrousdInteger(1_234_567.891234)).toBe(1_234_567_891_234);
   });
 });
 

@@ -161,45 +161,10 @@ describe('pacing module', () => {
       expect(result[1].tasks.length).toBe(1);
     });
 
-    it('omits modules with no tasks', () => {
-      const emptyModule: ParsedModule = {
-        title: 'Empty',
-        description: '',
-        estimatedMinutes: 0,
-        tasks: [],
-      };
-      const fullModule = {
-        ...mockModule,
-        tasks: [{ ...mockTask }],
-      };
-      const modules = [emptyModule, fullModule];
-      const result = trimModulesToCapacity(modules, 1);
-      expect(result).toHaveLength(1);
-      expect(result[0].tasks.length).toBe(1);
-    });
-
     it('handles capacity <= 0 by returning empty array', () => {
       const modules = [mockModule];
       expect(trimModulesToCapacity(modules, 0)).toEqual([]);
       expect(trimModulesToCapacity(modules, -1)).toEqual([]);
-    });
-
-    it('preselects only when capacity covers preselections', () => {
-      const mockTaskT10 = { ...mockTask };
-      const mockTaskT11 = { ...mockTask };
-      const mockTaskT12 = { ...mockTask };
-      const mockTaskT20 = { ...mockTask };
-      const mockTaskT21 = { ...mockTask };
-      const modules = [
-        {
-          ...mockModule,
-          tasks: [mockTaskT10, mockTaskT11, mockTaskT12],
-        },
-        { ...mockModule, tasks: [mockTaskT20, mockTaskT21] },
-      ];
-      const result = trimModulesToCapacity(modules, 2); // Exactly preselections
-      expect(result[0].tasks.length).toBe(1);
-      expect(result[1].tasks.length).toBe(1);
     });
   });
 

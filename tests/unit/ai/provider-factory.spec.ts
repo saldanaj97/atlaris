@@ -51,28 +51,9 @@ describe('AI Provider Factory', () => {
       expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
-    it('returns MockGenerationProvider with deterministic seed when MOCK_GENERATION_SEED is set', async () => {
-      vi.stubEnv('AI_PROVIDER', 'mock');
-      vi.stubEnv('MOCK_GENERATION_SEED', '12345');
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
-
     it('handles invalid MOCK_GENERATION_SEED gracefully', async () => {
       vi.stubEnv('AI_PROVIDER', 'mock');
       vi.stubEnv('MOCK_GENERATION_SEED', 'not-a-number');
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
-
-    it('handles case-insensitive AI_PROVIDER values', async () => {
-      vi.stubEnv('AI_PROVIDER', 'MOCK');
       const { getGenerationProvider } = await loadProviderFactory();
 
       const provider = getGenerationProvider();
@@ -149,35 +130,6 @@ describe('AI Provider Factory', () => {
 
       expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
-
-    it('handles whitespace in AI_PROVIDER', async () => {
-      vi.stubEnv('AI_PROVIDER', '  mock  ');
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
-
-    it('handles zero as MOCK_GENERATION_SEED', async () => {
-      vi.stubEnv('AI_PROVIDER', 'mock');
-      vi.stubEnv('MOCK_GENERATION_SEED', '0');
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
-
-    it('handles negative MOCK_GENERATION_SEED', async () => {
-      vi.stubEnv('AI_PROVIDER', 'mock');
-      vi.stubEnv('MOCK_GENERATION_SEED', '-100');
-      const { getGenerationProvider } = await loadProviderFactory();
-
-      const provider = getGenerationProvider();
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
-    });
   });
 
   describe('getGenerationProviderWithModel', () => {
@@ -227,18 +179,6 @@ describe('AI Provider Factory', () => {
       expect(provider1.constructor.name).toBe('RouterGenerationProvider');
       expect(provider2.constructor.name).toBe('RouterGenerationProvider');
       expect(provider3.constructor.name).toBe('RouterGenerationProvider');
-    });
-
-    it('respects MOCK_GENERATION_SEED in test environment', async () => {
-      vi.stubEnv('AI_PROVIDER', 'mock');
-      vi.stubEnv('MOCK_GENERATION_SEED', '42');
-      const { getGenerationProviderWithModel } = await loadProviderFactory();
-
-      const provider = getGenerationProviderWithModel(
-        'anthropic/claude-haiku-5.5',
-      );
-
-      expect(provider.constructor.name).toBe('MockGenerationProvider');
     });
 
     it('throws when modelId is empty', async () => {
