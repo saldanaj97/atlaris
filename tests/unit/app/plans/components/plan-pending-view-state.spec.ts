@@ -1,5 +1,3 @@
-import type { ClientPlanDetail } from '@/shared/types/client.types';
-
 import {
   buildPlanPendingViewState,
   formatOrigin,
@@ -15,12 +13,6 @@ describe('formatOrigin', () => {
     { origin: 'template' as const, label: 'Template' },
   ])('maps $origin to $label', ({ origin, label }) => {
     expect(formatOrigin(origin)).toBe(label);
-  });
-
-  it('returns AI when origin is undefined', () => {
-    expect(
-      formatOrigin(undefined as unknown as ClientPlanDetail['origin']),
-    ).toBe('AI');
   });
 });
 

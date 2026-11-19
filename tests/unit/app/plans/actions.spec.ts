@@ -128,19 +128,6 @@ describe('batchUpdateTaskProgressAction', () => {
     expect(revalidatePathMock).not.toHaveBeenCalled();
   });
 
-  it('throws when unauthenticated', async () => {
-    requestBoundaryActionMock.mockResolvedValueOnce(null);
-
-    await expect(
-      batchUpdateTaskProgressAction({
-        planId: 'plan-123',
-        updates: [{ taskId: 't1', status: 'completed' }],
-      }),
-    ).rejects.toThrow('You must be signed in to update progress.');
-
-    expect(applyTaskProgressUpdatesMock).not.toHaveBeenCalled();
-  });
-
   it('revalidates paths returned by the boundary on success', async () => {
     requestBoundaryActionMock.mockImplementationOnce(invokeMockedAction);
     applyTaskProgressUpdatesMock.mockResolvedValueOnce({

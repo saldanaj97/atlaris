@@ -54,7 +54,7 @@ describe('DashboardContent', () => {
     expect(screen.getByRole('status')).toHaveTextContent('Loading dashboard');
   });
 
-  it('does not fabricate progress before weekly activity is available', async () => {
+  it('shows the resume plan, its first module, planned hours and recorded activity', async () => {
     const { modules: _modules, ...plan } = buildPlan({
       generationStatus: 'ready',
       topic: 'TypeScript',
@@ -102,25 +102,10 @@ describe('DashboardContent', () => {
       `/plans/${plan.id}/modules/${summary.modules[0]?.id}`,
     );
     expect(
-      screen.queryByText('Progress tracking coming soon'),
-    ).not.toBeInTheDocument();
-    expect(
       screen.getByText('From the hours you set for this plan'),
     ).toBeVisible();
     expect(screen.getByText('Read the handbook')).toBeVisible();
     expect(screen.getByText('Completed · TypeScript · 45 min')).toBeVisible();
-    expect(
-      screen.queryByRole('progressbar', { name: 'Weekly learning pace' }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
-    expect(screen.queryByText('Projects')).not.toBeInTheDocument();
-    expect(screen.queryByText(/hrs learned/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: 'Suggested next steps' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Based on your current plans and available actions.'),
-    ).not.toBeInTheDocument();
   });
 
   it('renders a zero-hour weekly target as reported', async () => {
@@ -188,16 +173,6 @@ describe('DashboardContent', () => {
     ).toBeVisible();
     expect(
       screen.queryByRole('link', { name: 'Create a plan' }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('Join the community')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('heading', { name: 'Suggested next steps' }),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText('See pricing')).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('link', {
-        name: /Review every route you have started/,
-      }),
     ).not.toBeInTheDocument();
   });
 

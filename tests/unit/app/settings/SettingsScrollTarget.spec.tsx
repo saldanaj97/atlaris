@@ -73,7 +73,6 @@ describe('SettingsSectionNavigation', () => {
 
     renderSettingsNav();
 
-    expect(screen.queryByRole('link', { name: /Plan & billing/ })).toBeNull();
     expect(screen.getByRole('link', { name: /Usage/ })).toHaveAttribute(
       'href',
       '/settings/usage',

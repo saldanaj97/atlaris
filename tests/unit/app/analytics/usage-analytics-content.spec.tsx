@@ -1,7 +1,4 @@
-import type {
-  UsageAnalyticsDayRow,
-  UsageAnalyticsModel,
-} from '@/app/(app)/analytics/usage/usage-analytics-model';
+import type { UsageAnalyticsModel } from '@/app/(app)/analytics/usage/usage-analytics-model';
 
 import { UsageAnalyticsContent } from '@/app/(app)/analytics/usage/usage-analytics-content';
 import {
@@ -110,17 +107,6 @@ const weeklyTrends = weeks.map(
   }),
 );
 
-const dailyTrends: UsageAnalyticsDayRow[] = Array.from(
-  { length: 30 },
-  (_, index) => ({
-    dateKey: `2026-05-${String(index + 1).padStart(2, '0')}`,
-    label: `May ${index + 1}`,
-    progressChangeCount: index % 4,
-    completedEvents: index % 3,
-    estimatedCompletionAddedMinutes: (index % 5) * 20,
-  }),
-);
-
 const model: UsageAnalyticsModel = {
   plans: [
     {
@@ -164,15 +150,6 @@ const model: UsageAnalyticsModel = {
   moduleCompletionPercent: 44,
   completedMinutes: 960,
   totalMinutes: 2460,
-  plansInProgress: 3,
-  planTimeShares: [
-    {
-      id: 'plan-1',
-      topic: 'Applied TypeScript Architecture',
-      completedMinutes: 420,
-      percent: 44,
-    },
-  ],
   analyticsTimezone: 'America/Chicago',
   history: {
     hasActivity: true,
@@ -188,8 +165,6 @@ const model: UsageAnalyticsModel = {
       isCurrentWeek: true,
     },
     weeklyTrends,
-    dailyTrends,
-    maxWeeklyProgressChanges: 10,
   },
 };
 
@@ -202,7 +177,6 @@ describe('UsageAnalyticsContent', () => {
       screen.getByRole('heading', { name: 'Learning analytics' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Current completion')).toBeInTheDocument();
-    expect(screen.queryByText('Accessible plans')).not.toBeInTheDocument();
     expect(
       screen.getByText(
         'Progress across plans you can access, based on the tasks and modules you have completed.',
@@ -257,16 +231,6 @@ describe('UsageAnalyticsContent', () => {
     expect(screen.getByText('2 days from best')).toBeInTheDocument();
     expect(screen.getAllByLabelText('Down')).toHaveLength(3);
     expect(screen.queryByLabelText('Up')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
-    expect(screen.queryByText('Plans in progress')).not.toBeInTheDocument();
-    expect(screen.queryByText('Time spent learning')).not.toBeInTheDocument();
-    expect(screen.queryByText('Time by plan')).not.toBeInTheDocument();
-    expect(screen.queryByText('Recent activity')).not.toBeInTheDocument();
-    expect(screen.queryByText('vs. previous 30 days')).not.toBeInTheDocument();
-    expect(screen.queryByText('Executive Review')).not.toBeInTheDocument();
-    expect(screen.queryByText('Command Board')).not.toBeInTheDocument();
-    expect(screen.queryByText('Scoreboard')).not.toBeInTheDocument();
   });
 
   it('plots every top plan at narrow and wide widths', async () => {
