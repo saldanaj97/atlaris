@@ -636,7 +636,7 @@ describe('ClerkPricingTable', () => {
       );
     });
 
-    it('omits consent from the free plan, the current plan, and the closed-app links', async () => {
+    it('shows no renewal consent for the current plan', async () => {
       mocks.getSubscription.mockResolvedValue({
         subscriptionItems: [
           {

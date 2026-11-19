@@ -159,7 +159,7 @@ describe('buildUsageAnalyticsModel', () => {
     expect(model.plans.map((plan) => plan.topic)).toEqual(['React', 'SQL']);
   });
 
-  it('counts completed plans and modules from current completion totals', () => {
+  it('computes task and module completion percents from current totals', () => {
     const model = buildUsageAnalyticsModel([
       planSummary({
         id: 'plan-1',
