@@ -11,6 +11,7 @@ import {
   jobQueue,
   learningActivityEvents,
   learningPlans,
+  lessonProblemReports,
   modules,
   oauthStateTokens,
   openRouterTierModels,
@@ -77,6 +78,7 @@ function assertSafeToTruncate() {
  * or can re-open cross-connection deadlocks—do not rely on CASCADE here.
  */
 const TRUNCATE_TABLES = [
+  lessonProblemReports,
   taskResources,
   learningActivityEvents,
   taskProgress,

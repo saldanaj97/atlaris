@@ -9,6 +9,7 @@ import { LessonAccordionTriggerContent } from './LessonAccordionTriggerContent';
 import { LessonBodyPanel } from './LessonContentBlocks';
 import { LessonResourceList } from './LessonResourceList';
 import { LessonSourceList } from './LessonSourceList';
+import { ReportLessonProblemDialog } from './ReportLessonProblemDialog';
 import { TaskCompletionButton } from '@/app/(app)/plans/[id]/components/TaskCompletionButton';
 import { APP_SHELL_SCROLL_MARGIN } from '@/components/layout/app-shell-width';
 import {
@@ -20,6 +21,8 @@ import { cn } from '@/lib/utils';
 import { Lock } from 'lucide-react';
 
 interface LessonAccordionItemProps {
+  planId: string;
+  moduleId: string;
   lesson: ModuleDetailTask;
   status: ProgressStatus;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
@@ -49,13 +52,25 @@ function LockedContentOverlay() {
   );
 }
 
+/**
+ * ISO string for the lesson version on screen. Accepts a string too, in case
+ * the date arrives serialized from the server.
+ */
+function toLessonVersion(value: Date | string | null): string | null {
+  return value === null ? null : new Date(value).toISOString();
+}
+
 function LessonContent({
+  planId,
+  moduleId,
   lesson,
   onStatusChange,
   resources,
   status,
   generationState,
 }: {
+  planId: string;
+  moduleId: string;
   lesson: ModuleDetailTask;
   onStatusChange: (taskId: string, nextStatus: ProgressStatus) => void;
   resources: LessonResources;
@@ -68,19 +83,34 @@ function LessonContent({
       <LessonBodyPanel lesson={lesson} generationState={generationState} />
       <LessonSourceList sources={lesson.sources} />
 
-      <div className='mt-6 flex justify-end'>
-        <TaskCompletionButton
-          taskId={lesson.id}
-          status={status}
-          onStatusChange={onStatusChange}
-          variant='lesson'
-        />
+      <div className='mt-6 flex flex-wrap items-center justify-between gap-3'>
+        {lesson.lessonContent !== null ? (
+          <ReportLessonProblemDialog
+            planId={planId}
+            moduleId={moduleId}
+            taskId={lesson.id}
+            lessonTitle={lesson.title}
+            lessonContentUpdatedAt={toLessonVersion(
+              lesson.lessonContentUpdatedAt,
+            )}
+          />
+        ) : null}
+        <div className='ml-auto'>
+          <TaskCompletionButton
+            taskId={lesson.id}
+            status={status}
+            onStatusChange={onStatusChange}
+            variant='lesson'
+          />
+        </div>
       </div>
     </>
   );
 }
 
 export function LessonAccordionItem({
+  planId,
+  moduleId,
   lesson,
   status,
   onStatusChange,
@@ -130,6 +160,8 @@ export function LessonAccordionItem({
             <LockedContentOverlay />
           ) : (
             <LessonContent
+              planId={planId}
+              moduleId={moduleId}
               lesson={lesson}
               status={status}
               onStatusChange={onStatusChange}

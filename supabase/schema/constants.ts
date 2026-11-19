@@ -63,3 +63,18 @@ export const MAX_GENERATION_QUALITY_PASS = 2;
 
 /** Optional steps a per-plan AI spend ceiling can cut (`generation_budget_cuts.step`). */
 export const GENERATION_BUDGET_CUT_STEPS = ['advisor', 'repair'] as const;
+
+/**
+ * Max characters for `lesson_problem_reports.note`. Enforced by both the app
+ * (route zod schema and the dialog's `maxLength`) and the DB CHECK
+ * `lesson_problem_reports_note_length`.
+ */
+export const MAX_LESSON_PROBLEM_REPORT_NOTE_LENGTH = 1_000;
+
+/** Reasons a learner can give when reporting a lesson (`lesson_problem_reason` enum). */
+export const LESSON_PROBLEM_REASONS = [
+  'incorrect',
+  'unclear',
+  'broken_source',
+  'other',
+] as const;
