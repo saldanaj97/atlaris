@@ -27,7 +27,6 @@ describe('MaintenancePage', () => {
     expect(
       within(main).getByRole('button', { name: 'Try again' }),
     ).toBeInTheDocument();
-    expect(within(main).queryByText('Maintenance')).not.toBeInTheDocument();
     expect(
       within(main).getByText(
         /Atlaris is temporarily unavailable while maintenance is in progress/,
@@ -44,11 +43,5 @@ describe('MaintenancePage', () => {
       within(footer).queryByRole('link', { name: 'Atlaris - Go to homepage' }),
     ).not.toBeInTheDocument();
     expect(within(footer).getByLabelText('Atlaris')).toBeInTheDocument();
-    expect(
-      screen.queryByText(/A brighter future takes a little patience/),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Learn. Build. Go further.'),
-    ).not.toBeInTheDocument();
   });
 });

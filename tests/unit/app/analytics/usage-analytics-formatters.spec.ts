@@ -27,8 +27,6 @@ function emptyAnalyticsModel(): UsageAnalyticsModel {
     moduleCompletionPercent: 0,
     completedMinutes: 0,
     totalMinutes: 0,
-    plansInProgress: 0,
-    planTimeShares: [],
     analyticsTimezone: 'UTC',
     history: {
       hasActivity: false,
@@ -36,8 +34,6 @@ function emptyAnalyticsModel(): UsageAnalyticsModel {
       longestStreakDays: 0,
       currentWeek: emptyCurrentWeek,
       weeklyTrends: [emptyCurrentWeek],
-      dailyTrends: [],
-      maxWeeklyProgressChanges: 0,
     },
   };
 }

@@ -214,7 +214,7 @@ describe('PlanPendingState', () => {
     expect(revalidateMock).toHaveBeenCalledTimes(1);
   });
 
-  it('omits the create-plan link when retries are exhausted', () => {
+  it('replaces retry with the exhausted message once retries run out', () => {
     mockPlanStatus({
       status: 'failed',
       attempts: 2,
@@ -235,8 +235,10 @@ describe('PlanPendingState', () => {
       screen.queryByRole('button', { name: /retry generation/i }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('link', { name: /create a new plan/i }),
-    ).not.toBeInTheDocument();
+      screen.getByText(
+        'Maximum retry attempts reached. Return to your plans to try again.',
+      ),
+    ).toBeInTheDocument();
   });
 
   it('retries generation when the retry action is clicked', async () => {

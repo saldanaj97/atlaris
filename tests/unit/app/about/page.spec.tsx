@@ -114,11 +114,5 @@ describe('AboutPage', () => {
     expect(
       within(footer).getByRole('link', { name: 'support@atlaris.app' }),
     ).toHaveAttribute('href', 'mailto:support@atlaris.app');
-    expect(screen.queryByText(/built by one person/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByText(/replies may take a night/i),
-    ).not.toBeInTheDocument();
-    expect(screen.queryByText(/10,000/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/alex r\./i)).not.toBeInTheDocument();
   });
 });

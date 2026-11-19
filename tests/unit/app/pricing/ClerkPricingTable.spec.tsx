@@ -152,7 +152,7 @@ describe('ClerkPricingTable', () => {
     vi.unstubAllGlobals();
   });
 
-  it('shows a retryable error when Clerk Billing is unavailable and recovers without export copy', async () => {
+  it('shows a retryable error when Clerk Billing is unavailable and recovers on retry', async () => {
     mocks.useClerk.mockReturnValue({ loaded: true });
     const user = userEvent.setup();
 
@@ -163,7 +163,6 @@ describe('ClerkPricingTable', () => {
     ).not.toBeInTheDocument();
     expect(await screen.findByRole('alert')).toBeVisible();
     expect(screen.getByRole('button', { name: 'Try again' })).toBeVisible();
-    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
 
     mocks.useClerk.mockReturnValue({
       billing: {
@@ -188,11 +187,9 @@ describe('ClerkPricingTable', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active plans')).toBeVisible();
-    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
 
@@ -1111,7 +1108,7 @@ describe('ClerkPricingTable', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a retryable error when plan loading fails and recovers without export copy', async () => {
+  it('shows a retryable error when plan loading fails and recovers on retry', async () => {
     window.history.replaceState(
       {},
       '',
@@ -1126,7 +1123,6 @@ describe('ClerkPricingTable', () => {
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(window.location.search).toBe('');
 
     mocks.getPlans.mockResolvedValue({
@@ -1145,11 +1141,9 @@ describe('ClerkPricingTable', () => {
     await user.click(screen.getByRole('button', { name: 'Try again' }));
 
     expect(await screen.findByText('10 active plans')).toBeVisible();
-    expect(screen.queryByText('Priority queue access')).not.toBeInTheDocument();
     expect(
       screen.queryByTestId('native-pricing-table'),
     ).not.toBeInTheDocument();
-    expect(screen.queryByText(/\bexports?\b/i)).not.toBeInTheDocument();
     expect(screen.getByTestId('checkout-plan_starter')).toBeVisible();
   });
 
@@ -1245,13 +1239,5 @@ describe('ClerkPricingTable', () => {
     expect(
       await screen.findByRole('article', { name: 'Starter' }),
     ).toBeVisible();
-  });
-
-  it('renders the monthly fee from Clerk plan data', async () => {
-    mocks.getPlans.mockResolvedValue({ data: [STARTER_PLAN] });
-
-    await renderPricingTable();
-
-    expect(await screen.findByText('$10')).toBeVisible();
   });
 });

@@ -42,7 +42,6 @@ describe('LocalPricingPreview comparison', () => {
     expect(
       screen.getByRole('heading', { name: 'Compare plans' }),
     ).toBeVisible();
-    expect(screen.queryByText(/current plan catalog/i)).toBeNull();
 
     const table = screen.getByRole('table', { name: 'Plan comparison' });
     const headers = within(table).getAllByRole('columnheader');

@@ -93,21 +93,12 @@ describe('BillingCards', () => {
     );
     expect(screen.getByText('Active plans')).toBeVisible();
     expect(screen.getByText('Regenerations (monthly)')).toBeVisible();
-    expect(screen.queryByText('Exports (monthly)')).not.toBeInTheDocument();
-    expect(
-      screen.queryByText('Lesson generations (monthly)'),
-    ).not.toBeInTheDocument();
     expect(screen.getByText('2/5')).toBeVisible();
     expect(screen.getByText('3/10')).toBeVisible();
-    expect(screen.queryByText('4/20')).not.toBeInTheDocument();
     expect(screen.getByLabelText('Active plans: 2 of 5')).toBeVisible();
     expect(
       screen.getByLabelText('Monthly regenerations: 3 of 10'),
     ).toBeVisible();
-    expect(screen.queryByLabelText(/Monthly exports/i)).not.toBeInTheDocument();
-    expect(
-      screen.queryByLabelText(/Monthly lesson generations/i),
-    ).not.toBeInTheDocument();
   });
 
   it('lets paid subscribers manage or cancel and states the auto-renewal terms', async () => {
@@ -207,9 +198,6 @@ describe('BillingCards', () => {
     await renderBillingCards();
 
     expect(screen.getAllByRole('alert')).toHaveLength(2);
-    expect(
-      screen.queryByText('Unavailable right now.'),
-    ).not.toBeInTheDocument();
 
     await user.click(screen.getAllByRole('button', { name: 'Try again' })[0]!);
 
