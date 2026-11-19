@@ -825,7 +825,7 @@ describe('ModuleLessonsClient generation', () => {
     ).toBeInTheDocument();
   });
 
-  it('toasts provider failure and refreshes', async () => {
+  it('toasts provider failure without refreshing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -851,7 +851,7 @@ describe('ModuleLessonsClient generation', () => {
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it('toasts locked response and refreshes stale module state', async () => {
+  it('toasts locked response without refreshing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -873,7 +873,7 @@ describe('ModuleLessonsClient generation', () => {
     expect(refreshMock).not.toHaveBeenCalled();
   });
 
-  it('toasts disabled response and refreshes', async () => {
+  it('toasts disabled response without refreshing', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
