@@ -755,7 +755,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('disabled');
   });
 
-  it('records attempts without enforcing a lesson product quota', async () => {
+  it("succeeds for a free user with prior lesson usage and increments the month's row", async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota');
     const userId = await ensureUser({
       authUserId,
@@ -782,7 +782,6 @@ describe('module lesson generation boundary (integration)', () => {
     });
 
     expect(result.kind).toBe('success');
-    expect(result).not.toMatchObject({ kind: 'quota_denied' });
 
     const [modRow] = await db
       .select()

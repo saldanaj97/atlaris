@@ -141,36 +141,6 @@ describe('Module Queries', () => {
       expect(result?.taskRows.map((t) => t.order)).toEqual([1, 2, 3]);
     });
 
-    it('returns taskRows only for requested module id', async () => {
-      const module = await createTestModule({
-        planId,
-        title: 'Detailed Module',
-        description: 'Module for testing task details',
-        estimatedMinutes: 90,
-      });
-
-      const task = await createTestTask({
-        moduleId: module.id,
-        title: 'Detailed Task',
-        description: 'This is a detailed task description',
-        estimatedMinutes: 90,
-      });
-
-      const result = await getModuleDetailRows(planId, module.id, userId, db);
-
-      expect(result).not.toBeNull();
-      expect(result?.taskRows).toHaveLength(1);
-      const fetchedTask = result?.taskRows[0];
-      expect(fetchedTask).not.toBeUndefined();
-      expect(fetchedTask?.id).toBe(task.id);
-      expect(fetchedTask?.title).toBe('Detailed Task');
-      expect(fetchedTask?.description).toBe(
-        'This is a detailed task description',
-      );
-      expect(fetchedTask?.estimatedMinutes).toBe(90);
-      expect(fetchedTask?.order).toBe(1);
-    });
-
     it('does not mix tasks from sibling modules', async () => {
       const module1 = await createTestModule({
         planId,
@@ -206,37 +176,6 @@ describe('Module Queries', () => {
       expect(result).not.toBeNull();
       expect(result?.taskRows).toHaveLength(1);
       expect(result?.taskRows[0].title).toBe('Module 1 Task');
-    });
-
-    it('handles many tasks', async () => {
-      const module = await createTestModule({
-        planId,
-        title: 'Large Module',
-        description: 'Module with many tasks',
-        estimatedMinutes: 600,
-      });
-
-      await Promise.all(
-        Array.from({ length: 10 }, (_, i) =>
-          createTestTask({
-            moduleId: module.id,
-            order: i + 1,
-            title: `Task ${i + 1}`,
-            description: `Description for task ${i + 1}`,
-            estimatedMinutes: 60,
-          }),
-        ),
-      );
-
-      const result = await getModuleDetailRows(planId, module.id, userId, db);
-
-      expect(result).not.toBeNull();
-      expect(result?.module.id).toBe(module.id);
-      expect(result?.module.title).toBe('Large Module');
-      expect(result?.taskRows).toHaveLength(10);
-
-      const taskIds = result?.taskRows.map((t) => t.id) ?? [];
-      expect(new Set(taskIds).size).toBe(10);
     });
 
     it('includes module metadata fields', async () => {

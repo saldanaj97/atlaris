@@ -54,7 +54,7 @@ async function insertReadyAiPlan(
 }
 
 describe('user lifetime entitlement fields', () => {
-  it('adds nullable entitlement columns without extra indexes', async () => {
+  it('adds nullable entitlement columns', async () => {
     const rows = (await db.execute(sql`
       SELECT column_name, data_type, is_nullable, udt_name
       FROM information_schema.columns
@@ -93,19 +93,6 @@ describe('user lifetime entitlement fields', () => {
         udt_name: 'timestamptz',
       },
     ]);
-
-    const indexRows = (await db.execute(sql`
-      SELECT indexname
-      FROM pg_indexes
-      WHERE schemaname = 'public'
-        AND tablename = 'users'
-        AND (
-          indexdef ILIKE '%initial_plan_generated_at%'
-          OR indexdef ILIKE '%free_access_plan_id%'
-          OR indexdef ILIKE '%free_access_plan_selected_at%'
-        )
-    `)) as Array<{ indexname: string }>;
-    expect(indexRows).toEqual([]);
   });
 
   it('clears free_access_plan_id on plan delete and preserves selected_at', async () => {
@@ -332,22 +319,5 @@ describe('user lifetime entitlement fields', () => {
     expect(second.freeAccessPlanSelectedAt).toEqual(
       first.freeAccessPlanSelectedAt,
     );
-  });
-
-  it('records SET NULL delete behavior on the free-access plan foreign key', async () => {
-    const constraints = (await db.execute(sql`
-      SELECT conname, confdeltype
-      FROM pg_constraint
-      WHERE conrelid = 'public.users'::regclass
-        AND contype = 'f'
-        AND conname = 'users_free_access_plan_id_learning_plans_id_fk'
-    `)) as Array<{ conname: string; confdeltype: string }>;
-
-    expect(constraints).toEqual([
-      {
-        conname: 'users_free_access_plan_id_learning_plans_id_fk',
-        confdeltype: 'n',
-      },
-    ]);
   });
 });

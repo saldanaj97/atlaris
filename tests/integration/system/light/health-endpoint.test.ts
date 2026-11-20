@@ -285,7 +285,6 @@ describe('Health Endpoint', () => {
       const data = await response.json();
 
       expect(data).toHaveProperty('timestamp');
-      expect(() => new Date(data.timestamp)).not.toThrow();
 
       // Verify timestamp is recent (within last minute)
       const timestamp = new Date(data.timestamp);

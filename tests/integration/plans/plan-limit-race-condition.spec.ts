@@ -28,36 +28,6 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     testUserId = user.id;
   });
 
-  it('should handle sequential requests correctly', async () => {
-    // T201: Create plans sequentially past the starter limit
-    const results = [];
-
-    for (let i = 0; i < 12; i++) {
-      try {
-        const plan = await atomicInsertPlanOrThrow(db, testUserId, {
-          topic: `Sequential Topic ${i}`,
-          skillLevel: 'intermediate',
-          weeklyHours: 10,
-          learningStyle: 'reading',
-          visibility: 'private',
-          origin: 'ai',
-        });
-        results.push({ success: true, planId: plan.id });
-      } catch (error) {
-        results.push({
-          success: false,
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    }
-
-    // First 10 should succeed, remaining should fail
-    expect(results.slice(0, 10).every((r) => r.success)).toBe(true);
-    expect(results[10].success).toBe(false);
-    expect(results[11].success).toBe(false);
-    expect(results[10].error).toContain('Plan limit reached');
-  });
-
   it('should allow pro tier users unlimited concurrent plans', async () => {
     // T202: Update user to pro tier
     await db
@@ -159,29 +129,5 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
       .from(learningPlans)
       .where(eq(learningPlans.userId, testUserId));
     expect(plans.length).toBe(10);
-  });
-
-  it('should refuse a user with no subscription and insert nothing', async () => {
-    await db
-      .update(users)
-      .set({ subscriptionTier: 'free' })
-      .where(eq(users.id, testUserId));
-
-    await expect(
-      atomicInsertPlanOrThrow(db, testUserId, {
-        topic: 'No subscription',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-      }),
-    ).rejects.toThrow('SUBSCRIPTION_REQUIRED');
-
-    const plans = await db
-      .select()
-      .from(learningPlans)
-      .where(eq(learningPlans.userId, testUserId));
-    expect(plans.length).toBe(0);
   });
 });

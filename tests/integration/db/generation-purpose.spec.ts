@@ -1,5 +1,4 @@
 import { reserveAttemptSlot } from '@/lib/db/queries/attempts';
-import { GENERATION_PURPOSES } from '@/shared/types/generation-purpose';
 import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { createTestPlan } from '@tests/fixtures/plans';
@@ -24,41 +23,6 @@ async function createPlanForPurpose(
 }
 
 describe('generation_attempts generation purpose persistence', () => {
-  it('stores the enum as a non-null queryable column with initial default', async () => {
-    const rows = (await db.execute(sql`
-      SELECT column_name, is_nullable, column_default, udt_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'generation_attempts'
-        AND column_name = 'generation_purpose'
-    `)) as Array<{
-      column_name: string;
-      is_nullable: string;
-      column_default: string | null;
-      udt_name: string;
-    }>;
-
-    expect(rows).toEqual([
-      {
-        column_name: 'generation_purpose',
-        is_nullable: 'NO',
-        column_default: expect.stringContaining('initial'),
-        udt_name: 'generation_purpose',
-      },
-    ]);
-
-    const enumRows = (await db.execute(sql`
-      SELECT e.enumlabel
-      FROM pg_type t
-      JOIN pg_enum e ON e.enumtypid = t.oid
-      WHERE t.typname = 'generation_purpose'
-      ORDER BY e.enumsortorder
-    `)) as Array<{ enumlabel: string }>;
-    expect(enumRows.map((row) => row.enumlabel)).toEqual([
-      ...GENERATION_PURPOSES,
-    ]);
-  });
-
   it('round-trips initial and regeneration and defaults omitted inserts to initial', async () => {
     const { planId } = await createPlanForPurpose('round-trip');
 
@@ -171,6 +135,38 @@ describe('generation_attempts generation purpose persistence', () => {
       .from(learningPlans)
       .where(eq(learningPlans.id, planId));
     expect(plan?.id).toBe(planId);
+  });
+
+  it('rejects a null generation purpose at the database', async () => {
+    const { planId } = await createPlanForPurpose('null');
+
+    await expect(
+      db.execute(
+        sql`INSERT INTO generation_attempts (
+          plan_id,
+          status,
+          duration_ms,
+          modules_count,
+          tasks_count,
+          generation_purpose
+        ) VALUES (
+          ${planId}::uuid,
+          'success',
+          1,
+          1,
+          1,
+          NULL
+        )`,
+      ),
+    ).rejects.toMatchObject({
+      cause: { code: '23502', column_name: 'generation_purpose' },
+    });
+
+    const remaining = await db
+      .select({ id: generationAttempts.id })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
+    expect(remaining).toEqual([]);
   });
 
   it('persists explicit purpose through attempt reservation for initial and regeneration', async () => {

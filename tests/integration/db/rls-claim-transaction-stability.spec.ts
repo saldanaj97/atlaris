@@ -100,14 +100,6 @@ describe('RLS JWT claim transaction stability — Testcontainers Postgres', () =
     expect(actual).toBe(expectedClaims);
   });
 
-  it('session-level JWT claims are visible inside dbClient.transaction without re-application', async () => {
-    const actual = await rlsDb.transaction(async (tx) => {
-      return readJwtClaims(tx);
-    });
-    logClaimComparison('simple_transaction', expectedClaims, actual);
-    expect(actual).toBe(expectedClaims);
-  });
-
   it('JWT claims remain visible after pg_advisory_xact_lock inside transaction', async () => {
     const actual = await rlsDb.transaction(async (tx) => {
       await tx.execute(

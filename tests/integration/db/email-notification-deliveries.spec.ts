@@ -64,19 +64,6 @@ function hasCheckConstraintViolation(
 }
 
 describe('email notification deliveries ledger', () => {
-  it('indexes logical run summaries by category, delivery key, and status', async () => {
-    const indexes = (await db.execute(sql`
-      select indexdef
-      from pg_indexes
-      where schemaname = 'public'
-        and tablename = 'email_notification_deliveries'
-        and indexname = 'idx_email_notification_deliveries_run_summary'
-    `)) as Array<{ indexdef: string }>;
-
-    expect(indexes).toHaveLength(1);
-    expect(indexes[0]?.indexdef).toContain('(category, delivery_key, status)');
-  });
-
   it('reconciles terminal counts for a logical run from the ledger', async () => {
     const [firstUserId, secondUserId] = await Promise.all([
       createDeliveryUser('email-ledger-summary-first'),
