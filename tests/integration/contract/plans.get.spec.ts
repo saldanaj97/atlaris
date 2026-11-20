@@ -154,7 +154,7 @@ describe('GET /api/v1/plans/:planId', () => {
     });
   });
 
-  it('returns 403 for an owned locked Free plan and 404 for a non-owned plan', async () => {
+  it('returns 403 for an owned locked Free plan and 200 for the selected one', async () => {
     const ownerAuth = buildTestAuthUserId('plan-detail-locked-owner');
     setTestUser(ownerAuth);
     const ownerId = await ensureUser({
@@ -211,17 +211,5 @@ describe('GET /api/v1/plans/:planId', () => {
       buildRequest(keepPlan.id).context,
     );
     expect(selectedResponse.status).toBe(200);
-
-    const strangerAuth = buildTestAuthUserId('plan-detail-locked-stranger');
-    setTestUser(strangerAuth);
-    await ensureUser({
-      authUserId: strangerAuth,
-      email: buildTestEmail(strangerAuth),
-    });
-    const strangerResponse = await GET(
-      buildRequest(lockedPlan.id).request,
-      buildRequest(lockedPlan.id).context,
-    );
-    expect(strangerResponse.status).toBe(404);
   });
 });

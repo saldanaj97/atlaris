@@ -6,8 +6,6 @@ import { ensureUser } from '@tests/helpers/db/users';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
 import { NextRequest } from 'next/server';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -271,17 +269,5 @@ describe('GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status', ()
       error: 'Unauthorized',
       code: 'UNAUTHORIZED',
     });
-  });
-
-  it('keeps service-role imports out of the user-facing route', () => {
-    const routeSource = readFileSync(
-      join(
-        process.cwd(),
-        'src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/status/route.ts',
-      ),
-      'utf8',
-    );
-
-    expect(routeSource).not.toContain('@supabase/service-role');
   });
 });

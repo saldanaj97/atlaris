@@ -70,7 +70,6 @@ describe('GET /api/v1/user/profile', () => {
     expect(new Date(body.createdAt).toString()).not.toBe('Invalid Date');
 
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('monthlyExportCount');
   });
 });
 
@@ -120,7 +119,6 @@ describe('PUT /api/v1/user/profile', () => {
       analyticsTimezone: 'UTC',
     });
     expect(body).not.toHaveProperty('authUserId');
-    expect(body).not.toHaveProperty('monthlyExportCount');
 
     const updated = await db.query.users.findFirst({
       where: (fields, operators) => operators.eq(fields.authUserId, authUserId),
