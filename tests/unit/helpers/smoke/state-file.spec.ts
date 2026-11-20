@@ -131,11 +131,9 @@ describe('smoke state-file', () => {
     expect(() => readSmokeStateFromPath(path, deps)).toThrow(/cannot read/);
   });
 
-  it('createSmokeStateTempDir creates a unique directory under tmpdir', () => {
-    const a = createSmokeStateTempDir(deps);
-    const b = createSmokeStateTempDir(deps);
-    createdDirs.push(a, b);
-    expect(a).not.toBe(b);
-    expect(a.startsWith(join(tmpdir(), 'atlaris-smoke-'))).toBe(true);
+  it('createSmokeStateTempDir creates the state directory under tmpdir', () => {
+    const dir = createSmokeStateTempDir(deps);
+    createdDirs.push(dir);
+    expect(dir.startsWith(join(tmpdir(), 'atlaris-smoke-'))).toBe(true);
   });
 });

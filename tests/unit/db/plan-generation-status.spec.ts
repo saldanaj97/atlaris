@@ -8,21 +8,11 @@ import { describe, expect, it } from 'vitest';
 
 describe('plan-generation-status helpers', () => {
   describe('PLAN_GENERATING_INSERT_DEFAULTS', () => {
-    it('contains exactly generationStatus and isQuotaEligible', () => {
-      expect(Object.keys(PLAN_GENERATING_INSERT_DEFAULTS).sort()).toEqual([
-        'generationStatus',
-        'isQuotaEligible',
-      ]);
-    });
-
-    it('sets generationStatus to generating', () => {
-      expect(PLAN_GENERATING_INSERT_DEFAULTS.generationStatus).toBe(
-        'generating',
-      );
-    });
-
-    it('sets isQuotaEligible to false', () => {
-      expect(PLAN_GENERATING_INSERT_DEFAULTS.isQuotaEligible).toBe(false);
+    it('inserts new plans as generating and not quota-eligible', () => {
+      expect(PLAN_GENERATING_INSERT_DEFAULTS).toEqual({
+        generationStatus: 'generating',
+        isQuotaEligible: false,
+      });
     });
   });
 

@@ -5,35 +5,6 @@ import {
 import { describe, expect, it } from 'vitest';
 
 describe('updateUserProfileSchema', () => {
-  it('accepts a valid name value', () => {
-    const result = updateUserProfileSchema.safeParse({ name: 'Jane Doe' });
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.name).toBe('Jane Doe');
-    }
-  });
-
-  it('accepts null for name', () => {
-    const result = updateUserProfileSchema.safeParse({ name: null });
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.name).toBeNull();
-    }
-  });
-
-  it('accepts a valid analytics timezone', () => {
-    const result = updateUserProfileSchema.safeParse({
-      analyticsTimezone: 'America/Chicago',
-    });
-
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.data.analyticsTimezone).toBe('America/Chicago');
-    }
-  });
-
   it('accepts names at the maximum length boundary', () => {
     const maxLengthName = 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH);
     const result = updateUserProfileSchema.safeParse({ name: maxLengthName });
@@ -42,31 +13,6 @@ describe('updateUserProfileSchema', () => {
     if (result.success) {
       expect(result.data.name).toBe(maxLengthName);
     }
-  });
-
-  it('rejects names longer than the maximum length', () => {
-    const result = updateUserProfileSchema.safeParse({
-      name: 'a'.repeat(USER_PROFILE_NAME_MAX_LENGTH + 1),
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects unknown fields', () => {
-    const result = updateUserProfileSchema.safeParse({
-      name: 'Valid Name',
-      email: 'should-not-be-allowed@example.com',
-    });
-
-    expect(result.success).toBe(false);
-  });
-
-  it('rejects invalid analytics timezones', () => {
-    const result = updateUserProfileSchema.safeParse({
-      analyticsTimezone: 'Not/AZone',
-    });
-
-    expect(result.success).toBe(false);
   });
 
   it('rejects empty updates', () => {

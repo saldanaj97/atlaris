@@ -1,4 +1,5 @@
 import { safeMarkPlanFailed } from '@/features/plans/session/stream-cleanup';
+import { MissingRequestDbContextError } from '@supabase/runtime';
 import { createId } from '@tests/fixtures/ids';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,6 +34,22 @@ describe('stream-cleanup safeMarkPlanFailed', () => {
 
   it('rethrows TypeError so wiring bugs surface', async () => {
     const err = new TypeError('read property of undefined');
+    const persistence = {
+      markGenerationFailure: vi.fn().mockRejectedValue(err),
+      markGenerationSuccess: vi.fn(),
+    };
+
+    await expect(
+      safeMarkPlanFailed(planId, userId, persistence, {
+        logger: { error: loggerError },
+      }),
+    ).rejects.toBe(err);
+
+    expect(loggerError).not.toHaveBeenCalled();
+  });
+
+  it('rethrows MissingRequestDbContextError so a missing request context surfaces', async () => {
+    const err = new MissingRequestDbContextError();
     const persistence = {
       markGenerationFailure: vi.fn().mockRejectedValue(err),
       markGenerationSuccess: vi.fn(),

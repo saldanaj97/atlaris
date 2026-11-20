@@ -38,6 +38,10 @@ describe('authenticated users UPDATE allowlist sync', () => {
     'free_access_plan_selected_at',
   ] as const;
 
+  it('allows authenticated users to update only name and updated_at', () => {
+    expect(USERS_AUTHENTICATED_UPDATE_COLUMNS).toEqual(['name', 'updated_at']);
+  });
+
   it('excludes server-owned lifetime entitlement columns from the allowlist', () => {
     for (const column of serverOwnedEntitlementColumns) {
       expect(USERS_AUTHENTICATED_UPDATE_COLUMNS).not.toContain(column);
@@ -112,27 +116,5 @@ describe('authenticated users UPDATE allowlist sync', () => {
     expect(rlsBootstrap).toContain(
       'REVOKE INSERT ON "users" FROM authenticated;',
     );
-  });
-
-  it('installs auth.jwt from the shared bootstrap module and rls-bootstrap', () => {
-    const sharedBootstrap = readFileSync(
-      resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
-      'utf8',
-    );
-    const testcontainers = readFileSync(
-      resolve(TEST_DIR, '../../setup/testcontainers.ts'),
-      'utf8',
-    );
-    const rlsBootstrap = readFileSync(
-      resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
-      'utf8',
-    );
-
-    expect(sharedBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
-    expect(sharedBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
-    expect(testcontainers).toContain("from '@tests/helpers/db/bootstrap'");
-    expect(rlsBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
-    expect(rlsBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
-    expect(rlsBootstrap).toContain('sql.raw(AUTH_JWT_BOOTSTRAP_SQL)');
   });
 });

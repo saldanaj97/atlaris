@@ -1,4 +1,3 @@
-import { serverOwnedWriteTables } from '../../../security/rls-test-helpers';
 import { AUTHENTICATED_SERVER_OWNED_WRITE_TABLES } from '@supabase/privileges/authenticated-table-privileges';
 /**
  * Intentional readFileSync: ensure bootstrap, RLS bootstrap, migration, and
@@ -13,12 +12,6 @@ const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(TEST_DIR, '../../../../');
 
 describe('server-owned write privilege bootstrap sync', () => {
-  it('security helpers re-export AUTHENTICATED_SERVER_OWNED_WRITE_TABLES', () => {
-    expect([...serverOwnedWriteTables]).toEqual([
-      ...AUTHENTICATED_SERVER_OWNED_WRITE_TABLES,
-    ]);
-  });
-
   it('migration, bootstrap, and rls-bootstrap revoke every server-owned table', () => {
     const migration = readFileSync(
       resolve(

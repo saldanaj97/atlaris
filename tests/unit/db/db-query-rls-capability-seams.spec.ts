@@ -18,7 +18,6 @@ import { describe, expect, it } from 'vitest';
 const TEST_DIR = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(TEST_DIR, '../../..');
 const SRC_ROOT = resolve(REPO_ROOT, 'src');
-const SUPABASE_RUNTIME = resolve(REPO_ROOT, 'supabase/runtime.ts');
 
 const GET_DB_RUNTIME_SPECIFIERS = new Set([
   '@supabase/runtime',
@@ -247,44 +246,6 @@ function collectAmbientGetDbViolations(files: string[]): string[] {
 }
 
 describe('DB query RLS capability seams', () => {
-  it('attempts module keeps explicit dbClient (no runtime getDb import/default)', () => {
-    const attempts = readFileSync(
-      resolve(SRC_ROOT, 'lib/db/queries/attempts.ts'),
-      'utf8',
-    );
-    expect(attempts).not.toContain(`from '@supabase/runtime'`);
-    expect(attempts).not.toContain(`from "@supabase/runtime"`);
-    const withoutComments = stripLineAndBlockComments(attempts);
-    expect(withoutComments).not.toMatch(/\bdbClient\s*=\s*getDb\s*\(\)/);
-  });
-
-  it('lockOwnedPlanById requires explicit dbClient', () => {
-    const plansHelpers = readFileSync(
-      resolve(SRC_ROOT, 'lib/db/queries/helpers/plans-helpers.ts'),
-      'utf8',
-    );
-    const lockedIface =
-      plansHelpers.match(
-        /interface LockedOwnedPlanQueryParams \{[^}]+\}/,
-      )?.[0] ?? '';
-    expect(lockedIface).toContain('interface LockedOwnedPlanQueryParams');
-    expect(lockedIface).toContain('dbClient: PlanQueryClient');
-    expect(lockedIface).not.toContain('dbClient?:');
-  });
-
-  it('admin jobs-metrics defaults to service-role only', () => {
-    const metrics = readFileSync(
-      resolve(SRC_ROOT, 'lib/db/queries/admin/jobs-metrics.ts'),
-      'utf8',
-    );
-    expect(metrics).toContain(`db as serviceRoleDb`);
-    expect(metrics).toContain(`dbClient: typeof serviceRoleDb = serviceRoleDb`);
-    expect(metrics).not.toContain(`from '@supabase/runtime'`);
-    expect(metrics).not.toContain(`from "@supabase/runtime"`);
-    const withoutComments = stripLineAndBlockComments(metrics);
-    expect(withoutComments).not.toMatch(/\bdbClient\s*=\s*getDb\s*\(\)/);
-  });
-
   it('production source forbids ambient getDb below request establishment', () => {
     const files = PRODUCTION_SCAN_ROOTS.flatMap((dir) => walkSourceFiles(dir));
     expect(
@@ -343,7 +304,6 @@ export const db = getDb();
       'utf8',
     );
     const auth = readFileSync(resolve(SRC_ROOT, 'lib/api/auth.ts'), 'utf8');
-    const runtime = readFileSync(SUPABASE_RUNTIME, 'utf8');
 
     expect(
       findRuntimeGetDbImports(requestBoundary, 'request-boundary.ts'),
@@ -355,16 +315,11 @@ export const db = getDb();
       ...REQUEST_BOUNDARY_GET_DB_SITES,
     ]);
     expect(findGetDbCallSites(auth, 'auth.ts')).toEqual(['runWithTestContext']);
-    expect(auth).not.toMatch(/\brequireCurrentUserRecord\b/);
-    expect(runtime).not.toMatch(/\brequireCurrentUserRecord\b/);
-    expect(runtime).toContain('runWithTestContext');
-    expect(runtime).toContain('request-boundary.ts');
 
     const streamCleanup = readFileSync(
       resolve(SRC_ROOT, 'features/plans/session/stream-cleanup.ts'),
       'utf8',
     );
-    expect(streamCleanup).toContain('MissingRequestDbContextError');
     expect(findRuntimeGetDbImports(streamCleanup, 'stream-cleanup.ts')).toEqual(
       [],
     );

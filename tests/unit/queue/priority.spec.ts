@@ -1,7 +1,6 @@
 import {
   computeJobPriority,
   isPriorityTopic,
-  PRIORITY_TOPICS,
 } from '@/features/job-queue/priority';
 import { describe, expect, it } from 'vitest';
 
@@ -27,9 +26,6 @@ describe('computeJobPriority', () => {
       isPriorityTopic: true,
     });
     expect(freePriority).toBeGreaterThan(freeBase);
-  });
-  it('PRIORITY_TOPICS contains non-empty list', () => {
-    expect(PRIORITY_TOPICS.length).toBeGreaterThan(0);
   });
   it('throws error for invalid tier', () => {
     expect(() =>

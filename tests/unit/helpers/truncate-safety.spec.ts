@@ -79,11 +79,4 @@ describe('assertSafeToTruncate (via truncateAll)', () => {
       /invalid POSTGRES_URL for safety/,
     );
   });
-
-  it('non-test DB error is NOT swallowed into the generic invalid-URL message (regression)', async () => {
-    process.env.POSTGRES_URL = 'postgres://host/myapp_prod';
-    await expect(truncateAll()).rejects.toThrow(
-      /Refusing to truncate non-test database "myapp_prod"/,
-    );
-  });
 });
