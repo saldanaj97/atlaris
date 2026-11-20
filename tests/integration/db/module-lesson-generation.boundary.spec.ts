@@ -171,7 +171,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(rows[1]?.id).toBe(task2.id);
   });
 
-  it('persists distinct lesson content for max-batch tasks in one commit', async () => {
+  it('persists lesson content for every task in a max-size batch', async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-max-batch');
     const userId = await ensureUser({
       authUserId,

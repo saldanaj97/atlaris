@@ -72,7 +72,7 @@ describe('PATCH /api/v1/user/preferences/notifications', () => {
     });
   });
 
-  it('keeps category preferences while unsubscribe-all masks effective delivery', async () => {
+  it('stores category preferences unchanged while unsubscribe-all is on', async () => {
     setTestUser(testAuthUserId);
 
     const response = await PATCH(

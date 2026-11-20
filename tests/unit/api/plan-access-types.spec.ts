@@ -114,7 +114,7 @@ describe('Plan Access Types', () => {
       }
     });
 
-    it('maps entitlement AppErrors including selection candidates', () => {
+    it('accessErrorFromAppError maps entitlement AppErrors including selection candidates', () => {
       const entitlement = accessErrorFromAppError(
         new AppError('Upgrade to access this plan.', {
           status: API_ERROR_HTTP_STATUS.PLAN_ENTITLEMENT_REQUIRED,

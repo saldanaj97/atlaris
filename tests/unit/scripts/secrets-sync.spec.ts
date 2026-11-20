@@ -247,7 +247,7 @@ describe('planSync', () => {
     ).toEqual(['FLAGSHIP_API_TOKEN']);
   });
 
-  it('formats names and reasons but never values', () => {
+  it('formats one line per entry with action, name and skip reason', () => {
     expect(
       formatPlan([
         { name: 'A', action: 'add' },

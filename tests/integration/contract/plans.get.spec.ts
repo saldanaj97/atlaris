@@ -21,7 +21,7 @@ describe('GET /api/v1/plans/:planId', () => {
   const ownerAuthId = buildTestAuthUserId('plan-detail-owner');
   const ownerEmail = buildTestEmail(ownerAuthId);
 
-  it('returns plan detail with ordered modules and tasks for owner', async () => {
+  it('returns plan detail with its modules and tasks for the owner', async () => {
     setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
       authUserId: ownerAuthId,
@@ -99,7 +99,7 @@ describe('GET /api/v1/plans/:planId', () => {
     expect(detail.modules[1].tasks).toHaveLength(1);
   });
 
-  it('returns 404 when plan does not exist or not owned by user', async () => {
+  it('returns 404 when the plan does not exist', async () => {
     const nonOwnerAuthId = buildTestAuthUserId('plan-detail-non-owner');
     setTestUser(nonOwnerAuthId);
     await ensureUser({

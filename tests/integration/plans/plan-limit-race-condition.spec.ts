@@ -101,7 +101,7 @@ describe('Plan Limit Race Condition Prevention (T200)', () => {
     expect(plans.length).toBe(10);
   });
 
-  it('should rollback transaction on plan insertion failure', async () => {
+  it('rejects the plan over the limit and keeps the count at 10', async () => {
     for (let i = 0; i < 10; i++) {
       await atomicInsertPlanOrThrow(db, testUserId, {
         topic: `Topic ${i}`,

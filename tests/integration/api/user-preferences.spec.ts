@@ -465,7 +465,7 @@ describe('PATCH /api/v1/user/preferences', () => {
     expect(response.status).toBe(400);
   });
 
-  it('rejects missing preferredAiModel field', async () => {
+  it('rejects an empty preferences object', async () => {
     setTestUser(testAuthUserId);
 
     const request = new Request('http://localhost/api/v1/user/preferences', {

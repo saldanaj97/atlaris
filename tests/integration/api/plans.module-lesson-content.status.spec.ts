@@ -252,7 +252,7 @@ describe('GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status', ()
     expect(body.error).toBe('Invalid planId format.');
   });
 
-  it('returns canonical unauthorized response without calling the read boundary', async () => {
+  it('returns the canonical 401 when signed out', async () => {
     clearTestUser();
 
     const response = await GET(
