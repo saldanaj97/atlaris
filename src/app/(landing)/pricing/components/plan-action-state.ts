@@ -21,7 +21,6 @@ export type PlanActionInput = {
   planNameBySlug: (slug: string) => string;
 };
 
-/** What a pricing card offers a viewer whose auth and subscription have loaded. */
 export type PlanActionState =
   | { kind: 'manage' }
   | { kind: 'note'; text: string }
@@ -31,7 +30,6 @@ export type PlanActionState =
       label: string;
       period: BillingPeriod;
       note: string | null;
-      /** A scheduled switch or an undo: no entitlement changes today. */
       changesNothingToday: boolean;
     };
 
@@ -82,7 +80,6 @@ function pendingChangeNote({
     : 'Access ends when this period ends.';
 }
 
-/** The note on a lower plan's card, or null when that plan can be switched to. */
 function lowerPlanNote({
   plan,
   planPeriod,
@@ -96,8 +93,6 @@ function lowerPlanNote({
   const canSwitchToPlan =
     heldPlan?.canScheduleSwitch === true && isPaidPlan(plan, planPeriod);
   if (!canSwitchToPlan) return `You're on ${viewerPaidPlanName}`;
-  // Clerk defers a move to a lower paid plan to the end of the period. A
-  // change of billing period may not defer, so it isn't offered as one.
   if (heldPlan.planPeriod === null || heldPlan.planPeriod === planPeriod) {
     return null;
   }
@@ -108,7 +103,6 @@ function keepCheckout(input: PlanActionInput): PlanActionState {
   return {
     kind: 'checkout',
     label: `Keep ${input.plan.name}`,
-    // Keeping a plan renews it on the terms the viewer already has.
     period: input.heldPlan?.planPeriod ?? input.planPeriod,
     note: pendingChangeNote(input),
     changesNothingToday: true,
@@ -149,7 +143,6 @@ export function resolvePlanAction(input: PlanActionInput): PlanActionState {
   const { plan, planPeriod, signedIn, heldPlan, scheduledPlan } = input;
 
   if (signedIn && heldPlan && plan.slug === heldPlan.slug) {
-    // Subscribing to the held plan again is how Clerk undoes a pending change.
     const hasPendingChange =
       heldPlan.endingAtPeriodEnd ||
       (heldPlan.canScheduleSwitch && scheduledPlan !== null);

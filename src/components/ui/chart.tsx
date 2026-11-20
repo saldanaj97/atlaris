@@ -11,7 +11,6 @@ export type ChartConfig = Record<
   }
 >;
 
-/** Wraps a Recharts chart with CSS color variables derived from chart config. */
 export function ChartContainer({
   className,
   children,
@@ -57,7 +56,6 @@ type TooltipPayload = {
   fill?: string;
 };
 
-/** Renders a panel tooltip listing each chart series name, color, and value. */
 export function ChartTooltipContent({
   active,
   payload,

@@ -50,10 +50,6 @@ import { generationAttempts } from '@supabase/schema';
 import { asc, count, eq, sql } from 'drizzle-orm';
 import { createHash } from 'node:crypto';
 
-/**
- * The plan row was missing when a reservation locked it: deleted, never
- * committed, or owned by someone else. Not a provider failure.
- */
 export class ReservationPlanNotFoundError extends Error {
   constructor(readonly planId: string) {
     super('Learning plan not found or inaccessible for user');
@@ -159,33 +155,6 @@ export async function findAttemptWithWorkflowIdempotencyKey(params: {
   };
 }
 
-/**
- * Server-owned generation persistence: requires explicit dbClient (AttemptsDbClient)
- * in all params. Do not add default getDb() or make dbClient optional.
- *
- * Production callers pass serviceRoleDb from feature-owned generation boundaries
- * after request auth and ownership checks. RLS-scoped clients are one dedicated
- * session opened from POSTGRES_URL_NON_POOLING (createRlsConnection throws
- * without it), so their JWT claims stay set for the whole session and nothing
- * re-applies them inside a transaction (see docs/technical-debt.md).
- * See supabase/AGENTS.md § "RLS Rules".
- */
-
-/**
- * Atomically reserves an attempt slot for a plan within a single transaction.
- *
- * 1. Acquires namespace-1 per-user admission lock, then namespace-3 plan lifecycle lock.
- * 2. Locks and re-reads the owned plan row.
- * 3. Rejects when an owned module is still `lessonGenerationStatus = 'generating'`.
- * 4. Enforces the active-plan cap when the target does not already own a slot.
- * 5. Enforces durable per-user window limit.
- * 6. Enforces per-plan attempt cap and rejects in-progress duplicates.
- * 7. Inserts a placeholder attempt with status 'in_progress'.
- * 8. Sets the plan's generation_status to 'generating' (durable cap reservation
- *    when the plan was ineligible).
- *
- * @returns AttemptReservation on success, AttemptRejection with reason on rejection.
- */
 export async function reserveAttemptSlot(
   params: ReserveAttemptSlotParams,
 ): Promise<ReserveAttemptResult> {

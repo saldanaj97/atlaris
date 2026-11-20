@@ -100,7 +100,6 @@ export class PlanStatusPoller {
     this.snapshot = this.buildSnapshot(this.state);
   }
 
-  // fallow-ignore-next-line unused-class-member
   revalidate = async (): Promise<void> => {
     await this.transitionAndPollNow({ type: 'revalidate' });
   };
@@ -110,7 +109,6 @@ export class PlanStatusPoller {
    * including from a terminal `failed` status. Reads as `processing` until the
    * first response.
    */
-  // fallow-ignore-next-line unused-class-member
   restart = async (): Promise<void> => {
     await this.transitionAndPollNow({ type: 'restart' });
   };

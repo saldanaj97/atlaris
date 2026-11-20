@@ -17,14 +17,6 @@ function assertExpectedIdsWellFormed(
   }
 }
 
-/**
- * Maps output tasks to `expectedOrderedTaskIds` by position. The prompt lists
- * tasks in DB order, so `tasks[i]` belongs to the i-th expected task. An
- * echoed id that matches no expected task (garbled or invented) is replaced
- * with the expected id, even when every id is garbled. An id that names a
- * different expected task means the model reordered or duplicated lessons,
- * so the batch is rejected.
- */
 function assignTaskIdsByPosition(
   output: ModuleLessonBatchProviderOutput,
   expectedOrderedTaskIds: readonly string[],
@@ -121,13 +113,9 @@ export function parseModuleLessonBatchText(
 
 export type ParseModuleLessonBatchFromStreamOptions =
   ParseModuleLessonBatchOptions & {
-    /** Defaults to `MAX_RAW_RESPONSE_CHARS`. */
     readonly maxChars?: number;
   };
 
-/**
- * Accumulates stream chunks to a string, failing past `maxChars`.
- */
 export async function bufferModuleLessonBatchStream(
   stream: AsyncIterable<string> | ReadableStream<string>,
   options?: ParseModuleLessonBatchFromStreamOptions,

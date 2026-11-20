@@ -41,9 +41,6 @@ export function safeStringifyUnknown(value: unknown): string {
   }
 }
 
-/**
- * Best-effort string for thrown or unknown values (logging / API messages).
- */
 export function coerceUnknownToMessage(value: unknown): string {
   if (typeof value === 'string') {
     return value;

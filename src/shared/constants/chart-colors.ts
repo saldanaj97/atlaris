@@ -10,10 +10,6 @@ export const PLAN_CHART_COLORS = [
   'var(--chart-5)',
 ] as const;
 
-/**
- * Line dash per series, paired by index with `PLAN_CHART_COLORS`. Series 5 is
- * slate, the one neutral, so it is also dashed and never relies on hue alone.
- */
 export const PLAN_CHART_DASHES = [
   undefined,
   undefined,

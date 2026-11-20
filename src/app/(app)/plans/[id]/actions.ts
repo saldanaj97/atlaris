@@ -13,20 +13,6 @@ interface BatchUpdateTaskProgressInput {
   updates: Array<{ taskId: string; status: ProgressStatus }>;
 }
 
-/**
- * Server action to batch update multiple task progress records from the plan overview page.
- * Delegates validation, scope checks, persistence, and path selection to `batchUpdateTaskProgressCore`.
- *
- * Auth and RLS boundary:
- * - Wrapped by `requestBoundary.action()`, which runs `withServerActionContext()` before the callback.
- * - That boundary authenticates via `getEffectiveAuthUserId({ strict: true })` and, outside test runtime,
- *   installs a request-scoped RLS Drizzle client into request context (`runWithAuthenticatedContext`).
- * - The callback receives `actor` and `db` from the boundary; pass `db` to query functions instead of
- *   calling `getDb()` ad hoc inside the action.
- * - Query-layer ownership checks in `batchUpdateTaskProgressCore` remain required for defense in depth.
- *
- * React Doctor note: `server-auth-actions` is a false positive for actions using this wrapper.
- */
 export async function batchUpdateTaskProgressAction({
   planId,
   updates,

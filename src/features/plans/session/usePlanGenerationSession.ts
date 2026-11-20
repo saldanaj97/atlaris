@@ -65,7 +65,6 @@ type StartPlanGenerationSessionRequest =
     };
 
 type StartPlanGenerationSessionOptions = {
-  /** Called once the server accepts the attempt, before state updates. */
   onPlanIdReady?: (planId: string) => void;
 };
 
@@ -100,7 +99,6 @@ function readStarted(
     : null;
 }
 
-/** `details` of a not-started create or retry: the plan and retryability. */
 function readStartFailureDetails(details: unknown): {
   planId?: string;
   retryable?: boolean;

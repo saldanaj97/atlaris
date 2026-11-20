@@ -6,10 +6,6 @@ import { useRef } from 'react';
 
 import styles from './landing.module.css';
 
-/**
- * Twinkling star layer behind the hero light. The twinkle pauses while the
- * stars are off screen, so the page stops redrawing them every frame.
- */
 export function HeroStars() {
   const ref = useRef<HTMLDivElement>(null);
   useOffscreenPause(ref);

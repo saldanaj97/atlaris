@@ -1,5 +1,3 @@
-// Centralized error types and helpers for API layer
-
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 
 import { getCorrelationId } from '@/lib/api/context';
@@ -57,7 +55,6 @@ export class AuthError extends AppError {
   }
 }
 
-/** The session is still valid but the local user row is tombstoned. */
 export class DeletedAuthUserError extends AuthError {
   constructor() {
     super('Auth user has been deleted.');
@@ -172,20 +169,13 @@ export class AttemptCapExceededError extends AppError {
   }
 }
 
-/**
- * Strips absolute file paths from stack traces to prevent internal
- * directory structure disclosure in log aggregators.
- * Preserves the function name and relative path for debuggability.
- */
 function redactStackTrace(stack: string | undefined): string | undefined {
   if (!stack) {
     return undefined;
   }
 
-  // Normalize separators first so Windows and POSIX stacks are handled equally.
   const normalizedStack = stack.replace(/\\/g, '/');
 
-  // Strip absolute prefixes while keeping relative app/build paths.
   return normalizedStack.replace(
     /(?:[A-Za-z]:)?(?:\/\/[^/\s:()]+)?(?:\/[^/\s:()]+)*\/((?:src|node_modules|\.next|dist)\/[^\s:()]+)/g,
     '$1',

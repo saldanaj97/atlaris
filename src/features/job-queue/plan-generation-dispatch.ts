@@ -12,13 +12,9 @@ import {
 import { logger } from '@/lib/logging/logger';
 
 export type PlanGenerationDispatchResult =
-  /** `202 { accepted, instanceId }`: a new Workflow instance owns the attempt. */
   | { readonly kind: 'accepted'; readonly instanceId: string }
-  /** 2xx without an instance ID: an instance for this attempt already exists. */
   | { readonly kind: 'duplicate' }
-  /** `503 { code: "jobs_paused" | "job_disabled" }`. */
   | { readonly kind: 'disabled'; readonly code: JobsUnavailableCode }
-  /** Any other non-2xx, timeout, network error, or missing configuration. */
   | { readonly kind: 'failed' };
 
 export type DispatchPlanGenerationToWorkerDeps = {
@@ -41,11 +37,6 @@ function readInstanceId(body: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Sends `POST /v1/plan-generation/start` for an attempt the app already
- * reserved (design note, Decision 4, App handling). The caller settles the
- * reservation as a retryable failure on `disabled` or `failed`. Never throws.
- */
 export async function dispatchPlanGenerationToWorker(
   input: PlanGenerationWorkflowInput,
   deps: DispatchPlanGenerationToWorkerDeps = {},

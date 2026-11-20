@@ -19,10 +19,6 @@ import {
   MAX_TASK_TITLE_LENGTH,
 } from '@supabase/schema/constants';
 
-/**
- * The brief with its sources and citation rules. Identical for every lesson
- * in the plan, so it leads the prompt and carries a cache breakpoint.
- */
 export function buildLessonBriefPart(
   research: ResearchBrief,
 ): OpenRouterPromptPart {
@@ -45,10 +41,6 @@ export function buildLessonBriefPart(
 const NO_BRIEF_CITATION_RULE =
   'CITATIONS: This plan has no research sources. Do not cite sources, add [S1]-style markers, or write URLs in the lesson.';
 
-/**
- * The plan, the module and every lesson in it. Identical for every lesson in
- * the module, so it carries the second cache breakpoint.
- */
 export function buildModuleOutlinePart(
   input: ModuleLessonBatchPromptInput,
   hasBrief: boolean,
@@ -126,7 +118,6 @@ export function buildGroundedLessonPromptParts(input: {
   readonly promptInput: ModuleLessonBatchPromptInput;
   readonly taskIndex: number;
   readonly research: ResearchBrief | null;
-  /** Regeneration reason block (JCS-162 fills it); not cached. */
   readonly reason?: string;
 }): OpenRouterPromptPart[] {
   const { promptInput, taskIndex, research } = input;

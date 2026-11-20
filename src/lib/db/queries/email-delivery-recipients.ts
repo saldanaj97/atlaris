@@ -13,9 +13,6 @@ export type EmailDeliveryRecipient = {
   email: string;
 };
 
-/**
- * Bounded cursor page of users with non-empty emails for email workers.
- */
 export async function listEmailDeliveryRecipients(args: {
   batchSize: number;
   cursorUserId?: string | null;
@@ -90,9 +87,6 @@ export async function listEmailDeliveryRecipients(args: {
   };
 }
 
-/**
- * Fences a scheduled send against the current local delivery identity.
- */
 export async function isEmailDeliveryRecipientCurrent(args: {
   userId: string;
   email: string;

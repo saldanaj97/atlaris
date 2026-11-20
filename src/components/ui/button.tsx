@@ -44,7 +44,6 @@ const buttonVariants = cva(
   },
 );
 
-/** Renders a styled button or Slot-wrapped control with variant and size options. */
 function Button({
   className,
   variant = 'default',

@@ -21,7 +21,6 @@ interface PlanOverviewProps {
   regeneration?: PlanRegenerationState;
 }
 
-/** Introduces the plan and keeps the primary learning action near its title. */
 export function PlanOverviewHeader({
   plan,
   stats,

@@ -35,9 +35,6 @@ export type AssertMaintenanceWorkerAccessArgs = {
   unauthorizedLogMessage: string;
 };
 
-/**
- * Shared auth gate for maintenance cleanup POST routes.
- */
 export function assertMaintenanceWorkerAccess(
   args: AssertMaintenanceWorkerAccessArgs,
 ): void {
@@ -61,9 +58,6 @@ export type AssertInternalWorkerAccessArgs = {
   missingWorkerTokenLogMessage: string;
 };
 
-/**
- * Shared auth gate for internal worker/maintenance POST routes.
- */
 export function assertInternalWorkerAccess(
   args: AssertInternalWorkerAccessArgs,
 ): void {

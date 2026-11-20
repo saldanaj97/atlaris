@@ -15,19 +15,15 @@ import {
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 import { aiEnv } from '@/lib/config/env';
 
-// Timing thresholds for test mode behavior
 const FAST_TEST_THRESHOLD_MS = 100;
 const CHUNK_DELAY_MS = 50;
 
-// Variance is only applied when delay >= 1000ms to ensure fast test runs
-// are deterministic. Below this threshold, exact delay is used with no random variance.
 const VARIANCE_THRESHOLD_MS = 1000;
 
 type MockGenerationConfig = {
   delayMs?: number;
   failureRate?: number;
-  deterministicSeed?: number; // If set, makes generation deterministic
-  /** Overrides env MOCK_AI_SCENARIO when set (e.g. tests). */
+  deterministicSeed?: number;
   scenario?: string;
 };
 
@@ -82,10 +78,6 @@ const TASK_TEMPLATES = {
   ],
 };
 
-/**
- * Seeded random number generator for deterministic tests
- * Uses a simple LCG (Linear Congruential Generator)
- */
 class SeededRandom {
   private seed: number;
 
@@ -94,7 +86,6 @@ class SeededRandom {
   }
 
   next(): number {
-    // LCG parameters from Numerical Recipes
     this.seed = (this.seed * 1664525 + 1013904223) >>> 0;
     return this.seed / 0x100000000;
   }
@@ -158,7 +149,6 @@ function generateModules(input: GenerationInput, rng?: SeededRandom): unknown {
       });
     }
 
-    // Module time should roughly match sum of tasks, add some buffer
     const moduleMinutes = Math.min(
       Math.max(totalTaskMinutes, randomInt(120, 240)),
       totalTaskMinutes * 2,
@@ -242,21 +232,17 @@ async function* createMockChunks(
 
   const serialized = JSON.stringify(payload);
   const chunkSize = 80;
-  // Skip inter-chunk delays in fast test mode
   const chunkDelay = delayMs < FAST_TEST_THRESHOLD_MS ? 0 : CHUNK_DELAY_MS;
 
-  // Simulate streaming with realistic delay
   for (let i = 0; i < serialized.length; i += chunkSize) {
     throwIfAborted();
     if (i > 0 && chunkDelay > 0) {
-      // Add small delay between chunks to simulate network
       await sleep(chunkDelay);
     }
     throwIfAborted();
     yield serialized.slice(i, i + chunkSize);
   }
 
-  // Final delay to simulate total generation time
   if (delayMs > 0) {
     await sleep(delayMs);
   }

@@ -35,7 +35,6 @@ export const TRIAL_LIMITS: TierLimitConfig = {
   maxWeeks: 2,
 };
 
-/** The billing fields that decide whether a user is on a free trial. */
 export type TrialSubject = {
   readonly subscriptionTier: SubscriptionTier;
   readonly subscriptionStatus?: string | null;
@@ -52,7 +51,6 @@ export function isTrialing(subject: TrialSubject): boolean {
   );
 }
 
-/** The plan, regeneration and duration limits that apply to this user now. */
 export function limitsForUser(subject: TrialSubject): TierLimitConfig {
   return isTrialing(subject)
     ? TRIAL_LIMITS

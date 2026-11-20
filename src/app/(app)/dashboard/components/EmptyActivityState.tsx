@@ -1,6 +1,3 @@
-/**
- * Empty state inside the dashboard activity ledger.
- */
 export function EmptyActivityState() {
   return (
     <div className='px-5 py-10 text-center sm:px-6 sm:py-12'>

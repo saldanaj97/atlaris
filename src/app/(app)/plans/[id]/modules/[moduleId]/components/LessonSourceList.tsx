@@ -2,7 +2,6 @@ import type { LessonSource } from '@/features/plans/read-projection/types';
 
 import { ExternalLink } from 'lucide-react';
 
-// Fixed locale and time zone so server and client render the same date.
 const RETRIEVED_DATE_FORMATTER = new Intl.DateTimeFormat('en-US', {
   dateStyle: 'medium',
   timeZone: 'UTC',
@@ -19,7 +18,6 @@ export function LessonSourceList({ sources }: { sources: LessonSource[] }) {
       <ol className='space-y-3'>
         {sources.map((source) => (
           <li key={source.citationKey} className='min-w-0'>
-            {/* Matches the inline `[S1]` markers in the lesson text. */}
             <span className='mr-1.5 type-meta font-mono text-muted-foreground'>
               [{source.citationKey}]
             </span>

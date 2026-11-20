@@ -24,11 +24,6 @@ export type { PlainHandler } from '@/lib/api/types/auth.types';
 
 type MaybePromise<T> = T | Promise<T>;
 
-/**
- * Returns the effective auth user id for the current request.
- * In development or test (Vitest), if DEV_AUTH_USER_ID is set, that value is returned
- * (allowing you to bypass real Clerk auth provisioning while seeding a deterministic user).
- */
 export async function getEffectiveAuthUserId(options?: {
   strict?: boolean;
 }): Promise<string | null> {
@@ -48,25 +43,11 @@ export async function getEffectiveAuthUserId(options?: {
   return session?.user?.id ?? null;
 }
 
-/**
- * Returns the auth user id from the actual Clerk session, ignoring
- * DEV_AUTH_USER_ID overrides. This is intended for security-sensitive flows
- * (e.g. OAuth callbacks) where we must validate the currently authenticated
- * end user rather than a test/development override.
- *
- * Only call from Route Handlers or Server Actions (not Server Components).
- *
- * @public Intentional library surface for OAuth and security-sensitive flows (see docs).
- */
 export async function getAuthUserId(): Promise<string | null> {
   const { data: session } = await auth.getSession();
   return session?.user?.id ?? null;
 }
 
-/**
- * Resolves the current auth user ID or throws AuthError.
- * Used internally by `withAuth`.
- */
 async function requireUser(): Promise<string> {
   const userId = await getEffectiveAuthUserId({ strict: true });
   if (!userId) throw new AuthError();
@@ -178,7 +159,6 @@ type RouteHandlerParams = AuthHandlerContext['params'];
 
 export function withAuth(handler: AuthHandler): PlainHandler {
   return async (req: Request, routeContext?: RouteHandlerContext) => {
-    // Before auth, so a cross-site mutation never reaches the handler (DEV-208).
     assertSameOriginMutation(req);
 
     const params: RouteHandlerParams = routeContext?.params
@@ -224,18 +204,6 @@ export async function runServerComponentContext<T>(
   return runWithAuthenticatedContext(authUserId, (user) => fn(user));
 }
 
-/**
- * @internal Compatibility shim. Prefer `requestBoundary.action()` for new code.
- *
- * Wrapper for Server Actions that sets up authenticated RLS context.
- * Equivalent to runServerComponentContext but designed for 'use server' functions.
- * Handles auth, RLS client creation, user lookup, and cleanup.
- *
- * Also passes the RLS db client to the callback since server actions
- * often need to pass it explicitly to query functions.
- *
- * Returns null if user is not authenticated (caller should handle).
- */
 export async function withServerActionContext<T>(
   fn: (user: ActorUser, db: RlsClient) => MaybePromise<T>,
 ): Promise<T | null> {

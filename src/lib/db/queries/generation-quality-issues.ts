@@ -7,10 +7,6 @@ import type { DbClient } from '@/lib/db/types';
 import { generationQualityIssues } from '@supabase/schema';
 import { asc, eq, inArray } from 'drizzle-orm';
 
-/**
- * Records quality issues from a generation check or repair pass. Writes are
- * server-owned, so `dbClient` must be the service-role client (or a transaction on it).
- */
 export async function insertGenerationQualityIssues(
   issues: NewGenerationQualityIssue[],
   dbClient: Pick<DbClient, 'insert'>,
@@ -22,7 +18,6 @@ export async function insertGenerationQualityIssues(
   return dbClient.insert(generationQualityIssues).values(issues).returning();
 }
 
-/** Lists a plan's quality issues, oldest first. RLS limits an authenticated client to owned plans. */
 export async function listGenerationQualityIssuesForPlan(
   planId: string,
   dbClient: Pick<DbClient, 'select'>,
@@ -37,7 +32,6 @@ export async function listGenerationQualityIssuesForPlan(
     );
 }
 
-/** Marks issues as resolved after a repair pass fixes them. Server-owned write. */
 export async function markGenerationQualityIssuesResolved(
   issueIds: string[],
   dbClient: Pick<DbClient, 'update'>,

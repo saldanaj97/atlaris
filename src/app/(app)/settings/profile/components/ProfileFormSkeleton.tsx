@@ -7,7 +7,6 @@ import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-/** Skeleton for the profile identity card and name/email fields. */
 export function ProfileFormSkeleton(): ReactElement {
   return (
     /* oxlint-disable shadcn/require-static-classes -- The shared header-aware scroll offset is a complete imported utility. */
@@ -39,7 +38,6 @@ export function ProfileFormSkeleton(): ReactElement {
   );
 }
 
-/** Skeleton for the profile plan summary card. */
 export function ProfilePlanCardSkeleton(): ReactElement {
   return (
     <Card as='section' className='gap-4 shadow-none'>

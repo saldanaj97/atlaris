@@ -18,9 +18,6 @@ type ModelPreferencesSelectorProps = {
   showUpgradeCta?: boolean;
 };
 
-/**
- * Client bridge: persists preferred model via PATCH and refreshes server props.
- */
 export function ModelPreferencesSelector({
   currentModel,
   userTier,

@@ -37,7 +37,6 @@ export async function deleteAccountAction() {
   const result = await requestBoundary.action(
     { rateLimit: 'mutation' },
     async ({ actor }): Promise<DeleteAccountActionResult> => {
-      // A DEV_AUTH_USER_ID override must never delete the real session user.
       if (actor.authUserId !== userId) {
         return { status: 'unavailable' };
       }

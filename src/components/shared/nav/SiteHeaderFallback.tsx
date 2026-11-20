@@ -6,11 +6,6 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
-/**
- * Suspense fallback for the async `SiteHeader`. Mirrors its fixed 64px strip
- * and the desktop sidebar column so the shell does not shift when the real
- * header streams in.
- */
 export default function SiteHeaderFallback() {
   return (
     <div

@@ -2,13 +2,6 @@ import type { AvailableModel } from './types/model.types';
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
-/**
- * The models each tier × operation offers: its tier's OpenRouter guardrail
- * list (`model-catalog`) and/or the `openrouter/free` router, per
- * `model-operation-policy.ts`. Catalog `tier` labels are not proof of zero cost.
- *
- * @module lib/ai/ai-models
- */
 import {
   FREE_ROUTER_MODEL,
   getTierModels,
@@ -25,9 +18,7 @@ export { AI_DEFAULT_MODEL };
 
 type TierModels = {
   readonly models: AvailableModel[];
-  /** The operation default, its first listed fallback, or the free router. */
   readonly defaultModelId: string;
-  /** The default is the free router only because the guardrail left no paid default. */
   readonly freeRouterFallback: boolean;
 };
 
@@ -97,9 +88,6 @@ async function resolveTierModels(
       freeRouterFallback: false,
     };
   }
-  // Last resort: the code-owned free router, added to the list so the default
-  // stays among the models it is validated against. `resolveModelForTier`
-  // alerts once per generation that runs on it; lookups only log.
   logger.error(
     { ...fields, fallbackModelId: AI_DEFAULT_MODEL },
     'Operation default model and its fallbacks are missing from the tier guardrail models; using the free router',
@@ -125,12 +113,6 @@ export async function getModelsForTier(
   return (await resolveTierModels(tier, operation)).models;
 }
 
-/**
- * The default model for a subscription tier and generation operation: the
- * code-owned default while the tier's guardrail lists it, otherwise the first
- * listed model on the operation's grounded writer route, otherwise the free
- * router.
- */
 export async function getDefaultModelForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
@@ -138,11 +120,6 @@ export async function getDefaultModelForTier(
   return (await resolveTierModels(tier, operation)).defaultModelId;
 }
 
-/**
- * {@link getDefaultModelForTier} plus whether that default is the free router
- * only because the tier's guardrail left no paid default, and the
- * {@link getModelsForTier} list it was resolved from.
- */
 export async function resolveDefaultModelForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
@@ -156,14 +133,6 @@ export async function resolveDefaultModelForTier(
   return { modelId: defaultModelId, freeRouterFallback, models };
 }
 
-/**
- * Returns the ordered provider fallback route for a resolved primary model.
- *
- * Free never falls back to a paid model. Starter outline/regen never falls
- * back to `openrouter/free`. A Starter lesson falls back to `openrouter/free`
- * when its paid model fails; Free lessons already run on it. Pro keeps an
- * empty provider fallback list.
- */
 export function getFallbackModelsForTier(
   tier: SubscriptionTier,
   primaryModelId: string,

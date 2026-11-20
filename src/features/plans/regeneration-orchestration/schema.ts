@@ -4,13 +4,6 @@ import {
 } from '@/features/plans/regeneration-orchestration/reasons';
 import { planRegenerationOverridesSchema } from '@/features/plans/validation/learningPlans';
 import { JobRunMetadataSchema } from '@/shared/schemas/workflow-metadata.schemas';
-/**
- * Zod schema for `job_queue` payloads of type `plan_regeneration`.
- * Consumed by orchestration (`process.ts`) when a worker dequeues a job; allowed
- * `overrides` merge with the stored plan (dates, skill, hours, style, model).
- * Topic/notes are never taken from the payload — they are rebuilt from the plan.
- * `reasons`/`note` (JCS-162) are set only for grounded regenerations.
- */
 import { z } from 'zod';
 
 const jobErrorHistoryEntrySchema = z.strictObject({

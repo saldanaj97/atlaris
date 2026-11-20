@@ -14,7 +14,6 @@ const resourcesTypeQuerySchema = z.object({
   type: z.enum(resourceType.enumValues).optional(),
 });
 
-// GET /api/v1/resources
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ req, db }) => {

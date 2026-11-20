@@ -1,6 +1,5 @@
 import type { FilterStatus } from '@/features/plans/read-projection/types';
 
-/** Visible plan-library status tabs. */
 export const PLANS_LIBRARY_FILTER_STATUSES = [
   'all',
   'active',

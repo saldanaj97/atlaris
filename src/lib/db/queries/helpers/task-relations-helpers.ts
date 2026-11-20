@@ -44,10 +44,6 @@ function deduplicateIds(ids: readonly string[]): string[] {
   return [...new Set(ids)];
 }
 
-/**
- * Loads task progress rows for the given task ids.
- * If userId is provided, rows are filtered by user in SQL.
- */
 export async function fetchTaskProgressRows({
   taskIds,
   userId,
@@ -66,9 +62,6 @@ export async function fetchTaskProgressRows({
   return await dbClient.select().from(taskProgress).where(whereClause);
 }
 
-/**
- * Loads task progress and resource rows together for callers that hydrate task DTOs.
- */
 export async function fetchTaskRelationRows({
   taskIds,
   userId,
@@ -89,9 +82,6 @@ export async function fetchTaskRelationRows({
   return { progressRows, resourceRows };
 }
 
-/**
- * Loads per-module task/progress metrics for one or more plans.
- */
 export async function fetchModuleTaskMetricsRows({
   planIds,
   userId,
@@ -138,9 +128,6 @@ export async function fetchModuleTaskMetricsRows({
     .orderBy(asc(modules.order));
 }
 
-/**
- * Loads task resources joined with canonical resources, ordered by relation order.
- */
 async function fetchTaskResourceRows({
   taskIds,
   dbClient,

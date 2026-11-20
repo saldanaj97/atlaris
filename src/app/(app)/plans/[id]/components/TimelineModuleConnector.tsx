@@ -3,7 +3,6 @@ import type { ModuleStatus } from '@/app/(app)/plans/plans-progress-theme';
 import { getTimelineConnectorClassName } from '@/app/(app)/plans/plans-progress-theme';
 import { cn } from '@/lib/utils';
 
-/** Connects a module marker to the next stop on the learning route. */
 export function TimelineModuleConnector({ status }: { status: ModuleStatus }) {
   return (
     <span

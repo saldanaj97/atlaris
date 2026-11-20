@@ -5,7 +5,6 @@ interface TimelinePlanFooterProps {
   moduleCount: number;
 }
 
-/** Quiet end-of-route marker: a dot on the rail and one line of text. */
 export function TimelinePlanFooter({
   isPlanComplete,
   moduleCount,

@@ -74,16 +74,6 @@ const usageEventCostSql = sql<
 >`sum(COALESCE(${aiUsageEvents.providerCostMicrousd}, ${aiUsageEvents.costCents}::bigint * 10000))`;
 const researchCostSql = sql<string | null>`sum(${planResearch.costMicrousd})`;
 
-/**
- * One user's AI spend in micro-USD since `since`, costed like
- * {@link sumPlanAiSpendMicrousd}. Usage events keep `user_id` when their plan
- * is deleted, so deleting a plan does not reset the total.
- *
- * `plan_research` is left out on purpose: its rows are deleted with the plan,
- * so counting them would let a user reset research spend by deleting a plan.
- * Successful grounded research is therefore not yet in this total; grounded
- * generation stays off through launch (DEV-163, DEV-208).
- */
 export async function sumUserAiSpendMicrousd(
   userId: string,
   since: Date,
@@ -101,8 +91,6 @@ export async function sumUserAiSpendMicrousd(
   return Number(usage?.spent ?? 0);
 }
 
-/** Users on a free trial: a paid tier whose subscription status is `trialing`. */
-// coalesce keeps a null status false rather than null, so `not()` stays true.
 const onFreeTrial = sql`(${users.subscriptionTier} <> 'free' and coalesce(${users.subscriptionStatus}::text, '') = 'trialing')`;
 
 async function sumPoolAiSpendMicrousd(
@@ -126,13 +114,6 @@ async function sumPoolAiSpendMicrousd(
   return Number(usage[0]?.spent ?? 0) + Number(research[0]?.spent ?? 0);
 }
 
-/**
- * AI spend in micro-USD since `since` by every user now on `tier` and not on a
- * free trial (trials have their own pool), research runs included. Spend
- * follows the user's current tier, so a user who upgrades mid-day carries that
- * day's spend into the new tier. Needs the service-role client: RLS would limit
- * the sum to one user.
- */
 export async function sumTierAiSpendMicrousd(
   tier: SubscriptionTier,
   since: Date,
@@ -145,11 +126,6 @@ export async function sumTierAiSpendMicrousd(
   );
 }
 
-/**
- * AI spend in micro-USD since `since` by every user now on a free trial,
- * research runs included. Needs the service-role client, like
- * `sumTierAiSpendMicrousd`.
- */
 export async function sumTrialAiSpendMicrousd(
   since: Date,
   dbClient: Pick<DbClient, 'select'>,
@@ -157,15 +133,6 @@ export async function sumTrialAiSpendMicrousd(
   return sumPoolAiSpendMicrousd(onFreeTrial, since, dbClient);
 }
 
-/**
- * Records the usage an AI call's error carries (`billedUsageOf`) against the
- * plan, as its own usage event: OpenRouter billed the call even though its
- * output was discarded. Call it in the workflow step that made the call,
- * before the step throws, since a failed step attempt keeps no result. Does
- * nothing for an error without usage, and never throws, so the call's own
- * error is the one that propagates. Writes are server-owned (the Worker's
- * invocation client).
- */
 export async function recordDiscardedCallUsage(
   error: unknown,
   owner: { readonly userId: string; readonly planId: string },
@@ -190,10 +157,6 @@ export async function recordDiscardedCallUsage(
   }
 }
 
-/**
- * Records steps a plan's AI spend ceiling cut. Writes are server-owned, so
- * `dbClient` must be the service-role client (or a transaction on it).
- */
 export async function insertGenerationBudgetCuts(
   cuts: NewGenerationBudgetCut[],
   dbClient: Pick<DbClient, 'insert'>,

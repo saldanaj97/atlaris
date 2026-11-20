@@ -25,7 +25,6 @@ export type UserPreferenceValues = {
   analyticsTimezone: string;
 };
 
-/** Pro picks for the grounded pipeline's writer, verifier and advisor roles. */
 export type GroundedModelPreferenceValues = {
   preferredWriterAiModel: string | null;
   preferredVerifierAiModel: string | null;

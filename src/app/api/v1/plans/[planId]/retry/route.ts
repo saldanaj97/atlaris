@@ -93,7 +93,6 @@ export function createRetryHandler(deps?: {
           deadlineDate: plan.deadlineDate,
         },
         savedPreferredAiModel: actor.preferredAiModel ?? null,
-        // Only a Pro writer pick is ever honored, so skip the read below Pro.
         ...(actor.subscriptionTier === 'pro'
           ? {
               savedGroundedPicks: await getGroundedModelPreferences(
@@ -114,12 +113,4 @@ export function createRetryHandler(deps?: {
   );
 }
 
-/**
- * POST /api/v1/plans/:planId/retry
- *
- * Retries generation for a failed plan: reserves the next attempt and starts
- * it on the jobs Worker. Returns `202 { planId, attemptId }`; the
- * plan page polls `GET /api/v1/plans/:planId/status` for the outcome. The
- * route is a thin adapter for HTTP-level validation (ownership, plan status).
- */
 export const POST = createRetryHandler();

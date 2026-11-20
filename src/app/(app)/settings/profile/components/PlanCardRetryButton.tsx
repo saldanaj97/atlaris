@@ -3,7 +3,6 @@
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
 
-/** Re-runs the server read behind the profile plan card. */
 export function PlanCardRetryButton() {
   const router = useRouter();
 

@@ -74,11 +74,6 @@ export async function getLearningActivityEventsForUser(
     .orderBy(asc(learningActivityEvents.occurredAt));
 }
 
-/**
- * Newest task status changes for a user, with the task title and plan topic.
- * Pass `planId` to keep only one plan's events, so the limit applies after
- * that filter rather than before it.
- */
 export async function getRecentLearningActivityForUser(
   userId: string,
   dbClient: TasksDbClient,
@@ -113,17 +108,6 @@ export async function getRecentLearningActivityForUser(
     .limit(limit);
 }
 
-/**
- * Sets or updates the progress status for a specific task for a user.
- * Validates task ownership in SQL before updating.
- * If a progress record does not exist, it creates one; otherwise, it updates the existing record.
- * @param userId - The ID of the user.
- * @param taskId - The ID of the task.
- * @param status - The new progress status to set.
- * @param dbClient - Required TasksDbClient used for transactions/internal testing.
- * @returns A promise that resolves to the task progress record.
- * @throws Error if the task is not found or access is denied
- */
 async function setTaskProgress(
   userId: string,
   taskId: string,
@@ -176,11 +160,6 @@ async function setTaskProgress(
   });
 }
 
-/**
- * Batch updates task progress for multiple tasks in a single transaction.
- * Validates ownership for all tasks via a single query, then bulk upserts.
- * Falls back to the single-update path only when no explicit plan/module scope is required.
- */
 export async function setTaskProgressBatch(
   userId: string,
   updates: Array<{ taskId: string; status: ProgressStatus }>,

@@ -135,8 +135,6 @@ function LessonProgressPanel({
                     isCurrent
                       ? 'border-primary/20 bg-primary/10 text-foreground'
                       : 'border-transparent text-muted-foreground',
-                    // Locked rows keep full-opacity muted text (4.5:1); the
-                    // lock marker says they are locked.
                     isLocked
                       ? 'cursor-not-allowed'
                       : 'hover:border-border hover:bg-panel hover:text-foreground',

@@ -2,17 +2,11 @@ import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Surface } from '@/components/ui/surface';
 
-/**
- * Skeleton for the module detail content.
- * Shown while the async component is loading.
- */
 export function ModuleDetailContentSkeleton() {
   return (
     <section aria-label='Loading module' aria-busy='true' className='space-y-8'>
       <LoadingStatus>Loading module</LoadingStatus>
-      {/* ModuleHeader skeleton */}
       <article className='mb-8'>
-        {/* Breadcrumb Navigation skeleton */}
         <nav className='mb-6 min-w-0' aria-hidden='true'>
           <ol className='flex max-w-full min-w-0 flex-wrap items-center gap-1 type-body'>
             <li className='max-w-full min-w-0'>
@@ -30,7 +24,6 @@ export function ModuleDetailContentSkeleton() {
           </ol>
         </nav>
 
-        {/* Hero Card skeleton */}
         <div className='rounded-lg border border-panel-border bg-panel p-5 shadow-sm sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>
             <Skeleton className='h-9 w-full max-w-md' />
@@ -48,14 +41,12 @@ export function ModuleDetailContentSkeleton() {
         </div>
       </article>
 
-      {/* Lessons Section skeleton */}
       <section aria-hidden='true'>
         <div className='mb-6 flex items-baseline justify-between border-b border-border pb-2'>
           <Skeleton className='h-3 w-20 bg-secondary' />
           <Skeleton className='h-3 w-24' />
         </div>
 
-        {/* Lesson accordion items skeleton */}
         <div className='space-y-4'>
           {[1, 2, 3, 4, 5].map((lessonSkeletonId) => (
             <LessonAccordionSkeleton
@@ -73,7 +64,6 @@ function LessonAccordionSkeleton() {
     <Surface>
       <div className='flex items-center justify-between'>
         <div className='flex items-center gap-4'>
-          {/* Checkbox/status skeleton */}
           <Skeleton className='size-6 rounded-full' />
           <div className='space-y-1.5'>
             <Skeleton className='h-5 w-56' />
@@ -83,7 +73,6 @@ function LessonAccordionSkeleton() {
             </div>
           </div>
         </div>
-        {/* Expand icon */}
         <Skeleton className='size-5' />
       </div>
     </Surface>

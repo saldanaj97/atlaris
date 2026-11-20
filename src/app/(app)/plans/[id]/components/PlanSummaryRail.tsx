@@ -21,7 +21,6 @@ interface PlanSummaryRailProps {
   activeModuleId: string | null;
 }
 
-/** Compact plan-level context that supports the route without duplicating module controls. */
 export function PlanSummaryRail({
   plan,
   stats,

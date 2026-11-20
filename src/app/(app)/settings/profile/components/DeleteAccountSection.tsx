@@ -47,10 +47,6 @@ export function DeleteAccountSection(): ReactElement {
     try {
       const result = await deleteAccount();
       if (result.status === 'deleted') {
-        // Leave the app with a full load instead of signOut(). Clerk's signOut
-        // refreshes this route first, and the session token stays valid for up
-        // to a minute, so the refresh renders a deleted user and throws. The
-        // user is already deleted in Clerk, so the next load is signed out.
         window.location.replace('/landing');
         return;
       }

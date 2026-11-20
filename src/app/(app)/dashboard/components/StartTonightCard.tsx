@@ -3,9 +3,6 @@ import { Card } from '@/components/ui/card';
 import { ROUTES } from '@/features/navigation/routes';
 import Link from 'next/link';
 
-/**
- * Empty-state card when there is no active plan to resume.
- */
 export function StartTonightCard({
   canCreatePlan,
 }: {

@@ -161,8 +161,6 @@ async function listPlanSummaries(params: {
   );
 }
 
-// Keep page-specific entrypoints explicit even while both consumers share the
-// same summary projection today.
 const DASHBOARD_PLAN_SUMMARY_LIMIT = 20 as const;
 const DASHBOARD_ACTIVITY_EVENT_LIMIT = 20 as const;
 
@@ -216,9 +214,6 @@ export async function getDashboardPlanData(params: {
         planIds: selectedFreePlanId ? [selectedFreePlanId] : undefined,
       }),
       listLightweightPlansForApi(params),
-      // A Free user with a selected plan can only see that plan's activity, so
-      // filter in SQL; otherwise newer events on locked plans could fill the
-      // limit and leave the feed empty.
       getRecentLearningActivityForUser(
         params.userId,
         params.dbClient,
@@ -226,7 +221,6 @@ export async function getDashboardPlanData(params: {
         { planId: selectedFreePlanId ?? undefined },
       ),
     ]);
-  // Locked plans keep their topic but not their content, so task titles stay out.
   const recentActivity = activityRows.filter(
     (row) =>
       resolvePlanContentAccess({
@@ -499,7 +493,6 @@ export async function getModuleDetailForRead(params: {
   moduleId: string;
   userId: string;
   dbClient: DbClient;
-  /** Load the plan's research sources so lessons can list what they cite. */
   includeLessonSources?: boolean;
 }): Promise<ModuleDetailReadModel | null> {
   return loadIfOwnedPlanReadable(params, async () => {

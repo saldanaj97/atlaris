@@ -30,20 +30,17 @@ interface DeletePlanDialogBaseProps {
   planId: string;
   planTopic: string;
   isGenerating: boolean;
-  /** Where to navigate after successful deletion. Defaults to '/plans'. */
   redirectTo?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
   successFocusRef?: RefObject<HTMLElement | null>;
 }
 
-/** Controlled mode: parent owns open state; no trigger child is rendered. */
 type DeletePlanDialogControlledProps = DeletePlanDialogBaseProps & {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children?: never;
 };
 
-/** Uncontrolled mode: component owns open state; a trigger child is required. */
 type DeletePlanDialogUncontrolledProps = DeletePlanDialogBaseProps & {
   open?: never;
   onOpenChange?: never;

@@ -15,16 +15,12 @@ export type OutlineIssue = {
   readonly source: 'code' | 'verifier';
 };
 
-/** Expected outline shape; the parser enforces only the hard limits. */
 export const OUTLINE_MODULE_COUNT_RANGE = { min: 2, max: MAX_MODULE_COUNT };
 export const OUTLINE_LESSONS_PER_MODULE_RANGE = { min: 2, max: 12 };
 
-/** Token-set similarity at or above which two titles count as near duplicates. */
 const NEAR_DUPLICATE_JACCARD = 0.8;
-/** A module's minutes may differ from its lessons' sum by this share (or 15 min). */
 const MODULE_MINUTES_TOLERANCE = 0.25;
 const MODULE_MINUTES_SLACK = 15;
-/** Lesson minutes may exceed the deadline's hour budget by this share. */
 const TOTAL_MINUTES_TOLERANCE = 0.25;
 
 const titleSchema = z.string().trim().min(1);
@@ -46,7 +42,6 @@ const outlineSchema = z.array(
   }),
 );
 
-/** Words that say nothing about scope or overlap. */
 const STOPWORDS = new Set([
   'a',
   'an',
@@ -98,7 +93,6 @@ const STOPWORDS = new Set([
   'chapter',
 ]);
 
-/** Leading numbering such as `1.`, `Module 3:` or `Lesson 2 -`. */
 const NUMBERING_PATTERN =
   /^\s*(?:(?:module|lesson|part|week|unit|chapter|step)\s+)?(?:\d+|[ivx]+)\s*[.:)\-–—]\s*/i;
 
@@ -152,7 +146,6 @@ function issue(code: string, blockRef: string, message: string): OutlineIssue {
   return { code, blockRef, message, source: 'code' };
 }
 
-/** Each field that fails the outline schema, by block. */
 export function checkOutlineSchema(modules: unknown): OutlineIssue[] {
   const result = outlineSchema.safeParse(modules);
   if (result.success) {
@@ -174,17 +167,10 @@ export function checkOutlineSchema(modules: unknown): OutlineIssue[] {
   });
 }
 
-/**
- * Pacing (`pacePlan`) trims a plan with a deadline to fit its hours: it drops
- * lessons, and at very low capacity whole modules, without changing module
- * estimates. Checks skip what that trim causes, or a repair (paced again)
- * could never clear it.
- */
 function isPacedInput(input: Pick<GenerationInput, 'deadlineDate'>): boolean {
   return Boolean(input.deadlineDate?.trim());
 }
 
-/** Minimums are skipped on a paced plan; maximums always apply. */
 export function checkOutlineCounts(
   modules: readonly ParsedModule[],
   input: Pick<GenerationInput, 'deadlineDate'>,
@@ -255,7 +241,6 @@ function findDuplicates(blocks: readonly TitledBlock[]): OutlineIssue[] {
   return issues;
 }
 
-/** Duplicate module titles, and duplicate lesson titles anywhere in the plan. */
 export function checkOutlineDuplicates(
   modules: readonly ParsedModule[],
 ): OutlineIssue[] {
@@ -342,11 +327,6 @@ function weeksBetween(startDate: string, deadlineDate: string): number | null {
   return Math.max(1, Math.ceil(days / 7));
 }
 
-/**
- * Module minutes must match their lessons' sum, no lesson may exceed a week's
- * hours, and with a start date and deadline the lessons must fit the hours.
- * On a paced plan a module may estimate more than its remaining lessons.
- */
 export function checkOutlineTime(
   modules: readonly ParsedModule[],
   input: Pick<GenerationInput, 'weeklyHours' | 'startDate' | 'deadlineDate'>,
@@ -389,8 +369,6 @@ export function checkOutlineTime(
     });
   });
 
-  // No start date: the budget would depend on the clock, which a replayed
-  // workflow must not read.
   const weeks =
     input.startDate && input.deadlineDate
       ? weeksBetween(input.startDate, input.deadlineDate)

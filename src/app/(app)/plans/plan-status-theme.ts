@@ -9,7 +9,6 @@ export const PLAN_STATUS_LABELS: Record<PlanReadStatus, string> = {
   failed: 'Failed',
 };
 
-/** Semantic dot color for plan list rows and filter indicators. */
 const PLAN_STATUS_DOT_CLASS: Record<PlanReadStatus, string> = {
   not_started: 'bg-muted-foreground',
   active: 'bg-success',
@@ -19,7 +18,6 @@ const PLAN_STATUS_DOT_CLASS: Record<PlanReadStatus, string> = {
   failed: 'bg-destructive',
 };
 
-/** Semantic pill treatment for status labels in the plan library. */
 const PLAN_STATUS_BADGE_CLASS: Record<PlanReadStatus, string> = {
   not_started: 'border-border bg-panel-muted text-muted-foreground',
   active: 'border-success/50 bg-success/10 text-success',

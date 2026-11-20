@@ -6,11 +6,6 @@ import { cn } from '@/lib/utils';
 
 import styles from './landing.module.css';
 
-/**
- * The three steps, each with a line from the hero's example plan (TypeScript
- * for React, two weeks, 4 hrs a week). Values match the create-plan form
- * options and the example cards, so the page tells one consistent story.
- */
 const STEPS = [
   {
     title: 'Name the goal',

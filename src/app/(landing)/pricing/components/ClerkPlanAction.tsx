@@ -29,10 +29,8 @@ type ButtonRef = (button: HTMLButtonElement | null) => void;
 
 type ClerkPlanActionProps = PlanActionInput & {
   actionClassName: string;
-  /** Where a new or upgraded subscription lands; carries the wait for its webhook. */
   newSubscriptionRedirectUrl: string;
   appClosed: boolean;
-  /** Auth or the viewer's subscription hasn't loaded, so no action is safe yet. */
   viewerPending: boolean;
   agreedActions: Record<string, boolean>;
   onAgreedChange: (actionKey: string, agreed: boolean) => void;
@@ -148,7 +146,6 @@ function PlanCheckoutAction({
   );
 }
 
-/** The one action a pricing card offers this viewer, or a note when it has none. */
 export function ClerkPlanAction({
   actionClassName,
   newSubscriptionRedirectUrl,
@@ -211,8 +208,6 @@ export function ClerkPlanAction({
           onAgreedChange={(agreed) => onAgreedChange(actionKey, agreed)}
           period={action.period}
           plan={plan}
-          // Scheduling or keeping a plan changes no entitlement today, so
-          // there is no webhook for Settings to wait on.
           redirectUrl={
             action.changesNothingToday
               ? ROUTES.SETTINGS.BILLING

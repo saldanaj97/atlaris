@@ -9,9 +9,6 @@ import {
 import { jobQueue } from '@supabase/schema';
 import { desc, eq } from 'drizzle-orm';
 
-/**
- * Loads a job row by id.
- */
 export async function getJobById(
   jobId: string,
   dbClient: JobsDbClient,
@@ -26,9 +23,6 @@ export async function getJobById(
   return row ? mapRowToJob(row) : null;
 }
 
-/**
- * Returns the single active (pending or processing) regeneration job for a plan and user, if any.
- */
 export async function getActiveRegenerationJob(
   planId: string,
   userId: string,

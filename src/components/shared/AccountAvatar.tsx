@@ -2,7 +2,6 @@ import { getAccountInitials } from '@/components/shared/account-initials';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-/** Clerk UserButton styling that matches AccountAvatar's size and focus ring. */
 export const ACCOUNT_USER_BUTTON_APPEARANCE = {
   elements: {
     avatarBox: 'size-9',

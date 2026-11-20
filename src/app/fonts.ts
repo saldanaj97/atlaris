@@ -15,7 +15,6 @@ export const sora = Sora({
   variable: '--font-sora',
 });
 
-/** Landing hero display serif. Import only where the hero renders. */
 export const instrumentSerif = Instrument_Serif({
   subsets: ['latin'],
   weight: '400',
@@ -23,7 +22,6 @@ export const instrumentSerif = Instrument_Serif({
   variable: '--font-instrument-serif',
 });
 
-/** Landing hero labels and supporting copy. Import only where the hero renders. */
 export const ibmPlexMono = IBM_Plex_Mono({
   subsets: ['latin'],
   weight: ['400', '500'],

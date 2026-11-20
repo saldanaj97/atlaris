@@ -16,7 +16,6 @@ function tryBuildPayloadLog(
   | { ok: true; payloadLog: Record<string, unknown> }
   | { ok: false; error: unknown; fallback: Record<string, unknown> } {
   try {
-    // Payload logging must not break generation when unusual getters/proxies throw.
     return { ok: true, payloadLog: toPayloadLog(payload) };
   } catch (error) {
     return {
@@ -66,14 +65,6 @@ function toPayloadLog(payload: unknown): Record<string, unknown> {
   };
 }
 
-/**
- * Reads and validates a create-plan JSON body for `POST /api/v1/plans`. Logs
- * structural payload metadata only (never the topic or notes).
- *
- * @param logPrefix Leads the log messages, e.g. `Plan create`.
- * @param sentryRoute The Sentry `route` tag when the payload log fails.
- * @throws ValidationError for malformed JSON or an invalid body.
- */
 export async function parseCreatePlanRequest({
   req,
   authUserId,
@@ -125,7 +116,6 @@ export async function parseCreatePlanRequest({
           route: sentryRoute,
           source: 'payload-log',
         },
-        // No authUserId: Sentry cannot delete one user's events (DEV-184).
         extra: {
           correlationId,
           payload: fallback,

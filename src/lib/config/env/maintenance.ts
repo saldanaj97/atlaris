@@ -6,9 +6,6 @@ import {
   toBoolean,
 } from '@/lib/config/env/shared';
 
-/**
- * Maintenance cleanup env flags consumed by internal maintenance routes.
- */
 interface MaintenanceEnv {
   readonly retentionCleanupEnabled: boolean;
   readonly planCleanupEnabled: boolean;
@@ -32,15 +29,9 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
         false,
       );
     },
-    /**
-     * Master switch for the manual plan cleanup HTTP endpoint.
-     */
     get planCleanupEnabled(): boolean {
       return toBoolean(access.getServerOptional('PLAN_CLEANUP_ENABLED'), false);
     },
-    /**
-     * Master switch for the manual Clerk Billing reconciliation HTTP endpoint.
-     */
     get clerkBillingReconciliationEnabled(): boolean {
       return toBoolean(
         access.getServerOptional('CLERK_BILLING_RECONCILIATION_ENABLED'),
@@ -55,9 +46,6 @@ function createMaintenanceEnv(access: ServerEnvAccess): MaintenanceEnv {
     get workerToken(): string | undefined {
       return access.getServerRequiredProdOnly('MAINTENANCE_WORKER_TOKEN');
     },
-    /**
-     * Bearer token for GET /api/health/worker operator metrics.
-     */
     get workerHealthToken(): string | undefined {
       return access.getServerRequiredProdOnly('WORKER_HEALTH_TOKEN');
     },

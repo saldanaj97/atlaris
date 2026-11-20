@@ -28,7 +28,6 @@ export type PlanPollEvent =
   | { type: 'transient_failure'; message: string }
   | { type: 'fatal_failure'; message: string }
   | { type: 'revalidate' }
-  /** A new attempt was accepted (e.g. retry): poll again, even from terminal. */
   | { type: 'restart' };
 
 function isTerminalStatus(status: PlanStatus): boolean {

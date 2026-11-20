@@ -10,7 +10,6 @@ import Link from 'next/link';
 
 import styles from './landing.module.css';
 
-/** What a plan from Atlaris contains. Each line states a shipped behavior. */
 const CAPABILITIES = [
   {
     title: 'Modules and tasks sized to your hours',
@@ -29,22 +28,18 @@ const CAPABILITIES = [
   },
 ] as const;
 
-/** What the plan leaves to you; adapted from the retired About page's method section. */
 const LEAVES_TO_YOU = [
   'It doesn’t grade you.',
   'It doesn’t punish a missed week. The plan waits, and nothing expires.',
   'It’s a map, not the walk. If a step is wrong for you, skip it.',
 ] as const;
 
-/** What a plan contains, beside a themed copy of the plan page. */
 export function PlanContentsSection({
   createPlanCta,
 }: {
   createPlanCta: MarketingCreatePlanCta;
 }) {
   return (
-    // box-content: the 7xl cap applies inside the gutter, so the content lines
-    // up with the CTA card below, which is 7xl wide inside the same gutter.
     <section
       className='mx-auto box-content max-w-7xl px-6 pb-16 md:px-8 md:pb-24'
       aria-labelledby='landing-plan-heading'
@@ -102,8 +97,6 @@ export function PlanContentsSection({
             <p className='px-2 pt-1 pb-2 type-eyebrow text-muted-foreground'>
               Example plan · illustrative data
             </p>
-            {/* A themed copy of the plan page, laid out wider and scaled to 60%
-                so the route fits; the caption describes it. */}
             <div
               aria-hidden='true'
               inert

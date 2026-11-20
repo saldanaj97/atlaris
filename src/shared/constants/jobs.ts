@@ -1,8 +1,3 @@
-/**
- * Single source of truth for job type values.
- * This mapping is used to define both the database enum and runtime validation.
- */
-
 export const JOB_TYPE_MAP = {
   PLAN_REGENERATION: 'plan_regeneration',
 } as const;

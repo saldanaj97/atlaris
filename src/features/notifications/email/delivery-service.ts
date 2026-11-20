@@ -106,9 +106,7 @@ export type RunEmailNotificationDeliveryDeps = {
   logger?: Logger;
   appUrl?: string;
   unsubscribeSecret?: string;
-  /** Wall-clock time for ledger leases; defaults to the content reference time. */
   deliveryNow?: Date;
-  /** Deterministic logical reference time for content and eligibility. */
   now?: Date;
   /**
    * Optional recipient gate (the jobs Worker's non-production allowlist).
@@ -673,8 +671,6 @@ async function processEmailContent(args: {
       attributes: { category: content.category },
     });
   } catch (error) {
-    // Provider accepted the message; never mark failed. Leave the lease
-    // intact so a later reclaim can reuse the exact stored request.
     recordDeliveryFailure(
       context.counts,
       'ledger_finalization_failed',
@@ -700,15 +696,10 @@ async function processEmailContent(args: {
   return { action: 'continue', streakSentThisPass };
 }
 
-/**
- * Preference-gated, ledger-idempotent email delivery pass.
- * Service-role only; call from the maintenance worker route.
- */
 export async function runEmailNotificationDelivery(
   request: EmailDeliveryRunRequest,
   deps: RunEmailNotificationDeliveryDeps,
 ): Promise<EmailDeliveryRunResult> {
-  // Config assert lives on the route/factory; this service stays injectable for tests.
   const db = deps.db ?? serviceRoleDb;
   const appUrl = (deps.appUrl ?? appEnv.url).replace(/\/$/, '');
   const secret =

@@ -1,4 +1,3 @@
-/** Committed share image in `public/brand/`. Dimensions match the PNG on disk. */
 export const OG_DEFAULT_IMAGE = {
   url: '/brand/og-default.png',
   width: 1200,
@@ -35,7 +34,6 @@ export const BRAND_LOCKUPS = {
 export type BrandLockupVariant = keyof typeof BRAND_LOCKUPS;
 export type BrandLogoSize = 'sm' | 'md';
 
-/** Visible lockup width. Draft minimum is 128 CSS px. */
 export const BRAND_LOCKUP_VISIBLE_WIDTH = {
   sm: 128,
   md: 128,

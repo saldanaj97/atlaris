@@ -37,7 +37,6 @@ export function createEmailNotificationDeliveryPostRoute(
   const now = deps.now ?? (() => new Date());
 
   return createMaintenancePostRoute({
-    // Keep route-token authentication ahead of body parsing and flag evaluation.
     enabled: () => true,
     unavailableMessage: 'Email notification delivery is currently unavailable.',
     unauthorizedLogMessage:

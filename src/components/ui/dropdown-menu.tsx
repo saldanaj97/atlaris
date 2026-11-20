@@ -65,8 +65,6 @@ function DropdownMenuItem({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Item> & {
   inset?: boolean;
-  /** `current` marks the page the item links to, and keeps that selected
-   * surface while focused. */
   variant?: 'default' | 'destructive' | 'current';
 }) {
   return (

@@ -59,10 +59,6 @@ export function assertEmailDeliveryConfig(env: EmailEnv = emailEnv): void {
   getRequiredEmailUnsubscribeTokenSecret(env);
 }
 
-/**
- * Requires an unpadded base64url secret encoding at least 32 random bytes.
- * The format is shared by email delivery and public unsubscribe verification.
- */
 export function getRequiredEmailUnsubscribeTokenSecret(
   env: EmailEnv = emailEnv,
 ): string {

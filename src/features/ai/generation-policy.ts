@@ -6,5 +6,4 @@ import {
 
 export { DEFAULT_ATTEMPT_CAP, PLAN_GENERATION_LIMIT };
 
-/** Normalized per-plan attempt cap, read from config on each call. */
 export const getGenerationAttemptCap = (): number => getConfiguredAttemptCap();

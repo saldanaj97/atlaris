@@ -79,13 +79,8 @@ const WEEK_LABEL_FORMATTER = new Intl.DateTimeFormat('en-US', {
   timeZone: DEFAULT_ANALYTICS_TIMEZONE,
 });
 
-/** Most plans the eight-week pulse plots; one per chart color. */
 export const PULSE_PLAN_LIMIT = 5;
 
-/**
- * Evenly spaced y-axis ticks from 0 that reach at least `maxValue`, about
- * four steps. The last tick is the axis top, so the domain ends on a step.
- */
 export function yAxisTicksForMax(maxValue: number): number[] {
   const top = Math.max(1, Math.ceil(maxValue));
   const step = Math.ceil(top / 4);
@@ -120,8 +115,6 @@ export function pointLabelPlacements(
     .filter(({ value }) => value > 0)
     .sort((a, b) => b.value - a.value);
 
-  // Values arrive highest first, so the last label is the only one this value
-  // can repeat or run into: every earlier label sits higher.
   let lastValue: number | null = null;
   let lastBelow = false;
   for (const { value, index } of order) {
@@ -158,13 +151,11 @@ export function selectMostActivePlans(
   return ranked.slice(0, limit).map(({ plan }) => plan);
 }
 
-/** Returns floored completion percent, capped at 100 when fully complete. */
 function completionPercent(completed: number, total: number): number {
   if (total <= 0) return 0;
   return completed >= total ? 100 : Math.floor((completed / total) * 100);
 }
 
-/** Formats a week range label such as "Jun 1-Jun 7". */
 function formatWeekLabel(weekStartDate: string): string {
   const weekEndDate = addDays(weekStartDate, 6);
 
@@ -173,7 +164,6 @@ function formatWeekLabel(weekStartDate: string): string {
   )}-${WEEK_LABEL_FORMATTER.format(dateFromKey(weekEndDate))}`;
 }
 
-/** Builds mutable weekly trend rows ending at the current week. */
 function buildWeekRows(currentWeekStart: string): MutableWeekRow[] {
   return Array.from({ length: WEEK_TREND_COUNT }, (_, index) => {
     const weekStartDate = addDays(
@@ -193,7 +183,6 @@ function buildWeekRows(currentWeekStart: string): MutableWeekRow[] {
   });
 }
 
-/** Converts a mutable week row into the public analytics week shape. */
 function toWeekRow(row: MutableWeekRow): UsageAnalyticsWeekRow {
   return {
     weekStartDate: row.weekStartDate,
@@ -206,7 +195,6 @@ function toWeekRow(row: MutableWeekRow): UsageAnalyticsWeekRow {
   };
 }
 
-/** Builds the usage analytics view model from plan summaries and activity events. */
 export function buildUsageAnalyticsModel(
   summaries: LightweightPlanSummary[],
   options: BuildUsageAnalyticsOptions = {},

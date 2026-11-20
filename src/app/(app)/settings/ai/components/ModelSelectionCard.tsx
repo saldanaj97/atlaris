@@ -79,11 +79,6 @@ async function canShowGroundedPicks(actor: {
   }
 }
 
-/**
- * Display names for every grounded pick option and default, from Pro's synced
- * models in one read; an id the guardrail doesn't list, or every id when the
- * catalog can't be read, shows as itself.
- */
 async function loadGroundedModelNames(): Promise<Map<string, string>> {
   const ids = new Set(
     GROUNDED_PICK_ROLES.flatMap((role) => {
@@ -108,9 +103,6 @@ async function loadGroundedModelNames(): Promise<Map<string, string>> {
   return new Map([...ids].map((id) => [id, names.get(id) ?? id]));
 }
 
-/**
- * Async component that fetches user subscription data and renders the model selector.
- */
 export async function ModelSelectionCard() {
   const result = await requestBoundary.component(async ({ actor, db }) => ({
     user: actor,
@@ -274,13 +266,11 @@ export async function ModelSelectionCard() {
   }
 }
 
-/** Pro picks for grounded generation; shown only when `canShowGroundedPicks`. */
 function GroundedModelPicks({
   picks,
   modelNames,
 }: {
   picks: SavedGroundedModelPicks;
-  /** Display names from the synced guardrail models. */
   modelNames: ReadonlyMap<string, string>;
 }) {
   const groundedModelLabel = (modelId: string) =>

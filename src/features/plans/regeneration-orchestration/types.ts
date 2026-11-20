@@ -4,7 +4,6 @@ import type { LearningStyle, SkillLevel } from '@/shared/types/db.types';
 
 type PlanRegenerationOverrides = PlanRegenerationOverridesInput;
 
-/** Owned plan row fields required for regeneration orchestration (no Drizzle exports). */
 export type RegenerationOwnedPlan = {
   id: string;
   userId: string;
@@ -20,7 +19,6 @@ export type RequestPlanRegenerationArgs = {
   userId: string;
   planId: string;
   overrides?: PlanRegenerationOverrides;
-  /** Grounded regenerations only (JCS-162); dropped when the flag is off. */
   reasons?: RegenerationReason[];
   note?: string;
 };

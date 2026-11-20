@@ -6,11 +6,6 @@ import { AppError } from '@/lib/api/errors';
 import { serializeErrorForLog } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 
-/**
- * Classification for an exception thrown while starting a generation. These
- * run before the jobs Worker gets the attempt, so the provider has not run and
- * an unrecognized error is `unknown`, not `provider_error`.
- */
 export type UnhandledGenerationErrorClassification =
   | FailureClassification
   | 'unknown';

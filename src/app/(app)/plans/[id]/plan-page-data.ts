@@ -58,11 +58,6 @@ export function loadPlanForPage(planId: string): Promise<PlanAccessResult> {
     });
 }
 
-/**
- * Regeneration state for the plan overview header (JCS-162). Offered only
- * when grounded generation is on for the viewer's tier; the active-job check
- * keeps the "Regenerating" state across reloads. Call after the plan loaded.
- */
 export async function loadPlanRegenerationState(
   planId: string,
 ): Promise<PlanRegenerationState> {
@@ -76,11 +71,6 @@ export async function loadPlanRegenerationState(
   return state ?? { canRegenerate: false, isRegenerating: false };
 }
 
-/**
- * The free-router notice for a paid viewer (DEV-175), or null when nothing the
- * plan shows ran on the free router. Free plans always run on the free router,
- * so free viewers never get one. Call after the plan loaded.
- */
 export async function loadPlanFreeRouterNotice(
   planId: string,
 ): Promise<FreeRouterNotice | null> {

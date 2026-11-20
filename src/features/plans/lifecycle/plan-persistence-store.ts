@@ -1,7 +1,3 @@
-/**
- * Drizzle persistence for plan lifecycle mutations.
- */
-
 import type { AtomicInsertResult } from '@/features/plans/lifecycle/types';
 import type { DbClient, DbTransaction } from '@/lib/db/types';
 import type { PlanGenerationCoreFields } from '@/shared/types/ai-provider.types';
@@ -20,7 +16,6 @@ import { evaluateGenerationAdmission } from '@/shared/policy/generation-admissio
 import { generationAttempts, learningPlans, modules } from '@supabase/schema';
 import { and, count, eq, gte, inArray, notExists, or, sql } from 'drizzle-orm';
 
-/** Window (in seconds) for detecting duplicate plan submissions. */
 const DUPLICATE_DETECTION_WINDOW_SECONDS = 60;
 
 type PlanWriteClient = Pick<DbClient, 'update'>;
@@ -31,7 +26,6 @@ async function updatePlanGenerationSuccess(
   planId: string,
   timestamp: Date,
 ): Promise<number> {
-  // Eligibility may flip false→true only when the plan already owns a cap slot.
   const updated = await dbClient
     .update(learningPlans)
     .set({
@@ -94,12 +88,6 @@ export async function markPlanGenerationFailureInTx(
   }
 }
 
-/**
- * Failure policy after reservation / generation:
- * - Last-good (`isQuotaEligible=true`): restore `ready`, keep eligible, leave modules.
- * - Never-usable (`isQuotaEligible=false`): mark `failed`, stay ineligible (releases
- *   a generating reservation). Attempt/job rows record the failure separately.
- */
 async function applyPlanGenerationFailureUpdate(
   dbClient: PlanWriteClient | PlanUpdateTx,
   planIds: readonly string[],

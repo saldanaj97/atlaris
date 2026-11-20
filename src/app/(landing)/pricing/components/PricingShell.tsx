@@ -9,7 +9,6 @@ import { cn } from '@/lib/utils';
 
 import styles from './Pricing.module.css';
 
-/** The plan cards' section; the closing CTA scrolls back up to it. */
 const PLANS_SECTION_ID = 'pricing-plans';
 
 const copy = {
@@ -23,9 +22,6 @@ const copy = {
   ctaAction: 'Choose a plan',
 } as const;
 
-/**
- * Pricing page chrome — celestial backdrop, hero, live plan table, and CTA.
- */
 export function PricingShell({ children }: { children: ReactNode }) {
   return (
     <div className={styles.shell}>
@@ -68,7 +64,6 @@ function Hero() {
   return (
     /* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */
     <PageHero className={styles.hero} aria-labelledby='pricing-hero-heading'>
-      {/* The same column and gutters as the landing sections. */}
       <div
         className={cn(
           styles.heroContent,
@@ -80,7 +75,6 @@ function Hero() {
           className='type-display text-balance text-foreground'
         >
           {copy.headlineLead}{' '}
-          {/* Keeps the second sentence together instead of stranding "Pay". */}
           <span className='inline-block'>{copy.headlineTail}</span>
         </h1>
         <p className={styles.heroSubline}>{copy.subheadline}</p>

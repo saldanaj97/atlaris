@@ -7,10 +7,6 @@ interface ModuleDetailProps {
   moduleData: ModuleDetailReadModel;
 }
 
-/**
- * Server-rendered module detail shell.
- * Delegates interactive progress updates to a shared client wrapper.
- */
 export function ModuleDetail({ moduleData }: ModuleDetailProps) {
   const { module } = moduleData;
   const lessons = module.tasks;

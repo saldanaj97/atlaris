@@ -33,21 +33,13 @@ import { regenerationGuidanceForSearch } from '@/features/plans/regeneration-orc
 import { checkResearchOutput } from '@/features/plans/research/contract';
 import { logger } from '@/lib/logging/logger';
 
-/** Parallel wants concise keyword queries; longer topics are cut to this. */
 const SEARCH_QUERY_TOPIC_WORDS = 6;
 
-/** Tagged on AI Gateway log entries. */
 export const RESEARCH_STAGE = 'grounded-research';
 
 export type PlanResearchRun = CheckedResearch & {
-  /** The web search mode sent with the request. */
   readonly mode: ResearchMode;
   readonly searchCount: number;
-  /**
-   * `null` when the model call's cost is unknown: OpenRouter reported none,
-   * or on the direct path (DEV-171) its usage never arrived. A direct run's
-   * known value is the model call plus the search.
-   */
   readonly costMicrousd: number | null;
   readonly model: string;
 };
@@ -61,10 +53,6 @@ type ResearchInput = Pick<
   'topic' | 'skillLevel' | 'learningStyle' | 'weeklyHours' | 'notes'
 >;
 
-/**
- * The learner's request as untrusted data; the preset holds the instructions.
- * A regeneration adds its feedback block (JCS-162) after the request.
- */
 export function buildResearchUserPrompt(
   input: ResearchInput,
   guidance?: string | null,
@@ -88,11 +76,6 @@ export function buildResearchUserPrompt(
   return lines.join('\n');
 }
 
-/**
- * What a direct search asks Parallel for (DEV-171): the learner's request and
- * any regeneration feedback as the objective, plus keyword queries built from
- * the topic's first words. Built in code, so no model call precedes the search.
- */
 function buildResearchSearch(
   input: ResearchInput,
   guidance?: string | null,
@@ -124,14 +107,6 @@ function buildResearchSearch(
   };
 }
 
-/**
- * Web text inside the results frame: fence-like dashes neutralized, as for
- * learner input, and `[Sn]` markers removed, so only our keys and fences
- * remain. Repeated until nothing changes, because removing a marker can join
- * text into new dashes or a new marker (`--[S1]-`, `[S[S2]1]`). Each pass
- * only shortens the text, so the loop ends. Parallel's `max_chars_total`
- * already bounds the length.
- */
 function frameSafe(text: string): string {
   let previous: string;
   let current = text;
@@ -145,11 +120,6 @@ function frameSafe(text: string): string {
   return current;
 }
 
-/**
- * Search results as untrusted data for the direct-research preset, keyed
- * `S1…Sn` in rank order. The model cites these keys; the contract check then
- * keeps only sources whose URL is one of these.
- */
 function buildSearchResultsPrompt(
   results: readonly ParallelSearchResult[],
 ): string {
@@ -172,7 +142,6 @@ function buildSearchResultsPrompt(
   return lines.join('\n');
 }
 
-/** The web search mode a tier's research request sends (its primary model's). */
 export function researchModeForTier(tier: SubscriptionTier): ResearchMode {
   const policy = getGroundedOperationPolicy(tier, 'research');
   if (!policy.allowed || !policy.research) {
@@ -195,11 +164,6 @@ async function readText(stream: ReadableStream<string>): Promise<string> {
   return text;
 }
 
-/**
- * The model call's usage with the search cost added, so a discarded attempt
- * records both. Without complete model usage (no call, or a stream cut off
- * before its usage chunk) the search alone is recorded.
- */
 async function usageWithSearchCost(
   metadata: OpenRouterGroundedMetadata | undefined,
   searchUsage: CanonicalAIUsage,
@@ -215,10 +179,6 @@ async function usageWithSearchCost(
   };
 }
 
-/**
- * What a finished model call cost: OpenRouter's reported cost, else the
- * catalog estimate from its usage, else `null` when that usage never arrived.
- */
 async function modelCostMicrousd(
   metadata: OpenRouterGroundedMetadata,
 ): Promise<number | null> {
@@ -233,12 +193,7 @@ async function modelCostMicrousd(
 type RunPlanResearchParams = {
   tier: SubscriptionTier;
   input: ResearchInput;
-  /** Regeneration feedback that steers the search (JCS-162). */
   guidance?: string | null;
-  /**
-   * Search Parallel directly with our own key, then have the model write the
-   * brief from the results (DEV-171). Off: OpenRouter's `web_search` tool.
-   */
   directSearch?: boolean;
   signal?: AbortSignal;
 };
@@ -292,7 +247,6 @@ export async function runPlanResearch(
     },
     deps,
   );
-  // A rejected brief was still billed, searches included (`billedUsageOf`).
   const checked = await withBilledUsage(
     () => completeUsageOrNull(metadata),
     async () => checkResearchOutput(await readText(stream), metadata.citations),
@@ -308,14 +262,6 @@ export async function runPlanResearch(
   };
 }
 
-/**
- * Search-first (DEV-171): one Parallel request with the tier's mode and
- * limits, then one model call that writes the brief from those results. The
- * search cost is known from the price table, so a failure after the search
- * (a model error, a cut-off stream or a rejected brief) still records it. A
- * finished brief whose model usage never arrived records `null`: an unknown
- * cost, not the search alone.
- */
 async function runDirectResearch(
   params: RunPlanResearchParams,
   policy: {

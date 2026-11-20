@@ -34,9 +34,6 @@ function resumeBadgeLabel(
   }
 }
 
-/**
- * Current plan resume card: topic, next module, task progress, and actions.
- */
 export function ResumeLearningHero({ plan }: ResumeLearningHeroProps) {
   const clampedCompletion = Math.max(0, Math.min(1, plan.completion));
   const progressPercent = Math.round(clampedCompletion * 100);

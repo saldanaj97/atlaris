@@ -1,20 +1,3 @@
-/**
- * Factory for creating a fully-wired PlanLifecycleService instance.
- *
- * Creates a PlanLifecycleService with all collaborators wired to a single DB connection.
- *
- * Design: All lifecycle operations (plan creation, generation, generation finalization)
- * use the same database connection. This prevents the "closed connection" bug where
- * Connection 1 (request-scoped) was used for lifecycle operations after withAuth's
- * finally block closed it.
- *
- * DB client scoping (server-owned writes):
- *   - Plan create/retry sessions: service-role client for generation persistence
- *     after request auth and ownership checks at the route boundary
- *   - Workers: service-role client (same server-owned write boundary)
- *   - Reads and pre-write access checks: request-scoped RLS via getDb()
- */
-
 import type { GenerationFinalizationStoreDeps } from './generation-finalization/types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
 import type { DbClient } from '@/lib/db/types';
@@ -39,9 +22,7 @@ import {
 
 export function createPlanLifecycleService(params: {
   dbClient: DbClient;
-  /** Overrides how finalization starts module lessons (the jobs Worker skips them until B5). */
   startModuleLessons?: GenerationFinalizationStoreDeps['startModuleLessons'];
-  /** Replaces the tier's resolved generation provider (the grounded outline writer). */
   generationProvider?: AiPlanGenerationProvider;
 }): PlanLifecycleService {
   const { dbClient, startModuleLessons, generationProvider } = params;

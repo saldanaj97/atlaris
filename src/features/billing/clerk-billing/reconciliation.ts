@@ -62,7 +62,6 @@ type ClerkWebhookClient = ClerkBillingClient & {
 const DEFAULT_RECONCILIATION_LIMIT = 100;
 const MAX_RECONCILIATION_LIMIT = 100;
 export const CLERK_BILLING_WEBHOOK_LEASE_MS = 2 * 60 * 1000;
-// attempts.ts uses namespace 1 for generation reservations.
 export const CLERK_BILLING_PAYER_LOCK_NAMESPACE = 2;
 export const CLERK_BILLING_PAYER_LOCK_TIMEOUT_MS = 15_000;
 export const CLERK_BILLING_PAYER_NETWORK_TIMEOUT_MS = 10_000;
@@ -221,7 +220,6 @@ async function acquireClerkBillingPayerLock(
   );
 
   try {
-    // Namespace 2: Clerk billing payers. Do not reuse namespace 1 (attempts).
     await tx.execute(
       sql`SELECT pg_advisory_xact_lock(
         ${sql.raw(String(CLERK_BILLING_PAYER_LOCK_NAMESPACE))},
@@ -368,7 +366,6 @@ async function finalizeClerkWebhookEvent(
     try {
       billingSource = await refreshClerkBillingSource(billingSource, deps);
     } catch (error) {
-      // A deleted Clerk payer can never refresh; acknowledge instead of retrying.
       if (
         !isClerkResourceNotFound(error) ||
         !(await isClerkPayerDeleted(payerUserId, deps))
@@ -523,11 +520,6 @@ async function refreshClerkBillingSource(
   const sourceIsNewer =
     sourceUpdatedAt !== null &&
     (refreshedUpdatedAt === null || sourceUpdatedAt > refreshedUpdatedAt);
-  // An active paid item always wins over a snapshot that has no paid item at
-  // all: Clerk's re-fetch can lag or omit the item, so a free-only snapshot must
-  // not erase a paid upgrade just because its timestamp is equal or newer. A
-  // snapshot that does list a paid item (canceled, ended, past due, ...) still
-  // decides, so explicit downgrades keep working.
   const preferWebhook =
     sourceIsNewer ||
     (hasActivePaidItem(source) &&
@@ -563,10 +555,6 @@ async function refreshClerkBillingSource(
   };
 }
 
-/**
- * Applies a prepared billing projection. Production webhook and
- * reconciliation callers must hold the payer xact lock first.
- */
 export async function applyClerkBillingSource(
   source: ClerkBillingProjectionSource,
   deps: ReconciliationDeps,
@@ -607,10 +595,6 @@ export async function applyClerkBillingSource(
     source.clerkBillingUpdatedAt !== null &&
     user.clerkBillingUpdatedAt !== null &&
     source.clerkBillingUpdatedAt <= user.clerkBillingUpdatedAt;
-  // A free-only event can store an equal or newer timestamp than the paid item
-  // event that follows it. An active paid item still upgrades a user who is
-  // sitting on Free that was never canceled (active or no status yet). Users in any other state (canceled, paid)
-  // keep the strict staleness check, so late events never undo a downgrade.
   const isPaidUpgradeOverStaleFree =
     isStale &&
     hasActivePaidItem(source) &&
@@ -650,11 +634,6 @@ export async function applyClerkBillingSource(
         'Clerk Billing event did not require a local projection update',
       );
     }
-    // An event that learned nothing (for example a pending payment attempt)
-    // must not advance the stored timestamp. It used to store the re-fetch's
-    // later subscription updated_at here, which made the Starter item event
-    // that followed look stale and left the payer on Free. Unmapped plans keep
-    // recording the timestamp, as before.
     if (unmappedItems.length === 0 || source.clerkBillingUpdatedAt === null) {
       return 'ignored';
     }

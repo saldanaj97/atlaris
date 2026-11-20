@@ -142,9 +142,7 @@ export function CheckoutSubscriptionSync({
         currentSignature = await fetchCheckoutBillingSignature(
           controller.signal,
         );
-      } catch {
-        // Keep polling until the bounded timeout; webhook lag can coincide with transient errors.
-      }
+      } catch {}
       if (activeController === controller) {
         activeController = undefined;
       }

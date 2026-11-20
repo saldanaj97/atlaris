@@ -39,7 +39,6 @@ export type CloudflareWorkflowRunMetadata = z.infer<
   typeof CloudflareWorkflowRunMetadataSchema
 >;
 
-/** `job_queue.payload.workflow`: which runtime owns the regeneration run. */
 export const JobRunMetadataSchema = z.discriminatedUnion('provider', [
   WorkflowSdkMetadataSchema,
   CloudflareQueueRunMetadataSchema,

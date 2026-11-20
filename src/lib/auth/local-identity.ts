@@ -12,10 +12,6 @@ export function shouldUseClerkUi(): boolean {
   return !isLocalProductTestingAuthEnabled();
 }
 
-/**
- * Resolves the auth user id for shell/header UI when local product testing uses
- * `DEV_AUTH_USER_ID` without a real Clerk session. Otherwise uses the session user id.
- */
 export function getShellAuthUserId(
   sessionUserId: string | undefined,
 ): string | undefined {

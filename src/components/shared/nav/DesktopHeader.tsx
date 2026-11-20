@@ -16,7 +16,6 @@ import Link from 'next/link';
 
 interface DesktopHeaderProps {
   isMarketing: boolean;
-  /** App-shell routes render navigation in the sidebar. */
   isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];

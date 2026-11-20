@@ -23,12 +23,10 @@ export type UsageAnalyticsActivityCard = {
   status?: UsageAnalyticsMetricTrend | null;
 };
 
-/** Formats a day count with correct singular or plural labeling. */
 export function formatDayCount(days: number): string {
   return `${days} ${days === 1 ? 'day' : 'days'}`;
 }
 
-/** Returns a human-readable label for remaining tasks or modules. */
 export function remainingLabel(remaining: number, noun: string): string {
   const safeRemaining = Math.max(0, remaining);
 
@@ -39,7 +37,6 @@ export function remainingLabel(remaining: number, noun: string): string {
   return `${safeRemaining} ${safeRemaining === 1 ? noun : `${noun}s`} left`;
 }
 
-/** Compares current and previous values to produce a visible trend. */
 export function activityStatus(
   current: number,
   previous: number,
@@ -59,7 +56,6 @@ export function activityStatus(
   return { label: 'Flat', icon: 'flat' };
 }
 
-/** Formats a week-over-week delta for counts such as changes, events, or days. */
 export function formatCountDelta(
   current: number,
   previous: number,
@@ -77,7 +73,6 @@ export function formatCountDelta(
   return `${delta > 0 ? '+' : '-'}${absoluteDelta} ${unit} vs last week`;
 }
 
-/** Returns comparison copy describing distance from the user's best streak. */
 export function streakComparison(current: number, longest: number): string {
   if (current === 0 && longest === 0) {
     return 'Start with one active day';
@@ -91,7 +86,6 @@ export function streakComparison(current: number, longest: number): string {
   return `${remaining} ${remaining === 1 ? 'day' : 'days'} from best`;
 }
 
-/** Builds the three current-completion metric cards from live plan totals. */
 export function buildCompletionCards(
   model: UsageAnalyticsModel,
 ): UsageAnalyticsCompletionCard[] {
@@ -142,7 +136,6 @@ export function buildCompletionCards(
   ];
 }
 
-/** Builds the four this-week activity metric cards from recorded history. */
 export function buildActivityCards(
   model: UsageAnalyticsModel,
 ): UsageAnalyticsActivityCard[] {

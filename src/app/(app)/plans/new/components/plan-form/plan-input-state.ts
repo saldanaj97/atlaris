@@ -56,7 +56,6 @@ export function planInputReducer(
         ...state,
         topic: action.value,
       };
-    // Keep this action separate so external resets remain distinct from user edits in reducer traces.
     case 'reset-topic':
       return {
         ...state,

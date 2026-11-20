@@ -176,7 +176,6 @@ export function normalizeUsage(
           'OpenRouter usage.cost must be non-negative when present',
         );
       }
-      // A BYOK call without its upstream cost records the catalog estimate.
       const upstream = byokUpstreamCostUsd(usage);
       return upstream === null
         ? base
@@ -356,10 +355,6 @@ export function getStatusCodeFromError(error: unknown): number | undefined {
 }
 
 type StreamUsageEventContext = {
-  /**
-   * True when `event.usage` is a plain object record; arrays are excluded because
-   * malformed list payloads should not become authoritative for streaming cost.
-   */
   usageObjectPresent: boolean;
 };
 
@@ -367,7 +362,6 @@ export function streamFromEvents(params: {
   events: AsyncIterable<StreamEventLike>;
   onUsage: (usage: ProviderUsage, context: StreamUsageEventContext) => void;
   onModel?: (model: string) => void;
-  /** Called with `choices[0].finishReason` (`stop`, `length`, …) when a chunk carries one. */
   onFinishReason?: (finishReason: string) => void;
 }): ReadableStream<string> {
   const { events, onUsage, onModel, onFinishReason } = params;

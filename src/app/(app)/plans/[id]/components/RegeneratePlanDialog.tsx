@@ -24,7 +24,6 @@ import { toast } from 'sonner';
 
 type SubmitError = { message: string; upgrade?: boolean };
 
-/** Plain-language copy for the regenerate route's known refusals. */
 function toSubmitError(
   status: number,
   parsed: { error: string; code: string },
@@ -40,7 +39,6 @@ function toSubmitError(
         message: 'Regenerating plans is not included on your plan.',
         upgrade: true,
       };
-    // The server message names the reset date (DEV-208).
     case API_ERROR_CODES.AI_BUDGET_EXHAUSTED:
     case API_ERROR_CODES.AI_GENERATION_PAUSED:
       return { message: parsed.error };
@@ -59,11 +57,6 @@ interface RegeneratePlanDialogProps {
   planId: string;
 }
 
-/**
- * "Regenerate plan" trigger and dialog (JCS-162): reason chips and an
- * optional note, posted to the regenerate route. On success the page
- * refreshes into its server-backed "Regenerating" state.
- */
 export function RegeneratePlanDialog({
   planId,
 }: RegeneratePlanDialogProps): ReactElement {
@@ -118,8 +111,6 @@ export function RegeneratePlanDialog({
     setError(null);
 
     const trimmedNote = note.trim();
-    // Clears the busy state unless a newer submit took over (no `finally`:
-    // React Compiler cannot lower it).
     const settle = (): void => {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
@@ -168,7 +159,6 @@ export function RegeneratePlanDialog({
         planId,
         error: caught,
       });
-      // The request may have reached the server; the refresh shows the truth.
       toast.error(
         'We could not confirm whether regeneration started. Refreshing the plan.',
       );

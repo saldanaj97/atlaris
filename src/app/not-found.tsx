@@ -4,7 +4,6 @@ import { ROUTES } from '@/features/navigation/routes';
 import { FileQuestion } from 'lucide-react';
 import Link from 'next/link';
 
-/** Fallback for unmatched URLs and `notFound()` calls without a nearer boundary. */
 export default function NotFound() {
   return (
     <main

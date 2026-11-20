@@ -16,7 +16,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { useId } from 'react';
 
-/** Keeps the Radix Select controlled while nothing is picked. */
 const DEFAULT_VALUE = '__grounded_default__';
 
 export type GroundedModelOption = { id: string; label: string };
@@ -30,10 +29,6 @@ type GroundedModelPickerProps = {
   currentModel: string | null;
 };
 
-/**
- * One grounded role pick. "Default" saves `null`, so the role follows the
- * code-owned models.
- */
 export function GroundedModelPicker({
   preferenceField,
   label,

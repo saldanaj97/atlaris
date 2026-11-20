@@ -116,15 +116,6 @@ function asRetryAfter(value: unknown): number | undefined {
   return undefined;
 }
 
-/**
- * Normalize a JSON error body into the canonical {@link ApiErrorResponse}.
- *
- * The wire contract (documented in `src/lib/api/openapi.ts errorResponseSchema`)
- * is a flat object: `{ error, code, classification?, details?, retryAfter? }`.
- * If a third-party proxy ever emits a nested `{ error: { message } }` shape,
- * the message degrades gracefully to `fallbackMessage` rather than digging
- * into the nested object.
- */
 export function normalizeApiErrorResponse(
   body: unknown,
   options: { status: number; fallbackMessage: string },

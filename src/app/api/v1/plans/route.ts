@@ -119,7 +119,6 @@ export function createPlanCreateHandler(deps?: {
         internalUserId: actor.id,
         body,
         savedPreferredAiModel: actor.preferredAiModel ?? null,
-        // Only a Pro writer pick is ever honored, so skip the read below Pro.
         ...(actor.subscriptionTier === 'pro'
           ? {
               savedGroundedPicks: await getGroundedModelPreferences(
@@ -144,11 +143,4 @@ export function createPlanCreateHandler(deps?: {
   );
 }
 
-/**
- * POST /api/v1/plans
- *
- * Creates an AI plan and starts its first generation attempt on
- * the jobs Worker. Returns `202 { planId, attemptId }`; the client
- * polls `GET /api/v1/plans/:planId/status` for the outcome.
- */
 export const POST = createPlanCreateHandler();

@@ -19,9 +19,6 @@ interface RouteEmptyStateProps {
   className?: string;
 }
 
-/**
- * Shared route-level empty state: sentence-case title, consistent CTA sizing.
- */
 export function RouteEmptyState({
   icon: Icon,
   title,

@@ -5,14 +5,6 @@ import { useUser } from '@clerk/nextjs';
 import posthog from 'posthog-js';
 import { useEffect } from 'react';
 
-/**
- * Identifies the authenticated Clerk user in PostHog on mount and whenever
- * the auth state changes. Must be rendered inside ClerkProvider.
- *
- * PII (email, name) goes into PostHog person properties via identify(), not
- * into capture() event properties. Reset clears a persisted identified user on
- * signed-out loads while preserving a genuinely anonymous distinct ID.
- */
 export function PostHogUserIdentifier() {
   const { isLoaded, isSignedIn, user } = useUser();
 

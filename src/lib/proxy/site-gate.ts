@@ -4,10 +4,8 @@ import { launchWaitlist, maintenanceMode } from '@/flags';
 import { appEnv } from '@/lib/config/env';
 import * as Sentry from '@sentry/nextjs';
 
-/** How long one process reuses a gate read cleanly from Flagship. */
 export const SITE_GATE_CACHE_TTL_MS = 60_000;
 
-/** Shorter reuse for a gate built from an env fail-safe: bounds flag reads and Sentry events during an outage. */
 export const SITE_GATE_FALLBACK_CACHE_TTL_MS = 10_000;
 
 let cachedSiteGate: { gate: SiteGate | null; expiresAt: number } | null = null;
@@ -18,7 +16,6 @@ export function resetSiteGateCacheForTests(): void {
   pendingSiteGate = null;
 }
 
-/** Evaluates a gate flag. If evaluation throws, uses the env fail-safe and reports the outage. */
 async function resolveGateFlag(
   feature: 'maintenance_flag' | 'launch_waitlist_flag',
   resolveFlag: () => Promise<boolean>,
@@ -43,7 +40,6 @@ async function resolveGateFlag(
   }
 }
 
-/** Maintenance wins over the launch waitlist. */
 async function evaluateSiteGate(): Promise<{
   gate: SiteGate | null;
   ttlMs: number;
@@ -64,7 +60,6 @@ async function evaluateSiteGate(): Promise<{
   if (maintenance.value) gate = 'maintenance';
   else if (waitlist.value) gate = 'waitlist';
 
-  // A clean maintenance read decides the gate alone, so a waitlist fallback cannot change it.
   const clean =
     !maintenance.usedFallback && (maintenance.value || !waitlist.usedFallback);
   return {
@@ -73,16 +68,10 @@ async function evaluateSiteGate(): Promise<{
   };
 }
 
-/**
- * Active site gate from Flagship, cached per process: SITE_GATE_CACHE_TTL_MS
- * for a clean read, SITE_GATE_FALLBACK_CACHE_TTL_MS for an env fail-safe. The
- * proxy evaluates the gate flags once per interval, never per request.
- */
 export async function resolveSiteGate(): Promise<SiteGate | null> {
   if (cachedSiteGate !== null && Date.now() < cachedSiteGate.expiresAt) {
     return cachedSiteGate.gate;
   }
-  // Concurrent misses share one evaluation, so a slower, older read cannot overwrite a newer one.
   pendingSiteGate ??= evaluateSiteGate()
     .then(({ gate, ttlMs }) => {
       cachedSiteGate = { gate, expiresAt: Date.now() + ttlMs };

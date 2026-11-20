@@ -2,9 +2,6 @@ import type { NavItem } from './navigation.types';
 
 import { ROUTES } from './routes';
 
-/**
- * Navigation items for authenticated users.
- */
 export const authenticatedNavItems: NavItem[] = [
   {
     label: 'Dashboard',
@@ -24,9 +21,6 @@ export const authenticatedNavItems: NavItem[] = [
   },
 ];
 
-/**
- * Navigation items for unauthenticated users.
- */
 export const unauthenticatedNavItems: NavItem[] = [
   { label: 'Home', href: ROUTES.LANDING },
   { label: 'Pricing', href: ROUTES.PRICING },

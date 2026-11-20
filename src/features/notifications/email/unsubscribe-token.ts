@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
 const TOKEN_PURPOSE = 'email_unsubscribe_all' as const;
-const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24 * 90; // 90 days
+const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24 * 90;
 
 export type UnsubscribeTokenPayload = {
   userId: string;

@@ -1,14 +1,4 @@
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
-/**
- * Plan regeneration run for the Cloudflare jobs Worker's queue consumer
- * (docs/architecture/regeneration-worker-runbook.md): claim (CAS) → reserve
- * attempt → process → finalize.
- *
- * `job_queue.payload.workflow` and the attempt's workflow metadata carry
- * `provider: 'cloudflare-queue'` with the queue message ID as `runId`; fatal
- * outcomes terminalize the job here; finalization starts module lessons
- * through the injected `startModuleLessons`.
- */
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
 import type {
   PlanRegenerationWorkflowClaimResult,
@@ -88,34 +78,21 @@ export type RegenerationRunInput = {
   readonly userId: string;
 };
 
-/** What a grounded regeneration's research and outline-quality stages see. */
 export type GroundedRegenerationStageInput = {
   readonly planId: string;
   readonly userId: string;
   readonly tier: SubscriptionTier;
   readonly input: GenerationInput;
-  /** Reasons and note as a prompt block (JCS-162), or `null`. */
   readonly guidance: string | null;
-  /** Rows for the plan created from here on belong to this attempt. */
   readonly attemptStartedAt: string;
   readonly db: DbClient;
 };
 
-/**
- * Grounded regeneration stages (JCS-162), injected by the Worker: research
- * (JCS-158) and outline checks, verifier and repair (JCS-159).
- */
 export type GroundedRegenerationStages = {
-  /** The `grounded-generation` flag for `tier` (fail closed). */
   readonly isEnabled: (tier: SubscriptionTier) => Promise<boolean>;
-  /** Runs and saves research; `null` when it was skipped after its retries. */
   readonly research: (
     stage: GroundedRegenerationStageInput,
   ) => Promise<ResearchBrief | null>;
-  /**
-   * The outline to keep after checks, verifier and one repair, with the
-   * usage of those calls.
-   */
   readonly outlineQuality: (
     stage: GroundedRegenerationStageInput & {
       readonly modelOverride: string | null;
@@ -129,17 +106,13 @@ export type GroundedRegenerationStages = {
 };
 
 export type RegenerationRunContext = {
-  /** Queue message ID: stable across redeliveries of one message. */
   readonly runId: string;
-  /** How finalization starts module lessons (the Worker injects a Cloudflare Workflow starter). */
   readonly startModuleLessons: NonNullable<
     EnqueueModuleLessonGenerationsDeps['start']
   >;
-  /** Absent or switched off for the tier: today's regeneration. */
   readonly grounded?: GroundedRegenerationStages;
 };
 
-/** A retryable failure the queue should redeliver once the job is due again. */
 export type RegenerationRunResult =
   | PlanRegenerationWorkflowResult
   | {
@@ -149,7 +122,6 @@ export type RegenerationRunResult =
       readonly scheduledFor: Date;
     };
 
-/** Ends the run; the job is terminalized as non-retryable. */
 class RegenerationRunFatalError extends Error {
   constructor(message: string) {
     super(message);
@@ -175,7 +147,6 @@ type PreparedRegeneration = LoadedRegeneration & {
   readonly tier: SubscriptionTier;
   readonly grounded: boolean;
   readonly modelOverride?: string;
-  /** The grounded outline writer pick (JCS-169); standard slots never apply. */
   readonly groundedWriterModelId: string | null;
 };
 
@@ -586,8 +557,6 @@ export async function processRegenerationRun(
     db: serviceRoleDb,
   });
 
-  // Grounded (JCS-162): the outline writer reads research the provider-start
-  // callback produced, so it is created before research runs.
   let research: ResearchBrief | null = null;
   const generationProvider: AiPlanGenerationProvider | undefined = grounded
     ? {
@@ -662,13 +631,11 @@ export async function processRegenerationRun(
         { ...stage(), modelOverride: groundedWriterModelId, research },
         run.modules,
       );
-      // Verifier and repair spend counts toward the plan's AI ceiling (JCS-170).
       toSettle = {
         ...run,
         modules: quality.modules,
         usage: sumUsages([run.usage, ...quality.usages]),
       };
-      // Before settlement, which starts the lessons that read it.
       await saveRegenerationFeedback(input.planId, feedback);
     }
     generationResult = await lifecycle.settleGenerationResult(
@@ -705,7 +672,6 @@ async function loadRegenerationResearch(
   return toLessonResearch(await getLatestPlanResearch(stage.planId, stage.db));
 }
 
-/** The reasons and note the lesson writer reads; `null` clears older ones. */
 async function saveRegenerationFeedback(
   planId: string,
   feedback: {
@@ -859,11 +825,6 @@ export async function runPlanRegeneration(
   }
 }
 
-/**
- * Called after the queue's last delivery of a message failed unexpectedly.
- * Fails the job only when this run still owns it. A job that was never
- * claimed stays `pending` for the sweep. Returns whether the job was terminalized.
- */
 export async function terminalizeAbandonedRegenerationRun(
   jobId: string,
   runId: string,

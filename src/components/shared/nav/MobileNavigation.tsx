@@ -94,8 +94,6 @@ function MobileSheetPrimaryAction({
   primaryCtaHref: string;
   primaryCtaLabel: string;
 }) {
-  // App routes get their create-plan action from the sidebar inside the
-  // sheet, so the sheet only adds the marketing call to action.
   if (isMarketing) {
     return (
       <>
@@ -239,9 +237,6 @@ function MobileLinkSheetBody({
   );
 }
 
-/**
- * Mobile navigation component with left-sliding sheet.
- */
 export default function MobileNavigation({
   isMarketing,
   isAppShell = false,

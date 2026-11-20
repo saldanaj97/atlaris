@@ -7,7 +7,6 @@
  * features/ai/generation-policy.ts (for feature consumers and tests).
  */
 
-/** Default maximum retry attempts for plan generation. */
 export const DEFAULT_ATTEMPT_CAP = 3;
 
 /**
@@ -20,17 +19,13 @@ export function resolveAttemptCap(rawCap: number): number {
   return floored >= 1 ? floored : DEFAULT_ATTEMPT_CAP;
 }
 
-/** Maximum durable generation attempts per user within a rolling window. */
 export const PLAN_GENERATION_LIMIT = 10;
 
-/** Rolling window size (in minutes) for durable per-user generation limiting. */
 export const PLAN_GENERATION_WINDOW_MINUTES = 60;
 
-/** Rolling window size in milliseconds. */
 export const PLAN_GENERATION_WINDOW_MS =
   PLAN_GENERATION_WINDOW_MINUTES * 60 * 1000;
 
-/** Convenience helper for window-start derivation using a fixed "now". */
 export function getPlanGenerationWindowStart(now: Date): Date {
   return new Date(now.getTime() - PLAN_GENERATION_WINDOW_MS);
 }

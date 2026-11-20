@@ -2,12 +2,6 @@ import { regenerationPaused } from '@/flags';
 import { logger } from '@/lib/logging/logger';
 import * as Sentry from '@sentry/nextjs';
 
-/**
- * Whether the `regeneration-paused` flag stops new regeneration requests.
- * Fail open: an evaluation error means "not paused", so a Flagship outage does
- * not become a regeneration outage; per-tier quotas still cap cost. The
- * failure is reported to Sentry like the site gate's flag reads.
- */
 export async function isRegenerationPaused(): Promise<boolean> {
   try {
     return await regenerationPaused();

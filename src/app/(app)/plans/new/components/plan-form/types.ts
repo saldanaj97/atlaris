@@ -1,7 +1,3 @@
-/**
- * Types and constants for the unified plan generation form.
- */
-
 export type DropdownOption<TValue extends string = string> = {
   value: TValue;
   label: string;

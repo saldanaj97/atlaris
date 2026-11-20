@@ -95,21 +95,17 @@ async function handleProxyRequest(
   protectRequest: ProtectRequest,
   isSignedIn: IsSignedIn,
 ): Promise<NextResponse> {
-  // Policy checks compare the decoded path; see normalizeProxyPathname.
   const pathname = normalizeProxyPathname(request.nextUrl.pathname);
   if (pathname === null) {
     return withCorrelationId(request, new NextResponse(null, { status: 400 }));
   }
 
-  // Payment/auth provider webhooks bypass all checks including maintenance mode.
   if (isProviderWebhookRoute(pathname)) {
     return nextWithProxyContext(request);
   }
 
-  // Maintenance mode / launch waitlist. Exempt paths never redirect, so skip the flag reads.
   if (!isSiteGateExempt(pathname)) {
     const flagGate = await resolveSiteGate();
-    // Only the waitlist depends on the viewer, so other gates skip the session read.
     const siteGate =
       flagGate === 'waitlist'
         ? resolveViewerSiteGate(flagGate, await isSignedIn())
@@ -128,14 +124,7 @@ async function handleProxyRequest(
     }
   }
 
-  // Auth protection
   if (isProtectedRoute(pathname)) {
-    // In development, when DEV_AUTH_USER_ID is set, bypass middleware auth for
-    // API routes. Clerk does not use this override and would redirect even when
-    // the route handler would accept the dev user. Route handlers still run
-    // withAuth and use getEffectiveAuthUserId.
-    // When LOCAL_PRODUCT_TESTING is enabled, also bypass protected pages so
-    // shell and server components match the seeded local identity.
     if (
       shouldBypassClerkMiddleware({
         isDevelopment: appEnv.isDevelopment,
@@ -168,7 +157,6 @@ const clerkProxy = clerkMiddleware(
     handleProxyRequest(
       request,
       async (pathname) => {
-        // Clerk's default redirect is sign-in; only the sign-up case needs a URL.
         const authUrl = anonymousAuthUrl(request, pathname);
         await auth.protect(
           authUrl.pathname === '/auth/sign-up'
@@ -177,7 +165,6 @@ const clerkProxy = clerkMiddleware(
         );
         return undefined;
       },
-      // clerkMiddleware already authenticated the request, so this adds no network call.
       async () => (await auth()).userId !== null,
     ),
   {
@@ -201,7 +188,6 @@ function proxy(request: NextRequest, event: NextFetchEvent) {
     request,
     async (pathname) =>
       NextResponse.redirect(anonymousAuthUrl(request, pathname)),
-    // No Clerk keys locally, so no session to admit.
     async () => false,
   );
 }
@@ -210,17 +196,9 @@ export default proxy;
 
 export const config = {
   matcher: [
-    // Catch-all for app routes. Skip /ingest so
-    // the public PostHog proxy stays outside Clerk; that route owns validation.
     '/((?!_next|ingest(?:/|$)|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest|txt|xml)).*)',
     '/(api|trpc)(.*)',
-    // Protected app prefixes run the proxy whatever their extension, so
-    // `/plans/x.txt` cannot reach `plans/[id]` without the gate, CSP, and auth.
-    // Keep in step with PROTECTED_PREFIXES in src/lib/proxy/middleware-policy.ts.
     '/(dashboard|plans|account|settings|analytics)(.*)',
-    // Any percent-encoded path runs the proxy too, so `/%70lans/x.txt` cannot
-    // dodge both entries above if a host decodes it before routing. The proxy
-    // decodes it and rejects dot segments before any policy check.
     '/(.*%.*)',
   ],
 };

@@ -5,7 +5,6 @@ const DONE_SENTINEL = '[DONE]';
 function parseEventData(rawEvent: string): string | undefined {
   const dataLines: string[] = [];
   for (const line of rawEvent.split('\n')) {
-    // Lines starting with ':' are comments (OpenRouter's keep-alive pings).
     if (line.startsWith('data:')) {
       dataLines.push(line.slice(line.startsWith('data: ') ? 6 : 5));
     }
@@ -13,10 +12,6 @@ function parseEventData(rawEvent: string): string | undefined {
   return dataLines.length > 0 ? dataLines.join('\n') : undefined;
 }
 
-/**
- * Parses an OpenAI-style server-sent event stream into JSON chunks, stopping
- * at `data: [DONE]`.
- */
 export async function* parseSseJsonEvents(
   body: ReadableStream<Uint8Array>,
 ): AsyncGenerator<unknown> {
@@ -32,7 +27,6 @@ export async function* parseSseJsonEvents(
         : decoder.decode(value, { stream: true });
       buffer = buffer.replace(/\r\n/g, '\n');
       if (done) {
-        // Terminate a final event the server sent without a blank line.
         buffer += '\n\n';
       }
 
@@ -65,7 +59,6 @@ export async function* parseSseJsonEvents(
     }
   } finally {
     if (!finished) {
-      // Best-effort: the consumer stopped early or parsing failed.
       await reader.cancel().catch(() => undefined);
     }
     reader.releaseLock();

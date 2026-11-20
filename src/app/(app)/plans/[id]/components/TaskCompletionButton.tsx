@@ -14,7 +14,6 @@ interface TaskCompletionButtonProps {
   variant: 'timeline' | 'lesson';
 }
 
-/** Toggles a task between completed and not started with variant-specific styling. */
 export function TaskCompletionButton({
   taskId,
   status,

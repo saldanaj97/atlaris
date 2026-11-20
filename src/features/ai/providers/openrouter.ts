@@ -66,7 +66,6 @@ type OpenRouterRequestOptions = {
   headers?: Record<string, string>;
 };
 
-/** Generation stage, tagged on each AI Gateway log entry. */
 type OpenRouterRequestStage = 'plan' | 'lesson';
 
 const AI_GATEWAY_HOSTNAME = 'gateway.ai.cloudflare.com';
@@ -78,10 +77,6 @@ type AiGatewayConfig = {
 
 export type OpenRouterProviderConfig = {
   apiKey?: string;
-  /**
-   * Picks `OPENROUTER_API_KEY_<TIER>` when no `apiKey` is given. Grounded
-   * stages pass it; the standard (non-grounded) pipeline does not, so it keeps one key.
-   */
   tier?: SubscriptionTier;
   model: string;
   fallbackModels?: readonly string[];
@@ -126,7 +121,6 @@ function createLazyOpenRouterClient(
   };
 }
 
-/** Narrow span surface used for gen_ai.* manual span attributes */
 type GenAiManualSpan = {
   setAttribute(key: string, value: string | number | boolean): void;
 };
@@ -140,10 +134,6 @@ function createFreshMetadataUsage(): ProviderUsage {
   };
 }
 
-/**
- * OpenRouter rejects a request whose `models` array holds more than this, with
- * a 400 before any model runs.
- */
 export const OPENROUTER_MAX_ROUTE_MODELS = 3;
 
 function buildRouteModels(
@@ -162,7 +152,6 @@ function buildRouteModels(
   if (routeModels.length <= OPENROUTER_MAX_ROUTE_MODELS) {
     return routeModels;
   }
-  // A shorter fallback chain beats a request that cannot run at all.
   logger.warn(
     {
       source: 'openrouter-provider',
@@ -402,10 +391,6 @@ type OpenRouterChatMessage = { role: 'user'; content: string };
 
 const PRESET_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
-/**
- * System prompts live only in OpenRouter presets, so a request without a valid
- * preset slug must not be sent.
- */
 function requirePresetSlug(value: string | undefined, envName: string): string {
   const slug = value?.trim();
   if (!slug) {
@@ -417,7 +402,6 @@ function requirePresetSlug(value: string | undefined, envName: string): string {
   return slug;
 }
 
-/** `model`, or `models` for a fallback route, each with the preset suffix. */
 function buildPresetModelRoute(
   routeModels: readonly string[],
   presetSlug: string,
@@ -428,10 +412,6 @@ function buildPresetModelRoute(
     : { model: `${routeModels[0]}${presetSuffix}` };
 }
 
-/**
- * AI Gateway headers go only to the gateway host, so the Cloudflare token never
- * reaches OpenRouter when `OPENROUTER_BASE_URL` is unset or points elsewhere.
- */
 function resolveAiGatewayConfig(): AiGatewayConfig | undefined {
   const token = openRouterEnv.aiGatewayToken;
   if (!token) {
@@ -444,10 +424,6 @@ function resolveAiGatewayConfig(): AiGatewayConfig | undefined {
   return { token, logPayloads: openRouterEnv.aiGatewayLogPayloads };
 }
 
-/**
- * Requests with billed server tools get a single attempt: a gateway retry
- * would rerun and re-bill the searches. The workflow step retries those.
- */
 const AI_GATEWAY_MAX_ATTEMPTS = 2;
 const AI_GATEWAY_MAX_ATTEMPTS_WITH_SERVER_TOOLS = 1;
 
@@ -460,11 +436,7 @@ function buildAiGatewayHeaders(
   return {
     'cf-aig-authorization': `Bearer ${gateway.token}`,
     'cf-aig-metadata': JSON.stringify({ stage, preset: presetSlug }),
-    // Regenerations resend identical requests and must get a fresh answer.
     'cf-aig-skip-cache': 'true',
-    // One quick retry, overriding the dashboard. Streamed calls fail before the
-    // stream starts (429, 5xx), so a retry cannot repeat a running generation.
-    // No cf-aig-request-timeout: a timeout retry could.
     'cf-aig-max-attempts': String(maxAttempts),
     'cf-aig-retry-delay': '1000',
     'cf-aig-backoff': 'constant',
@@ -534,8 +506,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
             presetSlug,
           );
         }
-        // Streaming responses routinely exceed base timeout; extension applied unconditionally
-        // until adaptive timeout is wired end-to-end (see GitHub #214).
         requestOptions.timeoutMs =
           (options?.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
           OPENROUTER_TIMEOUT_EXTENSION_MS;
@@ -655,12 +625,6 @@ export class OpenRouterProvider implements AiPlanGenerationProvider {
   }
 }
 
-/**
- * One user prompt part. `cache` sets an explicit cache breakpoint on it, for
- * the stable prefix (brief, module outline) that repeats across calls. A
- * breakpoint caches everything before it, the preset's system prompt included,
- * so cached parts belong first.
- */
 export type OpenRouterPromptPart = { text: string; cache?: boolean };
 
 /**
@@ -678,20 +642,16 @@ export type OpenRouterResponseFormat =
     };
 
 export type OpenRouterGroundedChatRequest = {
-  /** Picks the tier's API key for this call. */
   tier: SubscriptionTier;
   model: string;
   fallbackModels?: readonly string[];
   presetSlug: string;
-  /** Tagged on AI Gateway log entries. */
   stage: string;
   userParts: readonly OpenRouterPromptPart[];
-  /** Sticky routing key, so calls sharing a cached prefix hit the same cache. */
   promptCacheKey?: string;
   responseFormat: OpenRouterResponseFormat;
   serverTools?: readonly OpenRouterServerTool[];
   toolChoice?: OpenRouterToolChoice;
-  /** Server-tool step budget; OpenRouter defaults to and caps at 30. */
   maxToolCalls?: number;
   temperature?: number;
   signal?: AbortSignal;
@@ -700,7 +660,6 @@ export type OpenRouterGroundedChatRequest = {
 
 export type OpenRouterGroundedChatResult = {
   stream: ReadableStream<string>;
-  /** Complete once `stream` has been read to the end. */
   metadata: OpenRouterGroundedMetadata;
 };
 
@@ -708,7 +667,6 @@ type OpenRouterGroundedChatDeps = {
   fetch?: typeof fetch;
 };
 
-/** Anthropic allows four explicit breakpoints; Gemini uses only the last. */
 const MAX_CACHE_BREAKPOINTS = 4;
 
 class OpenRouterHttpError extends Error {
@@ -736,13 +694,10 @@ async function toOpenRouterHttpError(
     ) {
       message = body.error.message;
     }
-  } catch {
-    // Non-JSON error body (an HTML gateway page); keep the status message.
-  }
+  } catch {}
   return new OpenRouterHttpError(response.status, message);
 }
 
-/** Maps a body read that failed because the request timed out. */
 async function* mapStreamTimeout(
   events: AsyncIterable<unknown>,
   timeoutSignal: AbortSignal,
@@ -862,12 +817,10 @@ export async function sendOpenRouterGroundedChat(
       },
     },
     async (span, finish) => {
-      // The timeout covers reading the stream too, not only the first byte.
       const timeoutSignal = AbortSignal.timeout(
         (request.timeoutMs ?? OPENROUTER_DEFAULT_TIMEOUT_MS) +
           OPENROUTER_TIMEOUT_EXTENSION_MS,
       );
-      // Cancelling the returned stream aborts the body read it is waiting on.
       const cancelController = new AbortController();
       const signal = AbortSignal.any([
         cancelController.signal,

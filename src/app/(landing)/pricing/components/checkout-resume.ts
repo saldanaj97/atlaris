@@ -1,10 +1,8 @@
 import type { BillingPeriod } from './pricing-card-model';
 
-// A signed-out checkout click returns to /pricing with what to resume.
 export const CHECKOUT_PLAN_PARAM = 'checkoutPlan';
 export const CHECKOUT_PLAN_SLUG_PARAM = 'checkoutPlanSlug';
 export const CHECKOUT_PERIOD_PARAM = 'checkoutPeriod';
-/** Set when the visitor ticked the renewal checkbox before signing in, so the resumed checkout stays enabled. */
 export const CHECKOUT_CONSENT_PARAM = 'checkoutConsent';
 
 export function checkoutSignInRedirect(

@@ -1,15 +1,3 @@
-/**
- * Queue operations for background workers.
- *
- * All functions bind the service-role DB client because queue operations
- * run in worker context without a user session. This module exists to
- * centralize that binding and prevent service-role imports from spreading
- * to multiple consumer files.
- *
- * This is intentionally a thin wrapper over db/queries/jobs.ts rather than a
- * second abstraction layer. The value here is the single service-role binding
- * point, not additional business logic.
- */
 import type {
   Job,
   JobPayload,
@@ -30,7 +18,6 @@ import { db } from '@supabase/service-role';
 
 type FailJobOptions = {
   retryable?: boolean;
-  /** Minimum seconds before a scheduled retry, such as a durable rate-limit reset. */
   retryAfter?: number;
 };
 

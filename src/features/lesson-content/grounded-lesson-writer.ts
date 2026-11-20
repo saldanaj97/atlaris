@@ -25,7 +25,6 @@ import {
 } from '@/features/lesson-content/parse-module-lesson-batch';
 import { openRouterEnv } from '@/lib/config/env/ai';
 
-/** Tagged on AI Gateway log entries. */
 export const GROUNDED_LESSON_STAGE = 'grounded-lesson';
 
 export type GroundedLesson = ModuleLessonBatchProviderOutput['tasks'][number];
@@ -36,7 +35,6 @@ export type GroundedLessonRaw = {
   readonly finishReason?: string;
 };
 
-/** The lesson writer models for `tier`, a Pro pick first when it is allowed. */
 export function groundedLessonModels(
   tier: SubscriptionTier,
   pickedModelId?: string | null,
@@ -48,7 +46,6 @@ export function groundedLessonModels(
   return models;
 }
 
-/** The existing lesson preset, which grounded lesson calls share. */
 export function requireLessonPreset(): string {
   const slug = openRouterEnv.lessonPreset?.trim();
   if (!slug) {
@@ -57,11 +54,6 @@ export function requireLessonPreset(): string {
   return slug;
 }
 
-/**
- * One lesson call with no tools. `prompt_cache_key` is the plan ID, so every
- * lesson in the plan routes to the cache its shared prefix wrote. Later
- * models in `models` are OpenRouter fallbacks for a failed primary.
- */
 export async function writeGroundedLesson(
   call: {
     readonly tier: SubscriptionTier;
@@ -102,13 +94,6 @@ export async function writeGroundedLesson(
   };
 }
 
-/**
- * Parses one lesson: the first JSON object in the text, the batch envelope
- * with exactly this task, then `sourceIds` from the body's `[S1]` markers
- * (any value the model sent is replaced) and the citation checks. Throws
- * `ParserError`; a citation issue is a `validation` failure, so the lesson
- * gets its one retry.
- */
 export function parseGroundedLessonText(
   rawText: string,
   taskId: string,
@@ -169,7 +154,6 @@ export function toLessonResearch(
   return {
     brief: latest.research.brief,
     sources: latest.sources.map((source) => ({
-      // A CHECK constraint holds `citation_key` to `S<n>`.
       key: source.citationKey as ResearchCitationKey,
       title: source.title,
       url: source.url,

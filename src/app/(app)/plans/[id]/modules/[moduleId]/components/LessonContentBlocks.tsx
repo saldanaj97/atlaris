@@ -156,7 +156,6 @@ export function LessonBodyPanel({
   generationState,
 }: {
   lesson: ModuleDetailTask;
-  /** Module-level lesson generation state; keeps the empty copy in step with the status panel. */
   generationState?: PanelState;
 }) {
   if (lesson.lessonContent) {

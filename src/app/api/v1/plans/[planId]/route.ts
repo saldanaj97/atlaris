@@ -7,18 +7,6 @@ import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import { captureAfterResponse } from '@/lib/posthog-server';
 
-/**
- * GET /api/v1/plans/:planId
- *  - Returns the plan with ordered modules/tasks and user-specific progress for the authenticated user.
- *
- * DELETE /api/v1/plans/:planId
- *  - Permanently deletes the plan and all associated data (modules, tasks, progress, schedules, etc.).
- *  - Ownership enforced via RLS + explicit WHERE clause.
- *  - Blocks deletion of plans currently in 'generating' status.
- *
- * PUT intentionally deferred (no direct user edits in MVP; regeneration flow supersedes manual editing).
- */
-
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ params, actor, db }) => {

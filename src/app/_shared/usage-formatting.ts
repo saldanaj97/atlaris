@@ -4,11 +4,6 @@ export interface UsageData {
   regenerations: { used: number; limit: number };
 }
 
-/**
- * Tier limits use both `Infinity` (numeric quotas like `maxActivePlans`) and
- * `null` (optional caps like `maxWeeks`) to mean "unbounded". Centralize the
- * predicate so callers don't have to remember to check both.
- */
 export function isUnlimitedNumber(value: number | null | undefined): boolean {
   return value === null || value === undefined || value === Infinity;
 }
@@ -25,7 +20,6 @@ export function formatUsageLimitLabel(
   return isUnlimitedNumber(value) ? 'unlimited' : String(value);
 }
 
-/** Returns 0 for unlimited limits since there's no cap to show progress against. */
 export function getUsagePercent(
   used: number,
   limit: number | null | undefined,

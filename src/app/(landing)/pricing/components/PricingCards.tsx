@@ -23,9 +23,7 @@ import { useRef, type ReactNode } from 'react';
 import styles from './PricingCards.module.css';
 
 type PricingCardsProps = {
-  /** The plan the viewer is on; its card carries a "Current plan" badge. */
   currentPlanSlug?: string | null;
-  /** The plan whose card and action get the page's emphasis. */
   featuredPlanSlug?: string;
   loading?: boolean;
   period: BillingPeriod;
@@ -109,7 +107,6 @@ export function PricingCards({
                 data-pricing-card
                 key={`${plan.id}-${plan.slug}`}
               >
-                {/* ponytail: under-card cursor glow; face paint lives on ::after */}
                 <span aria-hidden className={styles.cardUnderGlow} />
                 <header className={styles.cardHeader}>
                   <div className={styles.cardTitleContainer}>

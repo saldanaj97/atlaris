@@ -13,7 +13,6 @@ export type DbLearningActivityEvent = InferSelectModel<
   typeof learningActivityEvents
 >;
 
-/** One task status change joined with the task title and plan topic. */
 export type RecentLearningActivityRow = {
   id: string;
   planId: string;

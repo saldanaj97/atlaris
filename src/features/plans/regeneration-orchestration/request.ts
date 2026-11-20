@@ -43,7 +43,6 @@ type RegenerationAdmission =
 const QUOTA_DENIED_REASON =
   'Regeneration quota exceeded for your subscription tier.';
 
-/** Reasons and note for the job payload; an empty note is left out. */
 function regenerationFeedback(
   args: RequestPlanRegenerationArgs,
 ): Pick<PlanRegenerationJobData, 'reasons' | 'note'> {
@@ -55,11 +54,6 @@ function regenerationFeedback(
   };
 }
 
-/**
- * Fail-fast quota read; nothing is settled until provider start. A grounded
- * run on a tier with a per-plan cap counts this plan's regenerations instead
- * of the monthly meter.
- */
 async function peekRegenerationQuota(
   params: {
     readonly userId: string;
@@ -136,8 +130,6 @@ async function admitPlanRegeneration(
     d.tier.resolveUserTier(userId, d.dbClient),
   ]);
 
-  // Grounded regeneration (JCS-162): reasons and note, Free's per-plan cap.
-  // Flag off keeps today's admission and drops reasons and note.
   const grounded = await d.grounded.isEnabled(tier);
   const merged = buildPersistedRegenerationInput(plan, overrides);
   const policyDenial = resolveRegenerationPolicyDenial({

@@ -21,15 +21,11 @@ import { resolveGroundedWriterModelId } from '@/features/ai/model-preferences';
 import { resolveUserTier } from '@/features/billing/tier';
 import { logger } from '@/lib/logging/logger';
 
-/** Statuses allowed when reserving a slot for POST /plans/:id/retry (transactional re-check). */
 export const PLAN_RETRY_RESERVATION_ALLOWED_STATUSES = [
   'failed',
   'pending_retry',
 ] as const;
 
-/**
- * Minimal plan snapshot needed to retry generation without route-owned session wiring.
- */
 export type RetryPlanGenerationPlanSnapshot =
   PlanGenerationCoreFieldsNormalized;
 
@@ -44,7 +40,6 @@ export interface StartCreateArgs {
   internalUserId: string;
   body: CreateLearningPlanInput;
   savedPreferredAiModel: string | null;
-  /** Saved grounded picks; only the Pro writer pick is read (JCS-169). */
   savedGroundedPicks?: SavedGroundedModelPicks;
   requestId?: string;
 }
@@ -61,7 +56,6 @@ export interface StartRetryArgs {
   planId: string;
   plan: RetryPlanGenerationPlanSnapshot;
   savedPreferredAiModel: string | null;
-  /** Saved grounded picks; only the Pro writer pick is read (JCS-169). */
   savedGroundedPicks?: SavedGroundedModelPicks;
   tierDb: DbClient;
   requestId?: string;
@@ -262,8 +256,6 @@ async function resolveCreateStreamModel({
 
   logger[ignoredSuppliedModel ? 'warn' : 'info'](meta, message);
 
-  // Grounded outlines take a valid `?model=` override, else the Pro writer
-  // pick; the saved standard outline model never applies to them (JCS-169).
   const groundedWriterModelId = resolveGroundedWriterModelId(
     tier,
     resolutionSource === 'query_override' ? modelOverride : undefined,

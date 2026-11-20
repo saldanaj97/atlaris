@@ -10,9 +10,6 @@ function BillingPlanRowSkeleton() {
   );
 }
 
-/**
- * Skeleton for the billing sentence, plan card and status/billing-date ledger rows.
- */
 export function BillingPlanSkeleton() {
   return (
     <div className='space-y-4'>
@@ -45,9 +42,6 @@ function UsageMeterSkeleton() {
   );
 }
 
-/**
- * Skeleton for usage ledger rows.
- */
 export function UsageSkeleton() {
   return (
     <>

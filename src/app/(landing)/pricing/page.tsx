@@ -21,9 +21,7 @@ export const metadata: Metadata = {
 
 export default async function PricingPage(): Promise<ReactElement> {
   const showClerkBilling = shouldUseClerkUi();
-  // The proxy keeps /pricing live while a site gate is on; skip the account DB read.
   const siteGate = await resolveSiteGate();
-  // Signed-in users pass the launch waitlist, so they get the live checkout.
   const signedIn =
     siteGate === 'waitlist' && Boolean((await getSessionSafe()).session);
   const appClosed = resolveViewerSiteGate(siteGate, signedIn) !== null;

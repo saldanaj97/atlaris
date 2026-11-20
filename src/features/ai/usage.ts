@@ -1,14 +1,3 @@
-/**
- * Canonical AI usage normalization.
- *
- * This module bridges raw provider metadata (ProviderMetadata) to the
- * canonical usage shape (CanonicalAIUsage). All persistence and billing
- * code should consume CanonicalAIUsage — never raw metadata fields.
- *
- * Cost computation is delegated to `@/features/ai/cost` — the single
- * source of truth for pricing and output-token ceilings.
- */
-
 import type { ProviderMetadata } from '@/shared/types/ai-provider.types';
 
 import {
@@ -100,14 +89,6 @@ function resolveProviderCostMicrousd(
     : null;
 }
 
-/**
- * Strictly normalize provider metadata into a CanonicalAIUsage.
- *
- * Throws {@link IncompleteUsageError} if any required field (provider,
- * model, inputTokens, outputTokens) is missing or undefined. The error
- * carries a best-effort `partialUsage` so callers can still record data
- * after logging.
- */
 export async function normalizeToCanonicalUsage(
   metadata: ProviderMetadata | undefined,
 ): Promise<CanonicalAIUsage> {
@@ -122,11 +103,6 @@ export async function normalizeToCanonicalUsage(
   const resolvedOutputTokens = usage?.completionTokens ?? 0;
   const resolvedTotalTokens =
     usage?.totalTokens ?? resolvedInputTokens + resolvedOutputTokens;
-  // Mock providers and synthetic flows legitimately call this with models
-  // that are not in the synced catalog; record cost as 0 in that case but
-  // log it explicitly so the silent path stops being invisible. Any other
-  // error from computeCostCents (invalid token counts, registry bug) must
-  // propagate.
   const isPartial = missingFields.length > 0;
   const estimatedCostCents = isPartial
     ? 0
@@ -161,13 +137,6 @@ export async function normalizeToCanonicalUsage(
   return canonical;
 }
 
-/**
- * Normalize provider metadata to canonical usage, logging an explicit
- * error (never silently defaulting) when data is incomplete.
- *
- * Always returns a {@link CanonicalAIUsage} so downstream recording can
- * proceed, but missing fields are surfaced via structured logs and Sentry.
- */
 export async function safeNormalizeUsage(
   metadata: ProviderMetadata | undefined,
 ): Promise<CanonicalAIUsage> {
@@ -198,14 +167,6 @@ export async function safeNormalizeUsage(
   }
 }
 
-/**
- * One usage record for several calls: token and cost totals, model and
- * provider of the first. When any call has an OpenRouter-reported cost, the
- * provider total adds each call's reported cost, or its catalog estimate when
- * it has none, so the row costs what the calls cost one by one. The estimate
- * leaves out web search, advisor and cache-write charges, so letting one call
- * without a reported cost turn the whole row into an estimate undercounts.
- */
 export function sumUsages(
   usages: readonly [CanonicalAIUsage, ...CanonicalAIUsage[]],
 ): CanonicalAIUsage {
@@ -229,13 +190,8 @@ export function sumUsages(
   };
 }
 
-/** Usage of a billed call whose output was then discarded, by the error that discarded it. */
 const billedUsageByError = new WeakMap<object, CanonicalAIUsage>();
 
-/**
- * Complete usage for a finished call, or `null` when its usage never fully
- * arrived (for example a stream cut off before the closing usage chunk).
- */
 export async function completeUsageOrNull(
   metadata: ProviderMetadata,
 ): Promise<CanonicalAIUsage | null> {
@@ -249,12 +205,6 @@ export async function completeUsageOrNull(
   }
 }
 
-/**
- * Runs `use` on a call's output. When it throws, the error carries the call's
- * usage (read it with {@link billedUsageOf}), because OpenRouter bills a call
- * whose output is unreadable or rejected. The step that made the call records
- * it, since a step's thrown result, and with it the usage, is not kept.
- */
 export async function withBilledUsage<T>(
   usage: () => Promise<CanonicalAIUsage | null>,
   use: () => Promise<T>,
@@ -277,7 +227,6 @@ export async function withBilledUsage<T>(
   }
 }
 
-/** The usage {@link withBilledUsage} attached to `error`, if any. */
 export function billedUsageOf(error: unknown): CanonicalAIUsage | null {
   return typeof error === 'object' && error !== null
     ? (billedUsageByError.get(error) ?? null)

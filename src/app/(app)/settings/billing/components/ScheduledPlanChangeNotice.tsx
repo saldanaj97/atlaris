@@ -11,11 +11,6 @@ import { useClerk } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
-/**
- * Names a plan switch Clerk has scheduled for period end. Atlaris stores only
- * the plan a user has now, so this reads Clerk directly; it is display only and
- * never affects entitlements. Render it only where Clerk UI is enabled.
- */
 export function ScheduledPlanChangeNotice() {
   const { billing, loaded } = useClerk();
   const [scheduledPlan, setScheduledPlan] = useState<ScheduledPaidPlan | null>(
@@ -32,7 +27,6 @@ export function ScheduledPlanChangeNotice() {
         if (!cancelled) setScheduledPlan(findScheduledPaidPlan(subscription));
       })
       .catch((error: unknown) => {
-        // The rows beside this notice come from Postgres and stay accurate.
         clientLogger.warn('Failed to load scheduled plan change', {
           context: 'settings-billing',
           message: error instanceof Error ? error.message : String(error),

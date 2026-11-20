@@ -40,10 +40,6 @@ function hasValidPlanCalendarDate(value: string | null | undefined): boolean {
   );
 }
 
-/**
- * Effective regen input: topic comes from the persisted plan; notes are intentionally undefined because plans do not persist them.
- * Allowed overrides: skillLevel, weeklyHours, learningStyle, startDate, deadlineDate.
- */
 export function buildPersistedRegenerationInput(
   plan: Pick<
     RegenerationOwnedPlan,
@@ -82,10 +78,6 @@ export function buildPersistedRegenerationInput(
   };
 }
 
-/**
- * Free deny takes precedence over duration; a grounded regeneration (JCS-162)
- * is open to Free, capped per plan at provider start. Does not clamp dates.
- */
 export function resolveRegenerationPolicyDenial(params: {
   readonly tier: SubscriptionTier;
   readonly grounded?: boolean;

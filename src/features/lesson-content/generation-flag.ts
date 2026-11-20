@@ -2,14 +2,12 @@ import { moduleLessonGeneration } from '@/flags';
 
 let testOverride: boolean | undefined;
 
-/** Test hook: force enablement without evaluating the Flagship flag. */
 export function setModuleLessonGenerationEnabledForTests(
   value: boolean | undefined,
 ): void {
   testOverride = value;
 }
 
-/** Fail closed when the Flagship flag cannot be evaluated. */
 export async function resolveModuleLessonGenerationEnabled(): Promise<boolean> {
   if (testOverride !== undefined) {
     return testOverride;

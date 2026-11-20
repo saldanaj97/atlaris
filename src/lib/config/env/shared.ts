@@ -22,9 +22,6 @@ const normalize = (value: string | undefined | null): string | undefined => {
   return trimmed === '' ? undefined : trimmed;
 };
 
-/**
- * Read-only view of environment variables (e.g. `process.env` or a test fixture).
- */
 export type EnvSource = Readonly<Record<string, string | undefined>>;
 
 /**
@@ -81,15 +78,10 @@ export function isProdRuntimeEnv(env: EnvSource): boolean {
   return parseNodeEnv(env) === 'production';
 }
 
-/** True for development and test runtimes (not production). */
 function isNonProductionRuntimeEnv(env: EnvSource): boolean {
   return !isProdRuntimeEnv(env);
 }
 
-/**
- * Parses optional env string into a finite number. Invalid values map to the
- * fallback or `undefined`.
- */
 export function parseEnvNumber(value: string | undefined): number | undefined;
 export function parseEnvNumber(
   value: string | undefined,
@@ -165,7 +157,6 @@ function getCachedServerRequired(
 export interface ServerEnvAccess {
   getServerRequired(key: string): string;
   getServerOptional(key: string): string | undefined;
-  /** Raw env value before trim/empty normalization. */
   getServerEnvRaw(key: string): string | undefined;
   getServerRequiredProdOnly(key: string): string | undefined;
   getProductionCached<T>(key: string, loader: () => T): T;

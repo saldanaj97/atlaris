@@ -11,9 +11,6 @@ import {
 import { ROUTES } from '@/features/navigation/routes';
 import { redirect } from 'next/navigation';
 
-/**
- * Query-backed filter/search chrome streamed into the plans hero.
- */
 export async function PlansLibraryChrome({
   dataPromise,
   query,
@@ -28,10 +25,6 @@ export async function PlansLibraryChrome({
   return <PlansLibraryToolbar page={result.plansPage} query={query} />;
 }
 
-/**
- * Async component that fetches user plans and renders content.
- * Wrapped in Suspense boundary by the parent page.
- */
 export async function PlansContent({
   dataPromise,
   query,

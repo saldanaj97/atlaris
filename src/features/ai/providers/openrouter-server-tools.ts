@@ -1,9 +1,3 @@
-/**
- * OpenRouter server tools (run by OpenRouter, not by us) and their wire shape.
- * Both are billed per use, so a request carrying either must not be retried
- * by the AI Gateway.
- */
-
 export type OpenRouterWebSearchEngine =
   | 'auto'
   | 'native'
@@ -15,7 +9,6 @@ export type OpenRouterWebSearchEngine =
 export type OpenRouterWebSearchTool = {
   type: 'web_search';
   engine?: OpenRouterWebSearchEngine;
-  /** Engine-specific; Parallel takes `turbo`, `fast`, `basic` or `advanced`. */
   mode?: string;
   maxResults?: number;
   maxTotalResults?: number;
@@ -40,7 +33,6 @@ type WireServerTool = {
   parameters: Record<string, string | number>;
 };
 
-/** Drops unset values so OpenRouter applies its own defaults. */
 function definedEntries(
   entries: Record<string, string | number | undefined>,
 ): Record<string, string | number> {

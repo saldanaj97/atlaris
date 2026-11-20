@@ -13,8 +13,6 @@ export function BuilderSection() {
       aria-labelledby='about-builder-heading'
     >
       <RevealAnimation>
-        {/* Heading left, copy right, like the method section, so the section
-            uses the full column instead of leaving its right half empty. */}
         <div className='grid gap-6 md:grid-cols-2 md:items-end md:gap-14'>
           <div>
             {/* oxlint-disable shadcn/require-static-classes -- imported CSS module class is complete but opaque to the rule */}

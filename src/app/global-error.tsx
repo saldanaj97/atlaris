@@ -26,8 +26,6 @@ export default function GlobalError({
     Sentry.captureException(error);
   }, [error]);
 
-  // This boundary replaces the root layout, so it owns <html>, <body>, the
-  // global stylesheet and the theme provider.
   return (
     <html
       lang='en'

@@ -36,7 +36,6 @@ import {
 
 interface PlanRowProps {
   plan: PlanListItem;
-  /** Position in the rendered page; staggers the entry animation. */
   index?: number;
   referenceTimestamp: string;
   selected?: boolean;

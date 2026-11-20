@@ -16,7 +16,6 @@ import {
 import { cn } from '@/lib/utils';
 import { Fragment } from 'react';
 
-/** Renders inline code and bold; model text only ever becomes React text. */
 export function LessonInlineText({ text }: { text: string }) {
   return getStableEntries(
     parseLessonInline(text),

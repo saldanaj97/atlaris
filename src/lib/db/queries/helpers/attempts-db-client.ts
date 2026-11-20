@@ -1,6 +1,5 @@
 import type { AttemptsDbClient } from '@/lib/db/queries/types/attempts.types';
 
-/** Minimal callable surface the attempt helpers need from a DB client. */
 const ATTEMPTS_DB_METHODS = [
   'select',
   'insert',

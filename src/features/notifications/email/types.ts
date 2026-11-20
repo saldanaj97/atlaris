@@ -31,7 +31,6 @@ export interface EmailSender {
 
 export type EmailDeliveryRunRequest = {
   categories: EmailNotificationCategory[];
-  /** UTC calendar date YYYY-MM-DD used for idempotency keys */
   schedulerDateUtc: string;
   batchSize?: number;
   cursorUserId?: string | null;

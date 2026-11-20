@@ -9,9 +9,6 @@ interface ModuleDetailPageErrorProps {
   upgradeHref?: string;
 }
 
-/**
- * Renders a full-screen error UI for the module detail page.
- */
 export function ModuleDetailPageError({
   message,
   planId,

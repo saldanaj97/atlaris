@@ -13,17 +13,6 @@ function resolvePostHogNodeSdkHost(rawHost: string | undefined): string {
   }
 }
 
-/**
- * Returns a singleton PostHog server-side client.
- *
- * Uses flushAt=1 and flushInterval=0 so events send promptly. Route handlers
- * are still short-lived — call `captureAfterResponse` so capture+flush run
- * in `after()` and do not block the mutation response.
- *
- * Returns null when the project token is missing so callers can skip capture
- * without breaking the request. Host may be omitted; the Node SDK then uses
- * the same US Cloud ingest origin as the `/ingest` proxy.
- */
 export function getPostHogClient(): PostHog | null {
   if (!isPostHogEnabledInCurrentEnvironment()) {
     return null;
@@ -44,7 +33,6 @@ export function getPostHogClient(): PostHog | null {
   if (!posthogClient) {
     posthogClient = new PostHog(token, {
       host,
-      // Flush immediately — after() still needs flush() before the runtime tears down.
       flushAt: 1,
       flushInterval: 0,
     });
@@ -53,12 +41,6 @@ export function getPostHogClient(): PostHog | null {
   return posthogClient;
 }
 
-/**
- * Capture a server event after the HTTP response is sent.
- *
- * `distinctId` is always Clerk `authUserId` so it matches
- * `posthog.identify(user.id)` in PostHogUserIdentifier.
- */
 export function captureAfterResponse(
   actor: { authUserId: string },
   event: string,
@@ -78,7 +60,5 @@ export function captureAfterResponse(
 
   try {
     after(send);
-  } catch {
-    // ponytail: Vitest calls route handlers outside Next after() scope; drop the event rather than 500
-  }
+  } catch {}
 }

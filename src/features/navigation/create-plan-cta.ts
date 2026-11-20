@@ -1,6 +1,5 @@
 import { ROUTES } from '@/features/navigation/routes';
 
-/** The one label for the create-plan action, in the app chrome and on the landing page. */
 export const CREATE_PLAN_LABEL = 'Create a plan';
 
 export type CreatePlanCta = {
@@ -38,12 +37,6 @@ export function resolveCreatePlanCta({
 
 export type MarketingCreatePlanCta = { href: string; label: string };
 
-/**
- * The marketing pages' create-plan buttons. A signed-out visitor goes to
- * sign-up and returns to the plan form; a signed-in user with no active
- * subscription goes to pricing, because the plan form would send them there
- * anyway; everyone else goes to the plan form.
- */
 export function resolveMarketingCreatePlanCta({
   isAuthenticated,
   canCreatePlan,
@@ -65,11 +58,6 @@ export function resolveMarketingCreatePlanCta({
   return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
 }
 
-/**
- * The marketing header's one call to action. Signed-in visitors go to the
- * dashboard; on the auth pages a visitor is already mid sign-in, so the
- * action is Sign up rather than the plan form.
- */
 export function resolveMarketingPrimaryCta({
   isAuthenticated,
   pathname,
@@ -88,7 +76,6 @@ export function resolveMarketingPrimaryCta({
   return { href: ROUTES.PLANS.NEW, label: CREATE_PLAN_LABEL };
 }
 
-/** Sign-in and sign-up pages, including Clerk's nested steps. */
 export function isAuthPath(pathname: string): boolean {
   return [ROUTES.AUTH.SIGN_IN, ROUTES.AUTH.SIGN_UP].some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),

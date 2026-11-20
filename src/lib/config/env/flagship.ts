@@ -7,7 +7,6 @@ import {
   type ServerEnvAccess,
 } from '@/lib/config/env/shared';
 
-/** Value of the `environment` attribute every flag evaluation carries. */
 export type FlagEnvironment = 'development' | 'staging' | 'production';
 
 /**
@@ -15,16 +14,9 @@ export type FlagEnvironment = 'development' | 'staging' | 'production';
  * needs none of these: it evaluates through its `FLAGS` binding.
  */
 interface FlagshipEnv {
-  /**
-   * Backend Flagship app ID (`cf flagship apps list`). Named "backend" in the
-   * env so a separate frontend flags app can be added later.
-   */
   readonly appId: string | undefined;
-  /** Cloudflare account ID that owns the app. */
   readonly accountId: string | undefined;
-  /** API token with the Flagship Evaluate permission. */
   readonly apiToken: string | undefined;
-  /** All three values are set, so flags can be evaluated over HTTP. */
   readonly isConfigured: boolean;
   /**
    * Hosted deployments (Vercel) must evaluate real flags: an unconfigured
@@ -32,7 +24,6 @@ interface FlagshipEnv {
    * apply. Locally and in tests, flags fall back to their defaults silently.
    */
   readonly isRequired: boolean;
-  /** `VERCEL_ENV` mapped to the Worker's `WORKER_ENV` names (preview is staging). */
   readonly environment: FlagEnvironment;
 }
 

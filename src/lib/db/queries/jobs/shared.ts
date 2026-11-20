@@ -27,17 +27,10 @@ export const jobQueueSelect = {
   updatedAt: jobQueue.updatedAt,
 } as const;
 
-/** Transaction client type for use inside dbClient.transaction() callbacks. */
 type JobsTransaction = Parameters<
   Parameters<JobsDbClient['transaction']>[0]
 >[0];
 
-/**
- * Locks the job row by id (SELECT FOR UPDATE) and indicates whether it is already terminal.
- * Shared by completeJobRecord and failJobRecord for idempotent guard behavior.
- *
- * @returns null if job not found, else { row, isTerminal } with isTerminal true when status is completed or failed
- */
 async function lockJobAndCheckTerminal(
   tx: JobsTransaction,
   jobId: string,

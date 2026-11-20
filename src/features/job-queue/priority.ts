@@ -1,6 +1,5 @@
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 export const PRIORITY_TOPICS = [
-  // seed examples; business can tune this list
   'interview prep',
   'ai engineering',
   'machine learning',
@@ -8,7 +7,6 @@ export const PRIORITY_TOPICS = [
 ] as const;
 
 function escapeRegex(s: string): string {
-  // Escape special RegExp characters: \ ^ $ * + ? . ( ) | { } [ ]
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 

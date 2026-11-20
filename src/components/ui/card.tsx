@@ -53,7 +53,6 @@ function CardTitle({
   as: TitleTag = 'div',
   ...props
 }: React.ComponentProps<'div'> & {
-  /** Use `h3` for section titles under a page `h2` (e.g. settings billing cards). */
   as?: 'div' | 'h2' | 'h3' | 'h4';
 }) {
   return (

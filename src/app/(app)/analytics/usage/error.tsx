@@ -10,7 +10,6 @@ interface ErrorProps {
   retry: () => void;
 }
 
-/** Route-level recovery for analytics reads that fail before the page can render. */
 export default function UsageAnalyticsError({ error, retry }: ErrorProps) {
   useEffect(() => {
     clientLogger.error('Usage analytics error:', {

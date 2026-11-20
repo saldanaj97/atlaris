@@ -15,13 +15,7 @@ import { z } from 'zod';
 export const JOBS_TIMESTAMP_HEADER = 'x-atlaris-jobs-timestamp';
 export const JOBS_SIGNATURE_HEADER = 'x-atlaris-jobs-signature';
 export const JOBS_SIGNATURE_VERSION = 'v1';
-/** Commands whose timestamp is further than this from the Worker clock are rejected. */
 export const JOBS_SIGNATURE_MAX_SKEW_SECONDS = 300;
-/**
- * Largest signed command body the Worker reads (DEV-208, lead 5). Real
- * commands are a few KiB; the cap stops an unsigned client from making the
- * Worker buffer and hash a large body before the signature check fails.
- */
 export const JOBS_SIGNED_BODY_MAX_BYTES = 256 * 1024;
 
 export const JOBS_COMMAND_PATHS = {
@@ -31,7 +25,6 @@ export const JOBS_COMMAND_PATHS = {
   emailDeliveryRuns: '/v1/email-delivery/runs',
 } as const;
 
-/** `POST /v1/regeneration/enqueue` body; also the regeneration queue message. */
 export const regenerationEnqueueCommandSchema = z.object({
   v: z.literal(1),
   jobId: z.uuid(),
@@ -68,7 +61,6 @@ const subscriptionTierSchema = z.enum([
 
 const planGenerationStatusSchema = z.enum(generationStatus.enumValues);
 
-/** The plan-generation workflow runs initial attempts only (create and retry). */
 const initialGenerationPurposeSchema = z.literal(
   'initial',
 ) satisfies z.ZodType<GenerationPurpose>;
@@ -133,12 +125,10 @@ export const planGenerationStartCommandSchema = z.strictObject({
   requiredGenerationStatus: planGenerationStatusSchema.optional(),
 });
 
-/** The parsed command (`v` included); the app builds the body from `z.input`. */
 export type PlanGenerationStartCommand = z.infer<
   typeof planGenerationStartCommandSchema
 >;
 
-/** Drops `v`; the return type keeps the schema in step with the app's input. */
 export function toPlanGenerationWorkflowInput(
   command: PlanGenerationStartCommand,
 ): PlanGenerationWorkflowInput {
@@ -146,7 +136,6 @@ export function toPlanGenerationWorkflowInput(
   return input;
 }
 
-/** `503` body codes when the Worker refuses a command (Decision 7). */
 export type JobsUnavailableCode = 'jobs_paused' | 'job_disabled';
 
 const encoder = new TextEncoder();
@@ -157,15 +146,10 @@ function toHex(buffer: ArrayBuffer): string {
   ).join('');
 }
 
-/** Hex SHA-256 of a command body, as it appears in the signed canonical string. */
 export async function hashJobsBody(body: string): Promise<string> {
   return toHex(await crypto.subtle.digest('SHA-256', encoder.encode(body)));
 }
 
-/**
- * {@link computeJobsSignature} from a precomputed {@link hashJobsBody}, so a
- * verifier that tries several secrets hashes the body once.
- */
 export async function computeJobsSignatureFromBodyHash(input: {
   readonly secret: string;
   readonly timestamp: string;
@@ -204,11 +188,6 @@ export async function computeJobsSignature(input: {
   });
 }
 
-/**
- * Constant-time string compare: both sides are hashed to fixed-length digests
- * first, so length differences cannot short-circuit (same approach as
- * `workflowCallbackTokensMatch`).
- */
 export async function jobsSignaturesMatch(
   expected: string,
   provided: string,

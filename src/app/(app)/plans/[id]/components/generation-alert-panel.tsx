@@ -23,7 +23,6 @@ export function GenerationAlertPanel({
   title: string;
   body: ReactNode;
   badge?: string;
-  /** Shows a spinner beside the badge while work is still running. */
   busy?: boolean;
   meta?: ReactNode;
   footer?: ReactNode;

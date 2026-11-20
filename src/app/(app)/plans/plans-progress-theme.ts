@@ -79,8 +79,6 @@ const LESSON_PROGRESS_THEME: Record<
     title: 'text-foreground',
     mutedText: 'text-muted-foreground',
   },
-  // Locked reads from the dashed border, lock icon and "Locked" badge, not
-  // from fading the text, so every label keeps full contrast.
   locked: {
     marker: 'border-border bg-muted text-muted-foreground',
     card: 'border-dashed border-input bg-panel-muted dark:bg-muted/30',

@@ -40,15 +40,10 @@ export function getJobRetryDelayMs(
   return Math.round(baseMs * factor);
 }
 
-/**
- * `retryable === false` never schedules retry.
- * `retryable === true` or `undefined` retries while `attemptNumber < maxAttempts`.
- */
 export function decideJobRetry(params: {
   attemptNumber: number;
   maxAttempts: number;
   retryable: boolean | undefined;
-  /** Minimum seconds before a scheduled retry, when a dependency provides one. */
   retryAfterSeconds?: number;
 }): JobRetryDecision {
   const attemptNumber = normalizeAttemptNumber(params.attemptNumber);

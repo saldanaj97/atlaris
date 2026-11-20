@@ -32,7 +32,6 @@ interface AppSidebarProps {
   pathname: string;
   navItems: NavItem[];
   tier?: SubscriptionTier;
-  /** Entitlement for the Create plan action; hidden while unknown. */
   canCreatePlan?: boolean;
   userName?: string;
   userImageUrl?: string | null;
@@ -40,20 +39,17 @@ interface AppSidebarProps {
   navigationLabel?: string;
   className?: string;
   id?: string;
-  /** Desktop icon rail. Never set for the mobile sheet. */
   collapsed?: boolean;
   onNavigate?: () => void;
   onDesktopCollapse?: () => void;
   onDesktopExpand?: () => void;
 }
 
-/** Row geometry shared by nav destinations and their sub-items. */
 const NAV_ROW =
   'min-h-[36px] rounded-sm px-[12px] type-label transition-colors motion-reduce:transition-none pointer-coarse:min-h-(--at-semantic-size-control-touch,2.75rem)';
 const NAV_ROW_IDLE =
   'text-muted-foreground hover:bg-secondary hover:text-foreground';
 const NAV_ROW_SELECTED = 'bg-action-soft text-foreground';
-/** Left bar on the active top-level destination; matches the collapsed rail. */
 const NAV_ROW_MARKER =
   'relative before:absolute before:inset-y-[8px] before:left-0 before:w-[3px] before:rounded-full before:bg-navigation-item-marker';
 
@@ -252,7 +248,6 @@ export default function AppSidebar({
                 expandedMinWidth,
               )}
             >
-              {/* Neutral: the page's own primary is the view's one cantaloupe action. */}
               <Button asChild variant='outline' className='min-h-[36px] w-full'>
                 <Link href={createPlanCta.href} onClick={onNavigate}>
                   {createPlanCta.href === ROUTES.PLANS.NEW ? (

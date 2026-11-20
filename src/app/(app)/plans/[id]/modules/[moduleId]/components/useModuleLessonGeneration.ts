@@ -81,7 +81,6 @@ export function useModuleLessonGeneration({
   const [longGenerationKey, setLongGenerationKey] =
     useState<LongGenerationKey | null>(null);
   const generationPollCountRef = useRef(0);
-  // Distinguishes pre-claim queue latency from post-claim terminal rollbacks.
   const hasObservedGeneratingRef = useRef(false);
   const autoStartedKeyRef = useRef<string | null>(null);
   const generationRequested =
@@ -175,8 +174,6 @@ export function useModuleLessonGeneration({
           return 'continue';
         }
 
-        // A matching workflow run proves the queued request claimed and settled.
-        // Otherwise, wait for a visible claim before treating it as terminal.
         if (
           generationRequested &&
           (parsed.data.status === 'not_generated' ||
@@ -314,7 +311,6 @@ export function useModuleLessonGeneration({
             status: response.status,
             fallbackMessage: 'Lesson generation request failed.',
           });
-          // AI spend refusals name when generation is available again (DEV-208).
           if (
             apiError.code === API_ERROR_CODES.AI_BUDGET_EXHAUSTED ||
             apiError.code === API_ERROR_CODES.AI_GENERATION_PAUSED

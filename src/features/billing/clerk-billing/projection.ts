@@ -300,12 +300,6 @@ function latestPeriodEnd(items: ClerkBillingProjectionItem[]): Date | null {
   }, null);
 }
 
-/**
- * After a scheduled switch to a lower plan, a failed first charge leaves the
- * lower plan past due and the stored tier on a plan Clerk no longer has live
- * (Clerk may omit ended items). Access follows the lower plan. A past-due item
- * above the stored tier never promotes.
- */
 function lowerPastDueItemAfterPlanEnded(
   paidItems: ClerkBillingProjectionItem[],
   currentTier: Exclude<SubscriptionTier, 'free'>,
@@ -357,7 +351,6 @@ export function projectClerkBillingSource(
   const upcomingPaidItem = paidItems.find((item) => item.status === 'upcoming');
 
   if (source.paymentAttemptStatus === 'failed') {
-    // Failed attempts can include active-looking items; never use them to promote a tier.
     if (!isPaidTier(current.subscriptionTier)) {
       return null;
     }
@@ -386,7 +379,6 @@ export function projectClerkBillingSource(
       subscriptionTier: activePaidItem.tier,
       subscriptionStatus: activePaidItem.isFreeTrial ? 'trialing' : 'active',
       subscriptionPeriodEnd: activePaidItem.periodEnd,
-      // A scheduled switch replaces the plan at period end; access does not end.
       cancelAtPeriodEnd:
         !upcomingPaidItem && isCanceledAtPeriodEnd(activePaidItem, now),
     };
@@ -454,7 +446,6 @@ export function projectClerkBillingSource(
   // customer is moving to that plan, not leaving, so don't fall through to Free.
   if (upcomingPaidItem?.tier && isPaidTier(current.subscriptionTier)) {
     return {
-      // An unpaid upcoming plan above the stored tier never promotes.
       subscriptionTier:
         PAID_TIER_RANK[upcomingPaidItem.tier] <
         PAID_TIER_RANK[current.subscriptionTier]

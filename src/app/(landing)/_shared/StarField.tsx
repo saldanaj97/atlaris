@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 
 import styles from './star-field.module.css';
 
-/** Deterministic star chart — no Math.random so SSR and client agree. */
 const STARS = [
   { top: '3%', left: '12%', size: 1, delay: 0.3, duration: 5.1 },
   { top: '4%', left: '8%', size: 2, delay: 0, duration: 4.2 },

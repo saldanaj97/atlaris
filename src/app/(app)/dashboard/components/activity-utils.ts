@@ -19,9 +19,6 @@ const TASK_ACTIVITY_KIND: Record<ProgressStatus, ActivityKind> = {
   not_started: 'task-reset',
 };
 
-/**
- * Formats a Date object into a human-readable "time ago" string.
- */
 function formatTimeAgo(date: Date, now: Date = new Date()): string {
   return formatRelativePast(date, { referenceDate: now, style: 'verbose' });
 }

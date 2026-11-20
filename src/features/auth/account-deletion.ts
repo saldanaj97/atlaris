@@ -66,14 +66,6 @@ async function renewingPaidItemIds(
     .map((item) => item.id);
 }
 
-/**
- * Deletes the signed-in account. Paid Clerk Billing items end first, because
- * deleting the Clerk user alone leaves the subscription renewing. The Clerk
- * user is deleted only after a re-fetch shows no paid item left, then the
- * local row is tombstoned and its data erased, and the PostHog person is
- * deleted. The user.deleted webhook repeats the last two steps if this
- * process stops after the Clerk delete.
- */
 export async function deleteAccount({
   authUserId,
   clerkClient,

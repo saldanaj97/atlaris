@@ -19,13 +19,11 @@ export type PlanAccessErrorCode = AccessErrorCode;
 export type PlanAccessError = AccessError;
 export type PlanAccessResult = AccessResult<ClientPlanDetail>;
 
-/** Whether the plan page offers regeneration, and whether one is running. */
 export type PlanRegenerationState = {
   readonly canRegenerate: boolean;
   readonly isRegenerating: boolean;
 };
 
-/** Content a paid plan shows that the free router generated (DEV-175). */
 export type FreeRouterNotice = {
   readonly outline: boolean;
   readonly lessonModuleCount: number;

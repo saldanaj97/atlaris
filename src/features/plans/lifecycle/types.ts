@@ -20,20 +20,15 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import type { FailureClassification } from '@/shared/types/failure-classification.types';
 import type { GenerationPurpose } from '@/shared/types/generation-purpose';
 
-/** Input for creating an AI-origin learning plan. */
 export type CreateAiPlanInput = {
   readonly userId: string;
 } & Readonly<PlanGenerationCoreFields>;
 
-/** Data passed to the persistence port for atomic plan insertion. */
 export type PlanInsertData = Readonly<PlanGenerationCoreFields> & {
   readonly visibility: 'private';
   readonly origin: 'ai';
 };
 
-// ─── Port result types ───────────────────────────────────────────
-
-/** Result of an atomic plan insert operation. */
 export type AtomicInsertResult =
   | { readonly status: 'created'; readonly id: string }
   | { readonly status: 'duplicate'; readonly existingPlanId: string }
@@ -44,83 +39,66 @@ export type AtomicInsertResult =
     }
   | { readonly status: 'subscription_required' };
 
-/** Result of a duration cap check. */
 export type DurationCapResult = {
   readonly allowed: boolean;
   readonly reason?: string;
   readonly upgradeUrl?: string;
 };
 
-/** Normalized plan duration after date normalization. */
 export type NormalizedDuration = {
   readonly startDate: string | null;
   readonly deadlineDate: string | null;
   readonly totalWeeks: number;
 };
 
-// ─── Lifecycle result types (discriminated union) ────────────────
-
-/** Plan was successfully created. */
 export type CreatePlanSuccess = {
   readonly status: 'success';
   readonly planId: string;
   readonly tier: SubscriptionTier;
-  /** Normalized values produced during creation — used by the route for generation input. */
   readonly normalizedInput: Readonly<PlanGenerationCoreFieldsNormalized>;
 };
 
-/** A retryable failure occurred (e.g. provider error, timeout). */
 export type RetryableFailure = {
   readonly status: 'retryable_failure';
   readonly classification: FailureClassification | 'unknown';
   readonly error: Error;
 };
 
-/** A permanent failure occurred (e.g. validation error). */
 export type PermanentFailure = {
   readonly status: 'permanent_failure';
   readonly classification: FailureClassification | 'unknown';
   readonly error: Error;
 };
 
-/** The operation was rejected due to quota/limit constraints. */
 export type QuotaRejection = {
   readonly status: 'quota_rejected';
   readonly reason: string;
   readonly upgradeUrl?: string;
 };
 
-/** Requested plan duration exceeds the actor's tier cap. */
 export type DurationExceeded = {
   readonly status: 'duration_exceeded';
   readonly reason: string;
   readonly upgradeUrl?: string;
 };
 
-/** The actor has no active subscription, so no generation can start. */
 export type SubscriptionRequired = {
   readonly status: 'subscription_required';
   readonly reason: string;
   readonly upgradeUrl: string;
 };
 
-/** User has an existing plan that exhausted generation attempts (attempt cap). */
 export type AttemptCapExceeded = {
   readonly status: 'attempt_cap_exceeded';
   readonly reason: string;
   readonly cappedPlanId: string;
 };
 
-/** A duplicate plan was detected (idempotent return). */
 export type DuplicateDetected = {
   readonly status: 'duplicate_detected';
   readonly existingPlanId: string;
 };
 
-/**
- * Discriminated union of all possible outcomes from plan creation.
- * The service never throws for these expected lifecycle outcomes.
- */
 export type CreatePlanResult =
   | CreatePlanSuccess
   | RetryableFailure
@@ -131,16 +109,12 @@ export type CreatePlanResult =
   | AttemptCapExceeded
   | DuplicateDetected;
 
-// ─── Generated module types ──────────────────────────────────────
-
-/** A single task within a generated module. */
 export type GeneratedTask = {
   readonly title: string;
   readonly description?: string;
   readonly estimatedMinutes: number;
 };
 
-/** A module produced by AI plan generation. */
 export type GeneratedModule = {
   readonly title: string;
   readonly description?: string;
@@ -148,9 +122,6 @@ export type GeneratedModule = {
   readonly tasks: GeneratedTask[];
 };
 
-// ─── Generation attempt types ────────────────────────────────────
-
-/** Input for processing a generation attempt on an existing plan. */
 export type ProcessGenerationInput = {
   readonly planId: string;
   readonly userId: string;
@@ -158,42 +129,32 @@ export type ProcessGenerationInput = {
   readonly input: Readonly<GenerationInput>;
   readonly generationPurpose: GenerationPurpose;
   readonly modelOverride?: string;
-  /** The grounded outline writer pick; only the jobs Worker reads it (JCS-169). */
   readonly groundedWriterModelId?: string | null;
   readonly signal?: AbortSignal;
-  /** When set, passed to `reserveAttemptSlot` for transactional status checks. */
   readonly allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   readonly requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
-  /** Invoked once after DB reservation succeeds, before provider generation. */
   readonly onAttemptReserved?: (
     reservation: AttemptReservation,
   ) => void | Promise<void>;
   readonly workflowMetadata?: AttemptWorkflowMetadata;
 };
 
-/** Data returned on a successful generation. */
 export type GenerationSuccessData = {
   readonly modules: GeneratedModule[];
   readonly metadata: ProviderMetadata;
   readonly durationMs: number;
 };
 
-/** Generation succeeded — plan marked ready, usage recorded. */
 export type GenerationSuccess = {
   readonly status: 'generation_success';
   readonly data: GenerationSuccessData;
 };
 
-/** The plan was already finalized — idempotent no-op. */
 export type AlreadyFinalized = {
   readonly status: 'already_finalized';
   readonly planId: string;
 };
 
-/**
- * Discriminated union of all possible outcomes from a generation attempt.
- * The service never throws for these expected lifecycle outcomes.
- */
 export type GenerationAttemptResult =
   | GenerationSuccess
   | RetryableFailure

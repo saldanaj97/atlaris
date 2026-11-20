@@ -9,22 +9,18 @@ import {
   MAX_TASK_TITLE_LENGTH,
 } from '@supabase/schema/constants';
 
-/** Plan fields loaded for batch lesson generation (prompt context). */
 export type ModuleLessonBatchPromptPlan = {
   readonly topic: string;
   readonly skillLevel: string;
   readonly learningStyle: string;
 };
 
-/** Module fields loaded for batch lesson generation (prompt context). */
 export type ModuleLessonBatchPromptModule = {
   readonly title: string;
   readonly description?: string | null;
-  /** Display order within plan (optional context for the model). */
   readonly order?: number | null;
 };
 
-/** One task row in module order (matches `tasks.order` ascending). */
 export type ModuleLessonBatchPromptTask = {
   readonly taskId: string;
   readonly order: number;
@@ -42,7 +38,6 @@ const LESSON_BODY_BUDGET_CAP_MULTIPLIER = 3;
 export type ModuleLessonBatchPromptInput = {
   readonly plan: ModuleLessonBatchPromptPlan;
   readonly module: ModuleLessonBatchPromptModule;
-  /** Ordered by ascending `tasks.order`; parser expects provider output in same order. */
   readonly tasks: readonly ModuleLessonBatchPromptTask[];
 };
 
@@ -73,9 +68,6 @@ export function suggestedLessonBodyBudgetChars(
   return Math.min(Math.max(scaled, LESSON_BODY_BUDGET_MIN_CHARS), cap);
 }
 
-/**
- * User prompt: untrusted delimiter blocks — plan, module metadata, ordered tasks.
- */
 export function buildModuleLessonBatchUserPrompt(
   input: ModuleLessonBatchPromptInput,
 ): string {

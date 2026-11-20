@@ -21,16 +21,6 @@ import {
 import { jobQueue } from '@supabase/schema';
 import { and, desc, eq } from 'drizzle-orm';
 
-/**
- * Inserts a new job into the queue. For plan regeneration jobs with a planId,
- * deduplicates by returning the existing active job id if one is already pending/processing.
- * Uses a transaction with row locks to avoid race conditions.
- *
- * @param params - Job payload: type, planId (nullable), userId, data, priority
- * @param dbClient - Required service-role or request client
- * @returns Enqueue result with job id and whether it was deduplicated
- * @throws Error if plan not found when deduplicating regeneration, or if insert fails
- */
 export async function insertJobRecord(
   {
     type,
@@ -201,10 +191,6 @@ export async function completeJobRecord(
   });
 }
 
-/**
- * Marks a job as failed or schedules a retry. Appends an error entry to the job's
- * payload error history.
- */
 export async function failJobRecord(
   jobId: string,
   error: string,
@@ -232,8 +218,6 @@ export async function failJobRecord(
     const payloadForRetry = { ...payloadWithHistory };
     delete payloadForRetry.workflow;
     if (current.jobType === JOB_TYPES.PLAN_REGENERATION) {
-      // The provider-start marker settles the current attempt. A retry gets a
-      // fresh attempt and must be allowed to settle exactly once for itself.
       delete payloadForRetry.quota;
     }
 

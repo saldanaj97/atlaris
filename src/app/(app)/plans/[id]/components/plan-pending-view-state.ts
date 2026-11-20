@@ -22,7 +22,6 @@ export type PlanPendingPanelKind =
   | 'unsupported';
 
 export interface PlanPendingViewState {
-  /** Known plan status, or the raw hook value when `panelKind` is `unsupported`. */
   status: PlanStatus | string;
   panelKind: PlanPendingPanelKind;
   attempts: number;

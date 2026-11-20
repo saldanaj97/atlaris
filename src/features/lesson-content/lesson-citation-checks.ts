@@ -4,11 +4,6 @@ import type {
   LessonContentBlock,
 } from '@/shared/types/lesson-content.types';
 
-/**
- * One problem found in a lesson. `blockRef` points into the lesson JSON:
- * `blocks[2]`, `blocks[4].items[1]` or `sourceIds`. Same shape as the
- * outline's `OutlineIssue`, so the lesson verifier (JCS-161) can add its own.
- */
 export type LessonIssue = {
   readonly code: string;
   readonly blockRef: string;
@@ -16,13 +11,11 @@ export type LessonIssue = {
   readonly source: 'code' | 'verifier';
 };
 
-/** `[S1]`, or several keys in one bracket: `[S1, S3]`. */
 const CITATION_MARKER_PATTERN = /\[(S\d+(?:\s*[,;]\s*S\d+)*)\]/g;
 const RAW_URL_PATTERN = /\bhttps?:\/\/|\bwww\.[a-z0-9-]/i;
 
 type LessonText = { readonly blockRef: string; readonly text: string };
 
-/** Every text field in the lesson body, in reading order. */
 function lessonTexts(blocks: readonly LessonContentBlock[]): LessonText[] {
   return blocks.flatMap((block, index): LessonText[] => {
     const ref = `blocks[${index}]`;
@@ -56,7 +49,6 @@ function markerKeys(text: string): string[] {
   );
 }
 
-/** Keys the body cites, unique, in order of first appearance. */
 export function citedSourceIds(
   blocks: readonly LessonContentBlock[],
 ): string[] {
@@ -110,7 +102,6 @@ export function checkLessonCitations(
       checkKey(key, blockRef);
     }
   }
-  // Keys cited inline were reported at their block already.
   for (const key of content.sourceIds ?? []) {
     if (!citedInline.has(key)) {
       checkKey(key, 'sourceIds');

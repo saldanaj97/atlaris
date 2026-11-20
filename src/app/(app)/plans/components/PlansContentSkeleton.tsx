@@ -2,7 +2,6 @@ import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search } from 'lucide-react';
 
-/** Skeleton for the plans status rail and search/sort chrome. */
 export function PlansChromeSkeleton() {
   return (
     <div
@@ -29,7 +28,6 @@ export function PlansChromeSkeleton() {
   );
 }
 
-/** Skeleton for the plan card library below the hero. */
 export function PlansContentSkeleton() {
   return (
     <div className='space-y-3' aria-busy='true' aria-label='Loading plans'>

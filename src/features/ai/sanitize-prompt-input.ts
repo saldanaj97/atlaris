@@ -1,7 +1,3 @@
-/**
- * Sanitizes user-provided text for prompt assembly to reduce prompt-injection risk.
- * Collapses excessive newlines and neutralizes delimiter sequences.
- */
 export function sanitizeUserInput(value: string, maxChars: number): string {
   const collapsed = value
     .replace(/\r\n/g, '\n')

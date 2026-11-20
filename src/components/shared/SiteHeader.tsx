@@ -20,49 +20,20 @@ import { resolveViewerSiteGate } from '@/lib/proxy/middleware-policy';
 import { resolveSiteGate } from '@/lib/proxy/site-gate';
 import { currentUser } from '@clerk/nextjs/server';
 
-/**
- * Server component wrapper for the site header.
- *
- * **Responsibilities:**
- * - Resolve whether a user is signed in (server-side)
- * - Select appropriate nav items based on auth state
- * - Fetch user's subscription tier and create-plan eligibility
- * - Render MobileHeader (viewports below `md`) and DesktopHeader (`md` and up)
- *
- *
- * **Architecture:**
- *
- * Header -> Navigation separation
- *
- * We maintain separate Header and Navigation components because they serve
- * distinct purposes:
- *
- * - **Header components** (DesktopHeader, MobileHeader): Layout containers that
- *   position brand, navigation, and auth controls. Handle responsive visibility (`md` breakpoint).
- *
- * - **Navigation components** (DesktopNavigation, MobileNavigation): Render the
- *   actual nav links with their specific interaction patterns (dropdowns vs sheets).
- *
- */
 export default async function SiteHeader({
   loadAccountProfile = true,
 }: {
-  /** Marketing chrome never shows name/avatar; skip the Clerk profile round-trip. */
   loadAccountProfile?: boolean;
 } = {}) {
   const [{ session }, siteGate] = await Promise.all([
     getSessionSafe(),
     resolveSiteGate(),
   ]);
-  // Marketing pages stay live while a site gate is on. Render them signed out
-  // so Clerk's account menu can't open a path around the gate redirect. Signed-in
-  // users pass the launch waitlist, so they keep their account chrome.
   const authUserId = resolveViewerSiteGate(siteGate, Boolean(session?.user?.id))
     ? undefined
     : getShellAuthUserId(session?.user?.id);
   let showClerkUserButton = false;
   try {
-    // Local product-testing auth has no Clerk session, so it uses the account link fallback.
     showClerkUserButton = shouldUseClerkUi();
   } catch (err) {
     logger.warn(
@@ -73,7 +44,6 @@ export default async function SiteHeader({
       'Clerk UI eligibility check failed; header renders account link fallback',
     );
   }
-  // Fetch tier only for authenticated users
   let tier: SubscriptionTier | undefined;
   let canCreatePlan: boolean | undefined;
   let userName: string | undefined;
@@ -90,13 +60,10 @@ export default async function SiteHeader({
         canCreatePlan = result?.canCreatePlan;
       })
       .catch((err: unknown) => {
-        // A just-deleted account keeps a valid session token for up to a
-        // minute. Render it signed out instead of offering the dashboard.
         if (err instanceof DeletedAuthUserError) {
           accountDeleted = true;
           return;
         }
-        // Non-critical for shell render: tier badge omitted; log for ops visibility.
         logger.warn(
           {
             err,
@@ -107,8 +74,6 @@ export default async function SiteHeader({
         );
       });
 
-    // App-shell account chrome needs live name/avatar. Marketing routes skip
-    // this Clerk lookup because they never render those fields.
     const profilePromise = !loadAccountProfile
       ? Promise.resolve()
       : isLocalProductTestingAuthEnabled()

@@ -297,9 +297,10 @@ jobs:
             fi
             pnpm exec concurrently \
               --kill-others-on-fail \
-              --names lint,type \
-              --prefix-colors blue,magenta \
+              --names lint,comments,type \
+              --prefix-colors blue,yellow,magenta \
               "$lint_command" \
+              "pnpm lint:comments" \
               "pnpm typecheck"
       - run:
           name: Worker bundle gate

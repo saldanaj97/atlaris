@@ -37,11 +37,9 @@ export function resolvePlanPeriod(
 
 export type PricingPlanFee = {
   fee: PricingMoney | null;
-  /** Billing unit shown beside the fee; null when the plan is free. */
   feePeriod: 'Month' | 'Year' | null;
 };
 
-/** The fee a plan card shows for the selected period. */
 export function resolvePlanFee(
   plan: PricingPlan,
   selectedPeriod: BillingPeriod,
@@ -65,7 +63,6 @@ export function formatPricingMoney(money: PricingMoney | null): string {
   return `${symbol}${(money.amount / 100).toFixed(money.amount % 100 === 0 ? 0 : 2)}`;
 }
 
-/** Id of the hint that explains a paid plan's disabled subscribe button. */
 export function renewalConsentHintId(
   plan: PricingPlan,
   period: BillingPeriod,
@@ -79,7 +76,6 @@ const PLAN_RANK: Record<string, number> = {
   [CLERK_BILLING_PLAN_SLUGS.pro]: 2,
 };
 
-/** False when either plan has no rank, so an unknown plan never reads as lower or higher. */
 export function isBelowPlan(
   planSlug: string,
   otherPlanSlug: string | null,

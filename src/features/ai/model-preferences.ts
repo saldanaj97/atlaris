@@ -29,7 +29,6 @@ import { AI_DEFAULT_MODEL, isModelIdShape } from '@/shared/constants/ai-models';
 
 const RUNTIME_ONLY_MODEL_IDS = new Set<string>([AI_DEFAULT_MODEL]);
 
-/** Router / runtime-only models (no truthful catalog pricing snapshot). */
 export function isRuntimeOnlyModelId(modelId: string): boolean {
   return RUNTIME_ONLY_MODEL_IDS.has(modelId);
 }
@@ -60,14 +59,6 @@ export async function getPersistableModelsForTier(
   );
 }
 
-/**
- * Models Starter sees in its picker but cannot pick (Settings shows them
- * disabled with a Pro plan badge): its picker-hidden guardrail models plus Pro
- * guardrail models missing from the Starter guardrail, without runtime-only
- * routers. Empty for Free, Pro, lessons and operations that offer no guardrail
- * models.
- * Validation still rejects these models (`tier_denied`).
- */
 export async function getProOnlyModelsForTier(
   tier: SubscriptionTier,
   operation: ModelOperation,
@@ -100,12 +91,6 @@ export type SavedModelPreferenceSlots = {
   preferredLessonAiModel: string | null;
 };
 
-/**
- * Which saved column feeds an operation. Starter/Free regeneration reuse the
- * single outline slot; Pro regeneration and lesson slots are independent.
- * Starter/Free lessons are code-owned, so a lesson pick saved on Pro does not
- * carry over after a downgrade.
- */
 export function savedModelIdForOperation(
   tier: SubscriptionTier,
   saved: SavedModelPreferenceSlots,
@@ -135,11 +120,6 @@ export function savedModelIdForOperation(
   }
 }
 
-/**
- * Prefer an explicit override when present; otherwise the saved slot for this
- * tier × operation. Does not validate catalog membership — callers pass the
- * result to `resolveModelForTier` / `processGenerationAttempt`.
- */
 export function resolveOverrideOrSavedModelId(
   override: string | null | undefined,
   tier: SubscriptionTier,
@@ -152,10 +132,6 @@ export function resolveOverrideOrSavedModelId(
   return savedModelIdForOperation(tier, saved, operation) ?? undefined;
 }
 
-/**
- * Runtime model for the current tier × operation. Never writes. Out-of-tier or
- * empty saved values fall back to the operation default.
- */
 export async function resolveEffectivePreference(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
@@ -174,12 +150,6 @@ export async function resolveEffectivePreference(
   return getDefaultModelForTier(tier, operation);
 }
 
-/**
- * Resolves a stored preference for settings UI only.
- *
- * @returns The saved model id when it is persistable and allowed for the current
- *          tier × operation; `null` means no saved preference to show in the picker.
- */
 export async function resolveSavedPreferenceForSettings(
   tier: SubscriptionTier,
   savedPreferredAiModel: string | null | undefined,
@@ -214,12 +184,6 @@ export async function resolveSavedPreferenceForSettings(
   return savedPreferredAiModel;
 }
 
-/*
- * Grounded generation (JCS-157). Pro users pick the writer, verifier and
- * advisor models from the role catalogs in `model-operation-policy.ts`. These
- * picks live in their own slots so the standard (non-grounded) ones above stay unchanged.
- */
-
 export const GROUNDED_PICK_ROLES = ['writer', 'verifier', 'advisor'] as const;
 
 /**
@@ -242,14 +206,12 @@ export const GROUNDED_PICK_FIELD_BY_ROLE = {
   advisor: 'preferredAdvisorAiModel',
 } as const satisfies Record<GroundedPickRole, keyof SavedGroundedModelPicks>;
 
-/** The writer, verifier and advisor roles share one catalog per role. */
 const GROUNDED_OPERATION_BY_PICK_ROLE = {
   writer: 'initial_outline',
   verifier: 'outline_verify',
   advisor: 'advisor',
 } as const satisfies Record<GroundedPickRole, GroundedOperation>;
 
-/** Models a Pro user may pick for `role`. */
 export function getGroundedPickCatalog(
   role: GroundedPickRole,
 ): readonly string[] {
@@ -260,7 +222,6 @@ export function getGroundedPickCatalog(
   return policy.allowed ? policy.catalog : [];
 }
 
-/** The tier's code-owned primary model for `role`; `null` when it does not run. */
 export function getGroundedPickDefault(
   tier: SubscriptionTier,
   role: GroundedPickRole,
@@ -276,7 +237,6 @@ export type GroundedPickValidation =
   | { valid: true }
   | { valid: false; reason: 'tier_denied' | 'invalid_model' };
 
-/** Whether `tier` may save `modelId` as its `role` pick. Only Pro may. */
 export function validateGroundedPick(
   tier: SubscriptionTier,
   role: GroundedPickRole,
@@ -291,11 +251,6 @@ export function validateGroundedPick(
   return { valid: true };
 }
 
-/**
- * The saved pick to lead the `role` route, or `null` for the tier's code-owned
- * models. A downgraded user's pick is ignored here but stays stored, so it
- * applies again if they return to Pro. Never writes.
- */
 export function resolveGroundedModelPick(
   tier: SubscriptionTier,
   saved: SavedGroundedModelPicks,
@@ -308,13 +263,6 @@ export function resolveGroundedModelPick(
   return validateGroundedPick(tier, role, modelId).valid ? modelId : null;
 }
 
-/**
- * The writer model to lead a grounded call (JCS-169): an explicit
- * per-request override in the tier's writer catalog, else the saved Pro writer
- * pick. An off-catalog override falls through rather than masking the pick.
- * The standard slots above never apply to grounded runs. `null` runs the tier's
- * code-owned writers.
- */
 export function resolveGroundedWriterModelId(
   tier: SubscriptionTier,
   override: string | null | undefined,

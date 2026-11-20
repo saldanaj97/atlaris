@@ -44,9 +44,7 @@ type ClerkPlanSnapshot = {
 };
 
 type ClerkPricingTableProps = {
-  /** Where a new or upgraded subscription lands; carries the wait for its webhook. */
   newSubscriptionRedirectUrl: string;
-  /** Maintenance or launch waitlist: plans stay visible but every CTA goes through the proxy instead of Clerk modals. */
   appClosed?: boolean;
 };
 
@@ -56,7 +54,6 @@ const PLAN_NAME_BY_SLUG: Record<string, string> = {
   [CLERK_BILLING_PLAN_SLUGS.pro]: 'Pro',
 };
 
-/** The recommended plan: the next step up, or the top plan the viewer holds. */
 function featuredPlanSlug(paidPlanSlug: string | null): string {
   if (!paidPlanSlug) return CLERK_BILLING_PLAN_SLUGS.starter;
   return paidPlanSlug === CLERK_BILLING_PLAN_SLUGS.starter
@@ -64,8 +61,6 @@ function featuredPlanSlug(paidPlanSlug: string | null): string {
     : paidPlanSlug;
 }
 
-// Card copy comes from our tier limits, not from the Clerk plan description
-// and features, so it always matches the comparison table and checkout.
 function publicPlanFeatures(plan: ClerkPlanSnapshot): readonly string[] {
   return PRICING_FEATURES_BY_CLERK_SLUG[plan.slug] ?? [];
 }
@@ -136,8 +131,6 @@ export function ClerkPricingTable({
     ])
       .then(([result, nextSubscription]) => {
         if (cancelled) return;
-        // Atlaris is paid-only: the Clerk default plan stays as the "no
-        // subscription" state but is never offered as a card.
         const nextPlans = result.data
           .filter((plan) => plan.slug !== CLERK_BILLING_PLAN_SLUGS.free)
           .map(normalizePlan);
@@ -176,14 +169,11 @@ export function ClerkPricingTable({
                 : 'annual';
           setPeriod(nextPeriod);
           if (isLoaded && userId) {
-            // A signed-out click meant a new subscription. Moving to a lower plan
-            // is a scheduled switch, so it starts from that plan's own card.
             if (isBelowPlan(requestedPlan.slug, nextHeldPlan?.slug ?? null)) {
               clearCheckoutParams();
               return;
             }
             const resumedKey = `${requestedPlan.slug}:${nextPeriod}`;
-            // Consent only carries over when the visitor ticked it before signing in.
             if (requestedConsent) {
               setAgreedActions((current) => ({
                 ...current,
@@ -195,7 +185,6 @@ export function ClerkPricingTable({
           return;
         }
 
-        // Keep params while signed out so reload/sign-in can preserve intent.
         if (isLoaded && userId) clearCheckoutParams();
       })
       .catch((error: unknown) => {

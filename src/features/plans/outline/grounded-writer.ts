@@ -23,7 +23,6 @@ import { completeUsageOrNull, withBilledUsage } from '@/features/ai/usage';
 import { buildGroundedOutlineUserParts } from '@/features/plans/outline/contract';
 import { openRouterEnv } from '@/lib/config/env/ai';
 
-/** Tagged on AI Gateway log entries. */
 export const OUTLINE_STAGE = 'grounded-outline';
 
 export type OutlinePurpose = 'initial' | 'regeneration';
@@ -43,7 +42,6 @@ export type GroundedJsonCall = {
 };
 
 export type GroundedJsonResult = {
-  /** The first JSON object in the model's output. */
   value: unknown;
   metadata: OpenRouterGroundedMetadata;
 };
@@ -54,7 +52,6 @@ export function outlineOperation(purpose: OutlinePurpose): GroundedOperation {
   return purpose === 'initial' ? 'initial_outline' : 'regeneration';
 }
 
-/** The writer models for an outline, a Pro pick first when it is allowed. */
 export function outlineWriterModels(
   tier: SubscriptionTier,
   purpose: OutlinePurpose,
@@ -71,7 +68,6 @@ export function outlineWriterModels(
   return models;
 }
 
-/** The existing plan preset, which the grounded outline call shares. */
 export function requirePlanPreset(): string {
   const slug = openRouterEnv.planPreset?.trim();
   if (!slug) {
@@ -88,12 +84,6 @@ async function readText(stream: ReadableStream<string>): Promise<string> {
   return text;
 }
 
-/**
- * One grounded JSON request: the model route, preset and prompt parts, read
- * to the end so the metadata is complete. Throws `ProviderInvalidResponseError`
- * when the output holds no JSON object; the error carries the call's billed
- * usage (`billedUsageOf`).
- */
 export async function sendGroundedJsonCall(
   call: GroundedJsonCall,
   deps: GroundedCallDeps = {},
@@ -135,7 +125,6 @@ export function createGroundedOutlineProvider(
     purpose: OutlinePurpose;
     modelOverride?: string | null;
     research: ResearchBrief | null;
-    /** Regeneration feedback (JCS-162), after the request. */
     guidance?: string | null;
   },
   deps: GroundedCallDeps = {},

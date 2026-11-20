@@ -47,7 +47,6 @@ const EIGHT_WEEK_PULSE_TITLE_ID = 'usage-eight-week-pulse-title';
 const EIGHT_WEEK_PULSE_DESCRIPTION_ID = 'usage-eight-week-pulse-description';
 const EIGHT_WEEK_PULSE_SUMMARY_ID = 'usage-eight-week-pulse-summary';
 
-/** Renders the usage analytics page with current completion and activity history. */
 export function UsageAnalyticsContent({
   model,
 }: {
@@ -149,7 +148,6 @@ export function UsageAnalyticsContent({
   );
 }
 
-/** Page introduction; its horizon decoration stays out of the reading path. */
 function AnalyticsHero() {
   return (
     <PageHero
@@ -202,7 +200,6 @@ type MetricTileProps = {
   progress?: number;
 };
 
-/** Renders one metric with its actual scope, optional completion bar, and comparison. */
 function MetricTile({
   label,
   value,
@@ -261,7 +258,6 @@ const TREND_ICON = {
   flat: Minus,
 } as const;
 
-/** Renders the up, down, or flat trend icon for a metric status. */
 function TrendStatusIcon({
   kind,
 }: {
@@ -271,7 +267,6 @@ function TrendStatusIcon({
   return <Icon aria-hidden='true' className={TREND_ICON_CLASSNAME[kind]} />;
 }
 
-/** Loading skeleton that mirrors the analytics page hierarchy while data streams in. */
 export function UsageAnalyticsContentSkeleton() {
   return (
     <section

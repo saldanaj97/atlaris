@@ -34,7 +34,6 @@ export async function buildModelPricingSnapshot(
   try {
     catalog = await getCatalogModel(usage.model);
   } catch (error) {
-    // The usage row still records; only its pricing provenance is missing.
     logger.error(
       { modelId: usage.model, err: error, event: 'model_catalog_unavailable' },
       'Model catalog read failed; recording usage without a pricing snapshot',

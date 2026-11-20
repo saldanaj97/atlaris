@@ -23,7 +23,6 @@ export const metadata: Metadata = {
 
 const SIGN_IN_RETURN_PATH = `${ROUTES.AUTH.SIGN_IN}?redirect_url=${encodeURIComponent(ROUTES.ANALYTICS.USAGE)}`;
 
-/** Server page that loads usage analytics and redirects unauthenticated users. */
 export default async function UsageAnalyticsPage() {
   const result = await requestBoundary.component(async ({ actor, db }) => {
     const [summaries, activityEvents] = await Promise.all([

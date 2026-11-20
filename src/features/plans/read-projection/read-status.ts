@@ -9,14 +9,8 @@ import type { FailureClassification } from '@/shared/types/failure-classificatio
 import { getGenerationAttemptCap } from '@/features/ai/generation-policy';
 import { isKnownFailureClassification } from '@/shared/types/failure-classification';
 
-/**
- * Canonical read-layer status used by detail and polling consumers.
- */
 type PlanReadStatus = ClientPlanStatus;
 
-/**
- * Raw plan lifecycle inputs needed to derive the canonical read status.
- */
 type PlanReadStatusInput =
   | {
       generationStatus: GenerationStatus;

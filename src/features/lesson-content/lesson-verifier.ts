@@ -23,10 +23,8 @@ import {
 } from '@/features/lesson-content/lesson-quality-call';
 import { z } from 'zod';
 
-/** Tagged on AI Gateway log entries. */
 export const LESSON_VERIFY_STAGE = 'grounded-lesson-verify';
 
-/** Issues kept from one verifier call; the rest are dropped. */
 export const MAX_LESSON_VERIFIER_ISSUES = 20;
 
 const BLOCK_REF_PATTERN = /^blocks\[(\d+)\](?:\.items\[(\d+)\])?$/;
@@ -47,12 +45,10 @@ export type LessonVerifierRun = {
   readonly usage: CanonicalAIUsage;
 };
 
-/** Free runs code checks only; starter and pro also run the verifier. */
 export function isLessonVerifierAvailable(tier: SubscriptionTier): boolean {
   return getGroundedModelRoute(tier, 'lesson_verify') !== null;
 }
 
-/** Verifier codes are namespaced `verifier.<code>`, lowercase snake case. */
 function toVerifierCode(code: string): string {
   const slug = code
     .toLowerCase()
@@ -62,7 +58,6 @@ function toVerifierCode(code: string): string {
   return `verifier.${slug || 'issue'}`;
 }
 
-/** A ref outside the lesson points at the whole lesson. */
 function toBlockRef(
   blockRef: string | null | undefined,
   content: LessonContent,
@@ -151,7 +146,6 @@ export async function runLessonVerifier(
   params: {
     readonly tier: SubscriptionTier;
     readonly planId: string;
-    /** The Pro verifier pick; the route ignores it on other tiers. */
     readonly pickedModelId: string | null;
     readonly promptInput: ModuleLessonBatchPromptInput;
     readonly taskIndex: number;

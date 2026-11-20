@@ -43,11 +43,6 @@ export function formatLearningStyle(value: LearningStyle): string {
 
 const LEADING_LEARN_VERB = /^learn(?:ing)?(?:\s+|$)/i;
 
-/**
- * One-sentence plan summary. Topics are often stored as a goal such as
- * "Learning Spanish", so the leading learn verb is dropped before the
- * sentence supplies its own ("learning Spanish", not "learning Learning Spanish").
- */
 export function buildPlanOverviewDescription(topic: string): string {
   const subject = topic.trim().replace(LEADING_LEARN_VERB, '').trim();
   const learning = subject ? `learning ${subject}` : 'learning';

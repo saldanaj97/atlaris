@@ -19,12 +19,6 @@ const TIERS: ReadonlyArray<{ tier: SubscriptionTier; name: string }> = [
   { tier: 'pro', name: 'Pro' },
 ];
 
-/**
- * What each tier includes, from the same limits as the pricing page and
- * checkout. Prices stay on /pricing, where they come from Clerk Billing.
- * Every tier gets lessons, so that line stays on /pricing, where the compare
- * table lists it, and is left out here, where it wouldn't tell tiers apart.
- */
 export function PricingSummarySection() {
   return (
     <section

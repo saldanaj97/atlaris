@@ -22,7 +22,6 @@ import { useState } from 'react';
 interface DesktopNavigationProps {
   pathname: string;
   navItems: NavItem[];
-  /** Marketing routes use quiet text links; app uses default text links. */
   appearance?: 'default' | 'marketing';
 }
 
@@ -33,9 +32,6 @@ interface DropdownNavItemProps {
   appearance: 'default' | 'marketing';
 }
 
-/**
- * Computes the className for a nav item based on active state.
- */
 function getNavItemClass(
   isActive: boolean,
   appearance: 'default' | 'marketing',
@@ -55,9 +51,6 @@ function getNavItemClass(
   );
 }
 
-/**
- * Dropdown navigation item component with accessible button.
- */
 function DropdownNavItem({
   item,
   isActive,
@@ -111,10 +104,6 @@ function DropdownNavItem({
   );
 }
 
-/**
- * Desktop navigation links with dropdown support.
- * Renders horizontal nav items - dropdowns open on click.
- */
 export default function DesktopNavigation({
   pathname,
   navItems,

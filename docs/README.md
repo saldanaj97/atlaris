@@ -13,6 +13,22 @@ Index of every folder and file under `docs/`. Paths are relative to this file.
 | [technical-debt.md](./technical-debt.md) | Known technical debt tracker |
 | [README.md](./README.md) | This index |
 
+## `adr/`
+
+Architecture decision records. Rationale that used to live in `src/` code comments.
+
+| File | Description |
+|------|-------------|
+| [README.md](./adr/README.md) | ADR index and how to write one |
+| [0001-ai-providers-model-catalog-and-cost.md](./adr/0001-ai-providers-model-catalog-and-cost.md) | AI providers, model catalog, cost accounting |
+| [0002-plan-and-lesson-generation-pipeline.md](./adr/0002-plan-and-lesson-generation-pipeline.md) | Plan and lesson generation, job queue, regeneration |
+| [0003-billing-quotas-and-ai-spend.md](./adr/0003-billing-quotas-and-ai-spend.md) | Billing projection, quotas, AI spend ceilings |
+| [0004-request-boundary-auth-proxy-and-flags.md](./adr/0004-request-boundary-auth-proxy-and-flags.md) | Request boundary, auth, proxy, rate limits, flags, config |
+| [0005-database-queries-and-rls.md](./adr/0005-database-queries-and-rls.md) | Database queries, locking, RLS usage |
+| [0006-email-notifications-delivery.md](./adr/0006-email-notifications-delivery.md) | Email notification delivery |
+| [0007-app-ui-and-marketing-surfaces.md](./adr/0007-app-ui-and-marketing-surfaces.md) | App UI, navigation, marketing surfaces |
+| [0008-intentionally-swallowed-errors.md](./adr/0008-intentionally-swallowed-errors.md) | Empty catch blocks that are allowed on purpose |
+
 ## `ai/`
 
 AI model catalog and related reference.
@@ -154,6 +170,16 @@ docs/
 ├── CHANGELOG.md
 ├── glossary.md
 ├── technical-debt.md
+├── adr/
+│   ├── README.md
+│   ├── 0001-ai-providers-model-catalog-and-cost.md
+│   ├── 0002-plan-and-lesson-generation-pipeline.md
+│   ├── 0003-billing-quotas-and-ai-spend.md
+│   ├── 0004-request-boundary-auth-proxy-and-flags.md
+│   ├── 0005-database-queries-and-rls.md
+│   ├── 0006-email-notifications-delivery.md
+│   ├── 0007-app-ui-and-marketing-surfaces.md
+│   └── 0008-intentionally-swallowed-errors.md
 ├── ai/
 │   └── available-models.md
 ├── api/

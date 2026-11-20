@@ -254,7 +254,6 @@ function PlansSort({ query }: { query: PlanListQuery }) {
   );
 }
 
-/** Query-backed status, search, and sort chrome for the plan library. */
 export function PlansLibraryToolbar({
   page,
   query,

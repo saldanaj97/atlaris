@@ -1,14 +1,12 @@
 import type { NextResponse } from 'next/server';
 
 const CLERK_FRONTEND_API_SRC = 'https://*.clerk.accounts.dev';
-/** Clerk abuse and fraud protection (bot protection bootstrap script and iframe). */
 const CLERK_PROTECTION_SRC = 'https://*.protect.clerk.com';
 const CLOUDFLARE_CHALLENGES_SRC = 'https://challenges.cloudflare.com';
 const STRIPE_CHECKOUT_SRC = 'https://js.stripe.com';
 const STRIPE_HOOKS_SRC = 'https://hooks.stripe.com';
 
 export type CreateContentSecurityPolicyInput = {
-  /** Production Clerk instances serve Clerk JS from their own Frontend API host. */
   clerkPublishableKey?: string;
 } & (
   | { isDevelopment: true; nonce?: string }

@@ -76,16 +76,10 @@ export function isTransientDevCompilationError(error: unknown): boolean {
   return isWrappedBuildError(error);
 }
 
-/**
- * Gate for Next.js `onRequestError` before calling `captureRequestError`.
- */
 export function shouldCaptureRequestError(error: unknown): boolean {
   return !isTransientDevCompilationError(error);
 }
 
-/**
- * Shared `beforeSend` hook for all Sentry init entrypoints.
- */
 export function beforeSendSentryEvent(
   event: ErrorEvent,
   hint: EventHint,

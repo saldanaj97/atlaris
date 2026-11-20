@@ -29,9 +29,7 @@ export function UsageAnalyticsTimezoneSync({
       .then((updated) => {
         if (updated) router.refresh();
       })
-      .catch(() => {
-        // Best-effort preference sync; analytics still render with the stored timezone.
-      });
+      .catch(() => {});
   }, [analyticsTimezone, router]);
 
   return null;

@@ -30,12 +30,9 @@ import { getActiveRegenerationJob } from '@/lib/db/queries/jobs';
 import { logger } from '@/lib/logging/logger';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
-// Regeneration orchestration owns enqueue/complete/fail via deps.queue and process/request.
-
 export interface RegenerationOrchestrationDeps {
   dbClient: DbClient;
   queue: {
-    /** `regeneration-paused` flag (fails open). */
     isPaused: () => Promise<boolean>;
     enqueueWithResult: typeof enqueueJobWithResult;
     completeJob: typeof completeJob;
@@ -51,17 +48,12 @@ export interface RegenerationOrchestrationDeps {
       tier: SubscriptionTier,
       dbClient: DbClient,
     ) => Promise<UsageSummary>;
-    /**
-     * This plan's regenerations that reached provider start, for the
-     * per-plan grounded cap (JCS-162). Settled again at provider start.
-     */
     countPlanRegenerations: (
       planId: string,
       dbClient: DbClient,
     ) => Promise<number>;
   };
   grounded: {
-    /** `groundedGeneration` flag for the tier (fails closed). */
     isEnabled: (tier: SubscriptionTier) => Promise<boolean>;
   };
   plans: {
@@ -91,10 +83,6 @@ export interface RegenerationOrchestrationDeps {
   lifecycle: {
     service: PlanLifecycleService;
   };
-  /**
-   * Invoked after active-job dedupe passes and before enqueue.
-   * Must match {@link checkPlanGenerationRateLimit} semantics (throws RateLimitError when exceeded).
-   */
   rateLimit: {
     check: (
       userId: string,
@@ -104,12 +92,7 @@ export interface RegenerationOrchestrationDeps {
   logger: Pick<typeof logger, 'debug' | 'info' | 'error' | 'warn'>;
 }
 
-/** Deps for the enqueue request, which also hands the job to the jobs Worker. */
 export interface RegenerationRequestDeps extends RegenerationOrchestrationDeps {
-  /**
-   * Must not throw; a failed hand-off leaves the job pending for the Worker's
-   * sweep.
-   */
   dispatch: (input: RegenerationDispatchInput) => Promise<void>;
 }
 

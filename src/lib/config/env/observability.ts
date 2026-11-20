@@ -6,7 +6,6 @@ export const loggingEnv = {
   },
 } as const;
 
-/** Sentry/telemetry server flags. */
 export const sentryEnv = {
   /**
    * `SENTRY_SEND_DEFAULT_PII`; defaults to false. Mirrors the client opt-in

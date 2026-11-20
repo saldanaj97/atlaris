@@ -132,7 +132,6 @@ async function parseOneClickForm(
 }
 
 export const GET = withErrorBoundary(async () => {
-  // GET is confirmation-only. Never mutate preferences from scanners/prefetchers.
   return htmlResponse(confirmationHtml());
 });
 
@@ -163,7 +162,6 @@ async function handlePost(request: Request): Promise<Response> {
     return htmlResponse(failureHtml(), 400);
   }
 
-  // RFC 8058: one-click POST must not redirect.
   return htmlResponse(successHtml(), 200);
 }
 

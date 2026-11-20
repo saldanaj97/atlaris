@@ -11,7 +11,6 @@ interface EmptyPlansListProps {
   searchQuery: string;
   filterStatus: FilterStatus;
   isFirstRun?: boolean;
-  /** Library URL with search and status cleared; keeps the current sort. */
   clearFiltersHref?: string;
 }
 

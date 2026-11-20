@@ -19,9 +19,6 @@ type StartModuleLessonGeneration = typeof startModuleLessonGeneration;
 const LESSON_GENERATION_FAILURE_MESSAGE =
   'Lesson generation failed. Please try again.';
 
-/**
- * Factory for the module lesson content generate POST handler.
- */
 export function createModuleLessonContentGenerateHandler(
   startGeneration: StartModuleLessonGeneration,
 ): PlainHandler {

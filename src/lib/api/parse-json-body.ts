@@ -17,15 +17,8 @@ export type ParseJsonBodyOptions = {
    */
   mode: 'required' | 'optional';
   onMalformedJson: (err: unknown) => Error;
-  /** Defaults to `{}` when `mode === 'optional'`. */
   fallback?: unknown;
-  /** Only used in `optional` mode. Defaults to {@link detectJsonBodyPresence}. */
   detectBody?: (req: Request) => boolean;
-  /**
-   * Optional actual-byte cap. When omitted, parsing stays on unbounded `req.json()`.
-   * When set, oversized `Content-Length` may reject early; the streamed body is
-   * still counted in bytes so missing, malformed, or understated headers cannot bypass the cap.
-   */
   maxBytes?: number;
 };
 
@@ -63,10 +56,6 @@ function isOversizedBodyError(err: unknown): err is AppError {
   return err instanceof AppError && err.code() === OVERSIZED_BODY_CODE;
 }
 
-/**
- * A body is parsed only when it is declared as JSON, so a cross-site
- * `text/plain` form or fetch cannot reach a JSON route (DEV-208, lead 4).
- */
 function hasJsonMediaType(req: Request): boolean {
   const mediaType = (req.headers.get('content-type') ?? '')
     .split(';')[0]
@@ -153,7 +142,6 @@ export async function parseJsonBody(
 ): Promise<unknown> {
   const detectBody = options.detectBody ?? detectJsonBodyPresence;
 
-  // Checked before reading: an optional body that is absent keeps its fallback.
   if (
     !hasJsonMediaType(req) &&
     (options.mode === 'required' || detectBody(req))

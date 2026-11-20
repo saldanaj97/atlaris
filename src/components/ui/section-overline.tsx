@@ -7,7 +7,6 @@ export interface SectionOverlineProps extends ComponentPropsWithoutRef<'p'> {
   icon?: ReactNode;
 }
 
-/** Shared product eyebrow; callers provide any icon or page-specific treatment. */
 export function SectionOverline({
   children,
   icon,

@@ -22,7 +22,6 @@ export const metadata: Metadata = {
 export default function MaintenancePage() {
   return (
     <div className='relative isolate flex min-h-screen flex-col overflow-hidden bg-background'>
-      {/* Same star sky as /waitlist; follows the visitor's theme. */}
       <CelestialBackdrop variant='dusk' />
 
       <main

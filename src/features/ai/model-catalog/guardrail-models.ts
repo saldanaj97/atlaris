@@ -6,7 +6,6 @@
 import { logger } from '@/lib/logging/logger';
 import { z } from 'zod';
 
-/** One model from a tier's guardrail, in catalog units. */
 export type GuardrailModel = {
   readonly modelId: string;
   readonly name: string;
@@ -19,7 +18,6 @@ export type GuardrailModel = {
   readonly supportedParameters: readonly string[];
 };
 
-/** A per-token USD price such as `"0.0000001"`; `-1` (variable) is rejected. */
 const perTokenPrice = z
   .string()
   .regex(/^\d+(\.\d+)?(e-?\d+)?$/i, 'expected a non-negative decimal');
@@ -51,12 +49,10 @@ export class GuardrailModelsError extends Error {
   }
 }
 
-/** USD per token → USD per million tokens, without float noise (`0.1`, not `0.09999…`). */
 function perMillion(perToken: string): number {
   return Number((Number(perToken) * 1_000_000).toPrecision(12));
 }
 
-/** `"Anthropic: Claude Haiku 5.5"` → provider `Anthropic`, name `Claude Haiku 5.5`. */
 function splitDisplayName(
   id: string,
   displayName: string,
@@ -71,7 +67,6 @@ function splitDisplayName(
   return { provider: id.split('/')[0] ?? id, name: displayName };
 }
 
-/** The entry's `id` when it has a string one, for logging a skipped model. */
 function entryId(entry: unknown): string | null {
   if (typeof entry === 'object' && entry !== null && 'id' in entry) {
     return typeof entry.id === 'string' ? entry.id : null;
@@ -79,13 +74,6 @@ function entryId(entry: unknown): string | null {
   return null;
 }
 
-/**
- * Parses a `/models/user` body. Skips and logs a model it cannot price or
- * parse (a variable `-1` price, a missing field), so one entry cannot freeze
- * the tier's list. Throws when the body is malformed or no model is valid, so
- * a sync never replaces good rows with an empty list. Long-prompt
- * `pricing.overrides` are ignored.
- */
 export function parseGuardrailModels(body: unknown): GuardrailModel[] {
   const parsed = guardrailModelsResponseSchema.safeParse(body);
   if (!parsed.success) {
@@ -145,7 +133,6 @@ export type FetchGuardrailModelsArgs = {
   fetchImpl?: typeof fetch;
 };
 
-/** Fetches and parses the models `apiKey`'s guardrail allows. */
 export async function fetchGuardrailModels({
   apiKey,
   timeoutMs,

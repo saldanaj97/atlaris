@@ -14,9 +14,6 @@ interface RouteErrorStateProps {
   className?: string;
 }
 
-/**
- * Shared route-level error panel using destructive semantic tokens.
- */
 export function RouteErrorState({
   title,
   message,

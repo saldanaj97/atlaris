@@ -51,7 +51,6 @@ import { logger } from '@/lib/logging/logger';
 import * as Sentry from '@sentry/nextjs';
 import { db as serviceRoleDb } from '@supabase/service-role';
 
-/** The owned module a claimed lesson generation run works on. */
 export type ModuleLessonGenerationTarget = {
   readonly userId: string;
   readonly planId: string;
@@ -67,17 +66,12 @@ export type ModuleLessonBatchInput = Parameters<
   ModuleLessonProvider['generateModuleLessonBatch']
 >[0];
 
-/** Buffered provider output, small enough to cross a Workflow step. */
 export type ModuleLessonRawBatch = {
   readonly rawText: string;
   readonly usage: CanonicalAIUsage;
-  /** Provider `finish_reason` when streamed (`length` means the output was cut off). */
   readonly finishReason?: string;
-  /** A paid tier's lessons were served by the free router (DEV-175). */
   readonly freeRouterFallback?: true;
 };
-
-// --- prepare ---------------------------------------------------------------
 
 /**
  * Flag and content-access checks that run before any provider work. The
@@ -138,12 +132,10 @@ export function buildModuleLessonBatchInput(
   };
 }
 
-/** The resolved route's tier and models; absent for an injected provider. */
 export type ModuleLessonRoute = {
   readonly tier: SubscriptionTier;
   readonly primaryModelId: string;
   readonly fallbackModelIds: readonly string[];
-  /** The primary is the free router only because the guardrail left no paid default. */
   readonly freeRouterFallback?: true;
 };
 
@@ -152,10 +144,6 @@ export type ModuleLessonProviderResolution = {
   readonly route?: ModuleLessonRoute;
 };
 
-/**
- * Current tier, then the explicit override or the saved lesson model. A paid
- * plan at its AI ceiling (JCS-170) runs the lesson on the free router.
- */
 export async function resolveModuleLessonProvider(
   params: {
     readonly userId: string;
@@ -228,10 +216,8 @@ export async function resolveModuleLessonProvider(
   };
 }
 
-/** Matches a dated snapshot suffix such as `-20261001` or `-2026-10-01`. */
 const DATED_SNAPSHOT_SUFFIX = /^-\d{4}-?\d{2}-?\d{2}$/;
 
-/** The served slug is the primary itself or a dated snapshot of it. */
 function isServedAsPrimary(servedModel: string, primaryModelId: string) {
   return (
     servedModel === primaryModelId ||
@@ -240,13 +226,6 @@ function isServedAsPrimary(servedModel: string, primaryModelId: string) {
   );
 }
 
-/**
- * Warns when OpenRouter served a paid-tier lesson from a fallback route model
- * instead of the resolved primary (DEV-180). Only routes that list fallbacks
- * qualify; a free-router fallback serves a concrete `:free` model, so the
- * served name is compared with the primary, not the fallback list. Returns
- * whether it warned.
- */
 export function reportLessonRouteFallback(
   route: ModuleLessonRoute | undefined,
   metadata: Pick<ProviderMetadata, 'provider' | 'model'>,
@@ -301,13 +280,6 @@ export function lessonServedByFreeRouterFallback(
   );
 }
 
-// --- provider --------------------------------------------------------------
-
-/**
- * Marks the provider started, calls it, and buffers the stream into raw text
- * (capped at `MAX_RAW_RESPONSE_CHARS`). `onProviderStarted` fires once the
- * marker is persisted; after that a failure must not revert the claim.
- */
 export async function generateModuleLessonRawBatch(input: {
   readonly target: ModuleLessonGenerationTarget;
   readonly batchInput: ModuleLessonBatchInput;
@@ -358,8 +330,6 @@ export async function generateModuleLessonRawBatch(input: {
   }
 }
 
-// --- persist ---------------------------------------------------------------
-
 /**
  * Parses buffered text against the prompt's task order, then commits. A
  * free-router batch marks the module's metadata for the plan page notice.
@@ -392,19 +362,12 @@ export async function persistModuleLessonBatch(input: {
   });
 }
 
-// --- failure ---------------------------------------------------------------
-
-/**
- * Marks the module `failed`. If that write fails and the provider never
- * started, reverts the claim instead. Never throws.
- */
 export async function recordModuleLessonGenerationFailure(input: {
   readonly target: ModuleLessonGenerationTarget;
   readonly dbClient: DbClient;
   readonly now: () => Date;
   readonly providerStarted: boolean;
   readonly workflowRunId?: string;
-  /** Calls the failed run was billed for, recorded with the failure. */
   readonly usage?: CanonicalAIUsage;
 }): Promise<void> {
   const { target } = input;
@@ -443,12 +406,6 @@ export async function recordModuleLessonGenerationFailure(input: {
   }
 }
 
-// --- composition -----------------------------------------------------------
-
-/**
- * Provider + persist after a successful CAS claim. Safe for workflow replay
- * because it does not call `claimModuleLessonGenerationOrDescribe()`.
- */
 export async function runModuleLessonGenerationWork(
   params: RunModuleLessonGenerationAfterClaimParams,
   deps: GenerateModuleLessonsDeps = {},

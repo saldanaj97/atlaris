@@ -1,5 +1,3 @@
-// SkillLevel / LearningStyle derived from enums here (not from db.types) to avoid
-// circular: db.types → attempts.types → this file.
 type DbEnumsModule = typeof import('../../../supabase/enums');
 type SkillLevel = DbEnumsModule['skillLevel']['enumValues'][number];
 type LearningStyle = DbEnumsModule['learningStyle']['enumValues'][number];
@@ -23,7 +21,6 @@ export type ModuleLessonBatchGenerationInput = {
   taskIds: readonly string[];
 };
 
-/** Core scalar fields shared across create/retry/stream/lifecycle. */
 export type PlanGenerationCoreFields = Pick<
   GenerationInput,
   | 'topic'
@@ -34,7 +31,6 @@ export type PlanGenerationCoreFields = Pick<
   | 'deadlineDate'
 >;
 
-/** Same as {@link PlanGenerationCoreFields} with explicit null dates after normalization. */
 export type PlanGenerationCoreFieldsNormalized = Omit<
   PlanGenerationCoreFields,
   'startDate' | 'deadlineDate'
@@ -59,11 +55,6 @@ export type ProviderMetadata = {
   model?: string;
   provider?: string;
   usage?: ProviderUsage;
-  /** Last streamed `finish_reason` (`stop`, `length`, …); set once the stream is read. */
   finishReason?: string;
-  /**
-   * A paid tier's generation ran on the free router because its guardrail left
-   * no paid default (DEV-174). Persisted on the attempt for the plan page notice.
-   */
   freeRouterFallback?: true;
 };
