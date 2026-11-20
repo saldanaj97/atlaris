@@ -867,6 +867,11 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
       preferredVerifierAiModel: PRO_GROUNDED_REVIEW_CATALOG[1],
       preferredAdvisorAiModel: PRO_GROUNDED_REVIEW_CATALOG[0],
     });
+    expect(mockIsGroundedEnabled).toHaveBeenCalledWith('pro');
+    expect(mockHasClerkPlanFeature).toHaveBeenCalledWith(
+      testAuthUserId,
+      'grounded_model_picks',
+    );
   });
 
   it('rejects a Pro pick without the grounded_model_picks feature, without writing', async () => {
@@ -938,9 +943,9 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
     expect(data.code).toBe('GROUNDED_GENERATION_DISABLED');
   });
 
-  it('saves legacy slots while grounded picks are off and not included', async () => {
+  it('saves legacy slots while grounded picks are off and Clerk is unavailable', async () => {
     mockIsGroundedEnabled.mockResolvedValue(false);
-    mockHasClerkPlanFeature.mockResolvedValue(false);
+    mockHasClerkPlanFeature.mockRejectedValue(new Error('clerk down'));
 
     const response = await patch({
       preferredLessonAiModel: PRO_LESSON_MODEL_ID,

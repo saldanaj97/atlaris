@@ -148,11 +148,13 @@ describe('Plan status parity contract', () => {
         status: string;
       };
       const statusBody = (await statusResponse.json()) as {
+        planId: string;
         status: string;
       };
 
       expect(detailBody.status).toBe(statusBody.status);
       expect(statusBody.status).toBe(fixture.expectedStatus);
+      expect(statusBody.planId).toBe(planId);
     }
   });
 });
