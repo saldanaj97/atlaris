@@ -56,7 +56,7 @@ describe('sendJobsWorkerCommand', () => {
     );
   });
 
-  it('applies a default timeout signal when no timeout is given', async () => {
+  it('applies a 10 second timeout signal by default', async () => {
     const timeout = vi.spyOn(AbortSignal, 'timeout');
     const fetchMock = fetchReturning(new Response(null, { status: 202 }));
 
@@ -65,8 +65,10 @@ describe('sendJobsWorkerCommand', () => {
       fetch: fetchMock,
     });
 
-    expect(timeout).toHaveBeenCalledOnce();
-    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+    expect(timeout).toHaveBeenCalledWith(10_000);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(
+      timeout.mock.results[0]?.value,
+    );
     timeout.mockRestore();
   });
 
