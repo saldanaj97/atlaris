@@ -29,7 +29,7 @@ describe('Module Queries', () => {
   });
 
   describe('getModuleDetailRows', () => {
-    it('loads module row, metrics, ordered tasks for current module plan scope', async () => {
+    it('loads the module row, metrics and its tasks within the plan', async () => {
       const module = await createTestModule({
         planId,
         title: 'Test Module',

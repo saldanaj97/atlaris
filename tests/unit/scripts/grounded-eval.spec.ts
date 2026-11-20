@@ -248,7 +248,7 @@ describe('selectSpotCheck', () => {
     ),
   ];
 
-  it('takes ten per arm under neutral ids, reproducibly', () => {
+  it('takes ten per arm starting at id L01, reproducibly', () => {
     const sheet = selectSpotCheck(lessons, 'pro');
     expect(sheet).toHaveLength(20);
     expect(sheet.filter((s) => s.lesson.arm === 'grounded')).toHaveLength(10);
@@ -276,7 +276,7 @@ describe('parseJudgeOutput', () => {
 });
 
 describe('planRequestBody', () => {
-  it('sends the same span and hours for every topic', () => {
+  it('builds a 4-hour, 14-day mixed plan request from a topic and start date', () => {
     const body = planRequestBody(
       {
         id: 'x',

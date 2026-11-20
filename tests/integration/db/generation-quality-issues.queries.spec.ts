@@ -91,7 +91,7 @@ describe('generation quality issue queries', () => {
     expect(afterResolve.map((issue) => issue.resolved)).toEqual([false, true]);
   });
 
-  it('skips empty batches without querying', async () => {
+  it('returns empty results for empty batches', async () => {
     await expect(insertGenerationQualityIssues([], db)).resolves.toEqual([]);
     await expect(markGenerationQualityIssuesResolved([], db)).resolves.toBe(0);
   });

@@ -58,7 +58,7 @@ describe('detectJsonBodyPresence', () => {
     expect(detectJsonBodyPresence(req)).toBe(true);
   });
 
-  it('is true when content-length is a positive finite number string with surrounding whitespace', () => {
+  it('is true for a decimal content-length', () => {
     const req = mockRequest({
       headers: { 'content-length': ' 12.5 ' },
       json: () => Promise.resolve({}),

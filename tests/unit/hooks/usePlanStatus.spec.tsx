@@ -760,7 +760,7 @@ describe('usePlanStatus', () => {
     expect(mockFetch).toHaveBeenCalledTimes(3);
   });
 
-  it('revalidate while polling is active clears errors and resumes polling', async () => {
+  it('revalidate after max retriable failures clears the error and resumes polling', async () => {
     vi.useFakeTimers();
 
     const mockFetch = vi

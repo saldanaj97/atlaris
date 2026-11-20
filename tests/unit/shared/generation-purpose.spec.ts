@@ -51,7 +51,7 @@ describe('generation purpose domain', () => {
     );
   });
 
-  it('keeps describeGenerationPurpose exhaustive', () => {
+  it('describes the initial and regeneration purposes by name', () => {
     const purpose: GenerationPurpose = 'initial';
     expect(describeGenerationPurpose(purpose)).toBe('initial');
     expect(describeGenerationPurpose('regeneration')).toBe('regeneration');

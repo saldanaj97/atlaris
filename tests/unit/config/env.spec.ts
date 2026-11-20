@@ -364,7 +364,7 @@ describe('Environment Configuration', () => {
       expect(attemptsEnv.cap).toBe(5);
     });
 
-    it('derives the timeout threshold from the same base logic', () => {
+    it('reads the base timeout and derives the extension threshold from it', () => {
       const env = { AI_TIMEOUT_BASE_MS: '7000' } as const;
       const access = createServerEnvAccess(() => env);
       const { aiTimeoutEnv } = createAiEnvFacets(access);

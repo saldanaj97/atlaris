@@ -84,7 +84,7 @@ describe('DELETE /api/v1/plans/:planId', () => {
     expect(body.code).toBe('CONFLICT');
   });
 
-  it('returns 404 when plan does not exist or is not owned', async () => {
+  it('returns 404 when the plan belongs to another user', async () => {
     const otherAuthId = buildTestAuthUserId('plan-delete-other');
     setTestUser(otherAuthId);
     await ensureUser({

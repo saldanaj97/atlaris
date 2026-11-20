@@ -80,7 +80,7 @@ describe('GET /api/v1/plans/:planId/attempts', () => {
     expect(attempts[0]).toHaveProperty('durationMs');
   });
 
-  it('returns 404 when plan is not owned', async () => {
+  it('returns 404 when the plan does not exist', async () => {
     const otherOwnerAuthId = buildTestAuthUserId('contract-attempts-other');
     setTestUser(otherOwnerAuthId);
     await ensureUser({

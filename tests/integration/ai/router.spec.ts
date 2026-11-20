@@ -24,7 +24,7 @@ describe('AI Router (mock in tests)', () => {
     clearTestUser();
   });
 
-  it('returns modules using mock provider via router', async () => {
+  it('returns modules from the mock provider through runGenerationExecution', async () => {
     const [userRow] = await db
       .insert(users)
       .values({ authUserId, email, name: 'Test', subscriptionTier: 'starter' })

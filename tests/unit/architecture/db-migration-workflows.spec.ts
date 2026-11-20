@@ -183,7 +183,7 @@ describe('Supabase migration workflows', () => {
     },
   );
 
-  it('applies each expand migration and its history record atomically', () => {
+  it('keeps contract migrations out of expand and never applies by file then repairs history', () => {
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     const expandMigrations = script.match(
       /readonly -a EXPAND_MIGRATIONS=\(([\s\S]*?)\n\)/,
