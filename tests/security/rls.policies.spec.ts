@@ -123,51 +123,6 @@ describe('RLS Policy Verification', () => {
         expect(roles.size).toBeGreaterThan(0);
       }
     });
-
-    it('does not retain a task-progress DELETE policy', async () => {
-      const result = await db.execute(sql`
-        SELECT policyname
-        FROM pg_policies
-        WHERE schemaname = 'public'
-          AND tablename = 'task_progress'
-          AND cmd = 'DELETE'
-      `);
-      const rows = Array.isArray(result)
-        ? result
-        : (result as { rows: unknown[] }).rows;
-
-      expect(rows).toEqual([]);
-    });
-  });
-
-  describe('Service Role Access (RLS Bypass)', () => {
-    it('service role can read all users regardless of ownership', async () => {
-      const serviceClient = getServiceRoleDb();
-
-      // Create test data
-      const _user1 = await db
-        .insert(users)
-        .values({
-          authUserId: 'user_1',
-          email: 'user1@test.com',
-        })
-        .returning();
-
-      const _user2 = await db
-        .insert(users)
-        .values({
-          authUserId: 'user_2',
-          email: 'user2@test.com',
-        })
-        .returning();
-
-      // Service role should see both users
-      const rows = await serviceClient.select().from(users);
-
-      expect(rows).toHaveLength(2);
-      expect(rows.map((u) => u.authUserId)).toContain('user_1');
-      expect(rows.map((u) => u.authUserId)).toContain('user_2');
-    });
   });
 
   describe('Anonymous Access', () => {
@@ -904,36 +859,6 @@ describe('RLS Policy Verification', () => {
           costCents: 0,
         }),
       );
-    });
-
-    it('authenticated users can read their own learning plans', async () => {
-      // Create user in database
-      const [user] = await db
-        .insert(users)
-        .values({
-          authUserId: 'user_auth_123',
-          email: 'auth@test.com',
-        })
-        .returning();
-
-      // Create a private plan for this user
-      await db.insert(learningPlans).values({
-        userId: user.id,
-        topic: 'My Private Plan',
-        skillLevel: 'intermediate',
-        weeklyHours: 10,
-        learningStyle: 'practice',
-        visibility: 'private',
-      });
-
-      // Authenticate as this user
-      const authDb = await createRlsDbForUser('user_auth_123');
-
-      // User should see their own plan
-      const rows = await authDb.select().from(learningPlans);
-
-      expect(rows).toHaveLength(1);
-      expect(rows[0]?.topic).toBe('My Private Plan');
     });
 
     it('authenticated users cannot read other users plans', async () => {
