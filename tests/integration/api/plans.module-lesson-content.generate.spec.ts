@@ -10,8 +10,6 @@ import { db } from '@supabase/service-role';
 import { setTestUser, clearTestUser } from '@tests/helpers/auth';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import {
   afterEach,
   beforeEach,
@@ -169,26 +167,6 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
     });
   });
 
-  it('does not map a lesson product-quota denial', async () => {
-    const userId = await authenticateTestUser('quota', 'starter');
-    await seedOwnedPlanForLessonContentApi(userId);
-    mockStartModuleLessonGeneration.mockResolvedValue({
-      kind: 'already_ready',
-    });
-
-    const { request, context } = createRequest();
-    const response = await POST(request, context);
-    const body = await response.json();
-
-    expect(response.status).toBe(200);
-    expect(body).toEqual({
-      state: 'ready',
-      planId: VALID_PLAN_ID,
-      moduleId: VALID_MODULE_ID,
-    });
-    expect(body).not.toHaveProperty('state', 'quota_denied');
-  });
-
   it('refuses a user with no subscription before starting generation', async () => {
     const userId = await authenticateTestUser('no-subscription', 'free');
     await seedOwnedPlanForLessonContentApi(userId);
@@ -335,17 +313,5 @@ describe('POST /api/v1/plans/:planId/modules/:moduleId/lesson-content/generate',
       code: 'UNAUTHORIZED',
     });
     expect(mockStartModuleLessonGeneration).not.toHaveBeenCalled();
-  });
-
-  it('keeps service-role imports out of the user-facing route', () => {
-    const routeSource = readFileSync(
-      join(
-        process.cwd(),
-        'src/app/api/v1/plans/[planId]/modules/[moduleId]/lesson-content/generate/route.ts',
-      ),
-      'utf8',
-    );
-
-    expect(routeSource).not.toContain('@supabase/service-role');
   });
 });

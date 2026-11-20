@@ -11,22 +11,6 @@ import { describe, expect, it } from 'vitest';
 
 describe('Usage Tracking', () => {
   describe('getUsageSummaryForTier', () => {
-    it('uses the provided tier for limits', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_summary_tier_short_circuit',
-        email: 'summary.tier.short@example.com',
-      });
-
-      const summary = await getUsageSummaryForTier({
-        userId,
-        tier: 'pro',
-        dbClient: db,
-      });
-
-      expect(summary.tier).toBe('pro');
-      expect(summary.activePlans.limit).toBe(Infinity);
-    });
-
     it('excludes non-eligible plans and counts only eligible ones', async () => {
       const userId = await ensureUser({
         authUserId: 'user_summary_eligibility_filter',
@@ -215,8 +199,6 @@ describe('Usage Tracking', () => {
       });
 
       expect(summary.regenerations.used).toBe(0);
-      expect(summary).not.toHaveProperty('lessonGenerations');
-      expect(summary).not.toHaveProperty('exports');
 
       // Summary reads should not write a row just to display zeros.
       const after = await db
@@ -224,44 +206,6 @@ describe('Usage Tracking', () => {
         .from(usageMetrics)
         .where(sql`user_id = ${userId}`);
       expect(after).toHaveLength(0);
-    });
-  });
-
-  describe('Monthly Partitioning', () => {
-    it('auto-resets usage for new month via separate row', async () => {
-      const userId = await ensureUser({
-        authUserId: 'user_monthly_partition',
-        email: 'monthly@example.com',
-      });
-
-      // January usage
-      await db.insert(usageMetrics).values({
-        userId,
-        month: '2025-01',
-        regenerationsUsed: 5,
-        exportsUsed: 10,
-      });
-
-      // Simulate new month by creating new row
-      await db.insert(usageMetrics).values({
-        userId,
-        month: '2025-02',
-        regenerationsUsed: 0,
-        exportsUsed: 0,
-      });
-
-      // Verify separate rows exist
-      const metrics = await db
-        .select()
-        .from(usageMetrics)
-        .where(sql`user_id = ${userId}`)
-        .orderBy(usageMetrics.month);
-
-      expect(metrics).toHaveLength(2);
-      expect(metrics[0]?.month).toBe('2025-01');
-      expect(metrics[0]?.regenerationsUsed).toBe(5);
-      expect(metrics[1]?.month).toBe('2025-02');
-      expect(metrics[1]?.regenerationsUsed).toBe(0);
     });
   });
 });

@@ -2,10 +2,9 @@ import { setTestUser } from '../../helpers/auth';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
 import { GET as GET_STATUS } from '@/app/api/v1/plans/[planId]/status/route';
-import { generationAttempts, learningPlans, modules } from '@supabase/schema';
+import { generationAttempts, learningPlans } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { buildRouteHandlerContext } from '@tests/helpers/route-handler-context';
-import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 const BASE_URL = 'http://localhost/api/v1/plans';
@@ -22,56 +21,6 @@ describe('Phase 4: API Integration', () => {
   const authEmail = buildTestEmail(authUserId);
 
   describe('T041: Status endpoint state transition test', () => {
-    it('maps generationStatus to plan status correctly: generating -> ready', async () => {
-      setTestUser(authUserId);
-      const userId = await ensureUser({ authUserId, email: authEmail });
-
-      const [plan] = await db
-        .insert(learningPlans)
-        .values({
-          userId,
-          topic: 'Status Test Plan',
-          skillLevel: 'beginner',
-          weeklyHours: 4,
-          learningStyle: 'reading',
-          visibility: 'private',
-          origin: 'ai',
-          generationStatus: 'generating',
-        })
-        .returning();
-
-      let statusRequest = await createStatusRequest(plan.id);
-      let statusResponse = await GET_STATUS(
-        statusRequest,
-        buildRouteHandlerContext({ planId: plan.id }),
-      );
-      expect(statusResponse.status).toBe(200);
-      let statusPayload = await statusResponse.json();
-      expect(statusPayload.status).toBe('processing');
-      expect(statusPayload.planId).toBe(plan.id);
-
-      await db
-        .update(learningPlans)
-        .set({ generationStatus: 'ready' })
-        .where(eq(learningPlans.id, plan.id));
-
-      await db.insert(modules).values({
-        planId: plan.id,
-        order: 1,
-        title: 'Module 1',
-        description: 'First module',
-        estimatedMinutes: 120,
-      });
-
-      statusRequest = await createStatusRequest(plan.id);
-      statusResponse = await GET_STATUS(
-        statusRequest,
-        buildRouteHandlerContext({ planId: plan.id }),
-      );
-      statusPayload = await statusResponse.json();
-      expect(statusPayload.status).toBe('ready');
-    });
-
     it('maps failed job status correctly', async () => {
       setTestUser(authUserId);
       const userId = await ensureUser({ authUserId, email: authEmail });

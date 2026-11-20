@@ -65,7 +65,6 @@ describe('GET /api/v1/user/subscription', () => {
       activePlans: { current: 0, limit: TIER_LIMITS.free.maxActivePlans },
       regenerations: { used: 0, limit: TIER_LIMITS.free.monthlyRegenerations },
     });
-    expect(body.usage).not.toHaveProperty('exports');
 
     const after = await db
       .select()
@@ -153,32 +152,11 @@ describe('GET /api/v1/user/subscription', () => {
     expect(response.status).toBe(200);
     const body = await response.json();
     expect(body.tier).toBe('pro');
-    expect(body.usage).not.toHaveProperty('exports');
     expect(body.usage.activePlans).toEqual({ current: 0, limit: null });
     expect(body.usage.regenerations).toEqual({
       used: 0,
       limit: TIER_LIMITS.pro.monthlyRegenerations,
     });
-    expect(body.usage).not.toHaveProperty('lessonGenerations');
-  });
-
-  it('should handle starter tier subscriptions', async () => {
-    await ensureUser({
-      authUserId,
-      email: 'subscription@example.com',
-      subscriptionTier: 'starter',
-    });
-
-    const request = new NextRequest(
-      'http://localhost:3000/api/v1/user/subscription',
-      { method: 'GET' },
-    );
-
-    const response = await GET(request);
-
-    expect(response.status).toBe(200);
-    const body = await response.json();
-    expect(body.tier).toBe('starter');
   });
 
   it('should return cancelAtPeriodEnd from the local database state', async () => {

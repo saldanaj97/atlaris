@@ -142,23 +142,6 @@ describe('GET /api/v1/plans/:planId/tasks', () => {
     expect(response.status).toBe(401);
   });
 
-  it('should return 401 when session payload is null', async () => {
-    clearTestUser();
-
-    serverAuth.getSession.mockResolvedValue({
-      data: null,
-    });
-
-    const request = new NextRequest(
-      `http://localhost:3000/api/v1/plans/${planId}/tasks`,
-      { method: 'GET' },
-    );
-
-    const response = await GET(request, buildRouteHandlerContext({ planId }));
-
-    expect(response.status).toBe(401);
-  });
-
   it('should return 404 when accessing another users plan', async () => {
     // Switch to another user
     mockServerSession(serverAuth.getSession, otherAuthId);

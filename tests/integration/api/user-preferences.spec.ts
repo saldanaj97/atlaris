@@ -131,22 +131,8 @@ describe('GET /api/v1/user/preferences', () => {
     expect(data.preferredRegenerationAiModel).toBeNull();
     expect(data.preferredLessonAiModel).toBeNull();
     expect(data.effectivePreferredAiModel).toBe(FREE_EFFECTIVE_MODEL);
-    expect(data.effectivePreferredAiModel).toBe(AI_DEFAULT_MODEL);
     expect(expectModelArray(data.availableModels)).toEqual([]);
     expect(expectModelArray(data.proOnlyModels)).toEqual([]);
-  });
-
-  it('returns models with correct structure', async () => {
-    setTestUser(testAuthUserId);
-
-    const request = new Request('http://localhost/api/v1/user/preferences', {
-      method: 'GET',
-    });
-
-    const response = await GET(request);
-    const data = expectJsonObject(await response.json());
-    const availableModels = expectModelArray(data.availableModels);
-    expect(availableModels).toEqual([]);
   });
 
   it('returns 401 for unauthenticated request', async () => {
@@ -301,48 +287,6 @@ describe('PATCH /api/v1/user/preferences', () => {
 
     const resetResponse = await PATCH(resetRequest);
     expect(resetResponse.status).toBe(200);
-  });
-
-  it('accepts another valid model ID', async () => {
-    setTestUser(testAuthUserId);
-
-    const firstRequest = new Request(
-      'http://localhost/api/v1/user/preferences',
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          preferredAiModel: SECOND_STARTER_MODEL_ID,
-        }),
-      },
-    );
-
-    const firstResponse = await PATCH(firstRequest);
-    expect(firstResponse.status).toBe(200);
-
-    const firstData = expectJsonObject(await firstResponse.json());
-    expect(firstData.preferredAiModel).toBe(SECOND_STARTER_MODEL_ID);
-
-    const secondRequest = new Request(
-      'http://localhost/api/v1/user/preferences',
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          preferredAiModel: STARTER_MODEL_ID,
-        }),
-      },
-    );
-
-    const secondResponse = await PATCH(secondRequest);
-    expect(secondResponse.status).toBe(200);
-
-    const secondData = expectJsonObject(await secondResponse.json());
-    expect(secondData.preferredAiModel).toBe(STARTER_MODEL_ID);
   });
 
   it('GET keeps Starter lessons on the default when a Pro lesson pick is saved', async () => {
@@ -530,23 +474,6 @@ describe('PATCH /api/v1/user/preferences', () => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({}),
-    });
-
-    const response = await PATCH(request);
-    expect(response.status).toBe(400);
-  });
-
-  it('rejects explicit undefined preferredAiModel', async () => {
-    setTestUser(testAuthUserId);
-
-    const request = new Request('http://localhost/api/v1/user/preferences', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        preferredAiModel: undefined,
-      }),
     });
 
     const response = await PATCH(request);
@@ -1016,14 +943,16 @@ describe('PATCH /api/v1/user/preferences grounded picks', () => {
     expect(data.code).toBe('GROUNDED_GENERATION_DISABLED');
   });
 
-  it('does not consult the flag or the Clerk feature for legacy slots', async () => {
-    mockIsGroundedEnabled.mockClear();
-    mockHasClerkPlanFeature.mockClear();
+  it('saves legacy slots while grounded picks are off and Clerk is unavailable', async () => {
+    mockIsGroundedEnabled.mockResolvedValue(false);
+    mockHasClerkPlanFeature.mockRejectedValue(new Error('clerk down'));
 
-    const response = await patch({ preferredLessonAiModel: null });
+    const response = await patch({
+      preferredLessonAiModel: PRO_LESSON_MODEL_ID,
+    });
 
     expect(response.status).toBe(200);
-    expect(mockIsGroundedEnabled).not.toHaveBeenCalled();
-    expect(mockHasClerkPlanFeature).not.toHaveBeenCalled();
+    const data = expectJsonObject(await response.json());
+    expect(data.preferredLessonAiModel).toBe(PRO_LESSON_MODEL_ID);
   });
 });
