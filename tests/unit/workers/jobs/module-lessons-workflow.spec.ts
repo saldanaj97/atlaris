@@ -1246,7 +1246,7 @@ describe('runModuleLessonsWorkflow', () => {
           }),
         ]);
         const [, committed] = queries.commitSuccess.mock.calls[0] ?? [];
-        // Six calls: two lessons and two repairs, one usage each.
+        // Four calls: two lessons and two repairs, one usage each.
         expect(committed.usage.inputTokens).toBe(40);
       });
 

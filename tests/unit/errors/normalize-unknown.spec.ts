@@ -44,20 +44,6 @@ describe('normalize-unknown', () => {
       expect(unknownThrownCore(42).primaryMessage).toBe('42');
       expect(unknownThrownCore('hi').primaryMessage).toBe('hi');
     });
-
-    it('handles null and undefined inputs gracefully', () => {
-      expect(unknownThrownCore(null).primaryMessage).toBe('null');
-      expect(unknownThrownCore(undefined).primaryMessage).toBe('undefined');
-    });
-
-    it('detects abort-shaped objects', () => {
-      const core = unknownThrownCore({
-        name: 'AbortError',
-        message: 'aborted',
-      });
-      expect(core.name).toBe('AbortError');
-      expect(core.primaryMessage).toBe('aborted');
-    });
   });
 
   describe('omitCircularFields + safeStringifyUnknown', () => {

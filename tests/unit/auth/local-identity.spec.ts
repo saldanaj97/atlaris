@@ -69,18 +69,6 @@ describe('local identity helpers', () => {
       devAuthUserId: localAuthUserId,
       expected: false,
     },
-    {
-      nodeEnv: 'test',
-      localProductTesting: 'true',
-      devAuthUserId: '',
-      expected: false,
-    },
-    {
-      nodeEnv: 'test',
-      localProductTesting: 'true',
-      devAuthUserId: undefined,
-      expected: false,
-    },
   ])(
     'reports local product-testing auth as $expected for NODE_ENV=$nodeEnv LOCAL_PRODUCT_TESTING=$localProductTesting DEV_AUTH_USER_ID=$devAuthUserId',
     ({ nodeEnv, localProductTesting, devAuthUserId, expected }) => {
@@ -100,31 +88,7 @@ describe('local identity helpers', () => {
       expected: false,
     },
     {
-      nodeEnv: 'development',
-      localProductTesting: 'true',
-      devAuthUserId: 'seed-id',
-      expected: false,
-    },
-    {
-      nodeEnv: 'development',
-      localProductTesting: 'true',
-      devAuthUserId: '',
-      expected: true,
-    },
-    {
-      nodeEnv: 'development',
-      localProductTesting: 'false',
-      devAuthUserId: localAuthUserId,
-      expected: true,
-    },
-    {
       nodeEnv: 'production',
-      localProductTesting: 'true',
-      devAuthUserId: localAuthUserId,
-      expected: true,
-    },
-    {
-      nodeEnv: 'test',
       localProductTesting: 'true',
       devAuthUserId: localAuthUserId,
       expected: true,

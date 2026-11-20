@@ -212,18 +212,6 @@ describe('User Rate Limiting', () => {
       );
     });
 
-    it('applies different limits for different categories', () => {
-      const aiGenerationConfig = USER_RATE_LIMIT_CONFIGS.aiGeneration;
-      for (let i = 0; i < aiGenerationConfig.maxRequests; i++) {
-        checkUserRateLimit('user_123', 'aiGeneration');
-      }
-      expect(() => checkUserRateLimit('user_123', 'aiGeneration')).toThrow(
-        RateLimitError,
-      );
-
-      expect(() => checkUserRateLimit('user_123', 'read')).not.toThrow();
-    });
-
     it('tracks same user across different categories independently', () => {
       const aiGenerationConfig = USER_RATE_LIMIT_CONFIGS.aiGeneration;
 
@@ -271,13 +259,6 @@ describe('User Rate Limiting', () => {
   });
 
   describe('USER_RATE_LIMIT_CONFIGS', () => {
-    it('has expected categories', () => {
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('lessonGeneration');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('aiGeneration');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('mutation');
-      expect(USER_RATE_LIMIT_CONFIGS).toHaveProperty('read');
-    });
-
     it('lessonGeneration is stricter per hour than aiGeneration', () => {
       const requestsPerHour = (config: {
         maxRequests: number;

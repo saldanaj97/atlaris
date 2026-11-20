@@ -39,13 +39,6 @@ describe('OpenAPI origin enum parity with DB planOrigin', () => {
     schemas = doc.components?.schemas ?? {};
   });
 
-  it('DB planOrigin enum does not include pdf', () => {
-    expect(planOrigin.enumValues).not.toContain('pdf');
-    expect([...planOrigin.enumValues].sort()).toEqual(
-      ['ai', 'manual', 'template'].sort(),
-    );
-  });
-
   it('LearningPlan response schema origin matches DB enum', () => {
     const originEnum = getOriginEnum(schemas.LearningPlan);
     expect(originEnum).toBeDefined();

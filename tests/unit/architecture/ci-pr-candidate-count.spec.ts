@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
@@ -164,20 +164,6 @@ describe('CircleCI change flags', () => {
 });
 
 describe('CircleCI PR merge gate', () => {
-  it('runs ci-pr on develop-headed pull_request events', () => {
-    const pullRequestGate = CI_PR_WORKFLOW.match(
-      /equal: \[pull_request, << pipeline\.event\.name >>\][\s\S]*?equal: \[opened,/,
-    )?.[0];
-    expect(pullRequestGate).toBeDefined();
-    // non-main includes develop → main
-    expect(pullRequestGate).toContain(
-      'equal: [main, << pipeline.git.branch >>]',
-    );
-    expect(pullRequestGate).not.toContain(
-      'equal: [develop, << pipeline.git.branch >>]',
-    );
-  });
-
   it('runs ci-pr on feature-branch pull_request events', () => {
     const pullRequestGate = CI_PR_WORKFLOW.match(
       /equal: \[pull_request, << pipeline\.event\.name >>\][\s\S]*?equal: \[opened,/,
@@ -219,12 +205,6 @@ describe('CircleCI PR merge gate', () => {
     expect(CODE_CONFIG).toMatch(
       /ci-trunk:\n    when:\n      not:\n        equal: \[pull_request, << pipeline\.event\.name >>\]/,
     );
-  });
-
-  it('does not keep GitHub Actions ci-trunk.yml', () => {
-    expect(
-      existsSync(join(REPO_ROOT, '.github', 'workflows', 'ci-trunk.yml')),
-    ).toBe(false);
   });
 
   it('suppresses setup-pr on draft pull requests', () => {

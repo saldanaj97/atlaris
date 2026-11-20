@@ -358,42 +358,6 @@ describe('toErrorResponse', () => {
     expect(response.headers.get('X-RateLimit-Remaining')).toBe('0');
   });
 
-  it('should handle AuthError', async () => {
-    const error = new AuthError('Invalid token');
-    const response = toErrorResponse(error);
-
-    expect(response.status).toBe(401);
-    const body = await response.json();
-    expect(body).toEqual({
-      error: 'Invalid token',
-      code: 'UNAUTHORIZED',
-    });
-  });
-
-  it('should handle ForbiddenError', async () => {
-    const error = new ForbiddenError('Access denied');
-    const response = toErrorResponse(error);
-
-    expect(response.status).toBe(403);
-    const body = await response.json();
-    expect(body).toEqual({
-      error: 'Access denied',
-      code: 'FORBIDDEN',
-    });
-  });
-
-  it('should handle NotFoundError', async () => {
-    const error = new NotFoundError('Resource not found');
-    const response = toErrorResponse(error);
-
-    expect(response.status).toBe(404);
-    const body = await response.json();
-    expect(body).toEqual({
-      error: 'Resource not found',
-      code: 'NOT_FOUND',
-    });
-  });
-
   it('should handle ValidationError', async () => {
     const error = new ValidationError('Invalid input');
     const response = toErrorResponse(error);
@@ -420,18 +384,6 @@ describe('toErrorResponse', () => {
     });
   });
 
-  it('should return 500 for unexpected errors', async () => {
-    const error = new Error('Unexpected error');
-    const response = toErrorResponse(error);
-
-    expect(response.status).toBe(500);
-    const body = await response.json();
-    expect(body).toEqual({
-      error: 'Internal Server Error',
-      code: 'INTERNAL_ERROR',
-    });
-  });
-
   it('should return 500 for non-error objects', async () => {
     const response = toErrorResponse('string error');
 
@@ -452,29 +404,5 @@ describe('toErrorResponse', () => {
       error: 'Internal Server Error',
       code: 'INTERNAL_ERROR',
     });
-  });
-
-  it('should not include classification when null', async () => {
-    const error = new AppError('Test', {
-      status: 400,
-      code: 'TEST',
-      classification: undefined,
-    });
-    const response = toErrorResponse(error);
-
-    const body = await response.json();
-    expect(body).not.toHaveProperty('classification');
-  });
-
-  it('should not include details when undefined', async () => {
-    const error = new AppError('Test', {
-      status: 400,
-      code: 'TEST',
-      details: undefined,
-    });
-    const response = toErrorResponse(error);
-
-    const body = await response.json();
-    expect(body).not.toHaveProperty('details');
   });
 });

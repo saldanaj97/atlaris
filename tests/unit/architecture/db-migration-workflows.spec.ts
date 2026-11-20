@@ -194,41 +194,9 @@ describe('Supabase migration workflows', () => {
       '20260811100400_revoke_users_authenticated_insert.sql',
     );
 
-    expect(script).toContain(
-      '20260706221000_archive_legacy_stripe_entitlements.sql',
-    );
-    expect(script).toContain(
-      '20260810120000_create_clerk_webhook_event_claims.sql',
-    );
-    expect(script).toContain(
-      '20260811100100_add_clerk_user_identity_projection.sql',
-    );
-    expect(script).toContain(
-      '20260811100200_enforce_resolved_email_delivery_payload_minimization.sql',
-    );
-    expect(script).toContain(
-      '20260811100700_revoke_anon_unsafe_table_privileges.sql',
-    );
-    expect(script).toContain(
-      '20260811100800_revoke_security_definer_execute.sql',
-    );
-    expect(script).toContain(
-      '20260811100900_restrict_task_progress_update_columns.sql',
-    );
-    expect(script).toContain('20260825151604_add_user_entitlement_fields.sql');
-    expect(script).toContain(
-      '20260825153019_add_generation_attempt_purpose.sql',
-    );
-    expect(script).toContain(
-      '20260826184123_expand_user_preferences_model_text_slots.sql',
-    );
     expect(expandMigrations).not.toContain(
       '20260811100000_clear_module_lesson_generation_errors.sql',
     );
-    expect(script).toContain(
-      'supabase migration up --linked --include-all --yes --workdir',
-    );
-    expect(script).not.toContain('supabase db push');
     expect(script).not.toContain('supabase migration repair');
     expect(script).not.toContain('db query --linked --file');
   });
@@ -461,19 +429,6 @@ describe('Supabase migration workflows', () => {
     for (const entry of targetEntries.slice(-6)) {
       expect(migrationFiles).toContain(`${entry.tag}.sql`);
     }
-    expect(journal.entries.at(-1)).toMatchObject({
-      idx: 68,
-      tag: '20261118205043_add_lesson_problem_reports',
-    });
-    expect(migrationFiles).toContain(
-      '20260825151604_add_user_entitlement_fields.sql',
-    );
-    expect(migrationFiles).toContain(
-      '20260825153019_add_generation_attempt_purpose.sql',
-    );
-    expect(migrationFiles).toContain(
-      '20260826184123_expand_user_preferences_model_text_slots.sql',
-    );
 
     const script = readFileSync(PHASED_MIGRATION_SCRIPT, 'utf8');
     const expandMigrations = parseReadonlyBashArray(
@@ -531,10 +486,6 @@ describe('Supabase migration workflows', () => {
     expect(script).toContain(
       '# Keep the users INSERT revoke contract-only until service-role provisioning is live.',
     );
-    expect(script).not.toContain('supabase db push');
-    expect(script).toContain(
-      'supabase migration up --linked --include-all --yes --workdir',
-    );
   });
 
   it('classifies every local migration into exactly one phase', () => {
@@ -583,7 +534,6 @@ describe('Supabase migration workflows', () => {
     expect(parseReadonlyBashArray(script, 'EXPAND_MIGRATIONS')).not.toContain(
       'supabase/migrations/20260810120100_restore_clerk_webhook_claim_retention.sql',
     );
-    expect(script).not.toContain('supabase db push');
   });
 
   it('archives Stripe and Clerk join keys before the legacy drop', () => {

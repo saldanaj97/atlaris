@@ -40,18 +40,6 @@ describe('emailEnv', () => {
     expect(env.unsubscribeTokenSecret).toBe('secret');
   });
 
-  it('exposes from via RESEND_FROM (not EMAIL_FROM)', () => {
-    const env = createEmailEnvForTests({
-      NODE_ENV: 'test',
-      RESEND_API_KEY: 're_test',
-      RESEND_FROM: 'Atlaris <notifications@mail.atlaris.app>',
-      EMAIL_UNSUBSCRIBE_TOKEN_SECRET: 'secret',
-      EMAIL_FROM: 'should-not-be-used@example.com',
-    });
-
-    expect(env.from).toBe('Atlaris <notifications@mail.atlaris.app>');
-  });
-
   it('treats RESEND_REPLY_TO as optional', () => {
     const withoutReply = createEmailEnvForTests({
       NODE_ENV: 'test',

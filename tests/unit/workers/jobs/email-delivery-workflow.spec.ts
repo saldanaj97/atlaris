@@ -615,7 +615,7 @@ describe('runEmailDeliveryWorkflow', () => {
 });
 
 describe('resolveScheduledEmailDeliveryRun', () => {
-  it('maps both schedules to their run kind and UTC date', () => {
+  it('maps the weekly cron to its run kind and UTC date, and returns null off its day', () => {
     expect(
       resolveScheduledEmailDeliveryRun({
         cron: '30 14 * * MON',
