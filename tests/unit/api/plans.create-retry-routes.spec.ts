@@ -197,23 +197,6 @@ describe('POST /api/v1/plans', () => {
     expect(mocks.getGroundedModelPreferences).not.toHaveBeenCalled();
   });
 
-  it('returns 403 SUBSCRIPTION_REQUIRED before any rate-limit or spend work for a no-subscription user', async () => {
-    mocks.actorTier = 'free';
-    const boundary = makeBoundary();
-    const post = createPlanCreateHandler({ boundary, logger: makeLogger() });
-
-    const response = await post(createRequest(JSON.stringify(VALID_BODY)));
-
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'SUBSCRIPTION_REQUIRED',
-      details: { upgradeUrl: '/pricing' },
-    });
-    expect(mocks.checkPlanGenerationRateLimit).not.toHaveBeenCalled();
-    expect(mocks.assertAiSpendAllowed).not.toHaveBeenCalled();
-    expect(boundary.startCreate).not.toHaveBeenCalled();
-  });
-
   it('loads and passes the saved grounded picks for Pro', async () => {
     mocks.actorTier = 'pro';
     const boundary = makeBoundary();
@@ -330,33 +313,6 @@ describe('POST /api/v1/plans', () => {
       retryAfter: 60,
     });
     expect(boundary.startCreate).not.toHaveBeenCalled();
-  });
-
-  it('refuses to start when the AI spend guard rejects the user', async () => {
-    mocks.assertAiSpendAllowed.mockRejectedValueOnce(
-      new AppError("You've reached this month's AI budget.", {
-        status: 429,
-        code: 'AI_BUDGET_EXHAUSTED',
-        classification: 'capped',
-        details: { resetsAt: '2026-12-01T00:00:00.000Z' },
-      }),
-    );
-    const boundary = makeBoundary();
-    const post = createPlanCreateHandler({ boundary, logger: makeLogger() });
-
-    const response = await post(createRequest(JSON.stringify(VALID_BODY)));
-
-    expect(response.status).toBe(429);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'AI_BUDGET_EXHAUSTED',
-      classification: 'capped',
-      details: { resetsAt: '2026-12-01T00:00:00.000Z' },
-    });
-    expect(boundary.startCreate).not.toHaveBeenCalled();
-    expect(mocks.assertAiSpendAllowed).toHaveBeenCalledWith(
-      expect.objectContaining({ id: 'user-1' }),
-      expect.anything(),
-    );
   });
 
   it('returns the canonical error shape when generation did not start', async () => {

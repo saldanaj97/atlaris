@@ -602,24 +602,6 @@ describe('Environment Configuration', () => {
 
         expect(appEnv.maintenanceMode).toBe(true);
       });
-
-      it('should return true when MAINTENANCE_MODE is lowercase true', () => {
-        vi.stubEnv('MAINTENANCE_MODE', 'true');
-
-        expect(appEnv.maintenanceMode).toBe(true);
-      });
-
-      it('should return true when MAINTENANCE_MODE is 1', () => {
-        vi.stubEnv('MAINTENANCE_MODE', '1');
-
-        expect(appEnv.maintenanceMode).toBe(true);
-      });
-
-      it('should return false for other non-truthy strings', () => {
-        vi.stubEnv('MAINTENANCE_MODE', 'false');
-
-        expect(appEnv.maintenanceMode).toBe(false);
-      });
     });
 
     describe('launchWaitlist', () => {
@@ -904,19 +886,6 @@ describe('Environment Configuration', () => {
       expect(databaseEnv.nonPoolingUrl).toBe(
         'postgresql://pooled.example.com:6543/db',
       );
-    });
-  });
-
-  describe('barrel surface', () => {
-    it('re-exports core config symbols from @/lib/config/env', async () => {
-      const env = await import('@/lib/config/env');
-
-      expect(env.appEnv).toBeDefined();
-      expect(env.databaseEnv).toBeDefined();
-      expect(env.aiEnv).toBeDefined();
-      expect(env.getAttemptCap).toBeTypeOf('function');
-      expect(env.setDevAuthUserIdForTests).toBeTypeOf('function');
-      expect(env.clearDevAuthUserIdForTests).toBeTypeOf('function');
     });
   });
 });

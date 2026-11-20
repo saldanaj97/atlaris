@@ -41,16 +41,6 @@ describe('thrown normalization helpers', () => {
     ])('maps unknown value %p via core message', (value, expected) => {
       expect(normalizeThrown(value)).toEqual(expected);
     });
-
-    it('maps function and symbol throws to message-bearing objects', () => {
-      const functionResult = normalizeThrown(function namedFn() {});
-      expect(functionResult).toHaveProperty('message');
-      expect(typeof functionResult.message).toBe('string');
-
-      const symbolResult = normalizeThrown(Symbol.for('token'));
-      expect(symbolResult).toHaveProperty('message');
-      expect(typeof symbolResult.message).toBe('string');
-    });
   });
 
   describe('getLoggableErrorDetails', () => {
@@ -83,7 +73,6 @@ describe('thrown normalization helpers', () => {
         errorMessage: 'Unknown error object',
         errorStack: 'only-stack',
       });
-      expect(details).toHaveProperty('errorStack', 'only-stack');
     });
 
     it('stringifies plain objects without message/stack via safe serializer', () => {

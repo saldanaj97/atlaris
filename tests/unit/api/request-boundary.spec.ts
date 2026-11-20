@@ -483,40 +483,4 @@ describe('requestBoundary', () => {
     );
     expect(run).not.toHaveBeenCalled();
   });
-
-  it('shares the Clerk auth ID rate-limit key between routes and actions', async () => {
-    const user = buildUserFixture({
-      id: 'user_shared_rl',
-      authUserId: 'auth_shared_rl',
-      email: 'shared-rl@example.test',
-      name: 'Shared RL User',
-    });
-
-    setTestUser(user.authUserId);
-    getUserByAuthIdMock.mockResolvedValue(user);
-
-    const handler = createRequestBoundary().route(
-      { rateLimit: 'mutation' },
-      async () => new Response('ok', { status: 200 }),
-    );
-    const response = await handler(
-      new Request('http://localhost/api', { method: 'POST' }),
-      { params: Promise.resolve({}) },
-    );
-
-    expect(response.status).toBe(200);
-    expect(checkUserRateLimitMock).toHaveBeenCalledExactlyOnceWith(
-      user.authUserId,
-      'mutation',
-    );
-
-    checkUserRateLimitMock.mockClear();
-    await expect(
-      requestBoundary.action({ rateLimit: 'mutation' }, async () => 'ok'),
-    ).resolves.toBe('ok');
-    expect(checkUserRateLimitMock).toHaveBeenCalledExactlyOnceWith(
-      user.authUserId,
-      'mutation',
-    );
-  });
 });

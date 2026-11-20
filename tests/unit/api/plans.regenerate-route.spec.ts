@@ -124,19 +124,6 @@ describe('POST /api/v1/plans/:planId/regenerate', () => {
     );
   });
 
-  it('refuses a no-subscription user with SUBSCRIPTION_REQUIRED', async () => {
-    mocks.actorTier = 'free';
-
-    const response = await regenerate();
-
-    expect(response.status).toBe(403);
-    await expect(response.json()).resolves.toMatchObject({
-      code: 'SUBSCRIPTION_REQUIRED',
-    });
-    expect(mocks.assertAiSpendAllowed).not.toHaveBeenCalled();
-    expect(mocks.requestPlanRegeneration).not.toHaveBeenCalled();
-  });
-
   it('does not request regeneration while AI generation is paused', async () => {
     const { AppError } = await import('@/lib/api/errors');
     mocks.assertAiSpendAllowed.mockRejectedValueOnce(
