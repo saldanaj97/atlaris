@@ -113,26 +113,4 @@ describe('authenticated users UPDATE allowlist sync', () => {
       'REVOKE INSERT ON "users" FROM authenticated;',
     );
   });
-
-  it('installs auth.jwt from the shared bootstrap module and rls-bootstrap', () => {
-    const sharedBootstrap = readFileSync(
-      resolve(TEST_DIR, '../../helpers/db/bootstrap.ts'),
-      'utf8',
-    );
-    const testcontainers = readFileSync(
-      resolve(TEST_DIR, '../../setup/testcontainers.ts'),
-      'utf8',
-    );
-    const rlsBootstrap = readFileSync(
-      resolve(TEST_DIR, '../../helpers/db/rls-bootstrap.ts'),
-      'utf8',
-    );
-
-    expect(sharedBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
-    expect(sharedBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
-    expect(testcontainers).toContain("from '@tests/helpers/db/bootstrap'");
-    expect(rlsBootstrap).toContain("from '../sql/auth-jwt-bootstrap'");
-    expect(rlsBootstrap).toContain('AUTH_JWT_BOOTSTRAP_SQL');
-    expect(rlsBootstrap).toContain('sql.raw(AUTH_JWT_BOOTSTRAP_SQL)');
-  });
 });

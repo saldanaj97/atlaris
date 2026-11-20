@@ -117,15 +117,7 @@ describe('completion-metrics', () => {
     expect(completedModules).toBe(summary.completedModules);
   });
 
-  it('accumulateLightweightModuleMetricsRowInPlace matches inline aggregation', () => {
-    const inline = {
-      completedTasks: 0,
-      totalTasks: 0,
-      totalMinutes: 0,
-      completedMinutes: 0,
-      moduleCount: 0,
-      completedModules: 0,
-    };
+  it('accumulateLightweightModuleMetricsRowInPlace sums rows and counts fully completed modules', () => {
     const merged = {
       completedTasks: 0,
       totalTasks: 0,
@@ -155,16 +147,15 @@ describe('completion-metrics', () => {
       },
     ];
     for (const row of rows) {
-      inline.completedTasks += row.completedTasks;
-      inline.totalTasks += row.totalTasks;
-      inline.totalMinutes += row.totalMinutes;
-      inline.completedMinutes += row.completedMinutes;
-      inline.moduleCount += 1;
-      if (row.totalTasks > 0 && row.totalTasks === row.completedTasks) {
-        inline.completedModules += 1;
-      }
       accumulateLightweightModuleMetricsRowInPlace(merged, row);
     }
-    expect(merged).toEqual(inline);
+    expect(merged).toEqual({
+      completedTasks: 5,
+      totalTasks: 6,
+      totalMinutes: 24,
+      completedMinutes: 19,
+      moduleCount: 3,
+      completedModules: 2,
+    });
   });
 });

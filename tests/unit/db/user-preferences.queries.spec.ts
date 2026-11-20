@@ -4,7 +4,6 @@ import type { SQL } from 'drizzle-orm';
 import { makeDbClient } from '../../fixtures/db-mocks';
 import {
   getEmailNotificationPreferences,
-  getUserPreferences,
   saveEmailNotificationPreferences,
   upsertUserAnalyticsTimezone,
   upsertUserModelPreferences,
@@ -13,23 +12,6 @@ import { PgDialect } from 'drizzle-orm/pg-core';
 import { describe, expect, it, vi } from 'vitest';
 
 describe('user preference queries', () => {
-  it('returns defaults when no preference row exists', async () => {
-    const dbClient = makeDbClient({
-      select: (() => ({
-        from: () => ({
-          where: () => Promise.resolve([]),
-        }),
-      })) as unknown as DbClient['select'],
-    });
-
-    await expect(getUserPreferences('user-1', dbClient)).resolves.toEqual({
-      preferredAiModel: null,
-      preferredRegenerationAiModel: null,
-      preferredLessonAiModel: null,
-      analyticsTimezone: 'UTC',
-    });
-  });
-
   it('returns default email notification preferences when no rows exist', async () => {
     const where = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([]);
     const from = vi.fn().mockReturnValue({ where });

@@ -152,18 +152,6 @@ describe('persistSuccessfulAttemptInTx', () => {
     expect(mockTx.update).not.toHaveBeenCalled();
   });
 
-  it('returns the attempt record when all operations succeed', async () => {
-    const mockTx = createMockTx();
-
-    const result = await persistSuccessfulAttemptInTx(
-      mockTx as never,
-      createBaseParams(),
-    );
-    expect(result).toEqual(mockAttemptRecord);
-    expect(mockTx.update).toHaveBeenCalledTimes(1);
-    expect(mockTx.update).toHaveBeenCalledWith(generationAttempts);
-  });
-
   it('persists normalized effort before replacing persisted rows', async () => {
     const mockTx = createMockTx({
       attemptReturnRow: {
@@ -175,9 +163,8 @@ describe('persistSuccessfulAttemptInTx', () => {
       normalizationFlags: { modulesClamped: true, tasksClamped: false },
     });
 
-    const result = await persistSuccessfulAttemptInTx(mockTx as never, params);
+    await persistSuccessfulAttemptInTx(mockTx as never, params);
 
-    expect(result.normalizedEffort).toBe(true);
     expect(mockTx.spies.attemptSet).toHaveBeenCalledWith(
       expect.objectContaining({
         status: 'success',

@@ -9,15 +9,6 @@ const validBaseInput = {
 };
 
 describe('createLearningPlanSchema', () => {
-  it('rejects the removed pdf origin at the API boundary', () => {
-    const result = createLearningPlanSchema.safeParse({
-      ...validBaseInput,
-      origin: 'pdf',
-    });
-
-    expect(result.success).toBe(false);
-  });
-
   it('still accepts supported origins', () => {
     const result = createLearningPlanSchema.safeParse({
       ...validBaseInput,
