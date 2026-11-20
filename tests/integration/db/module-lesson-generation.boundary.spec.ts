@@ -755,7 +755,7 @@ describe('module lesson generation boundary (integration)', () => {
     expect(result.kind).toBe('disabled');
   });
 
-  it("increments an existing month's lesson usage row", async () => {
+  it("succeeds for a free user with prior lesson usage and increments the month's row", async () => {
     const authUserId = buildTestAuthUserId('mod-lesson-quota');
     const userId = await ensureUser({
       authUserId,

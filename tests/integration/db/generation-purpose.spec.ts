@@ -137,6 +137,38 @@ describe('generation_attempts generation purpose persistence', () => {
     expect(plan?.id).toBe(planId);
   });
 
+  it('rejects a null generation purpose at the database', async () => {
+    const { planId } = await createPlanForPurpose('null');
+
+    await expect(
+      db.execute(
+        sql`INSERT INTO generation_attempts (
+          plan_id,
+          status,
+          duration_ms,
+          modules_count,
+          tasks_count,
+          generation_purpose
+        ) VALUES (
+          ${planId}::uuid,
+          'success',
+          1,
+          1,
+          1,
+          NULL
+        )`,
+      ),
+    ).rejects.toMatchObject({
+      cause: { code: '23502', column_name: 'generation_purpose' },
+    });
+
+    const remaining = await db
+      .select({ id: generationAttempts.id })
+      .from(generationAttempts)
+      .where(eq(generationAttempts.planId, planId));
+    expect(remaining).toEqual([]);
+  });
+
   it('persists explicit purpose through attempt reservation for initial and regeneration', async () => {
     const reservationInput = {
       topic: 'Purpose reservation',
