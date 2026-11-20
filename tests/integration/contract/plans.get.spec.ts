@@ -21,7 +21,7 @@ describe('GET /api/v1/plans/:planId', () => {
   const ownerAuthId = buildTestAuthUserId('plan-detail-owner');
   const ownerEmail = buildTestEmail(ownerAuthId);
 
-  it('returns plan detail with its modules and tasks for the owner', async () => {
+  it('returns plan detail for the owner with modules in order and their tasks', async () => {
     setTestUser(ownerAuthId);
     const ownerId = await ensureUser({
       authUserId: ownerAuthId,

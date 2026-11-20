@@ -248,7 +248,7 @@ describe('selectSpotCheck', () => {
     ),
   ];
 
-  it('takes ten per arm under sequential L ids, reproducibly', () => {
+  it('takes ten per arm starting at id L01, reproducibly', () => {
     const sheet = selectSpotCheck(lessons, 'pro');
     expect(sheet).toHaveLength(20);
     expect(sheet.filter((s) => s.lesson.arm === 'grounded')).toHaveLength(10);

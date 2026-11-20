@@ -280,7 +280,7 @@ describe('Health Endpoint', () => {
   });
 
   describe('Error Handling', () => {
-    it('includes a recent timestamp in a healthy response', async () => {
+    it('includes a timestamp from the last minute', async () => {
       const response = await GET(createMockRequest());
       const data = await response.json();
 
