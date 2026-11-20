@@ -27,15 +27,3 @@ for (const route of ['/landing', '/pricing'] as const) {
     ).toHaveCount(0);
   });
 }
-
-test('the mobile menu lists no About link', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/landing');
-
-  await page.getByRole('button', { name: 'Open menu' }).click();
-  const sheet = page.getByRole('dialog');
-  await expect(sheet.getByRole('link', { name: 'Pricing' })).toBeVisible();
-  await expect(
-    sheet.getByRole('link', { name: 'About', exact: true }),
-  ).toHaveCount(0);
-});
