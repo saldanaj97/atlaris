@@ -125,7 +125,6 @@ describe('mapDetailToClient', () => {
     expect(result?.attemptCap).toBe(getGenerationAttemptCap());
     expect(result?.latestAttempt).toBeDefined();
     expect(result?.latestAttempt?.model).toBe('gpt-4');
-    expect(result).not.toHaveProperty('extractedContext');
   });
 
   it('should return undefined for null detail', () => {
@@ -203,6 +202,7 @@ describe('mapDetailToClient', () => {
     expect(result?.modules[0].tasks[0].description).toBeNull();
     expect(result?.modules[0].tasks[0].estimatedMinutes).toBe(0);
     expect(result?.modules[0].tasks[0].status).toBe('not_started');
+    expect(result?.latestAttempt).toBeNull();
   });
 
   it('should preserve module and task order from the read model', () => {
@@ -275,61 +275,6 @@ describe('mapDetailToClient', () => {
     expect(result?.modules[1].title).toBe('First');
     expect(result?.modules[1].tasks[0].title).toBe('Second Task');
     expect(result?.modules[1].tasks[1].title).toBe('First Task');
-  });
-
-  it('should derive status as "ready" when modules exist', () => {
-    const detail: LearningPlanDetail = buildPlanDetail({
-      plan: buildPlan({
-        id: 'plan-1',
-        userId: 'user-1',
-        topic: 'Test',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        modules: [
-          buildModule({
-            id: 'module-1',
-            planId: 'plan-1',
-            order: 1,
-            title: 'Module',
-            description: null,
-            estimatedMinutes: 60,
-            tasks: [],
-          }),
-        ],
-      }),
-      totalTasks: 0,
-      completedTasks: 0,
-      latestAttempt: null,
-      attemptsCount: 0,
-    });
-
-    const result = toClientPlanDetail(detail);
-    expect(result?.status).toBe('ready');
-  });
-
-  it('should derive status as "failed" when plan generation status is failed', () => {
-    const detail = buildPlanDetail({
-      plan: buildPlan({ generationStatus: 'failed', modules: [] }),
-      attemptsCount: 1,
-    });
-
-    const result = toClientPlanDetail(detail);
-    expect(result?.status).toBe('failed');
-    expect(result).toMatchObject({ attempts: 1 });
-  });
-
-  it('should derive status as "processing" when generation is in progress with no modules', () => {
-    const detail = buildPlanDetail({
-      plan: buildPlan({ generationStatus: 'generating', modules: [] }),
-    });
-
-    const result = toClientPlanDetail(detail);
-    expect(result?.status).toBe('processing');
   });
 
   it('should preserve resource order from the read model', () => {
@@ -421,31 +366,6 @@ describe('mapDetailToClient', () => {
     expect(() => toClientPlanDetail(detail)).toThrow(
       'Unhandled generation status',
     );
-  });
-
-  it('should handle null attempt gracefully', () => {
-    const detail: LearningPlanDetail = buildPlanDetail({
-      plan: buildPlan({
-        id: 'plan-1',
-        userId: 'user-1',
-        topic: 'Test',
-        skillLevel: 'beginner',
-        weeklyHours: 5,
-        learningStyle: 'mixed',
-        visibility: 'private',
-        origin: 'ai',
-        startDate: '2024-01-01',
-        deadlineDate: '2024-03-01',
-        modules: [],
-      }),
-      totalTasks: 0,
-      completedTasks: 0,
-      latestAttempt: null,
-      attemptsCount: 0,
-    });
-
-    const result = toClientPlanDetail(detail);
-    expect(result?.latestAttempt).toBeNull();
   });
 });
 

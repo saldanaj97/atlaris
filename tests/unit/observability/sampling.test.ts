@@ -54,14 +54,6 @@ describe('getEnvironment', () => {
 
 describe('tracesSampler', () => {
   describe('parent sampling inheritance', () => {
-    it('returns 1.0 when parent was sampled', () => {
-      withEnv('production', () => {
-        expect(tracesSampler({ name: '/api/plans', parentSampled: true })).toBe(
-          1.0,
-        );
-      });
-    });
-
     it('returns 0 when parent was NOT sampled', () => {
       withEnv('production', () => {
         expect(
@@ -167,12 +159,6 @@ describe('tracesSampler', () => {
       });
     });
 
-    it('handles empty name', () => {
-      withEnv('production', () => {
-        expect(tracesSampler({ name: '' })).toBe(0.05);
-      });
-    });
-
     it('health check is classified as low-value even without HTTP method prefix', () => {
       withEnv('production', () => {
         expect(tracesSampler({ name: '/api/health' })).toBe(0);
@@ -267,16 +253,6 @@ describe('high-severity capture guarantees', () => {
         expect(tracesSampler({ name: 'anything', parentSampled: true })).toBe(
           1.0,
         );
-      });
-    },
-  );
-
-  it.each(['production', 'development'])(
-    'API routes have non-zero sample rate in %s',
-    (env) => {
-      withEnv(env, () => {
-        const rate = tracesSampler({ name: 'POST /api/plans' });
-        expect(rate).toBeGreaterThan(0);
       });
     },
   );

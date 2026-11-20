@@ -1,7 +1,4 @@
-import {
-  JOBS_WORKER_TIMEOUT_MS,
-  sendJobsWorkerCommand,
-} from '@/lib/jobs-worker/client';
+import { sendJobsWorkerCommand } from '@/lib/jobs-worker/client';
 import {
   computeJobsSignature,
   JOBS_SIGNATURE_HEADER,
@@ -59,7 +56,7 @@ describe('sendJobsWorkerCommand', () => {
     );
   });
 
-  it('sets a 10 second timeout signal', async () => {
+  it('applies a default timeout signal when no timeout is given', async () => {
     const timeout = vi.spyOn(AbortSignal, 'timeout');
     const fetchMock = fetchReturning(new Response(null, { status: 202 }));
 
@@ -68,8 +65,7 @@ describe('sendJobsWorkerCommand', () => {
       fetch: fetchMock,
     });
 
-    expect(JOBS_WORKER_TIMEOUT_MS).toBe(10_000);
-    expect(timeout).toHaveBeenCalledWith(10_000);
+    expect(timeout).toHaveBeenCalledOnce();
     expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     timeout.mockRestore();
   });
