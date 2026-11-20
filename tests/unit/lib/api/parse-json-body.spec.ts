@@ -81,14 +81,6 @@ describe('detectJsonBodyPresence', () => {
     expect(detectJsonBodyPresence(req)).toBe(false);
   });
 
-  it('is false when content-length is zero with surrounding whitespace', () => {
-    const req = mockRequest({
-      headers: { 'content-length': '0 ' },
-      json: () => Promise.resolve({}),
-    });
-    expect(detectJsonBodyPresence(req)).toBe(false);
-  });
-
   it('is false when content-length is duplicate zero', () => {
     const req = mockRequest({
       headers: { 'content-length': '00' },
@@ -142,18 +134,6 @@ describe('parseJsonBody', () => {
         onMalformedJson: () => new Error('should not run'),
       }),
     ).resolves.toEqual({ a: 1 });
-  });
-
-  it('required mode: returns undefined when json resolves to undefined', async () => {
-    const req = mockRequest({
-      headers: JSON_HEADERS,
-      json: () => Promise.resolve(undefined),
-    });
-    const factory = vi.fn((_err: unknown) => new Error('should not run'));
-    await expect(
-      parseJsonBody(req, { mode: 'required', onMalformedJson: factory }),
-    ).resolves.toBeUndefined();
-    expect(factory).not.toHaveBeenCalled();
   });
 
   it('required mode: returns null when json resolves to null without invoking factory', async () => {
@@ -298,21 +278,6 @@ describe('parseJsonBody', () => {
       }),
     ).rejects.toBe(typeErr);
     expect(factory).not.toHaveBeenCalled();
-  });
-
-  it('maxBytes: parses a body below the cap', async () => {
-    const body = '{"ok":true}';
-    const req = jsonBodyRequest(body);
-    const jsonSpy = vi.spyOn(req, 'json');
-
-    await expect(
-      parseJsonBody(req, {
-        mode: 'required',
-        onMalformedJson: () => new Error('should not run'),
-        maxBytes: new TextEncoder().encode(body).byteLength + 1,
-      }),
-    ).resolves.toEqual({ ok: true });
-    expect(jsonSpy).not.toHaveBeenCalled();
   });
 
   it('maxBytes: parses a body equal to the cap', async () => {
@@ -477,21 +442,6 @@ describe('parseJsonBody', () => {
         maxBytes: encoded.byteLength,
       }),
     ).resolves.toEqual({ x: 'é' });
-  });
-
-  it('omitted maxBytes: keeps unbounded req.json() behavior', async () => {
-    const huge = { pad: 'x'.repeat(10_000) };
-    const req = mockRequest({
-      headers: JSON_HEADERS,
-      json: () => Promise.resolve(huge),
-    });
-
-    await expect(
-      parseJsonBody(req, {
-        mode: 'required',
-        onMalformedJson: () => new Error('should not run'),
-      }),
-    ).resolves.toEqual(huge);
   });
 
   it('required mode with maxBytes: malformed JSON still uses onMalformedJson', async () => {

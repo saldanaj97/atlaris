@@ -6,7 +6,7 @@ import {
 } from '@/lib/jobs-worker/contract';
 
 /** Decision 4: one attempt, 10 seconds, no automatic retry. */
-export const JOBS_WORKER_TIMEOUT_MS = 10_000;
+const JOBS_WORKER_TIMEOUT_MS = 10_000;
 
 export type JobsWorkerClientConfig = {
   readonly url: string | undefined;

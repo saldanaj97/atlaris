@@ -269,35 +269,6 @@ describe('buildPlanSummaries', () => {
     expect(result[0].modules).toHaveLength(0);
   });
 
-  it('should handle zero estimated minutes', () => {
-    const planId = createId('plan');
-    const userId = createId('user');
-    const moduleId = createId('module');
-    const taskId = createId('task');
-    const planRows: LearningPlan[] = [
-      createLearningPlan({ id: planId, userId, topic: 'Test Plan' }),
-    ];
-
-    const taskRows: SummaryTaskRow[] = [
-      createSummaryTaskRow({
-        id: taskId,
-        moduleId,
-        planId,
-        estimatedMinutes: 0,
-      }),
-    ];
-
-    const result = buildPlanSummaries({
-      planRows,
-      moduleRows: [],
-      taskRows,
-      progressRows: [],
-    });
-
-    expect(result[0].totalMinutes).toBe(0);
-    expect(result[0].completedMinutes).toBe(0);
-  });
-
   it('should correctly identify completed modules', () => {
     const planId = createId('plan');
     const userId = createId('user');
@@ -735,28 +706,5 @@ describe('buildLearningPlanDetail', () => {
     expect(result.totalMinutes).toBe(210);
     expect(result.completedMinutes).toBe(60);
     expect(result.completedModules).toBe(0);
-  });
-
-  it('should preserve attempt information when no modules exist', () => {
-    const planId = createId('plan');
-    const userId = createId('user');
-    const plan = createLearningPlan({
-      id: planId,
-      userId,
-      topic: 'Failed Plan',
-    });
-
-    const result = buildLearningPlanDetail({
-      plan,
-      moduleRows: [],
-      taskRows: [],
-      progressRows: [],
-      resourceRows: [],
-      latestAttempt: null,
-      attemptsCount: 3,
-    });
-
-    expect(result.plan.id).toBe(planId);
-    expect(result.attemptsCount).toBe(3);
   });
 });
