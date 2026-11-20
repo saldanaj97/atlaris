@@ -153,12 +153,7 @@ describe('persistSuccessfulAttemptInTx', () => {
   });
 
   it('persists normalized effort before replacing persisted rows', async () => {
-    const mockTx = createMockTx({
-      attemptReturnRow: {
-        ...mockAttemptRecord,
-        normalizedEffort: true,
-      },
-    });
+    const mockTx = createMockTx();
     const params = createBaseParams({
       normalizationFlags: { modulesClamped: true, tasksClamped: false },
     });

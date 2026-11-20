@@ -38,6 +38,10 @@ describe('authenticated users UPDATE allowlist sync', () => {
     'free_access_plan_selected_at',
   ] as const;
 
+  it('allows authenticated users to update only name and updated_at', () => {
+    expect(USERS_AUTHENTICATED_UPDATE_COLUMNS).toEqual(['name', 'updated_at']);
+  });
+
   it('excludes server-owned lifetime entitlement columns from the allowlist', () => {
     for (const column of serverOwnedEntitlementColumns) {
       expect(USERS_AUTHENTICATED_UPDATE_COLUMNS).not.toContain(column);
