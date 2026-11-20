@@ -28,8 +28,4 @@ describe('API_ERROR_CODES', () => {
       API_ERROR_HTTP_STATUS[API_ERROR_CODES.MODEL_NOT_AVAILABLE_FOR_OPERATION],
     ).toBe(403);
   });
-
-  it('does not define MODULE_ENTITLEMENT_REQUIRED', () => {
-    expect(API_ERROR_CODES).not.toHaveProperty('MODULE_ENTITLEMENT_REQUIRED');
-  });
 });

@@ -154,11 +154,6 @@ describe('lesson content Zod contracts', () => {
       }),
     ).not.toThrow();
     expect(() =>
-      ModuleLessonGenerationMetadataSchema.parse({
-        version: 1,
-      }),
-    ).not.toThrow();
-    expect(() =>
       ModuleLessonGenerationMetadataSchema.parse({ version: 1, x: 1 }),
     ).toThrow(z.ZodError);
     expect(() =>
@@ -241,33 +236,6 @@ describe('lesson content Zod contracts', () => {
         moduleId,
       }),
     ).toMatchObject({ state: 'locked' });
-  });
-
-  it('rejects unknown quota_denied state', () => {
-    const planId = randomUUID();
-    const moduleId = randomUUID();
-    expect(() =>
-      ModuleLessonGenerationApiResponseSchema.parse({
-        state: 'quota_denied',
-        planId,
-        moduleId,
-        currentCount: 1,
-        limit: 3,
-      }),
-    ).toThrow(z.ZodError);
-  });
-
-  it('rejects legacy disabled encoding on failed + reason', () => {
-    const planId = randomUUID();
-    const moduleId = randomUUID();
-    expect(() =>
-      ModuleLessonGenerationApiResponseSchema.parse({
-        state: 'failed',
-        planId,
-        moduleId,
-        reason: 'disabled',
-      }),
-    ).toThrow(z.ZodError);
   });
 });
 

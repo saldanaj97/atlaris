@@ -68,7 +68,6 @@ describe('ProfileForm', () => {
       expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(MOCK_PROFILE.name)).toBeInTheDocument();
     expect(
       screen.getByText(MOCK_PROFILE.email ?? 'Unavailable'),
     ).toBeInTheDocument();
@@ -233,7 +232,7 @@ describe('ProfileForm', () => {
     await user.click(screen.getByRole('button', { name: /save changes/i }));
 
     await waitFor(() => {
-      expect(toast.error).toHaveBeenCalled();
+      expect(toast.error).toHaveBeenCalledWith('Name is required');
     });
   });
 

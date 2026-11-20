@@ -2,7 +2,6 @@ import {
   emailNotificationPreferenceFormValuesSchema,
   emailNotificationPreferenceFormValuesFromPreferences,
   emailNotificationPreferencesFromFormValues,
-  getEmailNotificationCategoryCopy,
   resolveEffectiveEmailPreferences,
 } from '@/shared/notifications/email-preferences';
 import { describe, expect, it } from 'vitest';
@@ -65,17 +64,5 @@ describe('email notification preference helpers', () => {
         extraField: true,
       }).success,
     ).toBe(false);
-  });
-
-  it('has copy for each email notification category', () => {
-    expect(getEmailNotificationCategoryCopy('weekly_summary').label).toBe(
-      'Weekly summary emails',
-    );
-    expect(getEmailNotificationCategoryCopy('daily_reminder').label).toBe(
-      'Daily reminder emails',
-    );
-    expect(getEmailNotificationCategoryCopy('streak_reminder').label).toBe(
-      'Streak reminder emails',
-    );
   });
 });

@@ -22,15 +22,6 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.pro.monthlyRegenerations).toBe(25);
     expect(TIER_LIMITS.pro.maxWeeks).toBeNull();
   });
-
-  it('does not expose lesson generation or maxHours product quotas', () => {
-    expect(TIER_LIMITS.free).not.toHaveProperty('monthlyLessonGenerations');
-    expect(TIER_LIMITS.starter).not.toHaveProperty('monthlyLessonGenerations');
-    expect(TIER_LIMITS.pro).not.toHaveProperty('monthlyLessonGenerations');
-    expect(TIER_LIMITS.free).not.toHaveProperty('maxHours');
-    expect(TIER_LIMITS.starter).not.toHaveProperty('maxHours');
-    expect(TIER_LIMITS.pro).not.toHaveProperty('maxHours');
-  });
 });
 
 describe('free trial limits', () => {

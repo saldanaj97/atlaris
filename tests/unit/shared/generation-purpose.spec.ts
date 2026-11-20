@@ -1,4 +1,3 @@
-import { assertNever } from '@/lib/errors';
 import {
   describeGenerationPurpose,
   GENERATION_PURPOSES,
@@ -50,21 +49,6 @@ describe('generation purpose domain', () => {
     expect(() => resolveWorkflowGenerationPurpose('retry', 'initial')).toThrow(
       /Invalid generation purpose/,
     );
-  });
-
-  it('handles every purpose exhaustively', () => {
-    const labels = GENERATION_PURPOSES.map((purpose) => {
-      switch (purpose) {
-        case 'initial':
-          return describeGenerationPurpose(purpose);
-        case 'regeneration':
-          return describeGenerationPurpose(purpose);
-        default:
-          return assertNever(purpose);
-      }
-    });
-
-    expect(labels).toEqual(['initial', 'regeneration']);
   });
 
   it('keeps describeGenerationPurpose exhaustive', () => {
