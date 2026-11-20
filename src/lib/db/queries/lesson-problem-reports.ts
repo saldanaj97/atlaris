@@ -31,19 +31,6 @@ export type UpsertLessonProblemReportResult =
   | { kind: 'not-found' }
   | { kind: 'content-changed' };
 
-/**
- * Saves the learner's one report for a lesson in a single statement: the
- * insert selects the task only when it sits in this module and plan, the plan
- * belongs to the learner, the lesson has content, and its version matches the
- * one the learner read; a second report replaces the first (ON CONFLICT).
- * The stored version is the task row's own `lesson_content_updated_at`.
- *
- * JS dates carry milliseconds while Postgres stores microseconds, so the
- * version check truncates the stored value to milliseconds.
- *
- * When nothing is written, one read (same RLS client) classifies why. It only
- * picks the error; it never gates the write.
- */
 export async function upsertLessonProblemReport(
   params: UpsertLessonProblemReportParams,
   dbClient: DbClient,

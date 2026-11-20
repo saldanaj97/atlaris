@@ -5,7 +5,6 @@ import { ROUTES } from '@/features/navigation';
 import { cn } from '@/lib/utils';
 import { BarChart3, BookOpen, LayoutDashboard, Settings } from 'lucide-react';
 
-/** Keyboard focus ring shared by every sidebar and rail control. */
 export const SIDEBAR_FOCUS_RING =
   'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none';
 

@@ -53,11 +53,6 @@ function calculateAvgTaskMinutes(skillLevel: SkillLevel): number {
   }
 }
 
-/**
- * Compute task capacity based on user's time constraints
- * @param params Pacing parameters
- * @returns Maximum number of tasks that fit in the time budget
- */
 export function computeCapacity(params: PacingParams): number {
   const { weeklyHours, skillLevel, startDate, deadlineDate } = params;
 
@@ -67,26 +62,16 @@ export function computeCapacity(params: PacingParams): number {
   }
 
   const parsedStart = parseDate(startDate);
-  const start = parsedStart ?? new Date(); // Use today if no startDate
+  const start = parsedStart ?? new Date();
   const weeks = calculateWeeks(start, parsedDeadline);
 
-  // Calculate average task duration
   const avgTaskMinutes = calculateAvgTaskMinutes(skillLevel);
 
-  // Compute capacity
   const capacity = Math.floor((weeklyHours * weeks * 60) / avgTaskMinutes);
 
-  // Clamp to non-negative
   return Math.max(0, capacity);
 }
 
-/**
- * Trim modules to fit within capacity while preserving order
- * Ensures at least one task per module when tasks exist
- * @param modules Array of modules to trim
- * @param capacity Maximum number of tasks allowed
- * @returns Trimmed modules array, filtered to exclude empty modules
- */
 export function trimModulesToCapacity(
   modules: ParsedModule[],
   capacity: number,
@@ -95,18 +80,14 @@ export function trimModulesToCapacity(
     return [];
   }
 
-  // Count total tasks
   const totalTasks = modules.reduce((sum, m) => sum + m.tasks.length, 0);
 
-  // If capacity is sufficient, return original filtered for empty modules
   if (capacity >= totalTasks) {
     return modules.filter((m) => m.tasks.length > 0);
   }
 
-  // Count non-empty modules (each gets at least 1 task preselected)
   const nonEmptyCount = modules.filter((m) => m.tasks.length > 0).length;
 
-  // If we've already hit capacity with preselections, stop here
   if (nonEmptyCount >= capacity) {
     let remaining = capacity;
     const limited: ParsedModule[] = [];
@@ -119,7 +100,6 @@ export function trimModulesToCapacity(
     return limited;
   }
 
-  // Build ordered queue of remaining tasks (skip first task per module, already preselected)
   const remainingTasks: Array<{ task: ParsedTask; moduleIdx: number }> = [];
 
   for (let moduleIdx = 0; moduleIdx < modules.length; moduleIdx++) {
@@ -129,30 +109,25 @@ export function trimModulesToCapacity(
     }
   }
 
-  // Take remaining slots until capacity is reached
   const additionalNeeded = capacity - nonEmptyCount;
   const additionalTasks = remainingTasks.slice(0, additionalNeeded);
 
-  // Build result modules
   const resultModules: ParsedModule[] = [];
 
   for (let moduleIdx = 0; moduleIdx < modules.length; moduleIdx++) {
     const currentModule = modules[moduleIdx];
     const currentModuleTasks: ParsedTask[] = [];
 
-    // Add preselected first task
     if (currentModule.tasks.length > 0) {
       currentModuleTasks.push(currentModule.tasks[0]);
     }
 
-    // Add additional tasks from this module
     for (const addl of additionalTasks) {
       if (addl.moduleIdx === moduleIdx) {
         currentModuleTasks.push(addl.task);
       }
     }
 
-    // Only include modules that have tasks
     if (currentModuleTasks.length > 0) {
       resultModules.push({
         ...currentModule,
@@ -164,12 +139,6 @@ export function trimModulesToCapacity(
   return resultModules;
 }
 
-/**
- * Pace a plan by trimming it to fit user's time capacity
- * @param modules Original modules from AI generation
- * @param input Generation input with pacing parameters
- * @returns Trimmed modules array
- */
 export function pacePlan(
   modules: ParsedModule[],
   input: GenerationInput,
@@ -191,7 +160,6 @@ export function pacePlan(
 
   const capacity = computeCapacity(params);
 
-  // If no capacity, ensure at least 1 task per module (minimum viable)
   const effectiveCapacity = capacity > 0 ? capacity : modules.length;
 
   return trimModulesToCapacity(modules, effectiveCapacity);

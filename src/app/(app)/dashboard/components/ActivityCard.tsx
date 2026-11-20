@@ -23,9 +23,6 @@ function getActivityMeta(activity: ActivityItem): string {
   return parts.join(' · ');
 }
 
-/**
- * Dashboard activity row: what happened, to which task or plan, and when.
- */
 export function ActivityCard({
   activity,
   index = 0,
@@ -47,9 +44,6 @@ export function ActivityCard({
     >
       <Icon className='size-4 text-muted-foreground' aria-hidden='true' />
 
-      {/* The plan name is what tells similar task titles apart, so on phones
-          the title wraps to two lines and the meta line wraps rather than
-          truncating either. */}
       <div className='min-w-0'>
         <p className='line-clamp-2 type-label break-words text-foreground'>
           {activity.title}

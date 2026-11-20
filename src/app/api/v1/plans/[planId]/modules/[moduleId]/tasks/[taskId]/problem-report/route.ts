@@ -19,14 +19,8 @@ import {
   API_ERROR_HTTP_STATUS,
 } from '@/shared/constants/api-error-codes';
 
-/** Enough for a 1,000-character note even when every character is escaped. */
 const MAX_BODY_BYTES = 16 * 1024;
 
-/**
- * PUT /api/v1/plans/:planId/modules/:moduleId/tasks/:taskId/problem-report
- * Saves the learner's one report for a lesson, replacing an earlier one
- * (DEV-231). A 400 names the bad field in `details.field` (`reason` | `note`).
- */
 export const PUT: PlainHandler = requestBoundary.route(
   { rateLimit: 'mutation' },
   async ({ req, params, actor, db }) => {

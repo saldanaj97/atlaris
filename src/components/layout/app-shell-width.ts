@@ -1,27 +1,15 @@
-/** Horizontal gutters outside the max-width column (SiteHeader + PageShell). */
 export const APP_SHELL_GUTTER = 'px-[clamp(1rem,0.5rem+2vw,2rem)]' as const;
 
-/** Header-aware main offset, including notch safe area. */
 export const APP_SHELL_MAIN_OFFSET =
   'pt-[calc(4rem+env(safe-area-inset-top,0px))]' as const;
 
-/**
- * Authenticated app sidebar offset. Defaults to the 224px desktop sidebar and
- * shrinks to the 4rem icon rail when `--at-app-sidebar-offset` is set by
- * desktop chrome.
- * Animates only after a user toggle (`data-sidebar-motion` on `<html>`), so
- * the persisted state doesn't slide on first paint.
- */
 export const APP_SHELL_SIDEBAR_OFFSET =
   'lg:pl-[var(--at-app-sidebar-offset,var(--at-semantic-layout-sidebar,14rem))] lg:in-data-[sidebar-motion]:transition-[padding-left] lg:in-data-[sidebar-motion]:duration-(--motion-duration-overlay) lg:in-data-[sidebar-motion]:ease-out motion-reduce:transition-none' as const;
 
-/** Landing-only: cancels in-flow offset so a canvas can paint behind the fixed header. */
 export const APP_SHELL_HEADER_TUCK =
   '-mt-[calc(4rem+env(safe-area-inset-top,0px))]' as const;
 
-/** In-page hash target offset for the fixed 4rem header plus a small gap. */
 export const APP_SHELL_SCROLL_MARGIN =
   'scroll-mt-[calc(4rem+env(safe-area-inset-top,0px)+1.5rem)]' as const;
 
-/** Centered product app content column (SiteHeader inner wrapper + PageShell). */
 export const APP_SHELL_COLUMN = 'mx-auto max-w-7xl' as const;

@@ -20,7 +20,6 @@ export function toExecuteRows<TRow>(result: unknown): TRow[] {
   throw new TypeError('Unrecognized execute() result: expected rows.');
 }
 
-/** Runs a raw SQL query and returns its rows on either Postgres driver. */
 export async function executeRows<TRow>(
   dbClient: Pick<DbClient, 'execute'>,
   query: SQLWrapper,

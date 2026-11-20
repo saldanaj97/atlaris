@@ -47,9 +47,6 @@ export class EmailProviderError extends Error {
   }
 }
 
-/**
- * Thin Resend sender. Never logs message bodies. Uses SDK idempotencyKey.
- */
 export function createResendEmailSender(
   config: ResendAdapterConfig,
   client: ResendEmailsClient = new Resend(config.apiKey).emails,
@@ -135,17 +132,10 @@ export function createResendEmailSender(
   };
 }
 
-/**
- * Definite client/config/validation failures are `rejected` (safe to mark failed).
- * Transport/server ambiguity — including SDK `application_error` with null
- * statusCode — must stay `unknown` so the leased pending row is retained.
- */
 export function classifyResend(error: ErrorResponse): {
   failureClass: string;
   outcome: ProviderOutcome;
 } {
-  // Resend uses validation names for both shared request fields and recipients.
-  // Continue the page only when the provider explicitly identifies `to`.
   const isRecipientFieldError = /(?:`to`|"to"|'to') field/i.test(error.message);
   const classification = (() => {
     switch (error.name) {

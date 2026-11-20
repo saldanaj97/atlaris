@@ -3,32 +3,22 @@ import type { OpenRouterUrlCitation } from '@/features/ai/providers/openrouter-g
 import { extractFirstJsonObject } from '@/features/ai/providers/openrouter-json';
 import { z } from 'zod';
 
-/**
- * The research step's output (JCS-158). The outline (2b) reads `brief`; lessons
- * (3a) cite `sources` by `key`. Keys run `S1`, `S2`, … with no gaps, and every
- * `url` came from the same run's web search: an OpenRouter `url_citation`
- * annotation, or a Parallel result on the direct path (DEV-171).
- */
 export type ResearchCitationKey = `S${number}`;
 
 export type ResearchSource = {
   readonly key: ResearchCitationKey;
   readonly title: string;
   readonly url: string;
-  /** The model's publisher, else the URL's host without `www.`. */
   readonly publisher: string;
 };
 
 export type ResearchBrief = {
-  /** Plain prose, at most `RESEARCH_BRIEF_MAX_CHARS`; cites sources as `[S1]`. */
   readonly brief: string;
   readonly sources: readonly ResearchSource[];
 };
 
-/** About 1.5k tokens at ~4 characters per token. */
 export const RESEARCH_BRIEF_MAX_CHARS = 6_000;
 
-/** What the research preset asks the model to return. */
 const modelResearchSchema = z.object({
   brief: z.string().trim().min(1),
   sources: z.array(
@@ -50,11 +40,9 @@ export class ResearchOutputError extends Error {
 
 export type CheckedResearch = {
   readonly research: ResearchBrief;
-  /** Sources dropped because no citation from the run's search named their URL. */
   readonly droppedSourceCount: number;
 };
 
-/** Host, path and query, ignoring the fragment, a trailing slash and host case. */
 function normalizeUrl(value: string): string | null {
   let url: URL;
   try {
@@ -93,7 +81,6 @@ function rekeyBriefMarkers(
     .trim();
 }
 
-/** Cuts at the last whitespace within the cap. */
 function capBrief(brief: string): string {
   if (brief.length <= RESEARCH_BRIEF_MAX_CHARS) {
     return brief;
@@ -103,13 +90,6 @@ function capBrief(brief: string): string {
   return (lastSpace > 0 ? cut.slice(0, lastSpace) : cut).trimEnd();
 }
 
-/**
- * Parses the model's text and enforces the contract: keeps only sources whose
- * URL appears in `citations` (deduplicated), renumbers them `S1…Sn` in order,
- * rewrites the brief's markers to match and caps the brief's length. Throws
- * `ResearchOutputError` when the text is not the expected JSON or no cited
- * source is left, so the step retries.
- */
 export function checkResearchOutput(
   text: string,
   citations: readonly OpenRouterUrlCitation[],

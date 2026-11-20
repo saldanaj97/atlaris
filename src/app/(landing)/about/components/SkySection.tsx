@@ -106,7 +106,6 @@ export function SkySection() {
   );
 }
 
-/** Route points from finished modules up to the goal, in viewBox units. */
 const ROUTE_POINTS = [
   { x: 36, y: 176, state: 'done', label: 'Module 1' },
   { x: 104, y: 140, state: 'done', label: null },
@@ -116,7 +115,6 @@ const ROUTE_POINTS = [
 ] as const;
 const GOAL = { x: 334, y: 40 };
 
-/** The route as a constellation: Bearings behind, tonight's point, the Star ahead. */
 function RouteConstellation() {
   const path = [...ROUTE_POINTS, GOAL]
     .map((point, index) => `${index === 0 ? 'M' : 'L'}${point.x} ${point.y}`)

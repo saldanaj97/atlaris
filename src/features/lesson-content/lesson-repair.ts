@@ -32,13 +32,10 @@ import {
 } from '@/shared/schemas/lesson-content.schemas';
 import { z } from 'zod';
 
-/** Tagged on AI Gateway log entries. */
 export const LESSON_REPAIR_STAGE = 'grounded-lesson-repair';
 
-/** Repair passes per lesson, on every tier. */
 export const LESSON_REPAIR_PASSES = 2;
 
-/** Code-owned instructions for the advisor tool on paid repairs. */
 export const LESSON_ADVISOR_INSTRUCTIONS =
   'You advise a model that is repairing one lesson. Read the lesson, the issues and the context it sends you. Say how to fix each issue with the smallest change: what is wrong, what the corrected text or data should be, and how to keep titles, setup data, examples and answer keys consistent with each other. Do not rewrite the whole lesson.';
 
@@ -91,7 +88,6 @@ function repairInstruction(scope: LessonRepairScope): string {
     )}). Return {"blocks":[{"index":i,"block":{...}}]} with one entry per rewritten block, each block in the same schema. Fix the listed issues and keep everything else unchanged.`;
 }
 
-/** Brief and module outline first (cached), then the lesson and its issues. */
 export function buildLessonRepairUserParts(input: {
   readonly promptInput: ModuleLessonBatchPromptInput;
   readonly taskIndex: number;
@@ -195,22 +191,12 @@ export function lessonAdvisorTool(
   };
 }
 
-/**
- * One repair pass on a lesson: the writer models rewrite the flagged blocks
- * (or the whole lesson for a lesson-level issue) through the repair preset.
- * Starter and pro add the advisor tool with `tool_choice: required`; free
- * runs without it, as does a repair the plan's AI ceiling cut the advisor
- * from (`withAdvisor: false`). Throws on provider or output errors.
- */
 export async function runLessonRepair(
   params: {
     readonly tier: SubscriptionTier;
     readonly planId: string;
-    /** The Pro writer pick, as for the lesson writer. */
     readonly pickedModelId: string | null;
-    /** The Pro advisor pick; the route ignores it on other tiers. */
     readonly advisorModelId: string | null;
-    /** `false` drops the advisor tool (JCS-170). Defaults to `true`. */
     readonly withAdvisor?: boolean;
     readonly promptInput: ModuleLessonBatchPromptInput;
     readonly taskIndex: number;

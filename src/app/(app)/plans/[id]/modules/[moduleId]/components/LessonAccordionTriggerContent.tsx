@@ -90,8 +90,6 @@ export function LessonAccordionTriggerContent({
   resourceCount: number;
 }) {
   return (
-    // Title, then a meta row (Locked, time) under it, so on phones the badge and
-    // time never squeeze the title or push the marker onto its own line.
     <div className='min-w-0 flex-1 text-left'>
       <div className='mb-2 flex min-w-0 items-start gap-3'>
         <LessonMarker

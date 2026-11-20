@@ -22,7 +22,6 @@ export interface PageHeroProps extends Omit<
   actions?: ReactNode;
 }
 
-/** Shared page introduction: horizon decoration plus optional overline/title chrome. */
 export function PageHero({
   as: Comp = 'header',
   backdropClassName,

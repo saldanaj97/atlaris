@@ -1,7 +1,3 @@
-/**
- * Convert OpenRouter-reported USD cost to integer micro-USD for DB storage.
- * 1 micro-USD = 1e-6 USD.
- */
 export function usdCostToMicrousdInteger(usd: number): number {
   if (!Number.isFinite(usd) || usd < 0) {
     throw new Error(`Invalid OpenRouter USD cost: ${String(usd)}`);

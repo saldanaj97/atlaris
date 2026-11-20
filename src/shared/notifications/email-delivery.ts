@@ -1,7 +1,3 @@
-/**
- * Fully resolved provider request snapshot persisted on the delivery ledger.
- * Never includes provider credentials.
- */
 export type PersistedProviderRequest = {
   from: string;
   to: string;

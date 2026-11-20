@@ -47,7 +47,6 @@ function WaitlistFields({
           placeholder='you@example.com'
           required
           disabled={disabled}
-          // Read-only (not disabled) while joining keeps focus and the submitted address fixed.
           readOnly={submitting}
           aria-invalid={failed || undefined}
           aria-describedby={failed ? errorId : undefined}
@@ -56,7 +55,6 @@ function WaitlistFields({
           type='submit'
           className='min-h-11 shrink-0 px-6 aria-disabled:cursor-progress'
           disabled={disabled}
-          // Design system: pending actions keep focus; handleSubmit guards repeat submits.
           aria-disabled={submitting || undefined}
         >
           {submitting ? 'Joining…' : 'Join the waitlist'}
@@ -72,7 +70,6 @@ function WaitlistFields({
   );
 }
 
-/** Clerk waitlist signup. Requires the Clerk sign-up mode to be set to Waitlist. */
 export function WaitlistForm() {
   const clerk = useClerk();
   const [status, setStatus] = useState<Status>('idle');
@@ -109,7 +106,6 @@ export function WaitlistForm() {
   );
 }
 
-/** Local environments without Clerk keys: same layout, signup disabled. */
 export function WaitlistFormPreview() {
   return (
     <WaitlistFields

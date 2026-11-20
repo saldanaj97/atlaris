@@ -8,7 +8,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const RETRY_COOLDOWN_MS = 5000;
 
-/** Derived retry UI phase; `cancelled` is an aborted retry request, not idle. */
 type RetryStatus = 'idle' | 'retrying' | 'error' | 'cancelled';
 
 interface UseRetryGenerationReturn {
@@ -18,12 +17,6 @@ interface UseRetryGenerationReturn {
   retryGeneration: () => Promise<void>;
 }
 
-/**
- * Retry cooldown + start delegation. Pass the same `session` instance used
- * elsewhere on the surface (e.g. pending page) to avoid duplicate session hooks.
- * `onRetryStarted` runs as soon as the server accepts the retry, so the caller
- * can resume status polling; the retry itself runs in the background.
- */
 export function useRetryGeneration(
   planId: string,
   maxAttempts: number,

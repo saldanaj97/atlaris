@@ -2,19 +2,14 @@ import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@supabase/schema');
 
-/** Select model for resources table. */
 export type Resource = InferSelectModel<DbSchemaModule['resources']>;
 
-/** Select model for modules table. */
 export type Module = InferSelectModel<DbSchemaModule['modules']>;
 
-/** Select model for tasks table. */
 export type Task = InferSelectModel<DbSchemaModule['tasks']>;
 
-/** Select model for taskResources table. */
 type TaskResource = InferSelectModel<DbSchemaModule['taskResources']>;
 
-/** Select model for taskProgress table. */
 export type TaskProgress = InferSelectModel<DbSchemaModule['taskProgress']>;
 
 export interface TaskResourceWithResource extends TaskResource {
@@ -30,7 +25,6 @@ export interface ModuleWithTasks extends Module {
   tasks: TaskWithRelations[];
 }
 
-/** Task with relations for plan detail reads (lesson content not loaded). */
 export interface PlanDetailTaskWithRelations extends Omit<
   Task,
   'lessonContent' | 'lessonContentUpdatedAt'
@@ -43,7 +37,6 @@ export interface PlanDetailModuleWithTasks extends Module {
   tasks: PlanDetailTaskWithRelations[];
 }
 
-/** Per-module task completion aggregates for module navigation (storage / projection input). */
 export interface ModuleTaskMetricRow {
   id: string;
   order: number;
@@ -52,7 +45,6 @@ export interface ModuleTaskMetricRow {
   completedTaskCount: number;
 }
 
-/** Resource row shape from taskResources + resources join. */
 export type ModuleResourceRow = {
   id: string;
   taskId: string;
@@ -63,9 +55,6 @@ export type ModuleResourceRow = {
   resource: Resource;
 };
 
-/**
- * Storage bundle for module-detail read projection (`getModuleDetailRows`).
- */
 export type ModuleDetailRows = {
   plan: { id: string; topic: string };
   module: Module;

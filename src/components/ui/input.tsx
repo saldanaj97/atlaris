@@ -7,7 +7,6 @@ function Input({
   variant = 'default',
   ...props
 }: React.ComponentProps<'input'> & {
-  /** `search` reserves room for a leading icon positioned by the parent. */
   variant?: 'default' | 'search';
 }) {
   return (

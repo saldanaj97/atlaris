@@ -1,11 +1,5 @@
-// Domain-specific errors for usage and subscription management
-
 import { AppError } from '@/lib/api/errors';
 
-/**
- * Error thrown when a user cannot be found in the database.
- * This is typically an internal error as authenticated users should exist.
- */
 export class UserNotFoundError extends AppError {
   constructor(userId?: string, details?: Record<string, unknown>) {
     super('User not found', {
@@ -16,10 +10,6 @@ export class UserNotFoundError extends AppError {
   }
 }
 
-/**
- * Error thrown when usage metrics cannot be locked for atomic operations.
- * This indicates a database concurrency issue or transaction failure.
- */
 export class UsageMetricsLockError extends AppError {
   constructor(
     userId?: string,
@@ -35,9 +25,6 @@ export class UsageMetricsLockError extends AppError {
   }
 }
 
-/**
- * Error thrown when usage metrics cannot be loaded from the database.
- */
 export class UsageMetricsLoadError extends AppError {
   constructor(
     userId?: string,

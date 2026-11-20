@@ -9,11 +9,6 @@ import { normalizePostHogSdkHost } from '@/lib/posthog-rewrite-destinations';
 import * as Sentry from '@sentry/nextjs';
 import posthog from 'posthog-js';
 
-// NOTE: We read `process.env` directly here instead of importing from
-// `@/lib/config/env` because that module eagerly validates server-only
-// secrets (CLERK_SECRET_KEY, POSTGRES_URL, etc.) at import time, which would
-// throw in this client-side instrumentation bundle. NEXT_PUBLIC_* vars
-// are also not exposed through the server env config.
 const sendDefaultPii = toBoolean(
   process.env.NEXT_PUBLIC_SENTRY_SEND_DEFAULT_PII,
   false,
@@ -25,25 +20,20 @@ if (isSentryEnabled) {
   Sentry.init({
     dsn: 'https://443a1b04060b39f8cb7665becc8d21d6@o4510462002462720.ingest.us.sentry.io/4510462272667648',
 
-    // Context-aware trace sampling (replaces flat tracesSampleRate).
     tracesSampler,
 
     beforeSend: beforeSendSentryEvent,
 
-    // SDK log shipping — disabled in production to reduce ingest volume.
     enableLogs: shouldEnableLogs(),
 
     // Application Metrics are enabled explicitly so browser instrumentation can
     // use Sentry.metrics.count/gauge/distribution consistently across SDK upgrades.
     enableMetrics: true,
 
-    // Intentionally gated: enable PII forwarding only with explicit opt-in via env.
-    // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
     sendDefaultPii,
   });
 }
 
-// PostHog client-side init — runs once when the browser loads the app.
 const isPostHogEnabled = isPostHogEnabledInCurrentEnvironment();
 const posthogToken = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
 const posthogUiHost = process.env.NEXT_PUBLIC_POSTHOG_HOST
@@ -54,17 +44,12 @@ if (isPostHogEnabled && posthogToken) {
   posthog.init(posthogToken, {
     api_host: '/ingest',
     ui_host: posthogUiHost ?? 'https://us.posthog.com',
-    // Required baseline defaults
     defaults: '2026-01-30',
-    // Capture unhandled exceptions via PostHog Error Tracking
     capture_exceptions: true,
-    // Session recording is intentionally off (legal/CIPA); do not enable it.
     disable_session_recording: true,
-    // Debug logging in development
     debug: process.env.NODE_ENV === 'development',
   });
 } else if (isPostHogEnabled) {
-  // Warn only when an explicit production deployment is misconfigured.
   console.warn(
     'NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is required for PostHog in production; analytics will remain disabled until it is configured.',
   );

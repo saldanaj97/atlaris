@@ -14,7 +14,6 @@ import styles from './PricingCards.module.css';
 
 type MoneyWithCurrency = PricingMoney & { currency?: string | null };
 
-/** Charge that Clerk Billing makes for this plan and period (not the per-month display price). */
 function billedMoney(
   plan: PricingPlan,
   period: BillingPeriod,
@@ -61,10 +60,6 @@ export function RenewalDisclosure({
   );
 }
 
-/**
- * Shown under a paid plan's subscribe button while the renewal box is
- * unticked, so the disabled button says why it is disabled.
- */
 export function RenewalConsentHint({
   plan,
   period,
@@ -84,7 +79,6 @@ type RenewalConsentProps = RenewalDisclosureProps & {
   onAgreedChange: (agreed: boolean) => void;
 };
 
-/** Disclosure plus the required, unchecked-by-default consent checkbox. */
 export function RenewalConsent({
   agreed,
   onAgreedChange,

@@ -32,10 +32,6 @@ export type PlanGenerationWorkflowInput = {
   readonly input: GenerationInput;
   readonly generationPurpose?: GenerationPurpose;
   readonly modelOverride?: string | null;
-  /**
-   * Leads the grounded outline writer: a `?model=` override or the saved Pro
-   * writer pick. Absent on runs started before JCS-169: the tier's writers.
-   */
   readonly groundedWriterModelId?: string | null;
   readonly correlationId: string;
   readonly reservation: SerializableAttemptReservation;
@@ -67,7 +63,6 @@ export function resolvePlanGenerationWorkflowPurpose(
   }
 }
 
-/** The lifecycle input a plan-generation run generates and settles with. */
 export function toPlanGenerationProcessInput(
   input: PlanGenerationWorkflowInput,
   generationPurpose: GenerationPurpose,

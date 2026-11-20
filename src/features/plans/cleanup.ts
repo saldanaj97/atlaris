@@ -1,6 +1,3 @@
-import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
-// Use the store function directly so failure
-// updates run on the same transaction handle as SELECT … FOR UPDATE.
 import type { DbClient } from '@/lib/db/types';
 
 import { markPlanGenerationFailuresInTx } from '@/features/plans/lifecycle/plan-persistence-store';
@@ -14,10 +11,10 @@ import {
   modules,
 } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
+import { and, eq, inArray, isNull, lt } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
 
-/** Plans stuck in 'generating' longer than this are considered abandoned. */
-export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000;
 
 /**
  * Max stuck plans processed per cleanup run. At the 15-minute scheduler cadence
@@ -25,8 +22,7 @@ export const STUCK_PLAN_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  */
 export const STUCK_PLAN_CLEANUP_BATCH_SIZE = 1000;
 
-/** In-progress attempts older than this are considered orphaned. */
-export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
+export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000;
 
 /**
  * Max orphaned attempts processed per cleanup run. Matches stuck-plan batching so
@@ -34,23 +30,15 @@ export const ORPHANED_ATTEMPT_THRESHOLD_MS = 15 * 60 * 1000; // 15 minutes
  */
 export const ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE = 1000;
 
-/** Module lesson generations with a durable provider-start marker use the same maintenance window. */
 export const ORPHANED_MODULE_LESSON_GENERATION_THRESHOLD_MS =
   ORPHANED_ATTEMPT_THRESHOLD_MS;
 
-/** Keep provider-started module reconciliation bounded like the existing cleanup batches. */
 export const ORPHANED_MODULE_LESSON_GENERATION_CLEANUP_BATCH_SIZE =
   ORPHANED_ATTEMPT_CLEANUP_BATCH_SIZE;
 
 export const ABANDONED_MODULE_LESSON_GENERATION_ERROR =
   'Provider-started lesson generation was interrupted; retry required.';
 
-/**
- * Marks plans stuck in 'generating' status for longer than the threshold as 'failed'.
- * Uses a generous threshold (15min) to avoid marking slow-but-active generations as failed.
- * Rows are locked inside a transaction before failure transitions so cleanup
- * does not race concurrent generation state updates.
- */
 type CleanupStuckPlansDependencies = {
   markFailuresInTx?: typeof markPlanGenerationFailuresInTx;
   batchSize?: number;
@@ -136,12 +124,6 @@ type CleanupOrphanedAttemptsDependencies = {
   batchSize?: number;
 };
 
-/**
- * Finalizes orphaned 'in_progress' generation attempts older than the threshold.
- * Sets classification to 'timeout' for attempts that were never completed.
- * Rows are locked inside a transaction before updates so cleanup does not race
- * concurrent generation state updates.
- */
 export async function cleanupOrphanedAttempts(
   dbClient: DbClient,
   thresholdMs: number = ORPHANED_ATTEMPT_THRESHOLD_MS,
@@ -255,8 +237,6 @@ export async function cleanupAbandonedModuleLessonGenerations(
   );
 
   return dbClient.transaction(async (tx) => {
-    // Lock the shared plan lifecycle key before locking module rows so cleanup
-    // cannot race child claims, parent deletion, or parent replacement.
     const candidatePlans = await tx
       .select({ planId: modules.planId })
       .from(modules)
@@ -337,9 +317,6 @@ export async function cleanupAbandonedModuleLessonGenerations(
   });
 }
 
-/**
- * Service-role entrypoint for the internal plan cleanup maintenance route.
- */
 export async function runPlanCleanupMaintenance(): Promise<{
   stuckPlansCleaned: number;
   orphanedAttemptsCleaned: number;

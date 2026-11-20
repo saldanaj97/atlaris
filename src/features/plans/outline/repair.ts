@@ -29,7 +29,6 @@ import {
   sendGroundedJsonCall,
 } from '@/features/plans/outline/grounded-writer';
 
-/** Tagged on AI Gateway log entries. */
 export const OUTLINE_REPAIR_STAGE = 'grounded-outline-repair';
 
 export type OutlineRepairRun = {
@@ -44,7 +43,6 @@ export function formatIssuesForRepair(issues: readonly OutlineIssue[]): string {
     .join('\n');
 }
 
-/** Brief first (cached, shared with the writer), then the outline and issues. */
 export function buildRepairUserParts(
   input: GenerationInput,
   modules: readonly ParsedModule[],

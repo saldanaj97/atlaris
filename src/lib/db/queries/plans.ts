@@ -1,8 +1,3 @@
-/**
- * Plan-related queries for learning plans, summaries, detail views, and generation attempts.
- * Callers must pass the request RLS client or an explicit service-role client.
- */
-
 import type { TaskResourceWithResource } from '@/lib/db/queries/types/modules.types';
 import type {
   LightweightModuleMetricsRow,
@@ -81,7 +76,6 @@ type PlanStatusRows = {
   latestAttempt: Pick<GenerationAttempt, 'classification' | 'status'> | null;
 };
 
-/** Maximum number of generation attempts to return in attempt history queries. */
 const MAX_ATTEMPTS_HISTORY_LIMIT = 10;
 const DELETABLE_PLAN_STATUSES = ['ready', 'failed', 'pending_retry'] as const;
 type PlanListOrdering = 'createdAt' | 'updatedAt';
@@ -381,21 +375,11 @@ export async function getLearningPlanDetailRows(
   };
 }
 
-/** Return type for getPlanAttemptsForUser. */
 type PlanAttemptsResult = {
   plan: PlanAttemptsPlanMeta;
   attempts: GenerationAttempt[];
 };
 
-/**
- * Fetches all generation attempts for a plan, ordered by creation (newest first).
- * Verifies plan ownership before returning; returns null if plan not found.
- *
- * @param planId - Plan ID
- * @param userId - Authenticated user ID (ownership check)
- * @param dbClient - Required request RLS or service-role client
- * @returns { plan, attempts } or null if plan not found or not owned by user
- */
 export async function getPlanAttemptsForUser(
   planId: string,
   userId: string,
@@ -466,29 +450,15 @@ export async function getPlanStatusRowsForUser(
   };
 }
 
-/** Explicit failure reasons returned by deletePlan. */
 type DeletePlanFailureReason =
   | 'not_found'
   | 'currently_generating'
   | 'active_child_generation';
 
-/** Result of a plan deletion attempt. */
 type DeletePlanResult =
   | { success: true }
   | { success: false; reason: DeletePlanFailureReason };
 
-/**
- * Deletes a plan owned by the authenticated user.
- * Blocks deletion when the plan is actively generating.
- * All child records (modules, tasks, schedules, generations, attempts) are
- * cascade-deleted by the database.
- *
- * @param planId - Plan ID to delete
- * @param userId - Authenticated user ID (ownership enforced via WHERE + RLS)
- * @param dbClient - Required service-role client (learning_plans
- *   DELETE is server-owned; ownership is enforced via explicit userId filters)
- * @returns DeletePlanResult indicating success or failure reason
- */
 export async function deletePlan(
   planId: string,
   userId: string,

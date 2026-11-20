@@ -9,7 +9,6 @@ import type { SubscriptionTier } from '@/shared/types/billing.types';
 import { flagshipEnv } from '@/lib/config/env/flagship';
 import { logger } from '@/lib/logging/logger';
 
-/** Attributes Flagship targeting rules can read. `environment` is always set. */
 export type FlagContext = Readonly<Record<string, string>>;
 
 /**
@@ -24,18 +23,10 @@ export interface FlagEvaluator {
   ): Promise<{ readonly value: boolean; readonly errorCode?: string }>;
 }
 
-/** How long the app reuses an evaluation for the same flag and context. */
 export const FLAG_CACHE_TTL_MS = 30_000;
 
-/**
- * How long a failed evaluation is remembered per flag and context. The
- * provider never caches errors, so without this every caller would wait the
- * full request timeout while Flagship or the token is down. Only the failure
- * is cached; a success within the window still comes from the provider.
- */
 export const FLAG_FAILURE_TTL_MS = 30_000;
 
-/** Evaluation timeout for the HTTP provider (`AbortSignal.timeout` style). */
 const FLAG_REQUEST_TIMEOUT_MS = 5_000;
 
 export class FlagEvaluationError extends Error {
@@ -66,7 +57,6 @@ export function setFlagEvaluator(next: FlagEvaluator | null): void {
   failures.clear();
 }
 
-/** Builds the OpenFeature client once per process; a failed setup is retried on the next call. */
 async function createHttpEvaluator(): Promise<FlagEvaluator> {
   const [{ OpenFeature }, { FlagshipServerProvider }] = await Promise.all([
     import('@openfeature/server-sdk'),
@@ -107,7 +97,6 @@ function failureKey(key: string, context: FlagContext): string {
   return `${key}?${attributes}`;
 }
 
-/** Remembers a failure for `FLAG_FAILURE_TTL_MS` and logs it once per window. */
 function recordFailure(
   key: string,
   context: FlagContext,
@@ -124,13 +113,6 @@ function recordFailure(
   return error;
 }
 
-/**
- * Evaluates a boolean flag. Throws `FlagEvaluationError` when Flagship reports
- * an error (missing flag, type mismatch, network) or when a hosted deployment
- * has no provider configured, so callers can apply their own fail-safe. A
- * failure is rethrown without a provider call until `FLAG_FAILURE_TTL_MS`
- * passes.
- */
 async function evaluateBoolean(
   key: string,
   defaultValue: boolean,
@@ -188,11 +170,9 @@ async function evaluateBoolean(
   return details.value;
 }
 
-/** Route all app traffic to the maintenance page. */
 export const maintenanceMode = (): Promise<boolean> =>
   evaluateBoolean('maintenance-mode', false);
 
-/** Pre-launch gate: marketing pages stay live, app and auth routes go to /waitlist. */
 export const launchWaitlist = (): Promise<boolean> =>
   evaluateBoolean('launch-waitlist', false);
 
@@ -203,27 +183,21 @@ export const launchWaitlist = (): Promise<boolean> =>
 export const emailNotificationDelivery = (): Promise<boolean> =>
   evaluateBoolean('email-notification-delivery', false);
 
-/** Serve the retired /about page. Off by default, so the route answers 404. */
 export const aboutPage = (): Promise<boolean> =>
   evaluateBoolean('about-page', false);
 
-/** Allow synchronous and workflow-backed module lesson generation. */
 export const moduleLessonGeneration = (): Promise<boolean> =>
   evaluateBoolean('module-lesson-generation', false);
 
-/** Pause every jobs Worker job (Worker only; callers fail open). */
 export const jobsPaused = (): Promise<boolean> =>
   evaluateBoolean('jobs-paused', false);
 
-/** Stop accepting plan regeneration requests (app only; callers fail open). */
 export const regenerationPaused = (): Promise<boolean> =>
   evaluateBoolean('regeneration-paused', false);
 
-/** Plan research searches Parallel directly instead of OpenRouter `web_search` (Worker only). */
 export const parallelDirectResearch = (): Promise<boolean> =>
   evaluateBoolean('parallel-direct-research', false);
 
-/** Allow the jobs Worker's nightly retention cleanup, which deletes rows. */
 export const jobRetentionCleanup = (): Promise<boolean> =>
   evaluateBoolean('job-retention-cleanup', true);
 

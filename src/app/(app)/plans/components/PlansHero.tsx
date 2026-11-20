@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 
 import { PageHero } from '@/components/ui/page-hero';
 
-/** Route-local introduction for the plan library. */
 export function PlansHero({ chrome }: { chrome?: ReactNode }) {
   return (
     <PageHero

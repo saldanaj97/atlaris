@@ -19,16 +19,6 @@
 
 type Environment = 'production' | 'development' | 'test';
 
-/**
- * Resolve the current runtime environment.
- * Works on both client (inlined at build time) and server (runtime).
- *
- * NOTE: We intentionally read `process.env.NODE_ENV` directly instead of
- * importing from `@/lib/config/env`. That module eagerly validates
- * server-only secrets (e.g. CLERK_SECRET_KEY) at import time, which would
- * throw in client bundles and Sentry edge/instrumentation configs that
- * load before the full server environment is available.
- */
 export function getEnvironment(): Environment {
   const env =
     typeof process !== 'undefined' ? process.env.NODE_ENV : 'development';
@@ -41,7 +31,6 @@ export function getEnvironment(): Environment {
 // Trace sampling
 // ---------------------------------------------------------------------------
 
-/** Patterns with zero diagnostic value — always drop in production. */
 const LOW_VALUE_PATTERNS: RegExp[] = [
   /\/_next\//,
   /\/favicon\.ico/,
@@ -51,22 +40,8 @@ const LOW_VALUE_PATTERNS: RegExp[] = [
   /\.(css|js|png|jpg|jpeg|gif|svg|woff2?|ttf|eot|ico)(\?|$)/,
 ];
 
-/** High-value server work — sample more aggressively. */
-const HIGH_VALUE_PATTERNS: RegExp[] = [
-  /\/api\//, // API routes (after low-value filter excludes health)
-];
+const HIGH_VALUE_PATTERNS: RegExp[] = [/\/api\//];
 
-/**
- * Sentry `tracesSampler` — replaces the flat `tracesSampleRate` with
- * context-aware decisions.
- *
- * The function receives the sampling context from Sentry and returns a
- * number between 0 and 1 (or boolean) indicating the probability that
- * the trace should be recorded.
- *
- * Exported as a standalone pure function so it can be unit-tested without
- * booting Sentry.
- */
 export function tracesSampler(context: {
   name?: string;
   parentSampled?: boolean;
@@ -75,23 +50,18 @@ export function tracesSampler(context: {
   const env = getEnvironment();
   const name = context.name ?? '';
 
-  // Inherit parent sampling decision for distributed traces so child
-  // spans are never orphaned from their parent.
   if (context.parentSampled !== undefined) {
     return context.parentSampled ? 1.0 : 0;
   }
 
-  // Low-value: health checks, static assets, favicons.
   if (LOW_VALUE_PATTERNS.some((p) => p.test(name))) {
     return env === 'production' ? 0 : 0.01;
   }
 
-  // High-value: API routes (the main performance signal).
   if (HIGH_VALUE_PATTERNS.some((p) => p.test(name))) {
     return env === 'production' ? 0.2 : 1.0;
   }
 
-  // Default: page loads, navigations, background work.
   switch (env) {
     case 'production':
       return 0.05;

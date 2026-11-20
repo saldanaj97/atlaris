@@ -19,7 +19,6 @@ import {
 import { buildResourcesByTask } from '@/lib/db/queries/helpers/modules-helpers';
 import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
-/** Row shape consumed by sequential lock / nav derivation. */
 export type ModuleNavMetricRow = Pick<
   ModuleTaskMetricRow,
   'id' | 'order' | 'title' | 'totalTaskCount' | 'completedTaskCount'
@@ -92,12 +91,6 @@ function parseLessonContentForRead(
   return parsed.success ? parsed.data : null;
 }
 
-/**
- * Assembles module-detail UI read-model from `getModuleDetailRows` output.
- *
- * Returns `null` when `moduleMetricsRows` and current `module.id` drift (defensive consistency).
- * `researchSources` are the plan's sources; each lesson lists only those it cites.
- */
 export function buildModuleDetailReadModel(
   rows: ModuleDetailRows,
   researchSources: readonly DbResearchSource[] = [],

@@ -8,7 +8,6 @@ interface ActivityFeedProps {
   activities: ActivityItem[];
 }
 
-/** Dashboard ledger of task status changes and newly created plans. */
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
     <Card

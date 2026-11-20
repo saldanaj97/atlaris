@@ -1,6 +1,5 @@
 const DEFAULT_ANALYTICS_TIMEZONE = 'UTC';
 
-/** Validates and returns the analytics timezone, falling back to UTC. */
 export function normalizeTimeZone(value: string | undefined): string {
   if (!value) return DEFAULT_ANALYTICS_TIMEZONE;
   try {
@@ -11,7 +10,6 @@ export function normalizeTimeZone(value: string | undefined): string {
   }
 }
 
-/** Formats a date as YYYY-MM-DD in the given IANA timezone. */
 export function dateKeyInTimeZone(date: Date, timeZone: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     timeZone,
@@ -30,20 +28,17 @@ export function dateKeyInTimeZone(date: Date, timeZone: string): string {
   return `${year}-${month}-${day}`;
 }
 
-/** Parses a YYYY-MM-DD key into a UTC midnight Date. */
 export function dateFromKey(dateKey: string): Date {
   const [year, month, day] = dateKey.split('-').map(Number);
   return new Date(Date.UTC(year, month - 1, day));
 }
 
-/** Returns a YYYY-MM-DD key offset by the given number of days. */
 export function addDays(dateKey: string, days: number): string {
   const date = dateFromKey(dateKey);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
-/** Returns the Monday-start YYYY-MM-DD key for the week containing the date. */
 export function weekStartKey(dateKey: string): string {
   const date = dateFromKey(dateKey);
   const mondayOffset = (date.getUTCDay() + 6) % 7;
@@ -51,7 +46,6 @@ export function weekStartKey(dateKey: string): string {
   return date.toISOString().slice(0, 10);
 }
 
-/** Counts consecutive active days ending today or yesterday. */
 export function currentStreakDays(
   dayKeys: Set<string>,
   todayKey: string,
@@ -67,7 +61,6 @@ export function currentStreakDays(
   return streak;
 }
 
-/** Finds the longest run of consecutive active days in the set. */
 export function longestStreakDays(dayKeys: Set<string>): number {
   let longest = 0;
   let current = 0;

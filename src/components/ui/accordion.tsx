@@ -32,7 +32,6 @@ function AccordionTrigger({
   ...props
 }: React.ComponentProps<typeof AccordionPrimitive.Trigger> & {
   hideChevron?: boolean;
-  /** Keep full opacity while disabled, for rows that stay readable (locked lessons). */
   legibleWhenDisabled?: boolean;
 }) {
   return (

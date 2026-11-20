@@ -15,7 +15,6 @@ function PageShell({
   children,
   ...props
 }: React.ComponentProps<'div'> & {
-  /** When true, ensures at least viewport height (typical app pages). */
   fullHeight?: boolean;
 }) {
   return (

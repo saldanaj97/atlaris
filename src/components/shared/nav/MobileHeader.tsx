@@ -19,7 +19,6 @@ import Link from 'next/link';
 
 interface MobileHeaderProps {
   isMarketing: boolean;
-  /** App-shell routes keep the drawer trigger in this topbar. */
   isAppShell?: boolean;
   pathname: string;
   navItems: NavItem[];
@@ -71,7 +70,6 @@ export default function MobileHeader({
     <div
       className={cn(
         'relative grid h-[64px] w-full grid-cols-[auto_1fr_auto] items-center gap-2',
-        // From 400px up the side groups fit, so equal columns center the logo.
         !isMarketing && 'min-[25rem]:grid-cols-[1fr_auto_1fr]',
         isAppShell ? 'lg:hidden' : 'md:hidden',
       )}

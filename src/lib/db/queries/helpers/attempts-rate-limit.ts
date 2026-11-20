@@ -27,7 +27,6 @@ export async function selectUserGenerationAttemptWindowStats({
   dbClient,
   since,
 }: UserGenerationAttemptsSinceParams): Promise<UserGenerationAttemptWindowStats> {
-  // One statement, so a plan deleted mid-read is counted exactly once.
   const countedAttempts = dbClient
     .select({ createdAt: generationAttempts.createdAt })
     .from(generationAttempts)

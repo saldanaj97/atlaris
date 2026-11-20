@@ -1,8 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { extendTailwindMerge } from 'tailwind-merge';
 
-// Type roles (`type-*` utilities in globals.css) set size, line height, weight,
-// tracking and family, so a later role replaces earlier type classes.
 const twMerge = extendTailwindMerge<'type-role'>({
   extend: {
     classGroups: {

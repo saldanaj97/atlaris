@@ -65,7 +65,6 @@ export type PlanGenerationFailureMarker = Pick<
 export interface PlanLifecycleQuota {
   resolveUserTier(this: void, userId: string): Promise<SubscriptionTier>;
 
-  /** True while the user's paid plan is in its free trial. */
   resolveUserTrialing(this: void, userId: string): Promise<boolean>;
 
   checkDurationCap(
@@ -98,11 +97,6 @@ export type GenerationRunParams = {
   allowedGenerationStatuses?: ReserveAttemptSlotParams['allowedGenerationStatuses'];
   requiredGenerationStatus?: ReserveAttemptSlotParams['requiredGenerationStatus'];
   onAttemptReserved?: (reservation: AttemptReservation) => void | Promise<void>;
-  /**
-   * When set, skips `reserveAttemptSlot` so workflow replay (activity retry or
-   * worker recovery) does not double-reserve. Implementations must validate the
-   * reservation against current DB state before provider work.
-   */
   reservation?: AttemptReservation;
 };
 
@@ -205,15 +199,6 @@ export class PlanLifecycleService {
     this.ports = ports;
   }
 
-  /**
-   * Create a new AI-origin learning plan.
-   *
-   * Flow: check attempt cap → resolve tier → check requested duration cap →
-   *       normalize duration → check normalized duration cap → validate topic →
-   *       atomic insert
-   *
-   * @returns A discriminated union result — never throws for lifecycle outcomes.
-   */
   async createPlan(input: CreateAiPlanInput): Promise<CreatePlanResult> {
     const { userId } = input;
     const startDate = input.startDate ?? null;
@@ -370,30 +355,12 @@ export class PlanLifecycleService {
     };
   }
 
-  /**
-   * Process a generation attempt for an existing plan.
-   *
-   * Flow: run generation (unfinalized) → single-transaction finalization (attempt + plan + usage)
-   *       → on retryable failure: mark failed via finalization (no usage)
-   *       → on permanent failure: mark failed + usage via finalization when usage exists
-   *
-   * @returns A discriminated union result for expected lifecycle outcomes.
-   * @throws When post-provider finalization fails (DB commit, RLS, etc.).
-   */
   async processGenerationAttempt(
     input: ProcessGenerationInput,
   ): Promise<GenerationAttemptResult> {
     return this.processGenerationAttemptInternal(input);
   }
 
-  /**
-   * Same as {@link processGenerationAttempt} but reuses an existing reservation
-   * (for workflow replay after claim).
-   *
-   * Safe for workflow replay because it does not call `reserveAttemptSlot`
-   * again; the generation port validates the reservation against current DB
-   * state before provider work.
-   */
   async processGenerationAttemptWithReservation(
     input: ProcessGenerationInput,
     reservation: AttemptReservation,
@@ -401,11 +368,6 @@ export class PlanLifecycleService {
     return this.processGenerationAttemptInternal(input, reservation);
   }
 
-  /**
-   * Settles a reservation rejection without reserving again.
-   * Start paths that already called `reserveAttemptSlot` must use
-   * this instead of {@link processGenerationAttempt}.
-   */
   async settleReservationRejection(
     input: ProcessGenerationInput,
     rejection: AttemptRejection,
@@ -442,11 +404,6 @@ export class PlanLifecycleService {
     });
   }
 
-  /**
-   * Settles a reserved attempt that failed before provider work (workflow-start
-   * failure, regeneration admission-deny). Production callers must use this
-   * instead of `commitPlanGenerationFailure`.
-   */
   async settleReservedAttemptFailure(input: {
     readonly reservation: AttemptReservation;
     readonly planId: string;

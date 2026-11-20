@@ -8,13 +8,8 @@ import type { DbClient } from '@/lib/db/types';
 import { planResearch, researchSources } from '@supabase/schema';
 import { asc, desc, eq, sql } from 'drizzle-orm';
 
-/** Orders `S1`, `S2`, …, `S10` numerically rather than as text. */
 const citationNumber = sql`substring(${researchSources.citationKey} from 2)::integer`;
 
-/**
- * Stores one research run and its sources atomically. Writes are server-owned,
- * so `dbClient` must be the service-role client (or a transaction on it).
- */
 export async function insertPlanResearch(
   {
     research,

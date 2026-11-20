@@ -35,11 +35,6 @@ function modelOperationForGenerationPurpose(
   }
 }
 
-/**
- * Replay check for a held reservation: `already_finalized` when the attempt
- * is `success` or `failure`, `undefined` while it is still in progress on a
- * `generating` plan, and a thrown error for a stale reservation.
- */
 export async function validateReservation(
   dbClient: DbClient,
   params: GenerationRunParams,
@@ -121,7 +116,6 @@ export async function validateReservation(
 }
 
 type PlanLifecycleGenerationOptions = {
-  /** Replaces the tier's resolved provider (the grounded outline writer). */
   provider?: AiPlanGenerationProvider;
 };
 

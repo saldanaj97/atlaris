@@ -17,10 +17,6 @@ type ModulesDbClient = DbClient;
 
 export type { ModuleDetailRows };
 
-/**
- * Module rows for module-detail read projection (plan-scoped ownership).
- * Requires an explicit request RLS or service-role client.
- */
 export async function getModuleDetailRows(
   planId: string,
   moduleId: string,

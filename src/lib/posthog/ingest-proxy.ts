@@ -639,7 +639,6 @@ async function handle(request: Request): Promise<Response> {
       signal,
     };
     if (target.allowsBody && body !== undefined) {
-      // ponytail: TS 5.7 ArrayBuffer generics reject Uint8Array as BodyInit
       init.body = body as unknown as BodyInit;
     }
     upstream = await fetch(upstreamUrl, init);

@@ -1,21 +1,11 @@
 import type { Logger } from '@/lib/logging/logger';
 
-/**
- * The production PostHog project (US cloud). PostHog runs only in Vercel
- * Production, so every person to delete lives here.
- */
 const POSTHOG_BULK_DELETE_URL =
   'https://us.posthog.com/api/projects/551450/persons/bulk_delete/';
 const POSTHOG_DELETE_TIMEOUT_MS = 10_000;
 
-/** PostHog accepts at most 1000 distinct ids per bulk delete. */
 export const POSTHOG_BULK_DELETE_LIMIT = 1000;
 
-/**
- * Queues deletion of the PostHog persons for these Clerk user ids, with their
- * events and recordings. The distinct id is the Clerk user id, matching
- * identify(). Returns whether PostHog accepted the request; never throws.
- */
 export async function deletePostHogPersons(
   authUserIds: string[],
   {

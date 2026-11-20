@@ -3,7 +3,6 @@ import type { DbClient, DbTransaction } from '@/lib/db/types';
 import { modules } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
-/** Namespace `3`: plan lifecycle (claim, reservation, success persist, delete). */
 export const PLAN_LIFECYCLE_LOCK_NAMESPACE = 3;
 const PLAN_LIFECYCLE_LOCK_TIMEOUT_MS = 15_000;
 

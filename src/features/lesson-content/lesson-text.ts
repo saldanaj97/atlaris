@@ -21,16 +21,10 @@ export const TABLE_SEPARATOR_CELL = /^\s*:?-{3,}:?\s*$/;
 
 const FENCE_OPEN = /^\s*```[^`]*$/;
 const FENCE_CLOSE = /^\s*```\s*$/;
-/** A `|` row, or a `+---+` border from an ASCII box table. */
 const TABULAR_LINE = /^\s*(?:\||\+[-=+])/;
-/**
- * Inline code, whose content stays literal, or `**bold**`. Bold markers can't
- * touch a word on their outer side, so `a**b + c**d` stays code.
- */
 const INLINE_PATTERN =
   /(`+)([^\n]+?)\1|(?<![\w*])\*\*(?=\S)([^\n]+?)(?<=\S)\*\*(?![\w*])/g;
 
-/** Cells in one Markdown table row, outer pipes removed; `\|` stays a cell. */
 export function tableCells(line: string): string[] {
   const inner = line
     .trim()
@@ -45,11 +39,6 @@ function displayCells(line: string): string[] {
   );
 }
 
-/**
- * A run of tabular lines as a segment. Anything short of a well-formed table
- * (a box table, no separator, uneven columns) keeps its characters in a
- * monospace block, so no content is dropped or put in the wrong column.
- */
 function tabularSegment(lines: readonly string[]): LessonTextSegment {
   const [headerLine, separatorLine, ...rowLines] = lines;
   const isTable =
@@ -70,7 +59,6 @@ function tabularSegment(lines: readonly string[]): LessonTextSegment {
   return { type: 'preformatted', text: lines.join('\n') };
 }
 
-/** Splits one block's text into prose, preformatted and table segments. */
 export function parseLessonText(text: string): LessonTextSegment[] {
   const lines = text.split(/\r?\n/);
   const segments: LessonTextSegment[] = [];
@@ -89,7 +77,6 @@ export function parseLessonText(text: string): LessonTextSegment[] {
       flushProse();
       const code: string[] = [];
       index += 1;
-      // A fence the model never closed runs to the end of the block.
       while (index < lines.length && !FENCE_CLOSE.test(lines[index] ?? '')) {
         code.push(lines[index] ?? '');
         index += 1;
@@ -123,7 +110,6 @@ export function parseLessonText(text: string): LessonTextSegment[] {
   return segments;
 }
 
-/** Splits a line of prose into plain text, inline code and bold. */
 export function parseLessonInline(text: string): LessonInlineSegment[] {
   const segments: LessonInlineSegment[] = [];
   let cursor = 0;

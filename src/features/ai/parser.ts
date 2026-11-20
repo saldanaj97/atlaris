@@ -205,7 +205,6 @@ function parseRawGenerationResponse(
     signal?.throwIfAborted();
     parsed = JSON.parse(buffer);
   } catch (error) {
-    // Re-throw abort so callers can distinguish user cancellation from parse failures.
     if (error instanceof Error && error.name === 'AbortError') throw error;
     throw new ParserError(
       'invalid_json',

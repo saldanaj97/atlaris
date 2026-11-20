@@ -5,7 +5,6 @@ import {
 import { buildCheckoutBillingSignature } from '@/features/billing/checkout-return';
 import { requestBoundary } from '@/lib/api/request-boundary';
 
-/** Current signed-in user's pre-checkout billing state, or null for public visitors. */
 export async function getOptionalCheckoutBillingSignature(): Promise<
   string | null
 > {

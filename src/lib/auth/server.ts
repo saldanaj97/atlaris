@@ -46,9 +46,6 @@ function getClerkPrimaryEmail(
     : null;
 }
 
-/**
- * Read-only session accessor safe for Server Components.
- */
 export async function getSessionSafe(options?: { strict?: boolean }): Promise<{
   session: AuthSessionData | null;
 }> {
@@ -63,12 +60,6 @@ export async function getSessionSafe(options?: { strict?: boolean }): Promise<{
   }
 }
 
-/**
- * Whether the Clerk session for `authUserId` has a plan feature. A signed-out
- * request, or a session for another user (a DEV_AUTH_USER_ID override), has
- * none. Throws when Clerk auth is unavailable, so callers can tell that apart
- * from a missing feature.
- */
 export async function hasClerkPlanFeature(
   authUserId: string,
   feature: string,

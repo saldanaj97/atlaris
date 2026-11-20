@@ -15,7 +15,6 @@ export type PlanRegenerationWorkflowInput = {
   readonly generationPurpose?: GenerationPurpose;
 };
 
-/** Validated admission context carried with a reservation across workflow steps. */
 export type PlanRegenerationAttemptPreparation = {
   readonly reservation: SerializableAttemptReservation;
   readonly tier: SubscriptionTier;

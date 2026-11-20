@@ -2,7 +2,6 @@ import { RevealAnimation } from './RevealAnimation';
 
 import styles from './landing.module.css';
 
-/** Why Atlaris exists, from the visitor's side: plans that ignore your hours stall. */
 export function ProblemSection() {
   return (
     <section

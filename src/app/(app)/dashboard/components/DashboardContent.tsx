@@ -30,7 +30,6 @@ function DashboardHero({
   title: ReactNode;
   description: ReactNode;
 }) {
-  // A string fits in a paragraph; other nodes may contain block content.
   const Description = typeof description === 'string' ? 'p' : 'div';
 
   return (
@@ -122,10 +121,6 @@ export async function DashboardContent() {
   );
 }
 
-/**
- * Skeleton for the dashboard content.
- * Shown while the async component is loading.
- */
 export function DashboardContentSkeleton() {
   return (
     <section aria-label='Loading dashboard' aria-busy='true'>
@@ -174,7 +169,6 @@ export function DashboardContentSkeleton() {
           </Card>
         </div>
 
-        {/* Generic card pair: a new user sees Activity feed here, others see Learning route. */}
         <div className={DASHBOARD_GRID}>
           <Card
             as='section'

@@ -28,7 +28,6 @@ type ModelSelectorProps = {
   currentModel: string | null;
   userTier: SubscriptionTier;
   availableModels: AvailableModel[];
-  /** Models shown disabled with a Pro plan badge; never selectable. */
   proOnlyModels?: AvailableModel[];
   onSave: (modelId: string | null) => Promise<void>;
   label?: string;
@@ -79,7 +78,6 @@ const ModelDropdown = ({
     <div className='space-y-4'>
       <div className='space-y-2'>
         <Label htmlFor={triggerId}>{label}</Label>
-        {/* Radix Select stays controlled with `value=''` and shows the placeholder. */}
         <Select value={selectedModel} onValueChange={setSelectedModel}>
           <SelectTrigger
             id={triggerId}
@@ -96,7 +94,6 @@ const ModelDropdown = ({
               <SelectItem key={model.id} value={model.id}>
                 <div className='flex items-center gap-2'>
                   <span>{model.name}</span>
-                  {/* Secondary matches the popover and card matches the trigger, so swap only in the list. */}
                   <Badge
                     variant={model.tier === 'free' ? 'default' : 'secondary'}
                     className={
@@ -113,7 +110,6 @@ const ModelDropdown = ({
             {hasProOnlyModels && (
               <SelectGroup>
                 <SelectSeparator />
-                {/* The open list can cover the hint below the trigger, so repeat it here. */}
                 <SelectLabel>Upgrade to Pro to use these models</SelectLabel>
                 {proOnlyModels.map((model) => (
                   <SelectItem key={model.id} value={model.id} disabled>

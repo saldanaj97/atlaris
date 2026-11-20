@@ -6,10 +6,6 @@ import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import { ModuleLessonGenerationStatusResponseSchema } from '@/shared/schemas/lesson-content.schemas';
 
-/**
- * GET /api/v1/plans/:planId/modules/:moduleId/lesson-content/status
- * Returns the owned module's lesson generation status for client polling.
- */
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ params, actor, db, correlationId }): Promise<Response> => {

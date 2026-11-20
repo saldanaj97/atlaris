@@ -1,7 +1,3 @@
-/**
- * Types for lifecycle generation finalization (single-transaction settlement).
- */
-
 import type { EnqueueModuleLessonGenerationsDeps } from '@/features/lesson-content/progressive-enqueue';
 import type {
   AttemptReservation,
@@ -19,11 +15,9 @@ import type { GenerationPurpose } from '@/shared/types/generation-purpose';
  */
 export type GenerationFinalizationStoreDeps = {
   readonly afterSuccessfulAttemptPersist?: () => void | Promise<void>;
-  /** Starts lessons for the first modules; defaults to the jobs Worker dispatch. */
   readonly startModuleLessons?: EnqueueModuleLessonGenerationsDeps['start'];
 };
 
-/** Settles success attempt + modules/tasks + plan ready + usage in one DB transaction. */
 export type FinalizeGenerationSuccessInput = {
   readonly planId: string;
   readonly userId: string;
@@ -36,7 +30,6 @@ export type FinalizeGenerationSuccessInput = {
   readonly extendedTimeout: boolean;
   readonly workflowMetadata?: AttemptWorkflowMetadata;
   readonly generationPurpose: GenerationPurpose;
-  /** Today only `'plan'` is used for this flow; kept for parity with prior usage recording. */
   readonly usageKind: 'plan';
   readonly now?: () => Date;
 };
@@ -61,7 +54,6 @@ export type FinalizeGenerationFailureWithAttemptInput = {
   readonly now?: () => Date;
 };
 
-/** Reservation rejected before an in-progress attempt row exists — plan row still marked failed. */
 export type FinalizeGenerationFailurePlanOnlyInput = {
   readonly variant: 'plan_only';
   readonly planId: string;

@@ -1,7 +1,3 @@
-/**
- * Pure plan duration / tier cap policy — no DB or Drizzle.
- */
-
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
 import {
@@ -10,7 +6,6 @@ import {
 } from '@/features/plans/validation/learningPlans';
 import { limitsForUser } from '@/shared/constants/tier-limits';
 
-// Explicit upgrade path mapping: current tier -> recommended next tier
 const UPGRADE_PATH: Record<SubscriptionTier, SubscriptionTier> = {
   free: 'starter',
   starter: 'pro',
@@ -23,7 +18,6 @@ type PlanDurationCapResult = {
   upgradeUrl?: string;
 };
 
-/** UTC midnight for today + plan start (defaults today when missing). */
 function utcPlanDayAnchors(today: Date, startDate?: string | null) {
   const normalizedToday = new Date(today);
   normalizedToday.setUTCHours(0, 0, 0, 0);
@@ -103,7 +97,6 @@ export function normalizePlanDurationForTier({
 export function checkPlanDurationCap(params: {
   tier: SubscriptionTier;
   totalWeeks: number;
-  /** On a free trial: the trial's shorter cap applies. */
   trialing?: boolean;
 }): PlanDurationCapResult {
   const trialing = params.trialing === true;

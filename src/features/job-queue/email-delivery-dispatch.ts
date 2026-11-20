@@ -27,18 +27,14 @@ export type EmailDeliveryDispatchOutcome =
   | 'needs_review';
 
 export type EmailDeliveryDispatchResult =
-  /** The Worker started a run or reported the existing one. */
   | {
       readonly kind: 'accepted';
       readonly outcome: EmailDeliveryDispatchOutcome;
       readonly runId: string | null;
       readonly instanceId: string | null;
     }
-  /** `409 { code: "invalid_run_state" }`: the action does not fit the run's state. */
   | { readonly kind: 'invalid_run_state' }
-  /** `503 { code: "jobs_paused" | "job_disabled" }`. */
   | { readonly kind: 'disabled'; readonly code: JobsUnavailableCode }
-  /** Any other non-2xx, timeout, network error, or missing configuration. */
   | { readonly kind: 'failed' };
 
 export type DispatchEmailDeliveryToWorkerDeps = {
@@ -81,11 +77,6 @@ function outcomeFor(
   }
 }
 
-/**
- * Sends `POST /v1/email-delivery/runs` for a manual `start`, `resume`, or
- * `replay_reviewed` of one logical run. The Worker reserves the run and
- * starts its Workflow instance. Never throws.
- */
 export async function dispatchEmailDeliveryToWorker(
   input: EmailDeliveryDispatchInput,
   deps: DispatchEmailDeliveryToWorkerDeps = {},

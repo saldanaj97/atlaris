@@ -13,9 +13,6 @@ type NestedModule = {
   tasks: NestedTask[];
 };
 
-/**
- * Completion metrics for plan read projections (nested modules + tasks with progress).
- */
 export function computeCompletionMetricsFromNestedModules(
   modules: NestedModule[],
 ): {
@@ -107,7 +104,6 @@ export function countCompletedModulesFromFlatTasks(params: {
   }).length;
 }
 
-/** Running totals while folding pre-aggregated per-module metrics rows. */
 type LightweightModuleMetricsTotals = {
   completedTasks: number;
   totalTasks: number;
@@ -117,7 +113,6 @@ type LightweightModuleMetricsTotals = {
   completedModules: number;
 };
 
-/** Mutates the running totals object with one lightweight module metrics row. */
 export function accumulateLightweightModuleMetricsRowInPlace(
   current: LightweightModuleMetricsTotals,
   row: {

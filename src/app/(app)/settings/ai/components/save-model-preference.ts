@@ -9,7 +9,6 @@ export type PreferenceField =
   | 'preferredVerifierAiModel'
   | 'preferredAdvisorAiModel';
 
-/** PATCHes one model slot; throws with the API's message when rejected. */
 export async function saveModelPreference(
   preferenceField: PreferenceField,
   modelId: string | null,

@@ -7,9 +7,6 @@ interface PlanDetailPageErrorProps {
   upgradeHref?: string;
 }
 
-/**
- * Renders a centered error UI for the plan detail page.
- */
 export function PlanDetailPageError({
   message,
   upgradeHref,

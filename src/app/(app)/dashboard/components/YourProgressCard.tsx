@@ -55,8 +55,6 @@ export function YourProgressCard({
             className='mt-3 h-1.5'
           />
 
-          {/* One row per total, so the card's height (set by the resume card
-              beside it) is filled by the totals rather than left empty. */}
           <dl className='mt-3 divide-y divide-border/60'>
             {stats.map((stat) => (
               <div

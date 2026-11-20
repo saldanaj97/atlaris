@@ -3,7 +3,6 @@
 import { RouteErrorState } from '@/components/ui/route-error-state';
 import { useRouter } from 'next/navigation';
 
-/** Shown when the billing snapshot can't be read; retry re-runs the server read. */
 export function BillingUnavailable({
   subject,
 }: {

@@ -1,0 +1,808 @@
+{
+  "version": 1,
+  "files": {
+    "src/app/(app)/analytics/usage/usage-analytics-model.ts": {
+      "a87fd34aedab": 1,
+      "ee3dd744503b": 1
+    },
+    "src/app/(app)/analytics/usage/usage-analytics-timezone-sync.tsx": {
+      "98d44448fe01": 1
+    },
+    "src/app/(app)/dashboard/components/DashboardContent.tsx": {
+      "df8612784200": 1
+    },
+    "src/app/(app)/dashboard/components/activity-utils.ts": {
+      "74422c5a6eb6": 1
+    },
+    "src/app/(app)/dashboard/error.tsx": {
+      "e889b13cef05": 1
+    },
+    "src/app/(app)/dashboard/page.tsx": {
+      "1fe966fbe673": 1
+    },
+    "src/app/(app)/error.tsx": {
+      "9fe778a62c77": 1
+    },
+    "src/app/(app)/plans/[id]/components/PlanDetailContent.tsx": {
+      "6e64bcf4a814": 1
+    },
+    "src/app/(app)/plans/[id]/error.tsx": {
+      "001faaa32ffc": 1
+    },
+    "src/app/(app)/plans/[id]/helpers.ts": {
+      "fd8a66bfc677": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/actions.ts": {
+      "8de43d46d8e8": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/components/LessonAccordionItem.tsx": {
+      "a53f273a5aea": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/components/LessonText.tsx": {
+      "cb7ada6d2c37": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/components/ModuleDetailContent.tsx": {
+      "4c21dce5475d": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/error.tsx": {
+      "a87d5a306ca5": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/helpers.ts": {
+      "74b3cc2dde40": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/module-page-data.ts": {
+      "7849e7557cc8": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/page.tsx": {
+      "ad917457053d": 1
+    },
+    "src/app/(app)/plans/[id]/modules/[moduleId]/types.ts": {
+      "d019b6c1eef7": 1
+    },
+    "src/app/(app)/plans/[id]/page.tsx": {
+      "92ba245de627": 1
+    },
+    "src/app/(app)/plans/[id]/plan-page-data.ts": {
+      "eb81e752be0a": 1
+    },
+    "src/app/(app)/plans/[id]/types.ts": {
+      "719d898e9798": 1
+    },
+    "src/app/(app)/plans/components/PlanRow.tsx": {
+      "c443800f5375": 1
+    },
+    "src/app/(app)/plans/error.tsx": {
+      "a76e4386d0d4": 1
+    },
+    "src/app/(app)/plans/new/components/AiPlanGenerationPanel.tsx": {
+      "8643414c6288": 1
+    },
+    "src/app/(app)/plans/new/components/plan-form/InlineDropdown.tsx": {
+      "45cc37b98c11": 1
+    },
+    "src/app/(app)/plans/new/components/plan-form/UnifiedPlanInput.tsx": {
+      "bb7108f9d1ad": 1
+    },
+    "src/app/(app)/plans/new/error.tsx": {
+      "1122d0fbc8f5": 1
+    },
+    "src/app/(app)/plans/new/hooks/useStartAiPlanGeneration.ts": {
+      "05e4bdb8ba12": 1
+    },
+    "src/app/(app)/plans/plans-library-filter.ts": {
+      "5a80d4c94a19": 1
+    },
+    "src/app/(app)/settings/[...user-profile]/page.tsx": {
+      "a3df0810727e": 1
+    },
+    "src/app/(app)/settings/ai/components/ModelSelectionCard.tsx": {
+      "1e46f96f8d88": 1,
+      "6f0ecb392a2c": 1,
+      "b8a11a0a4f59": 1
+    },
+    "src/app/(app)/settings/ai/components/ModelSelectionCardSkeleton.tsx": {
+      "eb47d973150f": 1
+    },
+    "src/app/(app)/settings/billing/components/CheckoutSubscriptionSync.tsx": {
+      "49adeffa2290": 1
+    },
+    "src/app/(app)/settings/billing/components/ManageSubscriptionButton.tsx": {
+      "bc605978fe9c": 1
+    },
+    "src/app/(app)/settings/billing/components/subscription-management.ts": {
+      "7b5c4109f4c1": 1,
+      "7feca62fc7f0": 1
+    },
+    "src/app/(app)/settings/components/SettingsScrollTarget.tsx": {
+      "0366f4205eec": 1
+    },
+    "src/app/(app)/settings/profile/actions.ts": {
+      "c8a990c16def": 1
+    },
+    "src/app/(landing)/_shared/CelestialBackdrop.tsx": {
+      "357d826e7a48": 1
+    },
+    "src/app/(landing)/_shared/LandingPageShell.tsx": {
+      "cab4c51a099e": 1
+    },
+    "src/app/(landing)/_shared/StarField.tsx": {
+      "f7e6760b8a12": 1
+    },
+    "src/app/(landing)/_shared/marketing-create-plan-cta.ts": {
+      "616f4fce176d": 1
+    },
+    "src/app/(landing)/_shared/marketing-cta.ts": {
+      "c98600f53256": 1
+    },
+    "src/app/(landing)/about/about-flag.ts": {
+      "f910c32c342c": 1
+    },
+    "src/app/(landing)/about/components/RevealAnimation.tsx": {
+      "6a0228f67840": 1
+    },
+    "src/app/(landing)/landing/components/Landing.tsx": {
+      "66ae8ffa4d34": 1
+    },
+    "src/app/(landing)/landing/components/RevealAnimation.tsx": {
+      "6a0228f67840": 1
+    },
+    "src/app/(landing)/landing/components/RoadmapPreview.tsx": {
+      "0a34ec3ce1c6": 1
+    },
+    "src/app/(landing)/landing/layout.tsx": {
+      "da3a165e9b39": 1
+    },
+    "src/app/(landing)/pricing/components/ClerkPricingTable.tsx": {
+      "8395bd7f6e41": 1,
+      "3d5ceccbd386": 1
+    },
+    "src/app/(landing)/pricing/components/RenewalDisclosure.tsx": {
+      "3ed542a8759b": 1
+    },
+    "src/app/(landing)/pricing/pricing-plan-features.ts": {
+      "648ce2758865": 1,
+      "c58d3bf285c0": 1
+    },
+    "src/app/ThemeProvider.tsx": {
+      "2f44119d37cd": 1
+    },
+    "src/app/api/v1/plans/[planId]/retry/route.ts": {
+      "0d62e002b22e": 1
+    },
+    "src/app/api/v1/plans/route.ts": {
+      "a62cc0687e32": 1
+    },
+    "src/app/api/v1/user/preferences/validation.ts": {
+      "a0b1dac06628": 1,
+      "5120593bd876": 1
+    },
+    "src/app/layout.tsx": {
+      "070d32f97020": 1,
+      "e65357f1972a": 1,
+      "6a3db139fa29": 1,
+      "7537c9bb2113": 1,
+      "b992d546adc3": 1,
+      "eb698a6d8436": 1,
+      "fa5ef4c1e101": 1,
+      "edb2b4350bdb": 1
+    },
+    "src/components/shared/ThemeToggle.tsx": {
+      "3977116af7e7": 1,
+      "f722ed032618": 1
+    },
+    "src/components/shared/nav/AppSidebar.tsx": {
+      "b29a7f79985e": 1,
+      "c12520c75c45": 1
+    },
+    "src/components/shared/nav/DesktopHeader.tsx": {
+      "3bf66a68fd9c": 1
+    },
+    "src/components/shared/nav/MobileHeader.tsx": {
+      "00141c86cbef": 1
+    },
+    "src/components/shared/nav/SiteHeaderChrome.tsx": {
+      "0fc44a07753b": 1
+    },
+    "src/components/shared/nav/marketing-header-classes.ts": {
+      "ea1de487b5c6": 1
+    },
+    "src/components/shared/theme-transition.ts": {
+      "e0d3e98b8ccb": 1
+    },
+    "src/components/ui/page-shell.tsx": {
+      "402c501dccdd": 1
+    },
+    "src/features/ai/ai-models.ts": {
+      "ababacd7a7d8": 1,
+      "4eec95b8e994": 1
+    },
+    "src/features/ai/constants.ts": {
+      "9d59c66338aa": 1
+    },
+    "src/features/ai/model-catalog/catalog-state.ts": {
+      "df937e6acf19": 1
+    },
+    "src/features/ai/model-catalog/catalog.ts": {
+      "5800f14e2e70": 1,
+      "0ab19ce56b26": 1,
+      "ba7ffe9abc8d": 1,
+      "d3ad42a27945": 1
+    },
+    "src/features/ai/model-catalog/guardrail-models.ts": {
+      "98e0e0abb0b9": 1,
+      "7c9da48f22bd": 1
+    },
+    "src/features/ai/model-operation-policy.ts": {
+      "a3fdb255c0e3": 1,
+      "48db904b98da": 1,
+      "eb7c8c68c5ea": 1,
+      "2afa0b032866": 1,
+      "6314a1c06e65": 1
+    },
+    "src/features/ai/model-preferences.ts": {
+      "f39572d46f80": 1,
+      "c32409a3c29d": 1,
+      "a19ecf1b2782": 1,
+      "48a6ce9221a6": 1,
+      "ed1cf7d40839": 1,
+      "2fa7ef48f09d": 1
+    },
+    "src/features/ai/model-pricing-snapshot.ts": {
+      "209116cafd38": 1
+    },
+    "src/features/ai/model-resolver.ts": {
+      "3da8d9572c2c": 1,
+      "19ca2f8cadf4": 1,
+      "57bab8df1067": 1
+    },
+    "src/features/ai/orchestrator.ts": {
+      "ec5a54b87648": 1
+    },
+    "src/features/ai/pacing.ts": {
+      "a953567b1fba": 1,
+      "c805a03e1387": 1,
+      "47b56c6e04d3": 1
+    },
+    "src/features/ai/parser.ts": {
+      "86d3e0aa092d": 1,
+      "ae15ca57d085": 1,
+      "a12f04eae2fc": 1
+    },
+    "src/features/ai/prompts.ts": {
+      "5e0c03ad6ec3": 1
+    },
+    "src/features/ai/provider-cost-microusd.ts": {
+      "a72a587c28e3": 1
+    },
+    "src/features/ai/providers/openrouter-grounded-response.ts": {
+      "9bf0054185e5": 1,
+      "e92db6ff89f8": 1
+    },
+    "src/features/ai/providers/openrouter-response.ts": {
+      "b562c737ec8c": 1
+    },
+    "src/features/ai/providers/openrouter.ts": {
+      "61b3dd5539e8": 1,
+      "1b0f8ac780bd": 1,
+      "febd8422d92c": 1,
+      "948e3b1435c8": 1,
+      "37ea58dba91f": 1,
+      "2a5f7aa0512d": 1,
+      "9562ff4599c0": 1,
+      "9d11a1753395": 1
+    },
+    "src/features/ai/providers/parallel-search.ts": {
+      "8067972bd7e0": 1
+    },
+    "src/features/ai/streaming/utils.ts": {
+      "203ed8ee02fb": 1
+    },
+    "src/features/ai/usage.ts": {
+      "651cfa268647": 1,
+      "0ae3d5a7670f": 1
+    },
+    "src/features/auth/clerk-user-projection.ts": {
+      "29781aa059da": 1,
+      "283b57fdfc4f": 1,
+      "49e2c13a5e37": 1
+    },
+    "src/features/billing/clerk-billing/projection.ts": {
+      "d9ba40f0e207": 1,
+      "3d46909061c4": 1
+    },
+    "src/features/billing/clerk-billing/reconciliation.ts": {
+      "b13c69651bb8": 1
+    },
+    "src/features/billing/clerk-billing/subscription-snapshot.ts": {
+      "3b961aea90de": 1
+    },
+    "src/features/billing/metered-reservation.ts": {
+      "3893b78a3f4b": 1,
+      "50c653c51f49": 1
+    },
+    "src/features/billing/plan-ai-budget.ts": {
+      "232d8b50a065": 1
+    },
+    "src/features/billing/regeneration-quota-boundary.ts": {
+      "ec3fb1c96d0c": 1
+    },
+    "src/features/billing/usage-metrics.ts": {
+      "0d1f58a6ab3e": 1
+    },
+    "src/features/job-queue/regeneration-run.ts": {
+      "d52aeb38e621": 1,
+      "6b76c900dd79": 1,
+      "e1a01151e4db": 1,
+      "39377fbef957": 1,
+      "43614ff30c1f": 1,
+      "54647a80ce9c": 1
+    },
+    "src/features/job-queue/regeneration-sweep-query.ts": {
+      "2b05618aa102": 1
+    },
+    "src/features/lesson-content/grounded-lesson-prompt.ts": {
+      "a0f3dad4f338": 1
+    },
+    "src/features/lesson-content/grounded-lesson-writer.ts": {
+      "79e9b942f498": 1
+    },
+    "src/features/lesson-content/lesson-citation-checks.ts": {
+      "fec253013c70": 1
+    },
+    "src/features/lesson-content/lesson-quality-call.ts": {
+      "0e0d544a79d2": 1
+    },
+    "src/features/lesson-content/lesson-quality-issues.ts": {
+      "f0ca9019c25e": 1
+    },
+    "src/features/lesson-content/lesson-repair.ts": {
+      "b7a01af36204": 1,
+      "0cec773812c2": 1,
+      "90a76b1e5ac3": 1
+    },
+    "src/features/lesson-content/lesson-text.ts": {
+      "e1bd0289e29a": 1
+    },
+    "src/features/lesson-content/lesson-verifier.ts": {
+      "33fcc85f8f17": 1,
+      "113281a1023d": 1
+    },
+    "src/features/lesson-content/module-lesson-prompts.ts": {
+      "3fdc865939e6": 1
+    },
+    "src/features/lesson-content/parse-module-lesson-batch.ts": {
+      "ec007a4fff8e": 1
+    },
+    "src/features/lesson-content/run-module-lesson-generation-work.ts": {
+      "05793ba2ad1f": 1,
+      "208320c6f8a0": 1,
+      "19c5444e3c03": 1
+    },
+    "src/features/lesson-content/start-module-lesson-generation-workflow.ts": {
+      "fd85bff49391": 1
+    },
+    "src/features/navigation/create-plan-cta.ts": {
+      "2ceb4f6edbcd": 1
+    },
+    "src/features/notifications/email/content.ts": {
+      "329fe1246ff5": 1
+    },
+    "src/features/notifications/email/delivery-service.ts": {
+      "7a1b6eb264cb": 1
+    },
+    "src/features/notifications/email/unsubscribe.ts": {
+      "0d09b2c13184": 1
+    },
+    "src/features/plans/cleanup.ts": {
+      "40c4a42e1c5b": 1,
+      "a406b3e93700": 1,
+      "5df1d829f0ff": 1
+    },
+    "src/features/plans/entitlement/errors.ts": {
+      "35aa9cc32bce": 1
+    },
+    "src/features/plans/errors.ts": {
+      "b94bf9136cf2": 1,
+      "da39a3ee5e6b": 1,
+      "e36f581211e9": 1,
+      "b1d7a7db563a": 1
+    },
+    "src/features/plans/lifecycle/factory.ts": {
+      "1c3671f9552e": 1,
+      "8626f304152a": 1
+    },
+    "src/features/plans/lifecycle/generation-finalization/types.ts": {
+      "b27a1583f84a": 1
+    },
+    "src/features/plans/lifecycle/service.ts": {
+      "4596dbef9e05": 1,
+      "d5bb7e14b279": 1,
+      "8d0aba39c826": 1,
+      "a9e75f867a39": 1,
+      "09e5d49e01e7": 1,
+      "7e2c769f8d45": 1
+    },
+    "src/features/plans/lifecycle/types.ts": {
+      "c7f26499caba": 1
+    },
+    "src/features/plans/outline/checks.ts": {
+      "7da193d23358": 1,
+      "ae1d12bfee7a": 1,
+      "20d9ea02e58d": 1
+    },
+    "src/features/plans/outline/grounded-writer.ts": {
+      "c5d0703109f1": 1
+    },
+    "src/features/plans/outline/quality-issues.ts": {
+      "27dd3774a4ab": 1
+    },
+    "src/features/plans/outline/repair.ts": {
+      "0dbb4de6963c": 1
+    },
+    "src/features/plans/outline/verifier.ts": {
+      "2ae87b807110": 1
+    },
+    "src/features/plans/plan-creation-failure-http.ts": {
+      "4788015e1208": 1
+    },
+    "src/features/plans/read-projection/lesson-sources.ts": {
+      "45be88602f9e": 1
+    },
+    "src/features/plans/read-projection/module-detail.ts": {
+      "8fe4021ce039": 1
+    },
+    "src/features/plans/read-projection/read-status.ts": {
+      "c1ca7027ee48": 1
+    },
+    "src/features/plans/read-projection/types.ts": {
+      "1c7b5c73fba7": 1
+    },
+    "src/features/plans/regeneration-orchestration/deps.ts": {
+      "75680aa87c33": 1
+    },
+    "src/features/plans/regeneration-orchestration/types.ts": {
+      "ee1b187040ce": 1
+    },
+    "src/features/plans/research/contract.ts": {
+      "36e55694de32": 1
+    },
+    "src/features/plans/research/run-research.ts": {
+      "2693117262eb": 1
+    },
+    "src/features/plans/session/model-resolution.ts": {
+      "32c481eec938": 1,
+      "a44d1efa34a4": 1
+    },
+    "src/features/plans/session/plan-generation-session.ts": {
+      "ae81f260f04b": 1,
+      "c8ee949b01e5": 1,
+      "ea74b65ce9c7": 1
+    },
+    "src/features/plans/session/session-command.ts": {
+      "4e4c15531408": 1,
+      "4a0b738253a1": 1,
+      "cf062905252f": 1
+    },
+    "src/features/plans/session/usePlanGenerationSession.ts": {
+      "bcdc9ecbd518": 1,
+      "12516f14bb2a": 1
+    },
+    "src/features/plans/start-plan-generation-attempt.ts": {
+      "d1ef92493e8b": 1,
+      "1ce454510eee": 1,
+      "a2a310a8af5f": 1
+    },
+    "src/features/plans/status-polling/plan-status-poller.ts": {
+      "9b00bf1ad0fa": 1,
+      "f6e76956a486": 1,
+      "3dc3cdabea6c": 1
+    },
+    "src/features/plans/task-progress/types.ts": {
+      "c20a688d0118": 1,
+      "6f0ea9a0aea0": 1,
+      "e3bf5a51428a": 1,
+      "0ace6a398706": 1,
+      "b0d842add260": 1,
+      "0a6119df2cc7": 1,
+      "017848f4e270": 1,
+      "870e4c90afda": 1
+    },
+    "src/features/plans/write-service/index.ts": {
+      "08a348ca93dd": 1
+    },
+    "src/flags.ts": {
+      "e6ec45a59abf": 1,
+      "ff3177e364dd": 1,
+      "0f2b6189eac8": 1,
+      "298088e4c81a": 1,
+      "48a3ee9bf0b7": 1,
+      "be2b6c591439": 1,
+      "322480d3a768": 1,
+      "cfce737abe53": 1,
+      "75d5928907cf": 1,
+      "6f03d9d266a8": 1,
+      "0c80b3e8fcd2": 1,
+      "c511d55a832c": 1
+    },
+    "src/hooks/useRetryGeneration.ts": {
+      "b0175e092f4f": 1,
+      "c00359be031d": 1
+    },
+    "src/instrumentation-client.ts": {
+      "23f9ee33891a": 1,
+      "42a18544371b": 1,
+      "e4c017ac3a84": 1,
+      "8bfb7cd5e0d5": 1
+    },
+    "src/lib/api/auth.ts": {
+      "743fe22c3f48": 1,
+      "7615332f7a2c": 1
+    },
+    "src/lib/api/context.ts": {
+      "6dd3ee2aa25c": 1
+    },
+    "src/lib/api/errors.ts": {
+      "62768b5845f8": 1
+    },
+    "src/lib/api/internal/maintenance-route.ts": {
+      "187c80e4f44c": 1
+    },
+    "src/lib/api/ip-rate-limit.ts": {
+      "bc7c3c85a434": 1
+    },
+    "src/lib/api/pagination.ts": {
+      "a009ce4f6133": 1,
+      "6577dda308b6": 1
+    },
+    "src/lib/api/parse-json-body.ts": {
+      "141c93308680": 1,
+      "5bc00d7f1206": 1,
+      "0ba6974dca60": 1
+    },
+    "src/lib/api/rate-limit.ts": {
+      "e7f3d6e9b2dd": 1
+    },
+    "src/lib/api/route-wrappers.ts": {
+      "3df10036dd2f": 1
+    },
+    "src/lib/api/user-rate-limit.ts": {
+      "b7d0cb9fe4d2": 1,
+      "65eced260f84": 1,
+      "637cabe76378": 1
+    },
+    "src/lib/config/env/ai.ts": {
+      "1e559ba9e955": 1,
+      "708cfed9ee55": 1,
+      "3b141f251e32": 1,
+      "647f71185644": 1,
+      "1dc2af9f0e51": 1,
+      "95475cdfc25a": 1,
+      "dfa312279969": 1
+    },
+    "src/lib/config/env/app.ts": {
+      "bd9c3be72d31": 1
+    },
+    "src/lib/config/env/database.ts": {
+      "094d9b3b9481": 1
+    },
+    "src/lib/config/env/email.ts": {
+      "91f55e984793": 1,
+      "feda221cac3e": 1
+    },
+    "src/lib/config/env/flagship.ts": {
+      "df4410549892": 1,
+      "e853f3099d08": 1
+    },
+    "src/lib/config/env/jobs-worker.ts": {
+      "649484f04abb": 1
+    },
+    "src/lib/config/env/local-testing.ts": {
+      "04f5bc19ed4c": 1
+    },
+    "src/lib/config/env/maintenance.ts": {
+      "6da78bbfc097": 1,
+      "8e88f59cd74b": 1
+    },
+    "src/lib/config/env/observability.ts": {
+      "efdd03904105": 1
+    },
+    "src/lib/config/env/posthog.ts": {
+      "564e5da87f8e": 1
+    },
+    "src/lib/config/env/shared.ts": {
+      "17a20aeff32a": 1,
+      "4ed3b310e607": 1,
+      "b2774a1ee7fc": 1,
+      "b777bbeec9ed": 1,
+      "04d52b9a0d97": 1,
+      "8248cb87ae39": 1
+    },
+    "src/lib/config/env/testing.ts": {
+      "5a2b25acfbb0": 1
+    },
+    "src/lib/config/local-product-testing.ts": {
+      "5a0e5f057a3e": 1
+    },
+    "src/lib/date/relative-time.ts": {
+      "b5f430cfe619": 1
+    },
+    "src/lib/db/execute-rows.ts": {
+      "6d658b6adae2": 1
+    },
+    "src/lib/db/queries/attempts.ts": {
+      "6600cb120c68": 1,
+      "3210d541a38c": 1
+    },
+    "src/lib/db/queries/email-delivery-content.ts": {
+      "31b48549ff28": 1
+    },
+    "src/lib/db/queries/email-notification-deliveries.ts": {
+      "d6c0e90e1194": 1,
+      "c8556f99ec1e": 1,
+      "b1fbaf78af67": 1,
+      "bca8c838a09d": 1,
+      "f05291abf3f4": 1,
+      "b77d612da2f4": 1
+    },
+    "src/lib/db/queries/email-notification-delivery-runs.ts": {
+      "f206b4885a0c": 1,
+      "8d0af5624840": 1,
+      "e95b8ac875be": 1
+    },
+    "src/lib/db/queries/helpers/attempts-db-client.ts": {
+      "f88a1db7e831": 1
+    },
+    "src/lib/db/queries/helpers/attempts-persistence-success.ts": {
+      "08cd484de061": 1
+    },
+    "src/lib/db/queries/helpers/attempts-rate-limit.ts": {
+      "2a00abb7a6fb": 1
+    },
+    "src/lib/db/queries/helpers/jobs-helpers.ts": {
+      "357b587928ca": 1
+    },
+    "src/lib/db/queries/helpers/plan-generation-status.ts": {
+      "c12540ec52ee": 1,
+      "7138351df0d1": 1,
+      "9e011b36c1c0": 1,
+      "d15cf4046f46": 1
+    },
+    "src/lib/db/queries/jobs.ts": {
+      "6960f57853d3": 1
+    },
+    "src/lib/db/queries/jobs/mutations.ts": {
+      "26c8683321fc": 1,
+      "0034128319d7": 1
+    },
+    "src/lib/db/queries/lesson-problem-reports.ts": {
+      "0652124ada9c": 1
+    },
+    "src/lib/db/queries/module-lesson-generation.ts": {
+      "1c5ed94903f9": 1
+    },
+    "src/lib/db/queries/modules.ts": {
+      "92c01b80e61a": 1
+    },
+    "src/lib/db/queries/plan-ai-budget.ts": {
+      "0f86c9e1fb9b": 1,
+      "794578a20198": 1
+    },
+    "src/lib/db/queries/plan-research.ts": {
+      "41e615322a5b": 1
+    },
+    "src/lib/db/queries/plans.ts": {
+      "ebad6edaed7d": 1
+    },
+    "src/lib/db/queries/types/attempts.types.ts": {
+      "de0b8ca44b80": 1
+    },
+    "src/lib/db/queries/types/jobs.types.ts": {
+      "cfcf05384a25": 1
+    },
+    "src/lib/db/queries/types/plans.types.ts": {
+      "ff09b081e173": 1
+    },
+    "src/lib/db/types.ts": {
+      "383d9d12b84f": 1
+    },
+    "src/lib/errors.ts": {
+      "1d38dc7d9810": 1,
+      "505ebf65e0a8": 1
+    },
+    "src/lib/errors/normalize-unknown.ts": {
+      "9353a3822bcf": 1,
+      "e05b2ae98bc0": 1
+    },
+    "src/lib/jobs-worker/contract.ts": {
+      "4f6699ffa43f": 1,
+      "297115e33846": 1,
+      "521befbe4f05": 1,
+      "cb2c2c91fd00": 1,
+      "d3eebbe8b5dd": 1
+    },
+    "src/lib/logging/logger.ts": {
+      "9d837120fe69": 1,
+      "3880f5a1c836": 1
+    },
+    "src/lib/next/revalidate-paths.ts": {
+      "7c5b24bcf4da": 1
+    },
+    "src/lib/observability/sampling.ts": {
+      "1c86e65895c4": 1,
+      "6345ba2dfb37": 6,
+      "a1bb3ad8bd73": 1,
+      "521ef3a4693a": 1,
+      "5abe754af617": 1,
+      "09e18ccf54bb": 1
+    },
+    "src/lib/observability/sentry-filters.ts": {
+      "f5e7d48cc6c8": 1,
+      "660648096bd6": 1
+    },
+    "src/lib/posthog/ingest-proxy.ts": {
+      "61ee7f901a42": 1
+    },
+    "src/lib/proxy/middleware-policy.ts": {
+      "9f7d92d7cde7": 1
+    },
+    "src/lib/proxy/security-headers.ts": {
+      "a0adcb8620e9": 1
+    },
+    "src/proxy.ts": {
+      "56cb769452a2": 1
+    },
+    "src/shared/constants/ai-models.ts": {
+      "4a64a8ff4e0e": 1
+    },
+    "src/shared/constants/brand-assets.ts": {
+      "582dbe1055f8": 1
+    },
+    "src/shared/constants/chart-colors.ts": {
+      "30e94197b365": 1
+    },
+    "src/shared/constants/generation.ts": {
+      "c888c801a704": 1,
+      "5bda11b4bc0c": 1
+    },
+    "src/shared/constants/pagination.ts": {
+      "f078b893362b": 1
+    },
+    "src/shared/constants/tier-limits.ts": {
+      "a0aadbcdf65a": 1,
+      "106c8a49462c": 1
+    },
+    "src/shared/retry-policy.ts": {
+      "78704f735743": 1,
+      "fcfef68c5184": 1
+    },
+    "src/shared/schemas/plan-status.ts": {
+      "1d0312aef9e2": 1
+    },
+    "src/shared/schemas/workflow-metadata.schemas.ts": {
+      "f9e3b14bb9b1": 1,
+      "b32ae9989f07": 1
+    },
+    "src/shared/types/ai-provider.types.ts": {
+      "b6f467210c08": 1,
+      "2922c69c6dce": 1
+    },
+    "src/shared/types/ai-usage.types.ts": {
+      "d6ebfe1a1b7a": 1,
+      "a60440103497": 1
+    },
+    "src/shared/types/db.types.ts": {
+      "fb6226c0d412": 1,
+      "0a319d6d4759": 1,
+      "321a1391e976": 1
+    },
+    "src/shared/types/failure-classification.types.ts": {
+      "75aa28910ddd": 1
+    },
+    "src/shared/types/generation-purpose.ts": {
+      "cfd6324b7785": 1
+    },
+    "src/shared/types/model-pricing-snapshot.types.ts": {
+      "7f78672e35dd": 1
+    }
+  }
+}

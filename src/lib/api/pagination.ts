@@ -6,7 +6,6 @@ interface ListPaginationOptions {
    * intentionally (e.g. /v1/plans defaults to 20, /v1/resources to 50).
    */
   defaultLimit: number;
-  /** Hard upper bound on `limit`. Values above this are clamped down. */
   maxLimit: number;
 }
 

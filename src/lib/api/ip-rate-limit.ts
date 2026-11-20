@@ -1,18 +1,3 @@
-/**
- * IP-based rate limiting for unauthenticated endpoints.
- *
- * IMPORTANT: Storage scope and deployment considerations
- * - This module uses an in-memory LRU cache for rate limiting. The cache is
- *   per-process and volatile. In serverless or multi-instance deployments
- *   (e.g., Vercel, container replicas), requests may hit different instances
- *   with separate rate limit counters.
- * - For production-grade reliability, consider using a shared store (e.g., Redis)
- *   with atomic increment operations.
- * - Current implementation provides "best effort" rate limiting that works well
- *   for single-instance deployments and provides some protection in multi-instance
- *   deployments (each instance enforces its own limits).
- */
-
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
@@ -20,15 +5,9 @@ import { assertNever } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import { isIP } from 'node:net';
 
-/**
- * Configuration for IP rate limiting
- */
 type IpRateLimitConfig = {
-  /** Maximum requests allowed within the window */
   maxRequests: number;
-  /** Time window in milliseconds */
   windowMs: number;
-  /** Maximum unique IPs to track (LRU eviction) */
   maxTrackedIps?: number;
 };
 
@@ -42,70 +21,35 @@ type IpExtractionConfig = {
 const UNKNOWN_IP_WARN_INTERVAL_MS = 60_000;
 let lastUnknownIpWarnTimestamp = 0;
 
-/**
- * Default rate limit configurations for different endpoint types
- */
 export const IP_RATE_LIMIT_CONFIGS = {
-  /** Health check endpoints - very permissive for monitoring systems */
   health: {
     maxRequests: 60,
-    windowMs: 60 * 1000, // 60 requests per minute
+    windowMs: 60 * 1000,
   },
-  /** Webhook endpoints - permissive for payment processors */
   webhook: {
     maxRequests: 100,
-    windowMs: 60 * 1000, // 100 requests per minute
+    windowMs: 60 * 1000,
   },
-  /** Public API endpoints - more restrictive */
   publicApi: {
     maxRequests: 30,
-    windowMs: 60 * 1000, // 30 requests per minute
+    windowMs: 60 * 1000,
   },
-  /** Documentation endpoints - moderately permissive */
   docs: {
     maxRequests: 30,
-    windowMs: 60 * 1000, // 30 requests per minute
+    windowMs: 60 * 1000,
   },
-  /** Internal endpoints (cron/worker, e.g. /api/internal/) - permissive for single-worker traffic */
   internal: {
     maxRequests: 60,
-    windowMs: 60 * 1000, // 60 requests per minute
+    windowMs: 60 * 1000,
   },
 } as const;
 
-/**
- * Extracts client IP address from a request, handling proxies correctly.
- *
- * IP extraction priority:
- * 1. X-Forwarded-For header (mode depends on IpExtractionConfig)
- * 2. X-Real-IP header
- * 3. CF-Connecting-IP (Cloudflare deployments)
- * 4. Falls back to 'unknown' if no IP can be determined
- *
- * Trust modes:
- * - leftmost: first IP in the chain (Vercel-friendly default)
- * - rightmost-untrusted: traverse right -> left, trim trusted proxies from the
- *   right edge, then return the first untrusted IP encountered
- * - trusted-proxies: traverse left -> right and return the first IP in the
- *   chain that is not trusted
- *
- * Example chain: "spoofed-client, real-client, trusted-proxy"
- * - rightmost-untrusted => "real-client"
- * - trusted-proxies => "spoofed-client"
- *
- * Prefer rightmost-untrusted when you trust only known right-edge proxies.
- *
- * @param request - The incoming HTTP request
- * @param config - Optional extraction config for proxy trust model
- * @returns The client IP address or 'unknown' if not determinable
- */
 export function getClientIp(
   request: Request,
   config?: IpExtractionConfig,
 ): string {
   const resolvedConfig = resolveIpExtractionConfig(config);
 
-  // Try X-Forwarded-For first (common with reverse proxies/load balancers)
   const forwardedFor = request.headers.get('x-forwarded-for');
   if (forwardedFor) {
     const clientIp = extractIpFromForwardedFor(forwardedFor, resolvedConfig);
@@ -114,19 +58,16 @@ export function getClientIp(
     }
   }
 
-  // Try X-Real-IP (set by some reverse proxies like nginx)
   const realIp = request.headers.get('x-real-ip');
   if (realIp && isValidIp(realIp)) {
     return realIp;
   }
 
-  // For Vercel deployments, check CF-Connecting-IP (Cloudflare) if used
   const cfIp = request.headers.get('cf-connecting-ip');
   if (cfIp && isValidIp(cfIp)) {
     return cfIp;
   }
 
-  // Fallback - in serverless environments, there's often no direct socket access
   logUnknownIpFallback();
   return 'unknown';
 }
@@ -214,12 +155,6 @@ function isValidIp(ip: string): boolean {
   return isIP(ip) !== 0;
 }
 
-/**
- * Creates an IP-based rate limiter with the given configuration.
- *
- * @param config - Rate limit configuration
- * @returns A function that checks and enforces rate limits
- */
 export function createIpRateLimiter(
   config: IpRateLimitConfig,
 ): SlidingWindowLimiter {
@@ -230,12 +165,8 @@ export function createIpRateLimiter(
   });
 }
 
-// Pre-configured rate limiters for common endpoint types
 const rateLimiters = new Map<string, SlidingWindowLimiter>();
 
-/**
- * Gets or creates a rate limiter for a specific endpoint type.
- */
 function getRateLimiter(
   type: keyof typeof IP_RATE_LIMIT_CONFIGS,
 ): SlidingWindowLimiter {
@@ -248,13 +179,6 @@ function getRateLimiter(
   return limiter;
 }
 
-/**
- * Checks IP-based rate limit for a request.
- *
- * @param request - The incoming HTTP request
- * @param type - The type of endpoint (determines rate limit config)
- * @throws RateLimitError if rate limit exceeded
- */
 export function checkIpRateLimit(
   request: Request,
   type: keyof typeof IP_RATE_LIMIT_CONFIGS,
@@ -265,9 +189,6 @@ export function checkIpRateLimit(
   limiter.check(ip);
 }
 
-/**
- * Clears all rate limiters. Useful for testing.
- */
 export function clearAllRateLimiters(): void {
   for (const limiter of rateLimiters.values()) {
     limiter.clear();

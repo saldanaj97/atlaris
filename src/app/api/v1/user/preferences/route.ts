@@ -144,11 +144,6 @@ async function assertCanPersistSlot(
   }
 }
 
-/**
- * Grounded picks are Pro-only, must be in the role's catalog, and are only
- * accepted while grounded generation is on for the user's tier and their
- * Clerk plan has the grounded_model_picks feature.
- */
 async function assertCanPersistGroundedPicks(
   tier: SubscriptionTier,
   authUserId: string,
@@ -265,13 +260,6 @@ function toPreferencesPatchResponse(saved: UserModelPreferenceValues) {
   };
 }
 
-/**
- * GET /api/v1/user/preferences
- *
- * Returns raw saved model slots (nullable, including out-of-tier IDs) plus
- * effective resolved IDs for the current tier, the persistable outline picker
- * list, and the Pro-only models Starter sees disabled. Never writes.
- */
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ req, actor }) => {
@@ -311,13 +299,6 @@ export const GET = requestBoundary.route(
   },
 );
 
-/**
- * PATCH /api/v1/user/preferences
- *
- * Updates saved model preference slots. Validates each provided ID against the
- * current tier × operation policy. Does not rewrite out-of-tier saved values
- * on GET; those are rejected here if the client tries to persist them.
- */
 export const PATCH = requestBoundary.route(
   { rateLimit: 'mutation' },
   async ({ req, actor, db }) => {
@@ -344,7 +325,6 @@ export const PATCH = requestBoundary.route(
     const userTier = actor.subscriptionTier;
     const patch: UserModelPreferencePatch = parsed.data;
 
-    // Checked together; the first failing slot, in this order, is reported.
     const slotChecks = await Promise.allSettled([
       assertCanPersistSlot(
         userTier,

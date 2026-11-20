@@ -51,9 +51,6 @@ export type ModuleLessonGenerationTaskRow = Pick<
   | 'lessonContent'
 >;
 
-/**
- * Ownership-scoped plan + module + ordered tasks for module lesson batch generation.
- */
 export type ModuleLessonGenerationContext = {
   readonly plan: ModuleLessonGenerationPlanRow;
   readonly module: InferSelectModel<typeof modules>;
@@ -71,9 +68,6 @@ function moduleOwnedByUser(userId: string) {
   )`;
 }
 
-/**
- * Loads plan (prompt fields), module, and tasks in module order. Null if module/plan not found for user.
- */
 export async function loadModuleLessonGenerationContext(
   dbClient: GenerationDb,
   planId: string,
@@ -141,7 +135,6 @@ export type LessonGenerationClaimResult =
   | { readonly kind: 'not_found' };
 
 type ModuleLessonWorkflowClaimMetadata = {
-  /** Runtime marker stored in `lessonGenerationMetadata.workflow.provider`. */
   readonly provider: 'workflow-sdk' | 'cloudflare-workflow';
   readonly runId: string;
   readonly startedAt: string;
@@ -169,11 +162,6 @@ function assertParsedTasksMatchCurrentTaskRows(
   }
 }
 
-/**
- * After `generating` claim, returns row to `not_generated` when work never ran
- * (e.g. flag/quota kill switch). Clears in-flight timestamps and error fields.
- * Keeps lessonGenerationMetadata so status polls can match workflowRunId and stop.
- */
 export async function revertModuleLessonGeneratingToNotGenerated(
   dbClient: GenerationDb,
   args: {
@@ -202,7 +190,6 @@ export async function revertModuleLessonGeneratingToNotGenerated(
       lessonGenerationCompletedAt: null,
       lessonGenerationFailedAt: null,
       lessonGenerationError: null,
-      // Keep lessonGenerationMetadata (workflow.runId) so status polls can terminate.
     })
     .where(
       and(
@@ -215,10 +202,6 @@ export async function revertModuleLessonGeneratingToNotGenerated(
     );
 }
 
-/**
- * CAS: merge `providerStartedAt` into owned module JSON metadata while status
- * is `generating`. Throws unless exactly one row matches.
- */
 export async function markModuleLessonProviderStarted(
   dbClient: GenerationDb,
   args: {
@@ -331,11 +314,6 @@ function classifyModuleLessonGenerationClaimState(
   return { kind: 'in_flight' };
 }
 
-/**
- * CAS: `not_generated` | `failed` → `generating` for an owned module row.
- * Surfaces `already_ready`, `in_flight`, and `not_found` without mutating.
- * Requires an owned parent plan with `generationStatus = 'ready'`.
- */
 export async function claimModuleLessonGenerationOrDescribe(
   dbClient: GenerationDb,
   planId: string,
@@ -527,9 +505,6 @@ async function updateTaskLessonsInTx(
   }
 }
 
-/**
- * Persists all task lessons, module ready fields, metadata, and AI usage in one RLS-aware transaction.
- */
 export async function commitModuleLessonBatchSuccess(
   dbClient: DbClient,
   input: CommitModuleLessonBatchSuccessInput,
@@ -593,15 +568,9 @@ export type CommitModuleLessonGenerationFailureInput = {
   readonly planId: string;
   readonly moduleId: string;
   readonly now?: () => Date;
-  /** Usage of the calls the failed run was billed for, recorded against the plan. */
   readonly usage?: CanonicalAIUsage;
 };
 
-/**
- * Marks module lesson generation failed without touching task `lesson_content`
- * (own transaction), recording `usage` in it when given, so a retried failure
- * step that finds the module no longer generating records nothing twice.
- */
 export async function commitModuleLessonGenerationFailure(
   dbClient: DbClient,
   input: CommitModuleLessonGenerationFailureInput,

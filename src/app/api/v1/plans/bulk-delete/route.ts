@@ -59,10 +59,6 @@ function parseBulkDeletePlanIds(body: BulkDeleteRequestBody): string[] {
   ];
 }
 
-/**
- * POST /api/v1/plans/bulk-delete
- * Deletes up to one page of user-owned plans and returns per-plan results.
- */
 export const POST = requestBoundary.route(
   { rateLimit: 'mutation' },
   async ({ req, actor }) => {

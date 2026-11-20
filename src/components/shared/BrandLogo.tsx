@@ -11,16 +11,9 @@ import Image from 'next/image';
 import Link from 'next/link';
 
 interface BrandLogoProps {
-  /** Size variant for responsive display */
   size?: BrandLogoSize;
-  /** Optional click handler (e.g., to close mobile menu) */
   onClick?: () => void;
-  /** Destination for linked lockups. Defaults to the marketing landing page. */
   href?: string;
-  /**
-   * When false, render the lockup without a destination
-   * (e.g. a second lockup on a page that already links home).
-   */
   linked?: boolean;
 }
 
@@ -70,12 +63,6 @@ function LockupImage({
   );
 }
 
-/**
- * Shared brand logo used in chrome. Linked lockups go to `/landing` by
- * default because `/` sends signed-in users to dashboard; app chrome passes
- * `href` to stay inside the app. Unlinked lockups
- * keep the same visible crop without a destination.
- */
 export default function BrandLogo({
   size = 'md',
   onClick,

@@ -12,7 +12,6 @@ import { useEffect, type ReactNode } from 'react';
 
 interface ThemeProviderProps {
   children: ReactNode;
-  /** Per-request CSP nonce for next-themes' inline anti-flash script. */
   nonce?: string;
 }
 
@@ -44,16 +43,6 @@ export function ThemeProvider({ children, nonce }: ThemeProviderProps) {
   );
 }
 
-/**
- * Crossfades OS light/dark changes while the theme follows the system.
- *
- * next-themes applies the new theme inside its own media-query listener, so a
- * view transition started there would capture the page already switched.
- * Animation frames run after media-query listeners and before paint, so the
- * frame callback puts the previous theme back and applies the new one inside a
- * crossfade itself, whether or not next-themes has switched yet (on a busy
- * page its listener can run after the frame). Nothing is painted in between.
- */
 function SystemThemeCrossfade() {
   const { theme } = useTheme();
 

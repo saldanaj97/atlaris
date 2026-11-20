@@ -2,7 +2,6 @@
 
 import { Button } from '@/components/ui/button';
 
-/** Reloads the current document so the maintenance guard can re-evaluate. */
 export function MaintenanceRecheckButton() {
   return (
     <Button

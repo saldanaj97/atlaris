@@ -63,7 +63,6 @@ function normalizedStatus(
   return status === 'inactive' ? 'paused' : status;
 }
 
-// Intentional lifecycle order: not_started, active, completed, paused, generating, failed.
 const STATUS_SORT_RANK = sql`
   case status
     when 'not_started' then 0

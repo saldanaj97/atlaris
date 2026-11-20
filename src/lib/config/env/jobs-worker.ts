@@ -11,9 +11,7 @@ import {
  * (docs/architecture/cloudflare-jobs-runtime.md, Decision 4).
  */
 interface JobsWorkerEnv {
-  /** Worker origin, e.g. `https://workers-staging.atlaris.app`. */
   readonly url: string | undefined;
-  /** HMAC key shared with the Worker's `JOBS_SIGNING_SECRET`. */
   readonly signingSecret: string | undefined;
 }
 

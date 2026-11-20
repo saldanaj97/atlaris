@@ -72,7 +72,6 @@ export type PlanListPage = {
   selectionCandidates?: FreeAccessPlanCandidate[];
 };
 
-/** Flat resource on module-detail task (type/title/url map to UI). */
 export type ModuleDetailResource = {
   id: string;
   order: number;
@@ -83,9 +82,6 @@ export type ModuleDetailResource = {
   durationMinutes: number | null;
 };
 
-/**
- * Task row for module-detail page (persisted progress as `status`, not nested progress row).
- */
 export type ModuleDetailTask = {
   id: string;
   order: number;
@@ -96,11 +92,9 @@ export type ModuleDetailTask = {
   lessonContent: LessonContent | null;
   lessonContentUpdatedAt: Date | null;
   resources: ModuleDetailResource[];
-  /** Research sources the lesson cites; empty unless grounded sources are shown. */
   sources: LessonSource[];
 };
 
-/** A research source cited by a lesson, resolved from its citation key. */
 export type LessonSource = {
   citationKey: string;
   title: string;
@@ -123,9 +117,6 @@ export type ModuleLessonGenerationSummary = {
   error: string | null;
 };
 
-/**
- * Current module with nested tasks for module-detail chrome and lessons UI.
- */
 export type ModuleDetailModule = {
   id: string;
   order: number;
@@ -136,17 +127,14 @@ export type ModuleDetailModule = {
   tasks: ModuleDetailTask[];
 };
 
-/** Plan module picker item with sequential lock semantics. */
 export type ModuleDetailNavItem = {
   id: string;
   order: number;
   title: string;
   isLocked: boolean;
-  /** Visual complete: every task done. Empty modules stay false. */
   isComplete: boolean;
 };
 
-/** Server read-model for `/plans/[planId]/modules/[moduleId]`. */
 export type ModuleDetailReadModel = {
   module: ModuleDetailModule;
   planId: string;
@@ -154,7 +142,6 @@ export type ModuleDetailReadModel = {
   totalModules: number;
   previousModuleId: string | null;
   nextModuleId: string | null;
-  /** True when all modules before the current one are complete (inverse of nav lock on current). */
   previousModulesComplete: boolean;
   allModules: ModuleDetailNavItem[];
 };

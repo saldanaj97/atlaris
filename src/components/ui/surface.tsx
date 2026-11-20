@@ -26,9 +26,6 @@ const surfaceVariants = cva(
   },
 );
 
-/**
- * Token-backed product panel; avoid marketing glass (`backdrop-blur`, `bg-card/*` frosts) here.
- */
 function Surface({
   className,
   variant,

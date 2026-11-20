@@ -195,11 +195,6 @@ async function attachEmailNotificationWorkflowRun(
   return { outcome: 'in_flight', run: current };
 }
 
-/**
- * Claims a queued run from inside its workflow entrypoint. The workflow
- * step attaches its own ID; accepting the same ID makes step replays
- * idempotent and closes the start-to-first-step race.
- */
 export const claimEmailNotificationDeliveryRun =
   attachEmailNotificationWorkflowRun;
 
@@ -270,10 +265,6 @@ export async function recordEmailNotificationDeliveryRunRetry(
   return updated[0] ? { outcome: 'recorded' } : { outcome: 'stale' };
 }
 
-/**
- * Advances exactly one completed page. The workflow ID and previous cursor are
- * both compared so stale/reclaimed workflow attempts cannot double-count work.
- */
 export async function advanceEmailNotificationDeliveryRun(
   args: {
     runId: string;

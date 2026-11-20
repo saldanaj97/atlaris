@@ -1,14 +1,10 @@
 import type { OutlineIssue } from '@/features/plans/outline/checks';
 import type { NewGenerationQualityIssue } from '@/lib/db/queries/types/generation-quality-issues.types';
 
-/** What the outline checks found before and after the repair pass. */
 export type OutlineQualityPasses = {
-  /** Code checks plus verifier issues on the first outline. */
   readonly pass0: readonly OutlineIssue[];
-  /** Issues on the repaired outline; `null` when no repair ran or it failed. */
   readonly pass1: {
     readonly issues: readonly OutlineIssue[];
-    /** Whether the verifier checked the repaired outline. */
     readonly verifierRan: boolean;
   } | null;
 };

@@ -25,10 +25,8 @@ import {
 import { sendGroundedJsonCall } from '@/features/plans/outline/grounded-writer';
 import { z } from 'zod';
 
-/** Tagged on AI Gateway log entries. */
 export const OUTLINE_VERIFY_STAGE = 'grounded-outline-verify';
 
-/** Issues kept from one verifier call; the rest are dropped. */
 export const MAX_VERIFIER_ISSUES = 20;
 
 const BLOCK_REF_PATTERN = /^(?:plan|modules\[\d+\](?:\.tasks\[\d+\])?)$/;
@@ -49,12 +47,10 @@ export type OutlineVerifierRun = {
   readonly usage: CanonicalAIUsage;
 };
 
-/** Free runs code checks only; starter and pro also run the verifier. */
 export function isOutlineVerifierAvailable(tier: SubscriptionTier): boolean {
   return getGroundedModelRoute(tier, 'outline_verify') !== null;
 }
 
-/** Verifier codes are namespaced `verifier.<code>`, lowercase snake case. */
 function toVerifierCode(code: string): string {
   const slug = code
     .toLowerCase()
@@ -64,7 +60,6 @@ function toVerifierCode(code: string): string {
   return `verifier.${slug || 'issue'}`;
 }
 
-/** A ref outside the outline points at the whole plan. */
 function toBlockRef(
   blockRef: string | null | undefined,
   modules: readonly ParsedModule[],
@@ -106,7 +101,6 @@ export function parseVerifierOutput(
   }));
 }
 
-/** Brief first (cached, shared with the writer), then the outline to check. */
 export function buildVerifierUserParts(
   input: GenerationInput,
   modules: readonly ParsedModule[],

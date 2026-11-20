@@ -72,7 +72,6 @@ export function useStartAiPlanGeneration(): {
     setIsSubmitting(true);
 
     if (isPostHogEnabledInCurrentEnvironment()) {
-      // Track plan creation attempt with non-PII form metadata.
       posthog.capture('plan_creation_started', {
         skill_level: data.skillLevel,
         weekly_hours: data.weeklyHours,
@@ -147,8 +146,6 @@ export function useStartAiPlanGeneration(): {
         toast.error(message);
       })
       .finally(() => {
-        // The 202 arrives before the plan page loads; stay locked so the form
-        // cannot submit a second plan in that window.
         if (navigatingToPlan) {
           return;
         }

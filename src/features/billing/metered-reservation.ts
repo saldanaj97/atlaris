@@ -71,7 +71,6 @@ async function lockUsageMetricsForMonth(
 }
 
 type ReserveMeteredUsageOptions = {
-  /** Override the current-month resolver (testing or cross-midnight scenarios). */
   now?: () => Date;
 };
 

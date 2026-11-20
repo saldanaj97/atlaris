@@ -63,10 +63,6 @@ async function assertRegenerationModelAllowed(
   }
 }
 
-/**
- * POST /api/v1/plans/:planId/regenerate
- * Enqueues a regeneration job for an existing plan with optional parameter overrides.
- */
 export const POST: PlainHandler = requestBoundary.route(
   { rateLimit: 'aiGeneration' },
   async ({ req, params, actor, db }) => {

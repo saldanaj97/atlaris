@@ -25,7 +25,6 @@ export interface TaskStatusUpdate {
 
 interface UseTaskStatusBatcherOptions {
   flushAction: (updates: TaskStatusUpdate[]) => Promise<void>;
-  /** When set, pending/flushed updates for unknown task ids are dropped (navigation/regen). */
   scopedTaskIds?: ReadonlySet<string>;
   debounceMs?: number;
   maxWaitMs?: number;
@@ -34,7 +33,6 @@ interface UseTaskStatusBatcherOptions {
 const DEFAULT_DEBOUNCE_MS = 2000;
 const DEFAULT_MAX_WAIT_MS = 5000;
 
-/** Stable scope identity for effect deps when parent rebuilds Set with same ids. */
 function scopedTaskIdsKey(
   scopedTaskIds: ReadonlySet<string> | undefined,
 ): string {
@@ -81,16 +79,6 @@ function notifyDroppedTaskUpdates(droppedCount: number, context: string): void {
   });
 }
 
-/**
- * Batches task status updates within a debounce window into a single server request.
- * Returns a `queue` function that returns a Promise resolving/rejecting when the batch flushes.
- *
- * - Deduplicates: multiple clicks on the same task keep only the latest target status.
- * - Net-zero detection: if a task is toggled back to its original status, it's removed
- *   from the batch entirely and both promises resolve immediately.
- * - Shows a single toast on batch failure.
- * - Flushes pending updates on unmount to prevent data loss on navigation.
- */
 export function useTaskStatusBatcher({
   flushAction,
   scopedTaskIds,
@@ -208,7 +196,6 @@ export function useTaskStatusBatcher({
         existing.resolvers.push({ resolve, reject });
 
         if (nextStatus === existing.originalStatus) {
-          // Net zero — user toggled back to original. Resolve all and drop.
           for (const r of existing.resolvers) r.resolve();
           pending.delete(taskId);
           if (pending.size === 0) {
@@ -253,7 +240,6 @@ export function useTaskStatusBatcher({
     if (previousScopeKeyRef.current === scopeKey) return;
     previousScopeKeyRef.current = scopeKey;
 
-    // Scope change (navigation/regen): drop stale pending instead of flushing under new scope.
     dropOutOfScopePending();
   }, [dropOutOfScopePending, scopeKey]);
 

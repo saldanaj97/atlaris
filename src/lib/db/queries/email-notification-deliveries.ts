@@ -395,7 +395,6 @@ export async function claimEmailNotificationDelivery(
 
     const storedRequest = asProviderRequest(existing.providerRequest);
 
-    // Measure ambiguity from first claim time; reclaim must not reset the window.
     const ambiguityStartedAt = existing.createdAt;
     const ageMs = now.getTime() - ambiguityStartedAt.getTime();
     const failureClass =

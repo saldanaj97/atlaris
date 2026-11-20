@@ -20,11 +20,6 @@ interface OwnedPlanQueryParams {
   dbClient: PlanQueryClient;
 }
 
-/**
- * Parameters for {@link lockOwnedPlanById}. Unlike {@link OwnedPlanQueryParams},
- * `dbClient` is required because the query uses `.for('update')` which must
- * run on the transaction connection to hold the row lock.
- */
 interface LockedOwnedPlanQueryParams {
   planId: string;
   ownerUserId: string;
@@ -41,9 +36,6 @@ function ownedPlanWhere(
   );
 }
 
-/**
- * Returns the owned plan row or null when not found/inaccessible.
- */
 export async function selectOwnedPlanById({
   planId,
   ownerUserId,
@@ -58,9 +50,6 @@ export async function selectOwnedPlanById({
   return plan ?? null;
 }
 
-/**
- * Locks and returns the minimal owned-plan row needed in transactional flows.
- */
 export async function lockOwnedPlanById({
   planId,
   ownerUserId,

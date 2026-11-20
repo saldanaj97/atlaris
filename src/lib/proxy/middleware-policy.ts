@@ -1,6 +1,5 @@
 import { stripTrailingSlash } from '@/lib/path/strip-trailing-slash';
 
-/** The page prefixes here are also listed in the `config.matcher` of src/proxy.ts. */
 const PROTECTED_PREFIXES = [
   '/dashboard',
   '/api',
@@ -10,13 +9,11 @@ const PROTECTED_PREFIXES = [
   '/analytics',
 ] as const;
 
-/** Exact paths that stay reachable during maintenance (route-level auth applies). */
 const MAINTENANCE_MODE_BYPASS_PATHS = [
   '/api/health/worker',
   '/api/v1/notifications/email/unsubscribe',
 ] as const;
 
-/** Which closed-app page is active, if any. Maintenance wins over the launch waitlist. */
 export type SiteGate = 'maintenance' | 'waitlist';
 
 const SITE_GATE_PAGES = {
@@ -26,7 +23,6 @@ const SITE_GATE_PAGES = {
 
 type SiteGatePage = (typeof SITE_GATE_PAGES)[SiteGate];
 
-/** Public marketing pages that stay live while a gate is on; app links on them still hit the redirect. */
 const MAINTENANCE_MODE_MARKETING_PATHS = [
   '/landing',
   '/pricing',
@@ -38,7 +34,6 @@ const PROVIDER_WEBHOOK_ROUTE_PREFIXES = [
   '/api/v1/clerk/billing/webhook',
 ] as const;
 
-/** Signed email unsubscribe links authenticate via HMAC; no Clerk session. */
 const PUBLIC_SIGNED_EMAIL_UNSUBSCRIBE_PATH =
   '/api/v1/notifications/email/unsubscribe' as const;
 
@@ -59,31 +54,21 @@ function isInternalWorkerRoute(path: string): boolean {
 
 export function isProtectedRoute(pathname: string): boolean {
   const path = stripTrailingSlash(pathname);
-  // Payment/auth provider webhooks bypass Clerk; route-level signatures apply.
   if (isProviderWebhookRoute(path)) {
     return false;
   }
-  // One-click unsubscribe authenticates via signed token, not Clerk.
   if (isSignedEmailUnsubscribeRoute(path)) {
     return false;
   }
-  // Internal worker/maintenance routes bypass Clerk; each route must enforce
-  // its own worker token auth (see assertInternalWorkerAccess).
   if (isInternalWorkerRoute(path)) {
     return false;
   }
-  // Worker health probes authenticate via route-level worker token, not Clerk.
   if (path === '/api/health/worker') {
     return false;
   }
   return PROTECTED_PREFIXES.some((prefix) => path.startsWith(prefix));
 }
 
-/**
- * Auth page for a signed-out visitor to a protected route. The landing and
- * pricing calls to action open the plan form, so a visitor there is most
- * likely new and goes to sign-up; Clerk's sign-up page links to sign-in.
- */
 export function resolveAnonymousAuthPath(
   pathname: string,
 ): '/auth/sign-in' | '/auth/sign-up' {
@@ -96,11 +81,9 @@ function isSiteGatePage(path: string): boolean {
   return (Object.values(SITE_GATE_PAGES) as string[]).includes(path);
 }
 
-/** Paths the site gate never redirects, so the proxy can skip flag evaluation. */
 export function isSiteGateExempt(pathname: string): boolean {
   const path = stripTrailingSlash(pathname);
   return (
-    // Internal worker/maintenance routes enforce their own worker token auth.
     isInternalWorkerRoute(path) ||
     (MAINTENANCE_MODE_BYPASS_PATHS as readonly string[]).includes(path) ||
     (MAINTENANCE_MODE_MARKETING_PATHS as readonly string[]).includes(path)
@@ -119,7 +102,6 @@ export function resolveViewerSiteGate(
   return gate === 'waitlist' && signedIn ? null : gate;
 }
 
-/** Redirect target while a site gate is on (or off), or null when the route is allowed. */
 export function resolveSiteGateRedirectPath(
   gate: SiteGate | null,
   pathname: string,
@@ -139,21 +121,18 @@ export function resolveSiteGateRedirectPath(
   if (path === target) {
     return null;
   }
-  // Invited users sign back in here; Clerk's Waitlist mode decides who has an account.
   if (
     gate === 'waitlist' &&
     resolveSiteGateRedirectSource(path) === 'sign-in'
   ) {
     return null;
   }
-  // `/` sends signed-in users to the dashboard; keep everyone on the landing page.
   if (path === '/') {
     return '/landing';
   }
   return target;
 }
 
-/** Auth entry point the visitor was heading to, so the gate page can tailor its copy. */
 export function resolveSiteGateRedirectSource(
   pathname: string,
 ): 'sign-in' | 'sign-up' | null {

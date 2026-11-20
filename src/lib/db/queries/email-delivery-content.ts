@@ -26,9 +26,7 @@ export type EmailDailyReminderPlan = {
 export async function listEmailActivityDayKeysForUser(args: {
   userId: string;
   timeZone: string;
-  /** Inclusive local date key YYYY-MM-DD */
   startDateKeyInclusive: string;
-  /** Exclusive local date key YYYY-MM-DD */
   endDateKeyExclusive: string;
   dbClient: ContentDb;
 }): Promise<string[]> {
@@ -54,9 +52,6 @@ export async function listEmailActivityDayKeysForUser(args: {
   return rows.map((row) => row.day_key);
 }
 
-/**
- * One deterministic incomplete ready plan for daily reminder content, or null.
- */
 export async function findEmailDailyReminderPlanForUser(
   userId: string,
   dbClient: ContentDb,

@@ -3,9 +3,6 @@ import * as React from 'react';
 
 const PAGE_HEADER_SUBTITLE_CLASS = 'mt-1 type-body text-muted-foreground';
 
-/**
- * Product page title row: centralizes app title/subtitle scale so pages do not improvise typography.
- */
 function PageHeader({
   className,
   title,
@@ -18,7 +15,6 @@ function PageHeader({
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
-  /** Use `h2` for nested pages under a parent title. */
   titleAs?: 'h1' | 'h2';
   align?: 'start' | 'center';
 }) {

@@ -24,7 +24,6 @@ import { db as serviceRoleDb } from '@supabase/service-role';
 type SpendReader = Pick<DbClient, 'select'>;
 
 export type AiSpendGuardDeps = {
-  /** Service-role client for the per-tier sum. */
   readonly serviceDb?: SpendReader;
   readonly now?: () => Date;
 };
@@ -52,7 +51,6 @@ function formatUtcDate(date: Date): string {
   return UTC_DATE_FORMAT.format(date);
 }
 
-/** The daily pools: one per paid tier, and one for all free trials. */
 type AiPool = AiBudgetTier | 'trial';
 
 const TIER_LABEL: Record<AiPool, string> = {
@@ -61,10 +59,6 @@ const TIER_LABEL: Record<AiPool, string> = {
   pro: 'Pro',
 };
 
-/**
- * One Sentry issue per tier, alert share and UTC day, so a "new issue" alert
- * fires once a day for each.
- */
 function reportTierSpend(
   tier: AiPool,
   spent: number,
@@ -105,15 +99,6 @@ function reportTierSpend(
   );
 }
 
-/**
- * Admission check before any route starts paid AI work (DEV-208). Refuses
- * with `503 AI_GENERATION_PAUSED` once the actor's tier has spent its daily
- * ceiling today, then with `429 AI_BUDGET_EXHAUSTED` once this user's
- * spend this month reaches their tier ceiling. Fails closed when spend cannot
- * be read. A free trial draws on its own daily pool and a smaller monthly cap
- * (`TRIAL_AI_BUDGET`); paid Starter spend counts toward neither. The `free` tier (no subscription) has no budget to check; the
- * paid-only entitlement gate is what keeps it off paid AI.
- */
 export async function assertAiSpendAllowed(
   actor: {
     readonly id: string;
@@ -146,7 +131,6 @@ export async function assertAiSpendAllowed(
       sumUserAiSpendMicrousd(actor.id, monthStart, dbClient),
     ]);
   } catch (err) {
-    // Fail closed, like the hourly limiter: unverified spend is not admitted.
     logger.error(
       { err, userId: actor.id, event: 'ai_spend_check_failed' },
       'AI spend check failed, failing closed',

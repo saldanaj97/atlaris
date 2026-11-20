@@ -2,7 +2,6 @@ import { Card } from '@/components/ui/card';
 import { LoadingStatus } from '@/components/ui/loading-status';
 import { Skeleton } from '@/components/ui/skeleton';
 
-/** Skeleton shaped like the create-plan hero, goal form and side note. */
 export default function CreatePlanLoading() {
   return (
     <div

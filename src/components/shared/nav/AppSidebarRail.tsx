@@ -47,7 +47,6 @@ const RAIL_CONTROL =
 const RAIL_ITEM = `${RAIL_CONTROL} size-[36px] pointer-coarse:size-(--at-semantic-size-control-touch,2.75rem)`;
 const RAIL_FOOTER_ITEM = `${RAIL_CONTROL} size-[44px]`;
 
-/** Desktop-only 4rem icon rail. Renders the content of the collapsed sidebar. */
 export default function AppSidebarRail({
   id,
   pathname,
@@ -64,10 +63,6 @@ export default function AppSidebarRail({
   return (
     <>
       <div className='flex h-(--at-semantic-layout-header-min,4rem) shrink-0 items-center justify-center pt-[env(safe-area-inset-top,0px)]'>
-        {/* The mark and the expand control share one slot; the expand control
-            replaces the mark while the sidebar is hovered or focused. The mark
-            link stays out of the tab order (Dashboard covers the same
-            destination) so focus never lands on it while it is hidden. */}
         <div className='relative size-[32px] pointer-coarse:size-(--at-semantic-size-control-touch,2.75rem)'>
           <Link
             href={ROUTES.DASHBOARD}

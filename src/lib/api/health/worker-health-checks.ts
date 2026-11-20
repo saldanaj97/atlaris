@@ -1,5 +1,5 @@
-export const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000; // 10 minutes
-export const BACKLOG_THRESHOLD = 100; // pending jobs threshold
+export const STUCK_JOB_THRESHOLD_MS = 10 * 60 * 1000;
+export const BACKLOG_THRESHOLD = 100;
 
 export interface HealthCheckResponse {
   status: 'healthy' | 'unhealthy';

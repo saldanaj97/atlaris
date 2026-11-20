@@ -13,24 +13,15 @@ import {
 import { suggestedLessonBodyBudgetChars } from '@/features/lesson-content/module-lesson-prompts';
 import { LessonContentSchema } from '@/shared/schemas/lesson-content.schemas';
 
-/** `blockRef` for a problem with the lesson as a whole, not one block. */
 export const LESSON_BLOCK_REF = 'lesson';
 
-/** Code for every block-contract (schema) problem. */
 export const SCHEMA_INVALID_CODE = 'schema_invalid';
 
-/** Schema problems reported per lesson; the rest are dropped. */
 const MAX_SCHEMA_ISSUES = 10;
 
-/**
- * The body may run this far past the prompt's suggested budget before it
- * counts as too long. The budget is a hint, so the margin is wide.
- */
 export const LESSON_LENGTH_BUDGET_TOLERANCE = 1.5;
 
-/** `- `, `* `, `• `, `1. ` or `1) ` at the start of an item. */
 const LIST_MARKER_PATTERN = /^\s*(?:[-*•]|\d+[.)])\s+/;
-/** `Label: explanation`, the label at most a few words, optionally bold. */
 const LABEL_PATTERN =
   /^\s*(?:\*\*|__)?([^:*_\n]{1,60})(?:\*\*|__)?\s*:([\s\S]*)$/;
 
@@ -38,7 +29,6 @@ function issue(code: string, blockRef: string, message: string): LessonIssue {
   return { code, blockRef, message, source: 'code' };
 }
 
-/** Maps a schema error path to the block it points at. */
 function schemaBlockRef(path: readonly PropertyKey[]): string {
   const [root, index, field, item] = path;
   if (root === 'sourceIds') {
@@ -52,7 +42,6 @@ function schemaBlockRef(path: readonly PropertyKey[]): string {
     : `blocks[${index}]`;
 }
 
-/** The block contract from `LessonContentSchema`. */
 export function checkLessonSchema(content: LessonContent): LessonIssue[] {
   const parsed = LessonContentSchema.safeParse(content);
   if (parsed.success) {
@@ -83,7 +72,6 @@ function checkCompletionCriteria(
       ];
 }
 
-/** One takeaway item: a non-blank line, no list marker, a complete label. */
 function takeawayItemIssues(item: string, blockRef: string): LessonIssue[] {
   if (item.trim().length === 0) {
     return [issue('takeaway_blank', blockRef, 'The takeaway is empty')];
@@ -121,7 +109,6 @@ function takeawayItemIssues(item: string, blockRef: string): LessonIssue[] {
   return issues;
 }
 
-/** A `takeaways` block exists and every item in it is well formed. */
 function checkTakeaways(blocks: readonly LessonContentBlock[]): LessonIssue[] {
   const takeaways = blocks.flatMap((block, index) =>
     block.type === 'takeaways' ? [{ block, index }] : [],
@@ -156,7 +143,6 @@ function checkTakeaways(blocks: readonly LessonContentBlock[]): LessonIssue[] {
   });
 }
 
-/** Runs of two or more consecutive lines that start with `|`. */
 function tableRuns(text: string): string[][] {
   const runs: string[][] = [];
   let run: string[] = [];
@@ -210,7 +196,6 @@ function checkTable(rows: readonly string[], blockRef: string): LessonIssue[] {
   return issues;
 }
 
-/** Markdown tables in text blocks have borders and matching columns. */
 function checkTables(blocks: readonly LessonContentBlock[]): LessonIssue[] {
   return blocks.flatMap((block, index) => {
     if (
@@ -244,7 +229,6 @@ function blockChars(block: LessonContentBlock): number {
   }
 }
 
-/** The body stays within the budget the writer prompt suggested. */
 function checkLength(
   blocks: readonly LessonContentBlock[],
   estimatedMinutes: number,
@@ -263,13 +247,6 @@ function checkLength(
     : [];
 }
 
-/**
- * Structural code checks on one lesson, run on every tier: the block
- * contract, a completion_criteria block, well-formed takeaways, aligned
- * table borders, the length budget and the 3a citation checks. Rules are
- * general, never about a topic. Pure; an empty list passes. A lesson that
- * breaks the block contract gets only the schema issues.
- */
 export function runLessonCodeChecks(
   content: LessonContent,
   context: {

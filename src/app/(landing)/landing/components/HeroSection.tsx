@@ -19,7 +19,6 @@ const copy = {
   plans: 'Starter and Pro plans. Cancel any time.',
 } as const;
 
-/** Example plan shown in the hero. Illustrative data, labelled as such. */
 const EXAMPLE_PLAN = {
   title: 'TypeScript for React',
   weeks: 2,
@@ -30,7 +29,6 @@ const EXAMPLE_PLAN = {
     { name: 'Generics in practice', hours: 2, state: 'next' },
     { name: 'Typed hooks', hours: 2, state: 'todo' },
   ],
-  // Generics in practice, the module in progress (as in RoadmapPreview).
   currentTasks: [
     { name: 'Read: generic constraints', minutes: 40, done: true },
     { name: 'Exercise: type a fetch helper', minutes: 50, done: true },
@@ -47,7 +45,6 @@ const doneMinutes = EXAMPLE_PLAN.currentTasks
   .filter((task) => task.done)
   .reduce((sum, task) => sum + task.minutes, 0);
 const plannedMinutes = EXAMPLE_PLAN.modules[currentModuleIndex].hours * 60;
-// Finished modules count in full, the current one by its finished tasks.
 const moduleProgress = EXAMPLE_PLAN.modules.map((module, index) => ({
   label: `Module ${index + 1}`,
   done:
@@ -88,7 +85,6 @@ export function HeroSection({
             id='landing-hero-heading'
             className={cn('mx-auto max-w-[15ch] text-balance', styles.headline)}
           >
-            {/* "Get" stays with "a plan" rather than ending the first line. */}
             Name a goal. Get{'\u00a0'}a plan for the <em>hours</em> you have.
           </h1>
           <p
@@ -153,7 +149,6 @@ const moduleDotClass: Record<ModuleState, string> = {
   todo: 'border-muted-foreground bg-card',
 };
 
-/** Mono label above a card, on a frosted chip so it reads on any part of the light. */
 function CardLabel({ children }: { children: string }) {
   return (
     // oxlint-disable-next-line shadcn/require-static-classes -- CSS module classes are complete but opaque to the rule
@@ -192,8 +187,6 @@ function HeroPlanCards() {
           styles.chip,
         )}
       >
-        {/* Non-breaking spaces before each "·" keep it off the end of a line,
-            and keep each number with its unit. */}
         Example plan{'\u00a0'}· {EXAMPLE_PLAN.title}
         {'\u00a0'}· {EXAMPLE_PLAN.weeks}
         {'\u00a0'}weeks{'\u00a0'}·{' '}

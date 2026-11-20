@@ -11,8 +11,6 @@ export type PlanCapSlotState = {
   readonly generationStatus: LearningPlanInsert['generationStatus'];
 };
 
-// ─── Shared insert defaults ─────────────────────────────────────
-
 /**
  * Default column values applied when a learning plan enters the `generating`
  * state for the first time (INSERT in {@link atomicCheckAndInsertPlan}).
@@ -63,10 +61,6 @@ export async function selectUserEntitlementForAdmission(
   return user;
 }
 
-/**
- * Count plans that consume the user's plan quota (eligible + in-flight generating).
- * Accepts a DB handle or transaction for atomic check-and-insert.
- */
 export async function countPlansContributingToCap(
   dbOrTx: Pick<DbClient, 'select'>,
   userId: string,
@@ -100,8 +94,6 @@ export async function countPlansContributingToCap(
 export function planOwnsActiveCapSlot(plan: PlanCapSlotState): boolean {
   return plan.isQuotaEligible || plan.generationStatus === 'generating';
 }
-
-// ─── UPDATE helper ──────────────────────────────────────────────
 
 type PlanStatusUpdateClient = Pick<DbClient, 'update'>;
 

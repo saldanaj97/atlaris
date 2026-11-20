@@ -9,16 +9,9 @@ import { JOB_TYPES } from '@/features/job-queue/types';
 import { jobQueue } from '@supabase/schema';
 import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm';
 
-/** A pending row untouched this long has lost its message. */
 export const REGENERATION_SWEEP_UNTOUCHED_MINUTES = 10;
-/** `sendBatch` accepts up to 100 messages; stay well under it. */
 export const REGENERATION_SWEEP_BATCH_LIMIT = 50;
 
-/**
- * Selects due `pending` regeneration rows untouched for 10 minutes and bumps
- * their `updated_at` in the same statement, so the next tick does not re-send
- * a row whose message is still queued. Highest priority, then oldest, first.
- */
 export async function claimRegenerationSweepJobIds(
   db: DbClient,
   limit: number = REGENERATION_SWEEP_BATCH_LIMIT,

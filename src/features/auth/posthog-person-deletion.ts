@@ -29,11 +29,6 @@ async function markPostHogPersonsDeleted(
     .where(inArray(users.authUserId, authUserIds));
 }
 
-/**
- * Deletes a just-deleted user's PostHog person and marks the row when PostHog
- * accepts it. Never throws: the account is already gone, and the jobs Worker
- * retries unmarked rows daily (`retryPostHogPersonDeletions`).
- */
 export async function deletePostHogPersonForDeletedUser(
   authUserId: string,
   {
@@ -63,11 +58,6 @@ export async function deletePostHogPersonForDeletedUser(
   }
 }
 
-/**
- * Deletes the PostHog persons of tombstoned users whose deletion PostHog has
- * not accepted yet, up to one bulk request per run. Throws when PostHog
- * rejects the request so the caller reports it.
- */
 export async function retryPostHogPersonDeletions({
   apiKey,
   db,

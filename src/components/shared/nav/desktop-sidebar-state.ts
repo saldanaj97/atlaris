@@ -12,7 +12,6 @@ export const DESKTOP_SIDEBAR_COLLAPSE_CONTROL_ID =
   'app-desktop-sidebar-collapse';
 export const DESKTOP_SIDEBAR_EXPAND_CONTROL_ID = 'app-desktop-sidebar-expand';
 
-/** Width of the collapsed desktop icon rail; content offset follows it. */
 export const DESKTOP_SIDEBAR_RAIL_WIDTH = '4rem';
 
 const OPEN_OFFSET = 'var(--at-semantic-layout-sidebar,14rem)';
@@ -32,18 +31,14 @@ function readStoredOpen(): boolean {
     const stored = localStorage.getItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY);
     if (stored === '0') return false;
     if (stored === '1') return true;
-  } catch {
-    // Private mode or disabled storage.
-  }
+  } catch {}
   return true;
 }
 
 function writeStoredOpen(open: boolean): void {
   try {
     localStorage.setItem(DESKTOP_SIDEBAR_OPEN_STORAGE_KEY, open ? '1' : '0');
-  } catch {
-    // Private mode or disabled storage.
-  }
+  } catch {}
 }
 
 function subscribeSidebarOpen(onStoreChange: () => void): () => void {

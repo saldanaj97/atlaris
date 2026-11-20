@@ -33,7 +33,6 @@ function toUserProfileResponse(user: ActorUser): UserProfileResponse {
   };
 }
 
-// GET /api/v1/user/profile, PUT /api/v1/user/profile
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ actor }) => {
@@ -67,10 +66,6 @@ export const PUT = requestBoundary.route(
       let nextUser = actor;
 
       if (parsed.data.name !== undefined) {
-        // updatedAt must use the DB clock (sql`now()`), not `new Date()`, so it shares
-        // the same clock as defaultNow() on insert. Otherwise Node-vs-Postgres clock
-        // skew can let updatedAt land at or before createdAt under concurrent load
-        // and break the strict-monotone assertion in tests/integration/api/user-profile.spec.ts.
         const updatedRows = await tx
           .update(users)
           .set({

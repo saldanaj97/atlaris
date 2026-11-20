@@ -1,11 +1,3 @@
-/**
- * Shared sliding-window rate limiter backed by an LRU cache.
- *
- * Both ip-rate-limit.ts and user-rate-limit.ts delegate to this core
- * implementation.  Keeping a single algorithm avoids drift between the
- * two modules and makes the window logic easier to test in isolation.
- */
-
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 import { RateLimitError } from '@/lib/api/errors';
@@ -16,13 +8,9 @@ interface WindowEntry {
 }
 
 type SlidingWindowConfig = {
-  /** Maximum requests allowed within the window */
   maxRequests: number;
-  /** Time window in milliseconds */
   windowMs: number;
-  /** Maximum keys to track (LRU eviction). Defaults to 10 000. */
   maxTrackedKeys?: number;
-  /** Builds the human-readable error message on limit breach. */
   formatErrorMessage?: (maxRequests: number, windowMs: number) => string;
 };
 
@@ -30,11 +18,6 @@ function defaultFormatError(maxRequests: number, windowMs: number): string {
   return `Rate limit exceeded. Maximum ${maxRequests} requests allowed per ${Math.round(windowMs / 1000)} seconds.`;
 }
 
-/**
- * Creates a sliding-window rate limiter.
- *
- * @returns An object with check / remaining / reset / clear helpers.
- */
 export function createSlidingWindowLimiter(
   config: SlidingWindowConfig,
 ): SlidingWindowLimiter {
@@ -58,8 +41,7 @@ export function createSlidingWindowLimiter(
     const timestamps = entry ? entry.timestamps.filter((t) => t > cutoff) : [];
 
     if (timestamps.length >= maxRequests) {
-      // Don't add this request — it's rejected
-      cache.set(key, { timestamps }); // still prune expired entries
+      cache.set(key, { timestamps });
       const retryAfter = Math.ceil((timestamps[0] + windowMs - now) / 1000);
       throw new RateLimitError(formatErrorMessage(maxRequests, windowMs), {
         retryAfter,

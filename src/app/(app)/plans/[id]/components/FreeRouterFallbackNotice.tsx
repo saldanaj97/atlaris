@@ -5,7 +5,6 @@ import type {
 
 import { GenerationAlertPanel } from './generation-alert-panel';
 
-/** Names the content the free router generated, as the sentence subject. */
 function describeFreeRouterContent(notice: FreeRouterNotice): string {
   const lessons =
     notice.lessonModuleCount === 1
@@ -20,11 +19,6 @@ function describeFreeRouterContent(notice: FreeRouterNotice): string {
   return `${lessons.charAt(0).toUpperCase()}${lessons.slice(1)} were`;
 }
 
-/**
- * Tells a paid user that some of the plan ran on the free router because
- * their paid model was unavailable (DEV-175). Regeneration is mentioned only
- * when the page offers it.
- */
 export function FreeRouterFallbackNotice({
   notice,
   regeneration,

@@ -3,14 +3,8 @@ import type { DbResearchSource } from '@/lib/db/queries/types/plan-research.type
 
 import { z } from 'zod';
 
-/**
- * Narrow read of the citation keys a lesson cites (`sourceIds`, added to
- * lesson content by JCS-160). Parsed here rather than through
- * `LessonContentSchema` so the reader does not depend on that field's schema.
- */
 const CitedSourceIdsSchema = z.object({ sourceIds: z.array(z.string()) });
 
-/** Citation keys (`S1`, `S2`, …) the stored lesson content cites; empty when it cites none. */
 export function readCitedSourceIds(lessonContent: unknown): string[] {
   const parsed = CitedSourceIdsSchema.safeParse(lessonContent);
   return parsed.success ? parsed.data.sourceIds : [];

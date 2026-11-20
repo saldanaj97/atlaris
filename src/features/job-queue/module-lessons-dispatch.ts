@@ -14,20 +14,15 @@ export type ModuleLessonsDispatchInput = {
   readonly planId: string;
   readonly moduleId: string;
   readonly userId: string;
-  /** Matches the app's provisional claim; the Workflow's claim step adopts it. */
   readonly batchRequestId: string;
   readonly correlationId: string;
   readonly modelOverride?: string;
 };
 
 export type ModuleLessonsDispatchResult =
-  /** `202 { accepted, instanceId }`: a new Workflow instance owns the claim. */
   | { readonly kind: 'accepted'; readonly instanceId: string }
-  /** 2xx without an instance ID: an instance for this claim already exists. */
   | { readonly kind: 'duplicate' }
-  /** `503 { code: "jobs_paused" | "job_disabled" }`. */
   | { readonly kind: 'disabled'; readonly code: JobsUnavailableCode }
-  /** Any other non-2xx, timeout, network error, or missing configuration. */
   | { readonly kind: 'failed' };
 
 export type DispatchModuleLessonsToWorkerDeps = {
@@ -50,11 +45,6 @@ function readInstanceId(body: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Sends `POST /v1/module-lessons/start` for a provisionally claimed module
- * (design note, Decision 4, App handling). The caller reverts the claim on
- * `disabled` or `failed`. Never throws.
- */
 export async function dispatchModuleLessonsToWorker(
   input: ModuleLessonsDispatchInput,
   deps: DispatchModuleLessonsToWorkerDeps = {},

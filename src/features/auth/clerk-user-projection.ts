@@ -200,7 +200,6 @@ export function clerkUserDeletionProjectionSource(
   };
 }
 
-/** Every table with a user_id foreign key to users. Plan children cascade. */
 export const USER_SCOPED_ERASE_TABLES = [
   learningPlans,
   deletedPlanGenerationAttempts,
@@ -301,8 +300,6 @@ export async function applyClerkUserProjectionSource(
       .where(and(eq(users.id, user.id), isNull(users.clerkDeletedAt)))
       .returning({ id: users.id });
 
-    // Erase even when already tombstoned: a reconciliation tombstone may
-    // have landed before the observed deletion.
     if (eraseData) {
       await eraseLocalUserData(deps.db, user);
     }

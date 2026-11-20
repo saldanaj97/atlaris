@@ -3,12 +3,6 @@ import type {
   TaskResourceWithResource,
 } from '@/lib/db/queries/types/modules.types';
 
-/**
- * Groups resource rows by task ID into a map of taskId -> TaskResourceWithResource[].
- *
- * @param resourceRows - Rows from taskResources + resources join
- * @returns Map of taskId to resource array
- */
 export function buildResourcesByTask(
   resourceRows: ModuleResourceRow[],
 ): Map<string, TaskResourceWithResource[]> {

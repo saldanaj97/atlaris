@@ -8,9 +8,6 @@ import { eq } from 'drizzle-orm';
 
 export type { DbClient };
 
-/**
- * Resolve user's subscription tier from database
- */
 export async function resolveUserTier(
   userId: string,
   dbClient: DbClient,
@@ -28,7 +25,6 @@ export async function resolveUserTier(
   return user.subscriptionTier;
 }
 
-/** True while the user's paid plan is in its free trial. */
 export async function resolveUserTrialing(
   userId: string,
   dbClient: DbClient,

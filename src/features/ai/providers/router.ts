@@ -27,15 +27,6 @@ export type RouterConfig = {
   fallbackModels?: readonly string[];
 };
 
-/**
- * Extracts HTTP status from arbitrary SDK/fetch errors via safe property narrowing.
- * Intentional exception to the "no unknown/any" guideline: the parameter is typed
- * as `unknown` so callers must pass through untyped errors (e.g. from fetch or
- * OpenRouter SDK) and we narrow safely using explicit checks for `status`,
- * `statusCode`, and `response.status`. If the linter flags `unknown` here, add a
- * targeted oxlint disable for that rule and reference getStatusCode in the comment
- * so future readers know it is intentional.
- */
 function getStatusCode(error: unknown): number | undefined {
   if (!error || typeof error !== 'object') {
     return undefined;

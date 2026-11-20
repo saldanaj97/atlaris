@@ -1,8 +1,3 @@
-/**
- * `openrouter_tier_models` reads and writes. The table is global, server-owned
- * and deny-all under RLS, so every access uses the service-role client.
- */
-
 import type { GuardrailModel } from '@/features/ai/model-catalog/guardrail-models';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -15,7 +10,6 @@ import { asc, desc, eq, sql } from 'drizzle-orm';
 
 export type { OpenRouterTierModelRow };
 
-/** A tier's synced models, cheapest first. */
 export async function selectTierModels(
   tier: SubscriptionTier,
 ): Promise<OpenRouterTierModelRow[]> {
@@ -30,7 +24,6 @@ export async function selectTierModels(
     );
 }
 
-/** `modelId`'s most recently synced row from any tier, or `null`. */
 export async function selectCatalogModel(
   modelId: string,
 ): Promise<OpenRouterTierModelRow | null> {
@@ -43,10 +36,6 @@ export async function selectCatalogModel(
   return row ?? null;
 }
 
-/**
- * Replaces `tier`'s rows with `models` in one transaction. A per-tier advisory
- * lock serializes concurrent syncs; readers see the old rows or the new ones.
- */
 export async function replaceTierModels(
   tier: SubscriptionTier,
   models: readonly GuardrailModel[],

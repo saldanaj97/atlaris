@@ -8,7 +8,6 @@ import {
 } from '@asteasolutions/zod-to-openapi';
 import { z } from 'zod';
 
-// Initialize OpenAPI extension for Zod (must be called once)
 extendZodWithOpenApi(z);
 
 const SKILL_LEVEL_ENUM = z.enum(SKILL_LEVELS as [SkillLevel, ...SkillLevel[]]);

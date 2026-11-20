@@ -1,12 +1,9 @@
 import type { LessonIssue } from '@/features/lesson-content/lesson-citation-checks';
 import type { NewGenerationQualityIssue } from '@/lib/db/queries/types/generation-quality-issues.types';
 
-/** What the checks found on one version of a lesson. */
 export type LessonQualityPass = {
-  /** 0 for the written lesson, then the repair pass that produced it. */
   readonly pass: number;
   readonly issues: readonly LessonIssue[];
-  /** Whether the verifier checked this version. */
   readonly verifierRan: boolean;
 };
 

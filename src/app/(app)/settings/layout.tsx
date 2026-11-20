@@ -14,9 +14,6 @@ export const metadata: Metadata = {
   description: 'Manage your account settings and preferences.',
 };
 
-/**
- * Shared settings chrome: hero plus a framed section nav and routed content.
- */
 export default function SettingsLayout({
   children,
 }: Readonly<{

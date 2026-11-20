@@ -28,12 +28,10 @@ function pluralize(count: number, singular: string): string {
   return `${count} ${count === 1 ? singular : `${singular}s`}`;
 }
 
-/** The longest plan a tier can create; tiers without a cap use the selectable maximum. */
 function longestPlanWeeks(tier: SubscriptionTier): number {
   return TIER_LIMITS[tier].maxWeeks ?? MAX_SELECTABLE_PLAN_WEEKS;
 }
 
-// Plan length is chosen in weeks, so pricing states it in weeks too.
 function formatPlanLength(weeks: number): string {
   return pluralize(weeks, 'week');
 }
@@ -55,7 +53,6 @@ function buildTierFeatures(tier: SubscriptionTier): readonly string[] {
         ? `${pluralize(maxActivePlans, 'plan')} included`
         : pluralize(maxActivePlans, 'active plan'),
     `Plans up to ${formatPlanLength(longestPlanWeeks(tier))}`,
-    // A tier with no regenerations omits the line rather than advertising a zero.
     ...(monthlyRegenerations > 0
       ? [`${monthlyRegenerations} regenerations per month`]
       : []),
@@ -64,11 +61,6 @@ function buildTierFeatures(tier: SubscriptionTier): readonly string[] {
   ];
 }
 
-/**
- * Pricing card bullets derived from live tier limits. The cards always use
- * these; Clerk Billing plan features are ignored so the cards cannot drift
- * from the comparison table.
- */
 export const PRICING_PLAN_FEATURES: Record<
   SubscriptionTier,
   readonly string[]
@@ -78,7 +70,6 @@ export const PRICING_PLAN_FEATURES: Record<
   pro: buildTierFeatures('pro'),
 };
 
-/** One-line card descriptions; like the bullets, these never come from Clerk. */
 export const PRICING_PLAN_DESCRIPTIONS: Record<SubscriptionTier, string> = {
   free: 'For finding your rhythm.',
   starter: 'For building a steady practice.',
@@ -92,7 +83,6 @@ export const PRICING_FEATURES_BY_CLERK_SLUG: Record<string, readonly string[]> =
     [CLERK_BILLING_PLAN_SLUGS.pro]: PRICING_PLAN_FEATURES.pro,
   };
 
-/** Tier for a Clerk plan slug; undefined for a plan the comparison does not know. */
 export const PRICING_TIER_BY_CLERK_SLUG: Record<
   string,
   SubscriptionTier | undefined
@@ -102,7 +92,6 @@ export const PRICING_TIER_BY_CLERK_SLUG: Record<
   [CLERK_BILLING_PLAN_SLUGS.pro]: 'pro',
 };
 
-/** `true` renders as a check mark; strings render as the cell's value. */
 export type PricingComparisonValue = string | true;
 
 export type PricingComparisonRow = {
@@ -117,7 +106,6 @@ function valuesByTier(
   return { free: read('free'), starter: read('starter'), pro: read('pro') };
 }
 
-/** Rows for the plan comparison table, derived from the same limits as checkout enforcement. */
 export const PRICING_COMPARISON_ROWS: readonly PricingComparisonRow[] = [
   {
     key: 'plans-included',

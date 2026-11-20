@@ -5,20 +5,17 @@ type LearningPlanRow = InferSelectModel<typeof learningPlans>;
 type TaskProgressRow = InferSelectModel<typeof taskProgress>;
 type TaskRow = InferSelectModel<typeof tasks>;
 
-/** Plan metadata returned with generation attempts for display/context. */
 export interface PlanAttemptsPlanMeta {
   id: string;
   topic: string;
   generationStatus: LearningPlanRow['generationStatus'];
 }
 
-/** Task row shape returned by plan summary queries (partial task + plan id). */
 export type PlanSummaryTaskRow = Pick<
   TaskRow,
   'id' | 'moduleId' | 'estimatedMinutes'
 > & { planId: string };
 
-/** Task row shape for plan detail reads (excludes large lesson JSON blobs). */
 export type PlanDetailTaskRow = Omit<
   TaskRow,
   'lessonContent' | 'lessonContentUpdatedAt'

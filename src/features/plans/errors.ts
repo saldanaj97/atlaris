@@ -5,9 +5,6 @@
 
 import { AppError } from '@/lib/api/errors';
 
-/**
- * Error thrown when plan creation fails in the database.
- */
 export class PlanCreationError extends AppError {
   constructor(details?: Record<string, unknown>) {
     super('Failed to create plan.', {

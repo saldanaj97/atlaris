@@ -13,7 +13,6 @@ interface LegalDocumentProps {
   children: ReactNode;
 }
 
-/** Shared marketing chrome for long-form legal pages (Terms, Privacy). */
 export function LegalDocument({
   overline,
   title,

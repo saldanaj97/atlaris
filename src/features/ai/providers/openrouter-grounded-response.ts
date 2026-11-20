@@ -13,18 +13,15 @@ import {
 } from '@/features/ai/providers/openrouter-response';
 import { asyncIterableToReadableStream } from '@/features/ai/streaming/utils';
 
-/** A source the model cited, from a streamed `url_citation` annotation. */
 export type OpenRouterUrlCitation = {
   url: string;
   title?: string;
-  /** Excerpt from the page, when the search engine returns one. */
   content?: string;
 };
 
 export type OpenRouterGroundedUsage = ProviderUsage & {
   cachedPromptTokens?: number;
   cacheWritePromptTokens?: number;
-  /** Searches billed for the request, advisor searches included. */
   webSearchRequests?: number;
   serverToolCallsExecuted?: number;
 };
@@ -66,16 +63,10 @@ function readCost(usage: Record<string, unknown>): number | undefined {
       'OpenRouter usage.cost must be a non-negative finite number when present',
     );
   }
-  // A BYOK call without its upstream cost records the catalog estimate.
   const upstream = byokUpstreamCostUsd(usage);
   return upstream === null ? undefined : cost + upstream;
 }
 
-/**
- * Reads the wire `usage` object. Search counts come from
- * `server_tool_use_details`; the documented `server_tool_use` is read only as
- * a fallback because responses omit it in practice.
- */
 export function normalizeGroundedUsage(
   usage: Record<string, unknown>,
 ): OpenRouterGroundedUsage {
@@ -167,7 +158,6 @@ export function streamGroundedEvents(params: {
       }
       const usage = readRecord(chunk, 'usage');
       if (usage) {
-        // In place: span and caller hold this object.
         Object.assign(metadata.usage, normalizeGroundedUsage(usage));
       }
 

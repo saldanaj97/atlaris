@@ -1,13 +1,5 @@
 'use server';
 
-/**
- * Server actions for module detail page.
- *
- * RLS enforcement note:
- * - Uses authenticated RLS client to ensure proper tenant isolation
- * - Module ownership is validated through plan ownership
- */
-
 import type { ProgressStatus } from '@/shared/types/db.types';
 
 import {

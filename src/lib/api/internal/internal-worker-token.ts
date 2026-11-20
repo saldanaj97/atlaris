@@ -1,8 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
 
-/**
- * Reads bearer or custom header token for internal worker triggers.
- */
 export function readInternalWorkerToken(
   request: Request,
   headerName: string,
@@ -27,10 +24,6 @@ export function readInternalWorkerToken(
   return customToken;
 }
 
-/**
- * Compares expected secret to provided token using timing-safe equality on
- * min(length) bytes; returns true only when lengths also match.
- */
 export function tokensMatch(
   expectedToken: string,
   providedToken: string,

@@ -7,14 +7,6 @@ import { json } from '@/lib/api/response';
 import { logger } from '@/lib/logging/logger';
 import { PlanStatusResponseSchema } from '@/shared/schemas/plan-status';
 
-/**
- * GET /api/v1/plans/:planId/status
- * Returns the status of a learning plan's generation process.
- *
- * Reads the generation status stored on the learning_plans row, not the
- * job_queue table.
- */
-
 export const GET = requestBoundary.route(
   { rateLimit: 'read' },
   async ({ params, actor, db, correlationId }): Promise<Response> => {

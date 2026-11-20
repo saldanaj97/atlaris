@@ -1,11 +1,3 @@
-/**
- * Unified model/tier resolution for all generation entry points.
- *
- * Every route that kicks off plan generation (stream, retry, etc.) MUST use
- * `resolveModelForTier` so tier-gating logic lives in exactly one place.
- *
- */
-
 import type { ModelOperation } from '@/features/ai/model-operation-policy';
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { AiPlanGenerationProvider } from '@/features/ai/types/provider.types';
@@ -26,7 +18,6 @@ export type ModelResolution = {
   provider: AiPlanGenerationProvider;
   fallback: boolean;
   fallbackReason?: 'invalid_model' | 'tier_denied' | 'not_specified';
-  /** The operation default ran on the free router because the tier's guardrail left no paid default. */
   freeRouterFallback?: true;
 };
 
@@ -42,12 +33,6 @@ type ModelResolverLogger = {
   info: Logger['info'];
 };
 
-/**
- * Validates whether a requested model is allowed for a tier × operation:
- * `tier_denied` when another tier's guardrail lists it, `invalid_model` when
- * none does. Throws only when the default check or catalog read fails.
- * Pass `allowedModels` when the caller already resolved the tier's models.
- */
 export async function validateModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string,
@@ -76,8 +61,6 @@ function getProviderSafe(
   requestLogger: ModelResolverLogger,
 ): AiPlanGenerationProvider {
   try {
-    // Always use the model-specific provider factory so default-model fallback
-    // cannot be silently redirected by aiEnv.defaultModel.
     return providerGetter(modelIdToUse, userTier, operation);
   } catch (err) {
     const factoryName = providerGetter.name || 'unknownFactory';
@@ -101,19 +84,6 @@ function getProviderSafe(
   }
 }
 
-/**
- * Resolves the generation provider and model for a given user tier and optional model override.
- * All generation entry points (stream, retry, default) MUST use this function.
- *
- * @param userTier - The user's subscription tier
- * @param requestedModel - Optional model ID from request. Pass undefined when param absent
- *   (not_specified fallback). Null/empty string means invalid_model fallback.
- * @param operation - Generation operation whose catalog and default apply.
- * @param providerGetter - Optional provider getter for dependency injection in tests.
- *   Defaults to getGenerationProviderWithModel.
- * @param requestLogger - Optional logger injection for tests/callers that need log isolation.
- * @returns ModelResolution with the resolved provider and metadata
- */
 export async function resolveModelForTier(
   userTier: SubscriptionTier,
   requestedModel: string | null | undefined,
@@ -159,14 +129,12 @@ export async function resolveModelForTier(
     return { ...resolution, freeRouterFallback: true };
   };
 
-  // Explicitly omitted (undefined) → not_specified; null/empty → invalid_model
   const modelSpecified = requestedModel !== undefined;
 
   if (!modelSpecified) {
     return defaultResolution('not_specified');
   }
 
-  // Explicit null or empty string → invalid_model
   if (requestedModel === null || requestedModel === '') {
     requestLogger.warn(
       { requestedModel, userTier, operation },

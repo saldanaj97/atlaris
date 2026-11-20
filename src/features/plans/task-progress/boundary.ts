@@ -73,7 +73,6 @@ export function validateTaskProgressBatchInput(params: {
   }
 }
 
-/** Persists validated updates after scope checks. */
 export async function applyTaskProgressUpdates(
   input: ApplyTaskProgressUpdatesInput,
 ): Promise<TaskProgressUpdateResult> {

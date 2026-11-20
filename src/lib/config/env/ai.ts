@@ -23,19 +23,14 @@ const MOCK_AI_SCENARIO_VALUES = new Set([
 
 const OPENROUTER_DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 
-/** Per-tier OpenRouter keys; each falls back to `OPENROUTER_API_KEY`. */
 const OPENROUTER_TIER_API_KEY_NAMES = {
   free: 'OPENROUTER_API_KEY_FREE',
   starter: 'OPENROUTER_API_KEY_STARTER',
   pro: 'OPENROUTER_API_KEY_PRO',
 } as const satisfies Record<SubscriptionTier, string>;
 
-/** Worker modes whose AI Gateway logs may keep prompt and response bodies. */
 const AI_GATEWAY_PAYLOAD_LOG_WORKER_ENVS = new Set(['staging', 'development']);
 
-/**
- * Mock-provider-specific env flags used by AI generation tests and local flows.
- */
 interface AiMockEnv {
   readonly delayMs: number | undefined;
   readonly failureRate: number | undefined;
@@ -48,9 +43,6 @@ interface AiMockEnv {
  */
 type AiProviderEnvValue = 'mock' | 'router';
 
-/**
- * Core AI env facets used by provider selection and generation defaults.
- */
 interface AiEnvConfig {
   readonly provider: AiProviderEnvValue | undefined;
   readonly mockSeed: number | undefined;
@@ -59,9 +51,6 @@ interface AiEnvConfig {
   readonly defaultModel: string;
 }
 
-/**
- * Timeout-related AI env values derived from the shared server env source.
- */
 interface AiTimeoutEnv {
   readonly baseMs: number;
   readonly extensionMs: number;
@@ -73,9 +62,6 @@ interface AiTimeoutEnv {
   readonly lessonMs: number;
 }
 
-/**
- * OpenRouter request configuration exposed through env accessors.
- */
 interface OpenRouterEnv {
   readonly apiKey: string | undefined;
   /**
@@ -91,11 +77,8 @@ interface OpenRouterEnv {
   readonly siteUrl: string | undefined;
   readonly appName: string | undefined;
   readonly baseUrl: string;
-  /** OpenRouter preset slug holding the plan-generation system prompt. */
   readonly planPreset: string | undefined;
-  /** OpenRouter preset slug holding the lesson-generation system prompt. */
   readonly lessonPreset: string | undefined;
-  /** Cloudflare AI Gateway token, sent when `baseUrl` points at the gateway. */
   readonly aiGatewayToken: string | undefined;
   /**
    * Whether AI Gateway logs keep request and response bodies. Only staging and
@@ -104,23 +87,14 @@ interface OpenRouterEnv {
   readonly aiGatewayLogPayloads: boolean;
 }
 
-/**
- * Parallel Search API configuration for direct plan research (DEV-171).
- */
 interface ParallelEnv {
   readonly apiKey: string | undefined;
 }
 
-/**
- * Attempt-cap env values used to normalize generation retry limits.
- */
 interface AttemptsEnv {
   readonly cap: number;
 }
 
-/**
- * Grouped AI env facets built from a shared server env access helper.
- */
 interface AiEnvFacets {
   readonly aiEnv: AiEnvConfig;
   readonly aiTimeoutEnv: AiTimeoutEnv;
@@ -237,10 +211,6 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     },
   };
 
-  /**
-   * OpenRouter API configuration.
-   * Provides API key, base URL, and HTTP headers for the OpenRouter service.
-   */
   const openRouterEnv: OpenRouterEnv = {
     get apiKey() {
       return access.getServerOptional('OPENROUTER_API_KEY');
@@ -261,7 +231,6 @@ export function createAiEnvFacets(access: ServerEnvAccess): AiEnvFacets {
     get appName() {
       return access.getServerOptional('OPENROUTER_APP_NAME');
     },
-    /** Base URL for OpenRouter API, defaults to official endpoint */
     get baseUrl() {
       return (
         access.getServerOptional('OPENROUTER_BASE_URL') ??
@@ -318,7 +287,6 @@ export const aiTimeoutEnv = defaultAiFacets.aiTimeoutEnv;
 export const openRouterEnv = defaultAiFacets.openRouterEnv;
 export const parallelEnv = defaultAiFacets.parallelEnv;
 
-/** Per-plan generation attempt cap (env-overridable, validated >= 1). */
 export function getAttemptCap(): number {
   return resolveAttemptCap(defaultAiFacets.attemptsEnv.cap);
 }

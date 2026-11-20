@@ -61,11 +61,9 @@ export type GenerationFailureResult = {
   extendedTimeout: boolean;
   timedOut: boolean;
   attempt: GenerationAttemptRecordForResponse;
-  /** Present when failure came from `reserveAttemptSlot` rejection (no in-progress row). */
   reservationRejectionReason?: AttemptRejection['reason'];
 };
 
-/** Unfinalized success after provider + parse + pace (no DB finalize yet). */
 export type GenerationExecutionSuccess = {
   readonly kind: 'success';
   readonly reservation: AttemptReservation;
@@ -76,7 +74,6 @@ export type GenerationExecutionSuccess = {
   readonly extendedTimeout: boolean;
 };
 
-/** Unfinalized failure when an in_progress attempt row exists. */
 export type GenerationExecutionFailureReserved = {
   readonly kind: 'failure_reserved';
   readonly reservation: AttemptReservation;
@@ -89,7 +86,6 @@ export type GenerationExecutionFailureReserved = {
   readonly timedOut: boolean;
 };
 
-/** Immediate failure (no attempt row) from reserveAttemptSlot rejection. */
 export type GenerationExecutionFailureRejected = {
   readonly kind: 'failure_rejected';
   readonly result: GenerationFailureResult;

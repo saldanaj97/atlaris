@@ -11,12 +11,6 @@ import type { InferSelectModel } from 'drizzle-orm';
 
 type DbSchemaModule = typeof import('@supabase/schema');
 
-/**
- * Db client for attempts. Must be request-scoped {@link getDb} in API routes to enforce RLS.
- *
- * When using the RLS client returned by {@link getDb}, callers are responsible for releasing
- * it by calling its `cleanup()` method. Do this in a `finally` block.
- */
 export type AttemptsDbClient = DbClient;
 
 export type GenerationAttemptRecord = InferSelectModel<
@@ -28,7 +22,6 @@ export interface AttemptReservation {
   attemptId: string;
   attemptNumber: number;
   startedAt: Date;
-  /** Tier admitted when a durable workflow reservation was created. */
   admittedTier?: SubscriptionTier;
   generationPurpose: GenerationPurpose;
   sanitized: {
@@ -64,10 +57,7 @@ export interface AttemptRejection {
 
 export type ReserveAttemptResult = AttemptReservation | AttemptRejection;
 
-/** Read-only subset of AttemptsDbClient used for count/getOldest window queries. */
 export type AttemptsReadClient = Pick<AttemptsDbClient, 'select'>;
-
-// ----- Input / sanitization -----
 
 interface SanitizedField {
   value: string | undefined;
@@ -79,8 +69,6 @@ export interface SanitizedInput {
   topic: SanitizedField & { value: string; originalLength: number };
   notes: SanitizedField;
 }
-
-// ----- Normalized modules (effort clamping) -----
 
 interface NormalizedTaskData {
   title: string;
@@ -100,8 +88,6 @@ export interface NormalizedModulesResult {
   normalizationFlags: EffortNormalizationFlags;
 }
 
-// ----- Attempt metadata (stored in DB) -----
-
 interface AttemptMetadataFailure {
   classification: FailureClassification;
   timedOut: boolean;
@@ -115,7 +101,6 @@ export interface AttemptWorkflowMetadata {
    */
   provider: 'workflow-sdk' | 'cloudflare-queue' | 'cloudflare-workflow';
   runId: string;
-  /** Stable logical operation key used to recover a workflow reservation replay. */
   idempotencyKey?: string;
   startedAt?: string;
   completedAt?: string;
@@ -161,23 +146,18 @@ export interface MetadataParams {
   admittedTier?: SubscriptionTier;
 }
 
-// ----- Params for exported functions -----
-
 export interface ReserveAttemptSlotParams {
   planId: string;
   userId: string;
   input: GenerationInput;
   generationPurpose: GenerationPurpose;
   dbClient: AttemptsDbClient;
-  /** If set, plan must have one of these statuses (takes precedence over requiredGenerationStatus). */
   allowedGenerationStatuses?: ReadonlyArray<
     InferSelectModel<DbSchemaModule['learningPlans']>['generationStatus']
   >;
-  /** If set (and allowedGenerationStatuses not set), plan must have this exact status. */
   requiredGenerationStatus?: InferSelectModel<
     DbSchemaModule['learningPlans']
   >['generationStatus'];
-  /** Durable workflow identity for idempotently recovering a committed reservation. */
   workflowMetadata?: AttemptWorkflowMetadata;
   now?: () => Date;
 }

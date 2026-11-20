@@ -9,7 +9,6 @@ import { LandingPageShell } from '@/app/(landing)/_shared/LandingPageShell';
 
 import styles from './about.module.css';
 
-/** About page composition. */
 export function About() {
   return (
     <LandingPageShell>

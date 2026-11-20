@@ -13,16 +13,10 @@ import { isAbortError } from '@/lib/errors';
 import { logger } from '@/lib/logging/logger';
 import { z } from 'zod';
 
-/**
- * Parallel Search API (DEV-171): one request with our own key, called before
- * the research model runs. Docs: https://docs.parallel.ai/api-reference/search/search
- */
 export const PARALLEL_SEARCH_URL = 'https://api.parallel.ai/v1/search';
 
-/** Covers `advanced` mode, which takes several seconds; the step timeout is larger. */
 const PARALLEL_SEARCH_TIMEOUT_MS = 60_000;
 
-/** Recorded as the `model` of a search-only usage event (no model call ran). */
 const PARALLEL_SEARCH_MODEL_ID = 'parallel/search';
 const PARALLEL_PROVIDER = 'parallel';
 
@@ -40,7 +34,6 @@ const PARALLEL_SEARCH_BASE_MICROUSD = {
 const PARALLEL_SEARCH_INCLUDED_RESULTS = 10;
 const PARALLEL_SEARCH_EXTRA_RESULT_MICROUSD = 1_000;
 
-/** What one request cost, in integer micro-USD, from its mode and result count. */
 export function parallelSearchCostMicrousd(
   mode: ResearchMode,
   resultCount: number,
@@ -52,10 +45,6 @@ export function parallelSearchCostMicrousd(
   );
 }
 
-/**
- * One search as a usage record: no tokens, its cost from the price table.
- * Recorded on its own when no model call followed the search (DEV-185).
- */
 export function parallelSearchUsage(
   mode: ResearchMode,
   resultCount: number,
@@ -74,13 +63,10 @@ export function parallelSearchUsage(
 }
 
 type ParallelSearchRequest = {
-  /** Natural-language goal behind the search. */
   readonly objective: string;
-  /** 2–3 keyword queries of 3–6 words each. */
   readonly searchQueries: readonly string[];
   readonly mode: ResearchMode;
   readonly maxResults: number;
-  /** Cap on excerpt characters across all results (`max_chars_total`). */
   readonly maxCharsTotal: number;
   readonly signal?: AbortSignal;
 };
@@ -88,24 +74,19 @@ type ParallelSearchRequest = {
 export type ParallelSearchResult = {
   readonly url: string;
   readonly title: string | null;
-  /** Markdown excerpts, most relevant first. */
   readonly excerpts: readonly string[];
 };
 
 type ParallelSearchResponse = {
-  /** Results Parallel returned and billed, usable or not. */
   readonly resultCount: number;
-  /** The usable results, by decreasing relevance; never empty. */
   readonly results: readonly [ParallelSearchResult, ...ParallelSearchResult[]];
 };
 
 type ParallelSearchDeps = {
   fetch?: typeof fetch;
-  /** Test seam; the request timeout. */
   timeoutMs?: number;
 };
 
-/** One result; a URL with whitespace could break the prompt's result lines. */
 const parallelSearchResultSchema = z.object({
   url: z
     .string()
@@ -116,7 +97,6 @@ const parallelSearchResultSchema = z.object({
   excerpts: z.array(z.string()).default([]),
 });
 
-/** Each result is checked on its own, so a malformed one drops only itself. */
 const parallelSearchResponseSchema = z.object({
   search_id: z.string(),
   results: z.array(z.unknown()),
@@ -126,9 +106,7 @@ const parallelErrorResponseSchema = z.object({
   error: z.object({ message: z.string() }),
 });
 
-/** Parallel's reason for a non-2xx response, when its body carries one. */
 async function readErrorMessage(response: Response): Promise<string | null> {
-  // Best effort: the status is the error; the body only adds Parallel's reason.
   try {
     const parsed = parallelErrorResponseSchema.safeParse(
       JSON.parse(await response.text()),
@@ -191,8 +169,6 @@ async function readSearchResponse(
       'Parallel search returned no results',
     );
   }
-  // Excerpts are enabled by default; the brief needs them, so a run without
-  // any is worth noticing (the schema's default would otherwise hide it).
   if (results.every((result) => result.excerpts.length === 0)) {
     logger.warn(
       {
@@ -207,13 +183,6 @@ async function readSearchResponse(
   return { resultCount, results: [first, ...rest] };
 }
 
-/**
- * Runs one search. Throws a plain `Error` without `PARALLEL_API_KEY` and a
- * `ProviderError` on an HTTP failure, timeout, malformed body or zero results;
- * the research step owns retries. A completed request is billed whatever its
- * body, so an error thrown after a 2xx carries the search's usage
- * (`billedUsageOf`). A caller's abort is rethrown as is.
- */
 export async function searchParallel(
   request: ParallelSearchRequest,
   deps: ParallelSearchDeps = {},

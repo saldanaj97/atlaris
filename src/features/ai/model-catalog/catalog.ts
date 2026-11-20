@@ -1,14 +1,3 @@
-/**
- * Each tier's model list and metadata, synced from its OpenRouter guardrail
- * into `openrouter_tier_models` (DEV-174). A guardrail change reaches users on
- * the next refresh, with no code change or deploy.
- *
- * Refresh-on-read: a read whose rows are older than {@link MODEL_CATALOG_TTL_MS}
- * (or missing) syncs that tier first, when this runtime has the tier's own key.
- * The jobs Worker has no tier keys, so it only reads what the app synced (or
- * the migration seeded).
- */
-
 import type { AvailableModel } from '@/features/ai/types/model.types';
 import type { SubscriptionTier } from '@/shared/types/billing.types';
 
@@ -39,15 +28,10 @@ import * as Sentry from '@sentry/nextjs';
 
 export const MODEL_CATALOG_TTL_MS = 15 * 60_000;
 
-/** After a failed sync, reads use the stored rows this long before retrying. */
 export const MODEL_CATALOG_RETRY_MS = 60_000;
 
 const GUARDRAIL_FETCH_TIMEOUT_MS = 5_000;
 
-/**
- * `openrouter/free` is a router, not a model, so no guardrail lists it. It
- * stays code-owned: free, with no output limit of its own.
- */
 export const FREE_ROUTER_MODEL: AvailableModel = {
   id: AI_DEFAULT_MODEL,
   name: 'Free Models Router',
@@ -84,19 +68,10 @@ function toAvailableModel(row: OpenRouterTierModelRow): AvailableModel {
   };
 }
 
-/**
- * The Next app deployed on Vercel (production or preview), which should have
- * every tier key. Local dev may lack them, and the jobs Worker never has them.
- */
 function isHostedAppRuntime(): boolean {
   return isHostedDeployEnv(process.env);
 }
 
-/**
- * Alerts once per run of failed syncs, when the run outlasts
- * {@link MODEL_CATALOG_TTL_MS} (the tier's prices are stale by then), rather
- * than on every retry. A successful sync ends the run.
- */
 function alertIfSyncKeepsFailing(tier: SubscriptionTier, error: unknown) {
   const now = Date.now();
   const failingSince = syncFailingSinceByTier.get(tier) ?? now;
@@ -132,8 +107,6 @@ export async function syncTierModelCatalog(
         { tier, event: 'model_catalog_sync_skipped_no_key' },
         'No OpenRouter guardrail key for this tier; serving the stored models without syncing',
       );
-      // Expected locally and in the jobs Worker; the hosted app should have
-      // all three.
       if (isHostedAppRuntime()) {
         Sentry.captureMessage(
           'The app has no OpenRouter guardrail key for this tier, so its model catalog never syncs',
@@ -173,11 +146,6 @@ export async function syncTierModelCatalog(
 
 export { resetModelCatalogStateForTests } from '@/features/ai/model-catalog/catalog-state';
 
-/**
- * One sync per tier per process at a time; backs off after a failure. Only
- * the app syncs (the Worker has no tier keys), so a shared sync never runs on
- * another Workflow step's database pool.
- */
 async function refreshTier(tier: SubscriptionTier): Promise<boolean> {
   if (Date.now() < (retryAfterByTier.get(tier) ?? 0)) {
     return false;
@@ -211,11 +179,6 @@ function isStale(rows: readonly OpenRouterTierModelRow[]): boolean {
   return Date.now() - oldestSyncedAt(rows) > MODEL_CATALOG_TTL_MS;
 }
 
-/**
- * Ends this process's run of failed syncs when the rows show another instance
- * synced the tier after the run began, so a later transient failure here
- * starts a new run instead of alerting on the old one.
- */
 function endFailureRunIfSyncedElsewhere(
   tier: SubscriptionTier,
   rows: readonly OpenRouterTierModelRow[],
@@ -232,28 +195,17 @@ function endFailureRunIfSyncedElsewhere(
   alertedSyncFailingTiers.delete(tier);
 }
 
-/**
- * `tier`'s guardrail models, refreshed first when stale. Concurrent reads of a
- * tier share one refresh, but each runs its own query: in the jobs Worker the
- * database is bound per Workflow step, so a shared query could run on another
- * step's pool.
- */
 export async function getTierModels(
   tier: SubscriptionTier,
 ): Promise<AvailableModel[]> {
   let rows = await selectTierModels(tier);
   endFailureRunIfSyncedElsewhere(tier, rows);
-  // Awaited: a serverless runtime may stop un-awaited work after the response.
   if (isStale(rows) && (await refreshTier(tier))) {
     rows = await selectTierModels(tier);
   }
   return rows.map(toAvailableModel);
 }
 
-/**
- * Pricing and limits for `modelId` from any tier's synced list, or `null` when
- * no guardrail lists it. Throws when the catalog cannot be read.
- */
 export async function getCatalogModel(
   modelId: string,
 ): Promise<AvailableModel | null> {

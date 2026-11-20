@@ -15,7 +15,6 @@ import { logger } from '@/lib/logging/logger';
 
 const DEFAULT_CLOCK = () => Date.now();
 
-/** Settles a reserved attempt whose generation never started. */
 export type FinalizeStartFailure = (
   dbClient: AttemptsDbClient,
   input: {
@@ -69,7 +68,6 @@ export function reservePlanGenerationAttempt(
   });
 }
 
-/** The workflow input the Worker receives for a reserved attempt. */
 export function buildPlanGenerationWorkflowInput(
   input: ProcessGenerationInput,
   reservation: AttemptReservation,
@@ -82,7 +80,6 @@ export function buildPlanGenerationWorkflowInput(
     input: input.input,
     generationPurpose: input.generationPurpose,
     modelOverride: input.modelOverride ?? null,
-    // Omitted without a pick, so starts stay valid on a Worker deployed before JCS-169.
     ...(input.groundedWriterModelId
       ? { groundedWriterModelId: input.groundedWriterModelId }
       : {}),
@@ -94,7 +91,6 @@ export function buildPlanGenerationWorkflowInput(
 }
 
 export type StartPlanGenerationAttemptResult =
-  /** The attempt is reserved and its runtime accepted it; poll for the outcome. */
   | { readonly kind: 'started'; readonly attemptId: string }
   /**
    * Nothing is running: either the reservation was rejected, or the runtime

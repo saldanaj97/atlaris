@@ -1,35 +1,10 @@
-/**
- * User-based rate limiting for authenticated endpoints.
- *
- * This module provides rate limiting keyed by user ID rather than IP.
- * It's designed to prevent authenticated users from overwhelming the system, regardless
- * of whether they're paying customers.
- *
- * IMPORTANT: Storage scope and deployment considerations
- * - Uses an in-memory LRU cache per process (same caveats as ip-rate-limit.ts).
- * - In multi-instance deployments, each instance enforces its own limits.
- * - For strict per-user limits across instances, consider Redis-backed storage.
- *
- * Design principles:
- * - Limits are categorized by endpoint "cost" (high/medium/low).
- * - High-cost endpoints (AI generation, exports) have strict limits.
- * - Low-cost endpoints (reads) have permissive limits.
- * - All limits are per-user, not per-IP (authenticated context required).
- */
-
 import type { SlidingWindowLimiter } from '@/lib/api/types/rate-limit-core.types';
 
 import { createSlidingWindowLimiter } from '@/lib/api/rate-limit-core';
 
-/**
- * Configuration for user-based rate limiting
- */
 type UserRateLimitConfig = {
-  /** Maximum requests allowed within the window */
   maxRequests: number;
-  /** Time window in milliseconds */
   windowMs: number;
-  /** Maximum unique users to track (LRU eviction) */
   maxTrackedUsers?: number;
 };
 
@@ -49,17 +24,12 @@ export const USER_RATE_LIMIT_CONFIGS = {
    */
   lessonGeneration: {
     maxRequests: 5,
-    windowMs: 60 * 60 * 1000, // 5 requests per hour
+    windowMs: 60 * 60 * 1000,
   },
 
-  /**
-   * HIGH COST - AI generation, regeneration, content enhancement
-   * These endpoints call external AI providers and can be expensive.
-   * Strict limits to prevent runaway costs and abuse.
-   */
   aiGeneration: {
     maxRequests: 10,
-    windowMs: 60 * 60 * 1000, // 10 requests per hour
+    windowMs: 60 * 60 * 1000,
   },
 
   /**
@@ -68,27 +38,17 @@ export const USER_RATE_LIMIT_CONFIGS = {
    */
   mutation: {
     maxRequests: 60,
-    windowMs: 60 * 1000, // 60 requests per minute
+    windowMs: 60 * 1000,
   },
 
-  /**
-   * LOW COST - Status checks, profile reads, preferences
-   * Read-heavy endpoints with minimal server load.
-   */
   read: {
     maxRequests: 120,
-    windowMs: 60 * 1000, // 120 requests per minute
+    windowMs: 60 * 1000,
   },
 } as const;
 
 export type UserRateLimitCategory = keyof typeof USER_RATE_LIMIT_CONFIGS;
 
-/**
- * Creates a user-based rate limiter with the given configuration.
- *
- * @param config - Rate limit configuration
- * @returns A rate limiter object with check, remaining, reset, and clear methods
- */
 export function createUserRateLimiter(
   config: UserRateLimitConfig,
 ): SlidingWindowLimiter {
@@ -101,9 +61,6 @@ export function createUserRateLimiter(
   });
 }
 
-/**
- * Formats a window duration in milliseconds to a human-readable string.
- */
 function formatWindow(windowMs: number): string {
   const seconds = windowMs / 1000;
   if (seconds < 60) {
@@ -117,12 +74,8 @@ function formatWindow(windowMs: number): string {
   return hours === 1 ? '1 hour' : `${hours} hours`;
 }
 
-// Pre-configured rate limiters for each category
 const rateLimiters = new Map<UserRateLimitCategory, SlidingWindowLimiter>();
 
-/**
- * Gets or creates a rate limiter for a specific category.
- */
 function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
   const existing = rateLimiters.get(category);
   if (existing) {
@@ -133,13 +86,6 @@ function getRateLimiter(category: UserRateLimitCategory): SlidingWindowLimiter {
   return limiter;
 }
 
-/**
- * Checks user-based rate limit for a request.
- *
- * @param userId - Clerk auth user ID (`authUserId` / route `ctx.userId`)
- * @param category - The cost category of the endpoint
- * @throws RateLimitError if rate limit exceeded
- */
 export function checkUserRateLimit(
   userId: string,
   category: UserRateLimitCategory,
@@ -148,13 +94,6 @@ export function checkUserRateLimit(
   limiter.check(userId);
 }
 
-/**
- * Gets rate limit headers for a response.
- *
- * @param userId - Clerk auth user ID (`authUserId` / route `ctx.userId`)
- * @param category - The cost category of the endpoint
- * @returns Headers object with rate limit information
- */
 export function getUserRateLimitHeaders(
   userId: string,
   category: UserRateLimitCategory,
@@ -171,9 +110,6 @@ export function getUserRateLimitHeaders(
   };
 }
 
-/**
- * Clears all user rate limiters. Useful for testing.
- */
 export function clearAllUserRateLimiters(): void {
   for (const limiter of rateLimiters.values()) {
     limiter.clear();

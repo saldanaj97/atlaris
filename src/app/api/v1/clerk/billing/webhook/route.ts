@@ -97,13 +97,11 @@ export const POST: PlainHandler = withErrorBoundary(async (req: Request) => {
 
   let event: WebhookEvent;
   try {
-    // Body was read separately for size capping; rebuild a Request for verifyWebhook.
     const verificationRequest = new Request(req.url, {
       method: req.method,
       headers: req.headers,
       body: rawBody,
     });
-    // RequestLike's type omits the Web Request API; verifyWebhook accepts it at runtime.
     event = await verifyWebhook(
       verificationRequest as Parameters<typeof verifyWebhook>[0],
       {
@@ -119,7 +117,6 @@ export const POST: PlainHandler = withErrorBoundary(async (req: Request) => {
     logger,
   });
 
-  // Covers deletions made outside the app, such as from the Clerk dashboard.
   if (event.type === 'user.deleted' && result.status === 'inserted') {
     const authUserId = event.data.id;
     if (authUserId) {

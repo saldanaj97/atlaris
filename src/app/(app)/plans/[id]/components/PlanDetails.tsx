@@ -35,9 +35,6 @@ interface PlanDetailClientProps {
   freeRouterNotice?: FreeRouterNotice | null;
 }
 
-/**
- * Client component that keeps header progress in sync with timeline status changes.
- */
 export function PlanDetails({
   plan,
   regeneration,

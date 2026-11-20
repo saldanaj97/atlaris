@@ -49,7 +49,6 @@ function configuredOrigin(url: URL): string {
   return `${url.origin}${url.pathname.replace(/\/+$/, '')}`;
 }
 
-/** PostHog app origin for `ui_host`. Cloud ingest/assets hosts map to us/eu.posthog.com. */
 export function normalizePostHogSdkHost(host: string): string | null {
   const url = parseHost(host);
   if (url === null) {
@@ -68,7 +67,6 @@ export function normalizePostHogSdkHost(host: string): string | null {
   return configuredOrigin(url);
 }
 
-/** Map `NEXT_PUBLIC_POSTHOG_HOST` to PostHog ingest/asset origins. */
 export function resolvePostHogRewriteDestinations(
   host?: string | null,
 ): PostHogRewriteDestinations {

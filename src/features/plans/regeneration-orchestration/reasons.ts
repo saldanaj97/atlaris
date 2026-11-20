@@ -1,10 +1,3 @@
-/**
- * Why a learner asked for a new version of a plan (JCS-162): the chips the
- * regenerate dialog offers, an optional note, and the code-owned guidance
- * each chip adds to the research, outline and lesson prompts. Guidance is
- * general on purpose; only the fenced note carries the learner's own words.
- * Client-safe: the dialog imports the labels and limits from here.
- */
 import { sanitizeUserInput } from '@/features/ai/sanitize-prompt-input';
 import { MAX_REGENERATION_NOTE_LENGTH } from '@supabase/schema/constants';
 import { z } from 'zod';
@@ -55,7 +48,6 @@ export const REGENERATION_REASON_GUIDANCE: Record<RegenerationReason, string> =
       'The learner was unhappy with the previous version for another reason; use their note, if any, to decide what to change.',
   };
 
-/** Known chips, each at most once. */
 export const regenerationReasonsSchema = z
   .array(z.enum(REGENERATION_REASONS))
   .max(REGENERATION_REASONS.length)
@@ -63,13 +55,11 @@ export const regenerationReasonsSchema = z
     message: 'Each regeneration reason may appear once.',
   });
 
-/** Optional free-text note, trimmed; at most the DB column's length. */
 export const regenerationNoteSchema = z
   .string()
   .trim()
   .max(MAX_REGENERATION_NOTE_LENGTH);
 
-/** Known reasons from a stored `regeneration_reasons` value, in chip order. */
 export function toKnownRegenerationReasons(
   values: readonly string[] | null | undefined,
 ): RegenerationReason[] {
@@ -77,11 +67,6 @@ export function toKnownRegenerationReasons(
   return REGENERATION_REASONS.filter((reason) => given.has(reason));
 }
 
-/**
- * The feedback block for a regeneration prompt: one guidance line per chip,
- * then the note sanitized, capped and fenced as untrusted data. `null` when
- * there is neither.
- */
 const GUIDANCE_HEADER =
   'REGENERATION FEEDBACK: the learner asked for a new version of this plan.';
 const NOTE_HEADER =
@@ -111,11 +96,6 @@ export function buildRegenerationGuidance(feedback: {
   return lines.join('\n');
 }
 
-/**
- * The same feedback as prose for a search objective (DEV-171): the header
- * and note notice written for the model are replaced and the note fences
- * left out, since a search engine reads a goal, not instructions.
- */
 export function regenerationGuidanceForSearch(guidance: string): string {
   return guidance
     .split('\n')

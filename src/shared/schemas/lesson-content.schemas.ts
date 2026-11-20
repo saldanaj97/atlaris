@@ -58,7 +58,6 @@ export const LessonContentBlockSchema = z.discriminatedUnion('type', [
   LessonCompletionCriteriaBlockSchema,
 ]);
 
-/** Research source keys (`S1`, `S2`, …) a lesson may cite, at most this many. */
 export const MAX_LESSON_SOURCE_IDS = 32;
 
 export const LessonSourceIdSchema = z.string().regex(/^S[1-9]\d*$/);
@@ -69,11 +68,6 @@ export const LessonContentSchema = z.strictObject({
     .array(LessonContentBlockSchema)
     .min(1)
     .max(MAX_LESSON_BLOCKS_PER_TASK),
-  /**
-   * Research source keys the body cites as `[S1]`, unique and in order of
-   * first appearance. Set by code on grounded lessons (JCS-160); absent on
-   * batch lessons and rows written before it.
-   */
   sourceIds: z
     .array(LessonSourceIdSchema)
     .max(MAX_LESSON_SOURCE_IDS)
@@ -88,8 +82,6 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
   tasks: z
     .array(
       z.strictObject({
-        // Any string: the parser maps lessons to tasks by position and
-        // repairs echoed ids the model garbled.
         taskId: z.string(),
         content: LessonContentSchema,
       }),
@@ -101,7 +93,6 @@ export const ModuleLessonBatchProviderOutputSchema = z.strictObject({
 export const ModuleLessonGenerationMetadataSchema = z.strictObject({
   version: z.literal(1),
   batchRequestId: z.string().max(128).optional(),
-  /** Which runtime owns the run. `workflow-sdk` remains only for historical rows. */
   workflow: z
     .discriminatedUnion('provider', [
       WorkflowSdkMetadataSchema,
@@ -109,7 +100,6 @@ export const ModuleLessonGenerationMetadataSchema = z.strictObject({
     ])
     .optional(),
   providerStartedAt: z.iso.datetime().optional(),
-  /** A paid tier's lessons were served by the free router (DEV-175). */
   freeRouterFallback: z.literal(true).optional(),
 });
 
@@ -149,6 +139,5 @@ export const ModuleLessonGenerationStatusResponseSchema =
   ModuleLessonGenerationApiBaseSchema.extend({
     status: z.enum(['not_generated', 'generating', 'ready', 'failed']),
     workflowRunId: z.string().min(1).optional(),
-    /** Lesson repair steps the plan's AI spend ceiling cut (JCS-170). */
     budgetCuts: z.number().int().nonnegative().optional(),
   });

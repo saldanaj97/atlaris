@@ -1,6 +1,3 @@
-/**
- * Resolves the first Accept-Language tag supported by Intl.DateTimeFormat.
- */
 export function getSupportedLocale(
   acceptLanguage: string | null,
 ): string | undefined {
@@ -21,9 +18,7 @@ export function getSupportedLocale(
       if (supportedLocale) {
         return supportedLocale;
       }
-    } catch {
-      // Ignore malformed BCP-47 tags from untrusted Accept-Language headers.
-    }
+    } catch {}
   }
 
   return undefined;

@@ -17,7 +17,6 @@ const metadataDescription =
 
 const clerkAppearance = {
   layout: {
-    // The mark is white; the light theme inverts it so it shows on light cards.
     logoImageUrl: '/brand/mark-on-dark.svg',
   },
   variables: {
@@ -30,8 +29,6 @@ const clerkAppearance = {
     colorMuted: 'var(--secondary)',
     colorMutedForeground: 'var(--muted-foreground)',
     colorNeutral: 'var(--foreground)',
-    // Clerk paints its text actions and the active nav label in colorPrimary,
-    // so it takes the text accent; filled buttons get cantaloupe below.
     colorPrimary: 'var(--primary)',
     colorPrimaryForeground: 'var(--primary-foreground)',
     colorRing: 'var(--ring)',
@@ -40,7 +37,6 @@ const clerkAppearance = {
   elements: {
     card: 'bg-panel shadow-none',
     cardBox: 'rounded-2xl border border-panel-border shadow-sm',
-    // Clerk's tinted badge text ("Primary", "This device") is about 1.2–3.6:1.
     badge: { color: 'var(--muted-foreground)' },
     footer: { background: 'var(--secondary)' },
     // Clerk's active tab gray holds the accent label to 4.1:1 in light; the
@@ -52,8 +48,6 @@ const clerkAppearance = {
       color: 'var(--link)',
       '&:hover': { color: 'var(--link-hover)' },
     },
-    // Every filled primary button, not only formButtonPrimary: sign-up's
-    // "Join waitlist" is a plain solid button.
     button: {
       '&[data-variant="solid"][data-color="primary"]': {
         backgroundColor: 'var(--action-primary)',
@@ -192,7 +186,6 @@ export default async function RootLayout({
         >
           Skip to main content
         </a>
-        {/* shouldUseClerkUi reads env config only, so server/client markup stays deterministic. */}
         {shouldUseClerkUi() ? (
           <ClerkProvider
             afterSignOutUrl='/'
@@ -200,7 +193,6 @@ export default async function RootLayout({
             localization={clerkLocalization}
             signInUrl='/auth/sign-in'
             signUpUrl='/auth/sign-up'
-            // Clerk's "Join waitlist" links (Waitlist sign-up mode) open the app's page, not the Account Portal.
             waitlistUrl='/waitlist'
           >
             <PostHogUserIdentifier />

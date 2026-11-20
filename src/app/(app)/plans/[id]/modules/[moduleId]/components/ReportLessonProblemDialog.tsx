@@ -21,7 +21,6 @@ import { type ReactElement, useEffect, useId, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { toast } from 'sonner';
 
-/** A sent report can't block the dialog for longer than this. */
 const REQUEST_TIMEOUT_MS = 15_000;
 
 const REASON_COPY: Record<
@@ -67,7 +66,6 @@ function isReportField(value: unknown): value is LessonProblemReportField {
   return value === 'reason' || value === 'note';
 }
 
-/** The field a 400 response names in `details.field`, if any. */
 function fieldFromDetails(details: unknown): LessonProblemReportField | null {
   if (typeof details !== 'object' || details === null) {
     return null;
@@ -76,7 +74,6 @@ function fieldFromDetails(details: unknown): LessonProblemReportField | null {
   return isReportField(field) ? field : null;
 }
 
-/** Plain-language copy for a refused report that isn't about one field. */
 function toServerError(status: number, code: string): string {
   if (status === 403 || status === 404) {
     return COPY.accessDenied;
@@ -95,15 +92,9 @@ interface ReportLessonProblemDialogProps {
   moduleId: string;
   taskId: string;
   lessonTitle: string;
-  /** The lesson version on screen (`lesson_content_updated_at`, ISO). */
   lessonContentUpdatedAt: string | null;
 }
 
-/**
- * "Report a problem" trigger and dialog for one lesson (DEV-231): one reason
- * and an optional note, saved as the learner's one report for the lesson.
- * The dialog opens empty every time; a new report replaces the earlier one.
- */
 export function ReportLessonProblemDialog({
   planId,
   moduleId,
@@ -180,16 +171,12 @@ export function ReportLessonProblemDialog({
     setServerError(null);
 
     const trimmedNote = note.trim();
-    // Clears the busy state unless a newer submit took over (no `finally`:
-    // React Compiler cannot lower it).
     const settle = (): void => {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
         setSubmitting(false);
       }
     };
-    // Shows a refusal with the fields enabled again, then moves focus to the
-    // field it names, or to Send.
     const fail = (error: { field: LessonProblemReportField } | string) => {
       flushSync(() => {
         settle();
@@ -236,7 +223,6 @@ export function ReportLessonProblemDialog({
         res.status === 400 ? fieldFromDetails(parsed.details) : null;
       fail(field ? { field } : toServerError(res.status, parsed.code));
     } catch (caught: unknown) {
-      // Unmounted: nothing is on screen to update.
       if (controller.signal.aborted) {
         settle();
         return;
@@ -247,8 +233,6 @@ export function ReportLessonProblemDialog({
         taskId,
         error: caught,
       });
-      // Network error or timeout: the report may have been saved. Retrying
-      // is safe because it replaces the learner's one report.
       fail(COPY.unknownOutcome);
     }
   }
@@ -287,7 +271,6 @@ export function ReportLessonProblemDialog({
             onSubmit={(event) => void handleSubmit(event)}
             aria-describedby={serverError ? serverErrorId : undefined}
           >
-            {/* aria-invalid is not allowed on radios, so the group carries it. */}
             <fieldset
               role='radiogroup'
               aria-labelledby={legendId}
@@ -385,7 +368,6 @@ export function ReportLessonProblemDialog({
                   Cancel
                 </Button>
               </DialogPrimitive.Close>
-              {/* aria-disabled, not disabled, so focus stays on Send while sending. */}
               <Button
                 ref={submitRef}
                 type='submit'

@@ -1,8 +1,3 @@
-/**
- * Centralized route constants for the application.
- * Use these constants instead of hardcoded paths to ensure consistency
- * and make route changes easier to manage.
- */
 export const ROUTES = {
   HOME: '/',
   LANDING: '/landing',

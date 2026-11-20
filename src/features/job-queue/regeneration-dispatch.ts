@@ -17,11 +17,6 @@ export type DispatchRegenerationToWorkerDeps = {
   readonly log?: Pick<typeof logger, 'info' | 'warn' | 'error'>;
 };
 
-/**
- * Sends `POST /v1/regeneration/enqueue` for an inserted `job_queue` row. Any
- * outcome other than 2xx leaves the row `pending`; the Worker's 15-minute
- * sweep re-sends it (design note, Decision 4, App handling). Never throws.
- */
 export async function dispatchRegenerationToWorker(
   input: RegenerationDispatchInput,
   deps: DispatchRegenerationToWorkerDeps = {},

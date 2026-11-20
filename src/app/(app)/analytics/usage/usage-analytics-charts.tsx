@@ -35,7 +35,6 @@ const LINE_ENTER_ANIMATION_MS = 650;
 const METRIC_BAR_CHART_MARGIN = { top: 8, right: 4, left: -4, bottom: 22 };
 const COMPACT_AXIS_TICK = { fontSize: 10 };
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
-/** Tailwind's `sm` breakpoint (40rem); below it the pulse drops point labels. */
 const POINT_LABEL_QUERY = '(min-width: 40rem)';
 
 type RechartsModule = typeof import('recharts');
@@ -469,9 +468,7 @@ export function WeeklyLineChart({
   describedBy?: string;
 }) {
   const prefersReducedMotion = usePrefersReducedMotion();
-  // Phones skip the per-point numbers; the tooltip still reads every value.
   const showsPointLabels = useMediaQuery(POINT_LABEL_QUERY, true);
-  // Always the full top-five set; the legend wraps on narrow screens.
   const renderedPlans = selectMostActivePlans(plans);
   const hiddenPlanCount = plans.length - renderedPlans.length;
   const dataMaxValue = Math.max(
@@ -513,7 +510,6 @@ export function WeeklyLineChart({
 
     return row;
   });
-  // Per week, then per series: where each value label goes.
   const weekLabelPlacements = chartData.map((row) =>
     pointLabelPlacements(
       series.map(({ plan }) => Number(row[plan.id])),
@@ -693,7 +689,6 @@ function AnimatedPointLabel({
       x={labelX}
       y={placement === 'above' ? labelY - 10 : labelY + 20}
       textAnchor='middle'
-      // The panel-colored halo keeps the number readable where a line crosses it.
       className='animate-usage-analytics-point-label-in fill-foreground stroke-panel'
       fontSize={12}
       paintOrder='stroke'

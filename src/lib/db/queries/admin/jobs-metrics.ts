@@ -1,10 +1,3 @@
-/**
- * Admin/monitoring queries that bypass RLS via the service-role client.
- *
- * Use these only for internal health checks and monitoring endpoints.
- * Do not import them into user-scoped request flows.
- */
-
 import { JOB_TYPES } from '@/shared/types/jobs.types';
 import { jobQueue } from '@supabase/schema';
 import { db as serviceRoleDb } from '@supabase/service-role';
@@ -19,7 +12,6 @@ type SystemWideJobMetrics = {
 
 export async function getSystemWideJobMetrics(
   stuckThreshold: Date,
-  // Admin monitoring intentionally defaults to the service-role client.
   dbClient: typeof serviceRoleDb = serviceRoleDb,
 ): Promise<SystemWideJobMetrics> {
   const [metrics] = await dbClient

@@ -19,11 +19,8 @@ export type IncompletePlanLike = {
 
 export type EmailContentContext = {
   analyticsTimezone: string;
-  /** UTC scheduler date YYYY-MM-DD */
   schedulerDateUtc: string;
-  /** Absolute now used for local-day bucketing */
   referenceDate: Date;
-  /** Distinct local YYYY-MM-DD activity day keys in the required window */
   activityDayKeys: ReadonlySet<string> | readonly string[];
   incompletePlan: IncompletePlanLike | null;
   appUrl: string;
@@ -41,7 +38,6 @@ export type EmailContentDateWindow = {
   endDateKeyExclusive: string;
 };
 
-/** Escapes text content only. Use escapeHtmlAttribute for HTML attributes. */
 function escapeHtml(text: string): string {
   return text
     .replaceAll('&', '&amp;')
@@ -60,7 +56,6 @@ function escapeHtmlAttribute(value: string): string {
     .replaceAll('>', '&gt;');
 }
 
-/** CAN-SPAM requires a valid physical postal address in every commercial email. */
 export const SENDER_POSTAL_ADDRESS =
   'Atlaris, 1013 Darnel Dr., Mesquite, TX 75149, USA';
 
@@ -95,10 +90,6 @@ export function priorClosedWeekStartKey(todayLocalKey: string): string {
   return addDays(currentWeekStart, -7);
 }
 
-/**
- * Smallest local date window needed for the enabled categories.
- * End key is exclusive.
- */
 export function requiredActivityDateWindow(args: {
   todayLocalKey: string;
   enabledCategories: ReadonlySet<EmailNotificationCategory>;
@@ -112,7 +103,6 @@ export function requiredActivityDateWindow(args: {
   }
 
   if (args.enabledCategories.has('streak_reminder')) {
-    // Need threshold consecutive days ending yesterday (today idle).
     starts.push(addDays(args.todayLocalKey, -STREAK_REMINDER_THRESHOLD));
     ends.push(addDays(args.todayLocalKey, 1));
   }
@@ -140,7 +130,6 @@ export function qualifyStreakReminder(args: {
   if (args.dayKeys.has(args.todayLocalKey)) {
     return { qualifies: false };
   }
-  // Bounded window only proves "at least threshold days", not lifetime streak.
   for (let i = 1; i <= STREAK_REMINDER_THRESHOLD; i += 1) {
     if (!args.dayKeys.has(addDays(args.todayLocalKey, -i))) {
       return { qualifies: false };
@@ -172,7 +161,6 @@ export function qualifyWeeklySummary(args: {
   priorWeekStart: string;
   schedulerDateUtc: string;
 }): { qualifies: boolean; activeDays: number } {
-  // ponytail: Monday-only gate uses UTC scheduler date (GHA Monday cron).
   const schedulerDate = new Date(`${args.schedulerDateUtc}T00:00:00.000Z`);
   if (schedulerDate.getUTCDay() !== 1) {
     return { qualifies: false, activeDays: 0 };
@@ -215,8 +203,6 @@ export function buildEmailContents(
   const results: BuiltEmailContent[] = [];
   const headers = listUnsubscribeHeaders(ctx.unsubscribeUrl);
 
-  // Delivery is sequential: a sent streak reminder must precede daily reminder
-  // processing so the latter can be suppressed in the same pass.
   if (streakQualifies) {
     const body = `Your learning streak of at least ${STREAK_REMINDER_THRESHOLD} days is at risk. Jump back into Atlaris today to keep it going.\n\nOpen your plans: ${ctx.appUrl}/plans`;
     const { text, html } = withFooter(body, ctx.unsubscribeUrl);

@@ -8,7 +8,6 @@ import { TIER_LIMITS, TRIAL_LIMITS } from '@/shared/constants/tier-limits';
 import { learningPlans, usageMetrics } from '@supabase/schema';
 import { and, eq, sql } from 'drizzle-orm';
 
-// Usage type for incrementing counters
 export type UsageType = 'plan' | 'regeneration';
 
 export type UsageSummary = {
@@ -38,9 +37,6 @@ function getUsageCounterUpdate(type: UsageType) {
   }
 }
 
-/**
- * Get current month in YYYY-MM format
- */
 export function getCurrentMonth(now?: Date): string {
   const d = now ?? new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -60,17 +56,9 @@ async function selectUsageMetricsForMonth(
   return metrics ?? null;
 }
 
-/**
- * Get usage summary for a user whose tier has already been resolved.
- *
- * Caller contract: `tier` MUST come from the same `users` row as this request
- * (e.g. read alongside the billing projection in `getBillingAccountSnapshot`).
- * Passing a stale or unrelated tier will silently yield the wrong limits.
- */
 export async function getUsageSummaryForTier(args: {
   userId: string;
   tier: SubscriptionTier;
-  /** True while the paid plan is in its free trial; the trial limits apply. */
   trialing?: boolean;
   dbClient: DbClient;
 }): Promise<UsageSummary> {

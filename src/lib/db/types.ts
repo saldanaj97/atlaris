@@ -7,7 +7,6 @@ import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
  */
 export type DbClient = PgDatabase<PgQueryResultHKT, typeof schema>;
 
-/** Drizzle transaction callback argument type for `dbClient.transaction(...)`. */
 export type DbTransaction = Parameters<
   Parameters<DbClient['transaction']>[0]
 >[0];

@@ -12,7 +12,6 @@ interface UsePlanStatusReturn {
   pollingError: string | null;
   isPolling: boolean;
   revalidate: () => Promise<void>;
-  /** Polls again after a new attempt starts, even from `failed`. */
   restart: () => Promise<void>;
 }
 

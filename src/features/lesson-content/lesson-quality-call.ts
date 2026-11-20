@@ -28,7 +28,6 @@ import { MAX_TASK_TITLE_LENGTH } from '@supabase/schema/constants';
 export type LessonQualityCallDeps = { readonly fetch?: typeof fetch };
 
 export type LessonQualityCallResult = {
-  /** The first JSON object in the model's output. */
   readonly value: unknown;
   readonly usage: CanonicalAIUsage;
   readonly model: string;
@@ -91,7 +90,6 @@ export async function sendLessonQualityCall(
   };
 }
 
-/** The lesson's task and its current JSON, blocks numbered for `blockRef`. */
 export function describeLessonForReview(
   task: ModuleLessonBatchPromptTask,
   position: number,

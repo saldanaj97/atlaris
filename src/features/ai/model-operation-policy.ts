@@ -48,9 +48,7 @@ export type ModelOperationPolicy = {
    * route, then the free router.
    */
   readonly defaultModelId: string;
-  /** Offers the tier's synced guardrail models. */
   readonly usesTierCatalog: boolean;
-  /** Offers the code-owned `openrouter/free` router. */
   readonly usesFreeRouter: boolean;
 };
 
@@ -134,13 +132,6 @@ export function getModelOperationPolicy(
   }
 }
 
-/*
- * Grounded generation (JCS-154). A separate policy so the standard (non-grounded) one above,
- * and the pipeline it drives, stay unchanged while the `grounded-generation`
- * flag is off. Model IDs are OpenRouter slugs sent per request; presets hold
- * only prompts and stay model-agnostic.
- */
-
 export const GROUNDED_OPERATIONS = [
   'research',
   'initial_outline',
@@ -153,20 +144,13 @@ export const GROUNDED_OPERATIONS = [
 
 export type GroundedOperation = (typeof GROUNDED_OPERATIONS)[number];
 
-/** OpenRouter web search depth for a research model. */
 export type ResearchMode = 'fast' | 'advanced';
 
 export type GroundedModelChoice = {
   readonly modelId: string;
-  /** Set on research models only. */
   readonly researchMode?: ResearchMode;
 };
 
-/**
- * Per-request web search caps (`max_results`, `max_total_results`). A direct
- * Parallel search (DEV-171) sends one request for `maxTotalResults` results
- * and caps their excerpts at `maxExcerptChars` in total.
- */
 export type ResearchLimits = {
   readonly maxResults: number;
   readonly maxTotalResults: number;
@@ -177,20 +161,14 @@ export type GroundedOperationPolicy =
   | { readonly allowed: false }
   | {
       readonly allowed: true;
-      /** Primary first, then fallbacks in order. */
       readonly models: readonly [GroundedModelChoice, ...GroundedModelChoice[]];
-      /** Pro models a user may pick; empty means code-owned. */
       readonly catalog: readonly string[];
-      /** Runs allowed per plan; `null` means this policy sets no cap. */
       readonly quotaPerPlan: number | null;
-      /** Set on `research` only. */
       readonly research?: ResearchLimits;
     };
 
-/** OpenRouter presets added for grounded generation. */
 export const GROUNDED_PRESET_SLUGS = {
   research: 'atlaris-grounded-research',
-  /** Writes the brief from search results we pass in (DEV-171). */
   researchDirect: 'atlaris-grounded-research-direct',
   verifier: 'atlaris-grounded-verifier',
   repair: 'atlaris-grounded-repair',
@@ -198,7 +176,6 @@ export const GROUNDED_PRESET_SLUGS = {
 
 export type GroundedPreset =
   | { readonly slug: string }
-  /** The existing `openRouterEnv.planPreset` or `lessonPreset`. */
   | { readonly existing: 'plan' | 'lesson' };
 
 /**
@@ -215,14 +192,12 @@ export const GROUNDED_PRESET_BY_OPERATION = {
   advisor: { slug: GROUNDED_PRESET_SLUGS.repair },
 } as const satisfies Record<GroundedOperation, GroundedPreset>;
 
-/** Free writer models, tried in this order. Replaces `openrouter/free`. */
 export const FREE_GROUNDED_WRITER_MODEL_IDS = [
   'nvidia/nemotron-3.5-super-vl:free',
   'nvidia/nemotron-3.5-lightning:free',
   'minimax/minimax-m3.1-flash:free',
 ] as const;
 
-/** Free tier: one grounded regeneration per plan. */
 export const FREE_GROUNDED_REGENERATION_QUOTA_PER_PLAN = 1;
 
 export const PRO_GROUNDED_WRITER_CATALOG = [
@@ -233,7 +208,6 @@ export const PRO_GROUNDED_WRITER_CATALOG = [
   'openai/gpt-6-luna',
 ] as const;
 
-/** Shared by the verifier and advisor roles. */
 export const PRO_GROUNDED_REVIEW_CATALOG = [
   'anthropic/claude-sonnet-5.5',
   'anthropic/claude-opus-5.5',
@@ -242,7 +216,6 @@ export const PRO_GROUNDED_REVIEW_CATALOG = [
   'anthropic/claude-haiku-5.5',
 ] as const;
 
-// About 2k excerpt characters per result.
 const RESEARCH_LIMITS_BY_TIER = {
   free: { maxResults: 3, maxTotalResults: 6, maxExcerptChars: 12_000 },
   starter: { maxResults: 5, maxTotalResults: 15, maxExcerptChars: 30_000 },
@@ -363,11 +336,6 @@ export function getGroundedOperationPolicy(
   };
 }
 
-/**
- * Models to send for one grounded request, primary first. A Pro pick leads
- * when it is in the role's catalog; otherwise it is ignored. `null` when the
- * tier does not run the operation.
- */
 export function getGroundedModelRoute(
   tier: SubscriptionTier,
   operation: GroundedOperation,

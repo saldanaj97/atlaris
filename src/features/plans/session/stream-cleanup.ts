@@ -5,7 +5,6 @@ import { markPlanGenerationFailure } from '@/features/plans/lifecycle/plan-persi
 import { logger } from '@/lib/logging/logger';
 import { MissingRequestDbContextError } from '@supabase/runtime';
 
-/** Programming / wiring mistakes: surface instead of masking as persistence noise. */
 function shouldSurfaceMarkFailureError(markErr: unknown): boolean {
   return (
     markErr instanceof TypeError ||
@@ -18,9 +17,6 @@ type SafeMarkPlanFailedDeps = {
   logger?: Pick<typeof logger, 'error'>;
 };
 
-/**
- * Safely mark a plan as failed, logging errors if marking fails.
- */
 export async function safeMarkPlanFailed(
   planId: string,
   userId: string,
@@ -47,11 +43,6 @@ export async function safeMarkPlanFailed(
   }
 }
 
-/**
- * Plan failure marking mutates server-owned plan state; pass serviceRoleDb from
- * feature-owned generation boundaries. Workers/tests may pass service-role or
- * other privileged clients matching their context.
- */
 export async function safeMarkPlanFailedWithDbClient(
   planId: string,
   userId: string,

@@ -119,7 +119,6 @@ function createActionMethod(): ActionMethod {
 
     return withServerActionContext(async (actor) => {
       if (options?.rateLimit !== undefined) {
-        // Match `withRateLimit` (`ctx.userId`): Clerk auth ID, not `users.id`.
         checkUserRateLimit(actor.authUserId, options.rateLimit);
       }
 

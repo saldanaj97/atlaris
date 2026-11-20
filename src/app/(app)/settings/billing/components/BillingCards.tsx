@@ -65,9 +65,6 @@ function formatPlanTierName(tier: string): string {
   return `${tier.charAt(0).toUpperCase()}${tier.slice(1)}`;
 }
 
-/**
- * Plan & billing rows for the Ledger settings surface.
- */
 export async function BillingPlanRows({ locale }: { locale?: string }) {
   const snapshot = await loadBillingSnapshot();
   const nextBilling = formatNextBilling(
@@ -115,7 +112,6 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
             {formatSubscriptionStatus(snapshot.subscriptionStatus)}
           </span>
         </LedgerRow>
-        {/* Accounts without a billing period have nothing scheduled to bill. */}
         {nextBilling ? (
           <LedgerRow label='Next billing date'>
             <span className='text-foreground'>{nextBilling}</span>
@@ -130,9 +126,6 @@ export async function BillingPlanRows({ locale }: { locale?: string }) {
   );
 }
 
-/**
- * Usage meters for the Ledger settings surface.
- */
 export async function UsageRows() {
   const snapshot = await loadBillingSnapshot();
 

@@ -104,7 +104,6 @@ export default function SiteHeaderChrome({
           collapsed={!desktopSidebarOpen}
           className={cn(
             'fixed inset-y-0 left-0 z-40 hidden overflow-hidden border-r border-border lg:flex',
-            // Collapsed width must match DESKTOP_SIDEBAR_RAIL_WIDTH.
             desktopSidebarOpen
               ? 'w-[var(--at-semantic-layout-sidebar,14rem)]'
               : 'w-[4rem]',

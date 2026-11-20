@@ -80,12 +80,6 @@ function formatVerbosePastDelta(delta: PastDelta): string {
   return pluralizePastUnit(months, 'month');
 }
 
-/**
- * Past-only relative time (plan cards: compact; dashboard activity: verbose).
- *
- * Negative deltas (reference before target, i.e. `date` in the future) are
- * clamped to zero so callers get “Just now” / minimal buckets — the behavior the plan-card helper had before this module replaced it.
- */
 export function formatRelativePast(
   date: ValidDateInput,
   options: RelativePastOptions,

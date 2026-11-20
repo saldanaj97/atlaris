@@ -17,7 +17,6 @@ const ALLOWED_JOB_TYPES: ReadonlySet<JobType> = Object.freeze(
   new Set(Object.values(JOB_TYPES) as JobType[]),
 );
 
-/** Shared predicate for "active" regeneration job (pending or processing) for a plan/user. */
 export function activeRegenerationJobWhere(planId: string, userId: string) {
   return and(
     eq(jobQueue.planId, planId),
@@ -27,18 +26,10 @@ export function activeRegenerationJobWhere(planId: string, userId: string) {
   );
 }
 
-/**
- * Type guard to validate job type values at runtime.
- * Returns true if the value is a valid JobType.
- */
 function isValidJobType(value: string): value is JobType {
   return ALLOWED_JOB_TYPES.has(value as JobType);
 }
 
-/**
- * Maps a database row to the domain Job model.
- * Uses type inference from Drizzle schema for the input type.
- */
 export function mapRowToJob(row: JobQueueRow): Job {
   const jobType = assertJobTypeForRow(row.jobType);
 
@@ -72,16 +63,10 @@ function mapValidatedRowToJob(row: JobQueueRow, jobType: JobType): Job {
   };
 }
 
-/**
- * Type guard to check if a value is a record object (not null, not array).
- */
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-/**
- * Type guard to check if an array contains ErrorHistoryEntry objects.
- */
 function isErrorHistoryArray(value: unknown): value is ErrorHistoryEntry[] {
   if (!Array.isArray(value)) return false;
   return value.every(

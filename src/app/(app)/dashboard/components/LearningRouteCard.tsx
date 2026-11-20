@@ -7,8 +7,6 @@ import { cn } from '@/lib/utils';
 
 const TITLE_ID = 'dashboard-learning-route-heading';
 const ROUTE_WINDOW = 4;
-// One column per visible module, so a short route spreads across the rail
-// instead of bunching at its left end.
 const ROUTE_COLUMNS: Record<number, string> = {
   1: 'grid-cols-1',
   2: 'grid-cols-2',
@@ -45,8 +43,6 @@ export function LearningRouteCard({ plan }: { plan: PlanSummary }) {
         {plan.plan.topic} · {plan.completedModules} of {modules.length} modules
       </p>
 
-      {/* The route bar sits under the summary it measures; the nodes follow,
-          so a short route doesn't leave an empty rail far below them. */}
       <Progress
         value={routePercent}
         max={100}

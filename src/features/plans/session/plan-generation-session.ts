@@ -29,7 +29,6 @@ export {
   type StartRetryArgs,
 } from './session-command';
 
-/** `202` body of `POST /api/v1/plans` and `POST /api/v1/plans/:planId/retry`. */
 export type StartedPlanGeneration = {
   readonly planId: string;
   readonly attemptId: string;
@@ -51,16 +50,13 @@ export interface PlanGenerationSessionBoundary {
    * when one exists.
    */
   startCreate(args: StartCreateArgs): Promise<StartedPlanGeneration>;
-  /** Reserves and starts a retry attempt; throws like `startCreate`. */
   startRetry(args: StartRetryArgs): Promise<StartedPlanGeneration>;
 }
 
-/** Lifecycle factory injected at the boundary; defaults to the production wiring. */
 type CreateLifecycleService = (
   dbClient: AttemptsDbClient,
 ) => PlanLifecycleService;
 
-/** Optional dependency overrides for {@link createPlanGenerationSessionBoundary}. */
 interface CreateSessionBoundaryDeps {
   createLifecycleService?: CreateLifecycleService;
   startDeps?: StartPlanGenerationAttemptDeps;
@@ -92,12 +88,6 @@ export function createPlanGenerationSessionBoundary(
   };
 }
 
-/**
- * The canonical error for an attempt that never started (reservation rejected,
- * Worker refused, or an unexpected start error). The message and code come
- * from the classification's failure presentation; `details.planId` lets the
- * client open the plan page.
- */
 function planGenerationNotStartedError(
   planId: string,
   classification: UnhandledGenerationErrorClassification,

@@ -97,14 +97,8 @@ const completedModules = modules.filter(
   (module) => module.status === 'completed',
 ).length;
 
-/** The example plan's size, for the how-it-works step that describes the draft. */
 export const EXAMPLE_ROADMAP_SUMMARY = `${modules.length} modules · ${tasks.length} tasks · ${formatMinutes(totalMinutes)} planned`;
 
-/**
- * Static copy of the plan page (overview header and learning path), drawn with
- * the app's tokens and timeline components so it follows the page's theme.
- * Decorative: the caller hides it from assistive technology and describes it.
- */
 export function RoadmapPreview() {
   return (
     <div className='flex flex-col gap-4 text-left'>

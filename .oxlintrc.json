@@ -5,7 +5,7 @@
     "suspicious": "error"
   },
   "plugins": ["import", "react", "jsx-a11y", "nextjs", "vitest"],
-  "jsPlugins": ["@shadcn/lint"],
+  "jsPlugins": ["@shadcn/lint", "./scripts/lint/no-comments-plugin.mjs"],
   "options": {
     "typeAware": true,
     "typeCheck": false
@@ -43,6 +43,7 @@
     "nextjs/no-assign-module-variable": "off",
     "oxc/no-map-spread": "off",
     "react/react-in-jsx-scope": "off",
+    "atlaris-comments/no-comments": "error",
     "shadcn/no-raw-colors": [
       "error",
       {

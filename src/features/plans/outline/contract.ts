@@ -5,10 +5,6 @@ import type { GenerationInput } from '@/shared/types/ai-provider.types';
 
 import { buildUserPrompt } from '@/features/ai/prompts';
 
-/**
- * Title-scope rules sent with every grounded outline, verifier and repair
- * call. General rules only: never wording for a particular topic.
- */
 export const OUTLINE_SCOPE_CONTRACT = [
   'TITLE-SCOPE CONTRACT:',
   '- Every module and lesson title stays inside the plan topic. Prerequisites belong only when the topic needs them, titled by what they are used for in the topic.',
@@ -17,11 +13,6 @@ export const OUTLINE_SCOPE_CONTRACT = [
   "- Lesson minutes add up to each module's estimatedMinutes, and the plan fits the learner's weekly hours and deadline.",
 ].join('\n');
 
-/**
- * The research brief as a cached prompt part: it is the stable prefix the
- * outline, verifier and repair calls share. Sources are listed by key so the
- * brief's `[S1]` citations resolve.
- */
 export function buildResearchBriefPart(
   research: ResearchBrief,
 ): OpenRouterPromptPart {
@@ -38,7 +29,6 @@ export function buildResearchBriefPart(
   };
 }
 
-/** Brief first (cached), then the contract and the learner's request. */
 export function buildGroundedOutlineUserParts(
   input: GenerationInput,
   research: ResearchBrief | null,
@@ -51,7 +41,6 @@ export function buildGroundedOutlineUserParts(
   ];
 }
 
-/** The outline as the verifier and repair calls see it. */
 export function serializeOutline(modules: readonly ParsedModule[]): string {
   return JSON.stringify({ modules });
 }

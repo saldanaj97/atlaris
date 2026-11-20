@@ -6,10 +6,8 @@ const DEFAULT_CONFIG: AdaptiveTimeoutConfig = {
   extensionThresholdMs: 25_000,
 };
 
-/** Default generation timeout in ms. Shared with provider implementations. */
 export const DEFAULT_GENERATION_TIMEOUT_MS = DEFAULT_CONFIG.baseMs;
 
-/** Default timeout extension in ms. Shared with provider implementations. */
 export const DEFAULT_GENERATION_EXTENSION_MS = DEFAULT_CONFIG.extensionMs;
 
 type AdaptiveTimeoutController = {
@@ -39,9 +37,6 @@ export function createAdaptiveTimeout(
     if (timer) clearTimeout(timer);
     timer = setTimeout(
       () => {
-        // Node.js executes this callback on the same event loop thread; concurrent
-        // writes would require worker threads which we do not spawn here. Should
-        // that change, this mutation must be revisited to use an atomic primitive.
         timedOut = true;
         controller.abort();
       },

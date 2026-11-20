@@ -5,7 +5,6 @@ import {
   JOBS_TIMESTAMP_HEADER,
 } from '@/lib/jobs-worker/contract';
 
-/** Decision 4: one attempt, 10 seconds, no automatic retry. */
 export const JOBS_WORKER_TIMEOUT_MS = 10_000;
 
 export type JobsWorkerClientConfig = {
@@ -14,13 +13,11 @@ export type JobsWorkerClientConfig = {
 };
 
 export type JobsWorkerCommandResult =
-  /** 2xx; `body` is the parsed JSON response, or null when it is not JSON. */
   | {
       readonly kind: 'accepted';
       readonly status: number;
       readonly body: unknown;
     }
-  /** Non-2xx; `code` is the Worker's `code` field when present (e.g. `jobs_paused`). */
   | {
       readonly kind: 'rejected';
       readonly status: number;
@@ -53,11 +50,6 @@ function readCode(body: unknown): string | undefined {
   return undefined;
 }
 
-/**
- * Sends `POST {JOBS_WORKER_URL}<path>` with the HMAC headers from the shared
- * contract. Never throws for transport or HTTP failures; callers branch on the
- * result kind.
- */
 export async function sendJobsWorkerCommand(
   path: `/v1/${string}`,
   payload: Record<string, unknown>,
@@ -91,7 +83,6 @@ export async function sendJobsWorkerCommand(
       signal: AbortSignal.timeout(deps.timeoutMs ?? JOBS_WORKER_TIMEOUT_MS),
     });
   } catch (error) {
-    // DOMException is not an `Error` instance in every runtime; match by name.
     const name =
       typeof error === 'object' && error !== null && 'name' in error
         ? error.name

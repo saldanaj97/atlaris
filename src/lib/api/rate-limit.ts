@@ -23,7 +23,6 @@ function planGenerationWindowSeconds(): number {
   return PLAN_GENERATION_WINDOW_MINUTES * 60;
 }
 
-/** When durable attempt query failed: full-window backoff. Otherwise: time until oldest attempt ages out. */
 function exceededPlanGenerationWindowTiming(
   nowMs: number,
   countFailed: boolean,
@@ -59,7 +58,6 @@ function successPlanGenerationReset(
     : Math.ceil(nowMs / 1000) + windowSeconds;
 }
 
-/** Serializes rate-limit numeric values to HTTP response headers. */
 export function getPlanGenerationRateLimitHeaders(
   result: PlanGenerationRateLimitResult,
 ): Record<string, string> {
@@ -70,15 +68,6 @@ export function getPlanGenerationRateLimitHeaders(
   };
 }
 
-/**
- * Checks if the current user has exceeded the durable generation rate limit.
- * Uses generation_attempts count (actual execution path) instead of job queue.
- *
- * @param userId - Internal user id (from users table) to enforce per-user limit
- * @param dbClient - Database client for querying generation_attempts
- * @returns Remaining requests in the durable plan generation window
- * @throws RateLimitError if rate limit is exceeded
- */
 export async function checkPlanGenerationRateLimit(
   userId: string,
   dbClient: AttemptsReadClient,
@@ -94,8 +83,6 @@ export async function checkPlanGenerationRateLimit(
       since: windowStart,
     });
   } catch (err) {
-    // Fail-closed: when we cannot verify the count, treat as rate-limited to
-    // prevent abuse when DB is unavailable (expensive AI calls).
     logger.error(
       {
         error: err,

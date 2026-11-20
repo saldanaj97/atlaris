@@ -31,9 +31,7 @@ export const metadata: Metadata = {
   },
 };
 
-/** Retired: answers 404 unless the `about-page` flag is on. The code stays. */
 export default async function AboutPage() {
-  // Read the flag per request, not once at build time.
   await connection();
   if (!(await resolveAboutPageEnabled())) notFound();
   return <About />;

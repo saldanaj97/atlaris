@@ -25,7 +25,6 @@ export const metadata: Metadata = {
   },
 };
 
-/** Copy keyed by the auth route the proxy redirected from (`?from=`). Sign-in stays open for invited users. */
 const COPY_BY_SOURCE = {
   'sign-up': {
     overline: 'Sign-ups open soon',

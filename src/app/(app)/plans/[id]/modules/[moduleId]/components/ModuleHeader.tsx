@@ -22,7 +22,6 @@ interface ModuleHeaderProps {
   allModules: ModuleDetailNavItem[];
 }
 
-/** Module detail hero: title, description, and real module meta. */
 export function ModuleHeader({
   module,
   planId,
@@ -56,8 +55,6 @@ export function ModuleHeader({
       >
         <div className='relative p-5 sm:p-6'>
           <div className='flex min-w-0 items-start justify-between gap-4'>
-            {/* Inline icons after a no-break space stay with the title's last
-                word instead of wrapping onto a line of their own. */}
             <h1 className='min-w-0 type-title wrap-break-word text-foreground'>
               {module.title}
               {!previousModulesComplete && (

@@ -29,9 +29,6 @@ const clerkAuthFields = z.object({
 type ClerkAuthEnv = z.infer<typeof clerkAuthFields>;
 const defaultClerkAuthAccess = createServerEnvAccess(getProcessEnvSource);
 
-/**
- * Parse Clerk Auth config from an explicit env source (unit tests; no process mutation).
- */
 export function createClerkAuthEnv(env: EnvSource): ClerkAuthEnv {
   const parsed = clerkAuthFields.safeParse({
     publishableKey: requireEnvFrom(env, 'NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY'),
@@ -85,7 +82,6 @@ export const clerkAuthEnv = {
   },
 } as const;
 
-/** Optional per-environment Clerk plan IDs. Slugs remain the entitlement contract. */
 export const clerkBillingPlanEnv = {
   get planIdFree() {
     return getServerOptional('CLERK_BILLING_PLAN_ID_FREE');

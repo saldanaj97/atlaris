@@ -118,6 +118,10 @@ Strong success criteria let you loop independently. Weak criteria ("make it work
 - Open every PR against `develop`, including each slice of a multi-PR project. Pass `--base develop` to `gh pr create` explicitly; tool defaults target `main`. Never create or target a long-lived track branch (short-lived stacked PRs are fine); put unfinished user-facing behavior behind a fail-closed flag in `src/flags.ts`.
 - Open a `develop` → `main` promotion PR only when asked. Promotions are batched (at most daily, or per milestone) and merged with a merge commit, never squash or rebase, so no `main` → `develop` merge-back is needed. Details: `docs/ci/branching-strategy.md`.
 
+## Comments
+
+- No comments in `src/`; lint fails them (`atlaris-comments/no-comments`). Directives (`oxlint-disable`, `@ts-expect-error`, ...) are allowed. Put a non-obvious decision in `docs/adr/`, not in code. Existing comments are listed in `scripts/lint/comment-baseline.json`, which may only shrink; use the `delete-comment` skill (`.agents/skills/delete-comment`).
+
 ## Commits and PRs
 
 - Author and commit as the repo owner (`Juan Saldana <saldanaj97@gmail.com>`), never as "Claude" or `noreply@anthropic.com`. In a fresh environment run `git config user.name "Juan Saldana" && git config user.email saldanaj97@gmail.com` before the first commit.

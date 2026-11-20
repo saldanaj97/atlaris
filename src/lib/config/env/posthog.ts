@@ -1,10 +1,3 @@
-/**
- * PostHog is enabled only for an explicit production deployment.
- *
- * Vercel Preview and custom environments run with NODE_ENV=production, so
- * NODE_ENV alone cannot identify a production deployment. VERCEL_TARGET_ENV
- * takes precedence over VERCEL_ENV when a custom environment is configured.
- */
 export interface PostHogEnvironment {
   readonly NODE_ENV?: string;
   readonly VERCEL_ENV?: string;

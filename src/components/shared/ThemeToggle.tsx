@@ -14,13 +14,9 @@ import { useSyncExternalStore } from 'react';
 import { flushSync } from 'react-dom';
 
 interface ThemeToggleProps {
-  /** Button size variant */
   size?: 'default' | 'sm' | 'lg' | 'icon' | 'icon-sm' | 'icon-lg';
-  /** Additional className for styling */
   className?: string;
-  /** Wrap in Radix tooltip (use on icon-only instances) */
   withTooltip?: boolean;
-  /** Tooltip placement when `withTooltip` is set */
   tooltipSide?: 'top' | 'right' | 'bottom' | 'left';
 }
 
@@ -51,7 +47,6 @@ export function ThemeToggle({
   );
 
   const toggleTheme = () => {
-    // Use resolvedTheme to handle 'system' theme correctly
     const currentTheme = resolvedTheme ?? theme;
     const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
     // flushSync commits the change (next-themes writes the root in an effect)
@@ -59,7 +54,6 @@ export function ThemeToggle({
     transitionTheme(() => flushSync(() => setTheme(nextTheme)));
   };
 
-  // Render placeholder during SSR to prevent layout shift
   if (!mounted) {
     return (
       <Button

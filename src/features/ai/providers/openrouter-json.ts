@@ -2,7 +2,6 @@ import { ProviderInvalidResponseError } from '@/features/ai/providers/errors';
 
 const CODE_FENCE_PATTERN = /```[a-zA-Z]*\n?([\s\S]*?)```/g;
 
-/** End index (exclusive) of the balanced object opening at `start`, if any. */
 function findBalancedObjectEnd(
   text: string,
   start: number,
@@ -39,11 +38,8 @@ function findBalancedObjectEnd(
 type Span = { start: number; end: number };
 
 type ObjectScan = {
-  /** First balanced object that parses as JSON. */
   object?: Span & { value: unknown };
-  /** Balanced objects before it that failed to parse (prose or malformed JSON). */
   skipped: Span[];
-  /** Opening brace that never closes (truncated output). */
   unclosedAt?: number;
 };
 
@@ -53,8 +49,6 @@ function scanFirstObject(text: string): ObjectScan {
   while (start !== -1) {
     const end = findBalancedObjectEnd(text, start);
     if (end === undefined) {
-      // Every later brace is nested inside this one, so parsing one would
-      // return a fragment of the real object.
       return { skipped, unclosedAt: start };
     }
     try {
@@ -67,7 +61,6 @@ function scanFirstObject(text: string): ObjectScan {
         skipped,
       };
     } catch {
-      // Not JSON (prose braces); skip past it rather than into it.
       skipped.push({ start, end });
     }
     start = text.indexOf('{', end);
@@ -79,12 +72,6 @@ function spanContains(span: Span | undefined, index: number): boolean {
   return span !== undefined && index >= span.start && index < span.end;
 }
 
-/**
- * Takes the first balanced JSON object from model output. Models that ignore
- * `response_format` wrap JSON in code fences and prose, so a fenced block wins
- * unless it sits inside a balanced object (fenced code in a string value, even
- * when that object is malformed) or after a brace that never closes.
- */
 export function extractFirstJsonObject(text: string): unknown {
   const scan = scanFirstObject(text);
   for (const match of text.matchAll(CODE_FENCE_PATTERN)) {
