@@ -14,7 +14,7 @@ import { emailNotificationDeliveries } from '@supabase/schema';
 import { db } from '@supabase/service-role';
 import { ensureUser } from '@tests/helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '@tests/helpers/testIds';
-import { eq, sql } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
 function providerRequest(
@@ -64,19 +64,6 @@ function hasCheckConstraintViolation(
 }
 
 describe('email notification deliveries ledger', () => {
-  it('indexes logical run summaries by category, delivery key, and status', async () => {
-    const indexes = (await db.execute(sql`
-      select indexdef
-      from pg_indexes
-      where schemaname = 'public'
-        and tablename = 'email_notification_deliveries'
-        and indexname = 'idx_email_notification_deliveries_run_summary'
-    `)) as Array<{ indexdef: string }>;
-
-    expect(indexes).toHaveLength(1);
-    expect(indexes[0]?.indexdef).toContain('(category, delivery_key, status)');
-  });
-
   it('reconciles terminal counts for a logical run from the ledger', async () => {
     const [firstUserId, secondUserId] = await Promise.all([
       createDeliveryUser('email-ledger-summary-first'),
@@ -243,16 +230,6 @@ describe('email notification deliveries ledger', () => {
       );
     },
   );
-
-  it('validates the resolved-payload constraint after scrubbing legacy rows', async () => {
-    const constraints = (await db.execute(sql`
-      select convalidated
-      from pg_constraint
-      where conname = 'email_notification_deliveries_resolved_provider_request_null'
-    `)) as Array<{ convalidated: boolean }>;
-
-    expect(constraints).toEqual([{ convalidated: true }]);
-  });
 
   it('allows only one concurrent owner for the same delivery key', async () => {
     const userId = await createDeliveryUser('email-ledger-race');

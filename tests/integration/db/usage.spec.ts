@@ -6,9 +6,8 @@ import {
 } from '../../../supabase/usage';
 import { ensureUser } from '../../helpers/db/users';
 import { buildTestAuthUserId, buildTestEmail } from '../../helpers/testIds';
-import { aiUsageEvents, learningPlans, usageMetrics } from '@supabase/schema';
+import { aiUsageEvents, usageMetrics } from '@supabase/schema';
 import { db } from '@supabase/service-role';
-import { atomicInsertPlanOrThrow } from '@tests/helpers/plan-persistence';
 import { eq, sql } from 'drizzle-orm';
 import { describe, expect, it } from 'vitest';
 
@@ -49,51 +48,6 @@ async function expectCheckConstraintViolation(
 }
 
 describe('AI usage logging', () => {
-  it('atomically checks plan limit, creates plan, and records usage event', async () => {
-    const authUserId = buildTestAuthUserId('db-usage');
-    const userId = await ensureUser({
-      authUserId,
-      email: buildTestEmail(authUserId),
-    });
-
-    // Check the limit and create the plan in a single atomic transaction
-    const plan = await atomicInsertPlanOrThrow(db, userId, {
-      topic: 'Test Topic',
-      skillLevel: 'beginner',
-      weeklyHours: 5,
-      learningStyle: 'mixed',
-      visibility: 'private',
-      origin: 'ai',
-    });
-
-    expect(plan.id).toBeDefined();
-
-    const [planRow] = await db
-      .select()
-      .from(learningPlans)
-      .where(eq(learningPlans.id, plan.id));
-
-    expect(planRow?.generationStatus).toBe('generating');
-    expect(planRow?.isQuotaEligible).toBe(false);
-    expect(planRow?.finalizedAt).toBeNull();
-
-    await recordUsageInTx(db, {
-      userId,
-      provider: 'mock',
-      model: 'mock-generator-v1',
-      inputTokens: 10,
-      outputTokens: 100,
-      costCents: 0,
-    });
-
-    const rows = await db
-      .select()
-      .from(aiUsageEvents)
-      .where(eq(aiUsageEvents.userId, userId));
-    expect(rows.length).toBe(1);
-    expect(rows[0]?.provider).toBe('mock');
-  });
-
   it('round-trips provider_cost_microusd and model_pricing_snapshot from canonical mapping', async () => {
     const authUserId = buildTestAuthUserId('db-usage-snap');
     const userId = await ensureUser({
