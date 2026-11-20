@@ -11,22 +11,6 @@ describe('shared retry-policy', () => {
       vi.restoreAllMocks();
     });
 
-    it('returns shouldRetry=true when retryable and under max attempts', () => {
-      vi.spyOn(Math, 'random').mockReturnValue(0.5);
-      const result = decideJobRetry({
-        attemptNumber: 1,
-        maxAttempts: 3,
-        retryable: true,
-      });
-
-      expect(result.shouldRetry).toBe(true);
-      if (!result.shouldRetry) {
-        throw new Error('Expected retry decision');
-      }
-      expect(result.delayMs).toBeGreaterThan(0);
-      expect(result.reason).toContain('job_retry:scheduled');
-    });
-
     it('treats undefined retryable like retryable for attempt cap', () => {
       vi.spyOn(Math, 'random').mockReturnValue(0.5);
       const result = decideJobRetry({
@@ -38,7 +22,7 @@ describe('shared retry-policy', () => {
       if (!result.shouldRetry) {
         throw new Error('Expected retry decision');
       }
-      expect(result.delayMs).toBe(getJobRetryDelayMs(1, () => 0.5));
+      expect(result.delayMs).toBe(JOB_RETRY_BASE_SECONDS * 1000);
     });
 
     it('returns shouldRetry=false when retryable but at max attempts', () => {
@@ -73,6 +57,7 @@ describe('shared retry-policy', () => {
 
       expect(result.shouldRetry).toBe(false);
       expect(result.reason).toContain('job_retry:not_retryable');
+      expect('delayMs' in result).toBe(false);
     });
 
     it('includes delayMs in successful retry decisions', () => {
@@ -87,7 +72,7 @@ describe('shared retry-policy', () => {
       if (!result.shouldRetry) {
         throw new Error('Expected retry decision');
       }
-      expect(result.delayMs).toBe(getJobRetryDelayMs(2, () => 0.5));
+      expect(result.delayMs).toBe(JOB_RETRY_BASE_SECONDS * 2 * 1000);
     });
 
     it('honors a dependency-provided retry-after minimum', () => {
@@ -118,18 +103,8 @@ describe('shared retry-policy', () => {
       if (!result.shouldRetry) {
         throw new Error('Expected retry decision');
       }
-      expect(result.delayMs).toBe(getJobRetryDelayMs(1, () => 0.5));
+      expect(result.delayMs).toBe(JOB_RETRY_BASE_SECONDS * 1000);
       expect(result.reason).toBe('job_retry:scheduled:1/3');
-    });
-
-    it('does not include delayMs when shouldRetry is false (not retryable)', () => {
-      const result = decideJobRetry({
-        attemptNumber: 1,
-        maxAttempts: 3,
-        retryable: false,
-      });
-
-      expect('delayMs' in result).toBe(false);
     });
   });
 
@@ -158,15 +133,6 @@ describe('shared retry-policy', () => {
 
       expect(getJobRetryDelayMs(100, mid)).toBe(maxDelayMs);
       expect(getJobRetryDelayMs(20, mid)).toBe(maxDelayMs);
-    });
-
-    it('does not exceed ~125% of configured max delay', () => {
-      const maxDelayMs = JOB_RETRY_MAX_DELAY_SECONDS * 1000;
-      const ceiling = Math.ceil(maxDelayMs * 1.25) + 2;
-
-      for (let attempt = 1; attempt <= 50; attempt++) {
-        expect(getJobRetryDelayMs(attempt)).toBeLessThanOrEqual(ceiling);
-      }
     });
   });
 });

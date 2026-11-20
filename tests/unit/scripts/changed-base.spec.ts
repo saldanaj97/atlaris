@@ -6,10 +6,13 @@ describe('resolveChangedTestBase', () => {
     expect(resolveChangedTestBase({})).toBe('origin/develop');
   });
 
-  it('uses VITEST_CHANGED_BASE when provided', () => {
+  it('prefers VITEST_CHANGED_BASE over BASE_REF', () => {
     expect(
-      resolveChangedTestBase({ VITEST_CHANGED_BASE: 'origin/develop' }),
-    ).toBe('origin/develop');
+      resolveChangedTestBase({
+        BASE_REF: 'develop',
+        VITEST_CHANGED_BASE: 'origin/release',
+      }),
+    ).toBe('origin/release');
   });
 
   it('falls back to BASE_REF for GitHub-style environments', () => {
