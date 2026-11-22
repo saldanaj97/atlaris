@@ -1,6 +1,8 @@
 #!/bin/sh
 # PreToolUse (Bash) hook: `gh pr create` and `gh pr merge` need a quiz pass for the PR's head
-# commit (.claude/quiz-pass/<sha>). Only the user's 5/5 quiz writes that file.
+# commit (.claude/quiz-pass/<sha>). Only the user's 5/5 quiz writes that file. The pass counts
+# from any worktree of the repo. A PR whose every changed file is a test file or CI config needs
+# no pass file (is_skippable below).
 # Exit 2 blocks the call and feeds stderr back to the agent. Anything this cannot resolve blocks.
 #
 # The repo checked is the one the command runs in: the session's cwd, or the last `cd <path>`
@@ -56,9 +58,49 @@ if printf '%s' "$cmd" | grep -Eiq 'gh[^[:space:]]*[)}][[:space:]]+pr[[:space:]]+
   block "gh pr create/merge through a substitution or variable cannot be checked. Call gh directly."
 fi
 
+# A pass file is keyed by the full commit sha, so it counts wherever it was written: in the
+# checkout the command runs in, or in any other worktree of the same repo (the main checkout
+# included). Without this, a pass written in one worktree is invisible from another.
+have_pass() { # root sha
+  [ -f "$1/.claude/quiz-pass/$2" ] && return 0
+  _wts="$(git -C "$1" worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p')"
+  while IFS= read -r _w; do
+    [ -n "$_w" ] && [ -f "$_w/.claude/quiz-pass/$2" ] && return 0
+  done <<EOF
+$_wts
+EOF
+  return 1
+}
+
+# True when every file changed between $3 and its merge base with $2 is a test file, or CI config.
+# Any failure (no merge base, git error, empty list) returns false, so the quiz is required.
+is_skippable() { # root base-ref head-sha
+  _mb="$(git -C "$1" merge-base "$3" "$2" 2>/dev/null)" || return 1
+  [ -n "$_mb" ] || return 1
+  _files="$(git -C "$1" diff --name-only --no-renames "$_mb" "$3" 2>/dev/null)" || return 1
+  [ -n "$_files" ] || return 1
+  _ok=0
+  while IFS= read -r _p; do
+    _b="${_p##*/}"
+    case "$_b" in
+      *.test.*|*.spec.*) continue ;;
+    esac
+    case "$_p" in
+      tests/*|scripts/tests/*|*/__tests__/*|*/__mocks__/*|*/__snapshots__/*) continue ;;
+      .github/*|.circleci/*|codecov.yml) continue ;;
+    esac
+    _ok=1
+    break
+  done <<EOF
+$_files
+EOF
+  [ "$_ok" -eq 0 ]
+}
+
 # Find every `gh pr <subcommand>` and print one line per create/merge:
-#   kind US repo US arg US dir   (arg = --head value for create, PR selector for merge;
-#                                 dir = path of the last `cd` before this gh, if any)
+#   kind US repo US arg US dir US base   (arg = --head value for create, PR selector for merge;
+#                                 dir = path of the last `cd` before this gh, if any;
+#                                 base = --base value for create)
 # Words are read shell-style: quotes join, a backslash escapes. A word ends at whitespace or an
 # unquoted ; & | ) ` or newline. When gh follows a quote (sh -c "gh pr merge 1"), that quote
 # character also ends the command.
@@ -115,7 +157,7 @@ function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c ==
     kind = (sub_ == "merge") ? "merge" : "create"
     if (kind == "merge") valflags = " -A --author-email -b --body -F --body-file -t --subject --match-head-commit -R --repo "
     else valflags = " -a --assignee -B --base -b --body -F --body-file -H --head -l --label -m --milestone -p --project --recover -r --reviewer -T --template -t --title -R --repo "
-    arg = ""
+    arg = ""; base = ""
     for (k++; k <= nt; k++) {
       t = tok[k]
       if (t == "--") { if (kind == "merge" && arg == "" && k < nt) arg = tok[k + 1]; break }
@@ -123,6 +165,7 @@ function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c ==
         f = substr(t, 1, index(t, "=") - 1); v = substr(t, index(t, "=") + 1)
         if (f == "--repo") repo = v
         if (f == "--head" && kind == "create") arg = v
+        if (f == "--base" && kind == "create") base = v
         continue
       }
       if (t ~ /^-/) {
@@ -130,12 +173,13 @@ function stop(c) { return c == " " || c == "\t" || c == "\n" || c == ";" || c ==
           v = tok[k + 1]; k++
           if (t == "-R" || t == "--repo") repo = v
           if (kind == "create" && (t == "-H" || t == "--head")) arg = v
+          if (kind == "create" && (t == "-B" || t == "--base")) base = v
         }
         continue
       }
       if (kind == "merge" && arg == "") arg = t
     }
-    print kind us repo us arg us dir
+    print kind us repo us arg us dir us base
   }
 }')" || block "could not parse the command to check for gh pr create/merge."
 
@@ -151,7 +195,7 @@ ghbin="$(command -v gh 2>/dev/null || echo /opt/homebrew/bin/gh)"
 slug() { printf '%s' "$1" | sed -E -e 's#\.git$##' -e 's#/+$##' -e 's#^.*[:/]([^/:]+/[^/:]+)$#\1#' | tr 'A-Z' 'a-z'; }
 
 printf '%s\n' "$calls" | {
-  while IFS="$us" read -r kind repo arg dir; do
+  while IFS="$us" read -r kind repo arg dir pbase; do
     what="gh pr $kind${arg:+ $arg}${dir:+ (after cd $dir)}"
     # Resolve the repo the command runs in. A path the hook cannot follow (a variable) blocks.
     wd="$base"
@@ -189,7 +233,10 @@ printf '%s\n' "$calls" | {
       [ -n "$arg" ] && set -- "$@" "$arg"
       [ -n "$repo" ] && set -- "$@" --repo "$repo"
       # Bounded below the hook timeout so a hung gh blocks instead of timing the hook out.
-      sha="$(cd "$root" && perl -e 'alarm 10; exec @ARGV' "$ghbin" "$@" --json headRefOid -q .headRefOid </dev/null 2>/dev/null)"
+      view="$(cd "$root" && perl -e 'alarm 10; exec @ARGV' "$ghbin" "$@" --json headRefOid,baseRefName -q '.headRefOid + " " + .baseRefName' </dev/null 2>/dev/null)"
+      sha="${view%% *}"
+      pbase="${view#* }"
+      [ "$pbase" = "$view" ] && pbase=""
     fi
     passdir="$root/.claude/quiz-pass"
     if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
@@ -197,10 +244,16 @@ printf '%s\n' "$calls" | {
       echo "If the command only mentions it in text (a message or a search), move that text to a file." >&2
       exit 2
     fi
-    if [ ! -f "$passdir/$sha" ]; then
-      echo "Blocked: $what needs a quiz pass for head commit $sha ($passdir/$sha)." >&2
-      exit 2
+    if have_pass "$root" "$sha"; then continue; fi
+    # PRs that only change test or CI-config files need no pass. Base: --base (create) or
+    # baseRefName (merge), else develop.
+    baseref="origin/${pbase:-develop}"
+    if is_skippable "$root" "$baseref" "$sha"; then
+      echo "Quiz skipped for $what: every file changed against $baseref is a test or CI-config file." >&2
+      continue
     fi
+    echo "Blocked: $what needs a quiz pass for head commit $sha ($passdir/$sha, or the same file in another worktree of this repo)." >&2
+    exit 2
   done
   exit 0
 }
